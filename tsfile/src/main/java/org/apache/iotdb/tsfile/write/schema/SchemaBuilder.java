@@ -24,20 +24,20 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 /**
- * This class is used to build FileSchema of tsfile.
+ * This class is used to build Schema of tsfile.
  */
 public class SchemaBuilder {
 
   /**
-   * the FileSchema which is being built.
+   * the Schema which is being built.
    **/
-  private FileSchema fileSchema;
+  private Schema schema;
 
   /**
    * init schema by default value.
    */
   public SchemaBuilder() {
-    fileSchema = new FileSchema();
+    schema = new Schema();
   }
 
   /**
@@ -53,7 +53,7 @@ public class SchemaBuilder {
   public SchemaBuilder addSeries(String measurementId, TSDataType dataType, TSEncoding tsEncoding,
       CompressionType type, Map<String, String> props) {
     MeasurementSchema md = new MeasurementSchema(measurementId, dataType, tsEncoding, type, props);
-    fileSchema.registerMeasurement(md);
+    schema.registerMeasurement(md);
     return this;
   }
 
@@ -67,7 +67,7 @@ public class SchemaBuilder {
    */
   public SchemaBuilder addSeries(String measurementId, TSDataType dataType, TSEncoding tsEncoding) {
     MeasurementSchema md = new MeasurementSchema(measurementId, dataType, tsEncoding);
-    fileSchema.registerMeasurement(md);
+    schema.registerMeasurement(md);
     return this;
   }
 
@@ -78,7 +78,7 @@ public class SchemaBuilder {
    * @return schema builder
    */
   public SchemaBuilder addSeries(MeasurementSchema descriptor) {
-    fileSchema.registerMeasurement(descriptor);
+    schema.registerMeasurement(descriptor);
     return this;
   }
 
@@ -87,7 +87,7 @@ public class SchemaBuilder {
    *
    * @return constructed file schema
    */
-  public FileSchema build() {
-    return this.fileSchema;
+  public Schema build() {
+    return this.schema;
   }
 }

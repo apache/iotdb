@@ -37,6 +37,7 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IService;
@@ -148,7 +149,7 @@ public class StorageEngine implements IService {
 
 
   /**
-   * execute an InsertPlan on a storage group.
+   * insert an InsertPlan to a storage group.
    *
    * @param insertPlan physical plan of insertion
    * @return true if and only if this insertion succeeds
@@ -167,6 +168,25 @@ public class StorageEngine implements IService {
 
     // TODO monitor: update statistics
     return storageGroupProcessor.insert(insertPlan);
+  }
+
+  /**
+   * insert a BatchInsertPlan to a storage group
+   * @return result of each row
+   */
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws StorageEngineException {
+    StorageGroupProcessor storageGroupProcessor;
+    try {
+      storageGroupProcessor = getProcessor(batchInsertPlan.getDeviceId());
+    } catch (Exception e) {
+      logger.warn("get StorageGroupProcessor of device {} failed, because {}",
+          batchInsertPlan.getDeviceId(),
+          e.getMessage(), e);
+      throw new StorageEngineException(e);
+    }
+
+    // TODO monitor: update statistics
+    return storageGroupProcessor.insertBatch(batchInsertPlan);
   }
 
   /**

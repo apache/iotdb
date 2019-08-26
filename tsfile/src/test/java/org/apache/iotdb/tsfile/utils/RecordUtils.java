@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +47,7 @@ public class RecordUtils {
    *            - constructed file schema
    * @return TSRecord constructed from str
    */
-  public static TSRecord parseSimpleTupleRecord(String str, FileSchema schema) {
+  public static TSRecord parseSimpleTupleRecord(String str, Schema schema) {
     // split items
     String[] items = str.split(JsonFormatConstant.TSRECORD_SEPARATOR);
     // get deviceId and timestamp, then create a new TSRecord

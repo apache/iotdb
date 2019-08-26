@@ -45,7 +45,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -58,7 +58,7 @@ public class SeqTsFileRecoverTest {
   private TsFileWriter writer;
   private WriteLogNode node;
   private String logNodePrefix = "testNode";
-  private FileSchema schema;
+  private Schema schema;
   private TsFileResource resource;
   private VersionController versionController = new VersionController() {
     private int i;
@@ -79,7 +79,7 @@ public class SeqTsFileRecoverTest {
     tsF = new File("temp", "test.ts");
     tsF.getParentFile().mkdirs();
 
-    schema = new FileSchema();
+    schema = new Schema();
     for (int i = 0; i < 10; i++) {
       schema.registerMeasurement(new MeasurementSchema("sensor" + i, TSDataType.INT64,
           TSEncoding.PLAIN));

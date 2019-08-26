@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -210,10 +210,10 @@ public class TsFileIOWriter {
   /**
    * write {@linkplain TsFileMetaData TSFileMetaData} to output stream and close it.
    *
-   * @param schema FileSchema
+   * @param schema Schema
    * @throws IOException if I/O error occurs
    */
-  public void endFile(FileSchema schema) throws IOException {
+  public void endFile(Schema schema) throws IOException {
 
     // serialize the SEPARATOR of MetaData and ChunkGroups
     ReadWriteIOUtils.write(MetaMarker.SEPARATOR, out.wrapAsStream());

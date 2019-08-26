@@ -381,6 +381,7 @@
         <module>tsfile</module>
         <module>service-rpc</module>
         <module>jdbc</module>
+        <module>session</module>
         <module>client</module>
         <module>server</module>
         <module>example</module>
