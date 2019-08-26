@@ -39,7 +39,7 @@ import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 
 /**
  * LogReplayer finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads
@@ -52,8 +52,8 @@ public class LogReplayer {
   private ModificationFile modFile;
   private VersionController versionController;
   private TsFileResource currentTsFileResource;
-  // fileSchema is used to get the measurement data type
-  private FileSchema fileSchema;
+  // schema is used to get the measurement data type
+  private Schema schema;
   private IMemTable recoverMemTable;
 
   // unsequence file tolerates duplicated data
@@ -66,13 +66,13 @@ public class LogReplayer {
       ModificationFile modFile,
       VersionController versionController,
       TsFileResource currentTsFileResource,
-      FileSchema fileSchema, IMemTable memTable, boolean acceptDuplication) {
+      Schema schema, IMemTable memTable, boolean acceptDuplication) {
     this.logNodePrefix = logNodePrefix;
     this.insertFilePath = insertFilePath;
     this.modFile = modFile;
     this.versionController = versionController;
     this.currentTsFileResource = currentTsFileResource;
-    this.fileSchema = fileSchema;
+    this.schema = schema;
     this.recoverMemTable = memTable;
     this.acceptDuplication = acceptDuplication;
   }
@@ -135,7 +135,7 @@ public class LogReplayer {
     String[] measurementList = insertPlan.getMeasurements();
     TSDataType[] dataTypes = new TSDataType[measurementList.length];
     for (int i = 0; i < measurementList.length; i++) {
-      dataTypes[i] = fileSchema.getMeasurementDataType(measurementList[i]);
+      dataTypes[i] = schema.getMeasurementDataType(measurementList[i]);
     }
     insertPlan.setDataTypes(dataTypes);
     recoverMemTable.insert(insertPlan);

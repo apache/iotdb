@@ -39,7 +39,7 @@ import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,18 +54,18 @@ public class TsFileRecoverPerformer {
 
   private String insertFilePath;
   private String logNodePrefix;
-  private FileSchema fileSchema;
+  private Schema schema;
   private VersionController versionController;
   private LogReplayer logReplayer;
   private TsFileResource tsFileResource;
   private boolean acceptUnseq;
 
   public TsFileRecoverPerformer(String logNodePrefix,
-      FileSchema fileSchema, VersionController versionController,
+      Schema schema, VersionController versionController,
       TsFileResource currentTsFileResource, boolean acceptUnseq) {
     this.insertFilePath = currentTsFileResource.getFile().getPath();
     this.logNodePrefix = logNodePrefix;
-    this.fileSchema = fileSchema;
+    this.schema = schema;
     this.versionController = versionController;
     this.tsFileResource = currentTsFileResource;
     this.acceptUnseq = acceptUnseq;
@@ -79,7 +79,7 @@ public class TsFileRecoverPerformer {
     IMemTable recoverMemTable = new PrimitiveMemTable();
     this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
         versionController,
-        tsFileResource, fileSchema, recoverMemTable, acceptUnseq);
+        tsFileResource, schema, recoverMemTable, acceptUnseq);
     File insertFile = new File(insertFilePath);
     if (!insertFile.exists()) {
       logger.error("TsFile {} is missing, will skip its recovery.", insertFilePath);
@@ -147,13 +147,13 @@ public class TsFileRecoverPerformer {
     try {
       if (!recoverMemTable.isEmpty()) {
         // flush logs
-        MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable, fileSchema,
+        MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable, schema,
             restorableTsFileIOWriter,
             logNodePrefix);
         tableFlushTask.syncFlushMemTable();
       }
       // close file
-      restorableTsFileIOWriter.endFile(fileSchema);
+      restorableTsFileIOWriter.endFile(schema);
       tsFileResource.serialize();
     } catch (ExecutionException | InterruptedException | IOException e) {
       Thread.currentThread().interrupt();

@@ -44,7 +44,7 @@ import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 
@@ -69,7 +69,7 @@ public class LogReplayerTest {
     };
     TsFileResource tsFileResource = new TsFileResource(tsFile);
     IMemTable memTable = new PrimitiveMemTable();
-    FileSchema schema = new FileSchema();
+    Schema schema = new Schema();
 
     try {
       for (int i = 0; i < 5; i++) {

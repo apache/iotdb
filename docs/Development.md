@@ -74,8 +74,8 @@ you can just choose menu "import" -> "Maven" -> "Existing Maven Projects".
  
 ## Debugging IoTDB
 The main class of IoTDB server is `org.apache.iotdb.db.service.IoTDB`.
-The main class of IoTDB client is `org.apache.iotdb.cli.client.Client` 
-(or `org.apache.iotdb.cli.client.WinClient` on Win OS).
+The main class of IoTDB cli is `org.apache.iotdb.client.Client` 
+(or `org.apache.iotdb.client.WinClient` on Win OS).
 
 You can run/debug IoTDB by using the two classes as the entrance.
 
