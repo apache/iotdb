@@ -227,11 +227,11 @@ public class Utils {
         fail("one of statistics is empty while the other one is not");
       }
       if (!statistics1.isEmpty() && !statistics2.isEmpty()) {
-        assertTrue(statistics1.getMin().equals(statistics2.getMin()));
-        assertTrue(statistics1.getMax().equals(statistics2.getMax()));
-        assertTrue(statistics1.getFirst().equals(statistics2.getFirst()));
+        assertEquals(statistics1.getMin(), statistics2.getMin());
+        assertEquals(statistics1.getMax(), statistics2.getMax());
+        assertEquals(statistics1.getFirst(), statistics2.getFirst());
         assertEquals(statistics1.getSum(), statistics2.getSum(), maxError);
-        assertTrue(statistics1.getLast().equals(statistics2.getLast()));
+        assertEquals(statistics1.getLast(), statistics2.getLast());
       }
     }
   }

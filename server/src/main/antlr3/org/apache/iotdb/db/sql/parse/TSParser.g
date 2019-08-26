@@ -119,7 +119,7 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
 
     private static HashMap<String, String> xlateMap;
     static {
-        //this is used to support auto completion in CLI
+        //this is used to support auto completion in Client
         xlateMap = new HashMap<String, String>();
 
         // Keywords

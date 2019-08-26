@@ -44,7 +44,7 @@ public class IoTDBPreparedInsertionStatement extends IoTDBPreparedStatement {
   public boolean execute() throws SQLException {
 
     try {
-      TSExecuteStatementResp resp = client.executeInsertion(req);
+      TSExecuteStatementResp resp = client.insert(req);
       req.unsetDeviceId();
       req.unsetMeasurements();
       req.unsetTimestamp();

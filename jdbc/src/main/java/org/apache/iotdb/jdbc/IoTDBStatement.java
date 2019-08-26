@@ -30,6 +30,8 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.rpc.IoTDBRPCException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationResp;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
@@ -131,7 +133,7 @@ public class IoTDBStatement implements Statement {
       if (operationHandle != null) {
         TSCancelOperationReq closeReq = new TSCancelOperationReq(operationHandle);
         TSCancelOperationResp closeResp = client.cancelOperation(closeReq);
-        Utils.verifySuccess(closeResp.getStatus());
+        RpcUtils.verifySuccess(closeResp.getStatus());
       }
     } catch (Exception e) {
       throw new SQLException("Error occurs when canceling statement.", e);
@@ -158,7 +160,7 @@ public class IoTDBStatement implements Statement {
         TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle, -1);
         closeReq.setStmtId(stmtId);
         TSCloseOperationResp closeResp = client.closeOperation(closeReq);
-        Utils.verifySuccess(closeResp.getStatus());
+        RpcUtils.verifySuccess(closeResp.getStatus());
       }
     } catch (Exception e) {
       throw new SQLException("Error occurs when closing statement.", e);
@@ -246,7 +248,11 @@ public class IoTDBStatement implements Statement {
       TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql);
       TSExecuteStatementResp execResp = client.executeStatement(execReq);
       operationHandle = execResp.getOperationHandle();
-      Utils.verifySuccess(execResp.getStatus());
+      try {
+        RpcUtils.verifySuccess(execResp.getStatus());
+      } catch (IoTDBRPCException e) {
+        throw new IoTDBSQLException(e);
+      }
       if (execResp.getOperationHandle().hasResultSet) {
         IoTDBQueryResultSet resSet = new IoTDBQueryResultSet(this,
             execResp.getColumns(), client,
@@ -346,7 +352,11 @@ public class IoTDBStatement implements Statement {
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql);
     TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
     operationHandle = execResp.getOperationHandle();
-    Utils.verifySuccess(execResp.getStatus());
+    try {
+      RpcUtils.verifySuccess(execResp.getStatus());
+    } catch (IoTDBRPCException e) {
+      throw new IoTDBSQLException(e);
+    }
     IoTDBQueryResultSet resSet = new IoTDBQueryResultSet(this, execResp.getColumns(), client,
         operationHandle, sql, execResp.getOperationType(), execResp.getDataTypeList(),
         queryId.getAndIncrement());
@@ -399,7 +409,11 @@ public class IoTDBStatement implements Statement {
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql);
     TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
     operationHandle = execResp.getOperationHandle();
-    Utils.verifySuccess(execResp.getStatus());
+    try {
+      RpcUtils.verifySuccess(execResp.getStatus());
+    } catch (IoTDBRPCException e) {
+      throw new IoTDBSQLException(e);
+    }
     return 0;
   }
 
