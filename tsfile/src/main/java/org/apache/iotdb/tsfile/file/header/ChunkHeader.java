@@ -155,7 +155,7 @@ public class ChunkHeader {
     offsetVar += Integer.BYTES;
     buffer = ByteBuffer.allocate(getSerializedSize(size));
     if (qlogger.isInfoEnabled()) {
-      qlogger.info("phase 4 TsFileInput TRACE: readChunkHeader: current position {}",
+      qlogger.info("phase 4 TsFileInput TRACE: readChunkHeader: now position {}",
           input.position());
       qlogger.info(
           "phase 4 TsFileInput TRACE: readChunkHeader: "
