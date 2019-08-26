@@ -31,7 +31,7 @@
     - Can I use Hadoop and Spark to read TsFile in IoTDB?
     - How does IoTDB handle duplicate points?
     - How can I tell what type of the specific timeseries?
-    - How can I change IoTDB's CLI time display format?
+    - How can I change IoTDB's Client time display format?
 
 <!-- /TOC -->
 # Frequently Asked Questions
@@ -43,19 +43,19 @@ There are several ways to identify the version of IoTDB that you are using:
 * Launch IoTDB's Command Line Interface:
 
 ```
-> ./start-client.sh -p 6667 -pw root -u root -h localhost
+> ./start-cli.sh -p 6667 -pw root -u root -h localhost
  _____       _________  ______   ______    
 |_   _|     |  _   _  ||_   _ `.|_   _ \   
   | |   .--.|_/ | | \_|  | | `. \ | |_) |  
   | | / .'`\ \  | |      | |  | | |  __'.  
  _| |_| \__. | _| |_    _| |_.' /_| |__) | 
-|_____|'.__.' |_____|  |______.'|_______/  version 0.7.0
+|_____|'.__.' |_____|  |______.'|_______/  version x.x.x
 ```
 
 * Check pom.xml file:
 
 ```
-<version>0.7.0</version>
+<version>0.9.0-SNAPSHOT</version>
 ```
 
 * Use JDBC API:
@@ -137,11 +137,11 @@ Otherwise, you can also use wildcard in timeseries path:
 IoTDB> show timeseries root.fit.d1.*
 ```
 
-## How can I change IoTDB's CLI time display format?
+## How can I change IoTDB's Client time display format?
 
-The default IoTDB's CLI time display format is human readable (e.g. ```1970-01-01T08:00:00.001```), if you want to display time in timestamp type or other readable format, add parameter ```-disableIS08601``` in start command:
+The default IoTDB's Client time display format is human readable (e.g. ```1970-01-01T08:00:00.001```), if you want to display time in timestamp type or other readable format, add parameter ```-disableIS08601``` in start command:
 
 ```
-> $IOTDB_CLI_HOME/sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableIS08601
+> $IOTDB_CLI_HOME/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableIS08601
 ```
 

@@ -376,14 +376,12 @@ public class MGraph implements Serializable {
   }
 
   /**
-   *
    * @return storage group name -> the series number
    */
   Map<String, Integer> countSeriesNumberInEachStorageGroup() throws PathErrorException {
     Map<String, Integer> res = new HashMap<>();
     Set<String> storageGroups = this.getAllStorageGroup();
     for (String sg : storageGroups) {
-      this.getNumSchemaMapForOneFileNode(sg);
       MNode node = mtree.getNodeByPath(sg);
       res.put(sg, node.getLeafCount());
     }

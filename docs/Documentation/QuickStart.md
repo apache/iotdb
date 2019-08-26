@@ -30,7 +30,7 @@
     - Configure
     - Start
         - Start Server
-        - Start Client
+        - Start Cli
         - Have a try
         - Stop Server
 
@@ -89,8 +89,8 @@ then by default `IOTDB_HOME` is the direct parent directory of `sbin/start-serve
 (or that of `sbin\start-server.bat` on Windows).
 
 * if `IOTDB_CLI_HOME` is not explicitly assigned, 
-then by default `IOTDB_CLI_HOME` is the direct parent directory of `sbin/start-client.sh` on 
-Unix/OS X (or that of `sbin\start-client.bat` on Windows).
+then by default `IOTDB_CLI_HOME` is the direct parent directory of `sbin/start-cli.sh` on 
+Unix/OS X (or that of `sbin\start-cli.bat` on Windows).
 
 If you are not the first time that building IoTDB, remember deleting the following files:
 
@@ -170,9 +170,9 @@ After that we start the server. Running the startup script:
 > $IOTDB_HOME\sbin\start-server.bat
 ```
 
-### Start Client
+### Start Cli
 
-Now let's trying to read and write some data from IoTDB using our Client. To start the client, you need to explicit the server's IP and PORT as well as the USER_NAME and PASSWORD. 
+Now let's trying to read and write some data from IoTDB using our Cli. To start the client, you need to explicit the server's IP and PORT as well as the USER_NAME and PASSWORD. 
 
 ```
 # You can first build cli project
@@ -182,10 +182,10 @@ Now let's trying to read and write some data from IoTDB using our Client. To sta
 > mvn clean package -pl client -am -Dmaven.test.skip=true
 
 # Unix/OS X
-> $IOTDB_CLI_HOME/sbin/start-client.sh -h <IP> -p <PORT> -u <USER_NAME>
+> $IOTDB_CLI_HOME/sbin/start-cli.sh -h <IP> -p <PORT> -u <USER_NAME>
 
 # Windows
-> $IOTDB_CLI_HOME\sbin\start-client.bat -h <IP> -p <PORT> -u <USER_NAME>
+> $IOTDB_CLI_HOME\sbin\start-cli.bat -h <IP> -p <PORT> -u <USER_NAME>
 ```
 
 > NOTE: In the system, we set a default user in IoTDB named 'root'. The default password for 'root' is 'root'. You can use this default user if you are making the first try or you didn't create users by yourself.

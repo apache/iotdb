@@ -253,7 +253,7 @@ public class Measurement implements MeasurementMBean, IService {
       service = IoTDBThreadPoolFactory.newScheduledThreadPool(
           2, ThreadName.TIME_COST_STATSTIC.getName());
     }
-    //we have to check again because someone may channge the value.
+    //we have to check again because someone may change the value.
     isEnableStat = IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceStat();
     if (isEnableStat) {
       consumeFuture = service.schedule(new QueueConsumerThread(), 0, TimeUnit.MILLISECONDS);

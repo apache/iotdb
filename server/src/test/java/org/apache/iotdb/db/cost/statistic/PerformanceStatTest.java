@@ -44,7 +44,7 @@ public class PerformanceStatTest {
   @Test
   public void test() {
     Measurement measurement = Measurement.INSTANCE;
-    Operation operation = Operation.EXECUTE_BATCH;
+    Operation operation = Operation.EXECUTE_JDBC_BATCH;
     measurement.addOperationLatency(operation, System.currentTimeMillis());
     measurement.addOperationLatency(operation,
         System.currentTimeMillis() - 8000000);

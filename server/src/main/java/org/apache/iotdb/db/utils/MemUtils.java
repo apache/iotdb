@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -59,9 +60,36 @@ public class MemUtils {
         case BOOLEAN:
           memSize += 8L + 1L; break;
         case TEXT:
-          memSize += 8L + insertPlan.getValues()[i].length() * 2; break;
+          memSize += 8L + insertPlan.getValues()[i].length(); break;
         default:
           memSize += 8L + 8L;
+      }
+    }
+    return memSize;
+  }
+
+  public static long getRecordSize(BatchInsertPlan batchInsertPlan) {
+    long memSize = 0;
+    for (int i = 0; i < batchInsertPlan.getMeasurements().length; i++) {
+      switch (batchInsertPlan.getDataTypes()[i]) {
+        case INT32:
+          memSize += batchInsertPlan.getRowCount() * (8L + 4L); break;
+        case INT64:
+          memSize += batchInsertPlan.getRowCount() * (8L + 8L); break;
+        case FLOAT:
+          memSize += batchInsertPlan.getRowCount() * (8L + 4L); break;
+        case DOUBLE:
+          memSize += batchInsertPlan.getRowCount() * (8L + 8L); break;
+        case BOOLEAN:
+          memSize += batchInsertPlan.getRowCount() * (8L + 1L); break;
+        case TEXT:
+          memSize += batchInsertPlan.getRowCount() * 8L;
+          for (int j = 0; j < batchInsertPlan.getRowCount(); j++) {
+            memSize += ((Binary[]) batchInsertPlan.getColumns()[i])[j].getLength();
+          }
+          break;
+        default:
+          memSize += batchInsertPlan.getRowCount() * (8L + 8L);
       }
     }
     return memSize;
