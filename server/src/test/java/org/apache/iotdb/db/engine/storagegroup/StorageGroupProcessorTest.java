@@ -23,12 +23,18 @@ import static org.junit.Assert.assertFalse;
 import java.io.File;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.ArrayList;
+
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.JobFileManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -79,6 +85,60 @@ public class StorageGroupProcessorTest {
         null);
 
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+  }
+
+  @Test
+  public void testIoTDBRowBatchWriteAndSyncClose() {
+
+    String[] measurements = new String[2];
+    measurements[0] = "s0";
+    measurements[1] = "s1";
+    List<Integer> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT32.ordinal());
+    dataTypes.add(TSDataType.INT64.ordinal());
+
+    BatchInsertPlan batchInsertPlan1 = new BatchInsertPlan("root.vehicle.d0", measurements, dataTypes);
+
+    long[] times = new long[100];
+    Object[] columns = new Object[2];
+    columns[0] = new int[100];
+    columns[1] = new long[100];
+
+    for (int r = 0; r < 100; r++) {
+      times[r] = r;
+      ((int[]) columns[0])[r] = 1;
+      ((long[]) columns[1])[r] = 1;
+    }
+    batchInsertPlan1.setTimes(times);
+    batchInsertPlan1.setColumns(columns);
+    batchInsertPlan1.setRowCount(times.length);
+
+    processor.insertBatch(batchInsertPlan1);
+    processor.putAllWorkingTsFileProcessorIntoClosingList();
+
+    BatchInsertPlan batchInsertPlan2 = new BatchInsertPlan("root.vehicle.d0", measurements, dataTypes);
+
+    for (int r = 50; r < 149; r++) {
+      times[r-50] = r;
+      ((int[]) columns[0])[r-50] = 1;
+      ((long[]) columns[1])[r-50] = 1;
+    }
+    batchInsertPlan2.setTimes(times);
+    batchInsertPlan2.setColumns(columns);
+    batchInsertPlan2.setRowCount(times.length);
+
+    processor.insertBatch(batchInsertPlan2);
+    processor.putAllWorkingTsFileProcessorIntoClosingList();
+    processor.waitForAllCurrentTsFileProcessorsClosed();
+
+    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
+        null);
+
+    Assert.assertEquals(2, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(1, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }

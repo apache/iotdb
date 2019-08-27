@@ -62,19 +62,21 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.JobFileManager;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
+import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,7 +107,7 @@ public class StorageGroupProcessor {
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
   /**
    * a read write lock for guaranteeing concurrent safety when accessing all fields in this class
-   * (i.e., fileSchema, (un)sequenceFileList, work(un)SequenceTsFileProcessor,
+   * (i.e., schema, (un)sequenceFileList, work(un)SequenceTsFileProcessor,
    * closing(Un)SequenceTsFileProcessor, latestTimeForEachDevice, and
    * latestFlushedTimeForEachDevice)
    */
@@ -121,7 +123,7 @@ public class StorageGroupProcessor {
   /**
    * the schema of time series that belong this storage group
    */
-  private FileSchema fileSchema;
+  private Schema schema;
   // includes sealed and unsealed sequence TsFiles
   private List<TsFileResource> sequenceFileList = new ArrayList<>();
   private TsFileProcessor workSequenceTsFileProcessor = null;
@@ -179,7 +181,7 @@ public class StorageGroupProcessor {
     this.storageGroupName = storageGroupName;
 
     // construct the file schema
-    this.fileSchema = constructFileSchema(storageGroupName);
+    this.schema = constructSchema(storageGroupName);
 
     try {
       storageGroupSysDir = new File(systemInfoDir, storageGroupName);
@@ -277,7 +279,7 @@ public class StorageGroupProcessor {
     for (TsFileResource tsFileResource : tsFiles) {
       sequenceFileList.add(tsFileResource);
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-"
-          , fileSchema, versionController, tsFileResource, false);
+          , schema, versionController, tsFileResource, false);
       recoverPerformer.recover();
       tsFileResource.setClosed(true);
     }
@@ -287,7 +289,7 @@ public class StorageGroupProcessor {
     for (TsFileResource tsFileResource : tsFiles) {
       unSequenceFileList.add(tsFileResource);
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-",
-          fileSchema,
+          schema,
           versionController, tsFileResource, true);
       recoverPerformer.recover();
       tsFileResource.setClosed(true);
@@ -306,11 +308,11 @@ public class StorageGroupProcessor {
     }
   }
 
-  private FileSchema constructFileSchema(String storageGroupName) {
+  private Schema constructSchema(String storageGroupName) {
     List<MeasurementSchema> columnSchemaList;
     columnSchemaList = MManager.getInstance().getSchemaForStorageGroup(storageGroupName);
 
-    FileSchema schema = new FileSchema();
+    Schema schema = new Schema();
     for (MeasurementSchema measurementSchema : columnSchemaList) {
       schema.registerMeasurement(measurementSchema);
     }
@@ -319,13 +321,13 @@ public class StorageGroupProcessor {
 
 
   /**
-   * add a measurement into the fileSchema.
+   * add a measurement into the schema.
    */
   public void addMeasurement(String measurementId, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) {
     writeLock();
     try {
-      fileSchema.registerMeasurement(new MeasurementSchema(measurementId, dataType, encoding,
+      schema.registerMeasurement(new MeasurementSchema(measurementId, dataType, encoding,
           compressor, props));
     } finally {
       writeUnlock();
@@ -342,40 +344,84 @@ public class StorageGroupProcessor {
       // insert to sequence or unSequence file
       return insertToTsFileProcessor(insertPlan,
           insertPlan.getTime() > latestFlushedTimeForEachDevice.get(insertPlan.getDeviceId()));
-    } catch (IOException e) {
-      logger.error("insert tsRecord to unsealed data file failed, because {}", e.getMessage(), e);
-      return false;
     } finally {
       writeUnlock();
     }
   }
 
-  private boolean insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence)
-      throws IOException {
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) {
+    writeLock();
+    try {
+      // init map
+      latestTimeForEachDevice.putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
+      latestFlushedTimeForEachDevice.putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
+
+      Integer[] results = new Integer[batchInsertPlan.getRowCount()];
+      List<Integer> sequenceIndexes = new ArrayList<>();
+      List<Integer> unsequenceIndexes = new ArrayList<>();
+
+      for (int i = 0; i < batchInsertPlan.getRowCount(); i++) {
+        results[i] = TS_StatusCode.SUCCESS_STATUS.getValue();
+        if (batchInsertPlan.getTimes()[i] > latestFlushedTimeForEachDevice
+            .get(batchInsertPlan.getDeviceId())) {
+          sequenceIndexes.add(i);
+        } else {
+          unsequenceIndexes.add(i);
+        }
+      }
+
+      if (!sequenceIndexes.isEmpty()) {
+        insertBatchToTsFileProcessor(batchInsertPlan, sequenceIndexes, true, results);
+      }
+
+      if (!unsequenceIndexes.isEmpty()) {
+        insertBatchToTsFileProcessor(batchInsertPlan, unsequenceIndexes, false, results);
+      }
+      return results;
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
+      List<Integer> indexes, boolean sequence, Integer[] results) {
+
+    TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(sequence);
+    if (tsFileProcessor == null) {
+      for (int index : indexes) {
+        results[index] = TS_StatusCode.ERROR_STATUS.getValue();
+      }
+      return;
+    }
+
+    boolean result = tsFileProcessor.insertBatch(batchInsertPlan, indexes, results);
+
+    // try to update the latest time of the device of this tsRecord
+    if (result && latestTimeForEachDevice.get(batchInsertPlan.getDeviceId()) < batchInsertPlan.getMaxTime()) {
+      latestTimeForEachDevice.put(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
+    }
+
+    // check memtable size and may asyncTryToFlush the work memtable
+    if (tsFileProcessor.shouldFlush()) {
+      logger.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
+          tsFileProcessor.getWorkMemTableMemory(),
+          tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
+
+      if (tsFileProcessor.shouldClose()) {
+        moveOneWorkProcessorToClosingList(sequence);
+      } else {
+        tsFileProcessor.asyncFlush();
+      }
+    }
+  }
+
+  private boolean insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence) {
     TsFileProcessor tsFileProcessor;
     boolean result;
 
-    try {
-      if (sequence) {
-        if (workSequenceTsFileProcessor == null) {
-          // create a new TsfileProcessor
-          workSequenceTsFileProcessor = createTsFileProcessor(true);
-          sequenceFileList.add(workSequenceTsFileProcessor.getTsFileResource());
-        }
-        tsFileProcessor = workSequenceTsFileProcessor;
-      } else {
-        if (workUnSequenceTsFileProcessor == null) {
-          // create a new TsfileProcessor
-          workUnSequenceTsFileProcessor = createTsFileProcessor(false);
-          unSequenceFileList.add(workUnSequenceTsFileProcessor.getTsFileResource());
-        }
-        tsFileProcessor = workUnSequenceTsFileProcessor;
-      }
-    } catch (DiskSpaceInsufficientException e) {
-      logger.error(
-          "disk space is insufficient when creating TsFile processor, change system mode to read-only",
-          e);
-      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+    tsFileProcessor = getOrCreateTsFileProcessor(sequence);
+
+    if (tsFileProcessor == null) {
       return false;
     }
 
@@ -402,6 +448,37 @@ public class StorageGroupProcessor {
     return result;
   }
 
+  private TsFileProcessor getOrCreateTsFileProcessor(boolean sequence) {
+    TsFileProcessor tsFileProcessor = null;
+    try {
+      if (sequence) {
+        if (workSequenceTsFileProcessor == null) {
+          // create a new TsfileProcessor
+          workSequenceTsFileProcessor = createTsFileProcessor(true);
+          sequenceFileList.add(workSequenceTsFileProcessor.getTsFileResource());
+        }
+        tsFileProcessor = workSequenceTsFileProcessor;
+      } else {
+        if (workUnSequenceTsFileProcessor == null) {
+          // create a new TsfileProcessor
+          workUnSequenceTsFileProcessor = createTsFileProcessor(false);
+          unSequenceFileList.add(workUnSequenceTsFileProcessor.getTsFileResource());
+        }
+        tsFileProcessor = workUnSequenceTsFileProcessor;
+      }
+    } catch (DiskSpaceInsufficientException e) {
+      logger.error(
+          "disk space is insufficient when creating TsFile processor, change system mode to read-only",
+          e);
+      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+    } catch (IOException e) {
+      logger.error("meet IOException when creating TsFileProcessor, change system mode to read-only",
+          e);
+      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+    }
+    return tsFileProcessor;
+  }
+
   private TsFileProcessor createTsFileProcessor(boolean sequence)
       throws IOException, DiskSpaceInsufficientException {
     String baseDir;
@@ -418,14 +495,15 @@ public class StorageGroupProcessor {
 
     if (sequence) {
       return new TsFileProcessor(storageGroupName, new File(filePath),
-          fileSchema, versionController, this::closeUnsealedTsFileProcessor,
+          schema, versionController, this::closeUnsealedTsFileProcessor,
           this::updateLatestFlushTimeCallback, sequence);
     } else {
       return new TsFileProcessor(storageGroupName, new File(filePath),
-          fileSchema, versionController, this::closeUnsealedTsFileProcessor,
+          schema, versionController, this::closeUnsealedTsFileProcessor,
           () -> true, sequence);
     }
   }
+
 
   /**
    * only called by insert(), thread-safety should be ensured by caller
@@ -581,7 +659,7 @@ public class StorageGroupProcessor {
   private List<TsFileResource> getFileReSourceListForQuery(List<TsFileResource> tsFileResources,
       String deviceId, String measurementId, QueryContext context) {
 
-    MeasurementSchema mSchema = fileSchema.getMeasurementSchema(measurementId);
+    MeasurementSchema mSchema = schema.getMeasurementSchema(measurementId);
     TSDataType dataType = mSchema.getType();
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();

@@ -37,7 +37,7 @@ struct TS_Status {
   2: optional list<string> infoMessages
 
   // If status is ERROR, then the following fields may be set
-  3: optional string sqlState  // as defined in the ISO/IEF CLI specification
+  3: optional string sqlState  // as defined in the ISO/IEF CLIENT specification
   4: optional i32 errorCode    // internal error code
   5: optional string errorMessage
 }
@@ -79,7 +79,7 @@ struct TSExecuteStatementResp {
 }
 
 enum TSProtocolVersion {
-  TSFILE_SERVICE_PROTOCOL_V1,
+  IOTDB_SERVICE_PROTOCOL_V1,
 }
 
 // Client-side handle to persistent session information on the server-side.
@@ -93,7 +93,7 @@ struct TSOpenSessionResp {
   1: required TS_Status status
 
   // The protocol version that the server is using.
-  2: required TSProtocolVersion serverProtocolVersion = TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1
+  2: required TSProtocolVersion serverProtocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1
 
   // Session Handle
   3: optional TS_SessionHandle sessionHandle
@@ -105,7 +105,7 @@ struct TSOpenSessionResp {
 // OpenSession()
 // Open a session (connection) on the server against which operations may be executed.
 struct TSOpenSessionReq {
-  1: required TSProtocolVersion client_protocol = TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1
+  1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1
   2: optional string username
   3: optional string password
   4: optional map<string, string> configuration
@@ -184,6 +184,7 @@ struct TSCloseOperationResp {
   1: required TS_Status status
 }
 
+
 struct TSDataValue{
   1: required bool is_empty
   2: optional bool bool_val
@@ -192,7 +193,7 @@ struct TSDataValue{
   5: optional double float_val
   6: optional double double_val
   7: optional binary binary_val
-  8: optional string type;
+  8: optional string type
 }
 
 struct TSRowRecord{
@@ -259,6 +260,15 @@ struct TSInsertionReq {
     5: required i64 stmtId
 }
 
+struct TSBatchInsertionReq {
+    1: required string deviceId
+    2: required list<string> measurements
+    3: required binary values
+    4: required binary timestamps
+    5: required list<i32> types
+    6: required i32 size
+}
+
 struct ServerProperties {
 	1: required string version;
 	2: required list<string> supportedTimeAggregationOperations;
@@ -292,7 +302,9 @@ service TSIService {
 	
 	ServerProperties getProperties();
 
-	TSExecuteStatementResp executeInsertion(1:TSInsertionReq req);
+	TSExecuteStatementResp insert(1:TSInsertionReq req);
+
+	TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
 
 	i64 requestStatementId();
 	}
