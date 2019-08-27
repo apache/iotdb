@@ -785,7 +785,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private TSExecuteStatementResp executeUpdateStatement(PhysicalPlan plan) {
-    TS_Status status = checkAuthotity(plan);
+    TS_Status status = checkAuthority(plan);
     if (status != null) {
       return new TSExecuteStatementResp(status);
     }
@@ -974,7 +974,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       batchInsertPlan.setDataTypes(req.types);
 
       boolean isAllSuccessful = true;
-      TS_Status status = checkAuthotity(batchInsertPlan);
+      TS_Status status = checkAuthority(batchInsertPlan);
       if (status != null) {
         return new TSExecuteBatchStatementResp(status);
       }
@@ -1011,7 +1011,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.SET_STORAGE_GROUP, new Path(req.getStorageGroupId()),
             null, null, null, null, null);
-    TS_Status status = checkAuthotity(plan);
+    TS_Status status = checkAuthority(plan);
     if (status != null) {
       return new TSSetStorageGroupResp(status);
     }
@@ -1027,7 +1027,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.ADD_PATH, new Path(req.getPath()),
             TSDataType.valueOf(req.getDataType()), null, TSEncoding.valueOf(req.getEncoding()),
             null, null);
-    TS_Status status = checkAuthotity(plan);
+    TS_Status status = checkAuthority(plan);
     if (status != null) {
       return new TSCreateTimeseriesResp(status);
     }
@@ -1039,7 +1039,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return globalStmtId.incrementAndGet();
   }
 
-  private TS_Status checkAuthotity(PhysicalPlan plan) {
+  private TS_Status checkAuthority(PhysicalPlan plan) {
     List<Path> paths = plan.getPaths();
     try {
       if (!checkAuthorization(paths, plan)) {
