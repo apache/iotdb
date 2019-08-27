@@ -1,8 +1,11 @@
 package org.apache.iotdb.db.tools.logvisual;
 
-import static org.apache.iotdb.db.tools.logvisual.VisualizePlan.PlanProperties.*;
+import static org.apache.iotdb.db.tools.logvisual.VisualizationPlan.PlanProperties.*;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedWriter;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,7 +14,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.iotdb.db.tools.logvisual.exceptions.UnmatchedContentException;
 
-public class VisualizePlan {
+public class VisualizationPlan {
   // optional, this will be used as the title of the figure.
   private String name;
 
@@ -36,7 +39,16 @@ public class VisualizePlan {
 
   private LogFilter logFilter;
 
-  public VisualizePlan(Properties properties) throws IOException {
+  private String planFilePath;
+
+  VisualizationPlan(String planFilePath) throws IOException {
+    this.planFilePath = planFilePath;
+    Properties properties = new Properties();
+    try (FileInputStream reader = new FileInputStream(planFilePath);
+        BufferedInputStream bufferedInputStream = new BufferedInputStream(reader)) {
+      properties.load(bufferedInputStream);
+    }
+
     this.name = properties.getProperty(NAME.getPropertyName(), "untitled");
     String patternStr = properties.getProperty(CONTENT_PATTERN.getPropertyName());
     if (patternStr == null) {
@@ -44,28 +56,15 @@ public class VisualizePlan {
     }
     this.contentPattern = Pattern.compile(patternStr);
 
-    String measurementPositionsStr = properties.getProperty(MEASUREMENT_POSITIONS.getPropertyName());
-    if (measurementPositionsStr != null) {
-      String[] measurePosStrs = measurementPositionsStr.split(",");
-      measurementPositions = new int[measurePosStrs.length];
-      for (int i = 0; i < measurementPositions.length; i++) {
-        measurementPositions[i] = Integer.parseInt(measurePosStrs[i]);
-      }
-    }
+    measurementPositions = VisualUtils.parseIntArray(properties.getProperty(MEASUREMENT_POSITIONS
+        .getPropertyName()));
 
     String legendStr = properties.getProperty(LEGENDS.getPropertyName());
     if (legendStr != null) {
       legends = legendStr.split(",");
     }
 
-    String groupByPositionsStr = properties.getProperty(TAG_POSITIONS.getPropertyName());
-    if (groupByPositionsStr != null) {
-      String[] groupByPosStrs = groupByPositionsStr.split(",");
-      tagPositions = new int[groupByPosStrs.length];
-      for (int i = 0; i < tagPositions.length; i++) {
-        tagPositions[i] = Integer.parseInt(groupByPosStrs[i]);
-      }
-    }
+    tagPositions = VisualUtils.parseIntArray(properties.getProperty(TAG_POSITIONS.getPropertyName()));
 
     logFilter = new LogFilter(properties);
   }
@@ -119,6 +118,26 @@ public class VisualizePlan {
     return logFilter;
   }
 
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public void setContentPattern(Pattern contentPattern) {
+    this.contentPattern = contentPattern;
+  }
+
+  public void setMeasurementPositions(int[] measurementPositions) {
+    this.measurementPositions = measurementPositions;
+  }
+
+  public void setLegends(String[] legends) {
+    this.legends = legends;
+  }
+
+  public void setTagPositions(int[] tagPositions) {
+    this.tagPositions = tagPositions;
+  }
+
   enum PlanProperties {
     NAME("name"), CONTENT_PATTERN("content_pattern"), MEASUREMENT_POSITIONS(
         "measurement_positions"),
@@ -135,10 +154,35 @@ public class VisualizePlan {
     }
   }
 
-  public static void main(String[] args) throws IOException {
-    Properties properties = new Properties();
-    properties.load(new FileInputStream("E:\\codestore\\incubator-iotdb\\server\\src\\assembly\\resources\\tools\\logAnalyze\\plans\\flushTimeConsumption.plan"));
 
-    VisualizePlan plan = new VisualizePlan(properties);
+  @Override
+  public String toString() {
+    return name;
+  }
+
+  public void saveAsFile() throws IOException {
+    Properties properties = saveAsProperties();
+    logFilter.saveIntoProperties(properties);
+    try (FileWriter fileWriter = new FileWriter(planFilePath);
+        BufferedWriter bufferedWriter = new BufferedWriter(fileWriter)) {
+      properties.store(bufferedWriter, "");
+    }
+  }
+
+  private Properties saveAsProperties() {
+    Properties properties = new Properties();
+    properties.put(PlanProperties.NAME.getPropertyName(), name);
+    properties.put(PlanProperties.CONTENT_PATTERN.getPropertyName(), contentPattern.pattern());
+    if (measurementPositions != null) {
+      properties.put(PlanProperties.MEASUREMENT_POSITIONS.getPropertyName(), VisualUtils.intArrayToString
+          (measurementPositions));
+    }
+    if (legends != null) {
+      properties.put(PlanProperties.LEGENDS.getPropertyName(), String.join(",", legends));
+    }
+    if (tagPositions != null) {
+      properties.put(PlanProperties.TAG_POSITIONS.getPropertyName(), VisualUtils.intArrayToString(tagPositions));
+    }
+    return properties;
   }
 }

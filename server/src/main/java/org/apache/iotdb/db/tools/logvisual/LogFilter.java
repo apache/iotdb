@@ -1,16 +1,12 @@
 package org.apache.iotdb.db.tools.logvisual;
 
 import static org.apache.iotdb.db.tools.logvisual.LogFilter.FilterProperties.*;
-import static org.apache.iotdb.db.tools.logvisual.PatternLogParser.PatternProperties.DATE_PATTERN;
 
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
-import java.util.List;
 import java.util.Properties;
 import org.apache.iotdb.db.tools.logvisual.LogEntry.LogLevel;
 
@@ -19,9 +15,9 @@ public class LogFilter {
   private LogLevel minLevel = LogLevel.DEBUG;
   // optional, only threads, classes, lines in the lists are analyzed. When unset, all logs will
   // analyzed. comma-separated
-  private List<String> threadNameWhiteList;
-  private List<String> classNameWhiteList;
-  private List<Integer> lineNumWhiteList;
+  private String[] threadNameWhiteList;
+  private String[] classNameWhiteList;
+  private int[] lineNumWhiteList;
   // optional, only time ranges within the interval will be analyzed
   // if startDate or endDate is set, datePattern must be set too
   private DateFormat datePartten;
@@ -34,22 +30,16 @@ public class LogFilter {
     String threadNameWhiteListStr = properties.getProperty(THREAD_NAME_WHITE_LIST.getPropertyName
         ());
     if (threadNameWhiteListStr != null) {
-      threadNameWhiteList = Arrays.asList(threadNameWhiteListStr.trim().split(","));
+      threadNameWhiteList = threadNameWhiteListStr.trim().split(",");
     }
 
     String classNameWhiteListStr = properties.getProperty(CLASS_NAME_WHITE_LIST.getPropertyName());
     if (classNameWhiteListStr != null) {
-      classNameWhiteList = Arrays.asList(classNameWhiteListStr.trim().split(","));
+      classNameWhiteList =classNameWhiteListStr.trim().split(",");
     }
 
-    String lineNumWhiteListStr = properties.getProperty(LINE_NUM_WHITE_LIST.getPropertyName());
-    if (lineNumWhiteListStr != null) {
-      String[] lineNumWhiteListStrs = lineNumWhiteListStr.trim().split(",");
-      lineNumWhiteList = new ArrayList<>();
-      for (int i = 0; i < lineNumWhiteListStrs.length; i++) {
-        lineNumWhiteList.add(Integer.parseInt(lineNumWhiteListStrs[i]));
-      }
-    }
+    lineNumWhiteList = VisualUtils.parseIntArray(properties.getProperty(LINE_NUM_WHITE_LIST
+        .getPropertyName()));
 
     String datePatternStr = properties.getProperty(DATE_PATTERN.getPropertyName());
     if (datePatternStr != null) {
@@ -76,11 +66,11 @@ public class LogFilter {
 
   public FilterFeedBack filter(LogEntry entry) {
    if (entry.getLogLevel().ordinal() < minLevel.ordinal() ||
-       (threadNameWhiteList != null && !threadNameWhiteList.contains(entry.getThreadName())) ||
-       (classNameWhiteList != null && !classNameWhiteList.contains(entry.getCodeLocation()
+       (threadNameWhiteList != null && !strsContains(threadNameWhiteList, entry.getThreadName())) ||
+       (classNameWhiteList != null && !strsContains(classNameWhiteList, entry.getCodeLocation()
            .getClassName())) ||
-       (lineNumWhiteList != null && !lineNumWhiteList.contains(entry.getCodeLocation().getLineNum
-           ())) ||
+       (lineNumWhiteList != null && !intsContains(lineNumWhiteList, entry.getCodeLocation()
+           .getLineNum())) ||
        (startDate != null && entry.getDate().before(startDate))) {
      return FilterFeedBack.REJECT;
    }
@@ -91,7 +81,104 @@ public class LogFilter {
     return FilterFeedBack.OK;
   }
 
-  enum FilterProperties {
+  private boolean strsContains(String[] strings, String target) {
+    for (String str : strings) {
+      if (str.equals(target)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean intsContains(int[] ints, int target) {
+    for (int i : ints) {
+      if (i == target) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public LogLevel getMinLevel() {
+    return minLevel;
+  }
+
+  public String[] getThreadNameWhiteList() {
+    return threadNameWhiteList;
+  }
+
+  public String[] getClassNameWhiteList() {
+    return classNameWhiteList;
+  }
+
+  public int[] getLineNumWhiteList() {
+    return lineNumWhiteList;
+  }
+
+  public DateFormat getDatePatten() {
+    return datePartten;
+  }
+
+  public Date getStartDate() {
+    return startDate;
+  }
+
+  public Date getEndDate() {
+    return endDate;
+  }
+
+  public void setMinLevel(LogLevel minLevel) {
+    this.minLevel = minLevel;
+  }
+
+  public void setThreadNameWhiteList(String[] threadNameWhiteList) {
+    this.threadNameWhiteList = threadNameWhiteList;
+  }
+
+  public void setClassNameWhiteList(String[] classNameWhiteList) {
+    this.classNameWhiteList = classNameWhiteList;
+  }
+
+  public void setLineNumWhiteList(int[] lineNumWhiteList) {
+    this.lineNumWhiteList = lineNumWhiteList;
+  }
+
+  public void setDatePartten(DateFormat datePartten) {
+    this.datePartten = datePartten;
+  }
+
+  public void setStartDate(Date startDate) {
+    this.startDate = startDate;
+  }
+
+  public void setEndDate(Date endDate) {
+    this.endDate = endDate;
+  }
+
+  public void saveIntoProperties(Properties properties) {
+    properties.put(MIN_LEVEL.propertyName, minLevel.toString());
+    if (threadNameWhiteList != null) {
+      properties.put(THREAD_NAME_WHITE_LIST.propertyName, String.join(",", threadNameWhiteList));
+    }
+    if (classNameWhiteList != null) {
+      properties.put(CLASS_NAME_WHITE_LIST.propertyName, String.join(",", classNameWhiteList));
+    }
+    if (lineNumWhiteList != null) {
+      properties.put(LINE_NUM_WHITE_LIST.propertyName, VisualUtils.intArrayToString
+          (lineNumWhiteList));
+    }
+    if (startDate != null) {
+      properties.put(START_DATE.propertyName, datePartten.format(startDate));
+    }
+    if (endDate != null) {
+      properties.put(END_DATE.propertyName, datePartten.format(endDate));
+    }
+    if (datePartten != null) {
+      properties.put(DATE_PATTERN.propertyName, ((SimpleDateFormat) datePartten).toPattern());
+    }
+  }
+
+  public enum FilterProperties {
     MIN_LEVEL("min_level"), THREAD_NAME_WHITE_LIST("thread_name_white_list"), CLASS_NAME_WHITE_LIST(
         "class_name_white_list"),
     LINE_NUM_WHITE_LIST("line_num_white_list"), START_DATE("start_date"), END_DATE("end_date"),

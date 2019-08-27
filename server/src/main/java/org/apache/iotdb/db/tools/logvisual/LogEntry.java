@@ -61,7 +61,7 @@ public class LogEntry {
     this.measurements = measurements;
   }
 
-  enum LogLevel {
+  public enum LogLevel {
     DEBUG, INFO, WARN, ERROR
   }
 

@@ -38,7 +38,7 @@ public class PatternLogParser implements LogParser{
   private BufferedReader reader;
   private DateFormat dateFormat;
 
-  PatternLogParser(Properties properties, String logFilePath) throws IOException {
+  PatternLogParser(Properties properties, String logFilePath) {
     this.pattern = Pattern.compile(properties.getProperty(PATTERN.getPropertyName()));
     this.dateIndex = Integer.parseInt(properties.getProperty(DATE_INDEX.getPropertyName()));
     this.threadNameIndex = Integer.parseInt(properties.getProperty(THREAD_NAME_INDEX
