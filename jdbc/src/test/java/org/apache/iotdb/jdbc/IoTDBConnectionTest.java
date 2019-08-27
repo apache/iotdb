@@ -24,13 +24,9 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.service.rpc.thrift.ServerProperties;
-import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
-import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneResp;
-import org.apache.iotdb.service.rpc.thrift.TS_Status;
-import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
+
+import org.apache.iotdb.rpc.TSStatusType;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Before;
@@ -44,7 +40,8 @@ public class IoTDBConnectionTest {
   private TSIService.Iface client;
 
   private IoTDBConnection connection = new IoTDBConnection();
-  private TS_Status Status_SUCCESS = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+  private TS_StatusType successStatus = new TS_StatusType(TSStatusType.SUCCESS_STATUS.getStatusCode(), "");
+  private TS_Status Status_SUCCESS = new TS_Status(successStatus);
 
   @Before
   public void setUp() throws Exception {

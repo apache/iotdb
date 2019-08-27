@@ -713,7 +713,7 @@ public class IoTDBQueryResultSet implements ResultSet {
         try {
           RpcUtils.verifySuccess(resp.getStatus());
         } catch (IoTDBRPCException e) {
-          throw new IoTDBSQLException(e);
+          throw new IoTDBSQLException(e.getMessage());
         }
         if (!resp.hasResultSet) {
           emptyResultSet = true;

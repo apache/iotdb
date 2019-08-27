@@ -67,9 +67,9 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.JobFileManager;
+import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
-import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -361,7 +361,7 @@ public class StorageGroupProcessor {
       List<Integer> unsequenceIndexes = new ArrayList<>();
 
       for (int i = 0; i < batchInsertPlan.getRowCount(); i++) {
-        results[i] = TS_StatusCode.SUCCESS_STATUS.getValue();
+        results[i] = TSStatusType.SUCCESS_STATUS.getStatusCode();
         if (batchInsertPlan.getTimes()[i] > latestFlushedTimeForEachDevice
             .get(batchInsertPlan.getDeviceId())) {
           sequenceIndexes.add(i);
@@ -389,7 +389,7 @@ public class StorageGroupProcessor {
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(sequence);
     if (tsFileProcessor == null) {
       for (int index : indexes) {
-        results[index] = TS_StatusCode.ERROR_STATUS.getValue();
+        results[index] = TSStatusType.INTERNAL_SERVER_ERROR.getStatusCode();
       }
       return;
     }
