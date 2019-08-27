@@ -568,16 +568,16 @@ public class TsFileSequenceReader implements AutoCloseable {
               startTimeOfChunk, endTimeOfChunk);
             currentChunk.setNumOfPoints(numOfPoints);
             ByteBuffer[] statisticsArray = new ByteBuffer[StatisticType.getTotalTypeNum()];
-            statisticsArray[StatisticType.max_value.ordinal()] = ByteBuffer
-                .wrap(chunkStatistics.getMaxBytes());
             statisticsArray[StatisticType.min_value.ordinal()] = ByteBuffer
                 .wrap(chunkStatistics.getMinBytes());
-            statisticsArray[StatisticType.first.ordinal()] = ByteBuffer
+            statisticsArray[StatisticType.max_value.ordinal()] = ByteBuffer
+                .wrap(chunkStatistics.getMaxBytes());
+            statisticsArray[StatisticType.first_value.ordinal()] = ByteBuffer
                 .wrap(chunkStatistics.getFirstBytes());
-            statisticsArray[StatisticType.sum.ordinal()] = ByteBuffer
-                .wrap(chunkStatistics.getSumBytes());
-            statisticsArray[StatisticType.last.ordinal()] = ByteBuffer
+            statisticsArray[StatisticType.last_value.ordinal()] = ByteBuffer
                 .wrap(chunkStatistics.getLastBytes());
+            statisticsArray[StatisticType.sum_value.ordinal()] = ByteBuffer
+                .wrap(chunkStatistics.getSumBytes());
             TsDigest tsDigest = new TsDigest();
             tsDigest.setStatistics(statisticsArray);
             currentChunk.setDigest(tsDigest);

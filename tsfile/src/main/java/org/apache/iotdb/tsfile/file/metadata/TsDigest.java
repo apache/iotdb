@@ -229,7 +229,7 @@ public class TsDigest {
   }
 
   public enum StatisticType {
-    max_value, min_value, first, sum, last;
+    min_value, max_value, first_value, last_value, sum_value;
 
     public static int getTotalTypeNum() {
       return StatisticType.values().length;
