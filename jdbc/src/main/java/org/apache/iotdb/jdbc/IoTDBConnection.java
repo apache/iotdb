@@ -424,7 +424,7 @@ public class IoTDBConnection implements Connection {
       } catch (IoTDBRPCException e) {
         // failed to connect, disconnect from the server
         transport.close();
-        throw new IoTDBSQLException(e);
+        throw new IoTDBSQLException(e.getMessage());
       }
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         throw new TException(String
@@ -485,7 +485,7 @@ public class IoTDBConnection implements Connection {
     try {
       RpcUtils.verifySuccess(resp.getStatus());
     } catch (IoTDBRPCException e) {
-      throw new IoTDBSQLException(e);
+      throw new IoTDBSQLException(e.getMessage());
     }
     return resp.getTimeZone();
   }
@@ -496,7 +496,7 @@ public class IoTDBConnection implements Connection {
     try {
       RpcUtils.verifySuccess(resp.getStatus());
     } catch (IoTDBRPCException e) {
-      throw new IoTDBSQLException(e);
+      throw new IoTDBSQLException(e.getMessage());
     }
     this.zoneId = ZoneId.of(zoneId);
   }
