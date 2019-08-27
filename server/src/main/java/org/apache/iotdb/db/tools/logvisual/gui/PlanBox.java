@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.tools.logvisual.gui;
 
 import java.awt.Dimension;
-import java.awt.ScrollPane;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
@@ -35,7 +35,6 @@ import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.ListSelectionModel;
 import javax.swing.event.ListSelectionEvent;
@@ -51,7 +50,9 @@ public class PlanBox extends Box{
   private JLabel panelName;
   private JButton loadPlanButton;
   private JButton executePlanButton;
-  private JButton savePlanButtion;
+  private JButton savePlanButton;
+  private JButton createPlanButton;
+  private JButton deletePlanButton;
   private JScrollPane scrollPane;
   private DefaultListModel<VisualizationPlan> planListModel;
   private JList planList;
@@ -73,11 +74,15 @@ public class PlanBox extends Box{
     panelName = new JLabel("Visualization plans");
     loadPlanButton = new JButton("Load plan");
     executePlanButton = new JButton("Execute plan");
-    savePlanButtion = new JButton("Save plan");
+    savePlanButton = new JButton("Save plan");
+    createPlanButton = new JButton("Create plan");
+    deletePlanButton = new JButton("Delete plan");
     panelName.setAlignmentX(CENTER_ALIGNMENT);
     loadPlanButton.setAlignmentX(CENTER_ALIGNMENT);
     executePlanButton.setAlignmentX(CENTER_ALIGNMENT);
-    savePlanButtion.setAlignmentX(CENTER_ALIGNMENT);
+    savePlanButton.setAlignmentX(CENTER_ALIGNMENT);
+    createPlanButton.setAlignmentX(CENTER_ALIGNMENT);
+    deletePlanButton.setAlignmentX(CENTER_ALIGNMENT);
 
     planListModel = new DefaultListModel<>();
     planList = new JList<>(planListModel);
@@ -90,9 +95,13 @@ public class PlanBox extends Box{
     vBox.add(panelName);
     vBox.add(loadPlanButton);
     vBox.add(Box.createVerticalStrut(5));
-    vBox.add(executePlanButton);
+    vBox.add(savePlanButton);
     vBox.add(Box.createVerticalStrut(5));
-    vBox.add(savePlanButtion);
+    vBox.add(createPlanButton);
+    vBox.add(Box.createVerticalStrut(5));
+    vBox.add(deletePlanButton);
+    vBox.add(Box.createVerticalStrut(5));
+    vBox.add(executePlanButton);
     vBox.add(Box.createGlue());
     add(vBox);
     setAlignmentY(0.5f);
@@ -104,7 +113,9 @@ public class PlanBox extends Box{
     planList.addListSelectionListener(this::onPlanSelectionChanged);
     loadPlanButton.addActionListener(this::onLoadPlanButtonClick);
     executePlanButton.addActionListener(this::onExecutePlanButtonClick);
-    savePlanButtion.addActionListener(this::onPlanSave);
+    savePlanButton.addActionListener(this::onPlanSave);
+    createPlanButton.addActionListener(this::onCreatePlan);
+    deletePlanButton.addActionListener(this::onDeletePlan);
 
     if (defaultPlanPath != null) {
       String[] defaultPaths = defaultPlanPath.split(";");
@@ -179,6 +190,38 @@ public class PlanBox extends Box{
 
   private void onPlanSave(ActionEvent e) {
     planDetailPanel.updatePlan();
+  }
+
+  private void onCreatePlan(ActionEvent e) {
+    JFileChooser fileChooser = new JFileChooser();
+    int status = fileChooser.showOpenDialog(this);
+    if (status == JFileChooser.APPROVE_OPTION) {
+      File chosenFile = fileChooser.getSelectedFile();
+      VisualizationPlan plan = new VisualizationPlan();
+      plan.setPlanFilePath(chosenFile.getPath());
+      plan.setName(chosenFile.getName());
+      plan.setContentPattern(Pattern.compile(".*"));
+
+      planListModel.addElement(plan);
+      planList.setSelectedIndex(planListModel.getSize() - 1);
+      planDetailPanel.setPlan(plan);
+    }
+  }
+
+  private void onDeletePlan(ActionEvent e) {
+    VisualizationPlan plan = (VisualizationPlan) planList.getSelectedValue();
+    if (plan == null) {
+      return;
+    }
+
+    int status = JOptionPane.showConfirmDialog(this, "Do you really want to delete this plan? "
+        + "(Cannot be undone)", "confirm", JOptionPane.YES_NO_OPTION);
+    if (status == JOptionPane.YES_OPTION) {
+      File file = new File(plan.getPlanFilePath());
+      file.delete();
+      planListModel.removeElement(plan);
+      planDetailPanel.setPlan(null);
+    }
   }
 
   public interface ExecutePlanCallback {

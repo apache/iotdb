@@ -24,6 +24,10 @@ public class LogFilter {
   private Date startDate = new Date(Long.MIN_VALUE);
   private Date endDate = new Date(Long.MAX_VALUE);
 
+  public LogFilter() {
+    minLevel = LogLevel.DEBUG;
+  }
+
   public LogFilter(Properties properties) throws IOException {
     minLevel = LogLevel.valueOf(properties.getProperty(MIN_LEVEL.getPropertyName(), minLevel.name()));
 

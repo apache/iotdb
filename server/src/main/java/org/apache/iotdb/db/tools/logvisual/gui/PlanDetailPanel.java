@@ -89,12 +89,29 @@ public class PlanDetailPanel extends JScrollPane {
     updateFields();
   }
 
+  private void resetFields() {
+    nameField.setText("");
+    patternField.setText("");
+    measurementsField.setText("");
+    legendsField.setText("");
+    tagField.setText("");
+    levelField.setText("");
+    threadNameField.setText("");
+    classNameField.setText("");
+    lineNumField.setText("");
+    datePatternField.setText("");
+    startDateField.setText("");
+    endDateField.setText("");
+  }
+
   private void updateFields() {
+    resetFields();
     if (plan == null) {
       return;
     }
     nameField.setText(plan.getName());
     patternField.setText(plan.getContentPattern().pattern());
+
     if (plan.getMeasurementPositions() != null) {
       measurementsField.setText(VisualUtils.intArrayToString(plan.getMeasurementPositions()));
     }

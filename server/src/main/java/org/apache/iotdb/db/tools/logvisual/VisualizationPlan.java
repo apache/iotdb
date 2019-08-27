@@ -41,6 +41,10 @@ public class VisualizationPlan {
 
   private String planFilePath;
 
+  public VisualizationPlan() {
+    logFilter = new LogFilter();
+  }
+
   VisualizationPlan(String planFilePath) throws IOException {
     this.planFilePath = planFilePath;
     Properties properties = new Properties();
@@ -138,6 +142,18 @@ public class VisualizationPlan {
     this.tagPositions = tagPositions;
   }
 
+  public void setLogFilter(LogFilter logFilter) {
+    this.logFilter = logFilter;
+  }
+
+  public void setPlanFilePath(String planFilePath) {
+    this.planFilePath = planFilePath;
+  }
+
+  public String getPlanFilePath() {
+    return planFilePath;
+  }
+
   enum PlanProperties {
     NAME("name"), CONTENT_PATTERN("content_pattern"), MEASUREMENT_POSITIONS(
         "measurement_positions"),
@@ -153,7 +169,6 @@ public class VisualizationPlan {
       return propertyName;
     }
   }
-
 
   @Override
   public String toString() {

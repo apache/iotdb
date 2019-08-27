@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.tools.logvisual.conf;
 
-public enum  PropertyKeys {
+public enum PropertyKeys {
   DEFAULT_PARSER_FILE_PATH("parser_properties_path"), DEFAULT_LOG_FILE_PATH
       ("log_path"), DEFAULT_PLAN_PATH("plans_path");
   private String key;
