@@ -57,17 +57,17 @@ Watermark is disabled by default in IoTDB. To enable watermark embedding, the fi
 | watermark_module_opened | false                                               | `true` to enable watermark embedding of the IoTDB server; `false` to disable |
 | watermark_secret_key    | IoTDB*2019@Beijing                                  | self-defined secret key                                      |
 | watermark_bit_string    | 100101110100                                        | 0-1 bit string to be embedded                                |
-| watermark_method        | GroupBasedLSBMethod(embed_rate=2,embed_lsb_range=5) | specifies the watermark algorithm and its paramters          |
+| watermark_method        | GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5) | specifies the watermark algorithm and its paramters          |
 
 Notes:
 
 - `watermark_module_opened`: Set it to be true if you want to enable watermark embedding 
 - `watermark_secret_key`: Character '&' is not allowed. There is no constraint on the length of the secret key. Generally, the longer the key is, the higher the bar to intruders.
 - `watermark_bit_string`: There is no constraint on the length of the bit string (except that it should not be empty). But note that it is difficult to reach the required significance level at the watermark detection phase if the bit string is way too short.
-- `watermark_method`: Now only GroupBasedLSBMethod is supported, so actually you can only tune the two parameters of this method, which are `embed_rate` and `embed_lsb_range`. 
+- `watermark_method`: Now only GroupBasedLSBMethod is supported, so actually you can only tune the two parameters of this method, which are `embed_row_cycle` and `embed_lsb_num`. 
   - Both of them should be positive integers. 
-  - `embed_rate` controls the ratio of rows watermarked. The smaller `embed_rate` is, the larger proportion of rows are watermarked. When `embed_rate` equals 1, every row is watermarked. 
-  - GroupBasedLSBMethod uses LSB embedding. `embed_lsb_range` controls the range of least significant bits for watermark embedding. The biggger `embed_lsb_range` is, the bigger range a data point can be varied.
+  - `embed_row_cycle` controls the ratio of rows watermarked. The smaller `embed_row_cycle` is, the larger proportion of rows are watermarked. When `embed_row_cycle` equals 1, every row is watermarked. 
+  - GroupBasedLSBMethod uses LSB embedding. `embed_lsb_num` controls the number of least significant bits available for watermark embedding. The biggger `embed_lsb_num` is, the bigger range a data point can be varied.
 - `watermark_secret_key`, `watermark_bit_string`  and `watermark_method` should be kept secret from possible attackers. That is, it is your responsiblity to take care of `iotdb-engine.properties`.
 
 <a id="usage-example"></a>
@@ -199,7 +199,7 @@ Only root can run this command. After root revokes watermark_embedding from Alic
 
 `detect-watermark.sh` and `detect-watermark.bat` are provided for different platforms.
 
-Usage: ./detect-watermark.sh [filePath] [secretKey] [watermarkBitString] [embed_rate] [embed_lsb_range] [alpha] [columnIndex]
+Usage: ./detect-watermark.sh [filePath] [secretKey] [watermarkBitString] [embed_row_cycle] [embed_lsb_num] [alpha] [columnIndex]
 
 Example: ./detect-watermark.sh /home/data/dump1.csv IoTDB*2019@Beijing 100101110100 2 5 0.05 1
 
@@ -208,8 +208,8 @@ Example: ./detect-watermark.sh /home/data/dump1.csv IoTDB*2019@Beijing 100101110
 | filePath           | /home/data/dump1.csv | suspected data file path                   |
 | secretKey          | IoTDB*2019@Beijing   | see watermark embedding section            |
 | watermarkBitString | 100101110100         | see watermark embedding section            |
-| embed_rate         | 2                    | see watermark embedding section            |
-| embed_lsb_range    | 5                    | see watermark embedding section            |
+| embed_row_cycle         | 2                    | see watermark embedding section            |
+| embed_lsb_num    | 5                    | see watermark embedding section            |
 | alpha              | 0.05                 | significance level                         |
 | columnIndex        | 1                    | specifies one column of the data to detect |
 
@@ -222,7 +222,7 @@ Notes:
   | 1970-01-01T08:00:00.001+08:00 | 100                | null               |
   | ...                           | ...                | ...                |
 
-- `watermark_secret_key`, `watermark_bit_string`, `embed_rate` and `embed_lsb_range` should be consistent with those used in the embedding phase.
+- `watermark_secret_key`, `watermark_bit_string`, `embed_row_cycle` and `embed_lsb_num` should be consistent with those used in the embedding phase.
 
 - `alpha`: It should be in the range of [0,1]. 
 

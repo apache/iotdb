@@ -52,8 +52,8 @@ public class IoTDBWatermarkTest {
   private static PrintWriter writer2;
   private static String secretKey = "ASDFGHJKL";
   private static String watermarkBitString = "10101000100";
-  private static int embed_rate = 5;
-  private static int embed_lsb_range = 5;
+  private static int embed_row_cycle = 5;
+  private static int embed_lsb_num = 5;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -62,7 +62,7 @@ public class IoTDBWatermarkTest {
     IoTDBDescriptor.getInstance().getConfig().setWatermarkSecretKey(secretKey);
     IoTDBDescriptor.getInstance().getConfig().setWatermarkBitString(watermarkBitString);
     IoTDBDescriptor.getInstance().getConfig().setWatermarkMethod(String.format("GroupBasedLSBMethod"
-        + "(embed_rate=%d,embed_lsb_range=%d)", embed_rate, embed_lsb_range));
+        + "(embed_row_cycle=%d,embed_lsb_num=%d)", embed_row_cycle, embed_lsb_num));
     daemon = IoTDB.getInstance();
     daemon.active();
     EnvironmentUtils.envSetUp();
@@ -173,7 +173,7 @@ public class IoTDBWatermarkTest {
     double alpha = 0.1;
     int columnIndex = 1;
     boolean isWatermarked = WatermarkDetector
-        .isWatermarked(filePath1, secretKey, watermarkBitString, embed_rate, embed_lsb_range, alpha,
+        .isWatermarked(filePath1, secretKey, watermarkBitString, embed_row_cycle, embed_lsb_num, alpha,
             columnIndex);
     Assert.assertTrue(isWatermarked);
   }
@@ -214,7 +214,7 @@ public class IoTDBWatermarkTest {
     double alpha = 0.1;
     int columnIndex = 1;
     boolean isWatermarked = WatermarkDetector
-        .isWatermarked(filePath2, secretKey, watermarkBitString, embed_rate, embed_lsb_range, alpha,
+        .isWatermarked(filePath2, secretKey, watermarkBitString, embed_row_cycle, embed_lsb_num, alpha,
             columnIndex);
     Assert.assertFalse(isWatermarked);
   }

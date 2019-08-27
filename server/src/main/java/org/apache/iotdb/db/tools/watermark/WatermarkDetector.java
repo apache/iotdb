@@ -34,27 +34,27 @@ public class WatermarkDetector {
   public static void main(String[] args) throws IOException {
     if (args == null || args.length != 7) {
       throw new IOException("Usage: ./detect-watermark.sh [filePath] [secretKey] "
-          + "[watermarkBitString] [embed_rate] [embed_lsb_range] [alpha] [columnIndex]");
+          + "[watermarkBitString] [embed_row_cycle] [embed_lsb_num] [alpha] [columnIndex]");
     }
     String filePath = args[0]; // data file path
     String secretKey = args[1]; // watermark secret key
     String watermarkBitString = args[2]; // watermark bit string
-    int embed_rate = Integer.parseInt(args[3]); // watermark parameter
-    int embed_lsb_range = Integer.parseInt(args[4]); // watermark parameter
+    int embed_row_cycle = Integer.parseInt(args[3]); // watermark parameter
+    int embed_lsb_num = Integer.parseInt(args[4]); // watermark parameter
     double alpha = Double.parseDouble(args[5]); // significance level of watermark detection
     int columnIndex = Integer.parseInt(args[6]); // specify a column of data to detect
 
-    if (embed_rate < 1 || embed_lsb_range < 1 || alpha < 0 || alpha > 1 || columnIndex < 1) {
+    if (embed_row_cycle < 1 || embed_lsb_num < 1 || alpha < 0 || alpha > 1 || columnIndex < 1) {
       throw new IOException("Parameter out of range.");
     }
 
-    isWatermarked(filePath, secretKey, watermarkBitString, embed_rate, embed_lsb_range, alpha,
+    isWatermarked(filePath, secretKey, watermarkBitString, embed_row_cycle, embed_lsb_num, alpha,
         columnIndex);
   }
 
   public static boolean isWatermarked(String filePath, String secretKey, String watermarkBitString,
-      int embed_rate,
-      int embed_lsb_range, double alpha, int columnIndex) throws IOException {
+      int embed_row_cycle,
+      int embed_lsb_num, double alpha, int columnIndex) throws IOException {
     System.out.println("-----Watermark detection begins-----");
     int[] trueNums = new int[watermarkBitString.length()]; // for majority vote
     int[] falseNums = new int[watermarkBitString.length()]; // for majority vote
@@ -67,7 +67,7 @@ public class WatermarkDetector {
     while ((line = reader.readLine()) != null) {
       items = line.split(",");
       long timestamp = parseTimestamp(items[0]);
-      if (GroupedLSBWatermarkEncoder.hashMod(String.format("%s%d", secretKey, timestamp), embed_rate)
+      if (GroupedLSBWatermarkEncoder.hashMod(String.format("%s%d", secretKey, timestamp), embed_row_cycle)
           == 0) {
         String str = items[columnIndex];
         if (str.equals("null")) {
@@ -77,7 +77,7 @@ public class WatermarkDetector {
         int integerPart = (int) value;
         int targetBitPosition = GroupedLSBWatermarkEncoder
             .hashMod(String.format("%s%d%s", secretKey, timestamp, secretKey),
-                embed_lsb_range);
+                embed_lsb_num);
         int groupId = GroupedLSBWatermarkEncoder
             .hashMod(String.format("%d%s", timestamp, secretKey), watermarkBitString.length());
         boolean isTrue = EncodingUtils.testBit(integerPart, targetBitPosition);
