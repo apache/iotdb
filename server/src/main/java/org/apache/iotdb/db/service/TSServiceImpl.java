@@ -144,7 +144,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSCloseSessionResp closeSession(TSCloseSessionReq req) {
+  public TSRPCResp closeSession(TSCloseSessionReq req) {
     logger.info("{}: receive close session", IoTDBConstant.GLOBAL_DB_NAME);
     TS_Status tsStatus;
     if (username.get() == null) {
@@ -159,16 +159,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         zoneIds.remove();
       }
     }
-    return new TSCloseSessionResp(tsStatus);
+    return new TSRPCResp(tsStatus);
   }
 
   @Override
-  public TSCancelOperationResp cancelOperation(TSCancelOperationReq req) {
-    return new TSCancelOperationResp(getStatus(TSStatusType.SUCCESS_STATUS));
+  public TSRPCResp cancelOperation(TSCancelOperationReq req) {
+    return new TSRPCResp(getStatus(TSStatusType.SUCCESS_STATUS));
   }
 
   @Override
-  public TSCloseOperationResp closeOperation(TSCloseOperationReq req) {
+  public TSRPCResp closeOperation(TSCloseOperationReq req) {
     logger.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
     try {
 
@@ -183,7 +183,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (Exception e) {
       logger.error("Error in closeOperation : ", e);
     }
-    return new TSCloseOperationResp(getStatus(TSStatusType.SUCCESS_STATUS));
+    return new TSRPCResp(getStatus(TSStatusType.SUCCESS_STATUS));
   }
 
   private void releaseQueryResource(TSCloseOperationReq req) throws StorageEngineException {
@@ -898,7 +898,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSSetTimeZoneResp setTimeZone(TSSetTimeZoneReq req) {
+  public TSRPCResp setTimeZone(TSSetTimeZoneReq req) {
     TS_Status tsStatus;
     try {
       String timeZoneID = req.getTimeZone();
@@ -908,7 +908,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.error("meet error while setting time zone.", e);
       tsStatus = getStatus(TSStatusType.SET_TIME_ZONE_ERROR);
     }
-    return new TSSetTimeZoneResp(tsStatus);
+    return new TSRPCResp(tsStatus);
   }
 
   @Override
@@ -1003,35 +1003,35 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSSetStorageGroupResp setStorageGroup(TSSetStorageGroupReq req) throws TException {
+  public TSRPCResp setStorageGroup(TSSetStorageGroupReq req) throws TException {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return new TSSetStorageGroupResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
+      return new TSRPCResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
     }
 
     MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.SET_STORAGE_GROUP, new Path(req.getStorageGroupId()),
             null, null, null, null, null);
     TS_Status status = checkAuthority(plan);
     if (status != null) {
-      return new TSSetStorageGroupResp(status);
+      return new TSRPCResp(status);
     }
-    return new TSSetStorageGroupResp(executePlan(plan));
+    return new TSRPCResp(executePlan(plan));
   }
 
   @Override
-  public TSCreateTimeseriesResp createTimeseries(TSCreateTimeseriesReq req) throws TException {
+  public TSRPCResp createTimeseries(TSCreateTimeseriesReq req) throws TException {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return new TSCreateTimeseriesResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
+      return new TSRPCResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
     }
     MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.ADD_PATH, new Path(req.getPath()),
             TSDataType.valueOf(req.getDataType()), null, TSEncoding.valueOf(req.getEncoding()),
             null, null);
     TS_Status status = checkAuthority(plan);
     if (status != null) {
-      return new TSCreateTimeseriesResp(status);
+      return new TSRPCResp(status);
     }
-    return new TSCreateTimeseriesResp(executePlan(plan));
+    return new TSRPCResp(executePlan(plan));
   }
 
   @Override
@@ -1064,9 +1064,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getStatus(TSStatusType.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
 
-    TSStatusType statusType = execRet ? TSStatusType.SUCCESS_STATUS : TSStatusType.EXECUTE_STATEMENT_ERROR;
-    String msg = execRet ? "Execute successfully" : "Execute statement error.";
-    return getStatus(statusType, msg);
+    return execRet ? getStatus(TSStatusType.SUCCESS_STATUS, "Execute successfully")
+            : getStatus(TSStatusType.EXECUTE_STATEMENT_ERROR);
   }
 }
 

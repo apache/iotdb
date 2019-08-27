@@ -37,7 +37,6 @@ import java.time.ZoneId;
 
 public class Session {
 
-  private static final Logger logger = LoggerFactory.getLogger(Session.class);
   private String host;
   private int port;
   private String username;
@@ -156,7 +155,7 @@ public class Session {
     }
   }
 
-  public TSSetStorageGroupResp setStorageGroup(String storageGroupId) throws IoTDBSessionException {
+  public TSRPCResp setStorageGroup(String storageGroupId) throws IoTDBSessionException {
     TSSetStorageGroupReq request = new TSSetStorageGroupReq();
     request.setStorageGroupId(storageGroupId);
 
@@ -167,7 +166,7 @@ public class Session {
     }
   }
 
-  public TSCreateTimeseriesResp createTimeseriesResp(String path, TSDataType dataType, TSEncoding encoding) throws IoTDBSessionException {
+  public TSRPCResp createTimeseriesResp(String path, TSDataType dataType, TSEncoding encoding) throws IoTDBSessionException {
     TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
     request.setPath(path);
     request.setDataType(dataType.toString());
@@ -192,7 +191,7 @@ public class Session {
 
   public void setTimeZone(String zoneId) throws TException, IoTDBRPCException {
     TSSetTimeZoneReq req = new TSSetTimeZoneReq(zoneId);
-    TSSetTimeZoneResp resp = client.setTimeZone(req);
+    TSRPCResp resp = client.setTimeZone(req);
     RpcUtils.verifySuccess(resp.getStatus());
     this.zoneId = ZoneId.of(zoneId);
   }

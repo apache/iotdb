@@ -100,10 +100,6 @@ struct TSOpenSessionReq {
   4: optional map<string, string> configuration
 }
 
-struct TSCloseSessionResp {
-  1: required TS_Status status
-}
-
 // CloseSession()
 // Closes the specified session and frees any resources currently allocated to that session. 
 // Any open operations in that session will be canceled.
@@ -145,10 +141,6 @@ struct TSGetOperationStatusReq {
   1: required TSOperationHandle operationHandle
 }
 
-struct TSGetOperationStatusResp {
-  1: required TS_Status status
-}
-
 // CancelOperation()
 //
 // Cancels processing on the specified operation handle and frees any resources which were allocated.
@@ -157,22 +149,12 @@ struct TSCancelOperationReq {
   1: required TSOperationHandle operationHandle
 }
 
-struct TSCancelOperationResp {
-  1: required TS_Status status
-}
-
-
 // CloseOperation()
 struct TSCloseOperationReq {
   1: required TSOperationHandle operationHandle
   2: required i64 queryId
   3: optional i64 stmtId
 }
-
-struct TSCloseOperationResp {
-  1: required TS_Status status
-}
-
 
 struct TSDataValue{
   1: required bool is_empty
@@ -237,10 +219,6 @@ struct TSSetTimeZoneReq {
     1: required string timeZone
 }
 
-struct TSSetTimeZoneResp {
-    1: required TS_Status status
-}
-
 struct TSInsertionReq {
     1: optional string deviceId
     2: optional list<string> measurements
@@ -258,15 +236,11 @@ struct TSBatchInsertionReq {
     6: required i32 size
 }
 
-struct TSSetStorageGroupResp {
-  1: required TS_Status status
-}
-
 struct TSSetStorageGroupReq {
   1: required string storageGroupId
 }
 
-struct TSCreateTimeseriesResp {
+struct TSRPCResp {
   1: required TS_Status status
 }
 
@@ -285,7 +259,7 @@ struct ServerProperties {
 service TSIService {
 	TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
-	TSCloseSessionResp closeSession(1:TSCloseSessionReq req);
+	TSRPCResp closeSession(1:TSCloseSessionReq req);
 
 	TSExecuteStatementResp executeStatement(1:TSExecuteStatementReq req);
 
@@ -299,13 +273,13 @@ service TSIService {
 
 	TSFetchMetadataResp fetchMetadata(1:TSFetchMetadataReq req)
 
-	TSCancelOperationResp cancelOperation(1:TSCancelOperationReq req);
+	TSRPCResp cancelOperation(1:TSCancelOperationReq req);
 
-	TSCloseOperationResp closeOperation(1:TSCloseOperationReq req);
+	TSRPCResp closeOperation(1:TSCloseOperationReq req);
 
 	TSGetTimeZoneResp getTimeZone();
 
-	TSSetTimeZoneResp setTimeZone(1:TSSetTimeZoneReq req);
+	TSRPCResp setTimeZone(1:TSSetTimeZoneReq req);
 	
 	ServerProperties getProperties();
 
@@ -313,9 +287,9 @@ service TSIService {
 
 	TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
 
-	TSSetStorageGroupResp setStorageGroup(1:TSSetStorageGroupReq req);
+	TSRPCResp setStorageGroup(1:TSSetStorageGroupReq req);
 
-	TSCreateTimeseriesResp createTimeseries(1:TSCreateTimeseriesReq req);
+	TSRPCResp createTimeseries(1:TSCreateTimeseriesReq req);
 
 	i64 requestStatementId();
 	}
