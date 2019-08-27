@@ -57,17 +57,17 @@ IoTDB默认关闭水印嵌入功能。为了使用这个功能，第一步要做
 | watermark_module_opened | false                                               | `true`打开水印嵌入功能; `false`关闭 |
 | watermark_secret_key    | IoTDB*2019@Beijing                                  | 自定义密钥                          |
 | watermark_bit_string    | 100101110100                                        | 要被嵌入的0-1比特串                 |
-| watermark_method        | GroupBasedLSBMethod(embed_rate=2,embed_lsb_range=5) | 指定水印算法及其参数                |
+| watermark_method        | GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5) | 指定水印算法及其参数                |
 
 注意：
 
 - `watermark_module_opened`: 如果您想使用水印嵌入功能，请将其设置成`true`。
 - `watermark_secret_key`: 不能使用字符 '&'。密钥长度没有限制，一般来说密钥越长，攻击难度就越高。
 - `watermark_bit_string`: 比特串长度没有限制（除了不能为空字符串），但是当长度过短时，水印检测可能达不到要求的显著性水平。
-- `watermark_method`: 现在仅支持一种算法GroupBasedLSBMethod，因此您实际上可以修改的只有这个算法的两个参数`embed_rate`和`embed_lsb_range`的值：
+- `watermark_method`: 现在仅支持一种算法GroupBasedLSBMethod，因此您实际上可以修改的只有这个算法的两个参数`embed_row_cycle`和`embed_lsb_num`的值：
   - 均是正整数
-  - GroupBasedLSBMethod使用LSB嵌入。`embed_rate`控制了被嵌入水印的行占总行数的比例。`embed_rate`越小，越多比例的行被嵌入水印。当`embed_rate`等于1的时候，所有的行都将嵌入水印。
-  - `embed_lsb_range`控制了允许嵌入水印的最低有效位的范围。`embed_lsb_range`越大，数值的变化范围越大。
+  - `embed_row_cycle`控制了被嵌入水印的行占总行数的比例。`embed_row_cycle`越小，被嵌入水印的行的比例就越大。当`embed_row_cycle`等于1的时候，所有的行都将嵌入水印。
+  - GroupBasedLSBMethod使用LSB嵌入。`embed_lsb_num`控制了允许嵌入水印的最低有效位的数量。`embed_lsb_num`越大，数值的可变化范围就越大。
 - `watermark_secret_key`, `watermark_bit_string`和`watermark_method`都不应该被攻击者获得。您需要自己负责配置文件`iotdb-engine.properties`的安全管理。
 
 <a id="%E4%BD%BF%E7%94%A8%E6%B5%81%E7%A8%8B%E7%A4%BA%E4%BE%8B"></a>
@@ -200,7 +200,7 @@ sql用法：`revoke watermark_embedding from Alice`
 
 `detect-watermark.sh` 和 `detect-watermark.bat` 是给不同平台提供的功能相同的工具脚本。
 
-用法： ./detect-watermark.sh [filePath] [secretKey] [watermarkBitString] [embed_rate] [embed_lsb_range] [alpha] [columnIndex]
+用法： ./detect-watermark.sh [filePath] [secretKey] [watermarkBitString] [embed_row_cycle] [embed_lsb_num] [alpha] [columnIndex]
 
 示例： ./detect-watermark.sh /home/data/dump1.csv IoTDB*2019@Beijing 100101110100 2 5 0.05 1
 
@@ -209,8 +209,8 @@ sql用法：`revoke watermark_embedding from Alice`
 | filePath           | /home/data/dump1.csv | 可疑数据的文件路径           |
 | secretKey          | IoTDB*2019@Beijing   | 参见水印嵌入小节             |
 | watermarkBitString | 100101110100         | 参见水印嵌入小节             |
-| embed_rate         | 2                    | 参见水印嵌入小节             |
-| embed_lsb_range    | 5                    | 参见水印嵌入小节             |
+| embed_row_cycle         | 2                    | 参见水印嵌入小节             |
+| embed_lsb_num    | 5                    | 参见水印嵌入小节             |
 | alpha              | 0.05                 | 显著性水平                   |
 | columnIndex        | 1                    | 指定可疑数据的某一列进行检测 |
 
@@ -223,7 +223,7 @@ sql用法：`revoke watermark_embedding from Alice`
   | 1970-01-01T08:00:00.001+08:00 | 100                | null               |
   | ...                           | ...                | ...                |
 
-- `watermark_secret_key`, `watermark_bit_string`, `embed_rate`和`embed_lsb_range`应该和水印嵌入过程使用的值保持一致。
+- `watermark_secret_key`, `watermark_bit_string`, `embed_row_cycle`和`embed_lsb_num`应该和水印嵌入过程使用的值保持一致。
 
 - `alpha`: 取值范围是[0,1]
 
