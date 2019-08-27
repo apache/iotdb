@@ -58,7 +58,6 @@ public class FillEngineExecutor {
    */
   public QueryDataSet execute(QueryContext context)
       throws StorageEngineException, PathErrorException, IOException {
-    QueryResourceManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedSeries);
 
     List<IFill> fillList = new ArrayList<>();
     List<TSDataType> dataTypeList = new ArrayList<>();

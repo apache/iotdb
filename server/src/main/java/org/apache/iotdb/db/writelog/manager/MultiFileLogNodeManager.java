@@ -106,7 +106,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   @Override
   public void close() {
     if (!isActivated(forceThread)) {
-      logger.error("MultiFileLogNodeManager has not yet started");
+      logger.warn("MultiFileLogNodeManager has not yet started");
       return;
     }
     logger.info("LogNodeManager starts closing..");

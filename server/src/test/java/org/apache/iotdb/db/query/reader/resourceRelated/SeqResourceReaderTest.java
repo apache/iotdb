@@ -34,7 +34,8 @@ public class SeqResourceReaderTest extends ReaderTestHelper {
 
   @Test
   public void testSeqResourceIterateReader() throws IOException {
-    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context);
+    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context,
+        null);
     Path path = new Path(deviceId, measurementId);
     SeqResourceIterateReader reader = new SeqResourceIterateReader(path,
         queryDataSource.getSeqResources(), null, EnvironmentUtils.TEST_QUERY_CONTEXT);
@@ -52,7 +53,8 @@ public class SeqResourceReaderTest extends ReaderTestHelper {
 
   @Test
   public void testSeqResourceReaderByTimestamp() throws IOException {
-    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context);
+    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context,
+        null);
     Path path = new Path(deviceId, measurementId);
     SeqResourceReaderByTimestamp reader = new SeqResourceReaderByTimestamp(path,
         queryDataSource.getSeqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT);

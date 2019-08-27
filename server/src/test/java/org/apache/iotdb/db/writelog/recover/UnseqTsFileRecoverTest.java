@@ -40,9 +40,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
-import org.apache.iotdb.tsfile.read.controller.MetadataQuerier;
+import org.apache.iotdb.tsfile.read.controller.IMetadataQuerier;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
@@ -153,8 +153,8 @@ public class UnseqTsFileRecoverTest {
     }
 
     TsFileSequenceReader fileReader = new TsFileSequenceReader(tsF.getPath(), true);
-    MetadataQuerier metadataQuerier = new MetadataQuerierByFileImpl(fileReader);
-    ChunkLoader chunkLoader = new ChunkLoaderImpl(fileReader);
+    IMetadataQuerier metadataQuerier = new MetadataQuerierByFileImpl(fileReader);
+    IChunkLoader chunkLoader = new ChunkLoaderImpl(fileReader);
 
     Path path = new Path("device1", "sensor1");
 

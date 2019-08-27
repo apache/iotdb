@@ -19,6 +19,7 @@
 package org.apache.iotdb.jdbc;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
 
@@ -115,9 +116,8 @@ public class IoTDBStatementTest {
         + "root.vehicle.d0.s2,root.vehicle,FLOAT,RLE,\n";
     when(fetchMetadataResp.getShowTimeseriesList()).thenReturn(tslist);
     boolean res = stmt.execute("show timeseries root");
-    assertEquals(res, true);
-    try {
-      ResultSet resultSet = stmt.getResultSet();
+    assertTrue(res);
+    try (ResultSet resultSet = stmt.getResultSet()) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
@@ -146,9 +146,8 @@ public class IoTDBStatementTest {
     when(fetchMetadataResp.getShowStorageGroups()).thenReturn(sgSet);
     String standard = "Storage Group,\nroot.vehicle,\n";
     boolean res = stmt.execute("show storage group");
-    assertEquals(res, true);
-    try {
-      ResultSet resultSet = stmt.getResultSet();
+    assertTrue(res);
+    try (ResultSet resultSet = stmt.getResultSet()) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();

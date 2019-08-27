@@ -170,14 +170,6 @@ public class IoTDBDescriptor {
       conf.setMultiDirStrategyClassName(properties.getProperty("multi_dir_strategy",
           conf.getMultiDirStrategyClassName()));
 
-      conf.setMergeConcurrentThreads(Integer
-          .parseInt(properties.getProperty("merge_concurrent_threads",
-              Integer.toString(conf.getMergeConcurrentThreads()))));
-      if (conf.getMergeConcurrentThreads() <= 0
-          || conf.getMergeConcurrentThreads() > Runtime.getRuntime().availableProcessors()) {
-        conf.setMergeConcurrentThreads(Runtime.getRuntime().availableProcessors());
-      }
-
       conf.setFetchSize(Integer.parseInt(properties.getProperty("fetch_size",
           Integer.toString(conf.getFetchSize()))));
 
@@ -230,6 +222,25 @@ public class IoTDBDescriptor {
       String tmpTimeZone = properties.getProperty("time_zone", conf.getZoneID().toString());
       conf.setZoneID(ZoneId.of(tmpTimeZone.trim()));
       logger.info("Time zone has been set to {}", conf.getZoneID());
+
+      conf.setMergeMemoryBudget(Long.parseLong(properties.getProperty("merge_memory_budget",
+          Long.toString(conf.getMergeMemoryBudget()))));
+      conf.setMergeThreadNum(Integer.parseInt(properties.getProperty("merge_thread_num",
+          Integer.toString(conf.getMergeThreadNum()))));
+      conf.setMergeChunkSubThreadNum(Integer.parseInt(properties.getProperty
+          ("merge_chunk_subthread_num",
+          Integer.toString(conf.getMergeChunkSubThreadNum()))));
+      conf.setContinueMergeAfterReboot(Boolean.parseBoolean(properties.getProperty(
+          "continue_merge_after_reboot", Boolean.toString(conf.isContinueMergeAfterReboot()))));
+      conf.setMergeFileSelectionTimeBudget(Long.parseLong(properties.getProperty
+          ("merge_fileSelection_time_budget",
+          Long.toString(conf.getMergeFileSelectionTimeBudget()))));
+      conf.setMergeIntervalSec(Long.parseLong(properties.getProperty("merge_interval_sec",
+          Long.toString(conf.getMergeIntervalSec()))));
+      conf.setForceFullMerge(Boolean.parseBoolean(properties.getProperty("force_full_merge",
+          Boolean.toString(conf.isForceFullMerge()))));
+      conf.setChunkMergePointThreshold(Integer.parseInt(properties.getProperty(
+          "chunk_merge_point_threshold", Integer.toString(conf.getChunkMergePointThreshold()))));
 
       conf.setEnablePerformanceStat(Boolean
           .parseBoolean(properties.getProperty("enable_performance_stat",

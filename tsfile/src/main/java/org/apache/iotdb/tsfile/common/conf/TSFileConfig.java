@@ -135,9 +135,9 @@ public class TSFileConfig {
    */
   public static int pageCheckSizeThreshold = 100;
   /**
-   * Default endian value is LITTLE_ENDIAN.
+   * Default endian value is BIG_ENDIAN.
    */
-  public static String endian = "LITTLE_ENDIAN";
+  public static String endian = "BIG_ENDIAN";
 
   /**
    * only can be used by TsFileDescriptor.

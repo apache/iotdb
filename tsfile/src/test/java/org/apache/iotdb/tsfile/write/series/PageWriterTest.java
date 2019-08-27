@@ -39,8 +39,8 @@ public class PageWriterTest {
   @Test
   public void testNoFreq() {
     PageWriter writer = new PageWriter();
-    writer.setTimeEncoder(new PlainEncoder(EndianType.LITTLE_ENDIAN, TSDataType.INT64, 0));
-    writer.setValueEncoder(new PlainEncoder(EndianType.LITTLE_ENDIAN, TSDataType.INT64, 0));
+    writer.setTimeEncoder(new PlainEncoder(EndianType.BIG_ENDIAN, TSDataType.INT64, 0));
+    writer.setValueEncoder(new PlainEncoder(EndianType.BIG_ENDIAN, TSDataType.INT64, 0));
     short s1 = 12;
     boolean b1 = false;
     int i1 = 1;
@@ -66,7 +66,7 @@ public class PageWriterTest {
       byte[] timeBytes = new byte[timeSize];
       buffer.get(timeBytes);
       ByteBuffer buffer2 = ByteBuffer.wrap(timeBytes);
-      PlainDecoder decoder = new PlainDecoder(EndianType.LITTLE_ENDIAN);
+      PlainDecoder decoder = new PlainDecoder(EndianType.BIG_ENDIAN);
       for (int i = 0; i < timeCount; i++) {
         assertEquals(i, decoder.readLong(buffer2));
       }

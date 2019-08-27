@@ -369,7 +369,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @return true if the statement is ADMIN COMMAND
    * @throws IOException exception
    */
-  private boolean execAdminCommand(String statement) {
+  private boolean execAdminCommand(String statement) throws StorageEngineException {
     if (!"root".equals(username.get())) {
       return false;
     }
@@ -382,8 +382,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         StorageEngine.getInstance().syncCloseAllProcessor();
         return true;
       case "merge":
-        // TODO change to merge!!!
-        throw new UnsupportedOperationException("merge not implemented");
+        StorageEngine.getInstance()
+            .mergeAll(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+        return true;
+      case "full merge":
+        StorageEngine.getInstance().mergeAll(true);
+        return true;
       default:
         return false;
     }

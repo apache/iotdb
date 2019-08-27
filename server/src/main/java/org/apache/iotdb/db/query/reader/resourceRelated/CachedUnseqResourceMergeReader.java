@@ -16,22 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.controller;
+
+package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import java.util.List;
+import org.apache.iotdb.db.query.reader.chunkRelated.CachedDiskChunkReader;
+import org.apache.iotdb.db.query.reader.universal.CachedPriorityMergeReader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
 
-public interface ChunkLoader {
+public class CachedUnseqResourceMergeReader extends CachedPriorityMergeReader {
 
-  /**
-   * read all content of any chunk.
-   */
-  Chunk getChunk(ChunkMetaData chunkMetaData) throws IOException;
-
-  /**
-   * close the file reader.
-   */
-  void close() throws IOException;
-
+  public CachedUnseqResourceMergeReader(List<Chunk> chunks, TSDataType dataType)
+      throws IOException {
+    super(dataType);
+    int priorityValue = 1;
+    for (Chunk chunk : chunks) {
+      ChunkReader chunkReader = new ChunkReaderWithoutFilter(chunk);
+      addReaderWithPriority(new CachedDiskChunkReader(chunkReader), priorityValue++);
+    }
+  }
 }

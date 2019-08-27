@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.control;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -34,8 +35,8 @@ public class JobFileManager {
   /**
    * Map<jobId, Set<filePaths>>
    */
-  private ConcurrentHashMap<Long, Set<String>> sealedFilePathsMap;
-  private ConcurrentHashMap<Long, Set<String>> unsealedFilePathsMap;
+  private ConcurrentHashMap<Long, Set<TsFileResource>> sealedFilePathsMap;
+  private ConcurrentHashMap<Long, Set<TsFileResource>> unsealedFilePathsMap;
 
   public JobFileManager() {
     sealedFilePathsMap = new ConcurrentHashMap<>();
@@ -59,14 +60,12 @@ public class JobFileManager {
 
     //sequence data
     for(TsFileResource tsFileResource : dataSource.getSeqResources()){
-      String path = tsFileResource.getFile().getPath();
-      addFilePathToMap(jobId, path, tsFileResource.isClosed());
+      addFilePathToMap(jobId, tsFileResource, tsFileResource.isClosed());
     }
 
     //unsequence data
     for(TsFileResource tsFileResource : dataSource.getUnseqResources()){
-      String path = tsFileResource.getFile().getPath();
-      addFilePathToMap(jobId, path, tsFileResource.isClosed());
+      addFilePathToMap(jobId, tsFileResource, tsFileResource.isClosed());
     }
   }
 
@@ -75,14 +74,20 @@ public class JobFileManager {
    * this jdbc request must be cleared and thus the usage reference must be decreased.
    */
   void removeUsedFilesForGivenJob(long jobId) {
-      for (String filePath : sealedFilePathsMap.get(jobId)) {
-        FileReaderManager.getInstance().decreaseFileReaderReference(filePath, true);
+    Set<TsFileResource> tsFiles = sealedFilePathsMap.get(jobId);
+    if (tsFiles != null) {
+      for (TsFileResource tsFile : sealedFilePathsMap.get(jobId)) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
       }
       sealedFilePathsMap.remove(jobId);
-      for (String filePath : unsealedFilePathsMap.get(jobId)) {
-        FileReaderManager.getInstance().decreaseFileReaderReference(filePath, false);
+    }
+    tsFiles = unsealedFilePathsMap.get(jobId);
+    if (tsFiles != null) {
+      for (TsFileResource tsFile : unsealedFilePathsMap.get(jobId)) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
       }
       unsealedFilePathsMap.remove(jobId);
+    }
   }
 
   /**
@@ -91,13 +96,13 @@ public class JobFileManager {
    * so <code>sealedFilePathsMap.get(jobId)</code> or <code>unsealedFilePathsMap.get(jobId)</code>
    * must not return null.
    */
-  void addFilePathToMap(long jobId, String filePath, boolean isSealed) {
-    ConcurrentHashMap<Long, Set<String>> pathMap = !isSealed ? unsealedFilePathsMap :
+  void addFilePathToMap(long jobId, TsFileResource tsFile, boolean isClosed) {
+    ConcurrentHashMap<Long, Set<TsFileResource>> pathMap = !isClosed ? unsealedFilePathsMap :
         sealedFilePathsMap;
     //TODO this is not an atomic operation, is there concurrent problem?
-    if (!pathMap.get(jobId).contains(filePath)) {
-      pathMap.get(jobId).add(filePath);
-      FileReaderManager.getInstance().increaseFileReaderReference(filePath, isSealed);
+    if (!pathMap.get(jobId).contains(tsFile)) {
+      pathMap.get(jobId).add(tsFile);
+      FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
     }
   }
 }
