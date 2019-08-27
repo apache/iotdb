@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.jdbc.demo;
+package org.apache.iotdb;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

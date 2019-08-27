@@ -48,13 +48,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
-import org.apache.iotdb.service.rpc.thrift.TSCloseOperationResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.thrift.TException;
@@ -215,7 +209,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     try {
       if (operationHandle != null) {
         TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle, queryId);
-        TSCloseOperationResp closeResp = client.closeOperation(closeReq);
+        TSRPCResp closeResp = client.closeOperation(closeReq);
         RpcUtils.verifySuccess(closeResp.getStatus());
       }
     } catch (IoTDBRPCException e) {

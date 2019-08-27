@@ -18,20 +18,11 @@
  */
 package org.apache.iotdb.session;
 
-import java.time.ZoneId;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
-import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
-import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
-import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
-import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneResp;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
+import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
@@ -42,9 +33,10 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZoneId;
+
 public class Session {
 
-  private static final Logger logger = LoggerFactory.getLogger(Session.class);
   private String host;
   private int port;
   private String username;
@@ -163,6 +155,30 @@ public class Session {
     }
   }
 
+  public TSRPCResp setStorageGroup(String storageGroupId) throws IoTDBSessionException {
+    TSSetStorageGroupReq request = new TSSetStorageGroupReq();
+    request.setStorageGroupId(storageGroupId);
+
+    try {
+      return client.setStorageGroup(request);
+    } catch (TException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
+  public TSRPCResp createTimeseries(String path, TSDataType dataType, TSEncoding encoding) throws IoTDBSessionException {
+    TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
+    request.setPath(path);
+    request.setDataType(dataType.ordinal());
+    request.setEncoding(encoding.ordinal());
+
+    try {
+      return client.createTimeseries(request);
+    } catch (TException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
   public String getTimeZone() throws TException, IoTDBRPCException {
     if (zoneId != null) {
       return zoneId.toString();
@@ -175,7 +191,7 @@ public class Session {
 
   public void setTimeZone(String zoneId) throws TException, IoTDBRPCException {
     TSSetTimeZoneReq req = new TSSetTimeZoneReq(zoneId);
-    TSSetTimeZoneResp resp = client.setTimeZone(req);
+    TSRPCResp resp = client.setTimeZone(req);
     RpcUtils.verifySuccess(resp.getStatus());
     this.zoneId = ZoneId.of(zoneId);
   }
