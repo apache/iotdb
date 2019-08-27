@@ -97,6 +97,7 @@ public class BatchData implements Serializable {
     init(type, recordTime, hasEmptyTime);
   }
 
+  // FIXME: this means hasCurrent actually
   public boolean hasNext() {
     return curIdx < timeLength;
   }

@@ -57,11 +57,9 @@ public class IoTDBPreparedStmtIT {
   }
 
   private static void prepareSeries() throws SQLException {
-    Connection connection;
-    connection = DriverManager
+    try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-    try {
-      Statement statement = connection.createStatement();
+        Statement statement = connection.createStatement()) {
 
       statement.execute("SET STORAGE GROUP TO root.device1");
       statement.execute("SET STORAGE GROUP TO root.device2");
@@ -82,20 +80,18 @@ public class IoTDBPreparedStmtIT {
           + "sensor4) VALUES (1,1,1,1,1,1)");
       statement.execute("INSERT INTO root.device3(timestamp,sensor0,sensor1,sensor2,sensor3,"
           + "sensor4) VALUES (1,1,1,1,1,1)");
-      statement.close();
-    } finally {
-      connection.close();
     }
   }
 
   @Test
   public void testPreparedInsertion() throws SQLException {
-    Connection connection;
-    connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-    IoTDBPreparedInsertionStatement statement = (IoTDBPreparedInsertionStatement) connection.prepareStatement("INSERT");
 
-    try {
+
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        IoTDBPreparedInsertionStatement statement =
+            (IoTDBPreparedInsertionStatement) connection.prepareStatement("INSERT");
+        Statement queryStmt = connection.createStatement()){
       statement.setDeviceId("root.device1");
       String[] measurements = new String[5];
       for (int i = 0; i < 5; i++) {
@@ -111,9 +107,8 @@ public class IoTDBPreparedStmtIT {
         statement.setValues(Arrays.asList(values));
         statement.execute();
       }
-      statement.close();
 
-      Statement queryStmt = connection.createStatement();
+
       ResultSet resultSet = queryStmt.executeQuery("SELECT * FROM root.device1");
       int cnt = 0;
       while (resultSet.next()) {
@@ -125,25 +120,22 @@ public class IoTDBPreparedStmtIT {
       }
       assertEquals(100, cnt);
       resultSet.close();
-      queryStmt.close();
-    } finally {
-      connection.close();
     }
   }
 
   @Ignore
   @Test
   public void testPreparedInsertionPerf() throws SQLException {
-    Connection connection;
-    connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     long preparedConsumption;
     long preparedIdealConsumption;
     long normalConsumption;
 
-    try {
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        IoTDBPreparedInsertionStatement statement = (IoTDBPreparedInsertionStatement) connection
+            .prepareStatement("INSERT")) {
       // normal usage, all parameters are updated
-      IoTDBPreparedInsertionStatement statement = (IoTDBPreparedInsertionStatement) connection.prepareStatement("INSERT");
+
       long startTime = System.currentTimeMillis();
       String[] measurements = new String[5];
       for (int i = 0; i < 5; i++) {
@@ -154,24 +146,20 @@ public class IoTDBPreparedStmtIT {
         statement.setDeviceId("root.device1");
         statement.setMeasurements(Arrays.asList(measurements));
         statement.setTimestamp(i);
-        for (int j = 0; j < 5; j ++) {
+        for (int j = 0; j < 5; j++) {
           values[j] = String.valueOf(j);
         }
         statement.setValues(Arrays.asList(values));
         statement.execute();
       }
-      statement.close();
       preparedConsumption = System.currentTimeMillis() - startTime;
 
-    } finally {
-      connection.close();
     }
 
-    connection = DriverManager
+    try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-    try {
+        IoTDBPreparedInsertionStatement statement = (IoTDBPreparedInsertionStatement) connection.prepareStatement("INSERT")) {
       // ideal usage, only value and time are updated
-      IoTDBPreparedInsertionStatement statement = (IoTDBPreparedInsertionStatement) connection.prepareStatement("INSERT");
       long startTime = System.currentTimeMillis();
       statement.setDeviceId("root.device2");
       String[] measurements = new String[5];
@@ -188,17 +176,12 @@ public class IoTDBPreparedStmtIT {
         statement.setValues(Arrays.asList(values));
         statement.execute();
       }
-      statement.close();
       preparedIdealConsumption = System.currentTimeMillis() - startTime;
 
-    } finally {
-      connection.close();
     }
-
-    connection = DriverManager
+    try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-    try {
-      Statement statement = connection.createStatement();
+        Statement statement = connection.createStatement()) {
       long startTime = System.currentTimeMillis();
       String insertionTemplate = "INSERT INTO root.device3(timestamp,sensor0,sensor1,sensor2,"
           + "sensor3,sensor4) VALUES (%d,%d,%d,%d,%d,%d)";
@@ -211,10 +194,7 @@ public class IoTDBPreparedStmtIT {
         }
         statement.execute(String.format(insertionTemplate, args));
       }
-      statement.close();
       normalConsumption = System.currentTimeMillis() - startTime;
-    } finally {
-      connection.close();
     }
     System.out.printf("Prepared statement costs %dms, ideal prepared statement costs %dms, normal "
             + "statement costs %dms \n",

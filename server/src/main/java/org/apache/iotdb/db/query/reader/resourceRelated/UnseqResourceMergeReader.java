@@ -70,8 +70,9 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
         if (isTsFileNotSatisfied(tsFileResource, filter)) {
           continue;
         }
+
         metaDataList = DeviceMetaDataCache.getInstance()
-            .get(tsFileResource.getFile().getPath(), seriesPath);
+            .get(tsFileResource, seriesPath);
         List<Modification> pathModifications = context
             .getPathModifications(tsFileResource.getModFile(), seriesPath.getFullPath());
         if (!pathModifications.isEmpty()) {
@@ -90,7 +91,7 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
       if (!metaDataList.isEmpty()) {
         // create and add ChunkReader with priority
         TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-            .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
+            .get(tsFileResource, tsFileResource.isClosed());
         chunkLoader = new ChunkLoaderImpl(tsFileReader);
       }
 

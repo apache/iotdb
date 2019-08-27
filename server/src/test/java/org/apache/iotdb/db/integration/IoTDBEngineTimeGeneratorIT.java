@@ -82,7 +82,6 @@ public class IoTDBEngineTimeGeneratorIT {
     daemon.active();
     EnvironmentUtils.envSetUp();
 
-    Thread.sleep(5000);
     insertData();
 
   }
@@ -101,11 +100,9 @@ public class IoTDBEngineTimeGeneratorIT {
 
   private static void insertData() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
 
       // create storage group and measurement
       for (String sql : Constant.create_sql) {
@@ -160,14 +157,9 @@ public class IoTDBEngineTimeGeneratorIT {
         statement.execute(sql);
       }
 
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 

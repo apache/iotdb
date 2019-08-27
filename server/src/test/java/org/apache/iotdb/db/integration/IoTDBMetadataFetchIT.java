@@ -49,11 +49,9 @@ public class IoTDBMetadataFetchIT {
 
   private static void insertSQL() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
 
       String[] insertSqls = new String[]{"SET STORAGE GROUP TO root.ln.wf01.wt01",
           "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
@@ -63,14 +61,9 @@ public class IoTDBMetadataFetchIT {
       for (String sql : insertSqls) {
         statement.execute(sql);
       }
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -94,11 +87,10 @@ public class IoTDBMetadataFetchIT {
   @Test
   public void showTimeseriesTest1() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
       String[] sqls = new String[]{"show timeseries root.ln.wf01.wt01.status", // full seriesPath
           "show timeseries root.ln", // prefix seriesPath
           "show timeseries root.ln.*.wt01", // seriesPath with stars
@@ -127,13 +119,14 @@ public class IoTDBMetadataFetchIT {
         try {
           boolean hasResultSet = statement.execute(sql);
           if (hasResultSet) {
-            ResultSet resultSet = statement.getResultSet();
-            ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-            while (resultSet.next()) {
-              for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                builder.append(resultSet.getString(i)).append(",");
+            try (ResultSet resultSet = statement.getResultSet()) {
+              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+              while (resultSet.next()) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                  builder.append(resultSet.getString(i)).append(",");
+                }
+                builder.append("\n");
               }
-              builder.append("\n");
             }
           }
           Assert.assertEquals(builder.toString(), standard);
@@ -142,40 +135,26 @@ public class IoTDBMetadataFetchIT {
           fail(e.getMessage());
         }
       }
-      statement.close();
-    } finally {
-      connection.close();
     }
   }
 
-  @Test
+  @Test(expected = SQLException.class)
   public void showTimeseriesTest2() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    Statement statement = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root"); Statement statement = connection.createStatement()) {
       String sql = "show timeseries"; // not supported in jdbc, thus expecting SQLException
       statement.execute(sql);
-    } catch (SQLException e) {
-    } catch (Exception e) {
-      fail(e.getMessage());
-    } finally {
-      statement.close();
-      connection.close();
     }
   }
 
   @Test
   public void showStorageGroupTest() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       String[] sqls = new String[]{"show storage group"};
       String[] standards = new String[]{"root.ln.wf01.wt01,\n"};
       for (int n = 0; n < sqls.length; n++) {
@@ -185,13 +164,14 @@ public class IoTDBMetadataFetchIT {
         try {
           boolean hasResultSet = statement.execute(sql);
           if (hasResultSet) {
-            ResultSet resultSet = statement.getResultSet();
-            ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-            while (resultSet.next()) {
-              for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                builder.append(resultSet.getString(i)).append(",");
+            try (ResultSet resultSet = statement.getResultSet()) {
+              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+              while (resultSet.next()) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                  builder.append(resultSet.getString(i)).append(",");
+                }
+                builder.append("\n");
               }
-              builder.append("\n");
             }
           }
           Assert.assertEquals(builder.toString(), standard);
@@ -199,11 +179,6 @@ public class IoTDBMetadataFetchIT {
           e.printStackTrace();
           fail(e.getMessage());
         }
-      }
-      statement.close();
-    } finally {
-      if (connection != null) {
-        connection.close();
       }
     }
   }
@@ -241,21 +216,22 @@ public class IoTDBMetadataFetchIT {
     String standard =
         "Column,\n" + "root.ln.wf01.wt01.status,\n" + "root.ln.wf01.wt01.temperature,\n";
 
-    ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_COLUMN, "root", null, null);
-    ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-    int colCount = resultSetMetaData.getColumnCount();
-    StringBuilder resultStr = new StringBuilder();
-    for (int i = 1; i < colCount + 1; i++) {
-      resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
-    }
-    resultStr.append("\n");
-    while (resultSet.next()) {
-      for (int i = 1; i <= colCount; i++) {
-        resultStr.append(resultSet.getString(i)).append(",");
+    try (ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_COLUMN, "root", null, null);) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      int colCount = resultSetMetaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      for (int i = 1; i < colCount + 1; i++) {
+        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
       }
       resultStr.append("\n");
+      while (resultSet.next()) {
+        for (int i = 1; i <= colCount; i++) {
+          resultStr.append(resultSet.getString(i)).append(",");
+        }
+        resultStr.append("\n");
+      }
+      Assert.assertEquals(resultStr.toString(), standard);
     }
-    Assert.assertEquals(resultStr.toString(), standard);
   }
 
   /**
@@ -264,21 +240,24 @@ public class IoTDBMetadataFetchIT {
   private void device() throws SQLException {
     String standard = "Column,\n" + "root.ln.wf01.wt01,\n";
 
-    ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_DEVICE, "ln", null, null);
-    ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-    int colCount = resultSetMetaData.getColumnCount();
-    StringBuilder resultStr = new StringBuilder();
-    for (int i = 1; i < colCount + 1; i++) {
-      resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
-    }
-    resultStr.append("\n");
-    while (resultSet.next()) {
-      for (int i = 1; i <= colCount; i++) {
-        resultStr.append(resultSet.getString(i)).append(",");
+
+    try (ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_DEVICE, "ln", null,
+        null)) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      int colCount = resultSetMetaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      for (int i = 1; i < colCount + 1; i++) {
+        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
       }
       resultStr.append("\n");
+      while (resultSet.next()) {
+        for (int i = 1; i <= colCount; i++) {
+          resultStr.append(resultSet.getString(i)).append(",");
+        }
+        resultStr.append("\n");
+      }
+      Assert.assertEquals(resultStr.toString(), standard);
     }
-    Assert.assertEquals(resultStr.toString(), standard);
   }
 
   /**
@@ -289,22 +268,23 @@ public class IoTDBMetadataFetchIT {
         + "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n"
         + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,\n";
 
-    ResultSet resultSet = databaseMetaData
-        .getColumns(Constant.CATALOG_TIMESERIES, "root", null, null);
-    ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-    int colCount = resultSetMetaData.getColumnCount();
-    StringBuilder resultStr = new StringBuilder();
-    for (int i = 1; i < colCount + 1; i++) {
-      resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
-    }
-    resultStr.append("\n");
-    while (resultSet.next()) {
-      for (int i = 1; i <= colCount; i++) {
-        resultStr.append(resultSet.getString(i)).append(",");
+    try (ResultSet resultSet = databaseMetaData
+        .getColumns(Constant.CATALOG_TIMESERIES, "root", null, null);) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      int colCount = resultSetMetaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      for (int i = 1; i < colCount + 1; i++) {
+        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
       }
       resultStr.append("\n");
+      while (resultSet.next()) {
+        for (int i = 1; i <= colCount; i++) {
+          resultStr.append(resultSet.getString(i)).append(",");
+        }
+        resultStr.append("\n");
+      }
+      Assert.assertEquals(resultStr.toString(), standard);
     }
-    Assert.assertEquals(resultStr.toString(), standard);
   }
 
   /**
@@ -313,18 +293,19 @@ public class IoTDBMetadataFetchIT {
   private void showTimeseriesPath2() throws SQLException {
     String standard = "DataType,\n" + "BOOLEAN,\n";
 
-    ResultSet resultSet = databaseMetaData
+    try (ResultSet resultSet = databaseMetaData
         .getColumns(Constant.CATALOG_TIMESERIES, "root.ln.wf01.wt01.status", null,
-            null);
-    ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-    StringBuilder resultStr = new StringBuilder();
-    resultStr.append(resultSetMetaData.getColumnName(3)).append(",\n");
-    while (resultSet.next()) {
-      resultStr.append(resultSet.getString(IoTDBMetadataResultSet.GET_STRING_TIMESERIES_DATATYPE))
-          .append(",");
-      resultStr.append("\n");
+            null);) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      StringBuilder resultStr = new StringBuilder();
+      resultStr.append(resultSetMetaData.getColumnName(3)).append(",\n");
+      while (resultSet.next()) {
+        resultStr.append(resultSet.getString(IoTDBMetadataResultSet.GET_STRING_TIMESERIES_DATATYPE))
+            .append(",");
+        resultStr.append("\n");
+      }
+      Assert.assertEquals(resultStr.toString(), standard);
     }
-    Assert.assertEquals(resultStr.toString(), standard);
   }
 
   /**
@@ -333,22 +314,23 @@ public class IoTDBMetadataFetchIT {
   private void showStorageGroup() throws SQLException {
     String standard = "Storage Group,\n" + "root.ln.wf01.wt01,\n";
 
-    ResultSet resultSet = databaseMetaData
-        .getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null);
-    ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-    int colCount = resultSetMetaData.getColumnCount();
-    StringBuilder resultStr = new StringBuilder();
-    for (int i = 1; i < colCount + 1; i++) {
-      resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
-    }
-    resultStr.append("\n");
-    while (resultSet.next()) {
-      for (int i = 1; i <= colCount; i++) {
-        resultStr.append(resultSet.getString(i)).append(",");
+    try (ResultSet resultSet = databaseMetaData
+        .getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null);) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      int colCount = resultSetMetaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      for (int i = 1; i < colCount + 1; i++) {
+        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
       }
       resultStr.append("\n");
+      while (resultSet.next()) {
+        for (int i = 1; i <= colCount; i++) {
+          resultStr.append(resultSet.getString(i)).append(",");
+        }
+        resultStr.append("\n");
+      }
+      Assert.assertEquals(resultStr.toString(), standard);
     }
-    Assert.assertEquals(resultStr.toString(), standard);
   }
 
   /**

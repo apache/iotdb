@@ -52,6 +52,12 @@ public class TsFileMetaData {
    */
   private String createdBy;
 
+  // fields below are IoTDB extensions and they does not affect TsFile's stand-alone functionality
+  private int totalChunkNum;
+  // invalid means a chunk has been rewritten by merge and the chunk's data is in
+  // another new chunk
+  private int invalidChunkNum;
+
   public TsFileMetaData() {
     //do nothing
   }
@@ -108,6 +114,8 @@ public class TsFileMetaData {
     if (ReadWriteIOUtils.readIsNull(inputStream)) {
       fileMetaData.createdBy = ReadWriteIOUtils.readString(inputStream);
     }
+    fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(inputStream);
+    fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(inputStream);
 
     return fileMetaData;
   }
@@ -151,6 +159,8 @@ public class TsFileMetaData {
     if (ReadWriteIOUtils.readIsNull(buffer)) {
       fileMetaData.createdBy = ReadWriteIOUtils.readString(buffer);
     }
+    fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
+    fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
 
     return fileMetaData;
   }
@@ -253,6 +263,9 @@ public class TsFileMetaData {
       byteLen += ReadWriteIOUtils.write(createdBy, outputStream);
     }
 
+    byteLen += ReadWriteIOUtils.write(totalChunkNum, outputStream);
+    byteLen += ReadWriteIOUtils.write(invalidChunkNum, outputStream);
+
     return byteLen;
   }
 
@@ -284,7 +297,25 @@ public class TsFileMetaData {
       byteLen += ReadWriteIOUtils.write(createdBy, buffer);
     }
 
+    byteLen += ReadWriteIOUtils.write(totalChunkNum, buffer);
+    byteLen += ReadWriteIOUtils.write(invalidChunkNum, buffer);
+
     return byteLen;
   }
 
+  public int getTotalChunkNum() {
+    return totalChunkNum;
+  }
+
+  public void setTotalChunkNum(int totalChunkNum) {
+    this.totalChunkNum = totalChunkNum;
+  }
+
+  public int getInvalidChunkNum() {
+    return invalidChunkNum;
+  }
+
+  public void setInvalidChunkNum(int invalidChunkNum) {
+    this.invalidChunkNum = invalidChunkNum;
+  }
 }

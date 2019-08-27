@@ -19,7 +19,7 @@
 package org.apache.iotdb.tsfile.encoding.common;
 
 /**
- * In current verison, we only support LITTLE_ENDIAN mode.
+ * In current version, we only support BIG_ENDIAN mode.
  *
  * @author xuyi
  */

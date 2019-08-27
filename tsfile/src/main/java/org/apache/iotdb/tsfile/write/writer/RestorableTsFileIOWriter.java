@@ -70,6 +70,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @throws IOException if write failed, or the file is broken but autoRepair==false.
    */
   public RestorableTsFileIOWriter(File file) throws IOException {
+    this.file = file;
     this.out = new DefaultTsFileOutput(file, true);
 
     // file doesn't exist
@@ -91,9 +92,11 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
         // uncompleted file
         truncatedPosition = reader.selfCheck(knownSchemas, chunkGroupMetaDataList, true);
+        totalChunkNum = reader.getTotalChunkNum();
         if (truncatedPosition == TsFileCheckStatus.INCOMPATIBLE_FILE) {
           out.close();
-          throw new IOException(String.format("%s is not in TsFile format.", file.getAbsolutePath()));
+          throw new IOException(
+              String.format("%s is not in TsFile format.", file.getAbsolutePath()));
         } else if (truncatedPosition == TsFileCheckStatus.ONLY_MAGIC_HEAD) {
           crashed = true;
           out.truncate(TSFileConfig.MAGIC_STRING.length());
@@ -129,7 +132,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         // filter: if a device'sensor is defined as float type, and data has been persistent.
         // Then someone deletes the timeseries and recreate it with Int type. We have to ignore
         // all the stale data.
-        if (dataType.equals(chunkMetaData.getTsDataType())) {
+        if (dataType == null || dataType.equals(chunkMetaData.getTsDataType())) {
           chunkMetaDataList.add(chunkMetaData);
         }
       }
@@ -177,7 +180,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   private List<ChunkGroupMetaData> getAppendedRowGroupMetadata() {
     List<ChunkGroupMetaData> append = new ArrayList<>();
     if (lastFlushedChunkGroupIndex < chunkGroupMetaDataList.size()) {
-      append.addAll(chunkGroupMetaDataList.subList(lastFlushedChunkGroupIndex, chunkGroupMetaDataList.size()));
+      append.addAll(chunkGroupMetaDataList
+          .subList(lastFlushedChunkGroupIndex, chunkGroupMetaDataList.size()));
       lastFlushedChunkGroupIndex = chunkGroupMetaDataList.size();
     }
     return append;
@@ -219,4 +223,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     return new RestorableTsFileIOWriter(file);
   }
 
+  public void addSchema(MeasurementSchema schema) {
+    knownSchemas.put(schema.getMeasurementId(), schema);
+  }
 }

@@ -24,7 +24,7 @@ import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithFilter;
@@ -37,7 +37,7 @@ public class FileSeriesReaderWithFilter extends FileSeriesReader {
 
   private Filter filter;
 
-  public FileSeriesReaderWithFilter(ChunkLoader chunkLoader,
+  public FileSeriesReaderWithFilter(IChunkLoader chunkLoader,
       List<ChunkMetaData> chunkMetaDataList, Filter filter) {
     super(chunkLoader, chunkMetaDataList);
     this.filter = filter;

@@ -21,12 +21,15 @@ package org.apache.iotdb.tsfile.write.writer;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
@@ -42,6 +45,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -71,6 +76,11 @@ public class TsFileIOWriter {
   protected boolean canWrite = true;
 
   private long markedPosition;
+
+  protected int totalChunkNum = 0;
+  protected int invalidChunkNum;
+
+  protected File file;
 
   /**
    * empty construct function.
@@ -179,8 +189,7 @@ public class TsFileIOWriter {
     LOG.debug("start series chunk:{}, file position {}", descriptor, out.getPosition());
 
     currentChunkMetaData = new ChunkMetaData(descriptor.getMeasurementId(), tsDataType,
-        out.getPosition(), minTime,
-        maxTime);
+        out.getPosition(), minTime, maxTime);
 
     ChunkHeader header = new ChunkHeader(descriptor.getMeasurementId(), dataSize, tsDataType,
         compressionCodecName,
@@ -208,6 +217,21 @@ public class TsFileIOWriter {
   }
 
   /**
+   * Write a whole chunk in another file into this file. Providing fast merge for IoTDB.
+   * @param chunk
+   */
+  public void writeChunk(Chunk chunk, ChunkMetaData chunkMetadata) throws IOException {
+    ChunkHeader chunkHeader = chunk.getHeader();
+    currentChunkMetaData = new ChunkMetaData(chunkHeader.getMeasurementID(),
+        chunkHeader.getDataType(), out.getPosition(), chunkMetadata.getStartTime(),
+        chunkMetadata.getEndTime());
+    currentChunkMetaData.setDigest(chunkMetadata.getDigest());
+    chunkHeader.serializeTo(out.wrapAsStream());
+    out.write(chunk.getData());
+    endChunk(chunkMetadata.getNumOfPoints());
+  }
+  
+  /**
    * end chunk and write some log.
    *
    * @param totalValueCount -set the number of points to the currentChunkMetaData
@@ -217,6 +241,7 @@ public class TsFileIOWriter {
     currentChunkGroupMetaData.addTimeSeriesChunkMetaData(currentChunkMetaData);
     LOG.debug("end series chunk:{},totalvalue:{}", currentChunkMetaData, totalValueCount);
     currentChunkMetaData = null;
+    totalChunkNum ++;
   }
 
   /**
@@ -239,6 +264,8 @@ public class TsFileIOWriter {
 
     TsFileMetaData tsFileMetaData = new TsFileMetaData(tsDeviceMetadataIndexMap, schemaDescriptors,
         TSFileConfig.CURRENT_VERSION);
+    tsFileMetaData.setTotalChunkNum(totalChunkNum);
+    tsFileMetaData.setInvalidChunkNum(invalidChunkNum);
 
     long footerIndex = out.getPosition();
     LOG.debug("start to flush the footer,file pos:{}", footerIndex);
@@ -349,8 +376,12 @@ public class TsFileIOWriter {
   }
 
   /**
+<<<<<<< HEAD
+   * close the outputStream or file channel without writing FileMetadata.
+=======
    * close the outputStream or file channel without writing FileMetadata. This is just used for
    * Testing.
+>>>>>>> master
    */
   public void close() throws IOException {
     canWrite = false;
@@ -371,5 +402,53 @@ public class TsFileIOWriter {
    */
   public Map<String, MeasurementSchema> getKnownSchema() {
     return Collections.emptyMap();
+  }
+
+  public int getTotalChunkNum() {
+    return totalChunkNum;
+  }
+
+  public int getInvalidChunkNum() {
+    return invalidChunkNum;
+  }
+
+  public File getFile() {
+    return file;
+  }
+
+  /**
+   * Remove such ChunkMetadata that its startTime is not in chunkStartTimes
+   * @param chunkStartTimes
+   */
+  public void filterChunks(Map<Path, List<Long>> chunkStartTimes) {
+    Map<Path, Integer> startTimeIdxes = new HashMap<>();
+    chunkStartTimes.forEach((p, t) -> startTimeIdxes.put(p, 0));
+
+    Iterator<ChunkGroupMetaData> chunkGroupMetaDataIterator = chunkGroupMetaDataList.iterator();
+    while (chunkGroupMetaDataIterator.hasNext()) {
+      ChunkGroupMetaData chunkGroupMetaData = chunkGroupMetaDataIterator.next();
+      String deviceId = chunkGroupMetaData.getDeviceID();
+      int chunkNum = chunkGroupMetaData.getChunkMetaDataList().size();
+      Iterator<ChunkMetaData> chunkMetaDataIterator =
+          chunkGroupMetaData.getChunkMetaDataList().iterator();
+      while (chunkMetaDataIterator.hasNext()) {
+        ChunkMetaData chunkMetaData = chunkMetaDataIterator.next();
+        Path path = new Path(deviceId, chunkMetaData.getMeasurementUid());
+        int startTimeIdx = startTimeIdxes.get(path);
+        List<Long> pathChunkStartTimes = chunkStartTimes.get(path);
+        boolean chunkValid = startTimeIdx < pathChunkStartTimes.size()
+            && pathChunkStartTimes.get(startTimeIdx) == chunkMetaData.getStartTime();
+        if (!chunkValid) {
+          chunkMetaDataIterator.remove();
+          chunkNum--;
+          invalidChunkNum++;
+        } else {
+          startTimeIdxes.put(path, startTimeIdx + 1);
+        }
+      }
+      if (chunkNum == 0) {
+        chunkGroupMetaDataIterator.remove();
+      }
+    }
   }
 }

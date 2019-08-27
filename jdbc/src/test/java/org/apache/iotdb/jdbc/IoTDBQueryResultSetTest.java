@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.time.ZoneId;
@@ -34,6 +35,7 @@ import java.util.List;
 
 import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.service.rpc.thrift.*;
+
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Before;
@@ -127,6 +129,10 @@ public class IoTDBQueryResultSetTest {
 
     when(client.fetchResults(any(TSFetchResultsReq.class))).thenReturn(fetchResultsResp);
     when(fetchResultsResp.getStatus()).thenReturn(Status_SUCCESS);
+
+    TSCloseOperationResp closeResp = new TSCloseOperationResp();
+    closeResp.setStatus(Status_SUCCESS);
+    when(client.closeOperation(any(TSCloseOperationReq.class))).thenReturn(closeResp);
   }
 
   @SuppressWarnings("resource")
@@ -171,50 +177,51 @@ public class IoTDBQueryResultSetTest {
     when(fetchResultsResp.getQueryDataSet()).thenReturn(tsQueryDataSet);
 
     if (hasResultSet) {
-      ResultSet resultSet = statement.getResultSet();
-      // check columnInfoMap
-      Assert.assertEquals(resultSet.findColumn("Time"), 1);
-      Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s2"), 2);
-      Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s1"), 3);
-      Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s0"), 4);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        // check columnInfoMap
+        Assert.assertEquals(resultSet.findColumn("Time"), 1);
+        Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s2"), 2);
+        Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s1"), 3);
+        Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s0"), 4);
 
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      // check columnInfoList
-      Assert.assertEquals(resultSetMetaData.getColumnName(1), "Time");
-      Assert.assertEquals(resultSetMetaData.getColumnName(2), "root.vehicle.d0.s2");
-      Assert.assertEquals(resultSetMetaData.getColumnName(3), "root.vehicle.d0.s1");
-      Assert.assertEquals(resultSetMetaData.getColumnName(4), "root.vehicle.d0.s0");
-      Assert.assertEquals(resultSetMetaData.getColumnName(5), "root.vehicle.d0.s2");
-      // check columnTypeList
-      Assert.assertEquals(resultSetMetaData.getColumnType(1), Types.TIMESTAMP);
-      Assert.assertEquals(resultSetMetaData.getColumnType(2), Types.FLOAT);
-      Assert.assertEquals(resultSetMetaData.getColumnType(3), Types.BIGINT);
-      Assert.assertEquals(resultSetMetaData.getColumnType(4), Types.INTEGER);
-      Assert.assertEquals(resultSetMetaData.getColumnType(5), Types.FLOAT);
-      // check fetched result
-      int colCount = resultSetMetaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 1; i < colCount + 1; i++) { // meta title
-        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
-      }
-      resultStr.append("\n");
-      while (resultSet.next()) { // data
-        for (int i = 1; i <= colCount; i++) {
-          resultStr.append(resultSet.getString(i)).append(",");
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        // check columnInfoList
+        Assert.assertEquals(resultSetMetaData.getColumnName(1), "Time");
+        Assert.assertEquals(resultSetMetaData.getColumnName(2), "root.vehicle.d0.s2");
+        Assert.assertEquals(resultSetMetaData.getColumnName(3), "root.vehicle.d0.s1");
+        Assert.assertEquals(resultSetMetaData.getColumnName(4), "root.vehicle.d0.s0");
+        Assert.assertEquals(resultSetMetaData.getColumnName(5), "root.vehicle.d0.s2");
+        // check columnTypeList
+        Assert.assertEquals(resultSetMetaData.getColumnType(1), Types.TIMESTAMP);
+        Assert.assertEquals(resultSetMetaData.getColumnType(2), Types.FLOAT);
+        Assert.assertEquals(resultSetMetaData.getColumnType(3), Types.BIGINT);
+        Assert.assertEquals(resultSetMetaData.getColumnType(4), Types.INTEGER);
+        Assert.assertEquals(resultSetMetaData.getColumnType(5), Types.FLOAT);
+        // check fetched result
+        int colCount = resultSetMetaData.getColumnCount();
+        StringBuilder resultStr = new StringBuilder();
+        for (int i = 1; i < colCount + 1; i++) { // meta title
+          resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
         }
         resultStr.append("\n");
+        while (resultSet.next()) { // data
+          for (int i = 1; i <= colCount; i++) {
+            resultStr.append(resultSet.getString(i)).append(",");
+          }
+          resultStr.append("\n");
 
-        fetchResultsResp.hasResultSet = false; // at the second time to fetch
+          fetchResultsResp.hasResultSet = false; // at the second time to fetch
+        }
+        String standard =
+            "Time,root.vehicle.d0.s2,root.vehicle.d0.s1,root.vehicle.d0.s0,root.vehicle.d0.s2,\n"
+                + "2,2.22,40000,null,2.22,\n" + "3,3.33,null,null,3.33,\n"
+                + "4,4.44,null,null,4.44,\n"
+                + "50,null,50000,null,null,\n" + "100,null,199,null,null,\n"
+                + "101,null,199,null,null,\n"
+                + "103,null,199,null,null,\n" + "105,11.11,199,33333,11.11,\n"
+                + "1000,1000.11,55555,22222,1000.11,\n";
+        Assert.assertEquals(resultStr.toString(), standard);
       }
-      String standard =
-          "Time,root.vehicle.d0.s2,root.vehicle.d0.s1,root.vehicle.d0.s0,root.vehicle.d0.s2,\n"
-              + "2,2.22,40000,null,2.22,\n" + "3,3.33,null,null,3.33,\n"
-              + "4,4.44,null,null,4.44,\n"
-              + "50,null,50000,null,null,\n" + "100,null,199,null,null,\n"
-              + "101,null,199,null,null,\n"
-              + "103,null,199,null,null,\n" + "105,11.11,199,33333,11.11,\n"
-              + "1000,1000.11,55555,22222,1000.11,\n";
-      Assert.assertEquals(resultStr.toString(), standard);
     }
   }
 

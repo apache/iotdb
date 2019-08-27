@@ -168,8 +168,7 @@ public class MemTableFlushTask {
             Pair<TVList, MeasurementSchema> encodingMessage = (Pair<TVList, MeasurementSchema>) task;
             ChunkBuffer chunkBuffer = ChunkBufferPool.getInstance()
                 .getEmptyChunkBuffer(this, encodingMessage.right);
-            IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right, chunkBuffer,
-                PAGE_SIZE_THRESHOLD);
+            IChunkWriter seriesWriter = new ChunkWriterImpl(chunkBuffer, PAGE_SIZE_THRESHOLD);
             writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
             ioTaskQueue.add(seriesWriter);
             memSerializeTime += System.currentTimeMillis() - starTime;

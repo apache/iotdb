@@ -40,6 +40,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.JobFileManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -229,37 +230,17 @@ public class StorageEngine implements IService {
     }
   }
 
-
-  /**
-   * begin a query on a given deviceId. Any TsFile contains such device should not be deleted at
-   * once after merge.
-   *
-   * @param deviceId queried deviceId
-   * @return a token for the query.
-   */
-  public int beginQuery(String deviceId) throws StorageEngineException {
-    // TODO implement it when developing the merge function
-    return -1;
-  }
-
-  /**
-   * end query on a given deviceId. If some TsFile has been merged and this query is the last query
-   * using it, the TsFile can be deleted safely.
-   */
-  public void endQuery(String deviceId, int token) throws StorageEngineException {
-    // TODO  implement it when developing the merge function
-  }
-
   /**
    * query data.
    */
-  public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context)
+  public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context,
+      JobFileManager filePathsManager)
       throws StorageEngineException {
     //TODO use context.
     String deviceId = seriesExpression.getSeriesPath().getDevice();
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.query(deviceId, measurementId, context);
+    return storageGroupProcessor.query(deviceId, measurementId, context, filePathsManager);
   }
 
   /**
@@ -304,8 +285,13 @@ public class StorageEngine implements IService {
    *
    * @throws StorageEngineException StorageEngineException
    */
-  public void mergeAll() throws StorageEngineException {
-    // TODO
+  public void mergeAll(boolean fullMerge) throws StorageEngineException {
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new StorageEngineException("Current system mode is read only, does not support merge");
+    }
+    for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
+      storageGroupProcessor.merge(fullMerge);
+    }
   }
 
   /**

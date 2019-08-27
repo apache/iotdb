@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
-public interface MetadataQuerier {
+public interface IMetadataQuerier {
 
   List<ChunkMetaData> getChunkMetaDataList(Path path) throws IOException;
 
@@ -62,4 +62,9 @@ public interface MetadataQuerier {
    */
   List<TimeRange> convertSpace2TimePartition(List<Path> paths, long spacePartitionStartPos,
       long spacePartitionEndPos) throws IOException;
+
+  /**
+   * clear caches (if used) to release memory.
+   */
+  void clear();
 }
