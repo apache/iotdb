@@ -26,14 +26,10 @@ import static org.mockito.Mockito.when;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.ZoneId;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSGetOperationStatusResp;
+
+import org.apache.iotdb.rpc.TSStatusType;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
-import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
-import org.apache.iotdb.service.rpc.thrift.TS_Status;
-import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -53,7 +49,8 @@ public class IoTDBPreparedStatementTest {
   private Iface client;
   @Mock
   private TS_SessionHandle sessHandle;
-  private TS_Status Status_SUCCESS = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+  private TS_StatusType successStatus = new TS_StatusType(TSStatusType.SUCCESS_STATUS.getStatusCode(), "");
+  private TS_Status Status_SUCCESS = new TS_Status(successStatus);
 
   @Mock
   private TSOperationHandle tOperationHandle;
