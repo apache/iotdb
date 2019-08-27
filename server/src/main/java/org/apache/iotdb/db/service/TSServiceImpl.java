@@ -782,29 +782,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private TSExecuteStatementResp executeUpdateStatement(PhysicalPlan plan) {
-    List<Path> paths = plan.getPaths();
-    try {
-      if (!checkAuthorization(paths, plan)) {
-        return getTSExecuteStatementResp(getStatus(TSStatusType.NO_PERMISSION_ERROR, plan.getOperatorType().toString()));
-      }
-    } catch (AuthException e) {
-      logger.error("meet error while checking authorization.", e);
-      return getTSExecuteStatementResp(getStatus(TSStatusType.UNINITIALIZED_AUTH_ERROR, e.getMessage()));
-    }
-    // TODO
-    // In current version, we only return OK/ERROR
-    // Do we need to add extra information of executive condition
-    boolean execRet;
-    try {
-      execRet = executeNonQuery(plan);
-    } catch (ProcessorException e) {
-      logger.debug("meet error while processing non-query. ", e);
-      return getTSExecuteStatementResp(getStatus(TSStatusType.EXECUTE_STATEMENT_ERROR, e.getMessage()));
+    TS_Status status = checkAuthotity(plan);
+    if (status != null) {
+      return new TSExecuteStatementResp(status);
     }
 
-    TSStatusType statusType = execRet ? TSStatusType.SUCCESS_STATUS : TSStatusType.EXECUTE_STATEMENT_ERROR;
-    String msg = execRet ? "Execute successfully" : "Execute statement error.";
-    TSExecuteStatementResp resp = getTSExecuteStatementResp(getStatus(statusType, msg));
+    status = executePlan(plan);
+    TSExecuteStatementResp resp = getTSExecuteStatementResp(status);
     TSHandleIdentifier operationId = new TSHandleIdentifier(
         ByteBuffer.wrap(username.get().getBytes()),
         ByteBuffer.wrap("PASS".getBytes()));
@@ -987,19 +971,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       batchInsertPlan.setDataTypes(req.types);
 
       boolean isAllSuccessful = true;
-
-      List<Path> paths = batchInsertPlan.getPaths();
-      try {
-        if (!checkAuthorization(paths, batchInsertPlan)) {
-          return getTSBatchExecuteStatementResp(getStatus(TSStatusType.NO_PERMISSION_ERROR,
-              "No permissions for this operation " + batchInsertPlan.getOperatorType()), null);
-        }
-      } catch (AuthException e) {
-        logger.error("meet error while checking authorization.", e);
-        return getTSBatchExecuteStatementResp(getStatus(TSStatusType.UNINITIALIZED_AUTH_ERROR,
-            "Uninitialized authorizer " + e.getMessage()), null);
+      TS_Status status = checkAuthotity(batchInsertPlan);
+      if (status != null) {
+        return new TSExecuteBatchStatementResp(status);
       }
-
       Integer[] results = processor.getExecutor().insertBatch(batchInsertPlan);
 
       for (Integer result : results) {
@@ -1025,8 +1000,79 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
+  public TSSetStorageGroupResp setStorageGroup(TSSetStorageGroupReq req) throws TException {
+    if (!checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return new TSSetStorageGroupResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
+    }
+    try {
+      String sql = "SET STORAGE GROUP TO " + req.getStorageGroupId();
+      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sql, zoneIds.get());
+      TS_Status status = checkAuthotity(plan);
+      if (status != null) {
+        return new TSSetStorageGroupResp(status);
+      }
+      return new TSSetStorageGroupResp(executePlan(plan));
+    } catch (QueryProcessorException | ArgsErrorException | MetadataErrorException e) {
+      logger.error("meet error while parsing SQL to physical plan!", e);
+      return new TSSetStorageGroupResp(getStatus(TSStatusType.SQL_PARSE_ERROR, e.getMessage()));
+    }
+  }
+
+  @Override
+  public TSCreateTimeseriesResp createTimeseries(TSCreateTimeseriesReq req) throws TException {
+    if (!checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return new TSCreateTimeseriesResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
+    }
+    try {
+      String sql = "CREATE TIMESERIES " + req.getPath() + " WITH DATATYPE=" + req.getDataType() +
+              ", ENCODING=" + req.getEncoding();
+      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sql, zoneIds.get());
+      TS_Status status = checkAuthotity(plan);
+      if (status != null) {
+        return new TSCreateTimeseriesResp(status);
+      }
+      return new TSCreateTimeseriesResp(executePlan(plan));
+    } catch (QueryProcessorException | ArgsErrorException | MetadataErrorException e) {
+      logger.error("meet error while parsing SQL to physical plan!", e);
+      return new TSCreateTimeseriesResp(getStatus(TSStatusType.SQL_PARSE_ERROR, e.getMessage()));
+    }
+  }
+
+  @Override
   public long requestStatementId() {
     return globalStmtId.incrementAndGet();
+  }
+
+  private TS_Status checkAuthotity(PhysicalPlan plan) {
+    List<Path> paths = plan.getPaths();
+    try {
+      if (!checkAuthorization(paths, plan)) {
+        return getStatus(TSStatusType.NO_PERMISSION_ERROR, plan.getOperatorType().toString());
+      }
+    } catch (AuthException e) {
+      logger.error("meet error while checking authorization.", e);
+      return getStatus(TSStatusType.UNINITIALIZED_AUTH_ERROR, e.getMessage());
+    }
+    return null;
+  }
+
+  private TS_Status executePlan(PhysicalPlan plan) {
+    // TODO
+    // In current version, we only return OK/ERROR
+    // Do we need to add extra information of executive condition
+    boolean execRet;
+    try {
+      execRet = executeNonQuery(plan);
+    } catch (ProcessorException e) {
+      logger.debug("meet error while processing non-query. ", e);
+      return getStatus(TSStatusType.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+
+    TSStatusType statusType = execRet ? TSStatusType.SUCCESS_STATUS : TSStatusType.EXECUTE_STATEMENT_ERROR;
+    String msg = execRet ? "Execute successfully" : "Execute statement error.";
+    return getStatus(statusType, msg);
   }
 }
 

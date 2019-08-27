@@ -56,7 +56,7 @@ public class MetadataPlan extends PhysicalPlan {
     this.props = props;
     this.deletePathList = deletePathList;
     switch (namespaceType) {
-      case SET_FILE_LEVEL:
+      case SET_STORAGE_GROUP:
         setOperatorType(Operator.OperatorType.SET_STORAGE_GROUP);
         break;
       case ADD_PATH:

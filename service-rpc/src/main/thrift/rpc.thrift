@@ -258,6 +258,24 @@ struct TSBatchInsertionReq {
     6: required i32 size
 }
 
+struct TSSetStorageGroupResp {
+  1: required TS_Status status
+}
+
+struct TSSetStorageGroupReq {
+  1: required string storageGroupId
+}
+
+struct TSCreateTimeseriesResp {
+  1: required TS_Status status
+}
+
+struct TSCreateTimeseriesReq {
+  1: required string path
+  2: required string dataType
+  3: required string encoding
+}
+
 struct ServerProperties {
 	1: required string version;
 	2: required list<string> supportedTimeAggregationOperations;
@@ -294,6 +312,10 @@ service TSIService {
 	TSExecuteStatementResp insert(1:TSInsertionReq req);
 
 	TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
+
+	TSSetStorageGroupResp setStorageGroup(1:TSSetStorageGroupReq req);
+
+	TSCreateTimeseriesResp createTimeseries(1:TSCreateTimeseriesReq req);
 
 	i64 requestStatementId();
 	}
