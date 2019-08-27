@@ -66,8 +66,8 @@ Notes:
 - `watermark_bit_string`: There is no constraint on the length of the bit string (except that it should not be empty). But note that it is difficult to reach the required significance level at the watermark detection phase if the bit string is way too short.
 - `watermark_method`: Now only GroupBasedLSBMethod is supported, so actually you can only tune the two parameters of this method, which are `embed_row_cycle` and `embed_lsb_num`. 
   - Both of them should be positive integers. 
-  - `embed_row_cycle` controls the ratio of rows watermarked. The smaller `embed_row_cycle` is, the larger proportion of rows are watermarked. When `embed_row_cycle` equals 1, every row is watermarked. 
-  - GroupBasedLSBMethod uses LSB embedding. `embed_lsb_num` controls the number of least significant bits available for watermark embedding. The biggger `embed_lsb_num` is, the bigger range a data point can be varied.
+  - `embed_row_cycle` controls the ratio of rows watermarked. The smaller the `embed_row_cycle`, the larger the ratio of rows watermarked. When `embed_row_cycle` equals 1, every row is watermarked. 
+  - GroupBasedLSBMethod uses LSB embedding. `embed_lsb_num` controls the number of least significant bits available for watermark embedding. The biggger the `embed_lsb_num`, the larger the varying range of a data point.
 - `watermark_secret_key`, `watermark_bit_string`  and `watermark_method` should be kept secret from possible attackers. That is, it is your responsiblity to take care of `iotdb-engine.properties`.
 
 <a id="usage-example"></a>
@@ -224,6 +224,6 @@ Notes:
 
 - `watermark_secret_key`, `watermark_bit_string`, `embed_row_cycle` and `embed_lsb_num` should be consistent with those used in the embedding phase.
 
-- `alpha`: It should be in the range of [0,1]. 
+- `alpha`: It should be in the range of [0,1]. The watermark detection is based on the significance test. The smaller the `alpha` is, the lower the probability that the data without the watermark is detected to be watermark embedded, and thus the higher the credibility of the result of detecting the existence of the watermark in data.
 
-- `columnIndex`: It should be postive integer.
+- `columnIndex`: It should be a postive integer.

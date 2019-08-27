@@ -225,6 +225,6 @@ sql用法：`revoke watermark_embedding from Alice`
 
 - `watermark_secret_key`, `watermark_bit_string`, `embed_row_cycle`和`embed_lsb_num`应该和水印嵌入过程使用的值保持一致。
 
-- `alpha`: 取值范围是[0,1]
+- `alpha`: 取值范围[0,1]。水印检测基于显著性检验，`alpha`越小，没有嵌入水印的数据被检测成嵌入水印的可能性越低，从而检测出嵌入水印的结果的可信度越高。
 
 - `columnIndex`: 正整数
