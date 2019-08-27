@@ -31,12 +31,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
+
+import org.apache.iotdb.rpc.TSStatusType;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
-import org.apache.iotdb.service.rpc.thrift.TS_Status;
-import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
@@ -59,7 +57,8 @@ public class IoTDBStatementTest {
   @Mock
   private TSFetchMetadataResp fetchMetadataResp;
 
-  private TS_Status Status_SUCCESS = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+  private TS_StatusType successStatus = new TS_StatusType(TSStatusType.SUCCESS_STATUS.getStatusCode(), "");
+  private TS_Status Status_SUCCESS = new TS_Status(successStatus);
   private ZoneId zoneID = ZoneId.systemDefault();
 
   @Before

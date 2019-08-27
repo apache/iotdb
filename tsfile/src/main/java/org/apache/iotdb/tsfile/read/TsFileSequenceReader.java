@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
@@ -42,6 +41,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsDigest;
+import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -596,16 +596,21 @@ public class TsFileSequenceReader implements AutoCloseable {
               this.skipPageData(pageHeader);
             }
             currentChunk = new ChunkMetaData(measurementID, dataType, fileOffsetOfChunk,
-                startTimeOfChunk, endTimeOfChunk);
+              startTimeOfChunk, endTimeOfChunk);
             currentChunk.setNumOfPoints(numOfPoints);
-            Map<String, ByteBuffer> statisticsMap = new HashMap<>();
-            statisticsMap.put(StatisticConstant.MAX_VALUE, ByteBuffer.wrap(chunkStatistics.getMaxBytes()));
-            statisticsMap.put(StatisticConstant.MIN_VALUE, ByteBuffer.wrap(chunkStatistics.getMinBytes()));
-            statisticsMap.put(StatisticConstant.FIRST, ByteBuffer.wrap(chunkStatistics.getFirstBytes()));
-            statisticsMap.put(StatisticConstant.SUM, ByteBuffer.wrap(chunkStatistics.getSumBytes()));
-            statisticsMap.put(StatisticConstant.LAST, ByteBuffer.wrap(chunkStatistics.getLastBytes()));
+            ByteBuffer[] statisticsArray = new ByteBuffer[StatisticType.getTotalTypeNum()];
+            statisticsArray[StatisticType.min_value.ordinal()] = ByteBuffer
+                .wrap(chunkStatistics.getMinBytes());
+            statisticsArray[StatisticType.max_value.ordinal()] = ByteBuffer
+                .wrap(chunkStatistics.getMaxBytes());
+            statisticsArray[StatisticType.first_value.ordinal()] = ByteBuffer
+                .wrap(chunkStatistics.getFirstBytes());
+            statisticsArray[StatisticType.last_value.ordinal()] = ByteBuffer
+                .wrap(chunkStatistics.getLastBytes());
+            statisticsArray[StatisticType.sum_value.ordinal()] = ByteBuffer
+                .wrap(chunkStatistics.getSumBytes());
             TsDigest tsDigest = new TsDigest();
-            tsDigest.setStatistics(statisticsMap);
+            tsDigest.setStatistics(statisticsArray);
             currentChunk.setDigest(tsDigest);
             chunks.add(currentChunk);
             numOfPoints = 0;
