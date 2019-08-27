@@ -1009,8 +1009,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return new TSRPCResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
     }
 
-    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.SET_STORAGE_GROUP, new Path(req.getStorageGroupId()),
-            null, null, null, null, null);
+    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.SET_STORAGE_GROUP, new Path(req.getStorageGroupId()));
     TS_Status status = checkAuthority(plan);
     if (status != null) {
       return new TSRPCResp(status);
@@ -1025,8 +1024,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return new TSRPCResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
     }
     MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.ADD_PATH, new Path(req.getPath()),
-            TSDataType.values()[req.getDataType()], null,
-            TSEncoding.values()[req.getEncoding()], null, null);
+            TSDataType.values()[req.getDataType()], TSEncoding.values()[req.getEncoding()]);
     TS_Status status = checkAuthority(plan);
     if (status != null) {
       return new TSRPCResp(status);
