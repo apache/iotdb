@@ -137,15 +137,15 @@ public class TestHelper {
   public static TsDigest createSimpleTsDigest() throws IOException {
     TsDigest digest = new TsDigest();
     ByteBuffer[] statisticsArray = new ByteBuffer[StatisticType.getTotalTypeNum()];
-    statisticsArray[StatisticType.max_value.ordinal()] = ByteBuffer
-        .wrap(BytesUtils.stringToBytes(MAX_VALUE));
     statisticsArray[StatisticType.min_value.ordinal()] = ByteBuffer
         .wrap(BytesUtils.stringToBytes(MIN_VALUE));
-    statisticsArray[StatisticType.first.ordinal()] = ByteBuffer
+    statisticsArray[StatisticType.max_value.ordinal()] = ByteBuffer
+        .wrap(BytesUtils.stringToBytes(MAX_VALUE));
+    statisticsArray[StatisticType.first_value.ordinal()] = ByteBuffer
         .wrap(BytesUtils.stringToBytes(FIRST_VALUE));
-    statisticsArray[StatisticType.last.ordinal()] = ByteBuffer
+    statisticsArray[StatisticType.last_value.ordinal()] = ByteBuffer
         .wrap(BytesUtils.stringToBytes(LAST_VALUE));
-    statisticsArray[StatisticType.sum.ordinal()] = ByteBuffer
+    statisticsArray[StatisticType.sum_value.ordinal()] = ByteBuffer
         .wrap(BytesUtils.stringToBytes(SUM_VALUE));
     digest.setStatistics(statisticsArray);
     return digest;
@@ -154,11 +154,11 @@ public class TestHelper {
   public static TsDigest createNotCompleteSimpleTsDigest() throws IOException {
     TsDigest digest = new TsDigest();
     ByteBuffer[] statisticsArray = new ByteBuffer[StatisticType.getTotalTypeNum()];
-    statisticsArray[StatisticType.first.ordinal()] = ByteBuffer
+    statisticsArray[StatisticType.first_value.ordinal()] = ByteBuffer
         .wrap(BytesUtils.stringToBytes(FIRST_VALUE));
-    statisticsArray[StatisticType.last.ordinal()] = ByteBuffer
+    statisticsArray[StatisticType.last_value.ordinal()] = ByteBuffer
         .wrap(BytesUtils.stringToBytes(LAST_VALUE));
-    statisticsArray[StatisticType.sum.ordinal()] = ByteBuffer
+    statisticsArray[StatisticType.sum_value.ordinal()] = ByteBuffer
         .wrap(BytesUtils.stringToBytes(SUM_VALUE));
     digest.setStatistics(statisticsArray);
     return digest;

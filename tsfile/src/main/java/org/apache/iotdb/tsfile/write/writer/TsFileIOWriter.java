@@ -45,8 +45,8 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -192,9 +192,11 @@ public class TsFileIOWriter {
     ByteBuffer[] statisticsArray = new ByteBuffer[StatisticType.getTotalTypeNum()];
     statisticsArray[StatisticType.max_value.ordinal()] = ByteBuffer.wrap(statistics.getMaxBytes());
     statisticsArray[StatisticType.min_value.ordinal()] = ByteBuffer.wrap(statistics.getMinBytes());
-    statisticsArray[StatisticType.first.ordinal()] = ByteBuffer.wrap(statistics.getFirstBytes());
-    statisticsArray[StatisticType.sum.ordinal()] = ByteBuffer.wrap(statistics.getSumBytes());
-    statisticsArray[StatisticType.last.ordinal()] = ByteBuffer.wrap(statistics.getLastBytes());
+    statisticsArray[StatisticType.first_value.ordinal()] = ByteBuffer
+        .wrap(statistics.getFirstBytes());
+    statisticsArray[StatisticType.last_value.ordinal()] = ByteBuffer
+        .wrap(statistics.getLastBytes());
+    statisticsArray[StatisticType.sum_value.ordinal()] = ByteBuffer.wrap(statistics.getSumBytes());
 
     TsDigest tsDigest = new TsDigest();
 

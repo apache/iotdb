@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,63 +18,63 @@
     under the License.
 
 -->
+
 # Chapter 8: TsFile
+
 ## TsFile Hierarchy
+
   Here is a brief introduction of the structure of a TsFile file.
-  
+
 ## Variable Storage
- * **Big Endian**
-        
-     * For Example, the `int` `0x8` will be stored as `00 00 00 08`, not `08 00 00 00`
-  
- * **String with Variable Length**
- 
-    * The format is `int size` plus `String literal`. Size can be zero.
-    
-    * Size equals the number of bytes this string will take, and it may not equal to the length of the string. 
-    
-    * For example "sensor_1" will be stored as `00 00 00 08` plus the encoding(ASCII) of "sensor_1".
-    
-    * Note that for the "Magic String"(file signature) "TsFilev0.8.0", the size(12) and encoding(ASCII)
+
+- **Big Endian**
+       
+  - For Example, the `int` `0x8` will be stored as `00 00 00 08`, not `08 00 00 00`
+- **String with Variable Length**
+  - The format is `int size` plus `String literal`. Size can be zero.
+  - Size equals the number of bytes this string will take, and it may not equal to the length of the string. 
+  - For example "sensor_1" will be stored as `00 00 00 08` plus the encoding(ASCII) of "sensor_1".
+  - Note that for the "Magic String"(file signature) "TsFilev0.8.0", the size(12) and encoding(ASCII)
     is fixed so there is no need to put the size before this string literal.
-  
- * **Data Type Hardcode**
-    * 0: BOOLEAN
-    * 1: INT32 (`int`)
-    * 2: INT64 (`long`)
-    * 3: FLOAT
-    * 4: DOUBLE
-    * 5: TEXT (`String`)
- * **Encoding Type Hardcode**
-    * 0: PLAIN
-    * 1: PLAIN_DICTIONARY
-    * 2: RLE
-    * 3: DIFF
-    * 4: TS_2DIFF
-    * 5: BITMAP
-    * 6: GORILLA
-    * 7: REGULAR 
- * **Compressing Type Hardcode**
-    * 0: UNCOMPRESSED
-    * 1: SNAPPY
-    * 2: GZIP
-    * 3: LZO
-    * 4: SDT
-    * 5: PAA
-    * 6: PLA
- * **TsDigest Statistics Type Hardcode**
-    * 0: max_value
-    * 1: min_value
-    * 2: first
-    * 3: sum
-    * 4: last
-    
+- **Data Type Hardcode**
+  - 0: BOOLEAN
+  - 1: INT32 (`int`)
+  - 2: INT64 (`long`)
+  - 3: FLOAT
+  - 4: DOUBLE
+  - 5: TEXT (`String`)
+- **Encoding Type Hardcode**
+  - 0: PLAIN
+  - 1: PLAIN_DICTIONARY
+  - 2: RLE
+  - 3: DIFF
+  - 4: TS_2DIFF
+  - 5: BITMAP
+  - 6: GORILLA
+  - 7: REGULAR 
+- **Compressing Type Hardcode**
+  - 0: UNCOMPRESSED
+  - 1: SNAPPY
+  - 2: GZIP
+  - 3: LZO
+  - 4: SDT
+  - 5: PAA
+  - 6: PLA
+- **TsDigest Statistics Type Hardcode**
+  - 0: min_value
+  - 1: max_value
+  - 2: first_value
+  - 3: last_value
+  - 4: sum_value
+
 ## TsFile Overview
+
 Here is a graph about the TsFile structure.
 
 ![TsFile Breakdown](https://user-images.githubusercontent.com/40447846/61616997-6fad1300-ac9c-11e9-9c17-46785ebfbc88.png)
 
 ## Magic String
+
 There is a 12 bytes magic string:
 
 `TsFilev0.8.0`
@@ -97,6 +97,7 @@ The `ChunkGroup` has an array of `Chunk`, a following byte `0x00` as the marker,
 A `Chunk` represents a *sensor*. There is a byte `0x01` as the marker, following a `ChunkHeader` and an array of `Page`.
 
 ###### ChunkHeader
+
 <center>
         <table style="text-align:center">
         	<tr><th>Member Description</th><th>Member Type</td></tr>
@@ -146,6 +147,7 @@ PageHeader Structure
 ## Metadata
 
 ### TsDeviceMetaData
+
 The first part of metadata is `TsDeviceMetaData` 
 
 <center>
@@ -158,6 +160,7 @@ The first part of metadata is `TsDeviceMetaData`
 </center>
 
 Then there is an array of `ChunkGroupMetaData` after `TsDeviceMetaData`
+
 ### ChunkGroupMetaData
 
 <center>
@@ -189,42 +192,57 @@ Then there is an array of `ChunkMetadata` for each `ChunkGroupMetadata`
         </table>
 </center>
 
-###### TsDigest (updated on 2019/8/23)
+###### TsDigest (updated on 2019/8/27)
 
-There are five statistics now: `max_value, min_value, first, sum, last`
+Right now there are five statistics: `min_value, max_value, first_value, last_value, sum_value`.
 
-The storage format of statistics in v0.8.0 is a name-value pair (`Map<String, ByteBuffer> statistics`). The name is a string (remember the length is before the literal). 
+In v0.8.0, the storage format of statistics is a name-value pair. That is, `Map<String, ByteBuffer> statistics`. The name is a string (remember the length is before the literal). But for the value, there is also an integer byteLength acting as the self description length of the following value because the value may be of various type. For example, if the `min_value` is an integer 0, then it will be stored as [9 "min_value" 4 0] in the TsFile.
 
-But for the value, there is also a size integer before the data even if it is not string. For example, if the `min` is 3, then it will be
-stored as 3 "min" 4 3 in the TsFile.
+The figure below shows an example of `TsDigest.deserializeFrom(buffer)`. In v0.8.0, we will get 
 
-In v0.9.0, the storage format is changed to an array (`ByteBuffer[] statistics`) for space and time efficiency. Each position of the array has a fixed association with a type of statistic in the order defined by StatisticType.
 ```
-enum StatisticType {
-    max_value, min_value, first, sum, last
+Map<String, ByteBuffer> statistics = {
+    "min_value" -> ByteBuffer of int value 0, 
+    "last" -> ByteBuffer of int value 19,
+    "sum" -> ByteBuffer of double value 1093347116,
+    "first" -> ByteBuffer of int value 0,
+    "max_value" -> ByteBuffer of int value 99
 }
 ```
-So when deserializing a TsDigest from data [5, 0,2,10, 1,1,1, 2,1,1, 3,2,20, 4,1,5], the interpretation process is as follows:  
-```
-3: the number of statistics to read  
-0: the serialized value of StatisticType, which is deserialized to be `max_value`  
-4: the self description length of the following value  
-10: value  
-1: the serialized value of StatisticType, which is deserialized to be `min_value`  
-1: the self description length of the following value  
-1: value
-2: the serialized value of StatisticType, which is deserialized to be `first`    
-1: the self description length of the following value  
-1: value
-3: the serialized value of StatisticType, which is deserialized to be `sum`  
-2: the self description length of the following value  
-20: value  
-4: the serialized value of StatisticType, which is deserialized to be `last`  
-1: the self description length of the following value  
-5: value  
-```
-Then the ByteBuffer[] statistics is [ByteBuffer for `max_value` 10, ByteBuffer for `min_value` 1, ByteBuffer for `first` 1, ByteBuffer for `sum` 20, ByteBuffer for `last` 5].
 
+![TsDigest ByteBuffer Breakdown comparison](https://user-images.githubusercontent.com/33376433/63765352-664a4280-c8fb-11e9-869e-859edf6d00bb.png)
+
+In v0.9.0, the storage format is changed to an array for space and time efficiency. That is, `ByteBuffer[] statistics`. Each position of the array has a fixed association with a specific type of statistic, following the order defined in StatisticType:
+
+```
+enum StatisticType {
+    min_value, max_value, first_value, last_value, sum_value
+}
+```
+
+Therefore, in the above example, we will get 
+
+```
+ByteBuffer[] statistics = [
+    ByteBuffer of int value 0, // associated with "min_value"
+    ByteBuffer of int value 99, // associated with "max_value"
+    ByteBuffer of int value 0, // associated with "first_value"
+    ByteBuffer of int value 19, // associated with "last_value"
+    ByteBuffer of double value 1093347116 // associated with "sum_value"
+]
+```
+
+As another example in v0.9.0, when deserializing a TsDigest from buffer [3, 0,4,0, 1,4,99, 3,4,19], we get 
+
+```
+ByteBuffer[] statistics = [
+    ByteBuffer of int value 0, // associated with "min_value"
+    ByteBuffer of int value 99, // associated with "max_value"
+    null, // associated with "first_value"
+    ByteBuffer of int value 19, // associated with "last_value"
+    null // associated with "sum_value"
+]
+```
 
 #### File Metadata
 
@@ -245,6 +263,7 @@ After the array of `ChunkGroupMetadata`, here is the last part of the metadata.
 </center>
 
 ##### DeviceIndexMetadata
+
 <center>
         <table style="text-align:center">
         	<tr><th>Member Description</th><th>Member Type</td></tr>
@@ -257,6 +276,7 @@ After the array of `ChunkGroupMetadata`, here is the last part of the metadata.
 </center>
 
 ##### MeasurementSchema
+
 <center>
         <table style="text-align:center">
             <tr><th>Member Description</th><th>Member Type</td></tr>
