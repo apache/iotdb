@@ -38,10 +38,12 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.Metadata;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -50,6 +52,7 @@ import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.thrift.TException;
@@ -1005,18 +1008,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSSetStorageGroupResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
     }
-    try {
-      String sql = "SET STORAGE GROUP TO " + req.getStorageGroupId();
-      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sql, zoneIds.get());
-      TS_Status status = checkAuthotity(plan);
-      if (status != null) {
-        return new TSSetStorageGroupResp(status);
-      }
-      return new TSSetStorageGroupResp(executePlan(plan));
-    } catch (QueryProcessorException | ArgsErrorException | MetadataErrorException e) {
-      logger.error("meet error while parsing SQL to physical plan!", e);
-      return new TSSetStorageGroupResp(getStatus(TSStatusType.SQL_PARSE_ERROR, e.getMessage()));
+
+    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.SET_STORAGE_GROUP, new Path(req.getStorageGroupId()),
+            null, null, null, null, null);
+    TS_Status status = checkAuthotity(plan);
+    if (status != null) {
+      return new TSSetStorageGroupResp(status);
     }
+    return new TSSetStorageGroupResp(executePlan(plan));
   }
 
   @Override
@@ -1025,19 +1024,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSCreateTimeseriesResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
     }
-    try {
-      String sql = "CREATE TIMESERIES " + req.getPath() + " WITH DATATYPE=" + req.getDataType() +
-              ", ENCODING=" + req.getEncoding();
-      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sql, zoneIds.get());
-      TS_Status status = checkAuthotity(plan);
-      if (status != null) {
-        return new TSCreateTimeseriesResp(status);
-      }
-      return new TSCreateTimeseriesResp(executePlan(plan));
-    } catch (QueryProcessorException | ArgsErrorException | MetadataErrorException e) {
-      logger.error("meet error while parsing SQL to physical plan!", e);
-      return new TSCreateTimeseriesResp(getStatus(TSStatusType.SQL_PARSE_ERROR, e.getMessage()));
+    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.ADD_PATH, new Path(req.getPath()),
+            TSDataType.valueOf(req.getDataType()), null, TSEncoding.valueOf(req.getEncoding()),
+            null, null);
+    TS_Status status = checkAuthotity(plan);
+    if (status != null) {
+      return new TSCreateTimeseriesResp(status);
     }
+    return new TSCreateTimeseriesResp(executePlan(plan));
   }
 
   @Override

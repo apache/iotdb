@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 
 public class SessionExample {
 
-  public static void main(String[] args) throws ClassNotFoundException, IoTDBSessionException {
+  public static void main(String[] args) throws IoTDBSessionException {
     Session session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
