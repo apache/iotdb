@@ -124,7 +124,7 @@ public class IoTDBStatement implements Statement {
     try {
       if (operationHandle != null) {
         TSCancelOperationReq closeReq = new TSCancelOperationReq(operationHandle);
-        TSCancelOperationResp closeResp = client.cancelOperation(closeReq);
+        TSRPCResp closeResp = client.cancelOperation(closeReq);
         RpcUtils.verifySuccess(closeResp.getStatus());
       }
     } catch (Exception e) {
@@ -151,7 +151,7 @@ public class IoTDBStatement implements Statement {
       if (operationHandle != null) {
         TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle, -1);
         closeReq.setStmtId(stmtId);
-        TSCloseOperationResp closeResp = client.closeOperation(closeReq);
+        TSRPCResp closeResp = client.closeOperation(closeReq);
         RpcUtils.verifySuccess(closeResp.getStatus());
       }
     } catch (Exception e) {

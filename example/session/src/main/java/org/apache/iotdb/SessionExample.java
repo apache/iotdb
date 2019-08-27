@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import org.apache.iotdb.session.IoTDBSessionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -29,32 +26,16 @@ import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
-/**
- * you need to set storage group and create timeseries first from Client or JDBC
- *
- * for this example:
- *
- * SET STORAGE GROUP TO root.sg1
- * CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=FLOAT, ENCODING=RLE
- * CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE
- * CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=FLOAT, ENCODING=RLE
- */
 public class SessionExample {
 
-  public static void main(String[] args) throws ClassNotFoundException, IoTDBSessionException {
-    Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-    try (Connection connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.sg1");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE");
-    } catch (Exception e) {
-      System.out.println(e.getMessage());
-    }
-
+  public static void main(String[] args) throws IoTDBSessionException {
     Session session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
+
+    session.setStorageGroup("root.sg1");
+    session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE);
+    session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE);
+    session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE);
 
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));

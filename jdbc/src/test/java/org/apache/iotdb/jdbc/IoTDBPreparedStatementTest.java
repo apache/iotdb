@@ -41,7 +41,7 @@ public class IoTDBPreparedStatementTest {
   @Mock
   TSExecuteStatementResp execStatementResp;
   @Mock
-  TSGetOperationStatusResp getOperationStatusResp;
+  TSRPCResp getOperationStatusResp;
   private ZoneId zoneId = ZoneId.systemDefault();
   @Mock
   private IoTDBConnection connection;

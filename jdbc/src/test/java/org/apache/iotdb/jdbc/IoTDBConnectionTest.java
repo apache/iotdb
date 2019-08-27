@@ -56,7 +56,7 @@ public class IoTDBConnectionTest {
   public void testSetTimeZone() throws TException, IoTDBSQLException {
     String timeZone = "Asia/Shanghai";
     when(client.setTimeZone(any(TSSetTimeZoneReq.class)))
-        .thenReturn(new TSSetTimeZoneResp(Status_SUCCESS));
+        .thenReturn(new TSRPCResp(Status_SUCCESS));
     connection.client = client;
     connection.setTimeZone(timeZone);
     assertEquals(connection.getTimeZone(), timeZone);
