@@ -166,11 +166,11 @@ public class Session {
     }
   }
 
-  public TSRPCResp createTimeseriesResp(String path, TSDataType dataType, TSEncoding encoding) throws IoTDBSessionException {
+  public TSRPCResp createTimeseries(String path, TSDataType dataType, TSEncoding encoding) throws IoTDBSessionException {
     TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
     request.setPath(path);
-    request.setDataType(dataType.toString());
-    request.setEncoding(encoding.toString());
+    request.setDataType(dataType.ordinal());
+    request.setEncoding(encoding.ordinal());
 
     try {
       return client.createTimeseries(request);

@@ -33,9 +33,9 @@ public class SessionExample {
     session.open();
 
     session.setStorageGroup("root.sg1");
-    session.createTimeseriesResp("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE);
-    session.createTimeseriesResp("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE);
-    session.createTimeseriesResp("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE);
+    session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE);
+    session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE);
+    session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE);
 
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));

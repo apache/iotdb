@@ -246,8 +246,8 @@ struct TSRPCResp {
 
 struct TSCreateTimeseriesReq {
   1: required string path
-  2: required string dataType
-  3: required string encoding
+  2: required i32 dataType
+  3: required i32 encoding
 }
 
 struct ServerProperties {
