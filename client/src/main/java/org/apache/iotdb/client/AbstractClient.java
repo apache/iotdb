@@ -224,7 +224,6 @@ public abstract class AbstractClient {
       }
     }
 
-    println(StringUtils.repeat('-', DIVIDING_LINE_LENGTH));
     printCount(isShow, res, cnt);
   }
 
