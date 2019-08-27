@@ -510,7 +510,7 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("org.apache.iotdb.rpc.IoTDBRPCException: Internal server error: Unsupported data type in aggregation MEAN : TEXT", e.getMessage());
+        Assert.assertEquals("Internal server error: Unsupported data type in aggregation MEAN : TEXT", e.getMessage());
       }
       statement.close();
 
@@ -536,7 +536,7 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("org.apache.iotdb.rpc.IoTDBRPCException: Internal server error: Unsupported data type in aggregation MEAN : BOOLEAN", e.getMessage());
+        Assert.assertEquals("Internal server error: Unsupported data type in aggregation MEAN : BOOLEAN", e.getMessage());
       }
       statement.close();
 
@@ -549,7 +549,7 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("org.apache.iotdb.rpc.IoTDBRPCException: Internal server error: Unsupported data type in aggregation SUM : BOOLEAN", e.getMessage());
+        Assert.assertEquals("Internal server error: Unsupported data type in aggregation SUM : BOOLEAN", e.getMessage());
       }
       statement.close();
     } catch (Exception e) {
