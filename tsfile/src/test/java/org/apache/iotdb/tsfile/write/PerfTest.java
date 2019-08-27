@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.Scanner;
 
-import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -35,11 +34,9 @@ import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.FileUtils;
-import org.apache.iotdb.tsfile.utils.FileUtils.Unit;
 import org.apache.iotdb.tsfile.utils.RecordUtils;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -60,7 +57,7 @@ public class PerfTest {
   static public String inputDataFile;
   static public String outputDataFile;
   static public String errorOutputDataFile;
-  static public FileSchema schema;
+  static public Schema schema;
   static public Random r = new Random();
 
   static private void generateSampleInputDataFile() throws IOException {
@@ -141,7 +138,7 @@ public class PerfTest {
     }
   }
 
-  static private void writeToFile(FileSchema schema)
+  static private void writeToFile(Schema schema)
       throws InterruptedException, IOException, WriteProcessException {
     Scanner in = getDataFile(inputDataFile);
     assert in != null;
@@ -153,18 +150,18 @@ public class PerfTest {
     innerWriter.close();
   }
 
-  private static FileSchema generateTestData() {
-    FileSchema fileSchema = new FileSchema();
+  private static Schema generateTestData() {
+    Schema schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    fileSchema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
-    fileSchema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
-    fileSchema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
-    fileSchema.registerMeasurement(new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
+    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
+    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
+    schema.registerMeasurement(new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
     JSONObject s4 = new JSONObject();
     s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");
     s4.put(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());
     s4.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
-    return fileSchema;
+    return schema;
   }
 
   @Before

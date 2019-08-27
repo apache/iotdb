@@ -36,6 +36,7 @@
     <modules>
         <module>kafka</module>
         <module>rocketmq</module>
+        <module>session</module>
         <module>tsfile</module>
     </modules>
     <build>

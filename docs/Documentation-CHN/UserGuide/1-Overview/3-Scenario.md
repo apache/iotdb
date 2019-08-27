@@ -57,7 +57,7 @@
 
 为了保证机械手的监控数据能够及时监控和分析，公司需要收集这些机械手传感器信息，将其发送至可以连接外部网络的服务器上，而后将原始数据信息上传到数据中心进行复杂的计算和分析。
 
-此时，可以采用IoTDB套件中的IoTDB、IoTDB-CLI工具、TsFileSync工具和Hadoop/Spark集成组件等。将IoTDB服务器安装在工厂连接外网的服务器上，用户接收机械手传输的数据并将数据上传到数据中心。将IoTDB-CLI工具安装在每一个连接工厂内网的机械手上，用于将传感器产生的实时数据上传到工厂内部服务器。再使用TsFileSync工具将原始数据上传到数据中心。此外还需要部署Hadoop/Spark集群用于数据中心端的数据存储和分析。如图1.6中间场景所示。
+此时，可以采用IoTDB套件中的IoTDB、IoTDB-Client工具、TsFileSync工具和Hadoop/Spark集成组件等。将IoTDB服务器安装在工厂连接外网的服务器上，用户接收机械手传输的数据并将数据上传到数据中心。将IoTDB-Client工具安装在每一个连接工厂内网的机械手上，用于将传感器产生的实时数据上传到工厂内部服务器。再使用TsFileSync工具将原始数据上传到数据中心。此外还需要部署Hadoop/Spark集群用于数据中心端的数据存储和分析。如图1.6中间场景所示。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51579080-96aba780-1efa-11e9-87ac-940c45b19dd7.jpg">
 
@@ -71,7 +71,7 @@
 
 为了能够实时接收汽车传感器所采集的物联网数据，公司需要在车辆行驶的过程中将传感器数据通过窄带物联网实时发送至数据中心，而后在数据中心的服务器上进行复杂的计算和分析。
 
-此时，可以采用IoTDB套件中的IoTDB、IoTDB-CLI和Hadoop/Spark集成组件等。将IoTDB-CLI工具安装在每一辆车联网内的车辆上，使用IoTDB-JDBC工具将数据直接传回数据中心的服务器。 
+此时，可以采用IoTDB套件中的IoTDB、IoTDB-Client和Hadoop/Spark集成组件等。将IoTDB-Client工具安装在每一辆车联网内的车辆上，使用IoTDB-JDBC工具将数据直接传回数据中心的服务器。 
 
 此外还需要部署Hadoop/Spark集群用于数据中心端的数据存储和分析。如图1.8所示。
 

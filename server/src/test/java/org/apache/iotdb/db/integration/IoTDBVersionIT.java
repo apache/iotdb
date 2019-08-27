@@ -63,12 +63,12 @@ public class IoTDBVersionIT {
 
       // insert and flush enough times to make the version file persist
       for (int i = 0; i < 2 * SimpleFileVersionController.getSaveInterval(); i ++) {
-        for (int j = 1; j <= 100; j ++) {
+        for (int j = 1; j <= 10; j ++) {
           statement.execute(String
               .format("INSERT INTO root.versionTest1(timestamp, s0) VALUES (%d, %d)", i*100+j, j));
         }
         statement.execute("FLUSH");
-        for (int j = 1; j <= 100; j ++) {
+        for (int j = 1; j <= 10; j ++) {
           statement.execute(String
               .format("INSERT INTO root.versionTest2(timestamp, s0) VALUES (%d, %d)", i*100+j, j));
         }

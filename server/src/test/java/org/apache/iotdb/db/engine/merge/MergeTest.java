@@ -157,7 +157,8 @@ abstract class MergeTest {
               measurementSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
         }
         fileWriter.write(record);
-        tsFileResource.updateTime(deviceIds[j], i);
+        tsFileResource.updateStartTime(deviceIds[j], i);
+        tsFileResource.updateEndTime(deviceIds[j], i);
       }
       if ((i + 1) % flushInterval == 0) {
         fileWriter.flushForTest();

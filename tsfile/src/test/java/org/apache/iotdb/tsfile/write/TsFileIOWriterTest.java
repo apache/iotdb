@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
@@ -48,8 +48,8 @@ public class TsFileIOWriterTest {
 
     // file schema
     MeasurementSchema measurementSchema = TestHelper.createSimpleMeasurementSchema();
-    FileSchema fileSchema = new FileSchema();
-    fileSchema.registerMeasurement(measurementSchema);
+    Schema schema = new Schema();
+    schema.registerMeasurement(measurementSchema);
 
     // chunk statistics
     Statistics statistics = Statistics.getStatsByType(measurementSchema.getType());
@@ -63,7 +63,7 @@ public class TsFileIOWriterTest {
     writer.endChunkGroup(0);
 
     // end file
-    writer.endFile(fileSchema);
+    writer.endFile(schema);
   }
 
   @After
