@@ -16,9 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -29,8 +31,8 @@ import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.QueryUtils;
-import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -95,11 +97,16 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
       for (ChunkMetaData chunkMetaData : metaDataList) {
 
         if (filter != null) {
+          ByteBuffer minValue = null;
+          ByteBuffer maxValue = null;
+          ByteBuffer[] statistics = chunkMetaData.getDigest().getStatistics();
+          if (statistics != null) {
+            minValue = statistics[StatisticType.min_value.ordinal()]; // note still CAN be null
+            maxValue = statistics[StatisticType.max_value.ordinal()]; // note still CAN be null
+          }
+
           DigestForFilter digest = new DigestForFilter(chunkMetaData.getStartTime(),
-              chunkMetaData.getEndTime(),
-              chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MIN_VALUE),
-              chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MAX_VALUE),
-              chunkMetaData.getTsDataType());
+              chunkMetaData.getEndTime(), minValue, maxValue, chunkMetaData.getTsDataType());
           if (!filter.satisfy(digest)) {
             continue;
           }

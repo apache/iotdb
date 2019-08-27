@@ -41,6 +41,9 @@ public class LtEq<T extends Comparable<T>> extends UnaryFilter<T> {
     if (filterType == FilterType.TIME_FILTER) {
       return ((Long) value) >= digest.getMinTime();
     } else {
+      if (digest.isMinValueNull()) {
+        return true;
+      }
       return value.compareTo(digest.getMinValue()) >= 0;
     }
   }

@@ -105,29 +105,29 @@ public abstract class Statistics<T> {
 
   public abstract T getFirst();
 
-  public abstract double getSum();
-
   public abstract T getLast();
 
-  public abstract byte[] getMaxBytes();
+  public abstract double getSum();
 
   public abstract byte[] getMinBytes();
 
-  public abstract byte[] getFirstBytes();
+  public abstract byte[] getMaxBytes();
 
-  public abstract byte[] getSumBytes();
+  public abstract byte[] getFirstBytes();
 
   public abstract byte[] getLastBytes();
 
-  public abstract ByteBuffer getMaxBytebuffer();
+  public abstract byte[] getSumBytes();
 
   public abstract ByteBuffer getMinBytebuffer();
 
+  public abstract ByteBuffer getMaxBytebuffer();
+
   public abstract ByteBuffer getFirstBytebuffer();
 
-  public abstract ByteBuffer getSumBytebuffer();
-
   public abstract ByteBuffer getLastBytebuffer();
+
+  public abstract ByteBuffer getSumBytebuffer();
 
   /**
    * merge parameter to this statistic. Including
@@ -262,7 +262,7 @@ public abstract class Statistics<T> {
     } else if (sizeOfDatum() != -1) {
       return sizeOfDatum() * 4 + 8;
     } else {
-      return 4 * Integer.BYTES + getMaxBytes().length + getMinBytes().length
+      return 4 * Integer.BYTES + getMinBytes().length + getMaxBytes().length
           + getFirstBytes().length
           + getLastBytes().length + getSumBytes().length;
     }
