@@ -38,10 +38,12 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.Metadata;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -50,6 +52,7 @@ import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.thrift.TException;
@@ -141,7 +144,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSCloseSessionResp closeSession(TSCloseSessionReq req) {
+  public TSRPCResp closeSession(TSCloseSessionReq req) {
     logger.info("{}: receive close session", IoTDBConstant.GLOBAL_DB_NAME);
     TS_Status tsStatus;
     if (username.get() == null) {
@@ -156,16 +159,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         zoneIds.remove();
       }
     }
-    return new TSCloseSessionResp(tsStatus);
+    return new TSRPCResp(tsStatus);
   }
 
   @Override
-  public TSCancelOperationResp cancelOperation(TSCancelOperationReq req) {
-    return new TSCancelOperationResp(getStatus(TSStatusType.SUCCESS_STATUS));
+  public TSRPCResp cancelOperation(TSCancelOperationReq req) {
+    return new TSRPCResp(getStatus(TSStatusType.SUCCESS_STATUS));
   }
 
   @Override
-  public TSCloseOperationResp closeOperation(TSCloseOperationReq req) {
+  public TSRPCResp closeOperation(TSCloseOperationReq req) {
     logger.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
     try {
 
@@ -180,7 +183,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (Exception e) {
       logger.error("Error in closeOperation : ", e);
     }
-    return new TSCloseOperationResp(getStatus(TSStatusType.SUCCESS_STATUS));
+    return new TSRPCResp(getStatus(TSStatusType.SUCCESS_STATUS));
   }
 
   private void releaseQueryResource(TSCloseOperationReq req) throws StorageEngineException {
@@ -786,29 +789,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private TSExecuteStatementResp executeUpdateStatement(PhysicalPlan plan) {
-    List<Path> paths = plan.getPaths();
-    try {
-      if (!checkAuthorization(paths, plan)) {
-        return getTSExecuteStatementResp(getStatus(TSStatusType.NO_PERMISSION_ERROR, plan.getOperatorType().toString()));
-      }
-    } catch (AuthException e) {
-      logger.error("meet error while checking authorization.", e);
-      return getTSExecuteStatementResp(getStatus(TSStatusType.UNINITIALIZED_AUTH_ERROR, e.getMessage()));
-    }
-    // TODO
-    // In current version, we only return OK/ERROR
-    // Do we need to add extra information of executive condition
-    boolean execRet;
-    try {
-      execRet = executeNonQuery(plan);
-    } catch (ProcessorException e) {
-      logger.debug("meet error while processing non-query. ", e);
-      return getTSExecuteStatementResp(getStatus(TSStatusType.EXECUTE_STATEMENT_ERROR, e.getMessage()));
+    TS_Status status = checkAuthority(plan);
+    if (status != null) {
+      return new TSExecuteStatementResp(status);
     }
 
-    TSStatusType statusType = execRet ? TSStatusType.SUCCESS_STATUS : TSStatusType.EXECUTE_STATEMENT_ERROR;
-    String msg = execRet ? "Execute successfully" : "Execute statement error.";
-    TSExecuteStatementResp resp = getTSExecuteStatementResp(getStatus(statusType, msg));
+    status = executePlan(plan);
+    TSExecuteStatementResp resp = getTSExecuteStatementResp(status);
     TSHandleIdentifier operationId = new TSHandleIdentifier(
         ByteBuffer.wrap(username.get().getBytes()),
         ByteBuffer.wrap("PASS".getBytes()));
@@ -915,7 +902,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSSetTimeZoneResp setTimeZone(TSSetTimeZoneReq req) {
+  public TSRPCResp setTimeZone(TSSetTimeZoneReq req) {
     TS_Status tsStatus;
     try {
       String timeZoneID = req.getTimeZone();
@@ -925,7 +912,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.error("meet error while setting time zone.", e);
       tsStatus = getStatus(TSStatusType.SET_TIME_ZONE_ERROR);
     }
-    return new TSSetTimeZoneResp(tsStatus);
+    return new TSRPCResp(tsStatus);
   }
 
   @Override
@@ -991,19 +978,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       batchInsertPlan.setDataTypes(req.types);
 
       boolean isAllSuccessful = true;
-
-      List<Path> paths = batchInsertPlan.getPaths();
-      try {
-        if (!checkAuthorization(paths, batchInsertPlan)) {
-          return getTSBatchExecuteStatementResp(getStatus(TSStatusType.NO_PERMISSION_ERROR,
-              "No permissions for this operation " + batchInsertPlan.getOperatorType()), null);
-        }
-      } catch (AuthException e) {
-        logger.error("meet error while checking authorization.", e);
-        return getTSBatchExecuteStatementResp(getStatus(TSStatusType.UNINITIALIZED_AUTH_ERROR,
-            "Uninitialized authorizer " + e.getMessage()), null);
+      TS_Status status = checkAuthority(batchInsertPlan);
+      if (status != null) {
+        return new TSExecuteBatchStatementResp(status);
       }
-
       Integer[] results = processor.getExecutor().insertBatch(batchInsertPlan);
 
       for (Integer result : results) {
@@ -1029,8 +1007,67 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
+  public TSRPCResp setStorageGroup(TSSetStorageGroupReq req) throws TException {
+    if (!checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return new TSRPCResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
+    }
+
+    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.SET_STORAGE_GROUP, new Path(req.getStorageGroupId()));
+    TS_Status status = checkAuthority(plan);
+    if (status != null) {
+      return new TSRPCResp(status);
+    }
+    return new TSRPCResp(executePlan(plan));
+  }
+
+  @Override
+  public TSRPCResp createTimeseries(TSCreateTimeseriesReq req) throws TException {
+    if (!checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return new TSRPCResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
+    }
+    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.ADD_PATH, new Path(req.getPath()),
+            TSDataType.values()[req.getDataType()], TSEncoding.values()[req.getEncoding()]);
+    TS_Status status = checkAuthority(plan);
+    if (status != null) {
+      return new TSRPCResp(status);
+    }
+    return new TSRPCResp(executePlan(plan));
+  }
+
+  @Override
   public long requestStatementId() {
     return globalStmtId.incrementAndGet();
+  }
+
+  private TS_Status checkAuthority(PhysicalPlan plan) {
+    List<Path> paths = plan.getPaths();
+    try {
+      if (!checkAuthorization(paths, plan)) {
+        return getStatus(TSStatusType.NO_PERMISSION_ERROR, plan.getOperatorType().toString());
+      }
+    } catch (AuthException e) {
+      logger.error("meet error while checking authorization.", e);
+      return getStatus(TSStatusType.UNINITIALIZED_AUTH_ERROR, e.getMessage());
+    }
+    return null;
+  }
+
+  private TS_Status executePlan(PhysicalPlan plan) {
+    // TODO
+    // In current version, we only return OK/ERROR
+    // Do we need to add extra information of executive condition
+    boolean execRet;
+    try {
+      execRet = executeNonQuery(plan);
+    } catch (ProcessorException e) {
+      logger.debug("meet error while processing non-query. ", e);
+      return getStatus(TSStatusType.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+
+    return execRet ? getStatus(TSStatusType.SUCCESS_STATUS, "Execute successfully")
+            : getStatus(TSStatusType.EXECUTE_STATEMENT_ERROR);
   }
 }
 

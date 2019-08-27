@@ -71,19 +71,13 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 public class SessionExample {
 
   public static void main(String[] args) throws ClassNotFoundException, IoTDBSessionException {
-    Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-    try (Connection connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.sg1");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE");
-    } catch (Exception e) {
-      System.out.println(e.getMessage());
-    }
-
     Session session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
+    
+    session.setStorageGroup("root.sg1");
+    session.createTimeseriesResp("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE);
+    session.createTimeseriesResp("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE);
+    session.createTimeseriesResp("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE);
 
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
