@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
 import org.junit.After;
@@ -39,7 +40,7 @@ public class IoTDBConnectionTest {
   private TSIService.Iface client;
 
   private IoTDBConnection connection = new IoTDBConnection();
-  private TS_StatusType successStatus = new TS_StatusType(200, "");
+  private TS_StatusType successStatus = new TS_StatusType(TSStatusType.SUCCESS_STATUS.getStatusCode(), "");
   private TS_Status Status_SUCCESS = new TS_Status(successStatus);
 
   @Before

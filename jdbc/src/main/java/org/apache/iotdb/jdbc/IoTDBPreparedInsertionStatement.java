@@ -22,6 +22,8 @@ package org.apache.iotdb.jdbc;
 import java.sql.SQLException;
 import java.time.ZoneId;
 import java.util.List;
+
+import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
 import org.apache.iotdb.service.rpc.thrift.TSInsertionReq;
@@ -30,7 +32,6 @@ import org.apache.thrift.TException;
 
 public class IoTDBPreparedInsertionStatement extends IoTDBPreparedStatement {
 
-  private static final int SUCCESS_CODE = 200;
   private TSInsertionReq req = new TSInsertionReq();
 
   public IoTDBPreparedInsertionStatement(IoTDBConnection connection,
@@ -49,7 +50,7 @@ public class IoTDBPreparedInsertionStatement extends IoTDBPreparedStatement {
       req.unsetMeasurements();
       req.unsetTimestamp();
       req.unsetValues();
-      return resp.getStatus().getStatusType().getCode() == SUCCESS_CODE;
+      return resp.getStatus().getStatusType().getCode() == TSStatusType.SUCCESS_STATUS.getStatusCode();
     } catch (TException e) {
       throw new SQLException(e);
     }

@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
 
@@ -41,7 +42,6 @@ public class IoTDBStatement implements Statement {
   private static final String SHOW_TIMESERIES_COMMAND_LOWERCASE = "show timeseries";
   private static final String SHOW_STORAGE_GROUP_COMMAND_LOWERCASE = "show storage group";
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
-  private static final int SUCCESS_CODE = 200;
 
   ZoneId zoneId;
   private ResultSet resultSet = null;
@@ -286,7 +286,7 @@ public class IoTDBStatement implements Statement {
     TSExecuteBatchStatementReq execReq = new TSExecuteBatchStatementReq(sessionHandle,
         batchSQLList);
     TSExecuteBatchStatementResp execResp = client.executeBatchStatement(execReq);
-    if (execResp.getStatus().getStatusType().getCode() == SUCCESS_CODE) {
+    if (execResp.getStatus().getStatusType().getCode() == TSStatusType.SUCCESS_STATUS.getStatusCode()) {
       if (execResp.getResult() == null) {
         return new int[0];
       } else {

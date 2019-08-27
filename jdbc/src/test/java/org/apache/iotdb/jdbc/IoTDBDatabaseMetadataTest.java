@@ -31,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.junit.Assert;
 import org.junit.Before;
@@ -63,7 +64,7 @@ public class IoTDBDatabaseMetadataTest {
   @Mock
   private TSFetchMetadataResp fetchMetadataResp;
 
-  private TS_StatusType successStatus = new TS_StatusType(200, "");
+  private TS_StatusType successStatus = new TS_StatusType(TSStatusType.SUCCESS_STATUS.getStatusCode(), "");
   private TS_Status Status_SUCCESS = new TS_Status(successStatus);
 
   private DatabaseMetaData databaseMetaData;

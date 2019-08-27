@@ -27,6 +27,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.ZoneId;
 
+import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
 import org.junit.Before;
@@ -48,7 +49,7 @@ public class IoTDBPreparedStatementTest {
   private Iface client;
   @Mock
   private TS_SessionHandle sessHandle;
-  private TS_StatusType successStatus = new TS_StatusType(200, "");
+  private TS_StatusType successStatus = new TS_StatusType(TSStatusType.SUCCESS_STATUS.getStatusCode(), "");
   private TS_Status Status_SUCCESS = new TS_Status(successStatus);
 
   @Mock

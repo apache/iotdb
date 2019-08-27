@@ -30,6 +30,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
 import org.junit.After;
@@ -46,8 +47,8 @@ public class BatchTest {
   private TSIService.Iface client;
   @Mock
   private TS_SessionHandle sessHandle;
-  private TS_StatusType successStatus = new TS_StatusType(200, "");
-  private TS_StatusType errorStatus = new TS_StatusType(500, "");
+  private TS_StatusType successStatus = new TS_StatusType(TSStatusType.SUCCESS_STATUS.getStatusCode(), "");
+  private TS_StatusType errorStatus = new TS_StatusType(TSStatusType.INTERNAL_SERVER_ERROR.getStatusCode(), "");
   private TS_Status Status_SUCCESS = new TS_Status(successStatus);
   private TS_Status Status_ERROR = new TS_Status(errorStatus);
   private TSExecuteBatchStatementResp resp;

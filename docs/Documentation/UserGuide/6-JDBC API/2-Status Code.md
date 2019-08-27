@@ -40,7 +40,7 @@ try {
 
 ```
 
-With Status Code, instead of writing codes like `if (e.getErrorMessage().contains("exist"))`, we can simply use `e.getStatusType() == TSStatusType.TIME_SERIES_NOT_EXIST_ERROR`.
+With Status Code, instead of writing codes like `if (e.getErrorMessage().contains("exist"))`, we can simply use `e.getStatusType().getCode() == TSStatusType.TIME_SERIES_NOT_EXIST_ERROR.getStatusCode()`.
 
 Here is a list of Status Code and related message:
 

@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.service.rpc.thrift.TSDataValue;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
@@ -72,14 +73,14 @@ public class UtilsTest {
   @Test
   public void testVerifySuccess() {
     try {
-      TS_StatusType successStatus = new TS_StatusType(200, "");
+      TS_StatusType successStatus = new TS_StatusType(TSStatusType.SUCCESS_STATUS.getStatusCode(), "");
       RpcUtils.verifySuccess(new TS_Status(successStatus));
     } catch (Exception e) {
       fail();
     }
 
     try {
-      TS_StatusType errorStatus = new TS_StatusType(400, "");
+      TS_StatusType errorStatus = new TS_StatusType(TSStatusType.INTERNAL_SERVER_ERROR.getStatusCode(), "");
       RpcUtils.verifySuccess(new TS_Status(errorStatus));
     } catch (Exception e) {
       return;

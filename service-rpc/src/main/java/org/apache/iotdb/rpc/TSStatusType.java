@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service;
+package org.apache.iotdb.rpc;
 
 public enum TSStatusType {
   SUCCESS_STATUS(200, ""),
