@@ -523,7 +523,7 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("org.apache.iotdb.rpc.IoTDBRPCException: Internal server error: Unsupported data type in aggregation SUM : TEXT", e.getMessage());
+        Assert.assertEquals("Internal server error: Unsupported data type in aggregation SUM : TEXT", e.getMessage());
       }
       statement.close();
 
