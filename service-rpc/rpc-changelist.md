@@ -21,4 +21,14 @@
 
 ## 0.8.0 (version-0) -> version-1
 
-* 
+* Add Struct **TS_StatusType**, including code and message. Instead of using ~~TS_StatusCode~~, ~~errorCode~~ and ~~errorMessage~~, TS_Status use **TS_StatusType** to show specific success or error status, code and message.
+
+* Use struct **TSRPCResp** to replace all structs with only one field `1: required TS_Status status`, including: ~~TSCloseSessionResp~~ closeSession, ~~TSCancelOperationResp~~ cancelOperation, ~~TSCloseOperationResp~~ closeOperation, ~~TSSetTimeZoneResp~~ setTimeZone.
+
+* Add **TSBatchInsertionReq**, **TSCreateTimeseriesReq** and **TSSetStorageGroupReq**.
+
+* Add method `TSExecuteStatementResp insert(1:TSInsertionReq req)` and `TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req)` for batch inserting interface.
+
+* Add method `TSRPCResp setStorageGroup(1:TSSetStorageGroupReq req)` and `TSRPCResp createTimeseries(1:TSCreateTimeseriesReq req)` for creating matadata interface.
+
+* Change item in enum **TSProtocolVersion** from ~~TSFILE_SERVICE_PROTOCOL_V1~~ to IOTDB_SERVICE_PROTOCOL_V1.
