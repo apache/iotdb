@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
 
 /**
@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
  */
 public class FileSeriesReaderWithoutFilter extends FileSeriesReader {
 
-  public FileSeriesReaderWithoutFilter(ChunkLoader chunkLoader,
+  public FileSeriesReaderWithoutFilter(IChunkLoader chunkLoader,
       List<ChunkMetaData> chunkMetaDataList) {
     super(chunkLoader, chunkMetaDataList);
   }

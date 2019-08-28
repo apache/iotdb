@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import org.junit.Test;
 
@@ -30,9 +31,9 @@ public class FloatStatisticsTest {
   public void testUpdate() {
     Statistics<Float> floatStats = new FloatStatistics();
     floatStats.updateStats(1.34f);
-    assertEquals(false, floatStats.isEmpty());
+    assertFalse(floatStats.isEmpty());
     floatStats.updateStats(2.32f);
-    assertEquals(false, floatStats.isEmpty());
+    assertFalse(floatStats.isEmpty());
     assertEquals(2.32f, (double) floatStats.getMax(), maxError);
     assertEquals(1.34f, (double) floatStats.getMin(), maxError);
     assertEquals(2.32f + 1.34f, (double) floatStats.getSum(), maxError);
@@ -52,19 +53,19 @@ public class FloatStatisticsTest {
 
     Statistics<Float> floatStats3 = new FloatStatistics();
     floatStats3.mergeStatistics(floatStats1);
-    assertEquals(false, floatStats3.isEmpty());
-    assertEquals(100.13453f, (float) floatStats3.getMax(), maxError);
-    assertEquals(1.34f, (float) floatStats3.getMin(), maxError);
+    assertFalse(floatStats3.isEmpty());
+    assertEquals(100.13453f, floatStats3.getMax(), maxError);
+    assertEquals(1.34f, floatStats3.getMin(), maxError);
     assertEquals(100.13453f + 1.34f, (float) floatStats3.getSum(), maxError);
-    assertEquals(1.34f, (float) floatStats3.getFirst(), maxError);
-    assertEquals(100.13453f, (float) floatStats3.getLast(), maxError);
+    assertEquals(1.34f, floatStats3.getFirst(), maxError);
+    assertEquals(100.13453f, floatStats3.getLast(), maxError);
 
     floatStats3.mergeStatistics(floatStats2);
-    assertEquals(200.435d, (float) floatStats3.getMax(), maxError);
-    assertEquals(1.34d, (float) floatStats3.getMin(), maxError);
+    assertEquals(200.435d, floatStats3.getMax(), maxError);
+    assertEquals(1.34d, floatStats3.getMin(), maxError);
     assertEquals(100.13453f + 1.34f + 200.435d, (float) floatStats3.getSum(), maxError);
-    assertEquals(1.34f, (float) floatStats3.getFirst(), maxError);
-    assertEquals(200.435f, (float) floatStats3.getLast(), maxError);
+    assertEquals(1.34f, floatStats3.getFirst(), maxError);
+    assertEquals(200.435f, floatStats3.getLast(), maxError);
 
   }
 

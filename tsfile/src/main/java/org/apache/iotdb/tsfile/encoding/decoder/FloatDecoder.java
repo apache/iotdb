@@ -54,10 +54,10 @@ public class FloatDecoder extends Decoder {
     super(encodingType);
     if (encodingType == TSEncoding.RLE) {
       if (dataType == TSDataType.FLOAT) {
-        decoder = new IntRleDecoder(EndianType.LITTLE_ENDIAN);
+        decoder = new IntRleDecoder(EndianType.BIG_ENDIAN);
         logger.debug("tsfile-encoding FloatDecoder: init decoder using int-rle and float");
       } else if (dataType == TSDataType.DOUBLE) {
-        decoder = new LongRleDecoder(EndianType.LITTLE_ENDIAN);
+        decoder = new LongRleDecoder(EndianType.BIG_ENDIAN);
         logger.debug("tsfile-encoding FloatDecoder: init decoder using long-rle and double");
       } else {
         throw new TsFileDecodingException(

@@ -31,16 +31,16 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  */
 public class FloatStatistics extends Statistics<Float> {
 
-  private float max;
   private float min;
+  private float max;
   private float first;
   private double sum;
   private float last;
 
   @Override
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    max = BytesUtils.bytesToFloat(maxBytes);
     min = BytesUtils.bytesToFloat(minBytes);
+    max = BytesUtils.bytesToFloat(maxBytes);
   }
 
   @Override
@@ -65,8 +65,8 @@ public class FloatStatistics extends Statistics<Float> {
     }
   }
 
-  private void updateStats(float minValue, float maxValue, float firstValue,
-      double sumValue, float last) {
+  private void updateStats(float minValue, float maxValue, float firstValue, float last,
+      double sumValue) {
     if (minValue < min) {
       min = minValue;
     }
@@ -78,13 +78,13 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  public Float getMax() {
-    return max;
+  public Float getMin() {
+    return min;
   }
 
   @Override
-  public Float getMin() {
-    return min;
+  public Float getMax() {
+    return max;
   }
 
   @Override
@@ -93,13 +93,13 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  public double getSum() {
-    return sum;
+  public Float getLast() {
+    return last;
   }
 
   @Override
-  public Float getLast() {
-    return last;
+  public double getSum() {
+    return sum;
   }
 
   @Override
@@ -107,28 +107,21 @@ public class FloatStatistics extends Statistics<Float> {
     FloatStatistics floatStats = (FloatStatistics) stats;
     if (isEmpty) {
       initializeStats(floatStats.getMin(), floatStats.getMax(), floatStats.getFirst(),
-          floatStats.getSum(),
-          floatStats.getLast());
+          floatStats.getLast(), floatStats.getSum());
       isEmpty = false;
     } else {
       updateStats(floatStats.getMin(), floatStats.getMax(), floatStats.getFirst(),
-          floatStats.getSum(),
-          floatStats.getLast());
+          floatStats.getLast(), floatStats.getSum());
     }
 
   }
 
-  public void initializeStats(float min, float max, float first, double sum, float last) {
+  private void initializeStats(float min, float max, float first, float last, double sum) {
     this.min = min;
     this.max = max;
     this.first = first;
-    this.sum = sum;
     this.last = last;
-  }
-
-  @Override
-  public byte[] getMaxBytes() {
-    return BytesUtils.floatToBytes(max);
+    this.sum = sum;
   }
 
   @Override
@@ -137,13 +130,13 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  public byte[] getFirstBytes() {
-    return BytesUtils.floatToBytes(first);
+  public byte[] getMaxBytes() {
+    return BytesUtils.floatToBytes(max);
   }
 
   @Override
-  public byte[] getSumBytes() {
-    return BytesUtils.doubleToBytes(sum);
+  public byte[] getFirstBytes() {
+    return BytesUtils.floatToBytes(first);
   }
 
   @Override
@@ -152,8 +145,8 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  public ByteBuffer getMaxBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(max);
+  public byte[] getSumBytes() {
+    return BytesUtils.doubleToBytes(sum);
   }
 
   @Override
@@ -162,18 +155,23 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
+  public ByteBuffer getMaxBytebuffer() {
+    return ReadWriteIOUtils.getByteBuffer(max);
+  }
+
+  @Override
   public ByteBuffer getFirstBytebuffer() {
     return ReadWriteIOUtils.getByteBuffer(first);
   }
 
   @Override
-  public ByteBuffer getSumBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(sum);
+  public ByteBuffer getLastBytebuffer() {
+    return ReadWriteIOUtils.getByteBuffer(last);
   }
 
   @Override
-  public ByteBuffer getLastBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(last);
+  public ByteBuffer getSumBytebuffer() {
+    return ReadWriteIOUtils.getByteBuffer(sum);
   }
 
   @Override
@@ -183,8 +181,8 @@ public class FloatStatistics extends Statistics<Float> {
 
   @Override
   public String toString() {
-    return "[max:" + max + ",min:" + min + ",first:"
-        + first + ",sum:" + sum + ",last:" + last + "]";
+    return "[min:" + min + ",max:" + max + ",first:" + first + ",last:" + last + ",sum:" + sum
+        + "]";
   }
 
   @Override

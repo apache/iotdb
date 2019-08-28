@@ -31,8 +31,6 @@ import org.slf4j.LoggerFactory;
  * integer, long, float, boolean, double and string. <br> It also provide other usable function as
  * follow:<br> reading function which receives InputStream. <br> concat function to join a list of
  * byte array to one.<br> get and set one bit in a byte array.
- *
- * @author kangrong
  */
 public class BytesUtils {
 
@@ -364,6 +362,18 @@ public class BytesUtils {
       b[0] = 0;
     }
     return b;
+  }
+
+  public static byte boolToByte(boolean x) {
+    if (x) {
+      return 1;
+    } else {
+      return 0;
+    }
+  }
+
+  public static boolean byteToBool(byte b) {
+    return b == 1;
   }
 
   /**

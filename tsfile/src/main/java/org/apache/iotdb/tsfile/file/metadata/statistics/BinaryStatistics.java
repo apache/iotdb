@@ -33,16 +33,16 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  */
 public class BinaryStatistics extends Statistics<Binary> {
 
-  private Binary max = new Binary("");
   private Binary min = new Binary("");
+  private Binary max = new Binary("");
   private Binary first = new Binary("");
-  private double sum;// FIXME sum is meaningless
   private Binary last = new Binary("");
+  private double sum;// FIXME sum is meaningless
 
   @Override
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    max = new Binary(maxBytes);
     min = new Binary(minBytes);
+    max = new Binary(maxBytes);
   }
 
   @Override
@@ -61,13 +61,13 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public double getSum() {
-    return sum;
+  public Binary getLast() {
+    return last;
   }
 
   @Override
-  public Binary getLast() {
-    return last;
+  public double getSum() {
+    return sum;
   }
 
   /**
@@ -76,15 +76,15 @@ public class BinaryStatistics extends Statistics<Binary> {
    * @param min minimum value
    * @param max maximum value
    * @param first the first value
-   * @param sum sum
    * @param last the last value
+   * @param sum sum
    */
-  public void initializeStats(Binary min, Binary max, Binary first, double sum, Binary last) {
+  private void initializeStats(Binary min, Binary max, Binary first, Binary last, double sum) {
     this.min = min;
     this.max = max;
     this.first = first;
-    this.sum = sum;
     this.last = last;
+    this.sum = sum;
   }
 
   @Override
@@ -92,23 +92,21 @@ public class BinaryStatistics extends Statistics<Binary> {
     BinaryStatistics stringStats = (BinaryStatistics) stats;
     if (isEmpty) {
       initializeStats(stringStats.getMin(), stringStats.getMax(), stringStats.getFirst(),
-          stringStats.getSum(),
-          stringStats.getLast());
+          stringStats.getLast(), stringStats.getSum());
       isEmpty = false;
     } else {
       updateStats(stringStats.getMin(), stringStats.getMax(), stringStats.getFirst(),
-          stringStats.getSum(),
-          stringStats.getLast());
+          stringStats.getLast(), stringStats.getSum());
     }
   }
 
   @Override
   public void updateStats(Binary value) {
     if (isEmpty) {
-      initializeStats(value, value, value, 0, value);
+      initializeStats(value, value, value, value, 0);
       isEmpty = false;
     } else {
-      updateStats(value, value, value, 0, value);
+      updateStats(value, value, value, value, 0);
       isEmpty = false;
     }
   }
@@ -117,17 +115,17 @@ public class BinaryStatistics extends Statistics<Binary> {
   public void updateStats(Binary[] values) {
     for (Binary value : values) {
       if (isEmpty) {
-        initializeStats(value, value, value, 0, value);
+        initializeStats(value, value, value, value, 0);
         isEmpty = false;
       } else {
-        updateStats(value, value, value, 0, value);
+        updateStats(value, value, value, value, 0);
         isEmpty = false;
       }
     }
   }
 
-  private void updateStats(Binary minValue, Binary maxValue, Binary firstValue, double sum,
-      Binary lastValue) {
+  private void updateStats(Binary minValue, Binary maxValue, Binary firstValue, Binary lastValue,
+      double sum) {
     if (minValue.compareTo(min) < 0) {
       min = minValue;
     }
@@ -138,13 +136,13 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public byte[] getMaxBytes() {
-    return max.getValues();
+  public byte[] getMinBytes() {
+    return min.getValues();
   }
 
   @Override
-  public byte[] getMinBytes() {
-    return min.getValues();
+  public byte[] getMaxBytes() {
+    return max.getValues();
   }
 
   @Override
@@ -153,18 +151,13 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public byte[] getSumBytes() {
-    return BytesUtils.doubleToBytes(sum);
-  }
-
-  @Override
   public byte[] getLastBytes() {
     return last.getValues();
   }
 
   @Override
-  public ByteBuffer getMaxBytebuffer() {
-    return ByteBuffer.wrap(max.getValues());
+  public byte[] getSumBytes() {
+    return BytesUtils.doubleToBytes(sum);
   }
 
   @Override
@@ -173,18 +166,23 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
+  public ByteBuffer getMaxBytebuffer() {
+    return ByteBuffer.wrap(max.getValues());
+  }
+
+  @Override
   public ByteBuffer getFirstBytebuffer() {
     return ByteBuffer.wrap(first.getValues());
   }
 
   @Override
-  public ByteBuffer getSumBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(sum);
+  public ByteBuffer getLastBytebuffer() {
+    return ByteBuffer.wrap(last.getValues());
   }
 
   @Override
-  public ByteBuffer getLastBytebuffer() {
-    return ByteBuffer.wrap(last.getValues());
+  public ByteBuffer getSumBytebuffer() {
+    return ReadWriteIOUtils.getByteBuffer(sum);
   }
 
   @Override
@@ -194,7 +192,7 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public String toString() {
-    return "[max:" + max + ",min:" + min + ",first:" + first + ",sum:" + sum + ",last:" + last
+    return "[min:" + min + ",max:" + max + ",first:" + first + ",last:" + last + ",sum:" + sum
         + "]";
   }
 

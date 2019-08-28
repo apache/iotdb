@@ -25,6 +25,8 @@ import java.sql.RowIdLifetime;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Set;
+import org.apache.iotdb.rpc.IoTDBRPCException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
@@ -82,7 +84,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         req.setColumnPath(schemaPattern);
         try {
           TSFetchMetadataResp resp = client.fetchMetadata(req);
-          Utils.verifySuccess(resp.getStatus());
+          try {
+            RpcUtils.verifySuccess(resp.getStatus());
+          } catch (IoTDBRPCException e) {
+            throw new IoTDBSQLException(e.getMessage());
+          }
           return new IoTDBMetadataResultSet(resp.getColumnsList(), null, null);
         } catch (TException e) {
           throw new TException("Conncetion error when fetching column metadata", e);
@@ -92,7 +98,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         req.setColumnPath(schemaPattern);
         try {
           TSFetchMetadataResp resp = client.fetchMetadata(req);
-          Utils.verifySuccess(resp.getStatus());
+          try {
+            RpcUtils.verifySuccess(resp.getStatus());
+          } catch (IoTDBRPCException e) {
+            throw new IoTDBSQLException(e.getMessage());
+          }
           return new IoTDBMetadataResultSet(resp.getColumnsList(), null, null);
         } catch (TException e) {
           throw new TException("Conncetion error when fetching delta object metadata", e);
@@ -101,7 +111,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         req = new TSFetchMetadataReq(Constant.GLOBAL_SHOW_STORAGE_GROUP_REQ);
         try {
           TSFetchMetadataResp resp = client.fetchMetadata(req);
-          Utils.verifySuccess(resp.getStatus());
+          try {
+            RpcUtils.verifySuccess(resp.getStatus());
+          } catch (IoTDBRPCException e) {
+            throw new IoTDBSQLException(e.getMessage());
+          }
           Set<String> showStorageGroup = resp.getShowStorageGroups();
           return new IoTDBMetadataResultSet(null, showStorageGroup, null);
         } catch (TException e) {
@@ -112,7 +126,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         req.setColumnPath(schemaPattern);
         try {
           TSFetchMetadataResp resp = client.fetchMetadata(req);
-          Utils.verifySuccess(resp.getStatus());
+          try {
+            RpcUtils.verifySuccess(resp.getStatus());
+          } catch (IoTDBRPCException e) {
+            throw new IoTDBSQLException(e.getMessage());
+          }
           List<List<String>> showTimeseriesList = resp.getShowTimeseriesList();
           return new IoTDBMetadataResultSet(null, null, showTimeseriesList);
         } catch (TException e) {
@@ -1247,7 +1265,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     TSFetchMetadataReq req = new TSFetchMetadataReq("METADATA_IN_JSON");
     TSFetchMetadataResp resp;
     resp = client.fetchMetadata(req);
-    Utils.verifySuccess(resp.getStatus());
+    try {
+      RpcUtils.verifySuccess(resp.getStatus());
+    } catch (IoTDBRPCException e) {
+      throw new IoTDBSQLException(e.getMessage());
+    }
     return resp.getMetadataInJson();
   }
 }

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -32,47 +33,53 @@ import java.nio.ByteBuffer;
 public class DefaultTsFileOutput implements TsFileOutput {
 
   private FileOutputStream outputStream;
+  private BufferedOutputStream bufferedStream;
 
-  public DefaultTsFileOutput(File file) throws FileNotFoundException {
+  DefaultTsFileOutput(File file) throws FileNotFoundException {
     this.outputStream = new FileOutputStream(file);
+    this.bufferedStream = new BufferedOutputStream(outputStream);
   }
 
-  public DefaultTsFileOutput(File file, boolean append) throws FileNotFoundException {
+  DefaultTsFileOutput(File file, boolean append) throws FileNotFoundException {
     this.outputStream = new FileOutputStream(file, append);
+    this.bufferedStream = new BufferedOutputStream(outputStream);
   }
 
   public DefaultTsFileOutput(FileOutputStream outputStream) {
     this.outputStream = outputStream;
+    this.bufferedStream = new BufferedOutputStream(outputStream);
   }
 
   @Override
   public void write(byte[] b) throws IOException {
-    outputStream.write(b);
+    bufferedStream.write(b);
   }
 
   @Override
   public void write(ByteBuffer b) throws IOException {
-    throw new UnsupportedOperationException();
+    bufferedStream.write(b.array());
   }
 
   @Override
   public long getPosition() throws IOException {
+    bufferedStream.flush();
     return outputStream.getChannel().position();
   }
 
   @Override
   public void close() throws IOException {
+    bufferedStream.close();
     outputStream.close();
   }
 
   @Override
-  public OutputStream wrapAsStream() throws IOException {
-    return outputStream;
+  public OutputStream wrapAsStream() {
+    return bufferedStream;
   }
 
   @Override
   public void flush() throws IOException {
-    this.outputStream.flush();
+    this.bufferedStream.flush();
   }
 
   @Override
