@@ -134,48 +134,12 @@ IoTDB> SELECT d0.s0 FROM root.vehicle
 +-----------------------------+------------------+
 Total line number = 1
 
-IoTDB> quit/exit
+IoTDB> quit
+or
+IoTDB> exit
 ```
 
 For more on what commands are supported by IoTDB SQL, see [Chapter 5: IoTDB SQL Documentation](https://iotdb.apache.org/#/Documents/0.8.0/chap5/sec1).
-
-### Usage of import-csv.sh
-
-### Create metadata
-```
-SET STORAGE GROUP TO root.fit.d1;
-SET STORAGE GROUP TO root.fit.d2;
-SET STORAGE GROUP TO root.fit.p;
-CREATE TIMESERIES root.fit.d1.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.d1.s2 WITH DATATYPE=TEXT,ENCODING=PLAIN;
-CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-```
-
-### Run import shell
-```
-# Unix/OS X
-> tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
-
-# Windows
-> tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
-```
-
-### Error data file
-
-`csvInsertError.error`
-
-# Usage of export-csv.sh
-
-### Run export shell
-```
-# Unix/OS X
-> tools/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
-
-# Windows
-> tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
-```
 
 ## Only build server
 
