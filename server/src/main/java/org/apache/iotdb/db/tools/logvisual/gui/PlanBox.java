@@ -43,27 +43,36 @@ import org.apache.iotdb.db.tools.logvisual.TimeSeriesStatistics;
 import org.apache.iotdb.db.tools.logvisual.VisualizationPlan;
 import org.apache.iotdb.db.tools.logvisual.conf.PropertyKeys;
 import org.apache.iotdb.db.tools.logvisual.exceptions.AnalyzeException;
-import org.apache.iotdb.db.tools.logvisual.gui.LogVisualizeGui.PropertyChangeCallback;
+import org.apache.iotdb.db.tools.logvisual.gui.LogVisualizationGui.PropertyChangeCallback;
 import org.jfree.chart.JFreeChart;
 
-public class PlanBox extends Box{
+/**
+ * PlanBox provides interfaces to save, load, create, delete and execute visualization plans.
+ */
+@SuppressWarnings("unused") // ignore the event parameter
+class PlanBox extends Box{
   private JLabel panelName;
   private JButton loadPlanButton;
   private JButton executePlanButton;
   private JButton savePlanButton;
   private JButton createPlanButton;
   private JButton deletePlanButton;
+
+  // display of plans
   private JScrollPane scrollPane;
   private DefaultListModel<VisualizationPlan> planListModel;
   private JList planList;
   private PlanDetailPanel planDetailPanel;
 
+  // plan execution backend
   private LogVisualizer visualizer;
 
+  // call this to create tabs to display the results when a plan is executed
   private ExecutePlanCallback executePlanCallback;
+  // call this to remember the choice when the user has loaded new plans
   private PropertyChangeCallback propertyChangeCallback;
 
-  public PlanBox(LogVisualizer visualizer, ExecutePlanCallback executePlanCallback, String defaultPlanPath,
+  PlanBox(LogVisualizer visualizer, ExecutePlanCallback executePlanCallback, String defaultPlanPath,
       PropertyChangeCallback propertyChangeCallback) {
     super(BoxLayout.X_AXIS);
 
@@ -104,7 +113,6 @@ public class PlanBox extends Box{
     vBox.add(executePlanButton);
     vBox.add(Box.createGlue());
     add(vBox);
-    setAlignmentY(0.5f);
 
     planDetailPanel = new PlanDetailPanel();
     planDetailPanel.setPreferredSize(new Dimension(400, 300));
@@ -118,14 +126,17 @@ public class PlanBox extends Box{
     deletePlanButton.addActionListener(this::onDeletePlan);
 
     if (defaultPlanPath != null) {
+      // load default plans if given
       String[] defaultPaths = defaultPlanPath.split(";");
       File[] defaultPlanFiles = new File[defaultPaths.length];
       for (int i = 0; i < defaultPaths.length; i++) {
         defaultPlanFiles[i] = new File(defaultPaths[i]);
       }
       try {
+        // read the plans from the disk
         visualizer.loadPlans(defaultPlanFiles);
         Collection<VisualizationPlan> planList = visualizer.listPlans();
+        // show plans in the gui
         updatePlan(planList);
       } catch (IOException e1) {
         JOptionPane.showMessageDialog(this, "Cannot load plan: " + e1);
@@ -137,14 +148,18 @@ public class PlanBox extends Box{
     JFileChooser fileChooser = new JFileChooser();
     fileChooser.setMultiSelectionEnabled(true);
     fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+    // let the user choose plan files or directories that contain visualization plans
     int status = fileChooser.showOpenDialog(this);
     if (status == JFileChooser.APPROVE_OPTION) {
       File[] chosenFiles = fileChooser.getSelectedFiles();
       try {
+        // read plans from disk
         visualizer.loadPlans(chosenFiles);
         Collection<VisualizationPlan> planList = visualizer.listPlans();
+        // display the plans in the panel
         updatePlan(planList);
 
+        // save the paths so that the tool can load the plans automatically next time
         if (chosenFiles.length > 0) {
           StringBuilder builder = new StringBuilder(chosenFiles[0].getPath());
           for (int i = 1; i < chosenFiles.length; i++) {
@@ -153,7 +168,7 @@ public class PlanBox extends Box{
           propertyChangeCallback.call(PropertyKeys.DEFAULT_PLAN_PATH.getKey(), builder.toString());
         }
       } catch (IOException e1) {
-        JOptionPane.showMessageDialog(this, "Cannot load plan: " + e1);
+        JOptionPane.showMessageDialog(this, "Cannot load plan: " + e1.getMessage());
       }
     }
   }
@@ -175,7 +190,9 @@ public class PlanBox extends Box{
     } catch (AnalyzeException e1) {
       JOptionPane.showMessageDialog(this, "Cannot execute plan: " + e1.getMessage());
     }
+    // timeseries plots of each measurement in the visualization plan
     Map<String, JFreeChart> charts = visualizer.getCharts();
+    // statistics (count, mean, max, min) of each measurement
     Map<String, List<TimeSeriesStatistics>> statisticMap = visualizer.getStatisticsMap();
     executePlanCallback.call(plan.getName(), charts, statisticMap);
   }
@@ -185,24 +202,30 @@ public class PlanBox extends Box{
     if (plan == null) {
       return;
     }
+    // update the display of the panel according to the new plan
     planDetailPanel.setPlan(plan);
   }
 
   private void onPlanSave(ActionEvent e) {
+    // update the content of the plan according to the text fields
     planDetailPanel.updatePlan();
   }
 
   private void onCreatePlan(ActionEvent e) {
     JFileChooser fileChooser = new JFileChooser();
+    // let the user to choose a place for the new plan
     int status = fileChooser.showOpenDialog(this);
     if (status == JFileChooser.APPROVE_OPTION) {
       File chosenFile = fileChooser.getSelectedFile();
       VisualizationPlan plan = new VisualizationPlan();
       plan.setPlanFilePath(chosenFile.getPath());
+      // the name of the file will also be the name of the plan
       plan.setName(chosenFile.getName());
+      // a default plan matches every thing
       plan.setContentPattern(Pattern.compile(".*"));
 
       planListModel.addElement(plan);
+      // the new plan will be focused on
       planList.setSelectedIndex(planListModel.getSize() - 1);
       planDetailPanel.setPlan(plan);
     }
@@ -220,11 +243,13 @@ public class PlanBox extends Box{
       File file = new File(plan.getPlanFilePath());
       file.delete();
       planListModel.removeElement(plan);
+      // update the display since the deleted one is always the one being displayed
       planDetailPanel.setPlan(null);
     }
   }
 
   public interface ExecutePlanCallback {
+    // call this to create new tabs to show the results after the plan is executed
     void call(String planName, Map<String, JFreeChart> charts, Map<String,
         List<TimeSeriesStatistics>> statisticMap);
   }

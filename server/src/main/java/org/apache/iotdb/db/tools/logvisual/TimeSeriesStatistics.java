@@ -23,6 +23,9 @@ import java.util.Date;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesDataItem;
 
+/**
+ * TimeSeriesStatistics store the the count, mean, max, min of both time and measurements.
+ */
 public class TimeSeriesStatistics {
 
   public static final String[] HEADER = new String[] {
@@ -67,30 +70,6 @@ public class TimeSeriesStatistics {
 
   public int getSize() {
     return size;
-  }
-
-  public double getMeanInterval() {
-    return meanInterval;
-  }
-
-  public long getMaxInterval() {
-    return maxInterval;
-  }
-
-  public long getMinInterval() {
-    return minInterval;
-  }
-
-  public double getMeanVal() {
-    return meanVal;
-  }
-
-  public double getMaxVal() {
-    return maxVal;
-  }
-
-  public double getMinVal() {
-    return minVal;
   }
 
   public Object[] toArray() {

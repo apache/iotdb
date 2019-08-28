@@ -25,9 +25,9 @@ public class VisualUtils {
     throw new UnsupportedOperationException("Initializing a util class");
   }
 
-  public static int[] parseIntArray(String intarrayStr) {
-    if (intarrayStr != null) {
-      String[] intStrs = intarrayStr.split(",");
+  public static int[] parseIntArray(String intArrayStr) {
+    if (intArrayStr != null) {
+      String[] intStrs = intArrayStr.split(",");
       int[] ints = new int[intStrs.length];
       for (int i = 0; i < ints.length; i++) {
         ints[i] = Integer.parseInt(intStrs[i]);

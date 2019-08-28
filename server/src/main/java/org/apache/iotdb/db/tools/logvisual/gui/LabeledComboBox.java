@@ -28,12 +28,15 @@ import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 
-public class LabeledComboBox<K, V> extends Box {
+/**
+ * LabeledComboBox is JComboBox with a label, using a map as the data source of the ComboBox.
+ */
+class LabeledComboBox<K, V> extends Box {
 
   private ComboBoxModel comboBoxModel;
   private JComboBox comboBox;
 
-  public LabeledComboBox(Map<K, V> itemMap, ComboSelectedCallback callback, String labelText) {
+  LabeledComboBox(Map<K, V> itemMap, ComboSelectedCallback callback, String labelText) {
     super(BoxLayout.Y_AXIS);
 
     JLabel label = new JLabel(labelText);
@@ -54,6 +57,7 @@ public class LabeledComboBox<K, V> extends Box {
   }
 
   public interface ComboSelectedCallback {
+    // this methods accepts the value instead of the key in the itemMap
     void call(Object value);
   }
 }

@@ -23,24 +23,44 @@ import java.io.File;
 import java.util.Properties;
 import javax.swing.JPanel;
 import org.apache.iotdb.db.tools.logvisual.LogVisualizer;
-import org.apache.iotdb.db.tools.logvisual.VisualizationPlan;
 import org.apache.iotdb.db.tools.logvisual.conf.PropertyKeys;
-import org.apache.iotdb.db.tools.logvisual.gui.LogVisualizeGui.PropertyChangeCallback;
+import org.apache.iotdb.db.tools.logvisual.gui.LogVisualizationGui.PropertyChangeCallback;
 import org.apache.iotdb.db.tools.logvisual.gui.PlanBox.ExecutePlanCallback;
 
-public class MainPanel extends JPanel {
+/**
+ * MainPanel provides components that enable the user to choose log file to be visualized,
+ * manipulate or execute visualization plans.
+ */
+class MainPanel extends JPanel {
 
+  /**
+   * to select a log file that will be visualized.
+   */
   private FileSelectionBox logFileSelectionBox;
+  /**
+   * to select a file that describe how to parse the logs.
+   */
   private FileSelectionBox parserPropertyBox;
+  /**
+   * to generate a log parser and prepare to load the logs.
+   */
   private LoadLogBox loadLogBox;
+  /**
+   * to provide means of manipulating the visualizations plans and execute them.
+   */
   private PlanBox planBox;
 
-
+  /**
+   * A backend that actually performs the visualization.
+   */
   private LogVisualizer visualizer;
 
+  /**
+   * When a user choose a new file, call this to remember the choice.
+   */
   private PropertyChangeCallback propertyChangeCallback;
 
-  public MainPanel(LogVisualizer logVisualizer, ExecutePlanCallback executePlanCallback,
+  MainPanel(LogVisualizer logVisualizer, ExecutePlanCallback executePlanCallback,
       Properties properties, PropertyChangeCallback propertyChangeCallback) {
     this.visualizer = logVisualizer;
     this.propertyChangeCallback = propertyChangeCallback;

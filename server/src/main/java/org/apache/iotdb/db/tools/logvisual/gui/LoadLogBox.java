@@ -29,33 +29,34 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import org.apache.iotdb.db.tools.logvisual.LogVisualizer;
 
-public class LoadLogBox extends Box{
+/**
+ * LoadLogBox contains a JButton to load a log parser into memory to prepare for visualization
+ * and a JLabel to show whether the loading of the log parser is successful.
+ */
+class LoadLogBox extends Box{
 
   private JLabel status;
   private JButton loadLogButton;
-
   private LogVisualizer visualizer;
 
-  public LoadLogBox(LogVisualizer visualizer) {
+  LoadLogBox(LogVisualizer visualizer) {
     super(BoxLayout.Y_AXIS);
     this.visualizer = visualizer;
 
     status = new JLabel("No logs are loaded");
     loadLogButton = new JButton("Load logs");
-    loadLogButton.addActionListener(new AbstractAction() {
-      @Override
-      public void actionPerformed(ActionEvent e) {
-        try {
-          visualizer.loadLogParser();
-          status.setText("Logs are successfully loaded");
-        } catch (IOException e1) {
-          JOptionPane.showMessageDialog(LoadLogBox.this, "Cannot load logs: " + e1);
-        }
-      }
-    });
+    loadLogButton.addActionListener(this::onLoadLog);
 
     add(status);
     add(loadLogButton);
   }
 
+  private void onLoadLog(ActionEvent e) {
+    try {
+      visualizer.loadLogParser();
+      status.setText("Logs are successfully loaded");
+    } catch (IOException e1) {
+      JOptionPane.showMessageDialog(LoadLogBox.this, "Cannot load logs: " + e1);
+    }
+  }
 }

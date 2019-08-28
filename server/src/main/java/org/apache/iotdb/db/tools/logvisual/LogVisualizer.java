@@ -14,7 +14,6 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import org.apache.iotdb.db.tools.logvisual.exceptions.AnalyzeException;
 import org.apache.iotdb.db.tools.logvisual.exceptions.NoLogFileLoadedException;
-import org.apache.iotdb.db.tools.logvisual.exceptions.NoSuchPlanException;
 import org.apache.iotdb.db.tools.logvisual.exceptions.UnmatchedContentException;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
@@ -26,24 +25,65 @@ import org.jfree.data.time.TimeSeriesCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
+/**
+ * LogVisualizer is the backend of this tool, which parses, groups and plots the logs according
+ * to a given visualization plan.
+ * The general procedure of one visualization would be:
+ *  1. call setLogFile() and setPropertyFile() to set those files;
+ *  2. call loadLogParser() to create a logParser;
+ *  3. call executePlan() to execute a visualization plan.
+ *  4. call getCharts() and getStatisticMap() to get the results.
+ */
 public class LogVisualizer {
 
   private static final Logger logger = LoggerFactory.getLogger(LogVisualizer.class);
 
   private LogParser logParser;
+  /**
+   * logCache stores the logs that satisfies the filter of the plan being executed.
+   */
   private List<LogEntry> logCache = new ArrayList<>();
-
-  private Map<String, VisualizationPlan> plans = new HashMap<>();
+  /**
+   * logGroups stores the logs by their their tags (specified by the plan).
+   */
   private Map<List<String>, List<LogEntry>> logGroups = new HashMap<>();
 
+  /**
+   * the plans currently loaded into memory.
+   */
+  private Map<String, VisualizationPlan> plans = new HashMap<>();
+
+  /**
+   * the timeseries plots generated for each group of logs.
+   */
   private Map<String, JFreeChart> charts;
+  /**
+   * the statistics (count, mean, min, max) of each group of logs.
+   */
   private Map<String, List<TimeSeriesStatistics>> statisticsMap;
 
+  /**
+   * the file that defines how to parse the logs in the log file.
+   */
   private File parserPropertyFile;
+  /**
+   * the file that contains the logs to be visualized.
+   */
   private File logFile;
 
-  private void clearLogs() {
-    logCache.clear();
+  public static void main(String[] args) throws IOException {
+    LogVisualizer visualizer = new LogVisualizer();
+    visualizer.setParserPropertyFile(new File("E:\\codestore\\incubator-iotdb\\server\\src\\assembly"
+        + "\\resources"
+        + "\\tools\\logAnalyze\\default.log.pattern"));
+    visualizer.setLogFile( new File("C:\\Users\\admin\\Desktop\\logs\\log-all-2019-08-21.0.log"));
+    visualizer.loadLogParser();
+    visualizer.loadPlan("E:\\codestore\\incubator-iotdb\\server\\src\\assembly\\resources\\tools\\logAnalyze\\plans\\flushTimeConsumption.plan");
+  }
+
+  private void clearLogGroups() {
+    // log cache is cleared after logGroups are generated, so we do not clear it here
     logGroups.clear();
   }
 
@@ -54,6 +94,8 @@ public class LogVisualizer {
     if (logFile == null) {
       throw new IOException("Log file unset!");
     }
+    // close the previous
+    close();
     String propertyFilePath = parserPropertyFile.getPath();
     String logFilePath = logFile.getPath();
     Properties properties = new Properties();
@@ -65,8 +107,10 @@ public class LogVisualizer {
   }
 
   public void close() throws IOException {
-    logParser.close();
-    logParser = null;
+    if (logParser != null) {
+      logParser.close();
+      logParser = null;
+    }
   }
 
   public void loadPlans(File[] planFiles) throws IOException {
@@ -75,7 +119,7 @@ public class LogVisualizer {
     }
   }
 
-  public void loadPlan(File file) throws IOException {
+  private void loadPlan(File file) throws IOException {
     if (!file.exists()) {
       return;
     }
@@ -95,19 +139,12 @@ public class LogVisualizer {
     return plans.values();
   }
 
-  public void executePlan(String planName) throws AnalyzeException {
-    VisualizationPlan plan = plans.get(planName);
-    if (plan == null) {
-      throw new NoSuchPlanException(planName);
-    }
-    executePlan(plan);
-  }
-
   public void executePlan(VisualizationPlan plan) throws AnalyzeException {
     if (logParser == null) {
       throw new NoLogFileLoadedException();
     }
     try {
+      // read the logs fom the beginning
       logParser.reset();
     } catch (IOException e) {
       throw new AnalyzeException(e);
@@ -117,11 +154,16 @@ public class LogVisualizer {
     Map<String,TimeSeriesCollection> taggedTimeSeries = createTimeSeries(plan);
     charts = drawCharts(taggedTimeSeries, plan);
     statisticsMap = genStatisticMap(taggedTimeSeries);
+    clearLogGroups();
   }
 
+  /**
+   * Read all logs from the logParser and filter unwanted or malformed ones.
+   * @param plan
+   * @throws AnalyzeException
+   */
   private void collectLogs(VisualizationPlan plan) throws AnalyzeException {
     LogFilter logFilter = plan.getLogFilter();
-    clearLogs();
     try {
       LogEntry logEntry;
       readLogs:
@@ -133,6 +175,7 @@ public class LogVisualizer {
         }
 
         switch (logFilter.filter(logEntry)) {
+          // all logs must be time-ordered, so on meeting a log that is too new we can end the loop
           case BEYOND_END_TIME:
             break readLogs;
           case REJECT:
@@ -144,13 +187,14 @@ public class LogVisualizer {
     } catch (IOException e) {
       throw new AnalyzeException(e);
     }
-    logger.info("Collected {} logs", logCache.size());
+    logger.info("Collected {} logs from {}", logCache.size(), logFile.getPath());
   }
 
   private void groupLogs() {
     for (LogEntry logEntry : logCache) {
       logGroups.computeIfAbsent(logEntry.getTags(), tag -> new ArrayList<>()).add(logEntry);
     }
+    logCache.clear();
     logger.info("Found {} different tags", logGroups.size());
   }
 
@@ -159,6 +203,7 @@ public class LogVisualizer {
     for (Entry<List<String>, List<LogEntry>> entry : logGroups.entrySet()) {
       List<String> tags = entry.getKey();
       List<LogEntry> logs = entry.getValue();
+      // create a tag string for the log group as the key of the timeseries
       String concatenatedTag;
       if (tags.isEmpty()) {
         concatenatedTag = plan.getName();
@@ -170,27 +215,32 @@ public class LogVisualizer {
         builder.append(" ");
         concatenatedTag = builder.toString();
       }
-      TimeSeriesCollection tagTimeseries = new TimeSeriesCollection();
+
+      TimeSeriesCollection timeseriesGroup = new TimeSeriesCollection();
       if (plan.getMeasurementPositions() != null) {
+        // the measurements are given, create a timeseries for each measurement
         String[] legends = plan.getLegends();
         for (String legend : legends) {
+          // name each timeseries with the legend of each measurement
           TimeSeries timeSeries = new TimeSeries(concatenatedTag + legend);
-          tagTimeseries.addSeries(timeSeries);
+          timeseriesGroup.addSeries(timeSeries);
         }
+        // use the values in each log to build the timeseries
         for (LogEntry logEntry : logs) {
           List<Double> values = logEntry.getMeasurements();
           for (int i = 0; i < values.size(); i++) {
-            tagTimeseries.getSeries(i).addOrUpdate(new Millisecond(logEntry.getDate()), values.get(i));
+            timeseriesGroup.getSeries(i).addOrUpdate(new Millisecond(logEntry.getDate()), values.get(i));
           }
         }
       } else {
-        TimeSeries happenedInstance = new TimeSeries("HappenedInstance");
+        // the measurement are not given, just record the time when each log happened
+        TimeSeries happenedInstance = new TimeSeries(concatenatedTag + "HappenedInstance");
         for (LogEntry logEntry : logs) {
           happenedInstance.addOrUpdate(new Millisecond(logEntry.getDate()), 1.0);
         }
-        tagTimeseries.addSeries(happenedInstance);
+        timeseriesGroup.addSeries(happenedInstance);
       }
-      ret.put(concatenatedTag, tagTimeseries);
+      ret.put(concatenatedTag, timeseriesGroup);
     }
     return ret;
   }
@@ -201,30 +251,21 @@ public class LogVisualizer {
     for (Entry<String, TimeSeriesCollection> entry : taggedTimeSeries.entrySet()) {
       String tag = entry.getKey();
       TimeSeriesCollection timeSeriesList = entry.getValue();
+      // contain the start time of the timeseries in the x-axis name
       Date startDate = new Date((long) timeSeriesList.getDomainBounds(true).getLowerBound());
-      if (plan.getMeasurementPositions() != null) {
-        // a real-valued timeseries, draw a curve
-        JFreeChart chart = ChartFactory.createTimeSeriesChart(tag, "time-"+ startDate, "value",
-            timeSeriesList);
-        XYPlot xyPlot = chart.getXYPlot();
-        XYLineAndShapeRenderer xyLineAndShapeRenderer = ((XYLineAndShapeRenderer) xyPlot
-            .getRenderer());
-        xyLineAndShapeRenderer.setDefaultShapesVisible(true);
-        xyLineAndShapeRenderer.setDefaultShapesFilled(true);
-
-        charts.put(tag, chart);
-      } else {
-        JFreeChart chart = ChartFactory.createTimeSeriesChart(tag, "time-"+ startDate, "value",
-            timeSeriesList);
-        XYPlot xyPlot = chart.getXYPlot();
-        XYLineAndShapeRenderer xyLineAndShapeRenderer = ((XYLineAndShapeRenderer) xyPlot
-            .getRenderer());
-        xyLineAndShapeRenderer.setDefaultShapesVisible(true);
-        xyLineAndShapeRenderer.setDefaultShapesFilled(true);
+      JFreeChart chart = ChartFactory.createTimeSeriesChart(tag, "time-"+ startDate, "value",
+          timeSeriesList);
+      XYPlot xyPlot = chart.getXYPlot();
+      XYLineAndShapeRenderer xyLineAndShapeRenderer = ((XYLineAndShapeRenderer) xyPlot
+          .getRenderer());
+      // show the origin data points in the plot
+      xyLineAndShapeRenderer.setDefaultShapesVisible(true);
+      xyLineAndShapeRenderer.setDefaultShapesFilled(true);
+      if (plan.getMeasurementPositions() == null) {
+        // do not draw lines if we only record the time instances of the logs
         xyLineAndShapeRenderer.setDefaultLinesVisible(false);
-
-        charts.put(tag, chart);
       }
+      charts.put(tag, chart);
     }
     return charts;
   }
@@ -245,6 +286,7 @@ public class LogVisualizer {
       taggedTimeSeries) {
     Map<String, List<TimeSeriesStatistics>> ret = new HashMap<>();
     for (Entry<String, TimeSeriesCollection> timeSeriesCollectionEntry : taggedTimeSeries.entrySet()) {
+      // calculate the statistics of the logs in each group
       String tag = timeSeriesCollectionEntry.getKey();
       TimeSeriesCollection timeSeriesCollection = timeSeriesCollectionEntry.getValue();
       List<TimeSeriesStatistics> seriesStatistics = new ArrayList<>();
@@ -259,16 +301,5 @@ public class LogVisualizer {
 
   public Map<String, List<TimeSeriesStatistics>> getStatisticsMap() {
     return statisticsMap;
-  }
-
-  public static void main(String[] args) throws IOException, AnalyzeException {
-    LogVisualizer visualizer = new LogVisualizer();
-    visualizer.setParserPropertyFile(new File("E:\\codestore\\incubator-iotdb\\server\\src\\assembly"
-        + "\\resources"
-        + "\\tools\\logAnalyze\\default.log.pattern"));
-    visualizer.setLogFile( new File("C:\\Users\\admin\\Desktop\\logs\\log-all-2019-08-21.0.log"));
-    visualizer.loadLogParser();
-    visualizer.loadPlan("E:\\codestore\\incubator-iotdb\\server\\src\\assembly\\resources\\tools\\logAnalyze\\plans\\flushTimeConsumption.plan");
-    visualizer.executePlan("flushTimeConsumption");
   }
 }

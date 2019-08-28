@@ -22,26 +22,59 @@ import org.apache.iotdb.db.tools.logvisual.LogVisualizer;
 import org.apache.iotdb.db.tools.logvisual.TimeSeriesStatistics;
 import org.jfree.chart.JFreeChart;
 
-public class LogVisualizeGui {
+/**
+ * LogVisualizationGui provides a graphic way wo manipulate visualization plans and view the
+ * results of visualization.
+ */
+public class LogVisualizationGui {
 
-  private final String DEFAULT_PROPERTY = "visual.config";
+  /**
+   * if a config file is not provided, this will be used as a default config file saving the
+   * paths use chooses for the next usage.
+   */
+  private final String DEFAULT_CONFIG = "visual.config";
   private final int DEFAULT_HEIGHT = 600;
   private final int DEFAULT_WIDTH = 800;
 
   private LogVisualizer visualizer;
+
+  /**
+   * mainFrame is the main and only window of this gui.
+   */
   private JFrame mainFrame;
+  /**
+   * tabbedPane is the only direct component of mainFrame, which consists of one mainPanel and
+   * many result panels.
+   */
   private JTabbedPane tabbedPane;
+  /**
+   * mainPanel provide gui of loading log files and visualization plans and running visualization
+   * plans to generate results panels.
+   */
   private MainPanel mainPanel;
 
+  /**
+   * Each time a visualization plan is executed, two tabs will be generated, one (the
+   * ResultPlotTab) contains the
+   * timeseries plot of the visualized logs and the other (the ResultStatisticTab) contains a table
+   * showing the statistics of the observed logs.
+   * They will be store in the following maps with keys {planName}-plot and {planName}-statistic
+   * respectively.
+   */
   private Map<String, ResultPlotTab> resultPlotPanels = new HashMap<>();
   private Map<String, ResultStatisticTab> resultTablePanels = new HashMap<>();
+
+  /**
+   * properties contain most recently chosen files, so when the next time the user use this tool,
+   * he will not need to set all from the beginning.
+   */
   private String propertyFilePath;
   private Properties properties;
 
-  public LogVisualizeGui(String propertyFilePath) throws IOException {
+  private LogVisualizationGui(String propertyFilePath) throws IOException {
     properties = new Properties();
     if (propertyFilePath == null) {
-      propertyFilePath = DEFAULT_PROPERTY;
+      propertyFilePath = DEFAULT_CONFIG;
     }
     this.propertyFilePath = propertyFilePath;
     File propertyFile = new File(propertyFilePath);
@@ -70,6 +103,7 @@ public class LogVisualizeGui {
 
   private void onPlanExecuted(String planName, Map<String, JFreeChart> charts, Map<String,
       List<TimeSeriesStatistics>> statisticMap) {
+    // create a tab to display the timeseries plots, may replace the old one
     String tabName = planName + "-plot";
     ResultPlotTab resultPlotTab = new ResultPlotTab(tabName, charts, this::onTabClose);
     ResultPlotTab oldPlotTab = resultPlotPanels.get(tabName);
@@ -79,6 +113,7 @@ public class LogVisualizeGui {
     resultPlotPanels.put(tabName, resultPlotTab);
     tabbedPane.add(resultPlotTab);
 
+    // create a tab to display the log statistics, may replace the old one
     tabName = planName + "-statistics";
     ResultStatisticTab resultStatisticTab = new ResultStatisticTab(tabName, statisticMap,
         this::onTabClose);
@@ -91,6 +126,7 @@ public class LogVisualizeGui {
   }
 
   private void onPropertyChange(String key, String value) {
+    // when the user chooses a new file, the properties should be updated and persisted
     properties.put(key, value);
     try (FileWriter writer = new FileWriter(propertyFilePath);
         BufferedWriter bufferedWriter = new BufferedWriter(writer)) {
@@ -121,7 +157,7 @@ public class LogVisualizeGui {
     if (args.length > 0) {
       propertyFilePath = args[0];
     }
-    LogVisualizeGui gui = new LogVisualizeGui(propertyFilePath);
+    LogVisualizationGui gui = new LogVisualizationGui(propertyFilePath);
   }
 
 

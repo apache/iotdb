@@ -25,6 +25,9 @@ import javax.swing.AbstractAction;
 import javax.swing.JButton;
 import javax.swing.JPanel;
 
+/**
+ * ClosableTab is a JPanel with a "close" button.
+ */
 abstract class ClosableTab extends JPanel {
 
   private JButton closeTabButton;
@@ -47,6 +50,6 @@ abstract class ClosableTab extends JPanel {
   }
 
   public interface TabCloseCallBack {
-    void call(String name);
+    void call(String tabName);
   }
 }

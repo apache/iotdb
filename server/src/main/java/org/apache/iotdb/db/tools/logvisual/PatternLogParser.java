@@ -24,6 +24,18 @@ import org.apache.iotdb.db.tools.logvisual.LogEntry.LogLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * PatternLogParser parse logs according to a property file which defines how a log looks like
+ * and what fields in the log are interesting.
+ * A running example of the property file:
+ *   pattern=([^\\[]*)(\\[.*])(\\s\\w+\\s)([^:]*:\\d+)(\\s-\\s)(.*)
+ *   date_index=1
+ *   thread_name_index=2
+ *   level_index=3
+ *   code_location_index=4
+ *   content_index=6
+ *   date_pattern=yyyy-MM-dd hh:mm:ss,SSS
+ */
 public class PatternLogParser implements LogParser{
   private static final Logger logger = LoggerFactory.getLogger(LogParser.class);
 

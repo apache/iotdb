@@ -25,6 +25,9 @@ import javax.swing.BorderFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 
+/**
+ * ResultPlotTab shows the timeseries-plot of the log events.
+ */
 class ResultPlotTab extends ClosableComboTab {
 
   private ChartPanel chartPanel;
@@ -39,6 +42,7 @@ class ResultPlotTab extends ClosableComboTab {
     chartPanel.setSize(800, 480);
     add(chartPanel);
   }
+
   void onItemSelected(Object chart){
     chartPanel.setChart((JFreeChart) chart);
   }

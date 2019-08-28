@@ -14,6 +14,26 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.iotdb.db.tools.logvisual.exceptions.UnmatchedContentException;
 
+/**
+ * VisualizationPlan defines what fields (by using groups in regexp) should be plotted as value,
+ * what fields should be used to group the logs and what logs should be filtered.
+ * An example plan:
+    name=flushTimeConsumption
+    content_pattern=Storage group (.*) memtable (.*) flushing a memtable has finished! Time consumption: (.*)ms
+
+    measurement_positions=3
+    legends=Time
+    tag_positions=1
+
+    min_level=INFO
+    thread_name_white_list=pool-1-IoTDB-JDBC-Client-thread-5
+    class_name_white_list=org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor
+    line_num_white_list=392
+
+    date_pattern=yyyy-MM-dd hh:mm:ss
+    start_date=2019-08-21 09:00:00
+    end_date=2019-08-22 09:00:00
+ */
 public class VisualizationPlan {
   // optional, this will be used as the title of the figure.
   private String name;
@@ -39,6 +59,7 @@ public class VisualizationPlan {
 
   private LogFilter logFilter;
 
+  // where the plan is stored
   private String planFilePath;
 
   public VisualizationPlan() {
@@ -73,13 +94,21 @@ public class VisualizationPlan {
     logFilter = new LogFilter(properties);
   }
 
+  /**
+   * parse the content in a LogEntry using contentPattern and store the parsed fields back to the
+   * entry.
+   * @param logEntry
+   * @throws UnmatchedContentException
+   */
   public void parseContents(LogEntry logEntry) throws UnmatchedContentException {
     Matcher matcher = contentPattern.matcher(logEntry.getLogContent());
     if (!matcher.matches()) {
       throw new UnmatchedContentException(logEntry.getLogContent(), contentPattern.pattern());
     }
+
     String[] matchedValues = new String[matcher.groupCount()];
     for (int i = 1; i <= matcher.groupCount(); i++) {
+      // group(0) is the whole string
       matchedValues[i - 1] = matcher.group(i);
     }
     if (tagPositions != null) {
@@ -141,11 +170,7 @@ public class VisualizationPlan {
   public void setTagPositions(int[] tagPositions) {
     this.tagPositions = tagPositions;
   }
-
-  public void setLogFilter(LogFilter logFilter) {
-    this.logFilter = logFilter;
-  }
-
+  
   public void setPlanFilePath(String planFilePath) {
     this.planFilePath = planFilePath;
   }

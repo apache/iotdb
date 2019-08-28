@@ -30,11 +30,12 @@ import org.apache.iotdb.db.tools.logvisual.LogEntry.LogLevel;
 import org.apache.iotdb.db.tools.logvisual.VisualUtils;
 import org.apache.iotdb.db.tools.logvisual.VisualizationPlan;
 
+/**
+ * PlanDetailPanel displays the information of a visualization plan.
+ */
 public class PlanDetailPanel extends JScrollPane {
 
   private VisualizationPlan plan;
-
-  private Box box;
 
   private JTextField nameField = new JTextField();
   private JTextField patternField = new JTextField();
@@ -49,7 +50,7 @@ public class PlanDetailPanel extends JScrollPane {
   private JTextField startDateField = new JTextField();
   private JTextField endDateField = new JTextField();
 
-  public PlanDetailPanel() {
+  PlanDetailPanel() {
     super(null, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     setBorder(BorderFactory.createTitledBorder("Plan detail"));
 
@@ -84,6 +85,10 @@ public class PlanDetailPanel extends JScrollPane {
     setViewportView(box);
   }
 
+  /**
+   * Set the currently displayed plan. If it is null, clean the display.
+   * @param plan
+   */
   public void setPlan(VisualizationPlan plan) {
     this.plan = plan;
     updateFields();
@@ -131,8 +136,8 @@ public class PlanDetailPanel extends JScrollPane {
     if (plan.getLogFilter().getLineNumWhiteList() != null) {
       lineNumField.setText(VisualUtils.intArrayToString(plan.getLogFilter().getLineNumWhiteList()));
     }
-    if (plan.getLogFilter().getDatePatten() != null) {
-      SimpleDateFormat datePatten = (SimpleDateFormat) plan.getLogFilter().getDatePatten();
+    if (plan.getLogFilter().getDatePattern() != null) {
+      SimpleDateFormat datePatten = (SimpleDateFormat) plan.getLogFilter().getDatePattern();
       datePatternField.setText(datePatten.toPattern());
       if (plan.getLogFilter().getStartDate() != null) {
         startDateField.setText(datePatten.format(plan.getLogFilter().getStartDate()));
@@ -143,6 +148,9 @@ public class PlanDetailPanel extends JScrollPane {
     }
   }
 
+  /**
+   * Update the current displayed plan after it is modified amd save it to a file.
+   */
   public void updatePlan() {
     if (plan == null) {
       return;
@@ -161,6 +169,7 @@ public class PlanDetailPanel extends JScrollPane {
     String startDate = startDateField.getText();
     String endDate = endDateField.getText();
 
+    // validate the fields
     if (name.matches("\\s*")) {
       JOptionPane.showMessageDialog(this, "Name cannot be empty");
       return;
@@ -221,13 +230,13 @@ public class PlanDetailPanel extends JScrollPane {
       plan.getLogFilter().setMinLevel(LogLevel.valueOf(logLevel));
       SimpleDateFormat simpleDateFormat = datePattern != null ? new SimpleDateFormat(datePattern) :
           null;
-      plan.getLogFilter().setDatePartten(simpleDateFormat);
+      plan.getLogFilter().setDatePattern(simpleDateFormat);
       plan.getLogFilter().setStartDate(startDate != null ? simpleDateFormat.parse(startDate) : null);
       plan.getLogFilter().setEndDate(endDate != null ? simpleDateFormat.parse(endDate) : null);
 
       plan.saveAsFile();
     } catch (Exception e) {
-      JOptionPane.showMessageDialog(this, e.toString());
+      JOptionPane.showMessageDialog(this, e.getMessage());
     }
   }
 }

@@ -30,14 +30,19 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 
-public class FileSelectionBox extends Box{
+/**
+ * FileSelectionBox is a combination of a JLabel (showing the name of this component), a
+ * JTextField (showing the path of the chosen file) and a JButton (on clicking it the user can
+ * choose a single file).
+ */
+class FileSelectionBox extends Box{
 
   private JLabel panelName;
   private JTextField filePathField;
   private JButton selectFileButton;
-  FilePathBoxSelectionCallBack callBack;
+  private FilePathBoxSelectionCallBack callBack;
 
-  public FileSelectionBox(String name, FilePathBoxSelectionCallBack callBack, String
+  FileSelectionBox(String name, FilePathBoxSelectionCallBack callBack, String
       defaultFilePath) {
     super(BoxLayout.X_AXIS);
     this.callBack = callBack;
@@ -63,6 +68,7 @@ public class FileSelectionBox extends Box{
     add(selectFileButton);
 
     if (defaultFilePath != null) {
+      // select the default file if provided
       File defaultFile = new File(defaultFilePath);
       if (!defaultFile.exists()) {
         JOptionPane.showMessageDialog(this, panelName.getText() + ":default file " +
@@ -78,6 +84,7 @@ public class FileSelectionBox extends Box{
     JFileChooser fileChooser = new JFileChooser();
     int status = fileChooser.showOpenDialog(this);
     if (status == JFileChooser.APPROVE_OPTION) {
+      // only one file is allowed
       File chosenFile = fileChooser.getSelectedFile();
       callBack.call(chosenFile);
       filePathField.setText(chosenFile.getPath());

@@ -21,11 +21,14 @@ package org.apache.iotdb.db.tools.logvisual.gui;
 
 import java.util.Map;
 
-public abstract class ClosableComboTab extends ClosableTab {
+/**
+ * ClosableComboTab is a ClosableTab with a comboBox.
+ */
+abstract class ClosableComboTab extends ClosableTab {
 
   private LabeledComboBox comboBox;
 
-  public ClosableComboTab(String name, Map comboItems, TabCloseCallBack tabCloseCallBack) {
+  ClosableComboTab(String name, Map comboItems, TabCloseCallBack tabCloseCallBack) {
     super(name, tabCloseCallBack);
 
     comboBox = new LabeledComboBox(comboItems, this::onItemSelected, "Please select an item to "

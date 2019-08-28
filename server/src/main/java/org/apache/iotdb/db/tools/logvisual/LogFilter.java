@@ -10,29 +10,38 @@ import java.util.Date;
 import java.util.Properties;
 import org.apache.iotdb.db.tools.logvisual.LogEntry.LogLevel;
 
+/**
+ * LogFilter filters log events by its level, threadName, className, lineNum and date.
+ */
 public class LogFilter {
-  // optional, only logs with levels equal to or higher than this will be analyzed
-  private LogLevel minLevel = LogLevel.DEBUG;
-  // optional, only threads, classes, lines in the lists are analyzed. When unset, all logs will
+
+  /**
+   * optional, only logs with levels equal to or higher than this will be analyzed
+   */
+  private LogLevel minLevel;
+
+  // optional, only threads, classes, lines in the lists are analyzed. When unset, all logs will be
   // analyzed. comma-separated
   private String[] threadNameWhiteList;
   private String[] classNameWhiteList;
   private int[] lineNumWhiteList;
-  // optional, only time ranges within the interval will be analyzed
-  // if startDate or endDate is set, datePattern must be set too
-  private DateFormat datePartten;
+
+  /**
+   * optional, only time ranges within the interval will be analyzed
+   * if startDate or endDate is set, datePattern must be set too
+   */
+  private DateFormat datePattern;
   private Date startDate = new Date(Long.MIN_VALUE);
   private Date endDate = new Date(Long.MAX_VALUE);
 
-  public LogFilter() {
+  LogFilter() {
     minLevel = LogLevel.DEBUG;
   }
 
-  public LogFilter(Properties properties) throws IOException {
+  LogFilter(Properties properties) throws IOException {
     minLevel = LogLevel.valueOf(properties.getProperty(MIN_LEVEL.getPropertyName(), minLevel.name()));
 
-    String threadNameWhiteListStr = properties.getProperty(THREAD_NAME_WHITE_LIST.getPropertyName
-        ());
+    String threadNameWhiteListStr = properties.getProperty(THREAD_NAME_WHITE_LIST.getPropertyName());
     if (threadNameWhiteListStr != null) {
       threadNameWhiteList = threadNameWhiteListStr.trim().split(",");
     }
@@ -47,11 +56,13 @@ public class LogFilter {
 
     String datePatternStr = properties.getProperty(DATE_PATTERN.getPropertyName());
     if (datePatternStr != null) {
-      this.datePartten = new SimpleDateFormat(datePatternStr.trim());
+      this.datePattern = new SimpleDateFormat(datePatternStr.trim());
+
+      // only when date pattern is set should we parse the start date and end date
       String startDateStr = properties.getProperty(START_DATE.getPropertyName());
       if (startDateStr != null) {
         try {
-          startDate = datePartten.parse(startDateStr.trim());
+          startDate = datePattern.parse(startDateStr.trim());
         } catch (ParseException e) {
           throw new IOException(e);
         }
@@ -60,7 +71,7 @@ public class LogFilter {
       String endDatePattern = properties.getProperty(END_DATE.getPropertyName());
       if (startDateStr != null) {
         try {
-          endDate = datePartten.parse(endDatePattern.trim());
+          endDate = datePattern.parse(endDatePattern.trim());
         } catch (ParseException e) {
           throw new IOException(e);
         }
@@ -119,8 +130,8 @@ public class LogFilter {
     return lineNumWhiteList;
   }
 
-  public DateFormat getDatePatten() {
-    return datePartten;
+  public DateFormat getDatePattern() {
+    return datePattern;
   }
 
   public Date getStartDate() {
@@ -147,8 +158,8 @@ public class LogFilter {
     this.lineNumWhiteList = lineNumWhiteList;
   }
 
-  public void setDatePartten(DateFormat datePartten) {
-    this.datePartten = datePartten;
+  public void setDatePattern(DateFormat datePattern) {
+    this.datePattern = datePattern;
   }
 
   public void setStartDate(Date startDate) {
@@ -172,13 +183,13 @@ public class LogFilter {
           (lineNumWhiteList));
     }
     if (startDate != null) {
-      properties.put(START_DATE.propertyName, datePartten.format(startDate));
+      properties.put(START_DATE.propertyName, datePattern.format(startDate));
     }
     if (endDate != null) {
-      properties.put(END_DATE.propertyName, datePartten.format(endDate));
+      properties.put(END_DATE.propertyName, datePattern.format(endDate));
     }
-    if (datePartten != null) {
-      properties.put(DATE_PATTERN.propertyName, ((SimpleDateFormat) datePartten).toPattern());
+    if (datePattern != null) {
+      properties.put(DATE_PATTERN.propertyName, ((SimpleDateFormat) datePattern).toPattern());
     }
   }
 

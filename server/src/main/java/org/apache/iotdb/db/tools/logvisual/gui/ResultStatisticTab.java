@@ -19,14 +19,11 @@
 
 package org.apache.iotdb.db.tools.logvisual.gui;
 
-import java.awt.BorderLayout;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import javax.swing.BorderFactory;
 import javax.swing.Box;
-import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
@@ -34,6 +31,9 @@ import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 import org.apache.iotdb.db.tools.logvisual.TimeSeriesStatistics;
 
+/**
+ * ResultStatisticTab shows the statistic (count, mean, min, max) of the log events.
+ */
 class ResultStatisticTab extends ClosableTab {
 
   private TableModel tableModel;
@@ -46,8 +46,11 @@ class ResultStatisticTab extends ClosableTab {
     table = new JTable();
 
     Box box = Box.createVerticalBox();
+    // the header and the data should be added separately
     box.add(table.getTableHeader());
     box.add(table);
+
+    // provides a scroll bar for many series
     JScrollPane scrollPane = new JScrollPane(box);
     scrollPane.setLocation(0, 100);
     scrollPane.setSize(800, 600);
@@ -65,6 +68,7 @@ class ResultStatisticTab extends ClosableTab {
     }
     tableModel = new DefaultTableModel(data, header);
     table.setModel(tableModel);
+    // enable sort by column
     table.setRowSorter(new TableRowSorter<>(tableModel));
   }
 }

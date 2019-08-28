@@ -19,9 +19,23 @@
 
 package org.apache.iotdb.db.tools.logvisual.conf;
 
+/**
+ * PropertyKeys holds the keys of properties that store the paths chosen by the user the last
+ * time he uses this tool for convenience.
+ */
 public enum PropertyKeys {
-  DEFAULT_PARSER_FILE_PATH("parser_properties_path"), DEFAULT_LOG_FILE_PATH
-      ("log_path"), DEFAULT_PLAN_PATH("plans_path");
+  /**
+   * The last path of the parser property file chosen by the user.
+   */
+  DEFAULT_PARSER_FILE_PATH("parser_properties_path"),
+  /**
+   * The last path of the log file chosen by the user.
+   */
+  DEFAULT_LOG_FILE_PATH("log_path"),
+  /**
+   * The last path of the visualization plan file chosen by the user.
+   */
+  DEFAULT_PLAN_PATH("plans_path");
   private String key;
 
   PropertyKeys(String key) {

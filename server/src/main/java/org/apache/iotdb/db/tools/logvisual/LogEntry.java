@@ -4,17 +4,58 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * LogEntry is a parsed log event.
+ * We will take the log:
+ *  "2019-08-21 09:57:16,552 [pool-4-IoTDB-Flush-ServerServiceImpl-thread-4] INFO  org.apache
+ *  .iotdb.db.engine.flush.MemTableFlushTask:95 - Storage group root.perform.group_6 memtable org
+ *  .apache.iotdb.db.engine.memtable.PrimitiveMemTable@66 flushing a memtable has finished! Time
+ *  consumption: 9942ms"
+ *  as a running example.
+ */
 public class LogEntry {
 
+  // if a visualization plan has no tag, this tag will be the tag of all events
   private static List<String> DEFAULT_TAG = Collections.EMPTY_LIST;
 
+  /**
+   * The time when the log is logged.
+   * "2019-08-21 09:57:16,552" in the example.
+   */
   private Date date;
+  /**
+   * The name of the thread which has written the log.
+   *  "pool-4-IoTDB-Flush-ServerServiceImpl-thread-4" in the example.
+   */
   private String threadName;
+  /**
+   * The level of the log, one of "DEBUG", "INFO", "WARN", "ERROR".
+   * "INFO" in the example.
+   */
   private LogLevel logLevel;
+  /**
+   * The class and line of code that generated this log.
+   * "org.apache.iotdb.db.engine.flush.MemTableFlushTask:95" in the example.
+   */
   private CodeLocation codeLocation;
+  /**
+   * The message contained in the log.
+   *  "Storage group root.perform.group_6 memtable org
+   *  .apache.iotdb.db.engine.memtable.PrimitiveMemTable@66 flushing a memtable has finished! Time
+   *  consumption: 9942ms" in the example.
+   */
   private String logContent;
 
+  /**
+   * tags are a list of strings cut out of the logContent to group the logs into different groups.
+   * This is specified by a given visualization plan.
+   */
   private List<String> tags = DEFAULT_TAG;
+
+  /**
+   * measurements are real values occurred in the logContent that should be plotted.
+   * This is also specified by a given visualization plan.
+   */
   private List<Double> measurements;
 
   LogEntry(Date date, String threadName,
