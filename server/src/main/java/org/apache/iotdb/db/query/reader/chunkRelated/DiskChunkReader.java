@@ -66,6 +66,7 @@ public class DiskChunkReader implements IPointReader {
 
   @Override
   public TimeValuePair current() {
+    // FIXME: if data.hasNext() = false and this method is called...
     return TimeValuePairUtils.getCurrentTimeValuePair(data);
   }
 

@@ -37,8 +37,10 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.JobFileManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -148,7 +150,7 @@ public class StorageEngine implements IService {
 
 
   /**
-   * execute an InsertPlan on a storage group.
+   * insert an InsertPlan to a storage group.
    *
    * @param insertPlan physical plan of insertion
    * @return true if and only if this insertion succeeds
@@ -167,6 +169,25 @@ public class StorageEngine implements IService {
 
     // TODO monitor: update statistics
     return storageGroupProcessor.insert(insertPlan);
+  }
+
+  /**
+   * insert a BatchInsertPlan to a storage group
+   * @return result of each row
+   */
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws StorageEngineException {
+    StorageGroupProcessor storageGroupProcessor;
+    try {
+      storageGroupProcessor = getProcessor(batchInsertPlan.getDeviceId());
+    } catch (Exception e) {
+      logger.warn("get StorageGroupProcessor of device {} failed, because {}",
+          batchInsertPlan.getDeviceId(),
+          e.getMessage(), e);
+      throw new StorageEngineException(e);
+    }
+
+    // TODO monitor: update statistics
+    return storageGroupProcessor.insertBatch(batchInsertPlan);
   }
 
   /**
@@ -209,37 +230,17 @@ public class StorageEngine implements IService {
     }
   }
 
-
-  /**
-   * begin a query on a given deviceId. Any TsFile contains such device should not be deleted at
-   * once after merge.
-   *
-   * @param deviceId queried deviceId
-   * @return a token for the query.
-   */
-  public int beginQuery(String deviceId) throws StorageEngineException {
-    // TODO implement it when developing the merge function
-    return -1;
-  }
-
-  /**
-   * end query on a given deviceId. If some TsFile has been merged and this query is the last query
-   * using it, the TsFile can be deleted safely.
-   */
-  public void endQuery(String deviceId, int token) throws StorageEngineException {
-    // TODO  implement it when developing the merge function
-  }
-
   /**
    * query data.
    */
-  public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context)
+  public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context,
+      JobFileManager filePathsManager)
       throws StorageEngineException {
     //TODO use context.
     String deviceId = seriesExpression.getSeriesPath().getDevice();
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.query(deviceId, measurementId, context);
+    return storageGroupProcessor.query(deviceId, measurementId, context, filePathsManager);
   }
 
   /**
@@ -284,8 +285,13 @@ public class StorageEngine implements IService {
    *
    * @throws StorageEngineException StorageEngineException
    */
-  public void mergeAll() throws StorageEngineException {
-    // TODO
+  public void mergeAll(boolean fullMerge) throws StorageEngineException {
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new StorageEngineException("Current system mode is read only, does not support merge");
+    }
+    for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
+      storageGroupProcessor.merge(fullMerge);
+    }
   }
 
   /**

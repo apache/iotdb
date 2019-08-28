@@ -177,7 +177,7 @@ public class IntRleDecoderTest {
   public void testBooleanLength(List<Integer> list, int bitWidth, boolean isDebug, int repeatCount)
       throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    RleEncoder<Integer> encoder = new IntRleEncoder(EndianType.LITTLE_ENDIAN);
+    RleEncoder<Integer> encoder = new IntRleEncoder(EndianType.BIG_ENDIAN);
     for (int i = 0; i < repeatCount; i++) {
       for (int value : list) {
         if (value % 2 == 0) {
@@ -191,7 +191,7 @@ public class IntRleDecoderTest {
     }
 
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-    RleDecoder decoder = new IntRleDecoder(EndianType.LITTLE_ENDIAN);
+    RleDecoder decoder = new IntRleDecoder(EndianType.BIG_ENDIAN);
     for (int i = 0; i < repeatCount; i++) {
       for (int value : list) {
         boolean value_ = decoder.readBoolean(buffer);
@@ -211,7 +211,7 @@ public class IntRleDecoderTest {
   public void testLength(List<Integer> list, int bitWidth, boolean isDebug, int repeatCount)
       throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    RleEncoder<Integer> encoder = new IntRleEncoder(EndianType.LITTLE_ENDIAN);
+    RleEncoder<Integer> encoder = new IntRleEncoder(EndianType.BIG_ENDIAN);
     for (int i = 0; i < repeatCount; i++) {
       for (int value : list) {
         encoder.encode(value, baos);
@@ -220,7 +220,7 @@ public class IntRleDecoderTest {
     }
 
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-    RleDecoder decoder = new IntRleDecoder(EndianType.LITTLE_ENDIAN);
+    RleDecoder decoder = new IntRleDecoder(EndianType.BIG_ENDIAN);
     for (int i = 0; i < repeatCount; i++) {
       for (int value : list) {
         int value_ = decoder.readInt(buffer);
@@ -240,7 +240,7 @@ public class IntRleDecoderTest {
     }
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     int bitWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(list);
-    RleEncoder<Integer> encoder = new IntRleEncoder(EndianType.LITTLE_ENDIAN);
+    RleEncoder<Integer> encoder = new IntRleEncoder(EndianType.BIG_ENDIAN);
     for (int value : list) {
       encoder.encode(value, baos);
     }

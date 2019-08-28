@@ -52,9 +52,8 @@ public class IoTDBVersionIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try(Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root")){
-      Statement statement = connection.createStatement();
-
+            "root", "root");
+        Statement statement = connection.createStatement()){
       statement.execute("SET STORAGE GROUP TO root.versionTest1");
       statement.execute("SET STORAGE GROUP TO root.versionTest2");
       statement.execute("CREATE TIMESERIES root.versionTest1.s0"
@@ -64,20 +63,18 @@ public class IoTDBVersionIT {
 
       // insert and flush enough times to make the version file persist
       for (int i = 0; i < 2 * SimpleFileVersionController.getSaveInterval(); i ++) {
-        for (int j = 1; j <= 100; j ++) {
+        for (int j = 1; j <= 10; j ++) {
           statement.execute(String
               .format("INSERT INTO root.versionTest1(timestamp, s0) VALUES (%d, %d)", i*100+j, j));
         }
         statement.execute("FLUSH");
-        for (int j = 1; j <= 100; j ++) {
+        for (int j = 1; j <= 10; j ++) {
           statement.execute(String
               .format("INSERT INTO root.versionTest2(timestamp, s0) VALUES (%d, %d)", i*100+j, j));
         }
         statement.execute("FLUSH");
-//        statement.execute("MERGE");
+        statement.execute("MERGE");
       }
-
-      statement.close();
     }
   }
 }

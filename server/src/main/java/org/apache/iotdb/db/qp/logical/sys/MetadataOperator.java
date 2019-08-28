@@ -46,7 +46,7 @@ public class MetadataOperator extends RootOperator {
     super(tokenIntType);
     namespaceType = type;
     switch (type) {
-      case SET_FILE_LEVEL:
+      case SET_STORAGE_GROUP:
         operatorType = OperatorType.SET_STORAGE_GROUP;
         break;
       case ADD_PATH:
@@ -113,7 +113,7 @@ public class MetadataOperator extends RootOperator {
   }
 
   public enum NamespaceType {
-    ADD_PATH, DELETE_PATH, SET_FILE_LEVEL;
+    ADD_PATH, DELETE_PATH, SET_STORAGE_GROUP;
 
     /**
      * deserialize short number.
@@ -128,7 +128,7 @@ public class MetadataOperator extends RootOperator {
         case 1:
           return DELETE_PATH;
         case 2:
-          return SET_FILE_LEVEL;
+          return SET_STORAGE_GROUP;
         default:
           return null;
       }
@@ -145,7 +145,7 @@ public class MetadataOperator extends RootOperator {
           return 0;
         case DELETE_PATH:
           return 1;
-        case SET_FILE_LEVEL:
+        case SET_STORAGE_GROUP:
           return 2;
         default:
           return -1;

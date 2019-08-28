@@ -28,7 +28,7 @@ This feature is not supported in version 0.7.0.
 
 ### Import Real-time Data
 
-IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](/#/Documents/0.8.0/chap5/sec1) in [Cli/Shell tools](/#/Tools/Cli), or using [Java JDBC](/#/Documents/0.8.0/chap6/sec1) to perform single or batch execution of [INSERT SQL statement](/#/Documents/0.8.0/chap5/sec1).
+IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](/#/Documents/0.8.0/chap5/sec1) in [Client/Shell tools](/#/Tools/Client), or using [Java JDBC](/#/Documents/0.8.0/chap6/sec1) to perform single or batch execution of [INSERT SQL statement](/#/Documents/0.8.0/chap5/sec1).
 
 This section mainly introduces the use of [INSERT SQL statement](/#/Documents/0.8.0/chap5/sec1) for real-time data import in the scenario. See Section 5.1 for a detailed syntax of [INSERT SQL statement](/#/Documents/0.8.0/chap5/sec1).
 

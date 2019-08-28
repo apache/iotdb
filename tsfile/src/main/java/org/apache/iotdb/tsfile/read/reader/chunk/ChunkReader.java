@@ -161,4 +161,7 @@ public abstract class ChunkReader {
   public void close() {
   }
 
+  public ChunkHeader getChunkHeader() {
+    return chunkHeader;
+  }
 }

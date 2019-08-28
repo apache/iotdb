@@ -101,7 +101,7 @@ public abstract class TSEncodingBuilder {
 
     @Override
     public Encoder getEncoder(TSDataType type) {
-      return new PlainEncoder(EndianType.LITTLE_ENDIAN, type, maxStringLength);
+      return new PlainEncoder(EndianType.BIG_ENDIAN, type, maxStringLength);
     }
 
     @Override
@@ -133,9 +133,9 @@ public abstract class TSEncodingBuilder {
       switch (type) {
         case INT32:
         case BOOLEAN:
-          return new IntRleEncoder(EndianType.LITTLE_ENDIAN);
+          return new IntRleEncoder(EndianType.BIG_ENDIAN);
         case INT64:
-          return new LongRleEncoder(EndianType.LITTLE_ENDIAN);
+          return new LongRleEncoder(EndianType.BIG_ENDIAN);
         case FLOAT:
         case DOUBLE:
           return new FloatEncoder(TSEncoding.RLE, type, maxPointNumber);

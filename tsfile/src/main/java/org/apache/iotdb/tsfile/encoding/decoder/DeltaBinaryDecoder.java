@@ -228,6 +228,7 @@ public abstract class DeltaBinaryDecoder extends Decoder {
 
     @Override
     public long readLong(ByteBuffer buffer) {
+
       return readT(buffer);
     }
 

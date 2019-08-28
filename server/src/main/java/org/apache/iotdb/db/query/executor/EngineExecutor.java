@@ -56,8 +56,6 @@ public class EngineExecutor {
    */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
       throws StorageEngineException, IOException {
-    QueryResourceManager.getInstance()
-        .beginQueryOfGivenQueryPaths(context.getJobId(), queryExpression.getSelectedSeries());
 
     Filter timeFilter = null;
     if (queryExpression.hasQueryFilter()) {
@@ -93,11 +91,6 @@ public class EngineExecutor {
    * @throws StorageEngineException StorageEngineException
    */
   public QueryDataSet executeWithValueFilter(QueryContext context) throws StorageEngineException, IOException {
-
-    QueryResourceManager.getInstance()
-        .beginQueryOfGivenQueryPaths(context.getJobId(), queryExpression.getSelectedSeries());
-    QueryResourceManager.getInstance()
-        .beginQueryOfGivenExpression(context.getJobId(), queryExpression.getExpression());
 
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(
         queryExpression.getExpression(), context);

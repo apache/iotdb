@@ -35,7 +35,8 @@ public class UnSealedTsFileReaderTest extends ReaderTestHelper {
 
   @Test
   public void testUnSealedTsFileIterateReader() throws IOException {
-    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context);
+    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context,
+        null);
     TsFileResource resource = queryDataSource.getSeqResources().get(0);
     Assert.assertEquals(false, resource.isClosed());
     UnSealedTsFileIterateReader reader = new UnSealedTsFileIterateReader(resource, null, false);
@@ -53,7 +54,8 @@ public class UnSealedTsFileReaderTest extends ReaderTestHelper {
 
   @Test
   public void testUnSealedTsFileReaderByTimestamp() throws IOException {
-    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context);
+    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context,
+        null);
     TsFileResource resource = queryDataSource.getSeqResources().get(0);
     Assert.assertEquals(false, resource.isClosed());
     UnSealedTsFileReaderByTimestamp reader = new UnSealedTsFileReaderByTimestamp(

@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.read.filter.{TimeFilter, ValueFilter}
 import org.apache.iotdb.tsfile.utils.Binary
 import org.apache.iotdb.tsfile.write.record.TSRecord
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint
-import org.apache.iotdb.tsfile.write.schema.{FileSchema, MeasurementSchema, SchemaBuilder}
+import org.apache.iotdb.tsfile.write.schema.{MeasurementSchema, SchemaBuilder}
 import org.apache.parquet.filter2.predicate.Operators.NotEq
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.sources._
@@ -235,24 +235,6 @@ object NewConverter {
     val fullPath = new Path(field.name)
     val measurement = fullPath.getMeasurement
     new MeasurementSchema(measurement, dataType, encoding)
-  }
-
-  /**
-    * Given a SparkSQL struct type, generate the TsFile schema.
-    * Note: Measurements of the same name should have the same schema.
-    *
-    * @param structType given sql schema
-    * @return TsFile schema
-    */
-  def toTsFileSchema(structType: StructType, options: Map[String, String]): FileSchema = {
-    val schemaBuilder = new SchemaBuilder()
-    structType.fields.filter(f => {
-      !QueryConstant.RESERVED_TIME.equals(f.name)
-    }).foreach(f => {
-      val seriesSchema = getSeriesSchema(f, options)
-      schemaBuilder.addSeries(seriesSchema)
-    })
-    schemaBuilder.build()
   }
 
   /**

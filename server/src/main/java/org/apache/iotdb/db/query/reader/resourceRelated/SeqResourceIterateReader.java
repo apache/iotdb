@@ -34,7 +34,7 @@ import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
@@ -159,8 +159,7 @@ public class SeqResourceIterateReader extends IterateReader {
       QueryContext context) throws IOException {
     // prepare metaDataList
     List<ChunkMetaData> metaDataList = DeviceMetaDataCache.getInstance()
-        .get(sealedTsFile.getFile().getPath(), seriesPath);
-
+        .get(sealedTsFile, seriesPath);
     List<Modification> pathModifications = context.getPathModifications(sealedTsFile.getModFile(),
         seriesPath.getFullPath());
     if (!pathModifications.isEmpty()) {
@@ -172,8 +171,8 @@ public class SeqResourceIterateReader extends IterateReader {
     }
     // prepare chunkLoader
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-        .get(sealedTsFile.getFile().getPath(), true);
-    ChunkLoader chunkLoader = new ChunkLoaderImpl(tsFileReader);
+        .get(sealedTsFile, true);
+    IChunkLoader chunkLoader = new ChunkLoaderImpl(tsFileReader);
 
     // init fileSeriesReader
     FileSeriesReader fileSeriesReader;

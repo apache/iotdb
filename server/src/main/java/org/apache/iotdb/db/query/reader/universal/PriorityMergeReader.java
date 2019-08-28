@@ -19,8 +19,6 @@
 package org.apache.iotdb.db.query.reader.universal;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.PriorityQueue;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -30,16 +28,18 @@ import org.apache.iotdb.db.utils.TimeValuePair;
  */
 public class PriorityMergeReader implements IPointReader {
 
-  private List<IPointReader> readerList = new ArrayList<>();
-  private List<Integer> priorityList = new ArrayList<>();
-  private PriorityQueue<Element> heap = new PriorityQueue<>();
+  PriorityQueue<Element> heap = new PriorityQueue<>((o1, o2) -> {
+    int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(),
+        o2.timeValuePair.getTimestamp());
+    return timeCompare != 0 ? timeCompare : Integer.compare(o2.priority, o1.priority);
+  });
 
   public void addReaderWithPriority(IPointReader reader, int priority) throws IOException {
     if (reader.hasNext()) {
-      heap.add(new Element(readerList.size(), reader.next(), priority));
+      heap.add(new Element(reader, reader.next(), priority));
+    } else {
+      reader.close();
     }
-    readerList.add(reader);
-    priorityList.add(priority);
   }
 
   @Override
@@ -49,9 +49,20 @@ public class PriorityMergeReader implements IPointReader {
 
   @Override
   public TimeValuePair next() throws IOException {
-    Element top = heap.peek();
-    updateHeap(top);
-    return top.timeValuePair;
+    Element top = heap.poll();
+    TimeValuePair ret = top.timeValuePair;
+    TimeValuePair topNext = null;
+    if (top.hasNext()) {
+      top.next();
+      topNext = top.currPair();
+    }
+    long topNextTime = topNext == null ? Long.MAX_VALUE : topNext.getTimestamp();
+    updateHeap(ret.getTimestamp(), topNextTime);
+    if (topNext != null) {
+      top.timeValuePair = topNext;
+      heap.add(top);
+    }
+    return ret;
   }
 
   @Override
@@ -59,66 +70,68 @@ public class PriorityMergeReader implements IPointReader {
     return heap.peek().timeValuePair;
   }
 
-  private void updateHeap(Element top) throws IOException {
-    while (!heap.isEmpty() && heap.peek().timeValuePair.getTimestamp() == top.timeValuePair
-        .getTimestamp()) {
+  private void updateHeap(long topTime, long topNextTime) throws IOException {
+    while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
       Element e = heap.poll();
-      IPointReader reader = readerList.get(e.index);
-      if (reader.hasNext()) {
-        heap.add(new Element(e.index, reader.next(), priorityList.get(e.index)));
+      if (!e.hasNext()) {
+        e.reader.close();
+        continue;
+      }
+
+      e.next();
+      if (e.currTime() == topNextTime) {
+        // if the next value of the peek will be overwritten by the next of the top, skip it
+        if (e.hasNext()) {
+          e.next();
+          heap.add(e);
+        } else {
+          // the chunk is end
+          e.close();
+        }
+      } else {
+        heap.add(e);
       }
     }
   }
 
   @Override
   public void close() throws IOException {
-    for (IPointReader reader : readerList) {
-      reader.close();
+    while (!heap.isEmpty()) {
+      Element e = heap.poll();
+      e.close();
     }
   }
 
-  protected class Element implements Comparable<Element> {
+  class Element {
 
-    int index;
+    IPointReader reader;
     TimeValuePair timeValuePair;
-    Integer priority;
+    int priority;
 
-    public Element(int index, TimeValuePair timeValuePair, int priority) {
-      this.index = index;
+    Element(IPointReader reader, TimeValuePair timeValuePair, int priority) {
+      this.reader = reader;
       this.timeValuePair = timeValuePair;
       this.priority = priority;
     }
 
-    @Override
-    public int compareTo(
-        Element o) {
-
-      if (this.timeValuePair.getTimestamp() > o.timeValuePair.getTimestamp()) {
-        return 1;
-      }
-
-      if (this.timeValuePair.getTimestamp() < o.timeValuePair.getTimestamp()) {
-        return -1;
-      }
-
-      return o.priority.compareTo(this.priority);
+    long currTime() {
+      return timeValuePair.getTimestamp();
     }
 
-    @Override
-    public boolean equals(Object o) {
-      if (o instanceof Element) {
-        Element element = (Element) o;
-        if (this.timeValuePair.getTimestamp() == element.timeValuePair.getTimestamp()
-            && this.priority.equals(element.priority)) {
-          return true;
-        }
-      }
-      return false;
+   TimeValuePair currPair() {
+      return timeValuePair;
+   }
+
+    boolean hasNext() throws IOException {
+      return reader.hasNext();
     }
 
-    @Override
-    public int hashCode() {
-      return (int) (timeValuePair.getTimestamp() * 31 + priority.hashCode());
+    void next() throws IOException {
+      timeValuePair = reader.next();
+    }
+
+    void close() throws IOException {
+      reader.close();
     }
   }
 }

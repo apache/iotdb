@@ -18,29 +18,19 @@
  */
 package org.apache.iotdb.tsfile.read.controller;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-public class MetadataQuerierByFileImpl implements MetadataQuerier {
+import java.io.IOException;
+import java.util.*;
+
+public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
   private static final int CHUNK_METADATA_CACHE_SIZE = 100000;
 
@@ -172,30 +162,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
   }
 
   private List<ChunkMetaData> loadChunkMetadata(Path path) throws IOException {
-
-    if (!fileMetaData.containsDevice(path.getDevice())) {
-      return new ArrayList<>();
-    }
-
-    // get the index information of TsDeviceMetadata
-    TsDeviceMetadataIndex index = fileMetaData.getDeviceMetadataIndex(path.getDevice());
-
-    // read TsDeviceMetadata from file
-    TsDeviceMetadata tsDeviceMetadata = tsFileReader.readTsDeviceMetaData(index);
-
-    // get all ChunkMetaData of this path included in all ChunkGroups of this device
-    List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
-    for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
-      List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
-          .getChunkMetaDataList();
-      for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
-        if (path.getMeasurement().equals(chunkMetaData.getMeasurementUid())) {
-          chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
-          chunkMetaDataList.add(chunkMetaData);
-        }
-      }
-    }
-    return chunkMetaDataList;
+    return tsFileReader.getChunkMetadataList(path);
   }
 
   @Override
@@ -302,4 +269,11 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
   private enum LocateStatus {
     in, before, after
   }
+
+  @Override
+  public void clear() {
+    chunkMetaDataCache.clear();
+  }
+
+
 }
