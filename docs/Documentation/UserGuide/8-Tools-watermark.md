@@ -21,42 +21,33 @@ under the License.
 
 -->
 
-## Outline
+**Outline**
 
-<!-- MarkdownTOC -->
+1. Watermark Embedding
 
-- [Watermark Tool](#watermark-tool)
-  - [Watermark Embedding](#watermark-embedding)
-    - [Configuration](#configuration)
-    - [Usage Example](#usage-example)
-      - [step 1. Create a new user Alice, grant read privilege and query](#step-1-create-a-new-user-alice-grant-read-privilege-and-query)
-      - [step 2. grant watermark_embedding to Alice](#step-2-grant-watermark_embedding-to-alice)
-      - [step 3. revoke watermark_embedding from Alice](#step-3-revoke-watermark_embedding-from-alice)
-  - [Watermark Detection](#watermark-detection)
+   1.1 Configuration
 
-<!-- /MarkdownTOC -->
+   1.2 Usage Example
 
-<a id="watermark-tool"></a>
+2. Watermark Detection
 
-# Watermark Tool
+
+
+# IoTDB Time Series Data Watermark Tool: User Manual
 
 This tool has two functions: 1) watermark embedding of the IoTDB query result and 2) watermark detection of the suspected data.
 
-<a id="watermark-embedding"></a>
+## 1. Watermark Embedding
 
-## Watermark Embedding
-
-<a id="configuration"></a>
-
-### Configuration
+### 1.1 Configuration
 
 Watermark is disabled by default in IoTDB. To enable watermark embedding, the first thing is to modify the following fields in the configuration file `iotdb-engine.properties`:
 
-| Name                    | Example                                             | Explanation                                                  |
-| ----------------------- | --------------------------------------------------- | ------------------------------------------------------------ |
-| watermark_module_opened | false                                               | `true` to enable watermark embedding of the IoTDB server; `false` to disable |
-| watermark_secret_key    | IoTDB*2019@Beijing                                  | self-defined secret key                                      |
-| watermark_bit_string    | 100101110100                                        | 0-1 bit string to be embedded                                |
+| Name                    | Example                                                | Explanation                                                  |
+| ----------------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
+| watermark_module_opened | false                                                  | `true` to enable watermark embedding of the IoTDB server; `false` to disable |
+| watermark_secret_key    | IoTDB*2019@Beijing                                     | self-defined secret key                                      |
+| watermark_bit_string    | 100101110100                                           | 0-1 bit string to be embedded                                |
 | watermark_method        | GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5) | specifies the watermark algorithm and its paramters          |
 
 Notes:
@@ -70,11 +61,7 @@ Notes:
   - GroupBasedLSBMethod uses LSB embedding. `embed_lsb_num` controls the number of least significant bits available for watermark embedding. The biggger the `embed_lsb_num`, the larger the varying range of a data point.
 - `watermark_secret_key`, `watermark_bit_string`  and `watermark_method` should be kept secret from possible attackers. That is, it is your responsiblity to take care of `iotdb-engine.properties`.
 
-<a id="usage-example"></a>
-
-### Usage Example 
-
-<a id="step-1-create-a-new-user-alice-grant-read-privilege-and-query"></a>
+### 1.2 Usage Example 
 
 #### step 1. Create a new user Alice, grant read privilege and query
 
@@ -126,8 +113,6 @@ select * from root
 |      1970-01-01T08:00:00.033+08:00|              53.5|
 +-----------------------------------+------------------+
 ```
-
-<a id="step-2-grant-watermark_embedding-to-alice"></a>
 
 #### step 2. grant watermark_embedding to Alice
 
@@ -183,8 +168,6 @@ select * from root
 +-----------------------------------+------------------+
 ```
 
-<a id="step-3-revoke-watermark_embedding-from-alice"></a>
-
 #### step 3. revoke watermark_embedding from Alice
 
 Usage: `revoke watermark_embedding from Alice` 
@@ -193,9 +176,7 @@ Note that you can use `revoke watermark_embedding from user1,user2,...` to revok
 
 Only root can run this command. After root revokes watermark_embedding from Alice, all query results of Alice are original again.
 
-<a id="watermark-detection"></a>
-
-## Watermark Detection
+## 2. Watermark Detection
 
 `detect-watermark.sh` and `detect-watermark.bat` are provided for different platforms.
 
@@ -208,8 +189,8 @@ Example: ./detect-watermark.sh /home/data/dump1.csv IoTDB*2019@Beijing 100101110
 | filePath           | /home/data/dump1.csv | suspected data file path                   |
 | secretKey          | IoTDB*2019@Beijing   | see watermark embedding section            |
 | watermarkBitString | 100101110100         | see watermark embedding section            |
-| embed_row_cycle         | 2                    | see watermark embedding section            |
-| embed_lsb_num    | 5                    | see watermark embedding section            |
+| embed_row_cycle    | 2                    | see watermark embedding section            |
+| embed_lsb_num      | 5                    | see watermark embedding section            |
 | alpha              | 0.05                 | significance level                         |
 | columnIndex        | 1                    | specifies one column of the data to detect |
 
