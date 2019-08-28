@@ -31,16 +31,16 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  */
 public class LongStatistics extends Statistics<Long> {
 
-  private long max;
   private long min;
+  private long max;
   private long first;
-  private double sum;
   private long last;
+  private double sum;
 
   @Override
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    max = BytesUtils.bytesToLong(maxBytes);
     min = BytesUtils.bytesToLong(minBytes);
+    max = BytesUtils.bytesToLong(maxBytes);
   }
 
   @Override
@@ -59,13 +59,13 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  public double getSum() {
-    return sum;
+  public Long getLast() {
+    return last;
   }
 
   @Override
-  public Long getLast() {
-    return last;
+  public double getSum() {
+    return sum;
   }
 
   @Override
@@ -90,8 +90,8 @@ public class LongStatistics extends Statistics<Long> {
     }
   }
 
-  private void updateStats(long minValue, long maxValue, long firstValue, double sumValue,
-      long lastValue) {
+  private void updateStats(long minValue, long maxValue, long firstValue, long lastValue,
+      double sumValue) {
     if (minValue < min) {
       min = minValue;
     }
@@ -117,27 +117,21 @@ public class LongStatistics extends Statistics<Long> {
     LongStatistics longStats = (LongStatistics) stats;
     if (isEmpty) {
       initializeStats(longStats.getMin(), longStats.getMax(), longStats.getFirst(),
-          longStats.getSum(),
-          longStats.getLast());
+          longStats.getLast(), longStats.getSum());
       isEmpty = false;
     } else {
-      updateStats(longStats.getMin(), longStats.getMax(), longStats.getFirst(), longStats.getSum(),
-          longStats.getLast());
+      updateStats(longStats.getMin(), longStats.getMax(), longStats.getFirst(), longStats.getLast(),
+          longStats.getSum());
     }
 
   }
 
-  void initializeStats(long min, long max, long firstValue, double sum, long last) {
+  private void initializeStats(long min, long max, long firstValue, long last, double sum) {
     this.min = min;
     this.max = max;
     this.first = firstValue;
-    this.sum += sum;
     this.last = last;
-  }
-
-  @Override
-  public byte[] getMaxBytes() {
-    return BytesUtils.longToBytes(max);
+    this.sum += sum;
   }
 
   @Override
@@ -146,13 +140,13 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  public byte[] getFirstBytes() {
-    return BytesUtils.longToBytes(first);
+  public byte[] getMaxBytes() {
+    return BytesUtils.longToBytes(max);
   }
 
   @Override
-  public byte[] getSumBytes() {
-    return BytesUtils.doubleToBytes(sum);
+  public byte[] getFirstBytes() {
+    return BytesUtils.longToBytes(first);
   }
 
   @Override
@@ -161,8 +155,8 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  public ByteBuffer getMaxBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(max);
+  public byte[] getSumBytes() {
+    return BytesUtils.doubleToBytes(sum);
   }
 
   @Override
@@ -171,13 +165,13 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  public ByteBuffer getFirstBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(first);
+  public ByteBuffer getMaxBytebuffer() {
+    return ReadWriteIOUtils.getByteBuffer(max);
   }
 
   @Override
-  public ByteBuffer getSumBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(sum);
+  public ByteBuffer getFirstBytebuffer() {
+    return ReadWriteIOUtils.getByteBuffer(first);
   }
 
   @Override
@@ -186,8 +180,13 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
+  public ByteBuffer getSumBytebuffer() {
+    return ReadWriteIOUtils.getByteBuffer(sum);
+  }
+
+  @Override
   public String toString() {
-    return "[max:" + max + ",min:" + min + ",first:" + first + ",sum:" + sum + ",last:" + last
+    return "[min:" + min + ",max:" + max + ",first:" + first + ",last:" + last + ",sum:" + sum
         + "]";
   }
 

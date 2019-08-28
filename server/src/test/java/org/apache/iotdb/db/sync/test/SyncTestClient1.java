@@ -219,8 +219,6 @@ public class SyncTestClient1 {
    */
   public static void main(String[] args) throws Exception {
 
-    Statement statement = null;
-
     String path =
         new File(System.getProperty(IoTDBConstant.IOTDB_HOME, null)).getParent() + File.separator
             + "src"
@@ -235,9 +233,10 @@ public class SyncTestClient1 {
     storageGroupList.add("root.range_event");
 
     try (Connection connection = DriverManager
-        .getConnection("jdbc:iotdb://localhost:6667/", "root", "root")) {
+        .getConnection("jdbc:iotdb://localhost:6667/", "root", "root");
+        Statement statement = connection.createStatement();) {
       Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-      statement = connection.createStatement();
+
 
       setStorageGroup(statement, storageGroupList);
       logger.debug("Finish set storage group.");
@@ -249,10 +248,6 @@ public class SyncTestClient1 {
 
     } catch (Exception e) {
       logger.error("", e);
-    } finally {
-      if (statement != null) {
-        statement.close();
-      }
     }
   }
 }

@@ -96,7 +96,7 @@ public class FlushManager implements FlushManagerMBean, IService {
   }
 
   /**
-   * Add BufferWriteProcessor to asyncTryToFlush manager
+   * Add TsFileProcessor to asyncTryToFlush manager
    */
   @SuppressWarnings("squid:S2445")
   public void registerTsFileProcessor(TsFileProcessor tsFileProcessor) {

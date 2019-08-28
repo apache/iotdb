@@ -36,7 +36,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class MetadataQuerierByFileImplTest {
+public class IMetadataQuerierByFileImplTest {
 
   private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
   private TsFileSequenceReader reader;

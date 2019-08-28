@@ -44,7 +44,6 @@
         <url>https://github.com/apache/incubator-iotdb</url>
         <tag>rel/0.8</tag>
     </scm>
-
     <modules>
         <module>tsfile</module>
         <module>service-rpc</module>
@@ -58,7 +57,6 @@
         <!-- <module>hadoop</module> -->
         <module>distribution</module>
     </modules>
-
     <!-- Properties Management -->
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>

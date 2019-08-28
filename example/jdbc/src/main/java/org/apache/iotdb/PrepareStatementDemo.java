@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.jdbc.demo;
+package org.apache.iotdb;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -30,12 +30,12 @@ public class PrepareStatementDemo {
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-    Connection connection = null;
-    try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-      PreparedStatement preparedStatement = connection
-          .prepareStatement(
-              "insert into root.ln.wf01.wt01(timestamp,status,temperature) values(?,?,?)");
+    try (Connection connection = DriverManager
+        .getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        PreparedStatement preparedStatement = connection
+            .prepareStatement(
+                "insert into root.ln.wf01.wt01(timestamp,status,temperature) values(?,?,?)")) {
+
       preparedStatement.setLong(1, 1509465600000L);
       preparedStatement.setBoolean(2, true);
       preparedStatement.setFloat(3, 25.957603f);
@@ -60,24 +60,22 @@ public class PrepareStatementDemo {
       preparedStatement.execute();
       preparedStatement.clearParameters();
 
-      preparedStatement.close();
 
-      ResultSet resultSet = preparedStatement.executeQuery("select * from root");
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      while (resultSet.next()) {
-        StringBuilder builder = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          builder.append(resultSet.getString(i)).append(",");
+
+      try(ResultSet resultSet = preparedStatement.executeQuery("select * from root")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          System.out.println(builder);
         }
-        System.out.println(builder);
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          System.out
+              .println(resultSetMetaData.getColumnType(i) + "-" + resultSetMetaData.getColumnName(i));
+        }
       }
-      preparedStatement.close();
-      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-        System.out
-            .println(resultSetMetaData.getColumnType(i) + "-" + resultSetMetaData.getColumnName(i));
-      }
-    } finally {
-      connection.close();
     }
   }
 

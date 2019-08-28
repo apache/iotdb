@@ -132,8 +132,8 @@ public class PageReaderTest {
   @Test
   public void testBinary() {
     LoopWriteReadTest test = new LoopWriteReadTest("Test Double",
-        new PlainEncoder(EndianType.LITTLE_ENDIAN, TSDataType.TEXT, 1000),
-        new PlainDecoder(EndianType.LITTLE_ENDIAN), TSDataType.TEXT, POINTS_COUNT_IN_ONE_PAGE) {
+        new PlainEncoder(EndianType.BIG_ENDIAN, TSDataType.TEXT, 1000),
+        new PlainDecoder(EndianType.BIG_ENDIAN), TSDataType.TEXT, POINTS_COUNT_IN_ONE_PAGE) {
       @Override
       public Object generateValueByIndex(int i) {
         return new Binary(new StringBuilder("TEST TEXT").append(i).toString());

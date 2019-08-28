@@ -48,10 +48,10 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTablePool;
+import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -173,7 +173,7 @@ public class TsFileProcessor {
       } catch (IOException e) {
         logger.error("write WAL failed", e);
         for (int index: indexes) {
-          results[index] = TS_StatusCode.ERROR_STATUS.getValue();
+          results[index] = TSStatusType.INTERNAL_SERVER_ERROR.getStatusCode();
         }
         return false;
       }

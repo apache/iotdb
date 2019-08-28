@@ -127,144 +127,132 @@ public class IOTDBFillIT {
         "70,null,null,null",
         "625,null,false,null"
     };
-    Connection connection = null;
-    try {
-      connection = DriverManager.
-          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
       boolean hasResultSet = statement.execute("select temperature,status, hardware from "
           + "root.ln.wf01.wt01 where time = 3 "
           + "Fill(int32[linear, 5ms, 5ms], double[linear, 5ms, 5ms], boolean[previous, 5ms])");
 
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
-            + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
-        Assert.assertEquals(retArray1[cnt], ans);
-        cnt++;
-      }
-      statement.close();
 
-      statement = connection.createStatement();
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
+              + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
+      }
+
       hasResultSet = statement.execute("select temperature,status, hardware "
           + "from root.ln.wf01.wt01 where time = 70 Fill(int32[linear, 500ms, 500ms], "
           + "double[linear, 500ms, 500ms], boolean[previous, 500ms])");
 
       Assert.assertTrue(hasResultSet);
-      resultSet = statement.getResultSet();
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
-            + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
-        Assert.assertEquals(retArray1[cnt], ans);
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
+              + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
       }
-      statement.close();
 
-      statement = connection.createStatement();
       hasResultSet = statement.execute("select temperature,status, hardware "
           + "from root.ln.wf01.wt01 where time = 70 "
           + "Fill(int32[linear, 25ms, 25ms], double[linear, 25ms, 25ms], boolean[previous, 5ms])");
 
       Assert.assertTrue(hasResultSet);
-      resultSet = statement.getResultSet();
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
-            + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
-        Assert.assertEquals(retArray1[cnt], ans);
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
+              + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
       }
-      statement.close();
 
-      statement = connection.createStatement();
       hasResultSet = statement.execute("select temperature,status, hardware "
           + "from root.ln.wf01.wt01 where time = 625 "
           + "Fill(int32[linear, 25ms, 25ms], double[linear, 25ms, 25ms], boolean[previous, 5ms])");
 
       Assert.assertTrue(hasResultSet);
-      resultSet = statement.getResultSet();
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
-            + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
-        Assert.assertEquals(retArray1[cnt], ans);
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
+              + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
       }
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
   @Test
-  public void PreviousFillTest() throws SQLException {
+  public void PreviousFillTest() {
     String[] retArray1 = new String[]{
         "3,3.3,false,33",
         "70,50.5,false,550",
         "70,null,null,null"
     };
-    Connection connection = null;
-    try {
-      connection = DriverManager.
-          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
       boolean hasResultSet = statement.execute("select temperature,status, hardware "
           + "from root.ln.wf01.wt01 where time = 3 "
           + "Fill(int32[previous, 5ms], double[previous, 5ms], boolean[previous, 5ms])");
 
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
-            + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
-        Assert.assertEquals(retArray1[cnt], ans);
-        cnt++;
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
+              + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
       }
-      statement.close();
 
-      statement = connection.createStatement();
       hasResultSet = statement.execute("select temperature,status, hardware "
           + "from root.ln.wf01.wt01 where time = 70 "
           + "Fill(int32[previous, 500ms], double[previous, 500ms], boolean[previous, 500ms])");
 
       Assert.assertTrue(hasResultSet);
-      resultSet = statement.getResultSet();
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
-            + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
-        Assert.assertEquals(retArray1[cnt], ans);
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
+              + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
       }
-      statement.close();
 
-      statement = connection.createStatement();
       hasResultSet = statement.execute("select temperature,status, hardware "
           + "from root.ln.wf01.wt01 where time = 70 "
           + "Fill(int32[previous, 15ms], double[previous, 15ms], boolean[previous, 5ms])");
 
       Assert.assertTrue(hasResultSet);
-      resultSet = statement.getResultSet();
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
-            + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
-        Assert.assertEquals(retArray1[cnt], ans);
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
+              + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray1.length, cnt);
       }
-      statement.close();
-      Assert.assertEquals(retArray1.length, cnt);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -274,70 +262,58 @@ public class IOTDBFillIT {
         "3,3.3,false,33",
         "70,70.34,false,374"
     };
-    Connection connection = null;
-    try {
-      connection = DriverManager.
-          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+Statement statement = connection.createStatement()) {
+
       boolean hasResultSet = statement.execute("select temperature,status, hardware "
           + "from root.ln.wf01.wt01 where time = 3 "
           + "Fill(int32[linear], double[linear], boolean[previous])");
 
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
-            + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
-        Assert.assertEquals(retArray1[cnt], ans);
-        cnt++;
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
+              + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
       }
-      statement.close();
 
-      statement = connection.createStatement();
       hasResultSet = statement.execute("select temperature,status, hardware "
           + "from root.ln.wf01.wt01 where time = 70 "
           + "Fill(int32[linear], double[linear], boolean[previous])");
 
       Assert.assertTrue(hasResultSet);
-      resultSet = statement.getResultSet();
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
-            + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
-        Assert.assertEquals(retArray1[cnt], ans);
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
+              + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
       }
-      statement.close();
-
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
   private void prepareData() throws SQLException {
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-              "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()) {
+
 
       for (String sql : dataSet1) {
         statement.execute(sql);
       }
-      statement.close();
 
     } catch (Exception e) {
       e.printStackTrace();
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 }
