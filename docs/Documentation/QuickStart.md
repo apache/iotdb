@@ -58,6 +58,8 @@ Here in the Quick Start, we give a brief introduction of using source code to in
 
 ## Build from source
 
+Under the root path of incubator-iotdb:
+
 ```
 > mvn clean package -DskipTests
 ```
@@ -153,6 +155,8 @@ After build, the IoTDB server will be at the folder "server/target/iotdb-server-
  
 
 ## Only build client 
+
+Under the root path of incubator-iotdb:
 
 ```
 > mvn clean package -pl client -am -DskipTests=true
