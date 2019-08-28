@@ -130,7 +130,7 @@ public class IoTDBQueryResultSetTest {
     when(client.fetchResults(any(TSFetchResultsReq.class))).thenReturn(fetchResultsResp);
     when(fetchResultsResp.getStatus()).thenReturn(Status_SUCCESS);
 
-    TSCloseOperationResp closeResp = new TSCloseOperationResp();
+    TSRPCResp closeResp = new TSRPCResp();
     closeResp.setStatus(Status_SUCCESS);
     when(client.closeOperation(any(TSCloseOperationReq.class))).thenReturn(closeResp);
   }
