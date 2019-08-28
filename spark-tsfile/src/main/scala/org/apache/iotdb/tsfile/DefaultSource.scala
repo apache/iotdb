@@ -28,7 +28,9 @@ import org.apache.hadoop.mapreduce.Job
 import org.apache.iotdb.tsfile.DefaultSource.SerializableConfiguration
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
 import org.apache.iotdb.tsfile.io.HDFSInput
+import org.apache.iotdb.tsfile.qp.Executor
 import org.apache.iotdb.tsfile.read.common.Field
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet
 import org.apache.iotdb.tsfile.read.{ReadOnlyTsFile, TsFileSequenceReader}
 import org.apache.spark.TaskContext
 import org.apache.spark.sql.SparkSession
@@ -107,35 +109,37 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
 
       // get queriedSchema from requiredSchema
       var queriedSchema = Converter.prepSchema(requiredSchema, tsFileMetaData)
+      println(requiredSchema)
       val readTsFile: ReadOnlyTsFile = new ReadOnlyTsFile(reader)
 
       if (options.getOrElse(DefaultSource.isNewForm, "").equals("new_form")) {
         val device_names = tsFileMetaData.getDeviceMap.keySet()
         val measurement_names = tsFileMetaData.getMeasurementSchema.keySet()
         // construct queryExpression based on queriedSchema and filters
-        val queryExpressions = NewConverter.toQueryExpression(dataSchema, device_names, measurement_names, filters)
+        val queryExpressions = NewConverter.toQueryExpression(dataSchema, device_names, measurement_names, filters, reader, file.start.asInstanceOf[java.lang.Long], (file.start + file.length).asInstanceOf[java.lang.Long])
 
-
-
-        val firstExpression = queryExpressions.remove(queryExpressions.size() - 1)
-        var queryDataSet = readTsFile.query(firstExpression, file.start.asInstanceOf[java.lang.Long],
-          (file.start + file.length).asInstanceOf[java.lang.Long])
-        var device_name = queryDataSet.getPaths.get(0).getDevice
+        val queryDataSets = Executor.query(readTsFile, queryExpressions, file.start.asInstanceOf[java.lang.Long], (file.start + file.length).asInstanceOf[java.lang.Long])
+        var queryDataSet : QueryDataSet = null
+        var device_name:String = null
 
         def queryNext(): Boolean = {
-          if(queryDataSet.hasNext){
+          if(queryDataSet != null && queryDataSet.hasNext){
             return true
           }
 
-          if(queryExpressions.isEmpty){
+          if(queryDataSets.isEmpty){
             return false
           }
 
-          val exp = queryExpressions.remove(queryExpressions.size() - 1)
-          queryDataSet =  readTsFile.query(exp, file.start.asInstanceOf[java.lang.Long],
-            (file.start + file.length).asInstanceOf[java.lang.Long])
+          queryDataSet = queryDataSets.remove(queryDataSets.size() - 1)
+          while(!queryDataSet.hasNext){
+            if(queryDataSets.isEmpty){
+              return false
+            }
+            queryDataSet = queryDataSets.remove(queryDataSets.size() - 1)
+          }
           device_name = queryDataSet.getPaths.get(0).getDevice
-          queryNext()
+          true
         }
 
         new Iterator[InternalRow] {
