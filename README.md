@@ -62,113 +62,39 @@ If you want to use Hadoop or Spark to analyze IoTDB data file (called as TsFile)
 
 This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](https://iotdb.apache.org/#/Documents/0.8.0/chap1/sec1).
 
-## Installation from source code
+## Get source code
 
-You can get the released source code from https://iotdb.apache.org/#/Download, or from the git repository https://github.com/apache/incubator-iotdb/tree/master
+* https://iotdb.apache.org/#/Download
+* https://github.com/apache/incubator-iotdb/tree/master
 
-Now suppose your directory is like this:
-
-```
-> pwd
-/workspace/incubator-iotdb
-
-> ls -l
-incubator-iotdb/     <-- root path
-|
-+- server/
-|
-+- jdbc/
-|
-+- tsfile/
-|
-...
-|
-+- pom.xml
-```
-
-Let `$IOTDB_HOME = /workspace/incubator-iotdb/server/target/iotdb-server-{project.version}`
-
-Let `$IOTDB_CLI_HOME = /workspace/incubator-iotdb/client/target/iotdb-client-{project.version}`
-
-Note:
-* if `IOTDB_HOME` is not explicitly assigned, 
-then by default `IOTDB_HOME` is the direct parent directory of `sbin/start-server.sh` on Unix/OS X 
-(or that of `sbin\start-server.bat` on Windows).
-
-* if `IOTDB_CLI_HOME` is not explicitly assigned, 
-then by default `IOTDB_CLI_HOME` is the direct parent directory of `sbin/start-cli.sh` on 
-Unix/OS X (or that of `sbin\start-cli.bat` on Windows).
-
-If you are not the first time that building IoTDB, remember deleting the following files:
+## Build from source
 
 ```
-> rm -rf $IOTDB_HOME/data/
-> rm -rf $IOTDB_HOME/lib/
+> mvn clean package -Papache-release -DskipTests
 ```
 
-Then under the root path of incubator-iotdb, you can build IoTDB using Maven:
+Then the binary version (including both server and client) can be found at **distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**
 
-```
-> pwd
-/workspace/incubator-iotdb
+> NOTE: Directories "service-rpc/target/generated-sources/thrift" and "server/target/generated-sources/antlr3" need to be added to sources roots to avoid compilation errors in IDE.
 
-> mvn clean package -pl server -am -Dmaven.test.skip=true
-```
+### Configurations
 
-If successful, you will see the the following text in the terminal:
+configuration files are under "conf" folder
 
-```
-[INFO] ------------------------------------------------------------------------
-[INFO] Reactor Summary:
-[INFO]
-[INFO] Apache IoTDB (incubating) Project Parent POM ....... SUCCESS [  6.405 s]
-[INFO] TsFile ............................................. SUCCESS [ 10.435 s]
-[INFO] Service-rpc ........................................ SUCCESS [  4.170 s]
-[INFO] IoTDB Jdbc ......................................... SUCCESS [  3.252 s]
-[INFO] IoTDB Server ....................................... SUCCESS [  8.072 s]
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
-[INFO] ------------------------------------------------------------------------
-```
+  * environment config module (`iotdb-env.bat`, `iotdb-env.sh`), 
+  * system config module (`tsfile-format.properties`, `iotdb-engine.properties`)
+  * log config module (`logback.xml`). 
 
-Otherwise, you may need to check the error statements and fix the problems.
+For more, see [Chapter4: Deployment and Management](https://iotdb.apache.org/#/Documents/0.8.0/chap4/sec1) in detail.
 
-After build, the IoTDB project will be at the folder "server/target/iotdb-server-{project.version}". The folder will include the following contents:
-
-```
-server/target/iotdb-server-{project.version}  <-- root path
-|
-+- sbin/       <-- script files for starting and stopping the server
-|
-+- tools/       <-- script files of tools
-|
-+- conf/      <-- configuration files
-|
-+- lib/       <-- project dependencies
-```
-
-> NOTE: Directories "service-rpc/target/generated-sources/thrift" and "server/target/generated-sources/antlr3" need to be added to sources roots to avoid compilation errors. 
-
-## Configure
-
-Before starting to use IoTDB, you need to config the configuration files first. For your convenience, we have already set the default config in the files.
-
-In total, we provide users three kinds of configurations module: environment config module (`iotdb-env.bat`, `iotdb-env.sh`), system config module (`tsfile-format.properties`, `iotdb-engine.properties`) and log config module (`logback.xml`). All of these kinds of configuration files are put in iotdb/config folder.
-
-For more, you are advised to check our documentation [Chapter4: Deployment and Management](https://iotdb.apache.org/#/Documents/0.8.0/chap4/sec1) in detail.
-
-## Start
-
-### Start Server
-
-After that we start the server. Running the startup script: 
+### Start server
 
 ```
 # Unix/OS X
-> $IOTDB_HOME/sbin/start-server.sh
+> sbin/start-server.sh
 
 # Windows
-> $IOTDB_HOME\sbin\start-server.bat
+> sbin\start-server.bat
 ```
 
 ### Stop Server
@@ -177,92 +103,40 @@ The server can be stopped with ctrl-C or the following script:
 
 ```
 # Unix/OS X
-> $IOTDB_HOME/sbin/stop-server.sh
+> sbin/stop-server.sh
 
 # Windows
-> $IOTDB_HOME\sbin\stop-server.bat
+> sbin\stop-server.bat
 ```
 
-### Start Client
-
-Now let's trying to read and write some data from IoTDB using our Client. To start the client, you need to explicit the server's IP and PORT as well as the USER_NAME and PASSWORD. 
-
-```
-# You can first build cli project
-> pwd
-/workspace/incubator-iotdb
-
-> mvn clean package -pl client -am -Dmaven.test.skip=true
-```
-
-After build, the IoTDB client will be at the folder "client/target/iotdb-client-{project.version}".
+### Using client 
 
 ```
 # Unix/OS X
-> $IOTDB_CLI_HOME/sbin/start-cli.sh -h <IP> -p <PORT> -u <USER_NAME>
+> sbin/start-cli.sh -h <IP> -p <PORT> -u <USER_NAME>
 
 # Windows
-> $IOTDB_CLI_HOME\sbin\start-cli.bat -h <IP> -p <PORT> -u <USER_NAME>
+> sbin\start-cli.bat -h <IP> -p <PORT> -u <USER_NAME>
 ```
 
-> NOTE: In the system, we set a default user in IoTDB named 'root'. The default password for 'root' is 'root'. You can use this default user if you are making the first try or you didn't create users by yourself.
+> The default user is 'root'. The default password for 'root' is 'root'.
 
-The command line client is interactive so if everything is ready you should see the welcome logo and statements:
-
-```
- _____       _________  ______   ______
-|_   _|     |  _   _  ||_   _ `.|_   _ \
-  | |   .--.|_/ | | \_|  | | `. \ | |_) |
-  | | / .'`\ \  | |      | |  | | |  __'.
- _| |_| \__. | _| |_    _| |_.' /_| |__) |
-|_____|'.__.' |_____|  |______.'|_______/  version x.x.x
-
-
-IoTDB> login successfully
-IoTDB>
-```
-### Have a try
-Now, you can use IoTDB SQL to operate IoTDB, and when you've had enough fun, you can input 'quit' or 'exit' command to leave the client. 
-
-But lets try something slightly more interesting:
+> The default parameters are "-h 127.0.0.1 -p 6667 -u root -pw root".
 
 ``` 
-IoTDB> SET STORAGE GROUP TO root.vehicle
-It costs xxxs
-IoTDB> CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE
-It costs xxxs
-```
-Till now, we have already create a table called root.vehicle and add a column called d0.s0 in the table. Let's take a look at what we have done by 'SHOW TIMESERIES' command.
+IoTDB> set storage group to root.vehicle
 
-``` 
-IoTDB> SHOW TIMESERIES
-===  Timeseries Tree  ===
+IoTDB> create timeseries root.vehicle.d0.s0 with datatype=INT32, encoding=RLE
 
-{
-        "root":{
-                "vehicle":{
-                        "d0":{
-                                "s0":{
-                                        "args":"{}",
-                                        "StorageGroup":"root.vehicle",
-                                        "DataType":"INT32",
-                                        "Compressor":"UNCOMPRESSED",
-                                        "Encoding":"RLE"
-                                }
-                        }
-                }
-        }
-}
-```
-Insert time series data is the basic operation of IoTDB, you can use 'INSERT' command to finish this:
+IoTDB> show timeseries root
++-----------------------------+---------------------+--------+--------+
+|                   Timeseries|        Storage Group|DataType|Encoding|
++-----------------------------+---------------------+--------+--------+
+|           root.vehicle.d0.s0|         root.vehicle|   INT32|     RLE|
++-----------------------------+---------------------+--------+--------+
 
-```
 IoTDB> insert into root.vehicle.d0(timestamp,s0) values(1,101);
-It costs xxxs
-```
-The data we've just inserted displays like this:
 
-```
 IoTDB> SELECT d0.s0 FROM root.vehicle
 +-----------------------------+------------------+
 |                         Time|root.vehicle.d0.s0|
@@ -270,15 +144,13 @@ IoTDB> SELECT d0.s0 FROM root.vehicle
 |1970-01-01T08:00:00.001+08:00|               101|
 +-----------------------------+------------------+
 Total line number = 1
-It costs xxxs
+
+IoTDB> quit/exit
 ```
 
-If your session looks similar to what's above, congrats, your IoTDB is operational!
+For more on what commands are supported by IoTDB SQL, see [Chapter 5: IoTDB SQL Documentation](https://iotdb.apache.org/#/Documents/0.8.0/chap5/sec1).
 
-For more on what commands are supported by IoTDB SQL, see our documentation [Chapter 5: IoTDB SQL Documentation](https://iotdb.apache.org/#/Documents/0.8.0/chap5/sec1).
-
-
-# Usage of import-csv.sh
+### Usage of import-csv.sh
 
 ### Create metadata
 ```
@@ -295,10 +167,10 @@ CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 ### Run import shell
 ```
 # Unix/OS X
-> $IOTDB_CLI_HOME/tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
+> tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
 
 # Windows
-> $IOTDB_CLI_HOME\tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
+> tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
 ```
 
 ### Error data file
@@ -310,8 +182,27 @@ CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 ### Run export shell
 ```
 # Unix/OS X
-> $IOTDB_CLI_HOME/tools/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
+> tools/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
 
 # Windows
-> $IOTDB_CLI_HOME\tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
+> tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
 ```
+
+## Only build server
+
+Under the root path of incubator-iotdb:
+
+```
+> mvn clean package -pl server -am -DskipTests=true
+```
+
+After build, the IoTDB server will be at the folder "server/target/iotdb-server-{project.version}". 
+ 
+
+## Only build client 
+
+```
+> mvn clean package -pl client -am -DskipTests=true
+```
+
+After build, the IoTDB client will be at the folder "client/target/iotdb-client-{project.version}".
