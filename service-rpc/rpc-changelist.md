@@ -27,8 +27,8 @@
 
 * Add **TSBatchInsertionReq**, **TSCreateTimeseriesReq** and **TSSetStorageGroupReq**.
 
-* Add method `TSExecuteStatementResp insert(1:TSInsertionReq req)` and `TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req)` for batch inserting interface.
+* Change method name ~~TSExecuteStatementResp executeInsertion(1:TSInsertionReq req)~~ to **TSExecuteStatementResp insert(1:TSInsertionReq req)**, and add method **TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req)** for batch inserting interface.
 
-* Add method `TSRPCResp setStorageGroup(1:TSSetStorageGroupReq req)` and `TSRPCResp createTimeseries(1:TSCreateTimeseriesReq req)` for creating matadata interface.
+* Add method **TSRPCResp setStorageGroup(1:TSSetStorageGroupReq req)** and **TSRPCResp createTimeseries(1:TSCreateTimeseriesReq req)** for creating matadata interface.
 
 * Change item in enum **TSProtocolVersion** from ~~TSFILE_SERVICE_PROTOCOL_V1~~ to IOTDB_SERVICE_PROTOCOL_V1.
