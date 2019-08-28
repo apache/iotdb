@@ -59,7 +59,7 @@ Here in the Quick Start, we give a brief introduction of using source code to in
 ## Build from source
 
 ```
-> mvn clean package -Papache-release -DskipTests
+> mvn clean package -DskipTests
 ```
 
 Then the binary version (including both server and client) can be found at **distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**
