@@ -76,6 +76,7 @@ public class TsFileRecoverPerformer {
    * data 2. redo the WALs to recover unpersisted data 3. flush and close the file 4. clean WALs
    */
   public void recover() throws ProcessorException {
+
     IMemTable recoverMemTable = new PrimitiveMemTable();
     this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
         versionController,
@@ -93,12 +94,12 @@ public class TsFileRecoverPerformer {
       throw new ProcessorException(e);
     }
 
-    if (!restorableTsFileIOWriter.hasCrashed()) {
+    if (!restorableTsFileIOWriter.hasCrashed() && !restorableTsFileIOWriter.canWrite()) {
       // tsfile is complete
       try {
         if (tsFileResource.fileExists()) {
           // .resource file exists, deserialize it
-          tsFileResource.deSerialize();
+          recoverResourceFromFile();
         } else {
           // .resource file does not exist, read file metadata and recover tsfile resource
           try (TsFileSequenceReader reader = new TsFileSequenceReader(
@@ -131,22 +132,75 @@ public class TsFileRecoverPerformer {
     } else {
       // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
       // map must be updated first to avoid duplicated insertion
-      for (ChunkGroupMetaData chunkGroupMetaData : restorableTsFileIOWriter
-          .getChunkGroupMetaDatas()) {
-        for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-          tsFileResource.updateStartTime(chunkGroupMetaData.getDeviceID(),
-              chunkMetaData.getStartTime());
-          tsFileResource
-              .updateEndTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
-        }
-      }
+      recoverResourceFromWriter(restorableTsFileIOWriter);
     }
 
     // redo logs
+    redoLogs(restorableTsFileIOWriter);
+
+    // clean logs
+    try {
+      MultiFileLogNodeManager.getInstance()
+          .deleteNode(logNodePrefix + new File(insertFilePath).getName());
+    } catch (IOException e) {
+      throw new ProcessorException(e);
+    }
+  }
+
+  private void recoverResourceFromFile() throws IOException {
+    try {
+      tsFileResource.deSerialize();
+    } catch (IOException e) {
+      logger.warn("Cannot deserialize TsFileResource {}, construct it using "
+          + "TsFileSequenceReader", tsFileResource.getFile(), e);
+      recoverResourceFromReader();
+    }
+  }
+
+
+  private void recoverResourceFromReader() throws IOException {
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(tsFileResource.getFile().getAbsolutePath(), false)) {
+      TsFileMetaData metaData = reader.readFileMetadata();
+      List<TsDeviceMetadataIndex> deviceMetadataIndexList = new ArrayList<>(
+          metaData.getDeviceMap().values());
+      for (TsDeviceMetadataIndex index : deviceMetadataIndexList) {
+        TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
+        for (ChunkGroupMetaData chunkGroupMetaData : deviceMetadata
+            .getChunkGroupMetaDataList()) {
+          for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+            tsFileResource.updateStartTime(chunkGroupMetaData.getDeviceID(),
+                chunkMetaData.getStartTime());
+            tsFileResource
+                .updateEndTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
+          }
+        }
+      }
+    }
+    // write .resource file
+    tsFileResource.serialize();
+  }
+
+  private void recoverResourceFromWriter(RestorableTsFileIOWriter restorableTsFileIOWriter) {
+    for (ChunkGroupMetaData chunkGroupMetaData : restorableTsFileIOWriter
+        .getChunkGroupMetaDatas()) {
+      for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+        tsFileResource.updateStartTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
+        tsFileResource.updateEndTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
+      }
+    }
+  }
+
+  private void redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter) throws ProcessorException {
+    IMemTable recoverMemTable = new PrimitiveMemTable();
+    this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
+        versionController,
+        tsFileResource, schema, recoverMemTable, acceptUnseq);
     logReplayer.replayLogs();
     try {
       if (!recoverMemTable.isEmpty()) {
         // flush logs
+
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable, schema,
             restorableTsFileIOWriter,
             logNodePrefix);
@@ -157,14 +211,6 @@ public class TsFileRecoverPerformer {
       tsFileResource.serialize();
     } catch (ExecutionException | InterruptedException | IOException e) {
       Thread.currentThread().interrupt();
-      throw new ProcessorException(e);
-    }
-
-    // clean logs
-    try {
-      MultiFileLogNodeManager.getInstance()
-          .deleteNode(logNodePrefix + new File(insertFilePath).getName());
-    } catch (IOException e) {
       throw new ProcessorException(e);
     }
   }

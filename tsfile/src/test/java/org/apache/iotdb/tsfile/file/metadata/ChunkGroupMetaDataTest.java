@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.tsfile.file.metadata;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -87,7 +89,7 @@ public class ChunkGroupMetaDataTest {
     }
     int offsetListIndex = 0;
     List<TsDeviceMetadataIndex> deviceMetadataIndexList = metaData.getDeviceMap().values().stream()
-            .sorted((x, y) -> (int) (x.getOffset() - y.getOffset())).collect(Collectors.toList());
+        .sorted((x, y) -> (int) (x.getOffset() - y.getOffset())).collect(Collectors.toList());
     for (TsDeviceMetadataIndex index : deviceMetadataIndexList) {
       TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
       List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();

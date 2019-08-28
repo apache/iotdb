@@ -68,10 +68,8 @@ public class PlainEncoder extends Encoder {
       out.write(value & 0xFF);
       out.write((value >> 8) & 0xFF);
     } else if (this.endianType == EndianType.BIG_ENDIAN) {
-      logger.error(
-          "tsfile-encoding PlainEncoder: current version does not support short value encoding");
-      throw new TsFileEncodingException(
-          "tsfile-encoding PlainEncoder: current version does not support short value encoding");
+      out.write((value >> 8) & 0xFF);
+      out.write(value & 0xFF);
     }
   }
 
@@ -83,34 +81,23 @@ public class PlainEncoder extends Encoder {
       out.write((value >> 16) & 0xFF);
       out.write((value >> 24) & 0xFF);
     } else if (this.endianType == EndianType.BIG_ENDIAN) {
-      logger.error(
-          "tsfile-encoding PlainEncoder: current version does not support int value encoding");
-      throw new TsFileEncodingException(
-          "tsfile-encoding PlainEncoder: current version does not support int value encoding");
+      out.write((value >> 24) & 0xFF);
+      out.write((value >> 16) & 0xFF);
+      out.write((value >> 8) & 0xFF);
+      out.write(value & 0xFF);
     }
   }
 
   @Override
   public void encode(long value, ByteArrayOutputStream out) {
-    byte[] bufferBig = new byte[8];
-    byte[] bufferLittle = new byte[8];
-
-    for (int i = 0; i < 8; i++) {
-      bufferLittle[i] = (byte) (((value) >> (i * 8)) & 0xFF);
-      bufferBig[8 - i - 1] = (byte) (((value) >> (i * 8)) & 0xFF);
-    }
-    try {
-      if (this.endianType == EndianType.LITTLE_ENDIAN) {
-        out.write(bufferLittle);
-      } else if (this.endianType == EndianType.BIG_ENDIAN) {
-        logger.error(
-            "tsfile-encoding PlainEncoder: current version does not support long value encoding");
-        throw new TsFileEncodingException(
-            "tsfile-encoding PlainEncoder: current version does not support long value encoding");
+    if (this.endianType == EndianType.LITTLE_ENDIAN) {
+      for (int i = 0; i < 8; i++) {
+        out.write((byte) (((value) >> (i * 8)) & 0xFF));
       }
-    } catch (IOException e) {
-      logger
-          .error("tsfile-encoding PlainEncoder: error occurs when encode long value {}", value, e);
+    } else if (this.endianType == EndianType.BIG_ENDIAN) {
+      for (int i = 7; i >= 0; i--) {
+        out.write((byte) (((value) >> (i * 8)) & 0xFF));
+      }
     }
   }
 

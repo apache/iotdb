@@ -224,7 +224,6 @@ public abstract class AbstractClient {
       }
     }
 
-    println(StringUtils.repeat('-', DIVIDING_LINE_LENGTH));
     printCount(isShow, res, cnt);
   }
 
@@ -772,11 +771,9 @@ public abstract class AbstractClient {
   }
 
   private static void executeQuery(IoTDBConnection connection, String cmd) {
-    Statement statement = null;
     long startTime = System.currentTimeMillis();
-    try {
+    try (Statement statement = connection.createStatement();) {
       ZoneId zoneId = ZoneId.of(connection.getTimeZone());
-      statement = connection.createStatement();
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
       if (hasResultSet) {
@@ -789,15 +786,6 @@ public abstract class AbstractClient {
     } catch (Exception e) {
       println("Msg: " + e.getMessage());
       handleException(e);
-    } finally {
-      if (statement != null) {
-        try {
-          statement.close();
-        } catch (SQLException e) {
-          println("Cannot close statement because: " + e.getMessage());
-          handleException(e);
-        }
-      }
     }
     long costTime = System.currentTimeMillis() - startTime;
     println(String.format("It costs %.3fs", costTime / 1000.0));

@@ -24,7 +24,7 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 
@@ -64,8 +64,8 @@ public class UnSealedTsFileReaderByTimestamp implements IReaderByTimestamp {
 
     // create FileSeriesReaderByTimestamp for data which has been flushed to disk
     TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
-        .get(unsealedTsFile.getFile().getPath(), false);
-    ChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
+        .get(unsealedTsFile, false);
+    IChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
     unSealedTsFileDiskReaderByTs = new FileSeriesReaderByTimestamp(chunkLoader,
         unsealedTsFile.getChunkMetaDatas());
 

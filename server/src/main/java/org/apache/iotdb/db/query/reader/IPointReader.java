@@ -23,6 +23,7 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 
 public interface IPointReader {
 
+  // FIXME: this means hasCurrent actually
   boolean hasNext() throws IOException;
 
   TimeValuePair next() throws IOException;

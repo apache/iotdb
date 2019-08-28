@@ -16,21 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.jdbc.demo;
 
-import java.sql.SQLException;
+package org.apache.iotdb.db.exception;
 
-public class MetadataDemo {
+public class MergeException extends Exception{
 
-  public static void main(String[] args) throws ClassNotFoundException, SQLException {
-    // Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
-    // Connection connection = null;
-    // try {
-    // connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-    // DatabaseMetaData databaseMetaData = connection.getMetaData();
-    // } finally {
-    // connection.close();
-    // }
+  public MergeException() {
   }
 
+  public MergeException(String message) {
+    super(message);
+  }
+
+  public MergeException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  public MergeException(Throwable cause) {
+    super(cause);
+  }
 }

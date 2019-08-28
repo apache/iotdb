@@ -396,7 +396,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
             storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
           }
           break;
-        case SET_FILE_LEVEL:
+        case SET_STORAGE_GROUP:
           mManager.setStorageLevelToMTree(path.getFullPath());
           break;
         default:

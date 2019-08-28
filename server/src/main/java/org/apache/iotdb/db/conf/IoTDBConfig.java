@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.slf4j.Logger;
@@ -142,12 +143,6 @@ public class IoTDBConfig {
    * Maximum MemTable number in MemTable pool.
    */
   private int maxMemtableNumber = 20;
-
-  /**
-   * The maximum concurrent thread number for merging. When the value <=0 or > CPU core number, use
-   * the CPU core number.
-   */
-  private int mergeConcurrentThreads = Runtime.getRuntime().availableProcessors();
 
   /**
    * The amount of data that is read every time when IoTDB merges data.
@@ -273,7 +268,61 @@ public class IoTDBConfig {
    */
   private String watermarkBitString = "11001010010101";
 
+  /**
+   * Watermark method and parameters
+   */
   private String watermarkMethod = "GroupBasedLSBMethod(embed_row_cycle=5,embed_lsb_num=5)";
+  
+  /**
+   * How much memory (in byte) can be used by a single merge task.
+   */
+  private long mergeMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.2);
+
+  /**
+   * How many threads will be set up to perform main merge tasks.
+   */
+  private int mergeThreadNum = 1;
+
+  /**
+   * How many threads will be set up to perform merge chunk sub-tasks.
+   */
+  private int mergeChunkSubThreadNum = 4;
+
+  /**
+   * If one merge file selection runs for more than this time, it will be ended and its current
+   * selection will be used as final selection. Unit: millis.
+   * When < 0, it means time is unbounded.
+   */
+  private long mergeFileSelectionTimeBudget = 30 * 1000;
+
+  /**
+   * When set to true, if some crashed merges are detected during system rebooting, such merges will
+   * be continued, otherwise, the unfinished parts of such merges will not be continued while the
+   * finished parts still remain as they are.
+   */
+  private boolean continueMergeAfterReboot = true;
+
+  /**
+   * A global merge will be performed each such interval, that is, each storage group will be merged
+   * (if proper merge candidates can be found). Unit: second.
+   */
+  private long mergeIntervalSec = 2 * 3600L;
+
+  /**
+   * When set to true, all merges becomes full merge (the whole SeqFiles are re-written despite how
+   * much they are overflowed). This may increase merge overhead depending on how much the SeqFiles
+   * are overflowed.
+   */
+  private boolean forceFullMerge = false;
+
+  /**
+   * During a merge, if a chunk with less number of chunks than this parameter, the chunk will be
+   * merged with its succeeding chunks even if it is not overflowed, until the merged chunks reach
+   * this threshold and the new chunk will be flushed.
+   */
+  private int chunkMergePointThreshold = 20480;
+
+  private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
   public IoTDBConfig() {
     // empty constructor
@@ -435,14 +484,6 @@ public class IoTDBConfig {
 
   private void setIndexFileDir(String indexFileDir) {
     this.indexFileDir = indexFileDir;
-  }
-
-  public int getMergeConcurrentThreads() {
-    return mergeConcurrentThreads;
-  }
-
-  void setMergeConcurrentThreads(int mergeConcurrentThreads) {
-    this.mergeConcurrentThreads = mergeConcurrentThreads;
   }
 
   public int getFetchSize() {
@@ -617,6 +658,38 @@ public class IoTDBConfig {
     this.chunkBufferPoolEnable = chunkBufferPoolEnable;
   }
 
+  public long getMergeMemoryBudget() {
+    return mergeMemoryBudget;
+  }
+
+  public void setMergeMemoryBudget(long mergeMemoryBudget) {
+    this.mergeMemoryBudget = mergeMemoryBudget;
+  }
+
+  public int getMergeThreadNum() {
+    return mergeThreadNum;
+  }
+
+  public void setMergeThreadNum(int mergeThreadNum) {
+    this.mergeThreadNum = mergeThreadNum;
+  }
+
+  public boolean isContinueMergeAfterReboot() {
+    return continueMergeAfterReboot;
+  }
+
+  public void setContinueMergeAfterReboot(boolean continueMergeAfterReboot) {
+    this.continueMergeAfterReboot = continueMergeAfterReboot;
+  }
+
+  public long getMergeIntervalSec() {
+    return mergeIntervalSec;
+  }
+
+  public void setMergeIntervalSec(long mergeIntervalSec) {
+    this.mergeIntervalSec = mergeIntervalSec;
+  }
+
   public boolean isEnableParameterAdapter() {
     return enableParameterAdapter;
   }
@@ -665,12 +738,53 @@ public class IoTDBConfig {
     this.performanceStatMemoryInKB = performanceStatMemoryInKB;
   }
 
+  public boolean isForceFullMerge() {
+    return forceFullMerge;
+  }
+
+  public void setForceFullMerge(boolean forceFullMerge) {
+    this.forceFullMerge = forceFullMerge;
+  }
+
+  public int getChunkMergePointThreshold() {
+    return chunkMergePointThreshold;
+  }
+
+  public void setChunkMergePointThreshold(int chunkMergePointThreshold) {
+    this.chunkMergePointThreshold = chunkMergePointThreshold;
+  }
+
   public long getMemtableSizeThreshold() {
     return memtableSizeThreshold;
   }
 
   public void setMemtableSizeThreshold(long memtableSizeThreshold) {
     this.memtableSizeThreshold = memtableSizeThreshold;
+  }
+  
+  public MergeFileStrategy getMergeFileStrategy() {
+    return mergeFileStrategy;
+  }
+
+  public void setMergeFileStrategy(
+      MergeFileStrategy mergeFileStrategy) {
+    this.mergeFileStrategy = mergeFileStrategy;
+  }
+
+  public int getMergeChunkSubThreadNum() {
+    return mergeChunkSubThreadNum;
+  }
+
+  public void setMergeChunkSubThreadNum(int mergeChunkSubThreadNum) {
+    this.mergeChunkSubThreadNum = mergeChunkSubThreadNum;
+  }
+
+  public long getMergeFileSelectionTimeBudget() {
+    return mergeFileSelectionTimeBudget;
+  }
+
+  public void setMergeFileSelectionTimeBudget(long mergeFileSelectionTimeBudget) {
+    this.mergeFileSelectionTimeBudget = mergeFileSelectionTimeBudget;
   }
 
   public boolean isRpcThriftCompressionEnable() {

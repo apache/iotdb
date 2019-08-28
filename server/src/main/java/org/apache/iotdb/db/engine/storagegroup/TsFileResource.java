@@ -30,6 +30,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -40,6 +44,7 @@ public class TsFileResource {
   private File file;
 
   public static final String RESOURCE_SUFFIX = ".resource";
+  public static final String TEMP_SUFFIX = ".temp";
 
   /**
    * device -> start time
@@ -63,23 +68,24 @@ public class TsFileResource {
    */
   private List<ChunkMetaData> chunkMetaDatas;
 
-
   /**
    * Mem chunk data. Only be set in a temporal TsFileResource in a query process.
    */
   private ReadOnlyMemChunk readOnlyMemChunk;
 
+  private ReentrantReadWriteLock mergeQueryLock = new ReentrantReadWriteLock();
+
   public TsFileResource(File file) {
     this.file = file;
-    this.startTimeMap = new HashMap<>();
+    this.startTimeMap = new ConcurrentHashMap<>();
     this.endTimeMap = new HashMap<>();
     this.closed = true;
   }
 
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
-    this.startTimeMap = new HashMap<>();
-    this.endTimeMap = new HashMap<>();
+    this.startTimeMap = new ConcurrentHashMap<>();
+    this.endTimeMap = new ConcurrentHashMap<>();
     this.processor = processor;
   }
 
@@ -106,7 +112,7 @@ public class TsFileResource {
 
   public void serialize() throws IOException {
     try (OutputStream outputStream = new BufferedOutputStream(
-        new FileOutputStream(file + RESOURCE_SUFFIX))) {
+        new FileOutputStream(file + RESOURCE_SUFFIX + TEMP_SUFFIX))) {
       ReadWriteIOUtils.write(this.startTimeMap.size(), outputStream);
       for (Entry<String, Long> entry : this.startTimeMap.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey(), outputStream);
@@ -118,6 +124,10 @@ public class TsFileResource {
         ReadWriteIOUtils.write(entry.getValue(), outputStream);
       }
     }
+    File src = new File(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
+    File dest = new File(file + RESOURCE_SUFFIX);
+    dest.delete();
+    FileUtils.moveFile(src, dest);
   }
 
   public void deSerialize() throws IOException {
@@ -219,5 +229,46 @@ public class TsFileResource {
 
   public TsFileProcessor getUnsealedFileProcessor() {
     return processor;
+  }
+
+  public ReentrantReadWriteLock getMergeQueryLock() {
+    return mergeQueryLock;
+  }
+
+  public void removeModFile() throws IOException {
+    getModFile().remove();
+    modFile = null;
+  }
+
+  public void remove() {
+    file.delete();
+    new File(file.getPath() + RESOURCE_SUFFIX).delete();
+    new File(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
+  }
+
+  @Override
+  public String toString() {
+    return file.toString();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    TsFileResource that = (TsFileResource) o;
+    return Objects.equals(file, that.file);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(file);
+  }
+
+  public void setClosed(boolean closed) {
+    this.closed = closed;
   }
 }

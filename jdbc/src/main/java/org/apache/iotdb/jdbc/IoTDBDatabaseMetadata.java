@@ -87,7 +87,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           try {
             RpcUtils.verifySuccess(resp.getStatus());
           } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e);
+            throw new IoTDBSQLException(e.getMessage());
           }
           return new IoTDBMetadataResultSet(resp.getColumnsList(), null, null);
         } catch (TException e) {
@@ -101,7 +101,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           try {
             RpcUtils.verifySuccess(resp.getStatus());
           } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e);
+            throw new IoTDBSQLException(e.getMessage());
           }
           return new IoTDBMetadataResultSet(resp.getColumnsList(), null, null);
         } catch (TException e) {
@@ -114,7 +114,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           try {
             RpcUtils.verifySuccess(resp.getStatus());
           } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e);
+            throw new IoTDBSQLException(e.getMessage());
           }
           Set<String> showStorageGroup = resp.getShowStorageGroups();
           return new IoTDBMetadataResultSet(null, showStorageGroup, null);
@@ -129,7 +129,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           try {
             RpcUtils.verifySuccess(resp.getStatus());
           } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e);
+            throw new IoTDBSQLException(e.getMessage());
           }
           List<List<String>> showTimeseriesList = resp.getShowTimeseriesList();
           return new IoTDBMetadataResultSet(null, null, showTimeseriesList);
@@ -1268,7 +1268,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     try {
       RpcUtils.verifySuccess(resp.getStatus());
     } catch (IoTDBRPCException e) {
-      throw new IoTDBSQLException(e);
+      throw new IoTDBSQLException(e.getMessage());
     }
     return resp.getMetadataInJson();
   }
