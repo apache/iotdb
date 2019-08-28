@@ -39,6 +39,7 @@ public class LogFilter {
   }
 
   LogFilter(Properties properties) throws IOException {
+    this();
     minLevel = LogLevel.valueOf(properties.getProperty(MIN_LEVEL.getPropertyName(), minLevel.name()));
 
     String threadNameWhiteListStr = properties.getProperty(THREAD_NAME_WHITE_LIST.getPropertyName());
