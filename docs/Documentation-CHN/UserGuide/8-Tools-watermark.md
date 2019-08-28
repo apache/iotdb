@@ -21,42 +21,33 @@ under the License.
 
 -->
 
-## 概览
+**目录**
 
-<!-- MarkdownTOC -->
+1. 水印嵌入
 
-- [水印工具](#%E6%B0%B4%E5%8D%B0%E5%B7%A5%E5%85%B7)
-  - [水印嵌入](#%E6%B0%B4%E5%8D%B0%E5%B5%8C%E5%85%A5)
-    - [配置](#%E9%85%8D%E7%BD%AE)
-    - [使用流程示例](#%E4%BD%BF%E7%94%A8%E6%B5%81%E7%A8%8B%E7%A4%BA%E4%BE%8B)
-      - [第一步：创建一个新用户Alice，授予读权限，然后查询](#%E7%AC%AC%E4%B8%80%E6%AD%A5%EF%BC%9A%E5%88%9B%E5%BB%BA%E4%B8%80%E4%B8%AA%E6%96%B0%E7%94%A8%E6%88%B7alice%EF%BC%8C%E6%8E%88%E4%BA%88%E8%AF%BB%E6%9D%83%E9%99%90%EF%BC%8C%E7%84%B6%E5%90%8E%E6%9F%A5%E8%AF%A2)
-      - [第二步：给Alice施加水印嵌入](#%E7%AC%AC%E4%BA%8C%E6%AD%A5%EF%BC%9A%E7%BB%99alice%E6%96%BD%E5%8A%A0%E6%B0%B4%E5%8D%B0%E5%B5%8C%E5%85%A5)
-      - [第三步：撤销Alice的水印嵌入](#%E7%AC%AC%E4%B8%89%E6%AD%A5%EF%BC%9A%E6%92%A4%E9%94%80alice%E7%9A%84%E6%B0%B4%E5%8D%B0%E5%B5%8C%E5%85%A5)
-  - [水印检测](#%E6%B0%B4%E5%8D%B0%E6%A3%80%E6%B5%8B)
+   1.1 配置
 
-<!-- /MarkdownTOC -->
+   1.2 使用示例
 
-<a id="%E6%B0%B4%E5%8D%B0%E5%B7%A5%E5%85%B7"></a>
+2. 水印检测
 
-# 水印工具
+
+
+# IoTDB时间序列数据水印工具：用户手册
 
 这个工具提供了 1）IoTDB查询结果水印嵌入功能，2）可疑数据的水印检测功能。
 
-<a id="%E6%B0%B4%E5%8D%B0%E5%B5%8C%E5%85%A5"></a>
+## 1. 水印嵌入
 
-## 水印嵌入
-
-<a id="%E9%85%8D%E7%BD%AE"></a>
-
-### 配置
+### 1.1 配置
 
 IoTDB默认关闭水印嵌入功能。为了使用这个功能，第一步要做的事情是修改配置文件`iotdb-engine.properties`中的以下各项：
 
-| 名称                    | 示例                                                | 解释                                |
-| ----------------------- | --------------------------------------------------- | ----------------------------------- |
-| watermark_module_opened | false                                               | `true`打开水印嵌入功能; `false`关闭 |
-| watermark_secret_key    | IoTDB*2019@Beijing                                  | 自定义密钥                          |
-| watermark_bit_string    | 100101110100                                        | 要被嵌入的0-1比特串                 |
+| 名称                    | 示例                                                   | 解释                                |
+| ----------------------- | ------------------------------------------------------ | ----------------------------------- |
+| watermark_module_opened | false                                                  | `true`打开水印嵌入功能; `false`关闭 |
+| watermark_secret_key    | IoTDB*2019@Beijing                                     | 自定义密钥                          |
+| watermark_bit_string    | 100101110100                                           | 要被嵌入的0-1比特串                 |
 | watermark_method        | GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5) | 指定水印算法及其参数                |
 
 注意：
@@ -70,11 +61,7 @@ IoTDB默认关闭水印嵌入功能。为了使用这个功能，第一步要做
   - GroupBasedLSBMethod使用LSB嵌入。`embed_lsb_num`控制了允许嵌入水印的最低有效位的数量。`embed_lsb_num`越大，数值的可变化范围就越大。
 - `watermark_secret_key`, `watermark_bit_string`和`watermark_method`都不应该被攻击者获得。您需要自己负责配置文件`iotdb-engine.properties`的安全管理。
 
-<a id="%E4%BD%BF%E7%94%A8%E6%B5%81%E7%A8%8B%E7%A4%BA%E4%BE%8B"></a>
-
-### 使用流程示例
-
-<a id="%E7%AC%AC%E4%B8%80%E6%AD%A5%EF%BC%9A%E5%88%9B%E5%BB%BA%E4%B8%80%E4%B8%AA%E6%96%B0%E7%94%A8%E6%88%B7alice%EF%BC%8C%E6%8E%88%E4%BA%88%E8%AF%BB%E6%9D%83%E9%99%90%EF%BC%8C%E7%84%B6%E5%90%8E%E6%9F%A5%E8%AF%A2"></a>
+### 1.2 使用示例
 
 #### 第一步：创建一个新用户Alice，授予读权限，然后查询
 
@@ -126,8 +113,6 @@ select * from root
 |      1970-01-01T08:00:00.033+08:00|              53.5|
 +-----------------------------------+------------------+
 ```
-
-<a id="%E7%AC%AC%E4%BA%8C%E6%AD%A5%EF%BC%9A%E7%BB%99alice%E6%96%BD%E5%8A%A0%E6%B0%B4%E5%8D%B0%E5%B5%8C%E5%85%A5"></a>
 
 #### 第二步：给Alice施加水印嵌入
 
@@ -184,8 +169,6 @@ select * from root
 +-----------------------------------+------------------+
 ```
 
-<a id="%E7%AC%AC%E4%B8%89%E6%AD%A5%EF%BC%9A%E6%92%A4%E9%94%80alice%E7%9A%84%E6%B0%B4%E5%8D%B0%E5%B5%8C%E5%85%A5"></a>
-
 #### 第三步：撤销Alice的水印嵌入
 
 sql用法：`revoke watermark_embedding from Alice`
@@ -194,9 +177,7 @@ sql用法：`revoke watermark_embedding from Alice`
 
 只有root用户有权限运行该指令。在root撤销Alice的水印嵌入之后，Alice的所有查询结果就又是数据库中的原始数据了。
 
-<a id="%E6%B0%B4%E5%8D%B0%E6%A3%80%E6%B5%8B"></a>
-
-## 水印检测
+## 2. 水印检测
 
 `detect-watermark.sh` 和 `detect-watermark.bat` 是给不同平台提供的功能相同的工具脚本。
 
@@ -209,8 +190,8 @@ sql用法：`revoke watermark_embedding from Alice`
 | filePath           | /home/data/dump1.csv | 可疑数据的文件路径           |
 | secretKey          | IoTDB*2019@Beijing   | 参见水印嵌入小节             |
 | watermarkBitString | 100101110100         | 参见水印嵌入小节             |
-| embed_row_cycle         | 2                    | 参见水印嵌入小节             |
-| embed_lsb_num    | 5                    | 参见水印嵌入小节             |
+| embed_row_cycle    | 2                    | 参见水印嵌入小节             |
+| embed_lsb_num      | 5                    | 参见水印嵌入小节             |
 | alpha              | 0.05                 | 显著性水平                   |
 | columnIndex        | 1                    | 指定可疑数据的某一列进行检测 |
 
