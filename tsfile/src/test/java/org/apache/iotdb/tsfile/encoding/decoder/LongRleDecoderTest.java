@@ -180,7 +180,7 @@ public class LongRleDecoderTest {
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     int bitWidth = ReadWriteForEncodingUtils.getLongMaxBitWidth(list);
-    RleEncoder<Long> encoder = new LongRleEncoder(EndianType.LITTLE_ENDIAN);
+    RleEncoder<Long> encoder = new LongRleEncoder(EndianType.BIG_ENDIAN);
     for (long value : list) {
       encoder.encode(value, baos);
     }
@@ -202,7 +202,7 @@ public class LongRleDecoderTest {
   public void testLength(List<Long> list, int bitWidth, boolean isDebug, int repeatCount)
       throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    RleEncoder<Long> encoder = new LongRleEncoder(EndianType.LITTLE_ENDIAN);
+    RleEncoder<Long> encoder = new LongRleEncoder(EndianType.BIG_ENDIAN);
     for (int i = 0; i < repeatCount; i++) {
       for (long value : list) {
         encoder.encode(value, baos);
@@ -211,7 +211,7 @@ public class LongRleDecoderTest {
     }
 
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-    RleDecoder decoder = new LongRleDecoder(EndianType.LITTLE_ENDIAN);
+    RleDecoder decoder = new LongRleDecoder(EndianType.BIG_ENDIAN);
     for (int i = 0; i < repeatCount; i++) {
       for (long value : list) {
         long value_ = decoder.readLong(buffer);

@@ -76,7 +76,6 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       throws StorageEngineException, PathErrorException, ProcessorException, IOException {
     initAggreFuction(aggres);
     // init reader
-    QueryResourceManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedSeries);
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }

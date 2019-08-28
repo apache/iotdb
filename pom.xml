@@ -44,6 +44,19 @@
         <url>https://github.com/apache/incubator-iotdb</url>
         <tag>rel/0.8</tag>
     </scm>
+    <modules>
+        <module>tsfile</module>
+        <module>service-rpc</module>
+        <module>jdbc</module>
+        <module>session</module>
+        <module>client</module>
+        <module>server</module>
+        <module>example</module>
+        <module>grafana</module>
+        <module>spark-tsfile</module>
+        <!-- <module>hadoop</module> -->
+        <module>distribution</module>
+    </modules>
     <!-- Properties Management -->
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -207,31 +220,31 @@
                 <artifactId>log4j</artifactId>
                 <version>1.2.17</version>
             </dependency>
-	        <dependency>
-		    	<groupId>org.eclipse.jetty</groupId>
-			    <artifactId>jetty-server</artifactId>
-			    <version>${jetty.version}</version>
-			</dependency>
-			<dependency>
-		    	<groupId>org.eclipse.jetty</groupId>
-			    <artifactId>jetty-webapp</artifactId>
-			    <version>${jetty.version}</version>
-			</dependency>
-			<dependency>
-	      		<groupId>io.dropwizard.metrics</groupId>
-	      		<artifactId>metrics-core</artifactId>
-	      		<version>${metrics.version}</version>
-	    	</dependency>
-	    	<dependency>
-		        <groupId>io.dropwizard.metrics</groupId>
-		        <artifactId>metrics-jvm</artifactId>
-		        <version>${metrics.version}</version>
-	        </dependency>
-	        <dependency>
-		        <groupId>io.dropwizard.metrics</groupId>
-		        <artifactId>metrics-json</artifactId>
-		        <version>${metrics.version}</version>
-	        </dependency>    
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-server</artifactId>
+                <version>${jetty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-webapp</artifactId>
+                <version>${jetty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.dropwizard.metrics</groupId>
+                <artifactId>metrics-core</artifactId>
+                <version>${metrics.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.dropwizard.metrics</groupId>
+                <artifactId>metrics-jvm</artifactId>
+                <version>${metrics.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.dropwizard.metrics</groupId>
+                <artifactId>metrics-json</artifactId>
+                <version>${metrics.version}</version>
+            </dependency>
             <dependency>
                 <groupId>me.tongfei</groupId>
                 <artifactId>progressbar</artifactId>
@@ -404,18 +417,6 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-    <modules>
-        <module>tsfile</module>
-        <module>service-rpc</module>
-        <module>jdbc</module>
-        <module>client</module>
-        <module>server</module>
-        <module>example</module>
-        <module>grafana</module>
-        <module>spark-tsfile</module>
-        <!-- <module>hadoop</module> -->
-        <module>distribution</module>
-    </modules>
     <build>
         <pluginManagement>
             <plugins>

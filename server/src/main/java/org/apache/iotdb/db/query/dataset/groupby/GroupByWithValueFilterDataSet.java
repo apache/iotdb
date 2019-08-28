@@ -73,9 +73,6 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       throws StorageEngineException, PathErrorException, ProcessorException, IOException {
     initAggreFuction(aggres);
 
-    QueryResourceManager.getInstance().beginQueryOfGivenExpression(context.getJobId(), expression);
-    QueryResourceManager
-        .getInstance().beginQueryOfGivenQueryPaths(context.getJobId(), selectedSeries);
     this.timestampGenerator = new EngineTimeGenerator(expression, context);
     this.allDataReaderList = new ArrayList<>();
     for (Path path : selectedSeries) {

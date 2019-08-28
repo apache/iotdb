@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -118,6 +119,10 @@ public abstract class PhysicalPlan {
           plan = new DeletePlan();
           plan.deserializeFrom(buffer);
           break;
+        case BATCHINSERT:
+          plan = new BatchInsertPlan();
+          plan.deserializeFrom(buffer);
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -126,7 +131,7 @@ public abstract class PhysicalPlan {
   }
 
   public enum PhysicalPlanType {
-    INSERT, DELETE
+    INSERT, DELETE, BATCHINSERT
   }
 
 

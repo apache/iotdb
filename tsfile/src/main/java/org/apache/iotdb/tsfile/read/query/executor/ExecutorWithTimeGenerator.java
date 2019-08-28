@@ -26,8 +26,8 @@ import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
-import org.apache.iotdb.tsfile.read.controller.MetadataQuerier;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.read.controller.IMetadataQuerier;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
@@ -39,10 +39,10 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 
 public class ExecutorWithTimeGenerator implements QueryExecutor {
 
-  private MetadataQuerier metadataQuerier;
-  private ChunkLoader chunkLoader;
+  private IMetadataQuerier metadataQuerier;
+  private IChunkLoader chunkLoader;
 
-  public ExecutorWithTimeGenerator(MetadataQuerier metadataQuerier, ChunkLoader chunkLoader) {
+  public ExecutorWithTimeGenerator(IMetadataQuerier metadataQuerier, IChunkLoader chunkLoader) {
     this.metadataQuerier = metadataQuerier;
     this.chunkLoader = chunkLoader;
   }

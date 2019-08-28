@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
@@ -85,16 +86,17 @@ public class DeviceMetaDataCache {
   /**
    * get {@link ChunkMetaData}. THREAD SAFE.
    */
-  public List<ChunkMetaData> get(String filePath, Path seriesPath)
+  public List<ChunkMetaData> get(TsFileResource resource, Path seriesPath)
       throws IOException {
     if (!cacheEnable) {
-      TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
+      TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(resource);
       TsDeviceMetadata deviceMetaData = TsFileMetadataUtils
-          .getTsDeviceMetaData(filePath, seriesPath, fileMetaData);
+          .getTsDeviceMetaData(resource, seriesPath, fileMetaData);
       return TsFileMetadataUtils.getChunkMetaDataList(seriesPath.getMeasurement(), deviceMetaData);
     }
 
-    StringBuilder builder = new StringBuilder(filePath).append(".").append(seriesPath.getDevice());
+    StringBuilder builder = new StringBuilder(resource.getFile().getPath()).append(".").append(seriesPath
+        .getDevice());
     String pathDeviceStr = builder.toString();
     String key = builder.append(".").append(seriesPath.getMeasurement()).toString();
     Object devicePathObject = pathDeviceStr.intern();
@@ -123,9 +125,9 @@ public class DeviceMetaDataCache {
         logger.debug("Cache didn't hit: the number of requests for cache is {}",
             cacheRequestNum.get());
       }
-      TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
+      TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(resource);
       TsDeviceMetadata deviceMetaData = TsFileMetadataUtils
-          .getTsDeviceMetaData(filePath, seriesPath, fileMetaData);
+          .getTsDeviceMetaData(resource, seriesPath, fileMetaData);
       // If measurement isn't included in the tsfile, empty list is returned.
       if (deviceMetaData == null) {
         return new ArrayList<>();
@@ -192,5 +194,11 @@ public class DeviceMetaDataCache {
 
     private static final DeviceMetaDataCache INSTANCE = new
         DeviceMetaDataCache(MEMORY_THRESHOLD_IN_B);
+  }
+
+  public void remove(TsFileResource resource) {
+    synchronized (lruCache) {
+      lruCache.entrySet().removeIf(e -> e.getKey().startsWith(resource.getFile().getPath()));
+    }
   }
 }

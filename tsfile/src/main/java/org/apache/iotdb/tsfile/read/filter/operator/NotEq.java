@@ -41,6 +41,9 @@ public class NotEq<T extends Comparable<T>> extends UnaryFilter<T> {
     if (filterType == FilterType.TIME_FILTER) {
       return !(((Long) value) == digest.getMinTime() && (Long) value == digest.getMaxTime());
     } else {
+      if (digest.isMinValueNull() || digest.isMaxValueNull()) {
+        return true;
+      }
       return !(value.compareTo(digest.getMinValue()) == 0
           && value.compareTo(digest.getMaxValue()) == 0);
     }

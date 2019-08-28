@@ -75,21 +75,20 @@ public class IoTDBDeletionIT {
   @Test
   public void test() throws SQLException {
     prepareData();
-    Connection connection = null;
-    try {
-      connection = DriverManager
-              .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-                      "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()) {
+
       statement.execute("DELETE FROM root.vehicle.d0.s0  WHERE time <= 300");
       statement.execute("DELETE FROM root.vehicle.d0.s1,root.vehicle.d0.s2,root.vehicle.d0.s3"
-              + " WHERE time <= 350");
+          + " WHERE time <= 350");
       statement.execute("DELETE FROM root.vehicle.d0 WHERE time <= 150");
 
       ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0");
       int cnt = 0;
       while (set.next()) {
-        cnt ++;
+        cnt++;
       }
       assertEquals(250, cnt);
       set.close();
@@ -97,7 +96,7 @@ public class IoTDBDeletionIT {
       set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0");
       cnt = 0;
       while (set.next()) {
-        cnt ++;
+        cnt++;
       }
       assertEquals(100, cnt);
       set.close();
@@ -105,174 +104,147 @@ public class IoTDBDeletionIT {
       set = statement.executeQuery("SELECT s1,s2,s3 FROM root.vehicle.d0");
       cnt = 0;
       while (set.next()) {
-        cnt ++;
+        cnt++;
       }
       assertEquals(50, cnt);
       set.close();
 
-      statement.close();
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
     cleanData();
   }
 
-  @Ignore
   @Test
-  public void testMerge() throws SQLException, InterruptedException {
+  public void testMerge() throws SQLException {
     prepareMerge();
-    Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-                    "root");
-    Statement statement = connection.createStatement();
-//    statement.execute("merge");
-    statement.execute("DELETE FROM root.vehicle.d0 WHERE time <= 15000");
 
-    // before merge completes
-    ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0");
-    int cnt = 0;
-    while (set.next()) {
-      cnt ++;
-    }
-    assertEquals(5000, cnt);
-    set.close();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("merge");
+      statement.execute("DELETE FROM root.vehicle.d0 WHERE time <= 15000");
 
-    // after merge completes
-    set = statement.executeQuery("SELECT * FROM root.vehicle.d0");
-    cnt = 0;
-    while (set.next()) {
-      cnt ++;
+      // before merge completes
+      ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0");
+      int cnt = 0;
+      while (set.next()) {
+        cnt ++;
+      }
+      assertEquals(5000, cnt);
+      set.close();
+
+      // after merge completes
+      set = statement.executeQuery("SELECT * FROM root.vehicle.d0");
+      cnt = 0;
+      while (set.next()) {
+        cnt ++;
+      }
+      assertEquals(5000, cnt);
+      set.close();
+      cleanData();
     }
-    assertEquals(5000, cnt);
-    set.close();
-    cleanData();
   }
 
   @Test
   public void testDelAfterFlush() throws SQLException {
-    Connection connection = DriverManager
+    try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
-    Statement statement = connection.createStatement();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt01");
+      statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN,"
+          + " ENCODING=PLAIN");
+      statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,status) "
+          + "values(1509465600000,true)");
+      statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false)");
 
-    statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt01");
-    statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN,"
-        + " ENCODING=PLAIN");
-    statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,status) "
-        + "values(1509465600000,true)");
-    statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false)");
+      statement.execute("delete from root.ln.wf01.wt01.status where time < NOW()");
+      statement.execute("flush");
+      statement.execute("delete from root.ln.wf01.wt01.status where time < NOW()");
 
-    statement.execute("delete from root.ln.wf01.wt01.status where time < NOW()");
-    statement.execute("flush");
-    statement.execute("delete from root.ln.wf01.wt01.status where time < NOW()");
-    ResultSet resultSet = statement.executeQuery("select status from root.ln.wf01.wt01");
-    assertFalse(resultSet.next());
-
-    statement.close();
-    connection.close();
+      try (ResultSet resultSet = statement.executeQuery("select status from root.ln.wf01.wt01")) {
+        assertFalse(resultSet.next());
+      }
+    }
   }
 
 
-  private static void prepareSeries() throws SQLException {
-    Connection connection = null;
-    try {
-      connection = DriverManager
-              .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-                      "root");
-      Statement statement = connection.createStatement();
+  private static void prepareSeries() {
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()) {
+
       for (String sql : creationSqls) {
         statement.execute(sql);
       }
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
   private void prepareData() throws SQLException {
-    Connection connection = null;
-    try {
-      connection = DriverManager
-              .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-                      "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()) {
+
       // prepare BufferWrite file
       for (int i = 201; i <= 300; i++) {
-        statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(
+            String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
-//      statement.execute("merge");
+      statement.execute("merge");
       // prepare Unseq-File
       for (int i = 1; i <= 100; i++) {
-        statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(
+            String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
-//      statement.execute("merge");
+      statement.execute("merge");
       // prepare BufferWrite cache
       for (int i = 301; i <= 400; i++) {
-        statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(
+            String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
       // prepare Overflow cache
       for (int i = 101; i <= 200; i++) {
-        statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(
+            String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
 
-      statement.close();
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
   private void cleanData() throws SQLException {
-    Connection connection = null;
-    try {
-      connection = DriverManager
-              .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-                      "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()) {
       statement.execute(deleteAllTemplate);
-
-      statement.close();
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
   public void prepareMerge() throws SQLException {
-    Connection connection = null;
-    try {
-      connection = DriverManager
-              .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-                      "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()) {
+
       // prepare BufferWrite data
       for (int i = 10001; i <= 20000; i++) {
         statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
-                i % 2 == 0));
+            i % 2 == 0));
       }
       // prepare Overflow data
       for (int i = 1; i <= 10000; i++) {
         statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
-                i % 2 == 0));
+            i % 2 == 0));
       }
 
-      statement.close();
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 }

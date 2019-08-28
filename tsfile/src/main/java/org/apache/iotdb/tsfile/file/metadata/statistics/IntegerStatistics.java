@@ -31,16 +31,16 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  */
 public class IntegerStatistics extends Statistics<Integer> {
 
-  private int max;
   private int min;
+  private int max;
   private int first;
-  private double sum;
   private int last;
+  private double sum;
 
   @Override
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    max = BytesUtils.bytesToInt(maxBytes);
     min = BytesUtils.bytesToInt(minBytes);
+    max = BytesUtils.bytesToInt(maxBytes);
   }
 
   @Override
@@ -67,8 +67,8 @@ public class IntegerStatistics extends Statistics<Integer> {
     }
   }
 
-  private void updateStats(int minValue, int maxValue,
-      int firstValue, double sumValue, int lastValue) {
+  private void updateStats(int minValue, int maxValue, int firstValue, int lastValue,
+      double sumValue) {
     // TODO: unused parameter
     if (minValue < min) {
       min = minValue;
@@ -81,13 +81,13 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
-  public Integer getMax() {
-    return max;
+  public Integer getMin() {
+    return min;
   }
 
   @Override
-  public Integer getMin() {
-    return min;
+  public Integer getMax() {
+    return max;
   }
 
   @Override
@@ -96,40 +96,35 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
-  public double getSum() {
-    return sum;
+  public Integer getLast() {
+    return last;
   }
 
   @Override
-  public Integer getLast() {
-    return last;
+  public double getSum() {
+    return sum;
   }
 
   @Override
   protected void mergeStatisticsValue(Statistics<?> stats) {
     IntegerStatistics intStats = (IntegerStatistics) stats;
     if (isEmpty) {
-      initializeStats(intStats.getMin(), intStats.getMax(), intStats.getFirst(), intStats.getSum(),
-          intStats.getLast());
+      initializeStats(intStats.getMin(), intStats.getMax(), intStats.getFirst(), intStats.getLast(),
+          intStats.getSum());
       isEmpty = false;
     } else {
-      updateStats(intStats.getMin(), intStats.getMax(), intStats.getFirst(), intStats.getSum(),
-          intStats.getLast());
+      updateStats(intStats.getMin(), intStats.getMax(), intStats.getFirst(), intStats.getLast(),
+          intStats.getSum());
     }
 
   }
 
-  void initializeStats(int min, int max, int first, double sum, int last) {
+  private void initializeStats(int min, int max, int first, int last, double sum) {
     this.min = min;
     this.max = max;
     this.first = first;
-    this.sum = sum;
     this.last = last;
-  }
-
-  @Override
-  public ByteBuffer getMaxBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(max);
+    this.sum = sum;
   }
 
   @Override
@@ -138,13 +133,13 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
-  public ByteBuffer getFirstBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(first);
+  public ByteBuffer getMaxBytebuffer() {
+    return ReadWriteIOUtils.getByteBuffer(max);
   }
 
   @Override
-  public ByteBuffer getSumBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(sum);
+  public ByteBuffer getFirstBytebuffer() {
+    return ReadWriteIOUtils.getByteBuffer(first);
   }
 
   @Override
@@ -153,8 +148,8 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
-  public byte[] getMaxBytes() {
-    return BytesUtils.intToBytes(max);
+  public ByteBuffer getSumBytebuffer() {
+    return ReadWriteIOUtils.getByteBuffer(sum);
   }
 
   @Override
@@ -163,18 +158,23 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
+  public byte[] getMaxBytes() {
+    return BytesUtils.intToBytes(max);
+  }
+
+  @Override
   public byte[] getFirstBytes() {
     return BytesUtils.intToBytes(first);
   }
 
   @Override
-  public byte[] getSumBytes() {
-    return BytesUtils.doubleToBytes(sum);
+  public byte[] getLastBytes() {
+    return BytesUtils.intToBytes(last);
   }
 
   @Override
-  public byte[] getLastBytes() {
-    return BytesUtils.intToBytes(last);
+  public byte[] getSumBytes() {
+    return BytesUtils.doubleToBytes(sum);
   }
 
   @Override
@@ -184,8 +184,8 @@ public class IntegerStatistics extends Statistics<Integer> {
 
   @Override
   public String toString() {
-    return "[max:" + max + ",min:" + min + ",first:"
-        + first + ",sum:" + sum + ",last:" + last + "]";
+    return "[min:" + min + ",max:" + max + ",first:" + first + ",last:" + last + ",sum:" + sum
+        + "]";
   }
 
   @Override

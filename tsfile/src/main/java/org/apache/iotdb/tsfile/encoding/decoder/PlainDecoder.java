@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,60 +52,32 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public boolean readBoolean(ByteBuffer buffer) {
-    int ch1 = ReadWriteIOUtils.read(buffer);
-    return ch1 != 0;
+    return buffer.get() != 0;
   }
 
   @Override
   public short readShort(ByteBuffer buffer) {
-    int ch1 = ReadWriteIOUtils.read(buffer);
-    int ch2 = ReadWriteIOUtils.read(buffer);
-    if (this.endianType == EndianType.LITTLE_ENDIAN) {
-      return (short) ((ch2 << 8) + ch1);
-    } else {
-      logger.error(
-          "tsfile-encoding PlainEncoder: current version does not support short value decoding");
-    }
-    return -1;
+    return buffer.getShort();
   }
 
   @Override
   public int readInt(ByteBuffer buffer) {
-    int ch1 = ReadWriteIOUtils.read(buffer);
-    int ch2 = ReadWriteIOUtils.read(buffer);
-    int ch3 = ReadWriteIOUtils.read(buffer);
-    int ch4 = ReadWriteIOUtils.read(buffer);
-    if (this.endianType == EndianType.LITTLE_ENDIAN) {
-      return ch1 + (ch2 << 8) + (ch3 << 16) + (ch4 << 24);
-    } else {
-      logger.error(
-          "tsfile-encoding PlainEncoder: current version does not support int value encoding");
-    }
-    return -1;
+    return buffer.getInt();
   }
 
   @Override
   public long readLong(ByteBuffer buffer) {
-    int[] buf = new int[8];
-    for (int i = 0; i < 8; i++) {
-      buf[i] = ReadWriteIOUtils.read(buffer);
-    }
-
-    Long res = 0L;
-    for (int i = 0; i < 8; i++) {
-      res += ((long) buf[i] << (i * 8));
-    }
-    return res;
+    return buffer.getLong();
   }
 
   @Override
   public float readFloat(ByteBuffer buffer) {
-    return Float.intBitsToFloat(readInt(buffer));
+    return buffer.getFloat();
   }
 
   @Override
   public double readDouble(ByteBuffer buffer) {
-    return Double.longBitsToDouble(readLong(buffer));
+    return buffer.getDouble();
   }
 
   @Override
