@@ -40,10 +40,21 @@
 
 This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](https://iotdb.apache.org/#/Documents/0.8.0/chap1/sec1).
 
-## Get source code
+## Prerequisites
 
-* https://iotdb.apache.org/#/Download
-* https://github.com/apache/incubator-iotdb/tree/master
+To use IoTDB, you need to have:
+
+1. Java >= 1.8 (Please make sure the environment path has been set)
+2. Maven >= 3.1 (If you want to compile and install IoTDB from source code)
+
+## Installation
+
+IoTDB provides you two installation methods, you can refer to the following suggestions, choose one of them:
+
+* Installation from source code. If you need to modify the code yourself, you can use this method.
+* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Comming Soon...)
+
+Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to Chapter 4 of the User Guide.
 
 ## Build from source
 
