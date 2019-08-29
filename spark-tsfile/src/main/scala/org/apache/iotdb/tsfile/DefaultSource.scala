@@ -109,7 +109,6 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
 
       // get queriedSchema from requiredSchema
       var queriedSchema = Converter.prepSchema(requiredSchema, tsFileMetaData)
-      println(requiredSchema)
       val readTsFile: ReadOnlyTsFile = new ReadOnlyTsFile(reader)
 
       if (options.getOrElse(DefaultSource.isNewForm, "").equals("new_form")) {

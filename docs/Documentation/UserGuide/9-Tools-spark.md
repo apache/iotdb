@@ -35,8 +35,9 @@
 		- Example 1: read from the local file system
 		- Example 2: read from the hadoop file system
 		- Example 3: read from a specific directory
-		- Example 4: query
-		- Example 5: write
+		- Example 4: query in old form
+		- Example 5: query in new form
+		- Example 6: write
 	- Appendix A: Old Design of Schema Inference
         - the default way
         - unfolding delta_object column
@@ -143,6 +144,20 @@ The corresponding SparkSQL table is as follows:
 |    5 | null                          | null                     | null                       | null                          | false                    | null                       |
 |    6 | null                          | null                     | ccc                        | null                          | null                     | null                       |
 
+You can also use new table form which as follows: (You can see part 6 about how to use new form)
+
+| time | device_name                   | status                   | hardware                   | temperature |
+|------|-------------------------------|--------------------------|----------------------------|-------------------------------|
+|    1 | root.ln.wf02.wt01             | true                     | null                       | 2.2                           | 
+|    1 | root.ln.wf02.wt02             | true                     | null                       | null                          | 
+|    2 | root.ln.wf02.wt01             | null                     | null                       | 2.2                          |                 
+|    2 | root.ln.wf02.wt02             | false                    | aaa                        | null                           |                   
+|    3 | root.ln.wf02.wt01             | true                     | null                       | 2.1                           |                 
+|    4 | root.ln.wf02.wt02             | true                     | bbb                        | null                          |                  
+|    5 | root.ln.wf02.wt01             | false                    | null                       | null                          |                   
+|    6 | root.ln.wf02.wt02             | null                     | ccc                        | null                          |                   
+
+
 
 ## 6. Scala API
 
@@ -152,16 +167,22 @@ NOTE: Remember to assign necessary read and write permissions in advance.
 
 ```scala
 import org.apache.iotdb.tsfile._
-val df = spark.read.tsfile("test.tsfile") 
-df.show
+val old_df = spark.read.tsfile("test.tsfile")  
+old_df.show
+
+val new_df = spark.read.tsfile("test.tsfile", true)  
+new_df.show
 ```
 
 ### Example 2: read from the hadoop file system
 
 ```scala
 import org.apache.iotdb.tsfile._
-val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
-df.show
+val old_df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
+old_df.show
+
+val new_df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true)  
+new_df.show
 ```
 
 ### Example 3: read from a specific directory
@@ -176,7 +197,7 @@ Note 1: Global time ordering of all TsFiles in a directory is not supported now.
 
 Note 2: Measurements of the same name should have the same schema.
 
-### Example 4: query
+### Example 4: query in old form
 
 ```scala
 import org.apache.iotdb.tsfile._
@@ -194,9 +215,27 @@ val newDf = spark.sql("select count(*) from tsfile_table")
 newDf.show
 ```
 
-### Example 5: write
+### Example 5: query in new form
+```scala
+import org.apache.iotdb.tsfile._
+val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true) 
+df.createOrReplaceTempView("tsfile_table")
+val newDf = spark.sql("select * from tsfile_table where device_name = 'root.ln.wf02.wt02' and temperature > 5")
+newDf.show
+```
 
 ```scala
+import org.apache.iotdb.tsfile._
+val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true) 
+df.createOrReplaceTempView("tsfile_table")
+val newDf = spark.sql("select count(*) from tsfile_table")
+newDf.show
+```
+
+### Example 6: write
+
+```scala
+// we only support old_form table to write
 import org.apache.iotdb.tsfile._
 
 val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
