@@ -20,6 +20,7 @@ package org.apache.iotdb;
 
 import org.apache.iotdb.session.IoTDBSessionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
@@ -33,9 +34,9 @@ public class SessionExample {
     session.open();
 
     session.setStorageGroup("root.sg1");
-    session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE);
-    session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE);
-    session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE);
+    session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
 
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));

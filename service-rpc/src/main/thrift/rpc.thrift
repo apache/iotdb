@@ -248,6 +248,7 @@ struct TSCreateTimeseriesReq {
   1: required string path
   2: required i32 dataType
   3: required i32 encoding
+  4: required i32 compressor
 }
 
 struct ServerProperties {
