@@ -50,6 +50,7 @@ public class JDBCExample {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           builder.append(resultSet.getString(i)).append(",");
         }
+        System.out.println(builder.toString());
       }
     }
   }
