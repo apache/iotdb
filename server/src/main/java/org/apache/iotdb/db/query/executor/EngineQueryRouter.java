@@ -113,10 +113,10 @@ public class EngineQueryRouter implements IEngineQueryRouter {
 
     // check the legitimacy of intervals
     for (Pair<Long, Long> pair : intervals) {
-      if (!(pair.left > 0 && pair.right > 0)) {
-        throw new ProcessorException(
-            String.format("Time interval<%d, %d> must be greater than 0.", pair.left, pair.right));
-      }
+//      if (!(pair.left > 0 && pair.right > 0)) {
+//        throw new ProcessorException(
+//            String.format("Time interval<%d, %d> must be greater than 0.", pair.left, pair.right));
+//      }
       if (pair.right < pair.left) {
         throw new ProcessorException(String.format(
             "Interval starting time must be greater than the interval ending time, "

@@ -51,6 +51,7 @@ import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -1027,8 +1028,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSRPCResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
     }
-    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.ADD_PATH, new Path(req.getPath()),
-            TSDataType.values()[req.getDataType()], TSEncoding.values()[req.getEncoding()]);
+    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.ADD_PATH,
+        new Path(req.getPath()),
+        TSDataType.values()[req.getDataType()], TSEncoding.values()[req.getEncoding()],
+        CompressionType.values()[req.compressor]);
     TS_Status status = checkAuthority(plan);
     if (status != null) {
       return new TSRPCResp(status);
