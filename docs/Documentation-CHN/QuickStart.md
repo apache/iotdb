@@ -61,6 +61,8 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
 
 ### 启动IoTDB
 
+设置最大文件打开数为65535。
+
 用户可以使用$IOTDB_HOME/bin文件夹下的start-server脚本启动IoTDB。
 
 Linux系统与MacOS系统启动命令如下：

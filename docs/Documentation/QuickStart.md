@@ -70,6 +70,8 @@ Then the binary version (including both server and client) can be found at **dis
 
 ### Configurations
 
+Set the max open file num as 65535 to avoid "too many open files" problem.
+
 configuration files are under "conf" folder
 
   * environment config module (`iotdb-env.bat`, `iotdb-env.sh`), 
