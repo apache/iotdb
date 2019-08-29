@@ -69,6 +69,7 @@ TOK_ISNULL;
 TOK_ISNOTNULL;
 TOK_DATETIME;
 TOK_DELETE;
+TOK_DROP;
 TOK_INDEX_KV;
 TOK_FUNC;
 TOK_SELECT_INDEX;
@@ -431,6 +432,11 @@ propertyValue
 setStorageGroup
   : KW_SET KW_STORAGE KW_GROUP KW_TO prefixPath
   -> ^(TOK_SET ^(TOK_STORAGEGROUP prefixPath))
+  ;
+
+deleteStorageGroup
+  : KW_DELETE KW_STORAGE KW_GROUP prefixPath
+  -> ^(TOK_DELETE ^(TOK_STORAGEGROUP prefixPath))
   ;
 
 addAPropertyTree

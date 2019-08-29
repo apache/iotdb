@@ -304,6 +304,15 @@ public class StorageEngine implements IService {
     }
   }
 
+  public synchronized void deleteStorageGroup(String storageGroupName) {
+    if (processorMap.containsKey(storageGroupName)) {
+      syncDeleteDataFiles(storageGroupName);
+      synchronized (processorMap) {
+        processorMap.remove(storageGroupName);
+      }
+    }
+  }
+
   private void syncDeleteDataFiles(String storageGroupName) {
     logger.info("Force to delete the data in storage group processor {}", storageGroupName);
     StorageGroupProcessor processor = processorMap.get(storageGroupName);

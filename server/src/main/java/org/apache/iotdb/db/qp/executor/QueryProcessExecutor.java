@@ -380,10 +380,14 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         case SET_STORAGE_GROUP:
           mManager.setStorageLevelToMTree(path.getFullPath());
           break;
+        case DELETE_STORAGE_GROUP:
+          mManager.deletePathFromPTree(path.getFullPath());
+          storageEngine.deleteStorageGroup(path.getFullPath());
+          break;
         default:
           throw new ProcessorException("unknown namespace type:" + namespaceType);
       }
-    } catch (StorageEngineException | MetadataErrorException e) {
+    } catch (StorageEngineException | MetadataErrorException | PathErrorException | IOException e) {
       throw new ProcessorException(e);
     }
     return true;

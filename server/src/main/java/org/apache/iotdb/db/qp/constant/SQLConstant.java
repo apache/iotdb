@@ -82,13 +82,14 @@ public class SQLConstant {
 
   public static final int TOK_METADATA_CREATE = 51;
   public static final int TOK_METADATA_DELETE = 52;
-  public static final int TOK_METADATA_SET_FILE_LEVEL = 53;
-  public static final int TOK_PROPERTY_CREATE = 54;
-  public static final int TOK_PROPERTY_ADD_LABEL = 55;
-  public static final int TOK_PROPERTY_DELETE_LABEL = 56;
-  public static final int TOK_PROPERTY_LINK = 57;
-  public static final int TOK_PROPERTY_UNLINK = 58;
-  public static final int TOK_LIST = 59;
+  public static final int TOK_METADATA_SET_STORAGE_GROUP = 53;
+  public static final int TOK_METADATA_DELETE_STORAGE_GROUP = 54;
+  public static final int TOK_PROPERTY_CREATE = 55;
+  public static final int TOK_PROPERTY_ADD_LABEL = 56;
+  public static final int TOK_PROPERTY_DELETE_LABEL = 57;
+  public static final int TOK_PROPERTY_LINK = 58;
+  public static final int TOK_PROPERTY_UNLINK = 59;
+  public static final int TOK_LIST = 60;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
@@ -136,7 +137,8 @@ public class SQLConstant {
 
     tokenNames.put(TOK_METADATA_CREATE, "TOK_METADATA_CREATE");
     tokenNames.put(TOK_METADATA_DELETE, "TOK_METADATA_DELETE");
-    tokenNames.put(TOK_METADATA_SET_FILE_LEVEL, "TOK_METADATA_SET_FILE_LEVEL");
+    tokenNames.put(TOK_METADATA_SET_STORAGE_GROUP, "TOK_METADATA_SET_STORAGE_GROUP");
+    tokenNames.put(TOK_METADATA_DELETE_STORAGE_GROUP, "TOK_METADATA_DELETE_STORAGE_GROUP");
     tokenNames.put(TOK_PROPERTY_CREATE, "TOK_PROPERTY_CREATE");
     tokenNames.put(TOK_PROPERTY_ADD_LABEL, "TOK_PROPERTY_ADD_LABEL");
     tokenNames.put(TOK_PROPERTY_DELETE_LABEL, "TOK_PROPERTY_DELETE_LABEL");

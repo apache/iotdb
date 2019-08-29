@@ -55,6 +55,8 @@ public class MetadataOperator extends RootOperator {
       case DELETE_PATH:
         operatorType = OperatorType.DELETE_TIMESERIES;
         break;
+      case DELETE_STORAGE_GROUP:
+        operatorType = OperatorType.DELETE_STORAGE_GROUP;
       default:
         break;
     }
@@ -113,7 +115,7 @@ public class MetadataOperator extends RootOperator {
   }
 
   public enum NamespaceType {
-    ADD_PATH, DELETE_PATH, SET_STORAGE_GROUP;
+    ADD_PATH, DELETE_PATH, SET_STORAGE_GROUP, DELETE_STORAGE_GROUP;
 
     /**
      * deserialize short number.
@@ -129,6 +131,8 @@ public class MetadataOperator extends RootOperator {
           return DELETE_PATH;
         case 2:
           return SET_STORAGE_GROUP;
+        case 3:
+          return DELETE_STORAGE_GROUP;
         default:
           return null;
       }
@@ -147,6 +151,8 @@ public class MetadataOperator extends RootOperator {
           return 1;
         case SET_STORAGE_GROUP:
           return 2;
+        case DELETE_STORAGE_GROUP:
+          return 3;
         default:
           return -1;
       }

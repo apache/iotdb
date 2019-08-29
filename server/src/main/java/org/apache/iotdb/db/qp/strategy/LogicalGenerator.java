@@ -49,6 +49,7 @@ import org.apache.iotdb.db.qp.logical.crud.UpdateOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
+import org.apache.iotdb.db.qp.logical.sys.MetadataOperator.NamespaceType;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.LinearFill;
@@ -127,8 +128,11 @@ public class LogicalGenerator {
         return;
       case TSParser.TOK_DELETE:
         switch (astNode.getChild(0).getType()) {
+          case TSParser.TOK_STORAGEGROUP:
+            analyzeDeleteStorageGroup(astNode);
+            break;
           case TSParser.TOK_TIMESERIES:
-            analyzeMetadataDelete(astNode);
+            analyzeDeleteTimeseries(astNode);
             break;
           case TSParser.TOK_LABEL:
             analyzePropertyDeleteLabel(astNode);
@@ -139,7 +143,7 @@ public class LogicalGenerator {
         }
         return;
       case TSParser.TOK_SET:
-        analyzeMetadataSetFileLevel(astNode);
+        analyzeMetadataSetStorageGroup(astNode);
         return;
       case TSParser.TOK_ADD:
         analyzePropertyAddLabel(astNode);
@@ -411,7 +415,7 @@ public class LogicalGenerator {
     initializedOperator = metadataOperator;
   }
 
-  private void analyzeMetadataDelete(AstNode astNode) {
+  private void analyzeDeleteTimeseries(AstNode astNode) {
     List<Path> deletePaths = new ArrayList<>();
     for (int i = 0; i < astNode.getChild(0).getChildCount(); i++) {
       deletePaths.add(parsePath(astNode.getChild(0).getChild(i)));
@@ -422,9 +426,18 @@ public class LogicalGenerator {
     initializedOperator = metadataOperator;
   }
 
-  private void analyzeMetadataSetFileLevel(AstNode astNode) {
+  private void analyzeDeleteStorageGroup(AstNode astNode) {
     MetadataOperator metadataOperator = new MetadataOperator(
-        SQLConstant.TOK_METADATA_SET_FILE_LEVEL,
+        SQLConstant.TOK_METADATA_DELETE_STORAGE_GROUP,
+        NamespaceType.DELETE_STORAGE_GROUP);
+    Path path = parsePath(astNode.getChild(0).getChild(0));
+    metadataOperator.setPath(path);
+    initializedOperator = metadataOperator;
+  }
+
+  private void analyzeMetadataSetStorageGroup(AstNode astNode) {
+    MetadataOperator metadataOperator = new MetadataOperator(
+        SQLConstant.TOK_METADATA_SET_STORAGE_GROUP,
         MetadataOperator.NamespaceType.SET_STORAGE_GROUP);
     Path path = parsePath(astNode.getChild(0).getChild(0));
     metadataOperator.setPath(path);
