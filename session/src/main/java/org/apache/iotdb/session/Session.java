@@ -21,6 +21,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
@@ -166,11 +167,12 @@ public class Session {
     }
   }
 
-  public TSRPCResp createTimeseries(String path, TSDataType dataType, TSEncoding encoding) throws IoTDBSessionException {
+  public TSRPCResp createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor) throws IoTDBSessionException {
     TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
     request.setPath(path);
     request.setDataType(dataType.ordinal());
     request.setEncoding(encoding.ordinal());
+    request.setCompressor(compressor.ordinal());
 
     try {
       return client.createTimeseries(request);
