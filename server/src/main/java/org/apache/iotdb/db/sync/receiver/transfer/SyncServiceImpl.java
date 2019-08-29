@@ -43,6 +43,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.MetadataOperationType;
 import org.apache.iotdb.db.sync.receiver.load.FileLoader;
+import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogger;
 import org.apache.iotdb.db.sync.sender.conf.Constans;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -71,7 +72,7 @@ public class SyncServiceImpl implements SyncService.Iface {
 
   private ThreadLocal<SyncReceiverLogger> syncLog = new ThreadLocal<>();
 
-  private ThreadLocal<String> senderIp = new ThreadLocal<>();
+  private ThreadLocal<String> senderName = new ThreadLocal<>();
 
   private ThreadLocal<File> currentFile = new ThreadLocal<>();
 
@@ -83,10 +84,10 @@ public class SyncServiceImpl implements SyncService.Iface {
    * Verify IP address of sender
    */
   @Override
-  public ResultStatus check(String ipAddress) {
+  public ResultStatus check(String ipAddress, String uuid) {
     Thread.currentThread().setName(ThreadName.SYNC_SERVER.getName());
     if (SyncUtils.verifyIPSegment(config.getIpWhiteList(), ipAddress)) {
-      senderIp.set(ipAddress);
+      senderName.set(ipAddress + "-" + uuid);
       if (checkRecovery()) {
         return getSuccessResult();
       } else {
@@ -105,7 +106,7 @@ public class SyncServiceImpl implements SyncService.Iface {
       }
       return true;
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Check recovery state fail", e);
       return false;
     }
   }
@@ -115,6 +116,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     try {
       initPath();
       currentSG.remove();
+      FileLoader.createFileLoader(senderName.get(), syncFolderPath.get());
       syncLog.set(new SyncReceiverLogger(new File(getSyncDataPath(), Constans.SYNC_LOG_NAME)));
       return getSuccessResult();
     } catch (DiskSpaceInsufficientException | IOException e) {
@@ -130,7 +132,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     String dataDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
     syncFolderPath
         .set(FilePathUtils.regularizePath(dataDir) + Constans.SYNC_RECEIVER + File.separatorChar
-            + senderIp.get());
+            + senderName.get());
   }
 
   /**
@@ -153,7 +155,8 @@ public class SyncServiceImpl implements SyncService.Iface {
   public ResultStatus syncDeletedFileName(String fileName) throws TException {
     try {
       syncLog.get().finishSyncDeletedFileName(new File(fileName));
-      FileLoader.getInstance().addDeletedFileName(currentSG.get(), new File(fileName));
+      FileLoaderManager.getInstance().getFileLoader(senderName.get())
+          .addDeletedFileName(currentSG.get(), new File(fileName));
     } catch (IOException e) {
       logger.error("Can not sync deleted file", e);
       return getErrorResult(
@@ -217,7 +220,8 @@ public class SyncServiceImpl implements SyncService.Iface {
         } else {
           if (!currentFile.get().getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
             syncLog.get().finishSyncTsfile(currentFile.get());
-            FileLoader.getInstance().addTsfile(currentSG.get(), currentFile.get());
+            FileLoaderManager.getInstance().getFileLoader(senderName.get())
+                .addTsfile(currentSG.get(), currentFile.get());
           }
         }
       }

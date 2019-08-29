@@ -29,7 +29,7 @@ struct ResultStatus{
 }
 
 service SyncService{
-	ResultStatus check(1:string address)
+	ResultStatus check(1:string address, 2:string uuid)
 	ResultStatus startSync();
 	ResultStatus init(1:string storageGroupName)
 	ResultStatus syncDeletedFileName(1:string fileName)

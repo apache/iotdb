@@ -19,6 +19,7 @@ import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -35,6 +36,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.FileUtils;
@@ -275,7 +277,8 @@ public class DataTransferManager implements IDataTransferManager {
   @Override
   public void confirmIdentity() throws SyncConnectionException {
     try {
-      ResultStatus status = serviceClient.check(InetAddress.getLocalHost().getHostAddress());
+      ResultStatus status = serviceClient.check(InetAddress.getLocalHost().getHostAddress(),
+          getOrCreateUUID(config.getUuidPath()));
       if (!status.success) {
         throw new SyncConnectionException(
             "The receiver rejected the synchronization task because " + status.errorMsg);
@@ -284,6 +287,39 @@ public class DataTransferManager implements IDataTransferManager {
       logger.error("Cannot confirm identity with the receiver.");
       throw new SyncConnectionException(e);
     }
+  }
+
+  /**
+   * UUID marks the identity of sender for receiver.
+   */
+  public String getOrCreateUUID(String uuidPath) throws IOException {
+    File file = new File(uuidPath);
+    String uuid;
+    if (!file.getParentFile().exists()) {
+      file.getParentFile().mkdirs();
+    }
+    if (!file.exists()) {
+      try (FileOutputStream out = new FileOutputStream(file)) {
+        file.createNewFile();
+        uuid = generateUUID();
+        out.write(uuid.getBytes());
+      } catch (IOException e) {
+        logger.error("Cannot insert UUID to file {}", file.getPath());
+        throw new IOException(e);
+      }
+    } else {
+      try (BufferedReader bf = new BufferedReader((new FileReader(uuidPath)))) {
+        uuid = bf.readLine();
+      } catch (IOException e) {
+        logger.error("Cannot read UUID from file{}", file.getPath());
+        throw new IOException(e);
+      }
+    }
+    return uuid;
+  }
+
+  private String generateUUID() {
+    return UUID.randomUUID().toString().replaceAll("-", "");
   }
 
   @Override

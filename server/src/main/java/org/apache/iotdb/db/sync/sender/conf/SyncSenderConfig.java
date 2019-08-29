@@ -32,6 +32,8 @@ public class SyncSenderConfig {
 
   private String lockFilePath;
 
+  private String uuidPath;
+
   private String lastFileInfo;
 
   private String snapshotPath;
@@ -43,6 +45,7 @@ public class SyncSenderConfig {
     senderFolderPath = dataDirectory + File.separatorChar + Constans.SYNC_SENDER + File.separatorChar +
         getSyncReceiverName();
     lockFilePath = senderFolderPath + File.separatorChar + Constans.LOCK_FILE_NAME;
+    uuidPath = senderFolderPath + File.separatorChar + Constans.UUID_FILE_NAME;
     lastFileInfo = senderFolderPath + File.separatorChar + Constans.LAST_LOCAL_FILE_NAME;
     snapshotPath = senderFolderPath + File.separatorChar + Constans.DATA_SNAPSHOT_NAME;
     if(!new File(snapshotPath).exists()){
@@ -104,6 +107,10 @@ public class SyncSenderConfig {
 
   public void setSnapshotPath(String snapshotPath) {
     this.snapshotPath = snapshotPath;
+  }
+
+  public String getUuidPath() {
+    return uuidPath;
   }
 
   public String getSyncReceiverName() {

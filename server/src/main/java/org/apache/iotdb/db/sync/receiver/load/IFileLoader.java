@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.sync.receiver.load;
 
 import java.io.File;
+import org.apache.iotdb.db.sync.receiver.load.FileLoader.LoadTask;
 
 public interface IFileLoader {
 
@@ -26,4 +27,9 @@ public interface IFileLoader {
 
   void addTsfile(String sgName, File tsfile);
 
+  void endSync();
+
+  void handleLoadTask(LoadTask task);
+
+  void cleanUp();
 }

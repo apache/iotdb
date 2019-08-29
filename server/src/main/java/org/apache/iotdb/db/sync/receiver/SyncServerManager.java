@@ -27,6 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.transfer.SyncServiceImpl;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.service.sync.thrift.SyncService.Processor;
@@ -65,6 +66,7 @@ public class SyncServerManager implements IService {
     if (!conf.isSyncEnable()) {
       return;
     }
+    FileLoaderManager.getInstance().start();
     if (conf.getIpWhiteList() == null) {
       logger.error(
           "Sync server failed to start because IP white list is null, please set IP white list.");
@@ -83,6 +85,7 @@ public class SyncServerManager implements IService {
   @Override
   public void stop() {
     if (conf.isSyncEnable()) {
+      FileLoaderManager.getInstance().stop();
       ((SyncServiceThread) syncServerThread).close();
     }
   }

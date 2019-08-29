@@ -40,6 +40,8 @@ public class Constans {
 
   public static final String LOCK_FILE_NAME = "sync_lock";
 
+  public static final String UUID_FILE_NAME = "uuid.txt";
+
   public static final String SCHEMA_POS_FILE_NAME = "sync_schema_pos";
 
   public static final String LAST_LOCAL_FILE_NAME = "last_local_files.txt";
