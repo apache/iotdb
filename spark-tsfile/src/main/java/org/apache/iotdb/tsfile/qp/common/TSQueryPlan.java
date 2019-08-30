@@ -44,6 +44,14 @@ public class TSQueryPlan {
         return timeFilterOperator;
     }
 
+    public void setTimeFilterOperator(FilterOperator timeFilterOperator) {
+        this.timeFilterOperator = timeFilterOperator;
+    }
+
+    public void setValueFilterOperator(FilterOperator valueFilterOperator) {
+        this.valueFilterOperator = valueFilterOperator;
+    }
+
     public FilterOperator getValueFilterOperator() {
         return valueFilterOperator;
     }
