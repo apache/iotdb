@@ -55,6 +55,10 @@ public class FileLoaderManager {
     return fileLoaderMap.get(senderName);
   }
 
+  public boolean containsFileLoader(String senderName){
+    return fileLoaderMap.containsKey(senderName);
+  }
+
   public void addLoadTaskRunner(Runnable taskRunner){
     loadTaskRunnerPool.submit(taskRunner);
   }

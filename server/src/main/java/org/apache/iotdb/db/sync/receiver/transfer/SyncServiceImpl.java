@@ -44,6 +44,7 @@ import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.MetadataOperationType;
 import org.apache.iotdb.db.sync.receiver.load.FileLoader;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
+import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogAnalyzer;
 import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogger;
 import org.apache.iotdb.db.sync.sender.conf.Constans;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -61,8 +62,6 @@ import org.slf4j.LoggerFactory;
 public class SyncServiceImpl implements SyncService.Iface {
 
   private static final Logger logger = LoggerFactory.getLogger(SyncServiceImpl.class);
-
-  private static final MManager METADATA_MANGER = MManager.getInstance();
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -104,7 +103,8 @@ public class SyncServiceImpl implements SyncService.Iface {
       if (currentFileWriter.get() != null && currentFileWriter.get().isOpen()) {
         currentFileWriter.get().close();
       }
-      return true;
+      syncLog.get().close();
+      return SyncReceiverLogAnalyzer.getInstance().recover(senderName.get());
     } catch (IOException e) {
       logger.error("Check recovery state fail", e);
       return false;
@@ -269,32 +269,32 @@ public class SyncServiceImpl implements SyncService.Iface {
           kv = args[k].split("=");
           props.put(kv[0], kv[1]);
         }
-        METADATA_MANGER
+        MManager.getInstance()
             .addPathToMTree(new Path(args[1]), TSDataType.deserialize(Short.valueOf(args[2])),
                 TSEncoding.deserialize(Short.valueOf(args[3])),
                 CompressionType.deserialize(Short.valueOf(args[4])),
                 props);
         break;
       case MetadataOperationType.DELETE_PATH_FROM_MTREE:
-        METADATA_MANGER.deletePaths(Collections.singletonList(new Path(args[1])));
+        MManager.getInstance().deletePaths(Collections.singletonList(new Path(args[1])));
         break;
       case MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE:
-        METADATA_MANGER.setStorageLevelToMTree(args[1]);
+        MManager.getInstance().setStorageLevelToMTree(args[1]);
         break;
       case MetadataOperationType.ADD_A_PTREE:
-        METADATA_MANGER.addAPTree(args[1]);
+        MManager.getInstance().addAPTree(args[1]);
         break;
       case MetadataOperationType.ADD_A_PATH_TO_PTREE:
-        METADATA_MANGER.addPathToPTree(args[1]);
+        MManager.getInstance().addPathToPTree(args[1]);
         break;
       case MetadataOperationType.DELETE_PATH_FROM_PTREE:
-        METADATA_MANGER.deletePathFromPTree(args[1]);
+        MManager.getInstance().deletePathFromPTree(args[1]);
         break;
       case MetadataOperationType.LINK_MNODE_TO_PTREE:
-        METADATA_MANGER.linkMNodeToPTree(args[1], args[2]);
+        MManager.getInstance().linkMNodeToPTree(args[1], args[2]);
         break;
       case MetadataOperationType.UNLINK_MNODE_FROM_PTREE:
-        METADATA_MANGER.unlinkMNodeFromPTree(args[1], args[2]);
+        MManager.getInstance().unlinkMNodeFromPTree(args[1], args[2]);
         break;
       default:
         logger.error("Unrecognizable command {}", cmd);
@@ -305,7 +305,6 @@ public class SyncServiceImpl implements SyncService.Iface {
   public ResultStatus endSync() throws TException {
     try {
       syncLog.get().close();
-      new File(getSyncDataPath(), Constans.SYNC_END).createNewFile();
       FileLoaderManager.getInstance().getFileLoader(senderName.get()).endSync();
     } catch (IOException e) {
       logger.error("Can not end sync", e);

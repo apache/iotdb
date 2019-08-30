@@ -63,6 +63,9 @@ public class SyncReceiverLogger implements ISyncReceiverLogger {
 
   @Override
   public void close() throws IOException {
-    bw.close();
+    if(bw != null) {
+      bw.close();
+      bw = null;
+    }
   }
 }

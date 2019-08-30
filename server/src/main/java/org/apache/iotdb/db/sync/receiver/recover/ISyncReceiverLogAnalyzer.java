@@ -18,11 +18,16 @@
  */
 package org.apache.iotdb.db.sync.receiver.recover;
 
+import java.io.File;
+import java.io.IOException;
+import org.apache.iotdb.db.sync.receiver.load.FileLoader;
+
 public interface ISyncReceiverLogAnalyzer {
 
-  void recover();
+  void recoverAll() throws IOException;
 
-  void scanLogger(String path);
+  boolean recover(String senderName) throws IOException;
 
-  void clearLogger();
+  void scanLogger(FileLoader loader, File syncLog, File loadLog);
+
 }

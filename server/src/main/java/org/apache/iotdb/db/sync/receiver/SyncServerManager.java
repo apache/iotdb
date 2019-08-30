@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.sync.receiver;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
+import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogAnalyzer;
 import org.apache.iotdb.db.sync.receiver.transfer.SyncServiceImpl;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.service.sync.thrift.SyncService.Processor;
@@ -67,6 +69,11 @@ public class SyncServerManager implements IService {
       return;
     }
     FileLoaderManager.getInstance().start();
+    try {
+      SyncReceiverLogAnalyzer.getInstance().recoverAll();
+    } catch (IOException e) {
+      logger.error("Can not recover receiver sync state", e);
+    }
     if (conf.getIpWhiteList() == null) {
       logger.error(
           "Sync server failed to start because IP white list is null, please set IP white list.");

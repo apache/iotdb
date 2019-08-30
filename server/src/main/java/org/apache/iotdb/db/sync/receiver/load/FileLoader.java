@@ -56,14 +56,19 @@ public class FileLoader implements IFileLoader {
     return new FileLoader(senderName, syncFolderPath);
   }
 
+  public static FileLoader createFileLoader(File syncFolder)
+      throws IOException {
+    return new FileLoader(syncFolder.getName(), syncFolder.getAbsolutePath());
+  }
+
   private Runnable loadTaskRunner = () -> {
     try {
       while (true) {
-        if (endSync) {
-          cleanUp();
-          break;
-        }
         if (queue.isEmpty()) {
+          if (endSync) {
+            cleanUp();
+            break;
+          }
           synchronized (queue) {
             if (queue.isEmpty()) {
               queue.wait(WAIT_TIME);
@@ -97,7 +102,9 @@ public class FileLoader implements IFileLoader {
 
   @Override
   public void endSync() {
-    this.endSync = true;
+    if (!endSync && FileLoaderManager.getInstance().containsFileLoader(senderName)) {
+      this.endSync = true;
+    }
   }
 
   @Override
@@ -139,11 +146,14 @@ public class FileLoader implements IFileLoader {
       loadLog.close();
       new File(syncFolderPath, Constans.SYNC_LOG_NAME).deleteOnExit();
       new File(syncFolderPath, Constans.LOAD_LOG_NAME).deleteOnExit();
-      new File(syncFolderPath, Constans.SYNC_END).deleteOnExit();
       FileLoaderManager.getInstance().removeFileLoader(senderName);
     } catch (IOException e) {
       LOGGER.error("Can not clean up sync resource.", e);
     }
+  }
+
+  public void setCurType(LoadType curType) {
+    this.curType = curType;
   }
 
   class LoadTask {
@@ -155,9 +165,5 @@ public class FileLoader implements IFileLoader {
       this.file = file;
       this.type = type;
     }
-  }
-
-  private enum LoadType {
-    DELETE, ADD, NONE
   }
 }
