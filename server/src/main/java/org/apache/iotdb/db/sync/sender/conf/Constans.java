@@ -73,5 +73,6 @@ public class Constans {
 
   public static final String SYNC_END = "sync.end";
 
+  public static final String LOAD_LOG_NAME = "load.log";
 
 }

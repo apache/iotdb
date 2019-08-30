@@ -87,7 +87,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   public ResultStatus check(String ipAddress, String uuid) {
     Thread.currentThread().setName(ThreadName.SYNC_SERVER.getName());
     if (SyncUtils.verifyIPSegment(config.getIpWhiteList(), ipAddress)) {
-      senderName.set(ipAddress + "-" + uuid);
+      senderName.set(ipAddress + Constans.SYNC_DIR_NAME_SEPARATOR + uuid);
       if (checkRecovery()) {
         return getSuccessResult();
       } else {
@@ -156,7 +156,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     try {
       syncLog.get().finishSyncDeletedFileName(new File(fileName));
       FileLoaderManager.getInstance().getFileLoader(senderName.get())
-          .addDeletedFileName(currentSG.get(), new File(fileName));
+          .addDeletedFileName(new File(fileName));
     } catch (IOException e) {
       logger.error("Can not sync deleted file", e);
       return getErrorResult(
@@ -169,7 +169,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   public ResultStatus initSyncData(String filename) throws TException {
     try {
       File file;
-      if (currentSG.get() == null) {
+      if (currentSG.get() == null) { // schema mlog.txt file
         file = new File(getSyncDataPath(), filename);
       } else {
         file = new File(getSyncDataPath(), currentSG.get() + File.separatorChar + filename);
@@ -221,7 +221,7 @@ public class SyncServiceImpl implements SyncService.Iface {
           if (!currentFile.get().getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
             syncLog.get().finishSyncTsfile(currentFile.get());
             FileLoaderManager.getInstance().getFileLoader(senderName.get())
-                .addTsfile(currentSG.get(), currentFile.get());
+                .addTsfile(currentFile.get());
           }
         }
       }
@@ -306,6 +306,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     try {
       syncLog.get().close();
       new File(getSyncDataPath(), Constans.SYNC_END).createNewFile();
+      FileLoaderManager.getInstance().getFileLoader(senderName.get()).endSync();
     } catch (IOException e) {
       logger.error("Can not end sync", e);
       return getErrorResult(String.format("Can not end sync because %s", e.getMessage()));

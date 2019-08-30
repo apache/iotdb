@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.sync.receiver.load;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayDeque;
 import org.apache.iotdb.db.sync.sender.conf.Constans;
 import org.slf4j.Logger;
@@ -30,22 +31,28 @@ public class FileLoader implements IFileLoader {
 
   private static final int WAIT_TIME = 1000;
 
-  private File syncEndFile;
+  private String syncFolderPath;
 
   private String senderName;
 
   private ArrayDeque<LoadTask> queue = new ArrayDeque<>();
 
+  private LoadLogger loadLog;
+
+  private LoadType curType = LoadType.NONE;
+
   private volatile boolean endSync = false;
 
-  private FileLoader(String senderName, String syncFolderPath) {
+  private FileLoader(String senderName, String syncFolderPath) throws IOException {
     this.senderName = senderName;
-    this.syncEndFile = new File(syncFolderPath, Constans.SYNC_END);
+    this.syncFolderPath = syncFolderPath;
+    this.loadLog = new LoadLogger(new File(syncFolderPath, Constans.LOAD_LOG_NAME));
     FileLoaderManager.getInstance().addFileLoader(senderName, this);
     FileLoaderManager.getInstance().addLoadTaskRunner(loadTaskRunner);
   }
 
-  public static FileLoader createFileLoader(String senderName, String syncFolderPath) {
+  public static FileLoader createFileLoader(String senderName, String syncFolderPath)
+      throws IOException {
     return new FileLoader(senderName, syncFolderPath);
   }
 
@@ -67,23 +74,23 @@ public class FileLoader implements IFileLoader {
           handleLoadTask(queue.poll());
         }
       }
-    } catch (InterruptedException e) {
-      LOGGER.info("Close the run load task thread.");
+    } catch (InterruptedException | IOException e) {
+      LOGGER.error("Can not handle load task", e);
     }
   };
 
   @Override
-  public void addDeletedFileName(String sgName, File deletedFile) {
+  public void addDeletedFileName(File deletedFile) {
     synchronized (queue) {
-      queue.add(new LoadTask(sgName, deletedFile, LoadType.DELETE));
+      queue.add(new LoadTask(deletedFile, LoadType.DELETE));
       queue.notify();
     }
   }
 
   @Override
-  public void addTsfile(String sgName, File tsfile) {
+  public void addTsfile(File tsfile) {
     synchronized (queue) {
-      queue.add(new LoadTask(sgName, tsfile, LoadType.ADD));
+      queue.add(new LoadTask(tsfile, LoadType.ADD));
       queue.notify();
     }
   }
@@ -94,29 +101,63 @@ public class FileLoader implements IFileLoader {
   }
 
   @Override
-  public void handleLoadTask(LoadTask task) {
-
+  public void handleLoadTask(LoadTask task) throws IOException {
+    switch (task.type) {
+      case ADD:
+        loadDeletedFile(task.file);
+        break;
+      case DELETE:
+        loadNewTsfile(task.file);
+        break;
+      default:
+        LOGGER.error("Wrong load task type {}", task.type);
+    }
   }
+
+  private void loadDeletedFile(File file) throws IOException {
+    if (curType != LoadType.DELETE) {
+      loadLog.startLoadDeletedFiles();
+      curType = LoadType.DELETE;
+    }
+    // TODO load deleted file
+    loadLog.finishLoadDeletedFile(file);
+  }
+
+  private void loadNewTsfile(File file) throws IOException {
+    if (curType != LoadType.ADD) {
+      loadLog.startLoadTsFiles();
+      curType = LoadType.ADD;
+    }
+    // TODO load new tsfile
+    loadLog.finishLoadTsfile(file);
+  }
+
 
   @Override
   public void cleanUp() {
-    FileLoaderManager.getInstance().removeFileLoader(senderName);
+    try {
+      loadLog.close();
+      new File(syncFolderPath, Constans.SYNC_LOG_NAME).deleteOnExit();
+      new File(syncFolderPath, Constans.LOAD_LOG_NAME).deleteOnExit();
+      new File(syncFolderPath, Constans.SYNC_END).deleteOnExit();
+      FileLoaderManager.getInstance().removeFileLoader(senderName);
+    } catch (IOException e) {
+      LOGGER.error("Can not clean up sync resource.", e);
+    }
   }
 
   class LoadTask {
 
-    String sgName;
-    File file;
-    LoadType type;
+    private File file;
+    private LoadType type;
 
-    LoadTask(String sgName, File file, LoadType type) {
-      this.sgName = sgName;
+    LoadTask(File file, LoadType type) {
       this.file = file;
       this.type = type;
     }
   }
 
   private enum LoadType {
-    DELETE, ADD;
+    DELETE, ADD, NONE
   }
 }

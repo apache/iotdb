@@ -19,17 +19,18 @@
 package org.apache.iotdb.db.sync.receiver.load;
 
 import java.io.File;
+import java.io.IOException;
 import org.apache.iotdb.db.sync.receiver.load.FileLoader.LoadTask;
 
 public interface IFileLoader {
 
-  void addDeletedFileName(String sgName, File deletedFile);
+  void addDeletedFileName(File deletedFile);
 
-  void addTsfile(String sgName, File tsfile);
+  void addTsfile(File tsfile);
 
   void endSync();
 
-  void handleLoadTask(LoadTask task);
+  void handleLoadTask(LoadTask task) throws IOException;
 
   void cleanUp();
 }
