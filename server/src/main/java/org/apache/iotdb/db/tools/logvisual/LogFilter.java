@@ -82,10 +82,10 @@ public class LogFilter {
 
   public FilterFeedBack filter(LogEntry entry) {
    if (entry.getLogLevel().ordinal() < minLevel.ordinal() ||
-       (threadNameWhiteList != null && !strsContains(threadNameWhiteList, entry.getThreadName())) ||
-       (classNameWhiteList != null && !strsContains(classNameWhiteList, entry.getCodeLocation()
+       (threadNameWhiteList != null && !VisualUtils.strsContains(threadNameWhiteList, entry.getThreadName())) ||
+       (classNameWhiteList != null && !VisualUtils.strsContains(classNameWhiteList, entry.getCodeLocation()
            .getClassName())) ||
-       (lineNumWhiteList != null && !intsContains(lineNumWhiteList, entry.getCodeLocation()
+       (lineNumWhiteList != null && !VisualUtils.intsContains(lineNumWhiteList, entry.getCodeLocation()
            .getLineNum())) ||
        (startDate != null && entry.getDate().before(startDate))) {
      return FilterFeedBack.REJECT;
@@ -95,24 +95,6 @@ public class LogFilter {
      return FilterFeedBack.BEYOND_END_TIME;
    }
     return FilterFeedBack.OK;
-  }
-
-  private boolean strsContains(String[] strings, String target) {
-    for (String str : strings) {
-      if (str.equals(target)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private boolean intsContains(int[] ints, int target) {
-    for (int i : ints) {
-      if (i == target) {
-        return true;
-      }
-    }
-    return false;
   }
 
   public LogLevel getMinLevel() {

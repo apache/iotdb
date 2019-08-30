@@ -19,7 +19,7 @@
 
 # the name of the this plan
 name=flushTimeConsumption
-# how are the targeted logs formatted and what fields are interesting and should be grouped
+# a regular expression that defines how are the targeted logs formatted and what fields are interesting and should be grouped
 content_pattern=Storage group (.*) memtable (.*) flushing a memtable has finished! Time consumption: (.*)ms
 
 # the following 3 properties are all one-based, if there are more than one measurements or tags, use

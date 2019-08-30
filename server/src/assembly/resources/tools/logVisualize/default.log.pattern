@@ -17,20 +17,26 @@
 # under the License.
 #
 
-# Pattern defines how a log looks like. A log must be exactly one line.
+# an example that this pattern matches:
+# "2019-08-22 00:00:00,898 [pool-4-IoTDB-Flush-ServerServiceImpl-thread-2] INFO
+# org.apache.iotdb.db.engine.flush.MemTableFlushTask:95 - Storage group root.perform.group_14 memtable
+# org.apache.iotdb.db.engine.memtable.PrimitiveMemTable@34f flushing a memtable has finished!
+# Time consumption: 7756ms"
+
+# A regular expression defines how a log looks like. A log must be exactly one line.
 pattern=([^\\[]*)(\\[.*])(\\s\\w+\\s)([^:]*:\\d+)(\\s-\\s)(.*)
 # The index of the group which represents the date that the log is generated, one based
 date_index=1
 # How the date is formatted
 date_pattern=yyyy-MM-dd hh:mm:ss,SSS
-# The index of the group which represents the thread name, one based
+# The index of the group which represents the thread name, one based, optional
 thread_name_index=2
-# The index of the group which represents the log level, one based
+# The index of the group which represents the log level, one based, optional
 level_index=3
 # The index of the group which represents the position of the code (class name and line number)
 # that generated the log, one based
 code_location_index=4
-# The index of the group which represents the message in the log, one based
+# The index of the group which represents the message in the log, one based, optional
 content_index=6
 
 

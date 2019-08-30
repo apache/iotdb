@@ -47,4 +47,22 @@ public class VisualUtils {
     }
     return builder.toString();
   }
+
+  public static boolean strsContains(String[] strings, String target) {
+    for (String str : strings) {
+      if (str.equals(target)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public static boolean intsContains(int[] ints, int target) {
+    for (int i : ints) {
+      if (i == target) {
+        return true;
+      }
+    }
+    return false;
+  }
 }

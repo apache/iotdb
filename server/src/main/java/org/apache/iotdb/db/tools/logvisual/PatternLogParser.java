@@ -54,10 +54,11 @@ public class PatternLogParser implements LogParser{
     this.pattern = Pattern.compile(properties.getProperty(PATTERN.getPropertyName()));
     this.dateIndex = Integer.parseInt(properties.getProperty(DATE_INDEX.getPropertyName()));
     this.threadNameIndex = Integer.parseInt(properties.getProperty(THREAD_NAME_INDEX
-        .getPropertyName()));
-    this.levelIndex = Integer.parseInt(properties.getProperty(LEVEL_INDEX.getPropertyName()));
+        .getPropertyName(), String.valueOf(-1)));
+    this.levelIndex = Integer.parseInt(properties.getProperty(LEVEL_INDEX.getPropertyName(),
+        String.valueOf(-1)));
     this.codeLocationIndex = Integer.parseInt(properties.getProperty(CODE_LOCATION_INDEX
-        .getPropertyName()));
+        .getPropertyName(), String.valueOf(-1)));
     this.contentIndex = Integer.parseInt(properties.getProperty(CONTENT_INDEX.getPropertyName()));
     this.dateFormat = new SimpleDateFormat(properties.getProperty(DATE_PATTERN.getPropertyName()));
     this.logFilePath = logFilePath;
@@ -82,11 +83,20 @@ public class PatternLogParser implements LogParser{
       logger.error("Incorrect time format in {}", e);
       return null;
     }
-    String threadName = matcher.group(threadNameIndex).trim();
-    LogLevel logLevel = LogLevel.valueOf(matcher.group(levelIndex).trim());
-    String[] codeLocationStr = matcher.group(codeLocationIndex).split(":");
-    CodeLocation codeLocation = new CodeLocation(codeLocationStr[0].trim(), Integer.parseInt
-        (codeLocationStr[1]));
+    String threadName = null;
+    if (threadNameIndex > 0) {
+      threadName = matcher.group(threadNameIndex).trim();
+    }
+    LogLevel logLevel = LogLevel.DEBUG;
+    if (levelIndex > 0) {
+      logLevel = LogLevel.valueOf(matcher.group(levelIndex).trim());
+    }
+    CodeLocation codeLocation = null;
+    if (codeLocationIndex > 0) {
+      String[] codeLocationStr = matcher.group(codeLocationIndex).split(":");
+      codeLocation = new CodeLocation(codeLocationStr[0].trim(), Integer.parseInt
+          (codeLocationStr[1]));
+    }
     String content = matcher.group(contentIndex).trim();
     return new LogEntry(date, threadName, logLevel, codeLocation, content);
   }
