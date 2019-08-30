@@ -144,8 +144,8 @@ public class FileLoader implements IFileLoader {
   public void cleanUp() {
     try {
       loadLog.close();
-      new File(syncFolderPath, Constans.SYNC_LOG_NAME).deleteOnExit();
-      new File(syncFolderPath, Constans.LOAD_LOG_NAME).deleteOnExit();
+      new File(syncFolderPath, Constans.SYNC_LOG_NAME).delete();
+      new File(syncFolderPath, Constans.LOAD_LOG_NAME).delete();
       FileLoaderManager.getInstance().removeFileLoader(senderName);
     } catch (IOException e) {
       LOGGER.error("Can not clean up sync resource.", e);

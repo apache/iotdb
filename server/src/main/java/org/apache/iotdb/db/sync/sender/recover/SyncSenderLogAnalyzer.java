@@ -109,7 +109,7 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
     } catch (IOException e) {
       LOGGER.error("Can not clear sync log {}", syncLogFile.getAbsoluteFile(), e);
     }
-    lastLocalFile.deleteOnExit();
+    lastLocalFile.delete();
     currentLocalFile.renameTo(lastLocalFile);
   }
 }

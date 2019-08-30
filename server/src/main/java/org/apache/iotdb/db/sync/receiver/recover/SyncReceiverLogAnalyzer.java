@@ -66,7 +66,7 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
   private boolean recover(File senderFolder) throws IOException {
     // check the state
     if (!new File(senderFolder, Constans.SYNC_LOG_NAME).exists()) {
-      new File(senderFolder, Constans.LOAD_LOG_NAME).deleteOnExit();
+      new File(senderFolder, Constans.LOAD_LOG_NAME).delete();
       return true;
     }
     if (FileLoaderManager.getInstance().containsFileLoader(senderFolder.getName())) {

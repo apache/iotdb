@@ -62,8 +62,8 @@ public class SyncFileManager implements ISyncFileManager {
   private Map<String, Set<File>> deletedFilesMap;
 
   /**
-   * Key is storage group, value is the valid set of new tsfiles which need to be synced to
-   * receiver end in the sg.
+   * Key is storage group, value is the valid set of new tsfiles which need to be synced to receiver
+   * end in the sg.
    */
   private Map<String, Set<File>> toBeSyncedFilesMap;
 
@@ -79,8 +79,12 @@ public class SyncFileManager implements ISyncFileManager {
   public void getCurrentLocalFiles(String dataDir) {
     LOGGER.info("Start to get current local files in data folder {}", dataDir);
 
+    currentSealedLocalFilesMap = new HashMap<>();
     // get all files in data dir sequence folder
     Map<String, Set<File>> currentAllLocalFiles = new HashMap<>();
+    if (!new File(dataDir + File.separatorChar + IoTDBConstant.SEQUENCE_FLODER_NAME).exists()) {
+      return;
+    }
     File[] allSGFolders = new File(
         dataDir + File.separatorChar + IoTDBConstant.SEQUENCE_FLODER_NAME)
         .listFiles();
@@ -93,7 +97,6 @@ public class SyncFileManager implements ISyncFileManager {
     }
 
     // get sealed tsfiles
-    currentSealedLocalFilesMap = new HashMap<>();
     for (Entry<String, Set<File>> entry : currentAllLocalFiles.entrySet()) {
       String sgName = entry.getKey();
       currentSealedLocalFilesMap.putIfAbsent(sgName, new HashSet<>());
@@ -115,13 +118,13 @@ public class SyncFileManager implements ISyncFileManager {
     LOGGER.info("Start to get last local files from last local file info {}",
         lastLocalFileInfo.getAbsoluteFile());
     lastLocalFilesMap = new HashMap<>();
-    if(!lastLocalFileInfo.exists()){
+    if (!lastLocalFileInfo.exists()) {
       return;
     }
     try (BufferedReader reader = new BufferedReader(new FileReader(lastLocalFileInfo))) {
       String fileName;
       while ((fileName = reader.readLine()) != null) {
-        String sgName = new File(fileName).getParent();
+        String sgName = new File(fileName).getParentFile().getName();
         allSG.add(sgName);
         lastLocalFilesMap.putIfAbsent(sgName, new HashSet<>());
         lastLocalFilesMap.get(sgName).add(new File(fileName));
@@ -150,6 +153,10 @@ public class SyncFileManager implements ISyncFileManager {
         }
       }
     }
+  }
+
+  public Map<String, Set<File>> getCurrentSealedLocalFilesMap() {
+    return currentSealedLocalFilesMap;
   }
 
   public Map<String, Set<File>> getLastLocalFilesMap() {

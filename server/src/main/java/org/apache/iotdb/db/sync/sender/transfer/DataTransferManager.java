@@ -512,7 +512,7 @@ public class DataTransferManager implements IDataTransferManager {
             tsfile, e);
       } finally {
         if (snapshotFile != null) {
-          snapshotFile.deleteOnExit();
+          snapshotFile.delete();
         }
       }
     }
@@ -608,7 +608,7 @@ public class DataTransferManager implements IDataTransferManager {
     }
 
     // 2. Rename currentLocalFile to lastLocalFile
-    lastLocalFile.deleteOnExit();
+    lastLocalFile.delete();
     currentLocalFile.renameTo(lastLocalFile);
 
     // 3. delete snapshot directory
@@ -619,7 +619,7 @@ public class DataTransferManager implements IDataTransferManager {
     }
 
     // 4. delete sync log file
-    getSyncLogFile().deleteOnExit();
+    getSyncLogFile().delete();
   }
 
 

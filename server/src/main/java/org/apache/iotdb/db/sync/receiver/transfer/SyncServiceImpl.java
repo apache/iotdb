@@ -129,7 +129,8 @@ public class SyncServiceImpl implements SyncService.Iface {
    * Init file path and clear data if last sync process failed.
    */
   private void initPath() throws DiskSpaceInsufficientException {
-    String dataDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
+    String dataDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
+        .getParentFile().getAbsolutePath();
     syncFolderPath
         .set(FilePathUtils.regularizePath(dataDir) + Constans.SYNC_RECEIVER + File.separatorChar
             + senderName.get());
