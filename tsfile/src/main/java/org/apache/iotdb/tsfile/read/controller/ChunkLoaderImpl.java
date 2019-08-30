@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 /**
  * Read one Chunk and cache it into a LRUCache.
  */
-public class ChunkLoaderImpl implements ChunkLoader {
+public class ChunkLoaderImpl implements IChunkLoader {
 
   private static final int DEFAULT_CHUNK_CACHE_SIZE = 100000;
   private TsFileSequenceReader reader;
@@ -59,9 +59,7 @@ public class ChunkLoaderImpl implements ChunkLoader {
   @Override
   public Chunk getChunk(ChunkMetaData chunkMetaData) throws IOException {
     Chunk chunk = chunkCache.get(chunkMetaData);
-    Chunk chunkRet = new Chunk(chunk.getHeader(), chunk.getData().duplicate());
-    chunkRet.setDeletedAt(chunkMetaData.getDeletedAt());
-    return chunkRet;
+    return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt());
   }
 
   @Override
@@ -69,4 +67,8 @@ public class ChunkLoaderImpl implements ChunkLoader {
     reader.close();
   }
 
+  @Override
+  public void clear() {
+    chunkCache.clear();
+  }
 }

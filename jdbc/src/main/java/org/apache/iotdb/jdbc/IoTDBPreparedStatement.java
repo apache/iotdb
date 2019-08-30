@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
+import org.apache.thrift.TException;
 
 public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedStatement {
 

@@ -22,11 +22,12 @@ package org.apache.iotdb.jdbc;
 import java.sql.SQLException;
 import java.time.ZoneId;
 import java.util.List;
+
+import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
 import org.apache.iotdb.service.rpc.thrift.TSInsertionReq;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
-import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.thrift.TException;
 
 public class IoTDBPreparedInsertionStatement extends IoTDBPreparedStatement {
@@ -44,12 +45,12 @@ public class IoTDBPreparedInsertionStatement extends IoTDBPreparedStatement {
   public boolean execute() throws SQLException {
 
     try {
-      TSExecuteStatementResp resp = client.executeInsertion(req);
+      TSExecuteStatementResp resp = client.insert(req);
       req.unsetDeviceId();
       req.unsetMeasurements();
       req.unsetTimestamp();
       req.unsetValues();
-      return resp.getStatus().getStatusCode() == TS_StatusCode.SUCCESS_STATUS;
+      return resp.getStatus().getStatusType().getCode() == TSStatusType.SUCCESS_STATUS.getStatusCode();
     } catch (TException e) {
       throw new SQLException(e);
     }

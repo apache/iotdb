@@ -370,13 +370,13 @@ public class IoTDBCompleteIT {
 
   private void executeSQL(String[] sqls) throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       String result = "";
       Long now_start = 0L;
       boolean cmp = false;
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+
       for (String sql : sqls) {
         if (cmp) {
           Assert.assertEquals(sql, result);
@@ -389,7 +389,7 @@ public class IoTDBCompleteIT {
           if (sql.contains("NOW()") && now_start == 0L) {
             now_start = System.currentTimeMillis();
           }
-          Statement statement = connection.createStatement();
+
           statement.execute(sql);
           if (sql.split(" ")[0].equals("SELECT")) {
             ResultSet resultSet = statement.getResultSet();
@@ -418,15 +418,10 @@ public class IoTDBCompleteIT {
             }
             cmp = true;
           }
-          statement.close();
         }
       }
     } catch (Exception e) {
       e.printStackTrace();
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 }

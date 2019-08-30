@@ -55,19 +55,25 @@ public class MetadataPlan extends PhysicalPlan {
     this.encoding = encoding;
     this.props = props;
     this.deletePathList = deletePathList;
-    switch (namespaceType) {
-      case SET_FILE_LEVEL:
-        setOperatorType(Operator.OperatorType.SET_STORAGE_GROUP);
-        break;
-      case ADD_PATH:
-        setOperatorType(Operator.OperatorType.CREATE_TIMESERIES);
-        break;
-      case DELETE_PATH:
-        setOperatorType(Operator.OperatorType.DELETE_TIMESERIES);
-        break;
-      default:
-        break;
-    }
+    setOperatorType(namespaceType);
+  }
+
+  public MetadataPlan(MetadataOperator.NamespaceType namespaceType, Path path, TSDataType dataType,
+                      TSEncoding encoding, CompressionType compressor) {
+    super(false, Operator.OperatorType.METADATA);
+    this.namespaceType = namespaceType;
+    this.path = path;
+    this.dataType = dataType;
+    this.encoding = encoding;
+    this.compressor = compressor;
+    setOperatorType(namespaceType);
+  }
+
+  public MetadataPlan(MetadataOperator.NamespaceType namespaceType, Path path) {
+    super(false, Operator.OperatorType.METADATA);
+    this.namespaceType = namespaceType;
+    this.path = path;
+    setOperatorType(namespaceType);
   }
 
   public Path getPath() {
@@ -170,5 +176,21 @@ public class MetadataPlan extends PhysicalPlan {
     return Objects
         .hash(getNamespaceType(), getPath(), getDataType(), getCompressor(), getEncoding(),
             getProps(), getDeletePathList());
+  }
+
+  private void setOperatorType(MetadataOperator.NamespaceType namespaceType) {
+    switch (namespaceType) {
+      case SET_STORAGE_GROUP:
+        setOperatorType(Operator.OperatorType.SET_STORAGE_GROUP);
+        break;
+      case ADD_PATH:
+        setOperatorType(Operator.OperatorType.CREATE_TIMESERIES);
+        break;
+      case DELETE_PATH:
+        setOperatorType(Operator.OperatorType.DELETE_TIMESERIES);
+        break;
+      default:
+        break;
+    }
   }
 }

@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.hadoop.io.HDFSOutputStream;
 import org.apache.iotdb.tsfile.timeseries.basis.TsFile;
 import org.apache.iotdb.tsfile.write.exception.InvalidJsonSchemaException;
 import org.apache.iotdb.tsfile.write.exception.WriteProcessException;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,9 +42,9 @@ public class TSFRecordWriter extends RecordWriter<NullWritable, TSRow> {
 
   public TSFRecordWriter(Path path, JSONObject schema) throws InterruptedException, IOException {
     // construct the internalrecordwriter
-    FileSchema fileSchema = null;
+    Schema fileSchema = null;
     try {
-      fileSchema = new FileSchema(schema);
+      fileSchema = new Schema(schema);
     } catch (InvalidJsonSchemaException e) {
       throw new InterruptedException(String.format("Construct the tsfile schema failed"), e);
     }

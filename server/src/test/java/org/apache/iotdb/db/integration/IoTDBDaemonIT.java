@@ -127,21 +127,15 @@ public class IoTDBDaemonIT {
 
   private static void insertData() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
       for (String sql : sqls) {
         statement.execute(sql);
       }
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -157,48 +151,42 @@ public class IoTDBDaemonIT {
         "946684800000,null,100,null,good,null"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute("select * from root");
       Assert.assertTrue(hasResultSet);
 
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
-            + resultSet.getString(d0s1) + "," + resultSet.getString(d0s2) + "," + resultSet
-            .getString(d0s3)
-            + "," + resultSet.getString(d1s0);
-        Assert.assertEquals(retArray[cnt], ans);
-        cnt++;
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
+              + resultSet.getString(d0s1) + "," + resultSet.getString(d0s2) + "," + resultSet
+              .getString(d0s3)
+              + "," + resultSet.getString(d1s0);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(17, cnt);
       }
-      Assert.assertEquals(17, cnt);
-      statement.close();
 
       retArray = new String[]{"100,true"};
-      statement = connection.createStatement();
       hasResultSet = statement.execute("select s4 from root.vehicle.d0");
       Assert.assertTrue(hasResultSet);
 
-      resultSet = statement.getResultSet();
-      cnt = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s4);
-        Assert.assertEquals(ans, retArray[cnt]);
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s4);
+          Assert.assertEquals(ans, retArray[cnt]);
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
       }
-      Assert.assertEquals(1, cnt);
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -208,31 +196,25 @@ public class IoTDBDaemonIT {
         "1000,1000.11"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute("select s2 from root.vehicle.*");
       Assert.assertTrue(hasResultSet);
 
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s2);
-        Assert.assertEquals(ans, retArray[cnt]);
-        cnt++;
-      }
-      Assert.assertEquals(6, cnt);
 
-      statement.close();
+      try (ResultSet resultSet = statement.getResultSet();) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s2);
+          Assert.assertEquals(ans, retArray[cnt]);
+          cnt++;
+        }
+        Assert.assertEquals(6, cnt);
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -243,34 +225,27 @@ public class IoTDBDaemonIT {
         "102,80,180", "103,99,199", "104,90,190", "105,99,199"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement
           .execute(
               "select s0,s1 from root.vehicle.d0 where time < 106 and (s0 >= 60 or s1 <= 200)");
       Assert.assertTrue(hasResultSet);
 
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
-            + resultSet.getString(d0s1);
-        assertEquals(retArray[cnt], ans);
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
+              + resultSet.getString(d0s1);
+          assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(9, cnt);
       }
-      Assert.assertEquals(9, cnt);
-
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -279,32 +254,27 @@ public class IoTDBDaemonIT {
     String[] retArray = new String[]{"1000,22222,55555,888"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+Statement statement = connection.createStatement()) {
       // TODO select s0,s1 from root.vehicle.d0 where time > 106 and root.vehicle.d1.s0 > 100;
       boolean hasResultSet = statement.execute(
           "select s0,s1 from root.vehicle.d0,root.vehicle.d1 where time > 106 and root.vehicle.d0.s0 > 100");
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
-            + resultSet.getString(d0s1) + "," + resultSet.getString(d1s0);
-        Assert.assertEquals(ans, retArray[cnt]);
-        cnt++;
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
+              + resultSet.getString(d0s1) + "," + resultSet.getString(d1s0);
+          Assert.assertEquals(ans, retArray[cnt]);
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
       }
-      Assert.assertEquals(1, cnt);
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -313,32 +283,27 @@ public class IoTDBDaemonIT {
     String[] retArray = new String[]{"1000,22222,55555"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement
           .execute(
               "select s0,s1 from root.vehicle.d0 where time > 106 and root.vehicle.d1.s0 > 100");
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
-            + resultSet.getString(d0s1);
-        Assert.assertEquals(ans, retArray[cnt]);
-        cnt++;
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
+              + resultSet.getString(d0s1);
+          Assert.assertEquals(ans, retArray[cnt]);
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
       }
-      Assert.assertEquals(1, cnt);
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -347,31 +312,26 @@ public class IoTDBDaemonIT {
     String[] retArray = new String[]{"102,180", "104,190", "946684800000,100"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+Statement statement = connection.createStatement()) {
 
       boolean hasTextMaxResultSet = statement
           .execute("select s1 from root.vehicle.d0 where s1 < 199");
       Assert.assertTrue(hasTextMaxResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s1);
-        Assert.assertEquals(retArray[cnt++], ans);
-      }
-      Assert.assertEquals(3, cnt);
 
-      statement.close();
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s1);
+          Assert.assertEquals(retArray[cnt++], ans);
+        }
+        Assert.assertEquals(3, cnt);
+      }
+
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 }

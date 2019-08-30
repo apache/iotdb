@@ -31,25 +31,25 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  */
 public class BooleanStatistics extends Statistics<Boolean> {
 
-  private boolean max;
   private boolean min;
+  private boolean max;
   private boolean first;
-  private double sum;
   private boolean last;
+  private double sum;
 
   @Override
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    max = BytesUtils.bytesToBool(maxBytes);
     min = BytesUtils.bytesToBool(minBytes);
+    max = BytesUtils.bytesToBool(maxBytes);
   }
 
   @Override
   public void updateStats(boolean value) {
     if (isEmpty) {
-      initializeStats(value, value, value, 0, value);
+      initializeStats(value, value, value, value, 0);
       isEmpty = false;
     } else {
-      updateStats(value, value, value, 0, value);
+      updateStats(value, value, value, value, 0);
       isEmpty = false;
     }
   }
@@ -58,17 +58,17 @@ public class BooleanStatistics extends Statistics<Boolean> {
   public void updateStats(boolean[] values) {
     for (boolean value : values) {
       if (isEmpty) {
-        initializeStats(value, value, value, 0, value);
+        initializeStats(value, value, value, value, 0);
         isEmpty = false;
       } else {
-        updateStats(value, value, value, 0, value);
+        updateStats(value, value, value, value, 0);
         isEmpty = false;
       }
     }
   }
 
-  private void updateStats(boolean minValue, boolean maxValue, boolean firstValue, double sumValue,
-      boolean lastValue) {
+  private void updateStats(boolean minValue, boolean maxValue, boolean firstValue,
+      boolean lastValue, double sumValue) {
     if (!minValue && min) {
       min = false;
     }
@@ -79,13 +79,13 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  public Boolean getMax() {
-    return max;
+  public Boolean getMin() {
+    return min;
   }
 
   @Override
-  public Boolean getMin() {
-    return min;
+  public Boolean getMax() {
+    return max;
   }
 
   @Override
@@ -94,18 +94,13 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  public double getSum() {
-    return sum;
-  }
-
-  @Override
   public Boolean getLast() {
     return last;
   }
 
   @Override
-  public ByteBuffer getMaxBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(max);
+  public double getSum() {
+    return sum;
   }
 
   @Override
@@ -114,13 +109,13 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  public ByteBuffer getFirstBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(first);
+  public ByteBuffer getMaxBytebuffer() {
+    return ReadWriteIOUtils.getByteBuffer(max);
   }
 
   @Override
-  public ByteBuffer getSumBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(sum);
+  public ByteBuffer getFirstBytebuffer() {
+    return ReadWriteIOUtils.getByteBuffer(first);
   }
 
   @Override
@@ -129,16 +124,20 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
+  public ByteBuffer getSumBytebuffer() {
+    return ReadWriteIOUtils.getByteBuffer(sum);
+  }
+
+  @Override
   protected void mergeStatisticsValue(Statistics<?> stats) {
     BooleanStatistics boolStats = (BooleanStatistics) stats;
     if (isEmpty) {
       initializeStats(boolStats.getMin(), boolStats.getMax(), boolStats.getFirst(),
-          boolStats.getSum(),
-          boolStats.getLast());
+          boolStats.getLast(), boolStats.getSum());
       isEmpty = false;
     } else {
-      updateStats(boolStats.getMin(), boolStats.getMax(), boolStats.getFirst(), boolStats.getSum(),
-          boolStats.getLast());
+      updateStats(boolStats.getMin(), boolStats.getMax(), boolStats.getFirst(),
+          boolStats.getLast(), boolStats.getSum());
     }
   }
 
@@ -148,20 +147,15 @@ public class BooleanStatistics extends Statistics<Boolean> {
    * @param min min boolean
    * @param max max boolean
    * @param firstValue first boolean value
-   * @param sumValue sum value (double type)
    * @param lastValue last boolean value
+   * @param sumValue sum value (double type)
    */
-  public void initializeStats(boolean min, boolean max, boolean firstValue, double sumValue,
-      boolean lastValue) {
+  private void initializeStats(boolean min, boolean max, boolean firstValue, boolean lastValue,
+      double sumValue) {
     this.min = min;
     this.max = max;
     this.first = firstValue;
     this.last = lastValue;
-  }
-
-  @Override
-  public byte[] getMaxBytes() {
-    return BytesUtils.boolToBytes(max);
   }
 
   @Override
@@ -170,18 +164,23 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
+  public byte[] getMaxBytes() {
+    return BytesUtils.boolToBytes(max);
+  }
+
+  @Override
   public byte[] getFirstBytes() {
     return BytesUtils.boolToBytes(first);
   }
 
   @Override
-  public byte[] getSumBytes() {
-    return BytesUtils.doubleToBytes(sum);
+  public byte[] getLastBytes() {
+    return BytesUtils.boolToBytes(last);
   }
 
   @Override
-  public byte[] getLastBytes() {
-    return BytesUtils.boolToBytes(last);
+  public byte[] getSumBytes() {
+    return BytesUtils.doubleToBytes(sum);
   }
 
   @Override
@@ -191,7 +190,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   @Override
   public String toString() {
-    return "[max:" + max + ",min:" + min + ",first:" + first + ",sum:" + sum + ",last:" + last
+    return "[min:" + min + ",max:" + max + ",first:" + first + ",last:" + last + ",sum:" + sum
         + "]";
   }
 

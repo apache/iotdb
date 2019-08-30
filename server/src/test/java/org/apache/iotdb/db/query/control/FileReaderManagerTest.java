@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
 import static org.junit.Assert.fail;
 
 import java.io.File;
@@ -26,6 +25,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -57,9 +57,12 @@ public class FileReaderManagerTest {
     FileReaderManager manager = FileReaderManager.getInstance();
     JobFileManager testManager = new JobFileManager();
 
+    TsFileResource[] tsFileResources = new TsFileResource[MAX_FILE_SIZE + 1];
+
     for (int i = 1; i <= MAX_FILE_SIZE; i++) {
       File file = new File(filePath + i);
       file.createNewFile();
+      tsFileResources[i] = new TsFileResource(file);
     }
 
     Thread t1 = new Thread(() -> {
@@ -67,10 +70,15 @@ public class FileReaderManagerTest {
         testManager.addJobId(1L);
 
         for (int i = 1; i <= 6; i++) {
-          testManager.addFilePathToMap(1L, filePath + i,
+          TsFileResource tsFile = tsFileResources[i];
+          testManager.addFilePathToMap(1L, tsFile,
               false);
-          manager.get(filePath + i, false);
-          Assert.assertTrue(manager.contains(filePath + i, false));
+          manager.get(tsFile, false);
+          Assert.assertTrue(manager.contains(tsFile, false));
+        }
+        for (int i = 1; i <= 6; i++) {
+          TsFileResource tsFile = tsFileResources[i];
+          manager.decreaseFileReaderReference(tsFile, false);
         }
 
       } catch (IOException e) {
@@ -85,10 +93,15 @@ public class FileReaderManagerTest {
         testManager.addJobId(2L);
 
         for (int i = 4; i <= MAX_FILE_SIZE; i++) {
-          testManager.addFilePathToMap(2L, filePath + i,
+          TsFileResource tsFile = tsFileResources[i];
+          testManager.addFilePathToMap(2L, tsFile,
               false);
-          manager.get(filePath + i, false);
-          Assert.assertTrue(manager.contains(filePath + i, false));
+          manager.get(tsFile, false);
+          Assert.assertTrue(manager.contains(tsFile, false));
+        }
+        for (int i = 4; i <= MAX_FILE_SIZE; i++) {
+          TsFileResource tsFile = tsFileResources[i];
+          manager.decreaseFileReaderReference(tsFile, false);
         }
 
       } catch (IOException e) {
@@ -102,12 +115,10 @@ public class FileReaderManagerTest {
     t2.join();
 
     for (int i = 1; i <= MAX_FILE_SIZE; i++) {
-      Assert.assertTrue(manager.contains(filePath + i, false));
+      TsFileResource tsFile = new TsFileResource(new File(filePath + i));
+      Assert.assertTrue(manager.contains(tsFile, false));
     }
 
-    for (int i = 1; i <= MAX_FILE_SIZE; i++) {
-      manager.decreaseFileReaderReference(filePath + i, true);
-    }
 
     // the code below is not valid because the cacheFileReaderClearPeriod config in this class is not valid
 

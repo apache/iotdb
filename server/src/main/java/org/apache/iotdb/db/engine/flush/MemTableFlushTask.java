@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
@@ -50,14 +50,14 @@ public class MemTableFlushTask {
   private String storageGroup;
 
   private IMemTable memTable;
-  private FileSchema fileSchema;
+  private Schema schema;
 
   private volatile boolean noMoreEncodingTask = false;
   private volatile boolean noMoreIOTask = false;
 
-  public MemTableFlushTask(IMemTable memTable, FileSchema fileSchema, RestorableTsFileIOWriter writer, String storageGroup) {
+  public MemTableFlushTask(IMemTable memTable, Schema schema, RestorableTsFileIOWriter writer, String storageGroup) {
     this.memTable = memTable;
-    this.fileSchema = fileSchema;
+    this.schema = schema;
     this.writer = writer;
     this.storageGroup = storageGroup;
     subTaskPoolManager.submit(encodingTask);
@@ -78,7 +78,7 @@ public class MemTableFlushTask {
       for (String measurementId : memTable.getMemTableMap().get(deviceId).keySet()) {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = memTable.getMemTableMap().get(deviceId).get(measurementId);
-        MeasurementSchema desc = fileSchema.getMeasurementSchema(measurementId);
+        MeasurementSchema desc = schema.getMeasurementSchema(measurementId);
         TVList tvList = series.getSortedTVList();
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.add(new Pair<>(tvList, desc));
@@ -168,8 +168,7 @@ public class MemTableFlushTask {
             Pair<TVList, MeasurementSchema> encodingMessage = (Pair<TVList, MeasurementSchema>) task;
             ChunkBuffer chunkBuffer = ChunkBufferPool.getInstance()
                 .getEmptyChunkBuffer(this, encodingMessage.right);
-            IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right, chunkBuffer,
-                PAGE_SIZE_THRESHOLD);
+            IChunkWriter seriesWriter = new ChunkWriterImpl(chunkBuffer, PAGE_SIZE_THRESHOLD);
             writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
             ioTaskQueue.add(seriesWriter);
             memSerializeTime += System.currentTimeMillis() - starTime;

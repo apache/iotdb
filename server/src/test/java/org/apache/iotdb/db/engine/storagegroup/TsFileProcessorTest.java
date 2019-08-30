@@ -36,7 +36,7 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.FileSchemaUtils;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
@@ -77,7 +77,7 @@ public class TsFileProcessorTest {
   public void testWriteAndFlush()
       throws WriteProcessException, IOException, TsFileProcessorException {
     processor = new TsFileProcessor(storageGroup, new File(filePath),
-        FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
+        SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
     },
         () -> true, true);
 
@@ -124,7 +124,7 @@ public class TsFileProcessorTest {
   public void testWriteAndRestoreMetadata()
       throws IOException {
     processor = new TsFileProcessor(storageGroup, new File(filePath),
-        FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
+        SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
     },
         () -> true, true);
 
@@ -191,7 +191,7 @@ public class TsFileProcessorTest {
   public void testMultiFlush()
       throws WriteProcessException, IOException, TsFileProcessorException {
     processor = new TsFileProcessor(storageGroup, new File(filePath),
-        FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
+        SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
     },
         () -> true, true);
 
@@ -227,7 +227,7 @@ public class TsFileProcessorTest {
   public void testWriteAndClose()
       throws WriteProcessException, IOException {
     processor = new TsFileProcessor(storageGroup, new File(filePath),
-        FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE,
+        SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE,
         unsealedTsFileProcessor -> {
           TsFileResource resource = unsealedTsFileProcessor.getTsFileResource();
           synchronized (resource) {

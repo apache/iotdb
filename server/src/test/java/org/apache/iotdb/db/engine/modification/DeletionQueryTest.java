@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -185,8 +186,9 @@ public class  DeletionQueryTest {
 
     int count = 0;
     while (dataSet.hasNext()) {
-      dataSet.next();
+      RowRecord record = dataSet.next();
       count++;
+      System.out.println(record.getTimestamp());
     }
     assertEquals(150, count);
   }
