@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.qp;
 
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.qp.common.FilterOperator;
 import org.apache.iotdb.tsfile.qp.common.SQLConstant;
 import org.apache.iotdb.tsfile.qp.common.SingleQuery;
@@ -29,9 +28,13 @@ import org.apache.iotdb.tsfile.qp.optimizer.DNFFilterOptimizer;
 import org.apache.iotdb.tsfile.qp.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.tsfile.qp.optimizer.PhysicalOptimizer;
 import org.apache.iotdb.tsfile.qp.optimizer.RemoveNotOptimizer;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -73,6 +76,48 @@ public class QueryProcessor {
         } else {
             queryPlans.addAll(new PhysicalOptimizer(columnNames).optimize(null, paths, in, start, end));
         }
+        // merge query plan
+        Map<List<String>, List<TSQueryPlan>> pathMap = new HashMap<>();
+        for(TSQueryPlan tsQueryPlan : queryPlans){
+            if(pathMap.containsKey(tsQueryPlan.getPaths())){
+                pathMap.get(tsQueryPlan.getPaths()).add(tsQueryPlan);
+            }
+            else{
+                List<TSQueryPlan> plans = new ArrayList<>();
+                plans.add(tsQueryPlan);
+                pathMap.put(tsQueryPlan.getPaths(), plans);
+            }
+        }
+
+        queryPlans.clear();
+
+        for(List<TSQueryPlan> plans : pathMap.values()){
+            TSQueryPlan mergePlan = null;
+            for(TSQueryPlan plan : plans){
+                if(mergePlan == null){
+                    mergePlan = plan;
+                }
+                else{
+                    FilterOperator timeFilterOperator = new FilterOperator(SQLConstant.KW_OR);
+                    List<FilterOperator> timeFilterChildren = new ArrayList<>();
+                    timeFilterChildren.add(mergePlan.getTimeFilterOperator());
+                    timeFilterChildren.add(plan.getTimeFilterOperator());
+                    timeFilterOperator.setChildrenList(timeFilterChildren);
+                    mergePlan.setTimeFilterOperator(timeFilterOperator);
+
+                    FilterOperator valueFilterOperator = new FilterOperator(SQLConstant.KW_OR);
+                    List<FilterOperator> valueFilterChildren = new ArrayList<>();
+                    valueFilterChildren.add(mergePlan.getValueFilterOperator());
+                    valueFilterChildren.add(plan.getValueFilterOperator());
+                    valueFilterOperator.setChildrenList(valueFilterChildren);
+                    mergePlan.setValueFilterOperator(valueFilterOperator);
+                }
+            }
+            queryPlans.add(mergePlan);
+        }
+        //
+
+
         return queryPlans;
     }
 

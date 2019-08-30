@@ -478,7 +478,7 @@ object NewConverter {
       case SQLConstant.LESSTHAN =>
         val basicOperator = node.asInstanceOf[BasicOperator]
         if (QueryConstant.RESERVED_TIME.equals(basicOperator.getSeriesPath.toLowerCase())) {
-          filter = new GlobalTimeExpression(TimeFilter.eq(java.lang.Long.parseLong(basicOperator.getSeriesValue)))
+          filter = new GlobalTimeExpression(TimeFilter.lt(java.lang.Long.parseLong(basicOperator.getSeriesValue)))
         } else {
           filter = constructExpression(schema, basicOperator.getSeriesPath, basicOperator.getSeriesValue, FilterTypes.Lt, device_name)
         }
@@ -487,7 +487,7 @@ object NewConverter {
       case SQLConstant.LESSTHANOREQUALTO =>
         val basicOperator = node.asInstanceOf[BasicOperator]
         if (QueryConstant.RESERVED_TIME.equals(basicOperator.getSeriesPath.toLowerCase())) {
-          filter = new GlobalTimeExpression(TimeFilter.eq(java.lang.Long.parseLong(basicOperator.getSeriesValue)))
+          filter = new GlobalTimeExpression(TimeFilter.ltEq(java.lang.Long.parseLong(basicOperator.getSeriesValue)))
         } else {
           filter = constructExpression(schema, basicOperator.getSeriesPath, basicOperator.getSeriesValue, FilterTypes.LtEq, device_name)
         }
@@ -496,7 +496,7 @@ object NewConverter {
       case SQLConstant.GREATERTHAN =>
         val basicOperator = node.asInstanceOf[BasicOperator]
         if (QueryConstant.RESERVED_TIME.equals(basicOperator.getSeriesPath.toLowerCase())) {
-          filter = new GlobalTimeExpression(TimeFilter.eq(java.lang.Long.parseLong(basicOperator.getSeriesValue)))
+          filter = new GlobalTimeExpression(TimeFilter.gt(java.lang.Long.parseLong(basicOperator.getSeriesValue)))
         } else {
           filter = constructExpression(schema, basicOperator.getSeriesPath, basicOperator.getSeriesValue, FilterTypes.Gt, device_name)
         }
@@ -505,7 +505,7 @@ object NewConverter {
       case SQLConstant.GREATERTHANOREQUALTO =>
         val basicOperator = node.asInstanceOf[BasicOperator]
         if (QueryConstant.RESERVED_TIME.equals(basicOperator.getSeriesPath.toLowerCase())) {
-          filter = new GlobalTimeExpression(TimeFilter.eq(java.lang.Long.parseLong(basicOperator.getSeriesValue)))
+          filter = new GlobalTimeExpression(TimeFilter.gtEq(java.lang.Long.parseLong(basicOperator.getSeriesValue)))
         } else {
           filter = constructExpression(schema, basicOperator.getSeriesPath, basicOperator.getSeriesValue, FilterTypes.GtEq, device_name)
         }
