@@ -61,6 +61,9 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
 
   @Override
   public void loadLastLocalFiles(Set<String> lastLocalFiles) {
+    if (!lastLocalFile.exists()) {
+      return;
+    }
     try (BufferedReader br = new BufferedReader(new FileReader(lastLocalFile))) {
       String line;
       while ((line = br.readLine()) != null) {
