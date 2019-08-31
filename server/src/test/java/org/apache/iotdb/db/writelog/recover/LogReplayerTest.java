@@ -23,7 +23,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
@@ -43,6 +42,7 @@ import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -53,8 +53,8 @@ public class LogReplayerTest {
   @Test
   public void test() throws IOException, ProcessorException {
     String logNodePrefix = "testLogNode";
-    File tsFile = new File("temp", "test.ts");
-    File modF = new File("test.mod");
+    IoTDBFile tsFile = new IoTDBFile("temp", "test.ts");
+    IoTDBFile modF = new IoTDBFile("test.mod");
     ModificationFile modFile = new ModificationFile(modF.getPath());
     VersionController versionController = new VersionController() {
       @Override

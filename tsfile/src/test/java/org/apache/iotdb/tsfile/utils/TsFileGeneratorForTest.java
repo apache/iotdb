@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Collections;
@@ -34,6 +33,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -77,22 +77,22 @@ public class TsFileGeneratorForTest {
   }
 
   public static void after() {
-    File file = new File(inputDataFile);
+    IoTDBFile file = new IoTDBFile(inputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
-    file = new File(outputDataFile);
+    file = new IoTDBFile(outputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
-    file = new File(errorOutputDataFile);
+    file = new IoTDBFile(errorOutputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
   }
 
   static private void generateSampleInputDataFile(int minRowCount, int maxRowCount) throws IOException {
-    File file = new File(inputDataFile);
+    IoTDBFile file = new IoTDBFile(inputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
@@ -145,8 +145,8 @@ public class TsFileGeneratorForTest {
   }
 
   static public void write() throws IOException {
-    File file = new File(outputDataFile);
-    File errorFile = new File(errorOutputDataFile);
+    IoTDBFile file = new IoTDBFile(outputDataFile);
+    IoTDBFile errorFile = new IoTDBFile(errorOutputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
@@ -161,7 +161,7 @@ public class TsFileGeneratorForTest {
     innerWriter = new TsFileWriter(file, schema, TSFileDescriptor.getInstance().getConfig());
 
     // write
-    try (Scanner in = new Scanner(new File(inputDataFile))) {
+    try (Scanner in = new Scanner(new IoTDBFile(inputDataFile))) {
       assert in != null;
       while (in.hasNextLine()) {
         String str = in.nextLine();

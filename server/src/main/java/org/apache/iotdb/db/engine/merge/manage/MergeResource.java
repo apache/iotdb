@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.merge.manage;
 
 import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,6 +39,7 @@ import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -102,7 +102,7 @@ public class MergeResource {
   public RestorableTsFileIOWriter getMergeFileWriter(TsFileResource resource) throws IOException {
     RestorableTsFileIOWriter writer = fileWriterCache.get(resource);
     if (writer == null) {
-      writer = new RestorableTsFileIOWriter(new File(resource.getFile().getPath() + MERGE_SUFFIX));
+      writer = new RestorableTsFileIOWriter(new IoTDBFile(resource.getFile().getPath() + MERGE_SUFFIX));
       fileWriterCache.put(resource, writer);
     }
     return writer;

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -29,6 +28,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -72,22 +72,22 @@ public class FileGenerator {
   }
 
   public static void after() {
-    File file = new File(inputDataFile);
+    IoTDBFile file = new IoTDBFile(inputDataFile);
     if (file.exists()) {
       file.delete();
     }
-    file = new File(outputDataFile);
+    file = new IoTDBFile(outputDataFile);
     if (file.exists()) {
       file.delete();
     }
-    file = new File(errorOutputDataFile);
+    file = new IoTDBFile(errorOutputDataFile);
     if (file.exists()) {
       file.delete();
     }
   }
 
   static private void generateSampleInputDataFile() throws IOException {
-    File file = new File(inputDataFile);
+    IoTDBFile file = new IoTDBFile(inputDataFile);
     if (file.exists()) {
       file.delete();
     }
@@ -145,8 +145,8 @@ public class FileGenerator {
   }
 
   static public void write() throws IOException {
-    File file = new File(outputDataFile);
-    File errorFile = new File(errorOutputDataFile);
+    IoTDBFile file = new IoTDBFile(outputDataFile);
+    IoTDBFile errorFile = new IoTDBFile(errorOutputDataFile);
     if (file.exists()) {
       file.delete();
     }
@@ -200,7 +200,7 @@ public class FileGenerator {
   }
 
   static private Scanner getDataFile(String path) {
-    File file = new File(path);
+    IoTDBFile file = new IoTDBFile(path);
     try {
       Scanner in = new Scanner(file);
       return in;

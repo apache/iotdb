@@ -74,6 +74,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -237,9 +238,9 @@ public class StorageGroupProcessor {
   }
 
   private List<TsFileResource> getAllFiles(List<String> folders) throws IOException {
-    List<File> tsFiles = new ArrayList<>();
+    List<IoTDBFile> tsFiles = new ArrayList<>();
     for (String baseDir : folders) {
-      File fileFolder = new File(baseDir, storageGroupName);
+      IoTDBFile fileFolder = new IoTDBFile(baseDir, storageGroupName);
       if (!fileFolder.exists()) {
         continue;
       }
@@ -494,11 +495,11 @@ public class StorageGroupProcessor {
         + TSFILE_SUFFIX;
 
     if (sequence) {
-      return new TsFileProcessor(storageGroupName, new File(filePath),
+      return new TsFileProcessor(storageGroupName, new IoTDBFile(filePath),
           schema, versionController, this::closeUnsealedTsFileProcessor,
           this::updateLatestFlushTimeCallback, sequence);
     } else {
-      return new TsFileProcessor(storageGroupName, new File(filePath),
+      return new TsFileProcessor(storageGroupName, new IoTDBFile(filePath),
           schema, versionController, this::closeUnsealedTsFileProcessor,
           () -> true, sequence);
     }

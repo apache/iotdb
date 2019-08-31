@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write;
 
-import java.io.File;
 import java.io.IOException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -28,6 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.TimeSeriesMetadataTest;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -44,7 +44,7 @@ public class TsFileIOWriterTest {
 
   @Before
   public void before() throws IOException {
-    TsFileIOWriter writer = new TsFileIOWriter(new File(tsfile));
+    TsFileIOWriter writer = new TsFileIOWriter(new IoTDBFile(tsfile));
 
     // file schema
     MeasurementSchema measurementSchema = TestHelper.createSimpleMeasurementSchema();
@@ -68,7 +68,7 @@ public class TsFileIOWriterTest {
 
   @After
   public void after() {
-    File file = new File(tsfile);
+    IoTDBFile file = new IoTDBFile(tsfile);
     if (file.exists()) {
       file.delete();
     }

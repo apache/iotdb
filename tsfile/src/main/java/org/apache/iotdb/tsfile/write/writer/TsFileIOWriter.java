@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -45,6 +44,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -80,7 +80,7 @@ public class TsFileIOWriter {
   protected int totalChunkNum = 0;
   protected int invalidChunkNum;
 
-  protected File file;
+  protected IoTDBFile file;
 
   /**
    * empty construct function.
@@ -95,7 +95,7 @@ public class TsFileIOWriter {
    * @param file be used to output written data
    * @throws IOException if I/O error occurs
    */
-  public TsFileIOWriter(File file) throws IOException {
+  public TsFileIOWriter(IoTDBFile file) throws IOException {
     this.out = new DefaultTsFileOutput(file);
     startFile();
   }
@@ -412,7 +412,7 @@ public class TsFileIOWriter {
     return invalidChunkNum;
   }
 
-  public File getFile() {
+  public IoTDBFile getFile() {
     return file;
   }
 

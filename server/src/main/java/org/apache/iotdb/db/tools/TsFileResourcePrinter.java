@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.tools;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
+
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 
 /**
  * this tool can analyze the tsfile.resource files from a folder.
@@ -36,12 +38,11 @@ public class TsFileResourcePrinter {
     if (args.length >= 1) {
       folder = args[0];
     }
-    File folderFile = new File(folder);
-    File[] files = folderFile.listFiles((dir, name) -> name.endsWith(".tsfile.resource"));
-    Arrays.sort(files, (x, y) -> Long
-        .compare(Long.valueOf(x.getName().split("-")[0]), Long.valueOf(y.getName().split("-")[0])));
+    IoTDBFile folderFile = new IoTDBFile(folder);
+    IoTDBFile[] files = folderFile.listFiles(file -> file.getName().endsWith(".tsfile.resource"));
+    Arrays.sort(files, Comparator.comparingLong(x -> Long.valueOf(x.getName().split("-")[0])));
 
-    for (File file : files) {
+    for (IoTDBFile file : files) {
       printResource(file.getAbsolutePath());
     }
     System.out.println("analyzing the resource file finished.");
@@ -49,7 +50,7 @@ public class TsFileResourcePrinter {
 
   public static void printResource(String filename) throws IOException {
     filename = filename.substring(0, filename.length() - 9);
-    TsFileResource resource = new TsFileResource(new File(filename));
+    TsFileResource resource = new TsFileResource(new IoTDBFile(filename));
     System.err.println(String.format("analyzing %s ...", filename));
     resource.deSerialize();
 

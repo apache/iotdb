@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -37,11 +36,12 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TsFileResource {
 
-  private File file;
+  private IoTDBFile file;
 
   public static final String RESOURCE_SUFFIX = ".resource";
   public static final String TEMP_SUFFIX = ".temp";
@@ -75,21 +75,21 @@ public class TsFileResource {
 
   private ReentrantReadWriteLock mergeQueryLock = new ReentrantReadWriteLock();
 
-  public TsFileResource(File file) {
+  public TsFileResource(IoTDBFile file) {
     this.file = file;
     this.startTimeMap = new ConcurrentHashMap<>();
     this.endTimeMap = new HashMap<>();
     this.closed = true;
   }
 
-  public TsFileResource(File file, TsFileProcessor processor) {
+  public TsFileResource(IoTDBFile file, TsFileProcessor processor) {
     this.file = file;
     this.startTimeMap = new ConcurrentHashMap<>();
     this.endTimeMap = new ConcurrentHashMap<>();
     this.processor = processor;
   }
 
-  public TsFileResource(File file,
+  public TsFileResource(IoTDBFile file,
       Map<String, Long> startTimeMap,
       Map<String, Long> endTimeMap) {
     this.file = file;
@@ -98,7 +98,7 @@ public class TsFileResource {
     this.closed = true;
   }
 
-  public TsFileResource(File file,
+  public TsFileResource(IoTDBFile file,
       Map<String, Long> startTimeMap,
       Map<String, Long> endTimeMap,
       ReadOnlyMemChunk readOnlyMemChunk,
@@ -124,8 +124,8 @@ public class TsFileResource {
         ReadWriteIOUtils.write(entry.getValue(), outputStream);
       }
     }
-    File src = new File(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
-    File dest = new File(file + RESOURCE_SUFFIX);
+    IoTDBFile src = new IoTDBFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
+    IoTDBFile dest = new IoTDBFile(file + RESOURCE_SUFFIX);
     dest.delete();
     FileUtils.moveFile(src, dest);
   }
@@ -167,7 +167,7 @@ public class TsFileResource {
   }
 
   public boolean fileExists() {
-    return new File(file+RESOURCE_SUFFIX).exists();
+    return new IoTDBFile(file + RESOURCE_SUFFIX).exists();
   }
 
   public void forceUpdateEndTime(String device, long time) {
@@ -193,7 +193,7 @@ public class TsFileResource {
     return startTimeMap.containsKey(deviceId);
   }
 
-  public File getFile() {
+  public IoTDBFile getFile() {
     return file;
   }
 
@@ -242,8 +242,8 @@ public class TsFileResource {
 
   public void remove() {
     file.delete();
-    new File(file.getPath() + RESOURCE_SUFFIX).delete();
-    new File(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
+    new IoTDBFile(file.getPath() + RESOURCE_SUFFIX).delete();
+    new IoTDBFile(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
   }
 
   @Override

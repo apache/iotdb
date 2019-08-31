@@ -21,12 +21,12 @@ package org.apache.iotdb.db.engine.memtable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.io.File;
 import java.util.concurrent.ExecutionException;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
 import org.junit.Before;
@@ -45,7 +45,7 @@ public class MemTableFlushTaskTest {
   public void setUp() throws Exception {
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
-    writer = new RestorableTsFileIOWriter(new File(filePath));
+    writer = new RestorableTsFileIOWriter(new IoTDBFile(filePath));
     memTable = new PrimitiveMemTable();
   }
 

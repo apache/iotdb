@@ -134,6 +134,9 @@ public class TSFileDescriptor {
       TSFileConfig.valueEncoder = properties
           .getProperty("value_encoder", TSFileConfig.valueEncoder);
       TSFileConfig.compressor = properties.getProperty("compressor", TSFileConfig.compressor);
+      TSFileConfig.isHdfsStorage = Boolean
+              .parseBoolean(properties
+                      .getProperty("is_hdfs_storage", Boolean.toString(TSFileConfig.isHdfsStorage)));
     } catch (IOException e) {
       logger.warn("Cannot load config file, use default configuration", e);
     } catch (Exception e) {
