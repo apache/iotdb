@@ -55,10 +55,10 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-collections4</artifactId>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.antlr/antlr-runtime -->
         <dependency>
             <groupId>org.antlr</groupId>
-            <artifactId>antlr-runtime</artifactId>
+            <artifactId>antlr4-runtime</artifactId>
+            <version>4.7.2</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
         <dependency>
@@ -90,12 +90,17 @@
         <plugins>
             <plugin>
                 <groupId>org.antlr</groupId>
-                <artifactId>antlr3-maven-plugin</artifactId>
-                <version>${antlr3.version}</version>
+                <artifactId>antlr4-maven-plugin</artifactId>
+                <version>4.7.2</version>
+                <configuration>
+                    <sourceDirectory>${basedir}/src</sourceDirectory>
+                    <listener>true</listener>
+                    <visitor>true</visitor>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
-                            <goal>antlr</goal>
+                            <goal>antlr4</goal>
                         </goals>
                     </execution>
                 </executions>
