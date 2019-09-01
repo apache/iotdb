@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.tool;
 
-import java.io.File;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -39,7 +39,7 @@ public class TsFileWriteTool {
   public static int largeNum = 1024 * 1024;
 
   public void create1(String tsfilePath) throws Exception {
-    File f = new File(tsfilePath);
+    IoTDBFile f = new IoTDBFile(tsfilePath);
     if (f.exists()) {
       f.delete();
     }
@@ -137,7 +137,7 @@ public class TsFileWriteTool {
   }
 
   public void create2(String tsfilePath) throws Exception {
-    File f = new File(tsfilePath);
+    IoTDBFile f = new IoTDBFile(tsfilePath);
     if (f.exists()) {
       f.delete();
     }
@@ -159,7 +159,7 @@ public class TsFileWriteTool {
   }
 
   public void create3(String tsfilePath) throws Exception {
-    File f = new File(tsfilePath);
+    IoTDBFile f = new IoTDBFile(tsfilePath);
     if (f.exists()) {
       f.delete();
     }

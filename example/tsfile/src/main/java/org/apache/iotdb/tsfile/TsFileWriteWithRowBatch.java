@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.tsfile;
 
-import java.io.File;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -35,7 +35,7 @@ public class TsFileWriteWithRowBatch {
   public static void main(String[] args) {
     try {
       String path = "test.tsfile";
-      File f = new File(path);
+      IoTDBFile f = new IoTDBFile(path);
       if (f.exists()) {
         f.delete();
       }
