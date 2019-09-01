@@ -604,7 +604,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     PhysicalPlan physicalPlan;
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-    } catch (QueryProcessorException | ArgsErrorException | MetadataErrorException e) {
+    } catch (QueryProcessorException e) {
       logger.error("meet error while parsing SQL to physical plan!", e);
       return getTSExecuteStatementResp(getStatus(TSStatusType.SQL_PARSE_ERROR, e.getMessage()));
     }
@@ -819,7 +819,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     PhysicalPlan physicalPlan;
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-    } catch (QueryProcessorException | ArgsErrorException | MetadataErrorException e) {
+    } catch (QueryProcessorException e) {
       logger.error("meet error while parsing SQL to physical plan!", e);
       return getTSExecuteStatementResp(getStatus(TSStatusType.SQL_PARSE_ERROR, e.getMessage()));
     }

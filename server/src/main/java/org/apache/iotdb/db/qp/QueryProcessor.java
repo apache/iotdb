@@ -18,12 +18,8 @@
  */
 package org.apache.iotdb.db.qp;
 
-import java.time.ZoneId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.ArgsErrorException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
@@ -39,10 +35,8 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
-import org.apache.iotdb.db.sql.ParseGenerator;
-import org.apache.iotdb.db.sql.parse.AstNode;
-import org.apache.iotdb.db.sql.parse.ParseException;
-import org.apache.iotdb.db.sql.parse.ParseUtils;
+
+import java.time.ZoneId;
 
 /**
  * provide a integration method for other user.
@@ -60,17 +54,14 @@ public class QueryProcessor {
   }
 
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
-      throws QueryProcessorException, ArgsErrorException,
-      MetadataErrorException {
+      throws QueryProcessorException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     return parseSQLToPhysicalPlan(sqlStr, config.getZoneID());
   }
 
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
-      throws QueryProcessorException, ArgsErrorException,
-      MetadataErrorException {
-    AstNode astNode = parseSQLToAST(sqlStr);
-    Operator operator = parseASTToOperator(astNode, zoneId);
+      throws QueryProcessorException {
+    Operator operator = parseCommandToOperator(sqlStr, zoneId);
     operator = logicalOptimize(operator, executor);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator(executor);
     PhysicalPlan qp = physicalGenerator.transformToPhysicalPlan(operator);
@@ -80,39 +71,13 @@ public class QueryProcessor {
   /**
    * Convert ast tree to Operator which type maybe {@code SFWOperator} or {@code AuthorOperator}
    *
-   * @param astNode
-   *            - input ast tree
+   * @param command
+   *            - input command
    * @return - RootOperator has four subclass:Query/Insert/Delete/Update/Author
-   * @throws QueryProcessorException
-   *             exception in converting sql to operator
-   * @throws ArgsErrorException
    */
-  private RootOperator parseASTToOperator(AstNode astNode, ZoneId zoneId)
-      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+  private RootOperator parseCommandToOperator(String command, ZoneId zoneId) {
     LogicalGenerator generator = new LogicalGenerator(zoneId);
-    return generator.getLogicalPlan(astNode);
-  }
-
-  /**
-   * Given a SQL statement and generate an ast tree
-   *
-   * @param sqlStr
-   *            input sql command
-   * @return ast tree
-   * @throws IllegalASTFormatException
-   *             exception in sql parsing
-   */
-  private AstNode parseSQLToAST(String sqlStr) throws IllegalASTFormatException {
-    AstNode astTree;
-    // parse string to ASTTree
-    try {
-      astTree = ParseGenerator.generateAST(sqlStr);
-    } catch (ParseException e) {
-      // e.printStackTrace();
-      throw new IllegalASTFormatException(
-          "parsing error,statement: " + sqlStr, e);
-    }
-    return ParseUtils.findRootNonNullToken(astTree);
+    return generator.getLogicalPlan(command);
   }
 
   /**

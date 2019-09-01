@@ -18,19 +18,10 @@
  */
 package org.apache.iotdb.db.qp.plan;
 
-import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.exception.ArgsErrorException;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -40,6 +31,16 @@ import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.junit.After;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class QPUpdateTest {
 
@@ -91,20 +92,20 @@ public class QPUpdateTest {
     processor = new QueryProcessor(memProcessor);
   }
 
-  private void testUpdate2() throws ArgsErrorException, ProcessorException, IOException {
+  private void testUpdate2() {
     PhysicalPlan plan = null;
     // String sql = "update root.qp_update_test.device_1.sensor_1 set value=100 where time>100 or (time<=50 and
     // time>10)";
     String sql = "UPDATE root.laptop SET d1.s1 = -33000, d2.s1 = 'string' WHERE time < 100";
     try {
       plan = processor.parseSQLToPhysicalPlan(sql);
-    } catch (QueryProcessorException | MetadataErrorException e) {
+    } catch (QueryProcessorException e) {
       assertEquals("UPDATE clause doesn't support multi-update yet.", e.getMessage());
     }
     sql = "UPDATE root.laptop SET d1.s1 = -33000 WHERE time < 100";
     try {
       plan = processor.parseSQLToPhysicalPlan(sql);
-    } catch (QueryProcessorException | MetadataErrorException e) {
+    } catch (QueryProcessorException e) {
       assertTrue(false);
     }
     assertEquals("UpdatePlan:  paths:  root.laptop.d1.s1\n" + "  value:-33000\n" + "  filter: \n"

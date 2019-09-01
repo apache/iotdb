@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.qp.constant;
 
-import java.util.HashMap;
-import java.util.Map;
-import org.apache.iotdb.db.sql.parse.TSParser;
+import main.antlr4.org.apache.iotdb.db.sql.parse.TSLexer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class TSParserConstant {
 
@@ -36,22 +37,22 @@ public class TSParserConstant {
 
   // used to get operator type when construct operator from AST Tree
   static {
-    antlrQpMap.put(TSParser.KW_AND, SQLConstant.KW_AND);
-    antlrQpMap.put(TSParser.KW_OR, SQLConstant.KW_OR);
-    antlrQpMap.put(TSParser.KW_NOT, SQLConstant.KW_NOT);
+    antlrQpMap.put(TSLexer.KW_AND, SQLConstant.KW_AND);
+    antlrQpMap.put(TSLexer.KW_OR, SQLConstant.KW_OR);
+    antlrQpMap.put(TSLexer.KW_NOT, SQLConstant.KW_NOT);
 
-    antlrQpMap.put(TSParser.EQUAL, SQLConstant.EQUAL);
-    antlrQpMap.put(TSParser.NOTEQUAL, SQLConstant.NOTEQUAL);
-    antlrQpMap.put(TSParser.LESSTHANOREQUALTO, SQLConstant.LESSTHANOREQUALTO);
-    antlrQpMap.put(TSParser.LESSTHAN, SQLConstant.LESSTHAN);
-    antlrQpMap.put(TSParser.GREATERTHANOREQUALTO, SQLConstant.GREATERTHANOREQUALTO);
-    antlrQpMap.put(TSParser.GREATERTHAN, SQLConstant.GREATERTHAN);
-    antlrQpMap.put(TSParser.EQUAL_NS, SQLConstant.EQUAL_NS);
+    antlrQpMap.put(TSLexer.EQUAL, SQLConstant.EQUAL);
+    antlrQpMap.put(TSLexer.NOTEQUAL, SQLConstant.NOTEQUAL);
+    antlrQpMap.put(TSLexer.LESSTHANOREQUALTO, SQLConstant.LESSTHANOREQUALTO);
+    antlrQpMap.put(TSLexer.LESSTHAN, SQLConstant.LESSTHAN);
+    antlrQpMap.put(TSLexer.GREATERTHANOREQUALTO, SQLConstant.GREATERTHANOREQUALTO);
+    antlrQpMap.put(TSLexer.GREATERTHAN, SQLConstant.GREATERTHAN);
+    antlrQpMap.put(TSLexer.EQUAL_NS, SQLConstant.EQUAL_NS);
 
-    antlrQpMap.put(TSParser.TOK_SELECT, SQLConstant.TOK_SELECT);
-    antlrQpMap.put(TSParser.TOK_FROM, SQLConstant.TOK_FROM);
-    antlrQpMap.put(TSParser.TOK_WHERE, SQLConstant.TOK_WHERE);
-    antlrQpMap.put(TSParser.TOK_QUERY, SQLConstant.TOK_QUERY);
+//    antlrQpMap.put(TSLexer.TOK_SELECT, SQLConstant.TOK_SELECT);
+//    antlrQpMap.put(TSLexer.TOK_FROM, SQLConstant.TOK_FROM);
+//    antlrQpMap.put(TSLexer.TOK_WHERE, SQLConstant.TOK_WHERE);
+//    antlrQpMap.put(TSLexer.TOK_QUERY, SQLConstant.TOK_QUERY);
   }
 
   /**
