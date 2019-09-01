@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.client;
 
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
+
 import static org.junit.Assert.assertEquals;
 
 import java.io.*;
@@ -38,6 +40,7 @@ public abstract class AbstractScript {
         break;
       } else {
         outputList.add(line);
+        System.out.println(line);
       }
     }
     r.close();
@@ -50,17 +53,12 @@ public abstract class AbstractScript {
 
   protected String getCliPath() {
     // This is usually always set by the JVM
-    File userDir = new File(System.getProperty("user.dir"));
+    IoTDBFile userDir = new IoTDBFile(System.getProperty("user.dir"));
     if(!userDir.exists()) {
       throw new RuntimeException("user.dir " + userDir.getAbsolutePath() + " doesn't exist.");
     }
-    File targetDir = new File(userDir, "target");
-    File[] files = targetDir.listFiles(new FileFilter() {
-      @Override
-      public boolean accept(File pathname) {
-        return pathname.isDirectory() && pathname.getName().startsWith("iotdb-client-");
-      }
-    });
+    IoTDBFile targetDir = new IoTDBFile(userDir, "target");
+    IoTDBFile[] files = targetDir.listFiles(pathname -> pathname.isDirectory() && pathname.getName().startsWith("iotdb-client-"));
     if(files.length != 1) {
       throw new RuntimeException(
               "Exactly one directory starting with 'iotdb-client-' should have been found, but was " + files.length);
