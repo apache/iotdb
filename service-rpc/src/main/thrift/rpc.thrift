@@ -236,6 +236,13 @@ struct TSBatchInsertionReq {
     6: required i32 size
 }
 
+struct TSInsertReq {
+    1: required string deviceId
+    2: required list<string> measurements
+    3: required list<string> values
+    4: required i64 timestamp
+}
+
 struct TSSetStorageGroupReq {
   1: required string storageGroupId
 }
@@ -291,6 +298,8 @@ service TSIService {
 	TSRPCResp setStorageGroup(1:TSSetStorageGroupReq req);
 
 	TSRPCResp createTimeseries(1:TSCreateTimeseriesReq req);
+
+	TSRPCResp insertRow(1:TSInsertReq req);
 
 	i64 requestStatementId();
 	}
