@@ -32,9 +32,10 @@ import org.apache.thrift.EncodingUtils;
 public class WatermarkDetector {
 
   public static void main(String[] args) throws IOException {
-    if (args == null || args.length != 7) {
+    if (args == null || args.length != 8) {
       throw new IOException("Usage: ./detect-watermark.sh [filePath] [secretKey] "
-          + "[watermarkBitString] [embed_row_cycle] [embed_lsb_num] [alpha] [columnIndex]");
+          + "[watermarkBitString] [embed_row_cycle] [embed_lsb_num] [alpha] [columnIndex] "
+          + "[dataType: int/float/double]");
     }
     String filePath = args[0]; // data file path
     String secretKey = args[1]; // watermark secret key
@@ -43,18 +44,23 @@ public class WatermarkDetector {
     int embed_lsb_num = Integer.parseInt(args[4]); // watermark parameter
     double alpha = Double.parseDouble(args[5]); // significance level of watermark detection
     int columnIndex = Integer.parseInt(args[6]); // specify a column of data to detect
+    String dataType = args[7].toLowerCase();
 
     if (embed_row_cycle < 1 || embed_lsb_num < 1 || alpha < 0 || alpha > 1 || columnIndex < 1) {
       throw new IOException("Parameter out of range.");
     }
 
+    if (!dataType.equals("int") && !dataType.equals("float") && !dataType.equals("double")) {
+      throw new IOException("invalid parameter: supported data types are int/float/double");
+    }
+
     isWatermarked(filePath, secretKey, watermarkBitString, embed_row_cycle, embed_lsb_num, alpha,
-        columnIndex);
+        columnIndex, dataType);
   }
 
   public static boolean isWatermarked(String filePath, String secretKey, String watermarkBitString,
-      int embed_row_cycle,
-      int embed_lsb_num, double alpha, int columnIndex) throws IOException {
+      int embed_row_cycle, int embed_lsb_num, double alpha,
+      int columnIndex, String dataType) throws IOException {
     System.out.println("-----Watermark detection begins-----");
     int[] trueNums = new int[watermarkBitString.length()]; // for majority vote
     int[] falseNums = new int[watermarkBitString.length()]; // for majority vote
@@ -67,20 +73,36 @@ public class WatermarkDetector {
     while ((line = reader.readLine()) != null) {
       items = line.split(",");
       long timestamp = parseTimestamp(items[0]);
-      if (GroupedLSBWatermarkEncoder.hashMod(String.format("%s%d", secretKey, timestamp), embed_row_cycle)
+      if (GroupedLSBWatermarkEncoder
+          .hashMod(String.format("%s%d", secretKey, timestamp), embed_row_cycle)
           == 0) {
         String str = items[columnIndex];
         if (str.equals("null")) {
           continue;
         }
-        double value = Double.parseDouble(items[columnIndex]);
-        int integerPart = (int) value;
+
         int targetBitPosition = GroupedLSBWatermarkEncoder
             .hashMod(String.format("%s%d%s", secretKey, timestamp, secretKey),
                 embed_lsb_num);
         int groupId = GroupedLSBWatermarkEncoder
             .hashMod(String.format("%d%s", timestamp, secretKey), watermarkBitString.length());
-        boolean isTrue = EncodingUtils.testBit(integerPart, targetBitPosition);
+
+        boolean isTrue = true;
+        switch (dataType) {
+          case "int":
+            isTrue = EncodingUtils.testBit(Integer.parseInt(items[columnIndex]), targetBitPosition);
+            break;
+          case "float":
+            int floatToIntBits = Float.floatToIntBits(Float.parseFloat(items[columnIndex]));
+            isTrue = EncodingUtils.testBit(floatToIntBits, targetBitPosition);
+            break;
+          case "double":
+            long doubleToLongBits = Double.doubleToLongBits(Double.parseDouble(items[columnIndex]));
+            isTrue = EncodingUtils.testBit(doubleToLongBits, targetBitPosition);
+            break;
+          default:
+            ;
+        }
         if (isTrue) {
           trueNums[groupId] += 1;
         } else {

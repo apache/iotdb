@@ -180,19 +180,20 @@ Only root can run this command. After root revokes watermark_embedding from Alic
 
 `detect-watermark.sh` and `detect-watermark.bat` are provided for different platforms.
 
-Usage: ./detect-watermark.sh [filePath] [secretKey] [watermarkBitString] [embed_row_cycle] [embed_lsb_num] [alpha] [columnIndex]
+Usage: ./detect-watermark.sh [filePath] [secretKey] [watermarkBitString] [embed_row_cycle] [embed_lsb_num] [alpha] [columnIndex] [dataType: int/float/double]
 
-Example: ./detect-watermark.sh /home/data/dump1.csv IoTDB*2019@Beijing 100101110100 2 5 0.05 1
+Example: ./detect-watermark.sh /home/data/dump1.csv IoTDB*2019@Beijing 100101110100 2 5 0.05 1 float
 
-| Args               | Example              | Explanation                                |
-| ------------------ | -------------------- | ------------------------------------------ |
-| filePath           | /home/data/dump1.csv | suspected data file path                   |
-| secretKey          | IoTDB*2019@Beijing   | see watermark embedding section            |
-| watermarkBitString | 100101110100         | see watermark embedding section            |
-| embed_row_cycle    | 2                    | see watermark embedding section            |
-| embed_lsb_num      | 5                    | see watermark embedding section            |
-| alpha              | 0.05                 | significance level                         |
-| columnIndex        | 1                    | specifies one column of the data to detect |
+| Args               | Example              | Explanation                                                  |
+| ------------------ | -------------------- | ------------------------------------------------------------ |
+| filePath           | /home/data/dump1.csv | suspected data file path                                     |
+| secretKey          | IoTDB*2019@Beijing   | see watermark embedding section                              |
+| watermarkBitString | 100101110100         | see watermark embedding section                              |
+| embed_row_cycle    | 2                    | see watermark embedding section                              |
+| embed_lsb_num      | 5                    | see watermark embedding section                              |
+| alpha              | 0.05                 | significance level                                           |
+| columnIndex        | 1                    | specifies one column of the data to detect                   |
+| dataType           | float                | specifies the data type of the detected column; int/float/double |
 
 Notes:
 
