@@ -156,12 +156,18 @@ public class ServerArgument {
 	}
 
 	public double getCpuRatio() {
-		String osName = System.getProperty("os.name");
+		String osName = System.getProperty("os.name").toLowerCase();
 		cpuRatio = 0;
-		if (osName.toLowerCase().startsWith("windows")) {
-			cpuRatio = this.getCpuRatioForWindows();
+		if (osName.indexOf("windows") >= 0) {
+			cpuRatio = getCpuRatioForWindows();
+		} else if(osName.indexOf("linux") >= 0){
+			cpuRatio = getCpuRateForLinux();
 		} else {
-			cpuRatio = this.getCpuRateForLinux();
+			try {
+				throw new Exception("Can't get the cpu ratio,because this OS is not support");
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 		return cpuRatio;
 	}
