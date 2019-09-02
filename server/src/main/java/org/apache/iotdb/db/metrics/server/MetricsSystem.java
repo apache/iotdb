@@ -30,16 +30,16 @@ import com.codahale.metrics.MetricRegistry;
 
 public class MetricsSystem {
 
-	private ArrayList<Sink> sinks = new ArrayList<>();
-	private ArrayList<Source> sources = new ArrayList<>();
-	public static MetricRegistry metricRegistry = new MetricRegistry();
+	private ArrayList<Sink> sinks;
+	private ArrayList<Source> sources;
+	private MetricRegistry metricRegistry;
 	private ServerArgument serverArgument;
 
 	public MetricsSystem(ServerArgument serverArgument) {
+		this.sinks = new ArrayList<>();
+		this.sources = new ArrayList<>();
+		this.metricRegistry = new MetricRegistry();
 		this.serverArgument = serverArgument;
-	}
-
-	public MetricsSystem() {
 	}
 
 	public ServerArgument getServerArgument() {
@@ -48,6 +48,10 @@ public class MetricsSystem {
 
 	public void setServerArgument(ServerArgument serverArgument) {
 		this.serverArgument = serverArgument;
+	}
+
+	public MetricRegistry getMetricRegistry() {
+		return metricRegistry;
 	}
 
 	public ServletContextHandler getServletHandlers() {
@@ -69,10 +73,12 @@ public class MetricsSystem {
 	}
 
 	public void registerSource() {
-		Source source = new MetricsSource(serverArgument);
+		MetricsSource source = new MetricsSource(serverArgument, metricRegistry);
+		source.registerInfo();
 		sources.add(source);
 	}
 
 	public void registerSinks() {
 	}
+
 }

@@ -54,6 +54,10 @@ table.sortable td {
   font-size: 14px;
 }
 
+table.sortable td.sql {
+  font-size: 13px;
+}
+
 .progress {
   margin-bottom: 0px; position: relative
 }

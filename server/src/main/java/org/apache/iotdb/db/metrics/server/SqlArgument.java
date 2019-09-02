@@ -23,11 +23,11 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 
 public class SqlArgument {
 
-	TSExecuteStatementResp TSExecuteStatementResp;
-	PhysicalPlan plan;
-	String statement;
-	long startTime;
-	long endTime;
+	private TSExecuteStatementResp TSExecuteStatementResp;
+	private PhysicalPlan plan;
+	private String statement;
+	private long startTime;
+	private long endTime;
 
 	public SqlArgument(org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp tSExecuteStatementResp,
 			PhysicalPlan plan, String statement, long startTime, long endTime) {

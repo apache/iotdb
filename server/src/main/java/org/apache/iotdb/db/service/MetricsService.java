@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.db.service;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -26,11 +30,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metrics.server.MetricsSystem;
 import org.apache.iotdb.db.metrics.server.ServerArgument;
 import org.apache.iotdb.db.metrics.ui.MetricsWebUI;
-import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.ServerConnector;
-import org.eclipse.jetty.util.component.LifeCycle;
-import org.eclipse.jetty.util.thread.ThreadPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,9 +40,8 @@ public class MetricsService implements MetricsServiceMBean, IService {
 	private final String mbeanName = String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
 			getID().getJmxName());
 
-	private MetricsWebUI metricsWebUI;
-	private Thread metricsServiceThread;
-	private MetricsSystem metricsSystem = new MetricsSystem(new ServerArgument(getMetricsPort()));
+	private Server server;
+	private ExecutorService executorService;
 
 	public static final MetricsService getInstance() {
 		return MetricsServiceHolder.INSTANCE;
@@ -63,7 +62,6 @@ public class MetricsService implements MetricsServiceMBean, IService {
 	public void start() throws StartupException {
 		try {
 			JMXService.registerMBean(getInstance(), mbeanName);
-			metricsSystem.start();
 			startService();
 		} catch (Exception e) {
 			logger.error("Failed to start {} because: ", this.getID().getName(), e);
@@ -73,7 +71,6 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
 	@Override
 	public void stop() {
-		metricsSystem.stop();
 		stopService();
 		JMXService.deregisterMBean(mbeanName);
 	}
@@ -81,9 +78,15 @@ public class MetricsService implements MetricsServiceMBean, IService {
 	@Override
 	public synchronized void startService() throws StartupException {
 		logger.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
-		metricsServiceThread = new MetricsServiceThread();
-		metricsServiceThread.setName(ThreadName.METRICS_SERVICE.getName());
-		metricsServiceThread.start();
+		executorService = Executors.newSingleThreadExecutor();
+		int port = getMetricsPort();
+		MetricsSystem metricsSystem = new MetricsSystem(new ServerArgument(port));
+		MetricsWebUI metricsWebUI = new MetricsWebUI(metricsSystem.getMetricRegistry());
+		metricsWebUI.getHandlers().add(metricsSystem.getServletHandlers());
+		metricsWebUI.initialize();
+		server = metricsWebUI.getServer(port);
+		metricsSystem.start();
+		executorService.execute(new MetricsServiceThread(server));
 		logger.info("{}: start {} successfully, listening on ip {} port {}", IoTDBConstant.GLOBAL_DB_NAME,
 				this.getID().getName(), IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
 				IoTDBDescriptor.getInstance().getConfig().getMetricsPort());
@@ -98,7 +101,19 @@ public class MetricsService implements MetricsServiceMBean, IService {
 	@Override
 	public void stopService() {
 		logger.info("{}: closing {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
-		((MetricsServiceThread) metricsServiceThread).close();
+		try {
+			if (server != null) {
+				server.stop();
+			}
+			executorService.shutdown();
+			if (!executorService.awaitTermination(60, TimeUnit.MILLISECONDS)) {
+				executorService.shutdownNow();
+			}
+		} catch (Exception e) {
+			logger.error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
+			executorService.shutdownNow();
+			Thread.currentThread().interrupt();
+		}
 		logger.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
 	}
 
@@ -110,45 +125,22 @@ public class MetricsService implements MetricsServiceMBean, IService {
 		}
 	}
 
-	private class MetricsServiceThread extends Thread {
+	private class MetricsServiceThread implements Runnable {
 
 		private Server server;
+
+		public MetricsServiceThread(Server server) {
+			this.server = server;
+		}
 
 		@Override
 		public void run() {
 			try {
-				int port = getMetricsPort();
-				metricsWebUI = new MetricsWebUI(MetricsSystem.metricRegistry);
-				metricsWebUI.getHandlers().add(metricsSystem.getServletHandlers());
-				metricsWebUI.initialize();
-				server = metricsWebUI.getServer();
+				Thread.currentThread().setName(ThreadName.METRICS_SERVICE.getName());
 				server.start();
-
-				ServerConnector connector = new ServerConnector(server);
-				connector.setPort(port);
-				connector.setAcceptQueueSize(Math.min(connector.getAcceptors(), 8));
-				connector.setIdleTimeout(60000);
-				connector.start();
-				server.setConnectors(new Connector[] { connector });
-
 				server.join();
 			} catch (Exception e) {
 				logger.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
-			}
-		}
-
-		public synchronized void close() {
-			try {
-				if(server != null) {
-					server.stop();
-					ThreadPool threadPool = server.getThreadPool();
-					if (threadPool != null && LifeCycle.class.isInstance(threadPool)) {
-						LifeCycle.stop(threadPool);
-					}
-				}
-			} catch (Exception e) {
-				logger.error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
-				Thread.currentThread().interrupt();
 			}
 		}
 	}

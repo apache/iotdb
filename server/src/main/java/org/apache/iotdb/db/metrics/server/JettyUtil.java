@@ -33,7 +33,6 @@ import org.eclipse.jetty.server.handler.ErrorHandler;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -89,12 +88,8 @@ public class JettyUtil {
 		return contextHandler;
 	}
 
-	public static Server getJettyServer(List<ServletContextHandler> handlers) throws Exception {
-		QueuedThreadPool pool = new QueuedThreadPool();
-		pool.setName("iot-metrics");
-		pool.setDaemon(true);
-
-		Server server = new Server(pool);
+	public static Server getJettyServer(List<ServletContextHandler> handlers, int port) {
+		Server server = new Server(port);
 		ErrorHandler errorHandler = new ErrorHandler();
 		errorHandler.setShowStacks(true);
 		errorHandler.setServer(server);

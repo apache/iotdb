@@ -35,10 +35,9 @@ public class MetricsServletSink implements Sink {
 		this.registry = registry;
 	}
 
-	public ObjectMapper mapper = new ObjectMapper()
-			.registerModule(new MetricsModule(TimeUnit.SECONDS, TimeUnit.MILLISECONDS, false));
-
 	public ServletContextHandler getHandler() {
+		ObjectMapper mapper = new ObjectMapper()
+				.registerModule(new MetricsModule(TimeUnit.SECONDS, TimeUnit.MILLISECONDS, false));
 		return JettyUtil.createMetricsServletHandler(mapper, registry);
 	}
 

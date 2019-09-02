@@ -20,8 +20,6 @@ package org.apache.iotdb.db.metrics.source;
 
 import java.lang.management.ManagementFactory;
 
-import org.apache.iotdb.db.metrics.server.MetricsSystem;
-
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.jvm.BufferPoolMetricSet;
 import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
@@ -30,12 +28,17 @@ import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 public class JvmSource implements Source {
 
 	public String sourceName = "jvm";
-	public MetricRegistry metricRegistry = MetricsSystem.metricRegistry;
+	public MetricRegistry metricRegistry;
 
-	public JvmSource() {
-		metricRegistry.register(MetricRegistry.name(sourceName,"gc"),new GarbageCollectorMetricSet());
-		metricRegistry.register(MetricRegistry.name(sourceName,"memory"),new MemoryUsageGaugeSet());
-		metricRegistry.register(MetricRegistry.name(sourceName,"buffer-pool"),new BufferPoolMetricSet(ManagementFactory.getPlatformMBeanServer()));
+	public JvmSource(MetricRegistry metricRegistry) {
+		this.metricRegistry = metricRegistry;
+	}
+
+	public void registerInfo() {
+		metricRegistry.register(MetricRegistry.name(sourceName, "gc"), new GarbageCollectorMetricSet());
+		metricRegistry.register(MetricRegistry.name(sourceName, "memory"), new MemoryUsageGaugeSet());
+		metricRegistry.register(MetricRegistry.name(sourceName, "buffer-pool"),
+				new BufferPoolMetricSet(ManagementFactory.getPlatformMBeanServer()));
 	}
 
 	@Override

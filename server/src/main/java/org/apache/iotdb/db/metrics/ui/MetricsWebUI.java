@@ -63,7 +63,7 @@ public class MetricsWebUI {
 		handlers.add(queryHandler);
 	}
 
-	public Server getServer() throws Exception {
-		return JettyUtil.getJettyServer(handlers);
+	public Server getServer(int port){
+		return JettyUtil.getJettyServer(handlers,port);
 	}
 }

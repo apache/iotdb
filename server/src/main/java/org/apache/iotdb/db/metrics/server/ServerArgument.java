@@ -177,6 +177,9 @@ public class ServerArgument {
 			if (c0 != null && c1 != null) {
 				long idleCpuTime = c1[0] - c0[0];
 				long totalCpuTime = c1[1] - c0[1];
+				if (totalCpuTime == 0) {
+					return 100.0;
+				}
 				return Double.valueOf(100 * (1 - idleCpuTime / totalCpuTime)).doubleValue();
 			} else {
 				return 0.0;
@@ -200,6 +203,9 @@ public class ServerArgument {
 			if (c0 != null && c1 != null) {
 				long idletime = c1[0] - c0[0];
 				long busytime = c1[1] - c0[1];
+				if ((busytime + idletime) == 0) {
+					return 100.0;
+				}
 				return Double.valueOf(100 * (busytime) / (busytime + idletime)).doubleValue();
 			} else {
 				return 0.0;
@@ -289,7 +295,7 @@ public class ServerArgument {
 	/**
 	 * read cpu info(linux)
 	 */
-	public long[] readLinuxCpu() {
+	private long[] readLinuxCpu() {
 		long[] retn = new long[2];
 		BufferedReader buffer = null;
 		long idleCpuTime = 0;
@@ -305,11 +311,8 @@ public class ServerArgument {
 						temp.add(tokenizer.nextToken());
 					}
 					idleCpuTime = Long.parseLong(temp.get(4));
-					for (String s : temp) {
-						if (!s.equals("cpu")) {
-							totalCpuTime += Long.parseLong(s);
-						}
-					}
+					totalCpuTime = Long.parseLong(temp.get(1)) + Long.parseLong(temp.get(2))
+							+ Long.parseLong(temp.get(3)) + Long.parseLong(temp.get(4));
 					break;
 				}
 			}
