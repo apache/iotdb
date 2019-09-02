@@ -34,6 +34,6 @@ public interface ISyncSenderLogAnalyzer {
 
   void loadLogger(Set<String> deletedFiles, Set<String> newFiles);
 
-  void clearLogger(Set<String> currentLocalFiles);
+  void updateLastLocalFile(Set<String> currentLocalFiles);
 
 }

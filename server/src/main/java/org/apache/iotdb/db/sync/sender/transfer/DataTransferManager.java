@@ -524,18 +524,18 @@ public class DataTransferManager implements IDataTransferManager {
    *
    * @param file new tsfile to be synced
    */
-  private File makeFileSnapshot(File file) throws IOException {
+  File makeFileSnapshot(File file) throws IOException {
     File snapshotFile = SyncUtils.getSnapshotFile(file);
     if (!snapshotFile.getParentFile().exists()) {
       snapshotFile.getParentFile().mkdirs();
     }
     Path link = FileSystems.getDefault().getPath(snapshotFile.getAbsolutePath());
-    Path target = FileSystems.getDefault().getPath(snapshotFile.getAbsolutePath());
+    Path target = FileSystems.getDefault().getPath(file.getAbsolutePath());
     Files.createLink(link, target);
     link = FileSystems.getDefault()
         .getPath(snapshotFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
     target = FileSystems.getDefault()
-        .getPath(snapshotFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+        .getPath(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
     Files.createLink(link, target);
     return snapshotFile;
   }

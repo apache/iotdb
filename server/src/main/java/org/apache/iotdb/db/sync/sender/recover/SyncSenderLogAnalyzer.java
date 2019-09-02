@@ -58,7 +58,7 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
       loadLogger(deletedFiles, newFiles);
       lastLocalFiles.removeAll(deletedFiles);
       lastLocalFiles.addAll(newFiles);
-      clearLogger(lastLocalFiles);
+      updateLastLocalFile(lastLocalFiles);
     }
     FileUtils.deleteDirectory(new File(senderPath, Constans.DATA_SNAPSHOT_NAME));
     syncLogFile.delete();
@@ -67,6 +67,7 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
   @Override
   public void loadLastLocalFiles(Set<String> lastLocalFiles) {
     if (!lastLocalFile.exists()) {
+      LOGGER.info("last local  file {} doesn't exist.", syncLogFile.getAbsolutePath());
       return;
     }
     try (BufferedReader br = new BufferedReader(new FileReader(lastLocalFile))) {
@@ -83,6 +84,10 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
 
   @Override
   public void loadLogger(Set<String> deletedFiles, Set<String> newFiles) {
+    if (!syncLogFile.exists()) {
+      LOGGER.info("log file {} doesn't exist.", syncLogFile.getAbsolutePath());
+      return;
+    }
     try (BufferedReader br = new BufferedReader(new FileReader(syncLogFile))) {
       String line;
       int mode = 0;
@@ -107,7 +112,7 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
   }
 
   @Override
-  public void clearLogger(Set<String> currentLocalFiles) {
+  public void updateLastLocalFile(Set<String> currentLocalFiles) {
     try (BufferedWriter bw = new BufferedWriter(new FileWriter(currentLocalFile))) {
       for (String line : currentLocalFiles) {
         bw.write(line);

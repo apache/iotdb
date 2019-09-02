@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.sender.recover;
+package org.apache.iotdb.db.sync.sender.transfer;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,10 +32,9 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.sync.sender.conf.Constans;
 import org.apache.iotdb.db.sync.sender.conf.SyncSenderConfig;
 import org.apache.iotdb.db.sync.sender.conf.SyncSenderDescriptor;
-import org.apache.iotdb.db.sync.sender.manage.SyncFileManager;
+import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogAnalyzer;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.junit.After;
@@ -44,14 +43,13 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SyncSenderLogAnalyzerTest {
+public class DataTransferManagerTest {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncSenderLogAnalyzerTest.class);
-  private SyncSenderLogger senderLogger;
-  private SyncSenderLogAnalyzer senderLogAnalyzer;
-  private SyncFileManager manager = SyncFileManager.getInstance();
+  private static final Logger logger = LoggerFactory.getLogger(DataTransferManagerTest.class);
+  private DataTransferManager manager = DataTransferManager.getInstance();
   private SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
   private String dataDir;
+  private SyncSenderLogAnalyzer senderLogAnalyzer;
 
   @Before
   public void setUp()
@@ -60,8 +58,6 @@ public class SyncSenderLogAnalyzerTest {
     dataDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
         .getParentFile().getAbsolutePath();
     config.update(dataDir);
-    senderLogger = new SyncSenderLogger(
-        new File(config.getSenderFolderPath(), Constans.SYNC_LOG_NAME));
     senderLogAnalyzer = new SyncSenderLogAnalyzer(config.getSenderFolderPath());
   }
 
@@ -71,7 +67,7 @@ public class SyncSenderLogAnalyzerTest {
   }
 
   @Test
-  public void recover() throws IOException {
+  public void makeFileSnapshot() throws IOException {
     Map<String, Set<File>> allFileList = new HashMap<>();
 
     Random r = new Random(0);
@@ -90,68 +86,50 @@ public class SyncSenderLogAnalyzerTest {
           file.getParentFile().mkdirs();
         }
         if (!file.exists() && !file.createNewFile()) {
-          LOGGER.error("Can not create new file {}", file.getPath());
+          logger.error("Can not create new file {}", file.getPath());
         }
         if (!new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
             && !new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).createNewFile()) {
-          LOGGER.error("Can not create new file {}", file.getPath());
+          logger.error("Can not create new file {}", file.getPath());
         }
       }
     }
-    manager.getValidFiles(dataDir);
-    assert isEmpty(manager.getLastLocalFilesMap());
-    senderLogger.startSyncTsFiles();
-    for(Set<File> newTsFiles:allFileList.values()){
-      for(File file: newTsFiles){
-        senderLogger.finishSyncTsfile(file);
+
+    Map<String, Set<String>> dataFileMap = new HashMap<>();
+    File sequenceFile = new File(dataDir, IoTDBConstant.SEQUENCE_FLODER_NAME);
+    for(File sgFile: sequenceFile.listFiles()){
+      dataFileMap.putIfAbsent(sgFile.getName(), new HashSet<>());
+      for (File tsfile : sgFile.listFiles()) {
+        if (!tsfile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
+          manager.makeFileSnapshot(tsfile);
+        }
+        dataFileMap.get(sgFile.getName()).add(tsfile.getName());
       }
     }
-    senderLogger.close();
 
-    // recover log
+    assert new File(config.getSenderFolderPath()).exists();
+    assert new File(config.getSnapshotPath()).exists();
+
+    Map<String, Set<String>> snapFileMap = new HashMap<>();
+    for(File sgFile: new File(config.getSnapshotPath()).listFiles()){
+      snapFileMap.putIfAbsent(sgFile.getName(), new HashSet<>());
+      for(File snapshotTsfile: sgFile.listFiles()){
+        snapFileMap.get(sgFile.getName()).add(snapshotTsfile.getName());
+      }
+    }
+
+    assert dataFileMap.size() == snapFileMap.size();
+    for(Entry<String, Set<String>> entry: dataFileMap.entrySet()){
+      String sg = entry.getKey();
+      Set<String> tsfiles = entry.getValue();
+      assert snapFileMap.containsKey(sg);
+      assert snapFileMap.get(sg).size() == tsfiles.size();
+      assert snapFileMap.get(sg).containsAll(tsfiles);
+    }
+
+    assert !new File(config.getLastFileInfo()).exists();
     senderLogAnalyzer.recover();
-    manager.getValidFiles(dataDir);
-    assert !isEmpty(manager.getLastLocalFilesMap());
-    Map<String, Set<File>> lastFilesMap = manager.getLastLocalFilesMap();
-    for (Entry<String, Set<File>> entry : allFileList.entrySet()) {
-      assert lastFilesMap.containsKey(entry.getKey());
-      assert lastFilesMap.get(entry.getKey()).size() == entry.getValue().size();
-      assert lastFilesMap.get(entry.getKey()).containsAll(entry.getValue());
-    }
-
-    // delete some files
-    assert !new File(config.getSenderFolderPath(), Constans.SYNC_LOG_NAME).exists();
-    senderLogger = new SyncSenderLogger(
-        new File(config.getSenderFolderPath(), Constans.SYNC_LOG_NAME));
-    manager.getValidFiles(dataDir);
-    assert !isEmpty(manager.getLastLocalFilesMap());
-    senderLogger.startSyncDeletedFilesName();
-    for(Set<File> newTsFiles:allFileList.values()){
-      for(File file: newTsFiles){
-        senderLogger.finishSyncDeletedFileName(file);
-      }
-    }
-    senderLogger.close();
-    // recover log
-    senderLogAnalyzer.recover();
-    manager.getValidFiles(dataDir);
-    assert isEmpty(manager.getLastLocalFilesMap());
-    assert isEmpty(manager.getDeletedFilesMap());
-    Map<String, Set<File>> toBeSyncedFilesMap = manager.getToBeSyncedFilesMap();
-    for (Entry<String, Set<File>> entry : allFileList.entrySet()) {
-      assert toBeSyncedFilesMap.containsKey(entry.getKey());
-      assert toBeSyncedFilesMap.get(entry.getKey()).size() == entry.getValue().size();
-      assert toBeSyncedFilesMap.get(entry.getKey()).containsAll(entry.getValue());
-    }
+    assert !new File(config.getSnapshotPath()).exists();
+    assert new File(config.getLastFileInfo()).exists();
   }
-
-  private boolean isEmpty(Map<String, Set<File>> sendingFileList) {
-    for (Entry<String, Set<File>> entry : sendingFileList.entrySet()) {
-      if (!entry.getValue().isEmpty()) {
-        return false;
-      }
-    }
-    return true;
-  }
-
 }
