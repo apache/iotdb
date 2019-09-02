@@ -49,10 +49,11 @@ In root directory:
 
 
 ```Java
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.session.IoTDBSessionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
@@ -61,15 +62,39 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 
 public class SessionExample {
 
-  public static void main(String[] args) throws ClassNotFoundException, IoTDBSessionException {
-    Session session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open();
-    
-    session.setStorageGroup("root.sg1");
-    session.createTimeseriesResp("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE);
-    session.createTimeseriesResp("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE);
-    session.createTimeseriesResp("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE);
+  private static Session session;
 
+  public static void main(String[] args) throws IoTDBSessionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    session.setStorageGroup("root.sg1");
+    session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+
+    insert();
+//    insertRowBatch();
+
+    session.close();
+  }
+
+  private static void insert() throws IoTDBSessionException {
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    for (long time = 0; time < 30000; time++) {
+      List<String> values = new ArrayList<>();
+      values.add("1");
+      values.add("2");
+      values.add("3");
+      session.insert(deviceId, time, measurements, values);
+    }
+  }
+
+  private static void insertRowBatch() throws IoTDBSessionException {
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
@@ -85,7 +110,7 @@ public class SessionExample {
       timestamps[row] = time;
       for (int i = 0; i < 3; i++) {
         long[] sensor = (long[]) values[i];
-        sensor[row] = time;
+        sensor[row] = i;
       }
       if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
         session.insertBatch(rowBatch);
@@ -97,7 +122,6 @@ public class SessionExample {
       session.insertBatch(rowBatch);
       rowBatch.reset();
     }
-    session.close();
   }
 }
 ```

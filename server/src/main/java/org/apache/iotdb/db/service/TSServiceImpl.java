@@ -930,6 +930,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSExecuteStatementResp insert(TSInsertionReq req) {
+    // TODO need to refactor this when implementing PreparedStatement
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getTSExecuteStatementResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
@@ -958,6 +959,26 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info("meet error while executing an insertion into {}", req.getDeviceId(), e);
       return getTSExecuteStatementResp(getStatus(TSStatusType.EXECUTE_STATEMENT_ERROR, e.getMessage()));
     }
+  }
+
+  @Override
+  public TSRPCResp insertRow(TSInsertReq req) throws TException {
+    if (!checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return new TSRPCResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
+    }
+
+    InsertPlan plan = new InsertPlan();
+    plan.setDeviceId(req.getDeviceId());
+    plan.setTime(req.getTimestamp());
+    plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
+    plan.setValues(req.getValues().toArray(new String[0]));
+
+    TS_Status status = checkAuthority(plan);
+    if (status != null) {
+      return new TSRPCResp(status);
+    }
+    return new TSRPCResp(executePlan(plan));
   }
 
   @Override
