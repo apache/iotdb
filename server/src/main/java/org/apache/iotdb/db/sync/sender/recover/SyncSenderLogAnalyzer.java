@@ -26,6 +26,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.sync.sender.conf.Constans;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,18 +34,20 @@ import org.slf4j.LoggerFactory;
 public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncSenderLogAnalyzer.class);
+  private String senderPath;
   private File currentLocalFile;
   private File lastLocalFile;
   private File syncLogFile;
 
   public SyncSenderLogAnalyzer(String senderPath) {
+    this.senderPath = senderPath;
     this.currentLocalFile = new File(senderPath, Constans.CURRENT_LOCAL_FILE_NAME);
     this.lastLocalFile = new File(senderPath, Constans.LAST_LOCAL_FILE_NAME);
     this.syncLogFile = new File(senderPath, Constans.SYNC_LOG_NAME);
   }
 
   @Override
-  public void recover() {
+  public void recover() throws IOException {
     if (currentLocalFile.exists() && !lastLocalFile.exists()) {
       currentLocalFile.renameTo(lastLocalFile);
     } else {
@@ -57,6 +60,8 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
       lastLocalFiles.addAll(newFiles);
       clearLogger(lastLocalFiles);
     }
+    FileUtils.deleteDirectory(new File(senderPath, Constans.DATA_SNAPSHOT_NAME));
+    syncLogFile.delete();
   }
 
   @Override

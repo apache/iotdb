@@ -36,6 +36,7 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageEngineFailureException;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -335,6 +336,16 @@ public class StorageEngine implements IService {
       return false;
     }
     return true;
+  }
+
+
+  public void loadNewTsFile(File newTsFile, TsFileResource resource)
+      throws TsFileProcessorException {
+    processorMap.get(newTsFile.getParentFile().getName()).loadNewTsFile(newTsFile, resource);
+  }
+
+  public void deleteTsfile(File deletedTsfile){
+    processorMap.get(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
   }
 
 }

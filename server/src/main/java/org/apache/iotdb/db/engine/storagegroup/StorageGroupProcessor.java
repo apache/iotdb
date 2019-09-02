@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
@@ -67,17 +68,17 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.JobFileManager;
-import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
+import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -206,7 +207,8 @@ public class StorageGroupProcessor {
 
     try {
       // collect TsFiles from sequential and unsequential data directory
-      List<TsFileResource> seqTsFiles = getAllFiles(DirectoryManager.getInstance().getAllSequenceFileFolders());
+      List<TsFileResource> seqTsFiles = getAllFiles(
+          DirectoryManager.getInstance().getAllSequenceFileFolders());
       List<TsFileResource> unseqTsFiles =
           getAllFiles(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
 
@@ -222,7 +224,8 @@ public class StorageGroupProcessor {
           storageGroupSysDir.getPath(), this::mergeEndAction, taskName,
           IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(), storageGroupName);
       logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
-      recoverMergeTask.recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
+      recoverMergeTask
+          .recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
         mergingMods.delete();
       }
@@ -297,7 +300,7 @@ public class StorageGroupProcessor {
   }
 
   // TsFileNameComparator compares TsFiles by the version number in its name
-  // ({systemTime}-{versionNum}.tsfile)
+  // ({systemTime}-{versionNum}-{mergeNum}.tsfile)
   public int compareFileName(File o1, File o2) {
     String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split("-");
     String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split("-");
@@ -397,7 +400,8 @@ public class StorageGroupProcessor {
     boolean result = tsFileProcessor.insertBatch(batchInsertPlan, indexes, results);
 
     // try to update the latest time of the device of this tsRecord
-    if (result && latestTimeForEachDevice.get(batchInsertPlan.getDeviceId()) < batchInsertPlan.getMaxTime()) {
+    if (result && latestTimeForEachDevice.get(batchInsertPlan.getDeviceId()) < batchInsertPlan
+        .getMaxTime()) {
       latestTimeForEachDevice.put(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
     }
 
@@ -472,8 +476,9 @@ public class StorageGroupProcessor {
           e);
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
     } catch (IOException e) {
-      logger.error("meet IOException when creating TsFileProcessor, change system mode to read-only",
-          e);
+      logger
+          .error("meet IOException when creating TsFileProcessor, change system mode to read-only",
+              e);
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
     }
     return tsFileProcessor;
@@ -490,7 +495,7 @@ public class StorageGroupProcessor {
     new File(baseDir, storageGroupName).mkdirs();
 
     String filePath = Paths.get(baseDir, storageGroupName,
-        System.currentTimeMillis() + "-" + versionController.nextVersion()).toString()
+        System.currentTimeMillis() + "-" + versionController.nextVersion()).toString() + "-0"
         + TSFILE_SUFFIX;
 
     if (sequence) {
@@ -552,7 +557,7 @@ public class StorageGroupProcessor {
       this.latestFlushedTimeForEachDevice.clear();
       this.latestTimeForEachDevice.clear();
     } catch (IOException e) {
-      logger.error("Cannot delete files in storage group {}, because", storageGroupName, e);
+      logger.error("Cannot delete files in storage group {}", storageGroupName, e);
     } finally {
       writeUnlock();
     }
@@ -608,7 +613,8 @@ public class StorageGroupProcessor {
           deviceId, measurementId, context);
       List<TsFileResource> unseqResources = getFileReSourceListForQuery(unSequenceFileList,
           deviceId, measurementId, context);
-      QueryDataSource dataSource =  new QueryDataSource(new Path(deviceId, measurementId), seqResources, unseqResources);
+      QueryDataSource dataSource = new QueryDataSource(new Path(deviceId, measurementId),
+          seqResources, unseqResources);
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge
       // is null only in tests
@@ -855,8 +861,10 @@ public class StorageGroupProcessor {
         mergeResource.setCacheDeviceMeta(true);
 
         MergeTask mergeTask = new MergeTask(mergeResource, storageGroupSysDir.getPath(),
-            this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum(), storageGroupName);
-        mergingModification = new ModificationFile(storageGroupSysDir + File.separator + MERGING_MODIFICAITON_FILE_NAME);
+            this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum(),
+            storageGroupName);
+        mergingModification = new ModificationFile(
+            storageGroupSysDir + File.separator + MERGING_MODIFICAITON_FILE_NAME);
         MergeManager.getINSTANCE().submitMainTask(mergeTask);
         if (logger.isInfoEnabled()) {
           logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
@@ -950,6 +958,219 @@ public class StorageGroupProcessor {
     logger.info("{} a merge task ends", storageGroupName);
   }
 
+  /**
+   * Load a new tsfile to storage group processor
+   *
+   * Firstly, determine the loading type of the file, whether it needs to be loaded in sequence list
+   * or unsequence list.
+   *
+   * Secondly, execute the loading process by the type.
+   *
+   * Finally, update the latestTimeForEachDevice and latestFlushedTimeForEachDevice.
+   *
+   * @param newTsFile new tsfile
+   * @param newTsFileResource tsfile resource
+   * @UsedBy sync module.
+   */
+  public void loadNewTsFile(File newTsFile, TsFileResource newTsFileResource)
+      throws TsFileProcessorException {
+    writeLock();
+    mergeLock.writeLock().lock();
+    try {
+      boolean isOverlap = false;
+      int preIndex = -1, subsequentIndex = sequenceFileList.size();
+      // check new tsfile
+      outer:
+      for (int i = 0; i < sequenceFileList.size(); i++) {
+        if (i == sequenceFileList.size() - 1 && sequenceFileList.get(i).getEndTimeMap().isEmpty()) {
+          continue;
+        }
+        int preCnt = 0, subsequenceCnt = 0;
+        for (String device : newTsFileResource.getStartTimeMap().keySet()) {
+          if (sequenceFileList.get(i).getStartTimeMap().containsKey(device)) {
+            long startTime1 = sequenceFileList.get(i).getStartTimeMap().get(device);
+            long endTime1 = sequenceFileList.get(i).getEndTimeMap().get(device);
+            long startTime2 = newTsFileResource.getStartTimeMap().get(device);
+            long endTime2 = newTsFileResource.getEndTimeMap().get(device);
+            if (startTime1 > endTime2) {
+              subsequenceCnt++;
+            } else if (startTime2 > endTime1) {
+              preCnt++;
+            } else {
+              isOverlap = true;
+              break outer;
+            }
+          }
+        }
+        if (preCnt != 0 && subsequenceCnt != 0) {
+          isOverlap = true;
+          break;
+        }
+        if (preCnt == 0 && subsequenceCnt != 0) {
+          subsequentIndex = i;
+          break;
+        }
+        if (preCnt != 0 && subsequenceCnt == 0) {
+          preIndex = i;
+        }
+      }
+
+      // loading tsfile by type
+      if (isOverlap) {
+        loadTsFileByType(-1, newTsFile, newTsFileResource, unSequenceFileList.size());
+      } else {
+        if (subsequentIndex != sequenceFileList.size()) {
+          loadTsFileByType(1, newTsFile, newTsFileResource, subsequentIndex);
+        } else {
+          if (preIndex != -1) {
+            loadTsFileByType(1, newTsFile, newTsFileResource, preIndex + 1);
+          } else {
+            loadTsFileByType(1, newTsFile, newTsFileResource, sequenceFileList.size());
+          }
+        }
+      }
+
+      // update latest time map
+      updateLatestTimeMap(newTsFileResource);
+    } catch (TsFileProcessorException e) {
+      logger.error("Failed to append the tsfile {} to storage group processor {}.",
+          newTsFile.getAbsolutePath(), newTsFile.getParentFile().getName());
+      throw new TsFileProcessorException(e);
+    } finally {
+      mergeLock.writeLock().unlock();
+      writeUnlock();
+    }
+  }
+
+  /**
+   * Update latest time in latestTimeForEachDevice and latestFlushedTimeForEachDevice.
+   *
+   * @UsedBy sync module
+   */
+  private void updateLatestTimeMap(TsFileResource newTsFileResource) {
+    for (Entry<String, Long> entry : newTsFileResource.getEndTimeMap().entrySet()) {
+      String device = entry.getKey();
+      long endTime = newTsFileResource.getEndTimeMap().get(device);
+      if(!latestTimeForEachDevice.containsKey(device) || latestTimeForEachDevice.get(device) < endTime){
+        latestTimeForEachDevice.put(device, endTime);
+      }
+      if(!latestFlushedTimeForEachDevice.containsKey(device) || latestFlushedTimeForEachDevice.get(device) < endTime){
+        latestFlushedTimeForEachDevice.put(device, endTime);
+      }
+    }
+  }
+
+  /**
+   * Execute the loading process by the type.
+   *
+   * @param type load type: 1 sequence tsfile ; 2 unsequence tsfile
+   * @param tsFile tsfile to be loaded
+   * @param tsFileResource tsfile resource to be loaded
+   * @param index the index in sequenceFileList/unSequenceFileList
+   * @UsedBy sync module
+   */
+  private void loadTsFileByType(int type, File tsFile, TsFileResource tsFileResource, int index)
+      throws TsFileProcessorException {
+    File targetFile;
+    if (type == -1) {
+      targetFile =
+          new File(tsFile.getParentFile().getParentFile().getParentFile().getParentFile()
+              .getParentFile(), IoTDBConstant.UNSEQUENCE_FLODER_NAME
+              + File.separatorChar + tsFile.getParentFile().getName() + File.separatorChar
+              + tsFile.getName());
+      tsFileResource.setFile(targetFile);
+      unSequenceFileList.add(index, tsFileResource);
+    } else {
+      targetFile =
+          new File(tsFile.getParentFile().getParentFile().getParentFile().getParentFile()
+              .getParentFile(), IoTDBConstant.SEQUENCE_FLODER_NAME
+              + File.separatorChar + tsFile.getParentFile().getName() + File.separatorChar
+              + tsFile.getName());
+      tsFileResource.setFile(targetFile);
+      sequenceFileList.add(index, tsFileResource);
+    }
+
+    // move file from sync dir to data dir
+    if (!targetFile.getParentFile().exists()) {
+      targetFile.getParentFile().mkdirs();
+    }
+    if (!new File(tsFile, TsFileResource.RESOURCE_SUFFIX).exists() && !new File(
+        targetFile, TsFileResource.RESOURCE_SUFFIX).exists()) {
+      throw new TsFileProcessorException(
+          String
+              .format("The new .resource file {%s} to be loaded does not exist.",
+                  tsFile.getAbsolutePath()));
+    }
+    if (!new File(targetFile, TsFileResource.RESOURCE_SUFFIX).exists() && !new File(
+        tsFile, TsFileResource.RESOURCE_SUFFIX)
+        .renameTo(new File(targetFile, TsFileResource.RESOURCE_SUFFIX))) {
+      throw new TsFileProcessorException(String.format(
+          "File renaming failed when loading .resource file. Origin: %s, Target: %s",
+          new File(tsFile, TsFileResource.RESOURCE_SUFFIX).getAbsolutePath(),
+          new File(targetFile, TsFileResource.RESOURCE_SUFFIX).getAbsolutePath()));
+    }
+    if (!tsFile.exists() && !targetFile.exists()) {
+      throw new TsFileProcessorException(String
+          .format("The new tsfile {%s} to be loaded does not exist.",
+              tsFile.getAbsolutePath()));
+    }
+    if (!targetFile.exists() && !tsFile.renameTo(targetFile)) {
+      throw new TsFileProcessorException(String.format(
+          "File renaming failed when loading tsfile. Origin: %s, Target: %s",
+          tsFile.getAbsolutePath(), targetFile.getAbsolutePath()));
+    }
+  }
+
+  /**
+   * Delete tsfile if it exists which.
+   *
+   * Firstly, remove the TsFileResource from sequenceFileList/unSequenceFileList.
+   *
+   * Secondly, delete the tsfile and .resource file.
+   *
+   * @param deletedTsfile tsfile to be deleted
+   * @UsedBy sync module.
+   */
+  public void deleteTsfile(File deletedTsfile) {
+    writeLock();
+    mergeLock.writeLock().lock();
+    TsFileResource deletedTsFileResource = null;
+    try {
+      Iterator<TsFileResource> sequenceIterator = sequenceFileList.iterator();
+      while (sequenceIterator.hasNext()) {
+        TsFileResource sequenceResource = sequenceIterator.next();
+        if (sequenceResource.getFile().getName().equals(deletedTsfile.getName())) {
+          deletedTsFileResource = sequenceResource;
+          sequenceIterator.remove();
+          break;
+        }
+      }
+      if(deletedTsFileResource == null) {
+        Iterator<TsFileResource> unsequenceIterator = unSequenceFileList.iterator();
+        while (unsequenceIterator.hasNext()) {
+          TsFileResource unsequenceResource = unsequenceIterator.next();
+          if (unsequenceResource.getFile().getName().equals(deletedTsfile.getName())) {
+            deletedTsFileResource = unsequenceResource;
+            unsequenceIterator.remove();
+            break;
+          }
+        }
+      }
+    } finally {
+      mergeLock.writeLock().unlock();
+      writeUnlock();
+    }
+    if(deletedTsFileResource == null){
+      return;
+    }
+    deletedTsFileResource.getMergeQueryLock().writeLock().lock();
+    try {
+      deletedTsFileResource.getFile().delete();
+      new File(deletedTsFileResource.getFile(), TsFileResource.RESOURCE_SUFFIX).delete();
+    } finally {
+      deletedTsFileResource.getMergeQueryLock().writeLock().unlock();
+    }
+  }
 
   public TsFileProcessor getWorkSequenceTsFileProcessor() {
     return workSequenceTsFileProcessor;

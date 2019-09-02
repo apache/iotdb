@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.sync.sender.recover;
 
+import java.io.IOException;
 import java.util.Set;
 
 /**
@@ -27,7 +28,7 @@ import java.util.Set;
  */
 public interface ISyncSenderLogAnalyzer {
 
-  void recover();
+  void recover() throws IOException;
 
   void loadLastLocalFiles(Set<String> lastLocalFiles);
 

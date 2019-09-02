@@ -257,7 +257,7 @@ public class DataTransferManager implements IDataTransferManager {
     }
   }
 
-  private void checkRecovery() {
+  private void checkRecovery() throws IOException {
     new SyncSenderLogAnalyzer(config.getSenderFolderPath()).recover();
   }
 

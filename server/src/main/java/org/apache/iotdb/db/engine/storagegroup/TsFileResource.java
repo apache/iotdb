@@ -189,6 +189,10 @@ public class TsFileResource {
     return modFile;
   }
 
+  public void setFile(File file) {
+    this.file = file;
+  }
+
   public boolean containsDevice(String deviceId) {
     return startTimeMap.containsKey(deviceId);
   }

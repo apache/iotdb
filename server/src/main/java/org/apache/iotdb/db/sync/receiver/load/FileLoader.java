@@ -21,6 +21,9 @@ package org.apache.iotdb.db.sync.receiver.load;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayDeque;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.sync.sender.conf.Constans;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,10 +79,15 @@ public class FileLoader implements IFileLoader {
           }
         }
         if (!queue.isEmpty()) {
-          handleLoadTask(queue.poll());
+          LoadTask task = queue.poll();
+          try {
+            handleLoadTask(task);
+          }catch (IOException e){
+            LOGGER.error("Can not load task {}", task, e);
+          }
         }
       }
-    } catch (InterruptedException | IOException e) {
+    } catch (InterruptedException e) {
       LOGGER.error("Can not handle load task", e);
     }
   };
@@ -111,32 +119,39 @@ public class FileLoader implements IFileLoader {
   public void handleLoadTask(LoadTask task) throws IOException {
     switch (task.type) {
       case ADD:
-        loadDeletedFile(task.file);
+        loadNewTsfile(task.file);
         break;
       case DELETE:
-        loadNewTsfile(task.file);
+        loadDeletedFile(task.file);
         break;
       default:
         LOGGER.error("Wrong load task type {}", task.type);
     }
   }
 
-  private void loadDeletedFile(File file) throws IOException {
+  private void loadNewTsfile(File newTsFile) throws IOException {
     if (curType != LoadType.DELETE) {
       loadLog.startLoadDeletedFiles();
       curType = LoadType.DELETE;
     }
-    // TODO load deleted file
-    loadLog.finishLoadDeletedFile(file);
+    TsFileResource tsFileResource = new TsFileResource(
+        new File(newTsFile, TsFileResource.RESOURCE_SUFFIX));
+    tsFileResource.deSerialize();
+    try {
+      StorageEngine.getInstance().loadNewTsFile(newTsFile, tsFileResource);
+    } catch (TsFileProcessorException e) {
+      LOGGER.error("Can not load new tsfile {}", newTsFile.getAbsolutePath(), e);
+    }
+    loadLog.finishLoadDeletedFile(newTsFile);
   }
 
-  private void loadNewTsfile(File file) throws IOException {
+  private void loadDeletedFile(File deletedTsFile) throws IOException {
     if (curType != LoadType.ADD) {
       loadLog.startLoadTsFiles();
       curType = LoadType.ADD;
     }
-    // TODO load new tsfile
-    loadLog.finishLoadTsfile(file);
+    StorageEngine.getInstance().deleteTsfile(deletedTsFile);
+    loadLog.finishLoadTsfile(deletedTsFile);
   }
 
 
@@ -164,6 +179,14 @@ public class FileLoader implements IFileLoader {
     LoadTask(File file, LoadType type) {
       this.file = file;
       this.type = type;
+    }
+
+    @Override
+    public String toString() {
+      return "LoadTask{" +
+          "file=" + file +
+          ", type=" + type +
+          '}';
     }
   }
 }

@@ -100,6 +100,31 @@ public class SyncSenderLogAnalyzerTest {
       assert lastFilesMap.get(entry.getKey()).size() == entry.getValue().size();
       assert lastFilesMap.get(entry.getKey()).containsAll(entry.getValue());
     }
+
+    // delete some files
+    assert !new File(config.getSenderFolderPath(), Constans.SYNC_LOG_NAME).exists();
+    senderLogger = new SyncSenderLogger(
+        new File(config.getSenderFolderPath(), Constans.SYNC_LOG_NAME));
+    manager.getValidFiles(dataDir);
+    assert !isEmpty(manager.getLastLocalFilesMap());
+    senderLogger.startSyncDeletedFilesName();
+    for(Set<File> newTsFiles:allFileList.values()){
+      for(File file: newTsFiles){
+        senderLogger.finishSyncDeletedFileName(file);
+      }
+    }
+    senderLogger.close();
+    // recover log
+    senderLogAnalyzer.recover();
+    manager.getValidFiles(dataDir);
+    assert isEmpty(manager.getLastLocalFilesMap());
+    assert isEmpty(manager.getDeletedFilesMap());
+    Map<String, Set<File>> toBeSyncedFilesMap = manager.getToBeSyncedFilesMap();
+    for (Entry<String, Set<File>> entry : allFileList.entrySet()) {
+      assert toBeSyncedFilesMap.containsKey(entry.getKey());
+      assert toBeSyncedFilesMap.get(entry.getKey()).size() == entry.getValue().size();
+      assert toBeSyncedFilesMap.get(entry.getKey()).containsAll(entry.getValue());
+    }
   }
 
   private boolean isEmpty(Map<String, Set<File>> sendingFileList) {

@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.engine.merge.task;
 
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -148,6 +151,12 @@ class MergeFileTask {
       logger.debug("{} moved merged chunks of {} to the old file", taskName, seqFile);
 
       newFileWriter.getFile().delete();
+
+      File nextMergeVersionFile = getNextMergeVersionFile(seqFile.getFile());
+      FileUtils.moveFile(seqFile.getFile(), nextMergeVersionFile);
+      FileUtils.moveFile(new File(seqFile.getFile(), TsFileResource.RESOURCE_SUFFIX),
+          new File(nextMergeVersionFile, TsFileResource.RESOURCE_SUFFIX));
+      seqFile.setFile(nextMergeVersionFile);
     } finally {
       seqFile.getMergeQueryLock().writeLock().unlock();
     }
@@ -209,10 +218,22 @@ class MergeFileTask {
       TsFileMetaDataCache.getInstance().remove(seqFile);
       DeviceMetaDataCache.getInstance().remove(seqFile);
       seqFile.getFile().delete();
-      FileUtils.moveFile(fileWriter.getFile(), seqFile.getFile());
+
+      File nextMergeVersionFile = getNextMergeVersionFile(seqFile.getFile());
+      FileUtils.moveFile(fileWriter.getFile(), nextMergeVersionFile);
+      FileUtils.moveFile(new File(seqFile.getFile(), TsFileResource.RESOURCE_SUFFIX),
+          new File(nextMergeVersionFile, TsFileResource.RESOURCE_SUFFIX));
+      seqFile.setFile(nextMergeVersionFile);
     } finally {
       seqFile.getMergeQueryLock().writeLock().unlock();
     }
+  }
+
+  private File getNextMergeVersionFile(File seqFile) {
+    String[] splits = seqFile.getName().replace(TSFILE_SUFFIX, "").split("-");
+    int mergeVersion = Integer.parseInt(splits[2]) + 1;
+    return new File(seqFile.getParentFile(),
+        splits[0] + "-" + splits[1] + "-" + mergeVersion + TSFILE_SUFFIX);
   }
 
   private long writeUnmergedChunks(List<Long> chunkStartTimes,
