@@ -299,7 +299,7 @@ service TSIService {
 
 	TSRPCResp createTimeseries(1:TSCreateTimeseriesReq req);
 
-  TSRPCResp insertRow(1:TSInsertReq req);
+	TSRPCResp insertRow(1:TSInsertReq req);
 
 	i64 requestStatementId();
 	}
