@@ -30,6 +30,9 @@ public class SyncReceiverLogger implements ISyncReceiverLogger {
   private BufferedWriter bw;
 
   public SyncReceiverLogger(File logFile) throws IOException {
+    if (!logFile.getParentFile().exists()) {
+      logFile.getParentFile().mkdirs();
+    }
     bw = new BufferedWriter(new FileWriter(logFile));
   }
 

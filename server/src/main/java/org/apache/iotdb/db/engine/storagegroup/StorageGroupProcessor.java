@@ -1051,10 +1051,12 @@ public class StorageGroupProcessor {
     for (Entry<String, Long> entry : newTsFileResource.getEndTimeMap().entrySet()) {
       String device = entry.getKey();
       long endTime = newTsFileResource.getEndTimeMap().get(device);
-      if(!latestTimeForEachDevice.containsKey(device) || latestTimeForEachDevice.get(device) < endTime){
+      if (!latestTimeForEachDevice.containsKey(device)
+          || latestTimeForEachDevice.get(device) < endTime) {
         latestTimeForEachDevice.put(device, endTime);
       }
-      if(!latestFlushedTimeForEachDevice.containsKey(device) || latestFlushedTimeForEachDevice.get(device) < endTime){
+      if (!latestFlushedTimeForEachDevice.containsKey(device)
+          || latestFlushedTimeForEachDevice.get(device) < endTime) {
         latestFlushedTimeForEachDevice.put(device, endTime);
       }
     }
@@ -1094,16 +1096,16 @@ public class StorageGroupProcessor {
     if (!targetFile.getParentFile().exists()) {
       targetFile.getParentFile().mkdirs();
     }
-    if (!new File(tsFile, TsFileResource.RESOURCE_SUFFIX).exists() && !new File(
-        targetFile, TsFileResource.RESOURCE_SUFFIX).exists()) {
+    if (!new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists() && !new File(
+        targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()) {
       throw new TsFileProcessorException(
           String
               .format("The new .resource file {%s} to be loaded does not exist.",
                   tsFile.getAbsolutePath()));
     }
-    if (!new File(targetFile, TsFileResource.RESOURCE_SUFFIX).exists() && !new File(
-        tsFile, TsFileResource.RESOURCE_SUFFIX)
-        .renameTo(new File(targetFile, TsFileResource.RESOURCE_SUFFIX))) {
+    if (!new File(targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
+        && !new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX)
+        .renameTo(new File(targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX))) {
       throw new TsFileProcessorException(String.format(
           "File renaming failed when loading .resource file. Origin: %s, Target: %s",
           new File(tsFile, TsFileResource.RESOURCE_SUFFIX).getAbsolutePath(),
@@ -1122,7 +1124,7 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * Delete tsfile if it exists which.
+   * Delete tsfile if it exists.
    *
    * Firstly, remove the TsFileResource from sequenceFileList/unSequenceFileList.
    *
@@ -1145,7 +1147,7 @@ public class StorageGroupProcessor {
           break;
         }
       }
-      if(deletedTsFileResource == null) {
+      if (deletedTsFileResource == null) {
         Iterator<TsFileResource> unsequenceIterator = unSequenceFileList.iterator();
         while (unsequenceIterator.hasNext()) {
           TsFileResource unsequenceResource = unsequenceIterator.next();
@@ -1160,13 +1162,13 @@ public class StorageGroupProcessor {
       mergeLock.writeLock().unlock();
       writeUnlock();
     }
-    if(deletedTsFileResource == null){
+    if (deletedTsFileResource == null) {
       return;
     }
     deletedTsFileResource.getMergeQueryLock().writeLock().lock();
     try {
       deletedTsFileResource.getFile().delete();
-      new File(deletedTsFileResource.getFile(), TsFileResource.RESOURCE_SUFFIX).delete();
+      new File(deletedTsFileResource.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).delete();
     } finally {
       deletedTsFileResource.getMergeQueryLock().writeLock().unlock();
     }
@@ -1174,6 +1176,14 @@ public class StorageGroupProcessor {
 
   public TsFileProcessor getWorkSequenceTsFileProcessor() {
     return workSequenceTsFileProcessor;
+  }
+
+  public List<TsFileResource> getSequenceFileList() {
+    return sequenceFileList;
+  }
+
+  public List<TsFileResource> getUnSequenceFileList() {
+    return unSequenceFileList;
   }
 
   @FunctionalInterface

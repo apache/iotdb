@@ -115,8 +115,7 @@ public class StorageEngine implements IService {
     return ServiceType.STORAGE_ENGINE_SERVICE;
   }
 
-
-  private StorageGroupProcessor getProcessor(String path) throws StorageEngineException {
+  public StorageGroupProcessor getProcessor(String path) throws StorageEngineException {
     String storageGroupName = "";
     try {
       storageGroupName = MManager.getInstance().getStorageGroupNameByPath(path);
@@ -340,12 +339,12 @@ public class StorageEngine implements IService {
 
 
   public void loadNewTsFile(File newTsFile, TsFileResource resource)
-      throws TsFileProcessorException {
-    processorMap.get(newTsFile.getParentFile().getName()).loadNewTsFile(newTsFile, resource);
+      throws TsFileProcessorException, StorageEngineException {
+    getProcessor(newTsFile.getParentFile().getName()).loadNewTsFile(newTsFile, resource);
   }
 
-  public void deleteTsfile(File deletedTsfile){
-    processorMap.get(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
+  public void deleteTsfile(File deletedTsfile) throws StorageEngineException {
+    getProcessor(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
   }
 
 }

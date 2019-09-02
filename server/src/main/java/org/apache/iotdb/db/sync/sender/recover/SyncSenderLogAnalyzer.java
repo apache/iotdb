@@ -112,7 +112,7 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
   }
 
   @Override
-  public void updateLastLocalFile(Set<String> currentLocalFiles) {
+  public void updateLastLocalFile(Set<String> currentLocalFiles) throws IOException {
     try (BufferedWriter bw = new BufferedWriter(new FileWriter(currentLocalFile))) {
       for (String line : currentLocalFiles) {
         bw.write(line);
@@ -123,6 +123,6 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
       LOGGER.error("Can not clear sync log {}", syncLogFile.getAbsoluteFile(), e);
     }
     lastLocalFile.delete();
-    currentLocalFile.renameTo(lastLocalFile);
+    FileUtils.moveFile(currentLocalFile, lastLocalFile);
   }
 }

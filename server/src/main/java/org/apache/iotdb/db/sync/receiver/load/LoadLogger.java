@@ -30,6 +30,9 @@ public class LoadLogger implements ILoadLogger {
   private BufferedWriter bw;
 
   public LoadLogger(File logFile) throws IOException {
+    if (!logFile.getParentFile().exists()) {
+      logFile.getParentFile().mkdirs();
+    }
     bw = new BufferedWriter(new FileWriter(logFile));
   }
 

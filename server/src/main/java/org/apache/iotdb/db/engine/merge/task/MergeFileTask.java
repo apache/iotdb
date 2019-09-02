@@ -154,8 +154,9 @@ class MergeFileTask {
 
       File nextMergeVersionFile = getNextMergeVersionFile(seqFile.getFile());
       FileUtils.moveFile(seqFile.getFile(), nextMergeVersionFile);
-      FileUtils.moveFile(new File(seqFile.getFile(), TsFileResource.RESOURCE_SUFFIX),
-          new File(nextMergeVersionFile, TsFileResource.RESOURCE_SUFFIX));
+      FileUtils
+          .moveFile(new File(seqFile.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+              new File(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
       seqFile.setFile(nextMergeVersionFile);
     } finally {
       seqFile.getMergeQueryLock().writeLock().unlock();
@@ -221,8 +222,9 @@ class MergeFileTask {
 
       File nextMergeVersionFile = getNextMergeVersionFile(seqFile.getFile());
       FileUtils.moveFile(fileWriter.getFile(), nextMergeVersionFile);
-      FileUtils.moveFile(new File(seqFile.getFile(), TsFileResource.RESOURCE_SUFFIX),
-          new File(nextMergeVersionFile, TsFileResource.RESOURCE_SUFFIX));
+      FileUtils
+          .moveFile(new File(seqFile.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+              new File(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
       seqFile.setFile(nextMergeVersionFile);
     } finally {
       seqFile.getMergeQueryLock().writeLock().unlock();

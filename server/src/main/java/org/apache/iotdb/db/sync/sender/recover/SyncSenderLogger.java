@@ -29,12 +29,11 @@ public class SyncSenderLogger implements ISyncSenderLogger {
   public static final String SYNC_TSFILE_START = "sync tsfile start";
   private BufferedWriter bw;
 
-  public SyncSenderLogger(String filePath) throws IOException {
-    this.bw = new BufferedWriter(new FileWriter(filePath));
-  }
-
   public SyncSenderLogger(File file) throws IOException {
-    this(file.getAbsolutePath());
+    if (!file.getParentFile().exists()) {
+      file.getParentFile().mkdirs();
+    }
+    this.bw = new BufferedWriter(new FileWriter(file.getAbsolutePath()));
   }
 
   @Override

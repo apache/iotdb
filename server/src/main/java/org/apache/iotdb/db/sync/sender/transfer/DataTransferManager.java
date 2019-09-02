@@ -434,7 +434,6 @@ public class DataTransferManager implements IDataTransferManager {
   public void sync() throws IOException {
     try {
       syncStatus = true;
-      syncLog = new SyncSenderLogger(getSchemaLogFile());
 
       for (String sgName : allSG) {
         lastLocalFilesMap.putIfAbsent(sgName, new HashSet<>());
