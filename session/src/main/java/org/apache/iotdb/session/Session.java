@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.session;
 
+import java.util.List;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.*;
@@ -151,6 +152,21 @@ public class Session {
 
     try {
       return client.insertBatch(request);
+    } catch (TException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
+  public TSRPCResp insert(String deviceId, long time, List<String> measurements, List<String> values)
+      throws IoTDBSessionException {
+    TSInsertReq request = new TSInsertReq();
+    request.setDeviceId(deviceId);
+    request.setTimestamp(time);
+    request.setMeasurements(measurements);
+    request.setValues(values);
+
+    try {
+      return client.insertRow(request);
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }
