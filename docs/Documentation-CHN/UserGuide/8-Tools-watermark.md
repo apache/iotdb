@@ -181,19 +181,20 @@ sql用法：`revoke watermark_embedding from Alice`
 
 `detect-watermark.sh` 和 `detect-watermark.bat` 是给不同平台提供的功能相同的工具脚本。
 
-用法： ./detect-watermark.sh [filePath] [secretKey] [watermarkBitString] [embed_row_cycle] [embed_lsb_num] [alpha] [columnIndex]
+用法： ./detect-watermark.sh [filePath] [secretKey] [watermarkBitString] [embed_row_cycle] [embed_lsb_num] [alpha] [columnIndex] [dataType: int/float/double]
 
-示例： ./detect-watermark.sh /home/data/dump1.csv IoTDB*2019@Beijing 100101110100 2 5 0.05 1
+示例： ./detect-watermark.sh /home/data/dump1.csv IoTDB*2019@Beijing 100101110100 2 5 0.05 1 float
 
-| Args               | 示例                 | 解释                         |
-| ------------------ | -------------------- | ---------------------------- |
-| filePath           | /home/data/dump1.csv | 可疑数据的文件路径           |
-| secretKey          | IoTDB*2019@Beijing   | 参见水印嵌入小节             |
-| watermarkBitString | 100101110100         | 参见水印嵌入小节             |
-| embed_row_cycle    | 2                    | 参见水印嵌入小节             |
-| embed_lsb_num      | 5                    | 参见水印嵌入小节             |
-| alpha              | 0.05                 | 显著性水平                   |
-| columnIndex        | 1                    | 指定可疑数据的某一列进行检测 |
+| Args               | 示例                 | 解释                                           |
+| ------------------ | -------------------- | ---------------------------------------------- |
+| filePath           | /home/data/dump1.csv | 可疑数据的文件路径                             |
+| secretKey          | IoTDB*2019@Beijing   | 参见水印嵌入小节                               |
+| watermarkBitString | 100101110100         | 参见水印嵌入小节                               |
+| embed_row_cycle    | 2                    | 参见水印嵌入小节                               |
+| embed_lsb_num      | 5                    | 参见水印嵌入小节                               |
+| alpha              | 0.05                 | 显著性水平                                     |
+| columnIndex        | 1                    | 指定可疑数据的某一列进行检测                   |
+| dataType           | float                | 指定检测列的数据类型；int/float/double任选其一 |
 
 注意：
 

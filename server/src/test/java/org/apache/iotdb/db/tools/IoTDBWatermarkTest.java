@@ -173,8 +173,8 @@ public class IoTDBWatermarkTest {
     double alpha = 0.1;
     int columnIndex = 1;
     boolean isWatermarked = WatermarkDetector
-        .isWatermarked(filePath1, secretKey, watermarkBitString, embed_row_cycle, embed_lsb_num, alpha,
-            columnIndex);
+        .isWatermarked(filePath1, secretKey, watermarkBitString, embed_row_cycle, embed_lsb_num,
+            alpha, columnIndex, "int");
     Assert.assertTrue(isWatermarked);
   }
 
@@ -214,8 +214,8 @@ public class IoTDBWatermarkTest {
     double alpha = 0.1;
     int columnIndex = 1;
     boolean isWatermarked = WatermarkDetector
-        .isWatermarked(filePath2, secretKey, watermarkBitString, embed_row_cycle, embed_lsb_num, alpha,
-            columnIndex);
+        .isWatermarked(filePath2, secretKey, watermarkBitString, embed_row_cycle, embed_lsb_num,
+            alpha, columnIndex, "int");
     Assert.assertFalse(isWatermarked);
   }
 }
