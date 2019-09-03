@@ -22,7 +22,6 @@ package org.apache.iotdb.db.qp.strategy;
 import main.antlr4.org.apache.iotdb.db.sql.parse.TSParser;
 import main.antlr4.org.apache.iotdb.db.sql.parse.TSParserBaseVisitor;
 import org.antlr.v4.runtime.tree.TerminalNode;
-import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -85,7 +84,6 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
       visit(ctx.whereClause());
     }
     if (ctx.specialClause() != null) {
-
       visit(ctx.specialClause());
     }
     return initializedOperator;
@@ -269,12 +267,10 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
       return visit(ctx.precedenceAndExpression(0));
     }
     isOrWhereClause = true;
-
     FilterOperator binaryOp = new FilterOperator(
             TSParserConstant.getTSTokenIntType(TSParser.KW_OR));
     int size = ctx.precedenceAndExpression().size();
     if (size > 2) {
-
       binaryOp.addChildOperator((FilterOperator) visit(ctx.precedenceAndExpression(0)));
       binaryOp.addChildOperator((FilterOperator) visit(ctx.precedenceAndExpression(1)));
       for (int i = 2; i < size; i++) {
@@ -303,12 +299,13 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
     isAndWhereClause = true;
     FilterOperator binaryOp = new FilterOperator(
             TSParserConstant.getTSTokenIntType(TSParser.KW_AND));
+    if (!isOrWhereClause) {
+      whereOp.addChildOperator(binaryOp);
+    }
     int size = ctx.precedenceNotExpression().size();
     if (size > 2) {
-
       binaryOp.addChildOperator((FilterOperator) visit(ctx.precedenceNotExpression(0)));
       binaryOp.addChildOperator((FilterOperator) visit(ctx.precedenceNotExpression(1)));
-
       for (int i = 2; i < size; i++) {
         FilterOperator op = new FilterOperator(
                 TSParserConstant.getTSTokenIntType(TSParser.KW_AND));
@@ -316,14 +313,11 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
         op.addChildOperator((FilterOperator) visit(ctx.precedenceNotExpression(i)));
         binaryOp = op;
       }
-
+      whereOp.getChildren().set(whereOp.getChildren().size()-1, binaryOp);
     } else {
       for (TSParser.PrecedenceNotExpressionContext precedenceNotExpressionContext : ctx.precedenceNotExpression()) {
         binaryOp.addChildOperator((FilterOperator) visit(precedenceNotExpressionContext));
       }
-    }
-    if (!isOrWhereClause) {
-      whereOp.addChildOperator(binaryOp);
     }
     return binaryOp;
   }
