@@ -195,9 +195,6 @@ public class IoTDBDescriptor {
           .parseInt(properties.getProperty("sync_server_port",
               Integer.toString(conf.getSyncServerPort())).trim()));
 
-      conf.setUpdateHistoricalDataPossibility(Boolean.parseBoolean(
-          properties.getProperty("update_historical_data_possibility",
-              Boolean.toString(conf.isSyncEnable()))));
       conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
 
       conf.setConcurrentFlushThread(Integer

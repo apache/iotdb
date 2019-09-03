@@ -22,7 +22,7 @@
 # 第9章: 同步工具
 <!-- TOC -->
 
-- [同步工具](#同步工具)
+- [第9章: 同步工具](#第9章-同步工具)
 - [介绍](#介绍)
 - [配置参数](#配置参数)
     - [同步工具接收端](#同步工具接收端)
@@ -35,7 +35,7 @@
 
 <!-- /TOC -->
 # 介绍
-同步工具是定期将本地磁盘中和新增的已持久化的tsfile文件上传至云端并加载到IoTDB套件工具。
+同步工具是定期将本地磁盘中和新增的已持久化的tsfile文件上传至云端并加载到IoTDB的套件工具。
 
 在同步工具的发送端，同步模块是一个独立的进程，独立于本地的IoTDB。通过独立的脚本进行启动和关闭(详见章节`使用方式`)，同步的频率周期可由用户设置。
 
@@ -62,7 +62,7 @@
    </tr>
    <tr>
       <td>默认值</td>
-      <td>false</td>
+      <td>true</td>
    </tr>
    <tr>
       <td>改后生效方式</td>
@@ -85,29 +85,6 @@
    <tr>
       <td>默认值</td>
       <td>0.0.0.0/0</td>
-   </tr>
-   <tr>
-      <td>改后生效方式</td>
-      <td>重启服务器生效</td>
-   </tr>
-</table>
-
-<table>
-   <tr>
-      <td colspan="2">参数名: update_historical_data_possibility</td>
-   </tr>
-   <tr>
-      <td width="20%">描述</td>
-      <td>同步服务端在合并同步的数据时选择的处理策略。如果同步的数据对历史数据(相比本地该存储组数据的最新时间戳)更新占比超过50%，则建议选择策略1，将参数设置为true，使用该策略对IoTDB系统的写入性能产生较大影响，对机器的CPU占用较小；如果同步的数据对历史数据更新占比少于50%，则建议选择策略2，将参数设置为false，使用该策略对IoTDB系统的写入性能产生较小影响，对机器CPU的占用较大。<br/>
-</td>
-   </tr>
-   <tr>
-      <td>类型</td>
-      <td>Boolean</td>
-   </tr>
-   <tr>
-      <td>默认值</td>
-      <td>false</td>
    </tr>
    <tr>
       <td>改后生效方式</td>
@@ -207,33 +184,19 @@
 
 <table>
    <tr>
-      <td colspan="2">参数名: iotdb_schema_directory</td>
+      <td colspan="2">参数名: sync_storage_groups</td>
    </tr>
    <tr>
       <td width="20%">描述</td>
-      <td>同步发送端的IoTDB schema文件的绝对路径，例如$IOTDB_HOME /data/system/schema/mlog.txt(若用户未手动设置schema元数据的路径，则该路径为默认路径)，该参数默认不生效，用户有需求时进行手动设置</td>
+      <td>进行同步的存储组列表，存储组间用逗号分隔；若列表设置为空表示同步所有存储组，默认为空</td>
    </tr>
    <tr>
       <td>类型</td>
       <td>String</td>
    </tr>
    <tr>
-      <td>改后生效方式</td>
-      <td>重启同步功能发送端生效</td>
-   </tr>
-</table>
-
-<table>
-   <tr>
-      <td colspan="2">参数名: iotdb_bufferWrite_directory</td>
-   </tr>
-   <tr>
-      <td width="20%">描述</td>
-      <td>同步发送端的IoTDB 的bufferWrite数据(tsfile文件)目录的绝对路径，定位至bufferWrite目录下，例如： $IOTDB_HOME /data/data/settled(若用户未手动设置数据路径，则该路径为默认路径)，该参数默认不生效，用户有需求时进行手动设置。该参数需要保证和参数iotdb_schema_directory属于同一个IoTDB</td>
-   </tr>
-   <tr>
-      <td>类型</td>
-      <td>String</td>
+      <td>示例</td>
+      <td>root.sg1, root.sg2</td>
    </tr>
    <tr>
       <td>改后生效方式</td>
@@ -244,7 +207,7 @@
 # 使用方式
 ## 启动同步功能接收端
 1. 配置接收端的参数，例如：
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494502-daaa4380-8ebf-11e9-8bce-363e2433005a.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/64172919-a32cb100-ce88-11e9-821c-33369bff6d34.png">
 2. 启动IoTDB引擎，同步功能接收端会同时启动，启动时LOG日志会出现`IoTDB: start SYNC ServerService successfully`字样，表示同步接收端启动成功，如图所示：
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494513-df6ef780-8ebf-11e9-83e1-ee8ae64b76d0.png">
 
@@ -253,7 +216,7 @@
 
 ## 启动同步功能发送端
 1. 配置发送端的参数， 如图所示:
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494559-f9a8d580-8ebf-11e9-875e-355199c1a1e9.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/64172668-15e95c80-ce88-11e9-9700-dff7daf06bb7.png">
 2. 启动同步功能发送端
 
 用户可以使用```$IOTDB_HOME/bin```文件夹下的脚本启动同步功能的发送端

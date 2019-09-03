@@ -25,7 +25,7 @@
 
 <!-- TOC -->
 
-- [Chapter 7: System Tools](#chapter-7-system-tools)
+- [Chapter 9: System Tools](#chapter-9-system-tools)
     - [Data Import](#data-import)
 - [Introduction](#introduction)
 - [Configuration](#configuration)
@@ -89,31 +89,6 @@ The parameter configuration of the sync receiver is located in the configuration
    <tr>
       <td>Default</td>
       <td>0.0.0.0/0</td>
-   </tr>
-   <tr>
-      <td>Modalities for Entry into Force after Modification</td>
-      <td>Restart receiver</td>
-   </tr>
-</table>
-
-<table>
-   <tr>
-      <td colspan="2">parameter: update_historical_data_possibility</td>
-   </tr>
-   <tr>
-      <td width="30%">Description</td>
-      <td>The processing strategy chosen by the sync receiver when merging the sync data.<br/>
-        1. If the sync data accounts for more than 50% of the update of the historical data (compared with the latest timestamp of the local storage group data),then it is recommended this parameter be set to TRUE, which has a greater impact on the write performance and reduce CPU usage.<br/>
-        2. If the sync data accounts for less than 50% of the update of the historical data (compared with the latest timestamp of the local storage group data),then it is recommended this parameter be set to FALSE,which has little impact on the write performance and takes up a large amount of CPU power.<br/>
-</td>
-   </tr>
-   <tr>
-      <td>Type</td>
-      <td>Boolean</td>
-   </tr>
-   <tr>
-      <td>Default</td>
-      <td>false</td>
    </tr>
    <tr>
       <td>Modalities for Entry into Force after Modification</td>
@@ -231,15 +206,19 @@ The parameters of the sync sender are configured in a separate configuration fil
 
 <table>
    <tr>
-      <td colspan="2">parameter: iotdb_bufferWrite_directory</td>
+      <td colspan="2">parameter: sync_storage_groups</td>
    </tr>
    <tr>
-      <td width="30%">Description</td>
-      <td>The absolute path of the buffer write data (tsfile file) directory of the IoTDB at the sender, such as: $IOTDB_HOME/data/data/settled (if the user does not set the data path manually, the path is the default path of IoTDB engine). This parameter is not valid by default, and is set manually when the user needs it. This parameter needs to be guaranteed to belong to the same IoTDB as the parameter iotdb_schema_directory.</td>
+      <td width="20%">Description</td>
+      <td>This parameter represents storage groups that participate in the synchronization task, which distinguishes each storage group by comma.If the list is empty, it means that all storage groups participate in synchronization.By default, it is empty list.</td>
    </tr>
    <tr>
       <td>Type</td>
       <td>String</td>
+   </tr>
+   <tr>
+      <td>Example</td>
+      <td>root.sg1, root.sg2</td>
    </tr>
    <tr>
       <td>Modalities for Entry into Force after Modification</td>
@@ -247,10 +226,11 @@ The parameters of the sync sender are configured in a separate configuration fil
    </tr>
 </table>
 
+
 # Usage
 ## Start Sync Receiver
 1. Set up parameters of sync receiver. For example:
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494502-daaa4380-8ebf-11e9-8bce-363e2433005a.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/64172919-a32cb100-ce88-11e9-821c-33369bff6d34.png">
 2. Start IoTDB engine, and the sync receiver will start at the same time, and the LOG log will start with the sentence `IoTDB: start SYNC ServerService successfully` indicating the successful start of the return receiver.
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494513-df6ef780-8ebf-11e9-83e1-ee8ae64b76d0.png">
 
@@ -259,7 +239,7 @@ Stop IoTDB and the sync receiver will be closed at the same time.
 
 ## Start Sync Sender
 1. Set up parameters of sync sender. For example:
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494559-f9a8d580-8ebf-11e9-875e-355199c1a1e9.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/64172668-15e95c80-ce88-11e9-9700-dff7daf06bb7.png">
 2. Start sync sender
 Users can use the scripts under the ```$IOTDB_HOME/bin``` folder to start the sync sender.
 For Linux and Mac OS X users:
