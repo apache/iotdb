@@ -303,9 +303,6 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
     isAndWhereClause = true;
     FilterOperator binaryOp = new FilterOperator(
             TSParserConstant.getTSTokenIntType(TSParser.KW_AND));
-    if (!isOrWhereClause) {
-      whereOp.addChildOperator(binaryOp);
-    }
     int size = ctx.precedenceNotExpression().size();
     if (size > 2) {
 
@@ -324,6 +321,9 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
       for (TSParser.PrecedenceNotExpressionContext precedenceNotExpressionContext : ctx.precedenceNotExpression()) {
         binaryOp.addChildOperator((FilterOperator) visit(precedenceNotExpressionContext));
       }
+    }
+    if (!isOrWhereClause) {
+      whereOp.addChildOperator(binaryOp);
     }
     return binaryOp;
   }
