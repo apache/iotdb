@@ -17,6 +17,9 @@
 # under the License.
 #
 
+# This is a detailed example of visualization plan.Please read it carefully before you write your
+# own plans.
+
 # the name of the this plan
 name=flushTimeConsumption
 # a regular expression that defines how are the targeted logs formatted and what fields are interesting and should be grouped

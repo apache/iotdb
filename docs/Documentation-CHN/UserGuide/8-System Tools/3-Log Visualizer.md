@@ -69,6 +69,10 @@
 之后您能在这个目录下找到LogVisualizer的启动脚本： 
 `server/target/iotdb-server-{project-version}-SNAPSHOT/tools/logVisualize`
 
+如果您想要掌握本工具的一些进阶使用方法，您需要对正则表达式（特别是Java风格的正则表达式）有一些基本的
+了解。您只有在熟悉正则表达式以后才能新建可视化计划或者对已有的计划进行修改。如果您对正则表达式一无所知，
+我们也提供了一些预设的可视化计划供您使用，但这些可视化计划仅限于分析IoTDB。
+
 ## 启动图形界面
 您可以通过脚本`log-visualizer.sh` (在Windows下为`log-visualizer.bat`)来启动LogVisualizer. 这将会启动
 一个如下图所示的图形界面:

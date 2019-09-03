@@ -74,6 +74,11 @@ server module as a tool, you can build the server together with LogVisualizer us
 Then you fan find the scripts to start LogVisualizer in: 
 `server/target/iotdb-server-{project-version}-SNAPSHOT/tools/logVisualize`
 
+To have access to the advanced usages of this tool, you must have some basic knowledge about regular
+expressions, especially Java style ones. Knowing about regular expressions enables to create your own
+visualization plans or modify the existing ones. However, if you are totally new to regular expressions,
+you can still use the preset plans which are only applicable to IoTDB.
+
 ## Run the gui
 You can run LogVisualizer using `log-visualizer.sh` (or `log-visualizer.bat` in windows). This 
 will bring you a gui like:
