@@ -56,6 +56,8 @@ To use IoTDB, JRE should be installed. To compile IoTDB, JDK should be installed
 If you want to compile and install IoTDB from source code, JDK and Maven (>= 3.1) are required.
 While Maven is not mandatory to be installed standalone, you can use the provided Maven wrapper, `./mvnw.sh` on Linux/OS X or `.\mvnw.cmd` on Windows, to facilitate development.
 
+Set the max open files num as 65535 to avoid "too many open files" problem.
+
 If you want to use Hadoop or Spark to analyze IoTDB data file (called as TsFile), you need to compile the hadoop and spark modules.
 
 # Quick Start

@@ -18,6 +18,17 @@
  */
 package org.apache.iotdb.db.service;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.*;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.ZoneId;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -281,8 +292,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setDataType(getSeriesType(req.getColumnPath()).toString());
           status = new TS_Status(getStatus(TSStatusType.SUCCESS_STATUS));
           break;
+        case "COUNT_TIMESERIES":
         case "ALL_COLUMNS":
           resp.setColumnsList(getPaths(req.getColumnPath()));
+          status = new TS_Status(getStatus(TSStatusType.SUCCESS_STATUS));
+          break;
+        case "COUNT_NODES":
+          resp.setNodesList(getNodesList(req.getNodeLevel()));
+          status = new TS_Status(getStatus(TSStatusType.SUCCESS_STATUS));
+          break;
+        case "COUNT_NODE_TIMESERIES":
+          resp.setNodeTimeseriesNum(getNodeTimeseriesNum(getNodesList(req.getNodeLevel())));
           status = new TS_Status(getStatus(TSStatusType.SUCCESS_STATUS));
           break;
         default:
@@ -300,6 +320,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     resp.setStatus(status);
     return resp;
+  }
+
+  private Map<String, String> getNodeTimeseriesNum(List<String> nodes) throws MetadataErrorException {
+    Map<String, String> nodeColumnsNum = new HashMap<>();
+    for (String columnPath : nodes) {
+      nodeColumnsNum.put(columnPath, Integer.toString(getPaths(columnPath).size()));
+    }
+    return nodeColumnsNum;
+  }
+
+  private List<String> getNodesList(String level) throws PathErrorException {
+    return MManager.getInstance().getNodesList(level);
   }
 
   private Set<String> getAllStorageGroups() throws PathErrorException {
@@ -930,6 +962,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSExecuteStatementResp insert(TSInsertionReq req) {
+    // TODO need to refactor this when implementing PreparedStatement
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getTSExecuteStatementResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
@@ -958,6 +991,26 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info("meet error while executing an insertion into {}", req.getDeviceId(), e);
       return getTSExecuteStatementResp(getStatus(TSStatusType.EXECUTE_STATEMENT_ERROR, e.getMessage()));
     }
+  }
+
+  @Override
+  public TSRPCResp insertRow(TSInsertReq req) throws TException {
+    if (!checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return new TSRPCResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
+    }
+
+    InsertPlan plan = new InsertPlan();
+    plan.setDeviceId(req.getDeviceId());
+    plan.setTime(req.getTimestamp());
+    plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
+    plan.setValues(req.getValues().toArray(new String[0]));
+
+    TS_Status status = checkAuthority(plan);
+    if (status != null) {
+      return new TSRPCResp(status);
+    }
+    return new TSRPCResp(executePlan(plan));
   }
 
   @Override
