@@ -18,7 +18,7 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import org.apache.iotdb.db.tools.logvisual.exceptions.NoLogFileLoadedException;
 import org.apache.iotdb.db.tools.logvisual.exceptions.UnmatchedContentException;
-import org.apache.iotdb.db.tools.logvisual.exceptions.VisualizeException;
+import org.apache.iotdb.db.tools.logvisual.exceptions.VisualizationException;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
@@ -79,14 +79,51 @@ public class LogVisualizer {
    */
   private File logFile;
 
-  public static void main(String[] args) throws IOException {
+  // params: <LogFilePath> <ParserPropertyFilePath> <PlanFilePath> <OutputDirectory>
+  public static void main(String[] args) throws IOException, VisualizationException {
+    if (args.length != 4) {
+      System.out.println("Wrong number of parameters: "
+          + " params: <LogFilePath> <ParserPropertyFilePath> <PlanFilePath> <OutputDirectory>");
+      return;
+    }
+    File logFile = new File(args[0]);
+    if (!logFile.exists() || !logFile.isFile()) {
+      System.out.println("Log file does not exist");
+      return;
+    }
+    File parserPropertyFile = new File(args[1]);
+    if (!parserPropertyFile.exists() || !parserPropertyFile.isFile()) {
+      System.out.println("Parser property file does not exist");
+      return;
+    }
+    File planFile = new File(args[2]);
+    if (!planFile.exists()) {
+      System.out.println("Plan file does not exist");
+      return;
+    }
+
+    File destDir = new File(args[3]);
+    if (destDir.exists() && !destDir.isDirectory()) {
+      System.out.println("The output path is not a directory");
+      return;
+    }
+    destDir.mkdirs();
+
     LogVisualizer visualizer = new LogVisualizer();
-    visualizer.setParserPropertyFile(new File("E:\\codestore\\incubator-iotdb\\server\\src\\assembly"
-        + "\\resources"
-        + "\\tools\\logAnalyze\\default.log.pattern"));
-    visualizer.setLogFile( new File("C:\\Users\\admin\\Desktop\\logs\\log-all-2019-08-21.0.log"));
+    visualizer.setLogFile(logFile);
+    visualizer.setParserPropertyFile(parserPropertyFile);
     visualizer.loadLogParser();
-    visualizer.loadPlan("E:\\codestore\\incubator-iotdb\\server\\src\\assembly\\resources\\tools\\logAnalyze\\plans\\flushTimeConsumption.plan.example");
+
+    visualizer.loadPlan(planFile);
+    Collection<VisualizationPlan> plans = visualizer.listPlans();
+
+    for (VisualizationPlan plan : plans) {
+      visualizer.executePlan(plan);
+      visualizer.saveResults(destDir.getPath() + File.separator + plan.getName());
+      System.out.println("Executed and saved results of plan "+ plan.getName());
+    }
+
+    System.out.println("Visualization completed");
   }
 
   private void clearLogGroups() {
@@ -146,7 +183,7 @@ public class LogVisualizer {
     return plans.values();
   }
 
-  public void executePlan(VisualizationPlan plan) throws VisualizeException {
+  public void executePlan(VisualizationPlan plan) throws VisualizationException {
     if (logParser == null) {
       throw new NoLogFileLoadedException();
     }
@@ -154,7 +191,7 @@ public class LogVisualizer {
       // read the logs fom the beginning
       logParser.reset();
     } catch (IOException e) {
-      throw new VisualizeException(e);
+      throw new VisualizationException(e);
     }
     collectLogs(plan);
     groupLogs();
@@ -168,9 +205,9 @@ public class LogVisualizer {
   /**
    * Read all logs from the logParser and filter unwanted or malformed ones.
    * @param plan
-   * @throws VisualizeException
+   * @throws VisualizationException
    */
-  private void collectLogs(VisualizationPlan plan) throws VisualizeException {
+  private void collectLogs(VisualizationPlan plan) throws VisualizationException {
     LogFilter logFilter = plan.getLogFilter();
     try {
       LogEntry logEntry;
@@ -193,7 +230,7 @@ public class LogVisualizer {
         }
       }
     } catch (IOException e) {
-      throw new VisualizeException(e);
+      throw new VisualizationException(e);
     }
     logger.info("Collected {} logs from {}", logCache.size(), logFile.getPath());
   }
@@ -307,17 +344,17 @@ public class LogVisualizer {
     return ret;
   }
 
-  public void saveResults(String destDirPath, int width, int height) throws VisualizeException {
+  public void saveResults(String destDirPath) throws VisualizationException {
     if (charts == null || statisticsMap == null) {
-      throw new VisualizeException("No results to be saved");
+      throw new VisualizationException("No results to be saved");
     }
 
     File destDir = new File(destDirPath);
     if (destDir.exists() && !destDir.isDirectory()) {
-      throw new VisualizeException(String.format("%s exists and is not a directory", destDirPath));
+      throw new VisualizationException(String.format("%s exists and is not a directory", destDirPath));
     }
     if (!destDir.exists() && !destDir.mkdirs()) {
-      throw new VisualizeException(String.format("Cannot create directory %s", destDirPath));
+      throw new VisualizationException(String.format("Cannot create directory %s", destDirPath));
     }
     destDir.mkdirs();
 
@@ -327,9 +364,9 @@ public class LogVisualizer {
       JFreeChart chart = chartEntry.getValue();
       try (FileOutputStream fileOutputStream = new FileOutputStream(chartFile);
           BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream)) {
-        ChartUtils.writeChartAsPNG(bufferedOutputStream, chart, width, height);
+        ChartUtils.writeChartAsPNG(bufferedOutputStream, chart, 800, 600);
       } catch (IOException e) {
-        throw new VisualizeException(String.format("Cannot save chart of %s", chartEntry.getKey()), e);
+        throw new VisualizationException(String.format("Cannot save chart of %s", chartEntry.getKey()), e);
       }
     }
 
@@ -344,7 +381,7 @@ public class LogVisualizer {
         }
       }
     } catch (IOException e) {
-      throw new VisualizeException(String.format("Cannot save statistics to %s", destDirPath), e);
+      throw new VisualizationException(String.format("Cannot save statistics to %s", destDirPath), e);
     }
   }
 

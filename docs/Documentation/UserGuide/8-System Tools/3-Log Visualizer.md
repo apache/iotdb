@@ -27,8 +27,8 @@
 
 - [LogVisualizer](#LogVisualizer)
 - [Introduction](#introduction)
-- [Usage](#Usage)
-  - [Preparation](#preparation)
+- [Preparation](#preparation)
+- [Usage(GUI)](#Usage(GUI))
   - [Run the gui](#Run the gui)
   - [Choose a log file](#Choose a log file)
   - [Choose a parser property file](#Choose a parser property file)
@@ -37,6 +37,7 @@
   - [Edit plans](#Edit plans)
   - [Delete plans](#Delete plans)
   - [Execute plans](#Execute plans)
+- [Usage(CommandLine)](#Usage(CommandLine))
   
 
 <!-- /TOC -->
@@ -65,8 +66,7 @@ variants in a log file, generate timeseries based on these observations and draw
 them in a more human-friendly way. LogVisualizer also collects the statistics of the logs to 
 present an overall view of what was going on.
 
-# Usage
-## Preparation
+# Preparation
 Before using LogVisualizer, you should have it built. Since LogVisualizer is integrated in the 
 server module as a tool, you can build the server together with LogVisualizer using:
 > mvn clean package -pl server -DskipTests
@@ -79,9 +79,10 @@ expressions, especially Java style ones. Knowing about regular expressions enabl
 visualization plans or modify the existing ones. However, if you are totally new to regular expressions,
 you can still use the preset plans which are only applicable to IoTDB.
 
+# Usage(GUI)
 ## Run the gui
-You can run LogVisualizer using `log-visualizer.sh` (or `log-visualizer.bat` in windows). This 
-will bring you a gui like:
+You can run LogVisualizer using `log-visualizer-gui.sh` (or `log-visualizer-gui.bat` in windows). 
+This will bring you a gui like:
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/main_panel.png?raw=true">
 
@@ -148,5 +149,12 @@ can click the button on the up-right to close the tab.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/statistics.png?raw=true">
  
- 
+# Usage(CommandLine)
+ We also provide a command line tool of LogVisualizer, which is `log-visualizer-cmd.sh` 
+ (or `log-visualizer-cmd.bat`). This tool takes exactly 4 parameters, which are: `the path of the log file` 
+ `the path of the parser property file` `the path of the visualization plan(s)` `the output directory`.
+ Running this tool will load the given logs, run all the plans and save the result of each plan into
+ a sub-directory of the output path.
+ E.g.: 
+ > ./log-visualizer-cmd.sh all.log default.log.pattern planB.plan results
 

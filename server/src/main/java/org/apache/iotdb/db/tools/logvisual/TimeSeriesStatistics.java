@@ -105,9 +105,10 @@ public class TimeSeriesStatistics {
   }
   
   public void serialize(Writer writer) throws IOException {
-    StringBuilder builder = new StringBuilder(statisticArray[0].toString());
-    for (int i = 1; i < statisticArray.length; i++) {
-      builder.append(",").append(statisticArray[i]);
+    Object[] statArray = toArray();
+    StringBuilder builder = new StringBuilder(statArray[0].toString());
+    for (int i = 1; i < statArray.length; i++) {
+      builder.append(",").append(statArray[i]);
     }
     builder.append("\n");
     writer.write(builder.toString());

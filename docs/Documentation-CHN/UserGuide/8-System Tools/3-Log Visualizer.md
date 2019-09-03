@@ -26,8 +26,8 @@
 
 - [日志可视化工具LogVisualizer](#日志可视化工具LogVisualizer)
 - [介绍](#介绍)
-- [使用方法](#使用方法)
-  - [准备工作](#准备工作)
+- [准备工作](#准备工作)
+- [使用方法(图形界面)](#使用方法（图形界面）)
   - [启动图形界面](#启动图形界面)
   - [选择日志文件](#选择日志文件)
   - [选择解析器配置文件](#选择解析器配置文件)
@@ -36,6 +36,7 @@
   - [编辑可视化计划](#编辑可视化计划)
   - [删除可视化计划](#删除可视化计划)
   - [执行可视化计划](#执行可视化计划)
+- [使用方法（命令行）](#使用方法(命令行))
   
 
 <!-- /TOC -->
@@ -60,8 +61,7 @@
 方便后续的比较和分析。同时，LogVisualizer还会对这些时间序列进行统计，找出其中的最大值、最小值、平均值、
 日志条数等信息，使得用户能有一个总体性的认识。
 
-# 使用方法
-## 准备工作
+# 准备工作
 在使用LogVisualizer之前，您需要对其进行构建。LogVisualizer被集成到server模块作为一个系统工具，因此您
 可以通过构建server模块来同时构建LogVisualizer。您可以使用以下命令：
 > mvn clean package -pl server -DskipTests
@@ -73,9 +73,10 @@
 了解。您只有在熟悉正则表达式以后才能新建可视化计划或者对已有的计划进行修改。如果您对正则表达式一无所知，
 我们也提供了一些预设的可视化计划供您使用，但这些可视化计划仅限于分析IoTDB。
 
+# 使用方法（图形界面）
 ## 启动图形界面
-您可以通过脚本`log-visualizer.sh` (在Windows下为`log-visualizer.bat`)来启动LogVisualizer. 这将会启动
-一个如下图所示的图形界面:
+您可以通过脚本`log-visualizer-gui.sh` (在Windows下为`log-visualizer-gui.bat`)来启动LogVisualizer. 
+这将会启动一个如下图所示的图形界面:
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/main_panel.png?raw=true">
 
@@ -135,5 +136,11 @@
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/statistics.png?raw=true">
  
- 
+# 使用方法(命令行)
+我们也提供了LogVisualizer的命令行版本，您可以通过`log-visualizer-cmd.sh` (或 `log-visualizer-cmd.bat`)
+来使用。使用时必须输入四个参数，它们是：`日志文件的路径`，`解析器配置文件的路径`，`可视化计划的路径`，
+`结果输出路径`。运行该脚本，LogVisualizer将根据参数读取日志和可视化计划，执行每一个可视化计划，并将
+每一个计划的结果存储到输出路径的一个子文件夹下。
+例如: 
+> ./log-visualizer-cmd.sh all.log default.log.pattern planB.plan results
 

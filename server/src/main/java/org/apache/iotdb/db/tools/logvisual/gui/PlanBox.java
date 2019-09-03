@@ -42,7 +42,7 @@ import org.apache.iotdb.db.tools.logvisual.LogVisualizer;
 import org.apache.iotdb.db.tools.logvisual.TimeSeriesStatistics;
 import org.apache.iotdb.db.tools.logvisual.VisualizationPlan;
 import org.apache.iotdb.db.tools.logvisual.conf.PropertyKeys;
-import org.apache.iotdb.db.tools.logvisual.exceptions.VisualizeException;
+import org.apache.iotdb.db.tools.logvisual.exceptions.VisualizationException;
 import org.apache.iotdb.db.tools.logvisual.gui.LogVisualizationGui.PropertyChangeCallback;
 import org.jfree.chart.JFreeChart;
 
@@ -195,7 +195,7 @@ class PlanBox extends Box{
     }
     try {
       visualizer.executePlan(plan);
-    } catch (VisualizeException e1) {
+    } catch (VisualizationException e1) {
       JOptionPane.showMessageDialog(this, "Cannot execute plan: " + e1.getMessage());
       return;
     }
@@ -268,9 +268,9 @@ class PlanBox extends Box{
     if (status == JFileChooser.APPROVE_OPTION) {
       File distDir = fileChooser.getSelectedFile();
       try {
-        visualizer.saveResults(distDir.getPath(), 800, 600);
+        visualizer.saveResults(distDir.getPath());
         JOptionPane.showMessageDialog(this, "Export successfully");
-      } catch (VisualizeException e1) {
+      } catch (VisualizationException e1) {
         JOptionPane.showMessageDialog(this,"Cannot export results:" + e1.getMessage());
       }
     }
