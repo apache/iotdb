@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.tools.logvisual;
 
 import java.util.Date;
+import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesDataItem;
 
@@ -29,7 +30,7 @@ import org.jfree.data.time.TimeSeriesDataItem;
 public class TimeSeriesStatistics {
 
   public static final String[] HEADER = new String[] {
-      "name", "count", "meanInterval", "maxInterval", "minInterval", "meanVal", "maxVal", "minVal"
+      "name", "count", "meanInterval", "maxInterval", "minInterval", "meanVal", "maxVal", "minVal", "valSum"
   };
 
   private String name;
@@ -40,6 +41,7 @@ public class TimeSeriesStatistics {
   private double meanVal = 0.0;
   private double maxVal = Double.MIN_VALUE;
   private double minVal = Double.MAX_VALUE;
+  private double valSum = 0.0;
 
   TimeSeriesStatistics(TimeSeries timeSeries) {
     Date lastDate = null;
@@ -60,6 +62,7 @@ public class TimeSeriesStatistics {
       meanVal = (meanVal * size + value) / (size + 1);
       maxVal = maxVal < value ? value : maxVal;
       minVal = minVal < value ? minVal : value;
+      valSum += value;
       size ++;
     }
   }
@@ -82,7 +85,8 @@ public class TimeSeriesStatistics {
     ret[i++] = minInterval;
     ret[i++] = meanVal;
     ret[i++] = maxVal;
-    ret[i] = minVal;
+    ret[i++] = minVal;
+    ret[i] = valSum;
     return ret;
   }
 }

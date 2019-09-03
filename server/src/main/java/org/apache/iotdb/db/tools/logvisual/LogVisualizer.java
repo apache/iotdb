@@ -151,7 +151,8 @@ public class LogVisualizer {
     }
     collectLogs(plan);
     groupLogs();
-    Map<String,TimeSeriesCollection> taggedTimeSeries = createTimeSeries(plan);
+    // <measurementName, <tag, timeseries>>
+    Map<String,Map<String, TimeSeries>> taggedTimeSeries = createTimeSeries(plan);
     charts = drawCharts(taggedTimeSeries, plan);
     statisticsMap = genStatisticMap(taggedTimeSeries);
     clearLogGroups();
@@ -198,15 +199,16 @@ public class LogVisualizer {
     logger.info("Found {} different tags", logGroups.size());
   }
 
-  private Map<String, TimeSeriesCollection> createTimeSeries(VisualizationPlan plan) {
-    Map<String, TimeSeriesCollection> ret = new HashMap<>();
+  // <measurementName, <tag, timeseries>>
+  private Map<String, Map<String, TimeSeries>> createTimeSeries(VisualizationPlan plan) {
+    Map<String, Map<String, TimeSeries>> ret = new HashMap<>();
     for (Entry<List<String>, List<LogEntry>> entry : logGroups.entrySet()) {
       List<String> tags = entry.getKey();
       List<LogEntry> logs = entry.getValue();
       // create a tag string for the log group as the key of the timeseries
       String concatenatedTag;
       if (tags.isEmpty()) {
-        concatenatedTag = plan.getName();
+        concatenatedTag = plan.getName() + " ";
       } else {
         StringBuilder builder = new StringBuilder(plan.getName() + "-" + tags.get(0));
         for (int i = 1; i < tags.size(); i++) {
@@ -216,44 +218,44 @@ public class LogVisualizer {
         concatenatedTag = builder.toString();
       }
 
-      TimeSeriesCollection timeseriesGroup = new TimeSeriesCollection();
       if (plan.getMeasurementPositions() != null) {
         // the measurements are given, create a timeseries for each measurement
         String[] legends = plan.getLegends();
-        for (String legend : legends) {
-          // name each timeseries with the legend of each measurement
-          TimeSeries timeSeries = new TimeSeries(concatenatedTag + legend);
-          timeseriesGroup.addSeries(timeSeries);
-        }
         // use the values in each log to build the timeseries
         for (LogEntry logEntry : logs) {
           List<Double> values = logEntry.getMeasurements();
           for (int i = 0; i < values.size(); i++) {
-            timeseriesGroup.getSeries(i).addOrUpdate(new Millisecond(logEntry.getDate()), values.get(i));
+            String legend = legends[i];
+            TimeSeries timeSeries = ret.computeIfAbsent(legend, leg -> new HashMap<>())
+                .computeIfAbsent(concatenatedTag, tag -> new TimeSeries(tag + legend));
+            timeSeries.addOrUpdate(new Millisecond(logEntry.getDate()), values.get(i));
           }
         }
       } else {
         // the measurement are not given, just record the time when each log happened
-        TimeSeries happenedInstance = new TimeSeries(concatenatedTag + "HappenedInstance");
+        String legend = "TimeOfOccurrence";
+        TimeSeries happenedInstance = ret.computeIfAbsent(legend, tag -> new HashMap<>())
+            .computeIfAbsent(concatenatedTag, tag -> new TimeSeries( tag + legend));
         for (LogEntry logEntry : logs) {
           happenedInstance.addOrUpdate(new Millisecond(logEntry.getDate()), 1.0);
         }
-        timeseriesGroup.addSeries(happenedInstance);
       }
-      ret.put(concatenatedTag, timeseriesGroup);
     }
     return ret;
   }
 
-  private Map<String, JFreeChart> drawCharts(Map<String, TimeSeriesCollection> taggedTimeSeries,
+  private Map<String, JFreeChart> drawCharts(Map<String, Map<String, TimeSeries>> taggedTimeSeries,
       VisualizationPlan plan) {
     Map<String, JFreeChart> charts = new HashMap<>();
-    for (Entry<String, TimeSeriesCollection> entry : taggedTimeSeries.entrySet()) {
-      String tag = entry.getKey();
-      TimeSeriesCollection timeSeriesList = entry.getValue();
+    for (Entry<String, Map<String, TimeSeries>> entry : taggedTimeSeries.entrySet()) {
+      String measurementName = entry.getKey();
+      TimeSeriesCollection timeSeriesList = new TimeSeriesCollection();
+      for (TimeSeries timeSeries : entry.getValue().values()) {
+        timeSeriesList.addSeries(timeSeries);
+      }
       // contain the start time of the timeseries in the x-axis name
       Date startDate = new Date((long) timeSeriesList.getDomainBounds(true).getLowerBound());
-      JFreeChart chart = ChartFactory.createTimeSeriesChart(tag, "time-"+ startDate, "value",
+      JFreeChart chart = ChartFactory.createTimeSeriesChart(measurementName, "time-"+ startDate, measurementName,
           timeSeriesList);
       XYPlot xyPlot = chart.getXYPlot();
       XYLineAndShapeRenderer xyLineAndShapeRenderer = ((XYLineAndShapeRenderer) xyPlot
@@ -265,7 +267,7 @@ public class LogVisualizer {
         // do not draw lines if we only record the time instances of the logs
         xyLineAndShapeRenderer.setDefaultLinesVisible(false);
       }
-      charts.put(tag, chart);
+      charts.put(measurementName, chart);
     }
     return charts;
   }
@@ -282,19 +284,18 @@ public class LogVisualizer {
     this.logFile = logFile;
   }
 
-  private Map<String, List<TimeSeriesStatistics>> genStatisticMap(Map<String,TimeSeriesCollection>
+  private Map<String, List<TimeSeriesStatistics>> genStatisticMap(Map<String, Map<String, TimeSeries>>
       taggedTimeSeries) {
     Map<String, List<TimeSeriesStatistics>> ret = new HashMap<>();
-    for (Entry<String, TimeSeriesCollection> timeSeriesCollectionEntry : taggedTimeSeries.entrySet()) {
+    for (Entry<String, Map<String, TimeSeries>> timeSeriesEntry : taggedTimeSeries.entrySet()) {
       // calculate the statistics of the logs in each group
-      String tag = timeSeriesCollectionEntry.getKey();
-      TimeSeriesCollection timeSeriesCollection = timeSeriesCollectionEntry.getValue();
+      String measurementName = timeSeriesEntry.getKey();
       List<TimeSeriesStatistics> seriesStatistics = new ArrayList<>();
-      for (int i = 0; i < timeSeriesCollection.getSeriesCount(); i++) {
-        TimeSeries timeSeries = timeSeriesCollection.getSeries(i);
+      Map<String, TimeSeries> seriesMap = timeSeriesEntry.getValue();
+      for (TimeSeries timeSeries : seriesMap.values()) {
         seriesStatistics.add(new TimeSeriesStatistics(timeSeries));
       }
-      ret.put(tag, seriesStatistics);
+      ret.put(measurementName, seriesStatistics);
     }
     return ret;
   }

@@ -62,68 +62,68 @@
 
 # 使用方法
 ## 准备工作
-在使用LogVisualizer之前，你需要对其进行构建。LogVisualizer被集成到server模块作为一个系统工具，因此你
-可以通过构建server模块来同时构建LogVisualizer。你可以使用以下命令：
+在使用LogVisualizer之前，您需要对其进行构建。LogVisualizer被集成到server模块作为一个系统工具，因此您
+可以通过构建server模块来同时构建LogVisualizer。您可以使用以下命令：
 > mvn clean package -pl server -DskipTests
 
-之后你能在这个目录下找到LogVisualizer的启动脚本： 
+之后您能在这个目录下找到LogVisualizer的启动脚本： 
 `server/target/iotdb-server-{project-version}-SNAPSHOT/tools/logVisualize`
 
 ## 启动图形界面
-你可以通过脚本`log-visualizer.sh` (在Windows下为`log-visualizer.bat`)来启动LogVisualizer. 这将会启动
+您可以通过脚本`log-visualizer.sh` (在Windows下为`log-visualizer.bat`)来启动LogVisualizer. 这将会启动
 一个如下图所示的图形界面:
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/main_panel.png?raw=true">
 
 ## 选择日志文件
-首先，你需要点击图示的按钮选择一个含有待可视化日志的文件。注意：我们目前仅支持单行日志，多行日志无法
+首先，您需要点击图示的按钮选择一个含有待可视化日志的文件。注意：我们目前仅支持单行日志，多行日志无法
 被正确解析而会被忽略。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/select_log_file.png?raw=true">
 
 ## 选择解析器配置文件
-然后，你还需要选择一个解析器配置文件，该文件将告诉LogVisualizer如何解析日志。对于IoTDB产生的日志，我们在
-`tools\default.log.pattern`里提供了一个例子。如果你需要解析的日志与IoTDB的日志具有相同的格式，你可以
-直接使用该文件。否则，你需要仔细阅读该样例文件，并根据你的日志结构进行相应的修改。
+然后，您还需要选择一个解析器配置文件，该文件将告诉LogVisualizer如何解析日志。对于IoTDB产生的日志，我们在
+`tools\default.log.pattern`里提供了一个例子。如果您需要解析的日志与IoTDB的日志具有相同的格式，您可以
+直接使用该文件。否则，您需要仔细阅读该样例文件，并根据您的日志结构进行相应的修改。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/select_log_parser_property.png?raw=true">
 
 ## 载入日志
 之后，点击`Load logs`按钮来让LogVisualizer准备对这些日志进行解析。如果准备成功，按钮上方将显示
-`Logs are successfully loaded`。否则将会弹出一个对话框提示错误，你需要根据错误内容进行相应处理。
+`Logs are successfully loaded`。否则将会弹出一个对话框提示错误，您需要根据错误内容进行相应处理。
  
  <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/load_logs.png?raw=true">
  
 ## 加载可视化计划
-接下来，你可以选择加载磁盘上已有的可视化计划或者新建计划。要加载已有的计划，只需要点击 `Load plans`
+接下来，您可以选择加载磁盘上已有的可视化计划或者新建计划。要加载已有的计划，只需要点击 `Load plans`
 按钮，并在弹出的对话框中选择想要加载的计划文件或者包含计划文件的文件夹。注意，如果选择文件夹，该文件
 夹必须只包含计划文件。
 
  <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/load_plan.png?raw=true">
  
 ## 新建可视化计划
-现在，我们将展示如何使用图形界面创建一个新的可视化计划，你也可以参考已有的计划文件，使用文本编辑器编写。
+现在，我们将展示如何使用图形界面创建一个新的可视化计划，您也可以参考已有的计划文件，使用文本编辑器编写。
 首先点击`Create plan`按钮并选择存放新计划的文件，新计划将出现在右边的列表。选择的文件名将作为新计划的
 名称，该名称不能与已有的计划重复。
 
  <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/create_plan.png?raw=true">
 
 ## 编辑可视化计划
-在创建了一个新的计划以后，你可以在右边的面板中对其进行编辑。我们在 `tools/logVisualize/plans/flushTimeConsumption.plan`
-提供了一个样例来帮助你理解计划的每一个字段的含义以及应该如何设置它们，我们强烈推荐你仔细阅读该样例。
-你也可以编辑其他已经加载了的计划。编辑结束后请务必点击`Save plan`按钮来保存您的修改。在下图的例子中，
+在创建了一个新的计划以后，您可以在右边的面板中对其进行编辑。我们在 `tools/logVisualize/plans/flushTimeConsumption.plan`
+提供了一个样例来帮助您理解计划的每一个字段的含义以及应该如何设置它们，我们强烈推荐您仔细阅读该样例。
+您也可以编辑其他已经加载了的计划。编辑结束后请务必点击`Save plan`按钮来保存您的修改。在下图的例子中，
 我们给出了如何设计一个计划让它能对任务的完成时间进行可视化，并将任务按照其类别进行分组。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/edit_plan.png?raw=true">
 
 ## 删除可视化计划
-如果你不再想使用某个计划，你可以选中它并点击`Delete plan`按钮。这将永久地把该计划从磁盘上移除。
+如果您不再想使用某个计划，您可以选中它并点击`Delete plan`按钮。这将永久地把该计划从磁盘上移除。
 
 ## 执行可视化计划
-最后，选中一个计划并点击`Execute plan`就可以执行该计划。请确保你之前已经加载了日志。计划执行以后，
+最后，选中一个计划并点击`Execute plan`就可以执行该计划。请确保您之前已经加载了日志。计划执行以后，
 主界面上将会多出两个页面，第一个页面包含了若干个时间序列图，每一个对应了计划里的一个分组并且包含了
-计划中的所有测点（measurement），第二个页面包含了对每一组的日志的每个测点的统计信息。当你结束对一个
-页面的浏览以后，你可以点击页面右上角的按钮将其关闭。
+计划中的所有测点（measurement），第二个页面包含了对每一组的日志的每个测点的统计信息。当您结束对一个
+页面的浏览以后，您可以点击页面右上角的按钮将其关闭。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/execute_plan.png?raw=true">
 

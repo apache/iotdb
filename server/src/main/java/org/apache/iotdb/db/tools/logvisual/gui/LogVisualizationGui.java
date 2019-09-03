@@ -119,7 +119,7 @@ public class LogVisualizationGui {
         this::onTabClose);
     ResultStatisticTab oldTableTab = resultTablePanels.get(tabName);
     if (oldTableTab != null) {
-      tabbedPane.remove(oldPlotTab);
+      tabbedPane.remove(oldTableTab);
     }
     resultTablePanels.put(tabName, resultStatisticTab);
     tabbedPane.add(resultStatisticTab);
