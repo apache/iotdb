@@ -33,13 +33,13 @@ private[tsfile] class TsFileOutputWriter(
                                           context: TaskAttemptContext) extends OutputWriter {
 
   private val recordWriter: RecordWriter[NullWritable, TSRecord] = {
-    val fileSchema = Converter.toTsFileSchema(dataSchema, options)
+    val fileSchema = WideConverter.toTsFileSchema(dataSchema, options)
     new TsFileOutputFormat(fileSchema).getRecordWriter(context)
   }
 
   override def write(row: InternalRow): Unit = {
     if (row != null) {
-      val tsRecord = Converter.toTsRecord(row, dataSchema)
+      val tsRecord = WideConverter.toTsRecord(row, dataSchema)
       tsRecord.foreach(r => {
         recordWriter.write(NullWritable.get(), r)
       })

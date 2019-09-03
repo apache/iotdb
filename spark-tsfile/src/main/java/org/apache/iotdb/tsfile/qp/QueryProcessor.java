@@ -43,7 +43,6 @@ import java.util.Map;
  * e.g.
  * TSFile's SQL: select s1,s2 from root.car.d1 where s1 = 10
  * SparkSQL's SQL: select s1,s2 from XXX where delta_object = d1
- *
  */
 public class QueryProcessor {
 
@@ -53,7 +52,7 @@ public class QueryProcessor {
 
         List<TSQueryPlan> queryPlans = new ArrayList<>();
 
-        if(filter != null) {
+        if (filter != null) {
             RemoveNotOptimizer removeNot = new RemoveNotOptimizer();
             filter = removeNot.optimize(filter);
 
@@ -78,11 +77,10 @@ public class QueryProcessor {
         }
         // merge query plan
         Map<List<String>, List<TSQueryPlan>> pathMap = new HashMap<>();
-        for(TSQueryPlan tsQueryPlan : queryPlans){
-            if(pathMap.containsKey(tsQueryPlan.getPaths())){
+        for (TSQueryPlan tsQueryPlan : queryPlans) {
+            if (pathMap.containsKey(tsQueryPlan.getPaths())) {
                 pathMap.get(tsQueryPlan.getPaths()).add(tsQueryPlan);
-            }
-            else{
+            } else {
                 List<TSQueryPlan> plans = new ArrayList<>();
                 plans.add(tsQueryPlan);
                 pathMap.put(tsQueryPlan.getPaths(), plans);
@@ -91,13 +89,12 @@ public class QueryProcessor {
 
         queryPlans.clear();
 
-        for(List<TSQueryPlan> plans : pathMap.values()){
+        for (List<TSQueryPlan> plans : pathMap.values()) {
             TSQueryPlan mergePlan = null;
-            for(TSQueryPlan plan : plans){
-                if(mergePlan == null){
+            for (TSQueryPlan plan : plans) {
+                if (mergePlan == null) {
                     mergePlan = plan;
-                }
-                else{
+                } else {
                     FilterOperator timeFilterOperator = new FilterOperator(SQLConstant.KW_OR);
                     List<FilterOperator> timeFilterChildren = new ArrayList<>();
                     timeFilterChildren.add(mergePlan.getTimeFilterOperator());
@@ -115,8 +112,6 @@ public class QueryProcessor {
             }
             queryPlans.add(mergePlan);
         }
-        //
-
 
         return queryPlans;
     }
@@ -148,7 +143,7 @@ public class QueryProcessor {
             singleFilterList = filterOperator.getChildren();
         }
 
-        if(singleFilterList == null) {
+        if (singleFilterList == null) {
             return null;
         }
 
@@ -159,7 +154,7 @@ public class QueryProcessor {
             } else {
                 String singlePath = child.getSinglePath();
                 if (columnNames.contains(singlePath)) {
-                    if(!columnFilterOperators.contains(child))
+                    if (!columnFilterOperators.contains(child))
                         columnFilterOperators.add(child);
                     else
                         throw new QueryOperatorException(
