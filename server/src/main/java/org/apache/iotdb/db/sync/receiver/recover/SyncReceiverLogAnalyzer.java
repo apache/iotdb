@@ -36,8 +36,6 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncReceiverLogAnalyzer.class);
 
-  private static final int WAIT_TIMEOUT = 2000;
-
   private SyncReceiverLogAnalyzer() {
 
   }
@@ -71,11 +69,6 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
     }
     if (FileLoaderManager.getInstance().containsFileLoader(senderFolder.getName())) {
       FileLoaderManager.getInstance().getFileLoader(senderFolder.getName()).endSync();
-      try {
-        Thread.sleep(WAIT_TIMEOUT);  // wait for file loader to clean up resource
-      } catch (InterruptedException e) {
-        LOGGER.error("Can not wait for recovery to complete.", e);
-      }
     } else {
       scanLogger(FileLoader.createFileLoader(senderFolder),
           new File(senderFolder, Constans.SYNC_LOG_NAME),

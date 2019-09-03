@@ -74,6 +74,7 @@ public class SyncReceiverLoggerTest {
       toBeSyncedFiles
           .add(new File(getReceiverFolderFile(), "new" + i).getAbsolutePath());
     }
+    receiverLogger.close();
     int count = 0;
     int mode = 0;
     try (BufferedReader br = new BufferedReader(

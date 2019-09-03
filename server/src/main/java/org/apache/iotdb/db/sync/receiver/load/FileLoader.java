@@ -16,7 +16,9 @@ package org.apache.iotdb.db.sync.receiver.load;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayDeque;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -30,13 +32,13 @@ public class FileLoader implements IFileLoader {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileLoader.class);
 
-  private static final int WAIT_TIME = 1000;
+  private static final int WAIT_TIME = 100;
 
   private String syncFolderPath;
 
   private String senderName;
 
-  private ArrayDeque<LoadTask> queue = new ArrayDeque<>();
+  private BlockingQueue<LoadTask> queue = new LinkedBlockingQueue<>();
 
   private LoadLogger loadLog;
 
@@ -65,23 +67,16 @@ public class FileLoader implements IFileLoader {
   private Runnable loadTaskRunner = () -> {
     try {
       while (true) {
-        if (queue.isEmpty()) {
-          if (endSync) {
-            cleanUp();
-            break;
-          }
-          synchronized (queue) {
-            if (queue.isEmpty()) {
-              queue.wait(WAIT_TIME);
-            }
-          }
+        if (queue.isEmpty() && endSync) {
+          cleanUp();
+          break;
         }
-        if (!queue.isEmpty()) {
-          LoadTask task = queue.poll();
+        LoadTask loadTask = queue.poll(WAIT_TIME, TimeUnit.MILLISECONDS);
+        if (loadTask != null) {
           try {
-            handleLoadTask(task);
+            handleLoadTask(loadTask);
           } catch (IOException e) {
-            LOGGER.error("Can not load task {}", task, e);
+            LOGGER.error("Can not load task {}", loadTask, e);
           }
         }
       }
@@ -92,18 +87,12 @@ public class FileLoader implements IFileLoader {
 
   @Override
   public void addDeletedFileName(File deletedFile) {
-    synchronized (queue) {
-      queue.add(new LoadTask(deletedFile, LoadType.DELETE));
-      queue.notify();
-    }
+    queue.add(new LoadTask(deletedFile, LoadType.DELETE));
   }
 
   @Override
   public void addTsfile(File tsfile) {
-    synchronized (queue) {
-      queue.add(new LoadTask(tsfile, LoadType.ADD));
-      queue.notify();
-    }
+    queue.add(new LoadTask(tsfile, LoadType.ADD));
   }
 
   @Override
