@@ -707,7 +707,7 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
     checkMetadataArgs(dataType, encodeType, compressor);
     Map<String, String> props = new HashMap<>(ctx.propertyClauses().propertyClause().size() + 1, 1);
     for (TSParser.PropertyClauseContext propertyClauseContext : ctx.propertyClauses().propertyClause()) {
-      props.put(propertyClauseContext.propertyName.getText(), propertyClauseContext.pv.getText());
+      props.put(propertyClauseContext.propertyName.getText().toLowerCase(), propertyClauseContext.pv.getText());
     }
     MetadataOperator metadataOperator = new MetadataOperator(SQLConstant.TOK_METADATA_CREATE,
             MetadataOperator.NamespaceType.ADD_PATH);
