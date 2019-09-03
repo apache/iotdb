@@ -31,7 +31,7 @@ import java.io.IOException;
 public interface ISyncSenderLogger {
 
   /**
-   * Start sync deleted files name
+   * Start to sync deleted files name
    * @throws IOException
    */
   void startSyncDeletedFilesName() throws IOException;
@@ -44,7 +44,7 @@ public interface ISyncSenderLogger {
   void finishSyncDeletedFileName(File file) throws IOException;
 
   /**
-   * Start sync new tsfiles
+   * Start to sync new tsfiles
    * @throws IOException
    */
   void startSyncTsFiles() throws IOException;

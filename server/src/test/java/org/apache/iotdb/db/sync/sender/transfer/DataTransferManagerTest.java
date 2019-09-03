@@ -127,9 +127,9 @@ public class DataTransferManagerTest {
       assert snapFileMap.get(sg).containsAll(tsfiles);
     }
 
-    assert !new File(config.getLastFileInfo()).exists();
+    assert !new File(config.getLastFileInfoPath()).exists();
     senderLogAnalyzer.recover();
     assert !new File(config.getSnapshotPath()).exists();
-    assert new File(config.getLastFileInfo()).exists();
+    assert new File(config.getLastFileInfoPath()).exists();
   }
 }

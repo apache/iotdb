@@ -34,6 +34,7 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -46,7 +47,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.sync.sender.conf.Constans;
+import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
 import org.apache.iotdb.db.sync.sender.conf.SyncSenderConfig;
 import org.apache.iotdb.db.sync.sender.conf.SyncSenderDescriptor;
 import org.apache.iotdb.db.sync.sender.manage.SyncFileManager;
@@ -65,9 +66,6 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * SyncSenderImpl is used to transfer tsfiles that needs to sync to receiver.
- */
 public class DataTransferManager implements IDataTransferManager {
 
   private static final Logger logger = LoggerFactory.getLogger(DataTransferManager.class);
@@ -191,7 +189,7 @@ public class DataTransferManager implements IDataTransferManager {
       if (syncStatus) {
         logger.info("Sync process for receiver {} is in execution!", config.getSyncReceiverName());
       }
-    }, Constans.SYNC_MONITOR_DELAY, Constans.SYNC_MONITOR_PERIOD, TimeUnit.SECONDS);
+    }, SyncConstant.SYNC_MONITOR_DELAY, SyncConstant.SYNC_MONITOR_PERIOD, TimeUnit.SECONDS);
   }
 
   /**
@@ -205,7 +203,7 @@ public class DataTransferManager implements IDataTransferManager {
         logger.error("Sync failed", e);
         stop();
       }
-    }, Constans.SYNC_PROCESS_DELAY, Constans.SYNC_PROCESS_PERIOD, TimeUnit.SECONDS);
+    }, SyncConstant.SYNC_PROCESS_DELAY, SyncConstant.SYNC_PROCESS_PERIOD, TimeUnit.SECONDS);
   }
 
   @Override
@@ -300,7 +298,6 @@ public class DataTransferManager implements IDataTransferManager {
     }
     if (!file.exists()) {
       try (FileOutputStream out = new FileOutputStream(file)) {
-        file.createNewFile();
         uuid = generateUUID();
         out.write(uuid.getBytes());
       } catch (IOException e) {
@@ -327,18 +324,15 @@ public class DataTransferManager implements IDataTransferManager {
     int retryCount = 0;
     serviceClient.initSyncData(MetadataConstant.METADATA_LOG);
     while (true) {
-      if (retryCount > Constans.MAX_SYNC_FILE_TRY) {
+      if (retryCount > SyncConstant.MAX_SYNC_FILE_TRY) {
         throw new SyncConnectionException(String
-            .format("Can not sync schema after %s retries.", Constans.MAX_SYNC_FILE_TRY));
+            .format("Can not sync schema after %s retries.", SyncConstant.MAX_SYNC_FILE_TRY));
       }
-      try {
-        if (tryToSyncSchema()) {
-          writeSyncSchemaPos(getSchemaPosFile());
-          break;
-        }
-      } finally {
-        retryCount++;
+      if (tryToSyncSchema()) {
+        writeSyncSchemaPos(getSchemaPosFile());
+        break;
       }
+      retryCount++;
     }
   }
 
@@ -347,12 +341,12 @@ public class DataTransferManager implements IDataTransferManager {
 
     // start to sync file data and get md5 of this file.
     try (BufferedReader br = new BufferedReader(new FileReader(getSchemaLogFile()));
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(Constans.DATA_CHUNK_SIZE)) {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(SyncConstant.DATA_CHUNK_SIZE)) {
       schemaFileLinePos = 0;
       while (schemaFileLinePos++ <= schemaPos) {
         br.readLine();
       }
-      MessageDigest md = MessageDigest.getInstance(Constans.MESSAGE_DIGIT_NAME);
+      MessageDigest md = MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME);
       String line;
       int cntLine = 0;
       while ((line = br.readLine()) != null) {
@@ -435,7 +429,11 @@ public class DataTransferManager implements IDataTransferManager {
     try {
       syncStatus = true;
 
+      List<String> storageGroups = config.getStorageGroupList();
       for (String sgName : allSG) {
+        if (!storageGroups.isEmpty() && !storageGroups.contains(sgName)) {
+          continue;
+        }
         lastLocalFilesMap.putIfAbsent(sgName, new HashSet<>());
         syncLog = new SyncSenderLogger(getSyncLogFile());
         try {
@@ -496,9 +494,8 @@ public class DataTransferManager implements IDataTransferManager {
     int cnt = 0;
     for (File tsfile : toBeSyncFiles) {
       cnt++;
-      File snapshotFile = null;
       try {
-        snapshotFile = makeFileSnapshot(tsfile);
+        File snapshotFile = makeFileSnapshot(tsfile);
         // firstly sync .restore file, then sync tsfile
         syncSingleFile(new File(snapshotFile, TsFileResource.RESOURCE_SUFFIX));
         syncSingleFile(snapshotFile);
@@ -509,10 +506,6 @@ public class DataTransferManager implements IDataTransferManager {
         logger.info(
             "Tsfile {} can not make snapshot, so skip the tsfile and continue to sync other tsfiles",
             tsfile, e);
-      } finally {
-        if (snapshotFile != null) {
-          snapshotFile.delete();
-        }
       }
     }
     logger.info("Sync process has finished storage group {}.", sgName);
@@ -545,21 +538,21 @@ public class DataTransferManager implements IDataTransferManager {
   private void syncSingleFile(File snapshotFile) throws SyncConnectionException {
     try {
       int retryCount = 0;
-      MessageDigest md = MessageDigest.getInstance(Constans.MESSAGE_DIGIT_NAME);
+      MessageDigest md = MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME);
       serviceClient.initSyncData(snapshotFile.getName());
       outer:
       while (true) {
         retryCount++;
-        if (retryCount > Constans.MAX_SYNC_FILE_TRY) {
+        if (retryCount > SyncConstant.MAX_SYNC_FILE_TRY) {
           throw new SyncConnectionException(String
               .format("Can not sync file %s after %s tries.", snapshotFile.getAbsoluteFile(),
-                  Constans.MAX_SYNC_FILE_TRY));
+                  SyncConstant.MAX_SYNC_FILE_TRY));
         }
         md.reset();
-        byte[] buffer = new byte[Constans.DATA_CHUNK_SIZE];
+        byte[] buffer = new byte[SyncConstant.DATA_CHUNK_SIZE];
         int dataLength;
         try (FileInputStream fis = new FileInputStream(snapshotFile);
-            ByteArrayOutputStream bos = new ByteArrayOutputStream(Constans.DATA_CHUNK_SIZE)) {
+            ByteArrayOutputStream bos = new ByteArrayOutputStream(SyncConstant.DATA_CHUNK_SIZE)) {
           while ((dataLength = fis.read(buffer)) != -1) { // cut the file into pieces to send
             bos.write(buffer, 0, dataLength);
             md.update(buffer, 0, dataLength);
@@ -589,9 +582,9 @@ public class DataTransferManager implements IDataTransferManager {
     }
   }
 
-  private void endSync() {
+  private void endSync() throws IOException {
     File currentLocalFile = getCurrentLogFile();
-    File lastLocalFile = new File(config.getLastFileInfo());
+    File lastLocalFile = new File(config.getLastFileInfoPath());
 
     // 1. Write file list to currentLocalFile
     try (BufferedWriter bw = new BufferedWriter(new FileWriter(currentLocalFile))) {
@@ -608,7 +601,7 @@ public class DataTransferManager implements IDataTransferManager {
 
     // 2. Rename currentLocalFile to lastLocalFile
     lastLocalFile.delete();
-    currentLocalFile.renameTo(lastLocalFile);
+    FileUtils.moveFile(currentLocalFile, lastLocalFile);
 
     // 3. delete snapshot directory
     try {
@@ -623,7 +616,7 @@ public class DataTransferManager implements IDataTransferManager {
 
 
   private File getSchemaPosFile() {
-    return new File(config.getSenderFolderPath(), Constans.SCHEMA_POS_FILE_NAME);
+    return new File(config.getSenderFolderPath(), SyncConstant.SCHEMA_POS_FILE_NAME);
   }
 
   private File getSchemaLogFile() {
@@ -637,11 +630,11 @@ public class DataTransferManager implements IDataTransferManager {
   }
 
   private File getSyncLogFile() {
-    return new File(config.getSenderFolderPath(), Constans.SYNC_LOG_NAME);
+    return new File(config.getSenderFolderPath(), SyncConstant.SYNC_LOG_NAME);
   }
 
   private File getCurrentLogFile() {
-    return new File(config.getSenderFolderPath(), Constans.CURRENT_LOCAL_FILE_NAME);
+    return new File(config.getSenderFolderPath(), SyncConstant.CURRENT_LOCAL_FILE_NAME);
   }
 
   public void setConfig(SyncSenderConfig config) {

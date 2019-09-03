@@ -50,13 +50,15 @@ import org.slf4j.LoggerFactory;
 public class SyncServerManager implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(SyncServerManager.class);
-  private Thread syncServerThread;
+
   private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+
+  private Thread syncServerThread;
 
   private SyncServerManager() {
   }
 
-  public static final SyncServerManager getInstance() {
+  public static SyncServerManager getInstance() {
     return ServerManagerHolder.INSTANCE;
   }
 

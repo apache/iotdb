@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.sync.sender.conf.SyncSenderDescriptor;
@@ -45,25 +46,25 @@ public class SyncFileManager implements ISyncFileManager {
   private Set<String> allSG;
 
   /**
-   * Key is storage group, value is the set of current sealed tsfile in the sg.
+   * Key is storage group, value is the set of current sealed tsfile in the storage group.
    */
   private Map<String, Set<File>> currentSealedLocalFilesMap;
 
   /**
-   * Key is storage group, value is the set of last local tsfiles in the sg, which don't contains
-   * those tsfiles which are not synced successfully.
+   * Key is storage group, value is the set of last local tsfiles in the storage group, which don't
+   * contains those tsfiles which are not synced successfully.
    */
   private Map<String, Set<File>> lastLocalFilesMap;
 
   /**
    * Key is storage group, value is the valid set of deleted tsfiles which need to be synced to
-   * receiver end in the sg.
+   * receiver end in the storage group.
    */
   private Map<String, Set<File>> deletedFilesMap;
 
   /**
    * Key is storage group, value is the valid set of new tsfiles which need to be synced to receiver
-   * end in the sg.
+   * end in the storage group.
    */
   private Map<String, Set<File>> toBeSyncedFilesMap;
 
@@ -91,9 +92,11 @@ public class SyncFileManager implements ISyncFileManager {
     for (File sgFolder : allSGFolders) {
       allSG.add(sgFolder.getName());
       currentAllLocalFiles.putIfAbsent(sgFolder.getName(), new HashSet<>());
-      Arrays.stream(sgFolder.listFiles())
-          .forEach(file -> currentAllLocalFiles.get(sgFolder.getName())
-              .add(new File(sgFolder.getAbsolutePath(), file.getName())));
+      if (sgFolder.listFiles() != null) {
+        Arrays.stream(sgFolder.listFiles())
+            .forEach(file -> currentAllLocalFiles.get(sgFolder.getName())
+                .add(new File(sgFolder.getAbsolutePath(), file.getName())));
+      }
     }
 
     // get sealed tsfiles
@@ -102,11 +105,13 @@ public class SyncFileManager implements ISyncFileManager {
       currentSealedLocalFilesMap.putIfAbsent(sgName, new HashSet<>());
       for (File file : entry.getValue()) {
         if (file.getName().endsWith(ModificationFile.FILE_SUFFIX) || file.getName()
-            .endsWith(TsFileResource.RESOURCE_SUFFIX)) {
+            .endsWith(TsFileResource.RESOURCE_SUFFIX) || file.getName()
+            .endsWith(MergeTask.MERGE_SUFFIX)) {
           continue;
         }
         if (new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists() && !new File(
-            file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists()) {
+            file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists() && !new File(
+            file.getAbsolutePath() + MergeTask.MERGE_SUFFIX).exists()) {
           currentSealedLocalFilesMap.get(sgName).add(file);
         }
       }
@@ -136,7 +141,8 @@ public class SyncFileManager implements ISyncFileManager {
   public void getValidFiles(String dataDir) throws IOException {
     allSG = new HashSet<>();
     getCurrentLocalFiles(dataDir);
-    getLastLocalFiles(new File(SyncSenderDescriptor.getInstance().getConfig().getLastFileInfo()));
+    getLastLocalFiles(
+        new File(SyncSenderDescriptor.getInstance().getConfig().getLastFileInfoPath()));
     toBeSyncedFilesMap = new HashMap<>();
     deletedFilesMap = new HashMap<>();
     for (String sgName : allSG) {

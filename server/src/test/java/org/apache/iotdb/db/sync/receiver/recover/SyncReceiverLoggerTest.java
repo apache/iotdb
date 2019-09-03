@@ -28,7 +28,7 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.sync.sender.conf.Constans;
+import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -55,7 +55,7 @@ public class SyncReceiverLoggerTest {
   @Test
   public void testSyncReceiverLogger() throws IOException {
     receiverLogger = new SyncReceiverLogger(
-        new File(getReceiverFolderFile(), Constans.SYNC_LOG_NAME));
+        new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME));
     Set<String> deletedFileNames = new HashSet<>();
     Set<String> deletedFileNamesTest = new HashSet<>();
     receiverLogger.startSyncDeletedFilesName();
@@ -78,7 +78,7 @@ public class SyncReceiverLoggerTest {
     int count = 0;
     int mode = 0;
     try (BufferedReader br = new BufferedReader(
-        new FileReader(new File(getReceiverFolderFile(), Constans.SYNC_LOG_NAME)))) {
+        new FileReader(new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME)))) {
       String line;
       while ((line = br.readLine()) != null) {
         count++;
@@ -103,7 +103,7 @@ public class SyncReceiverLoggerTest {
   }
 
   private File getReceiverFolderFile() {
-    return new File(dataDir + File.separatorChar + Constans.SYNC_RECEIVER + File.separatorChar
+    return new File(dataDir + File.separatorChar + SyncConstant.SYNC_RECEIVER + File.separatorChar
         + "127.0.0.1_5555");
   }
 }

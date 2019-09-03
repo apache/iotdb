@@ -41,7 +41,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.receiver.load.FileLoader;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderTest;
-import org.apache.iotdb.db.sync.sender.conf.Constans;
+import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -90,7 +90,7 @@ public class SyncReceiverLogAnalyzerTest {
   @Test
   public void recover() throws IOException, StorageEngineException {
     receiverLogger = new SyncReceiverLogger(
-        new File(getReceiverFolderFile(), Constans.SYNC_LOG_NAME));
+        new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME));
     fileLoader = FileLoader.createFileLoader(getReceiverFolderFile());
     Map<String, Set<File>> allFileList = new HashMap<>();
     Map<String, Set<File>> correctSequenceLoadedFileMap = new HashMap<>();
@@ -151,13 +151,13 @@ public class SyncReceiverLogAnalyzerTest {
     }
 
     receiverLogger.close();
-    assert new File(getReceiverFolderFile(), Constans.LOAD_LOG_NAME).exists();
-    assert new File(getReceiverFolderFile(), Constans.SYNC_LOG_NAME).exists();
+    assert new File(getReceiverFolderFile(), SyncConstant.LOAD_LOG_NAME).exists();
+    assert new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME).exists();
     assert FileLoaderManager.getInstance().containsFileLoader(getReceiverFolderFile().getName());
     int count = 0, mode = 0;
     Set<String> toBeSyncedFilesTest = new HashSet<>();
     try (BufferedReader br = new BufferedReader(
-        new FileReader(new File(getReceiverFolderFile(), Constans.SYNC_LOG_NAME)))) {
+        new FileReader(new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME)))) {
       String line;
       while ((line = br.readLine()) != null) {
         count++;
@@ -189,17 +189,17 @@ public class SyncReceiverLogAnalyzerTest {
       LOGGER.error("Fail to wait for loading new tsfiles", e);
     }
 
-    assert !new File(getReceiverFolderFile(), Constans.LOAD_LOG_NAME).exists();
-    assert !new File(getReceiverFolderFile(), Constans.SYNC_LOG_NAME).exists();
+    assert !new File(getReceiverFolderFile(), SyncConstant.LOAD_LOG_NAME).exists();
+    assert !new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME).exists();
   }
 
 
   private File getReceiverFolderFile() {
-    return new File(dataDir + File.separatorChar + Constans.SYNC_RECEIVER + File.separatorChar
+    return new File(dataDir + File.separatorChar + SyncConstant.SYNC_RECEIVER + File.separatorChar
         + "127.0.0.1_5555");
   }
 
   private File getSnapshotFolder() {
-    return new File(getReceiverFolderFile(), Constans.RECEIVER_DATA_FOLDER_NAME);
+    return new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME);
   }
 }

@@ -18,13 +18,15 @@
  */
 package org.apache.iotdb.db.sync.sender.conf;
 
-public class Constans {
+public class SyncConstant {
 
-  private Constans() {
+  private SyncConstant() {
   }
 
   public static final String CONFIG_NAME = "iotdb-sync-client.properties";
+
   public static final String SYNC_SENDER = "sync-sender";
+
   public static final String SYNC_RECEIVER = "sync-receiver";
 
   public static final String MESSAGE_DIGIT_NAME = "MD5";
@@ -32,7 +34,7 @@ public class Constans {
   public static final String SYNC_DIR_NAME_SEPARATOR = "_";
 
   /**
-   * Split data file , block size at each transmission
+   * Split data file, block size at each transmission
    **/
   public static final int DATA_CHUNK_SIZE = 64 * 1024 * 1024;
 

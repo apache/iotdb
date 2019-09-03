@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.sync.sender.conf.Constans;
+import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +49,7 @@ public class FileLoader implements IFileLoader {
   private FileLoader(String senderName, String syncFolderPath) throws IOException {
     this.senderName = senderName;
     this.syncFolderPath = syncFolderPath;
-    this.loadLog = new LoadLogger(new File(syncFolderPath, Constans.LOAD_LOG_NAME));
+    this.loadLog = new LoadLogger(new File(syncFolderPath, SyncConstant.LOAD_LOG_NAME));
     FileLoaderManager.getInstance().addFileLoader(senderName, this);
     FileLoaderManager.getInstance().addLoadTaskRunner(loadTaskRunner);
   }
@@ -151,9 +151,9 @@ public class FileLoader implements IFileLoader {
   public void cleanUp() {
     try {
       loadLog.close();
-      new File(syncFolderPath, Constans.SYNC_LOG_NAME).delete();
-      new File(syncFolderPath, Constans.LOAD_LOG_NAME).delete();
-      FileUtils.deleteDirectory(new File(syncFolderPath, Constans.RECEIVER_DATA_FOLDER_NAME));
+      new File(syncFolderPath, SyncConstant.SYNC_LOG_NAME).delete();
+      new File(syncFolderPath, SyncConstant.LOAD_LOG_NAME).delete();
+      FileUtils.deleteDirectory(new File(syncFolderPath, SyncConstant.RECEIVER_DATA_FOLDER_NAME));
       FileLoaderManager.getInstance().removeFileLoader(senderName);
     } catch (IOException e) {
       LOGGER.error("Can not clean up sync resource.", e);

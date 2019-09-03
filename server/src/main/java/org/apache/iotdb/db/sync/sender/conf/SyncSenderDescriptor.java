@@ -23,6 +23,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.slf4j.Logger;
@@ -59,15 +62,15 @@ public class SyncSenderDescriptor {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
       if (url != null) {
         url = url + File.separatorChar + "conf" + File.separatorChar
-            + Constans.CONFIG_NAME;
+            + SyncConstant.CONFIG_NAME;
       } else {
         logger.warn(
             "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file {}, use default configuration",
-            Constans.CONFIG_NAME);
+            SyncConstant.CONFIG_NAME);
         return;
       }
     } else {
-      url += (File.separatorChar + Constans.CONFIG_NAME);
+      url += (File.separatorChar + SyncConstant.CONFIG_NAME);
     }
 
     try {
@@ -88,10 +91,17 @@ public class SyncSenderDescriptor {
       conf.setSyncPeriodInSecond(Integer.parseInt(properties
           .getProperty("sync_period_in_second",
               Integer.toString(conf.getSyncPeriodInSecond()))));
+      String storageGroups = properties.getProperty("sync_storage_groups", null);
+      if (storageGroups != null) {
+        String[] splits = storageGroups.split(",");
+        List<String> storageGroupList = new ArrayList<>();
+        Arrays.stream(splits).forEach(sg -> storageGroupList.add(sg.trim()));
+        conf.setStorageGroupList(storageGroupList);
+      }
     } catch (IOException e) {
-      logger.warn("Cannot load config file, use default configuration.", e);
+      logger.warn("Cannot load sync config file, use default sync configuration.", e);
     } catch (Exception e) {
-      logger.warn("Error format in config file, use default configuration.", e);
+      logger.warn("Error format in sync config file, use default sync configuration.", e);
     } finally {
       try {
         inputStream.close();

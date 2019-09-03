@@ -27,7 +27,7 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.sync.sender.conf.Constans;
+import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,15 +41,15 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
 
   public SyncSenderLogAnalyzer(String senderPath) {
     this.senderPath = senderPath;
-    this.currentLocalFile = new File(senderPath, Constans.CURRENT_LOCAL_FILE_NAME);
-    this.lastLocalFile = new File(senderPath, Constans.LAST_LOCAL_FILE_NAME);
-    this.syncLogFile = new File(senderPath, Constans.SYNC_LOG_NAME);
+    this.currentLocalFile = new File(senderPath, SyncConstant.CURRENT_LOCAL_FILE_NAME);
+    this.lastLocalFile = new File(senderPath, SyncConstant.LAST_LOCAL_FILE_NAME);
+    this.syncLogFile = new File(senderPath, SyncConstant.SYNC_LOG_NAME);
   }
 
   @Override
   public void recover() throws IOException {
     if (currentLocalFile.exists() && !lastLocalFile.exists()) {
-      currentLocalFile.renameTo(lastLocalFile);
+      FileUtils.moveFile(currentLocalFile, lastLocalFile);
     } else {
       Set<String> lastLocalFiles = new HashSet<>();
       Set<String> deletedFiles = new HashSet<>();
@@ -60,7 +60,7 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
       lastLocalFiles.addAll(newFiles);
       updateLastLocalFile(lastLocalFiles);
     }
-    FileUtils.deleteDirectory(new File(senderPath, Constans.DATA_SNAPSHOT_NAME));
+    FileUtils.deleteDirectory(new File(senderPath, SyncConstant.DATA_SNAPSHOT_NAME));
     syncLogFile.delete();
   }
 

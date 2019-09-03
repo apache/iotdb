@@ -46,7 +46,7 @@ import org.apache.iotdb.db.sync.receiver.load.FileLoader;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogAnalyzer;
 import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogger;
-import org.apache.iotdb.db.sync.sender.conf.Constans;
+import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SyncUtils;
 import org.apache.iotdb.service.sync.thrift.ResultStatus;
@@ -86,7 +86,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   public ResultStatus check(String ipAddress, String uuid) {
     Thread.currentThread().setName(ThreadName.SYNC_SERVER.getName());
     if (SyncUtils.verifyIPSegment(config.getIpWhiteList(), ipAddress)) {
-      senderName.set(ipAddress + Constans.SYNC_DIR_NAME_SEPARATOR + uuid);
+      senderName.set(ipAddress + SyncConstant.SYNC_DIR_NAME_SEPARATOR + uuid);
       if (checkRecovery()) {
         return getSuccessResult();
       } else {
@@ -117,7 +117,7 @@ public class SyncServiceImpl implements SyncService.Iface {
       initPath();
       currentSG.remove();
       FileLoader.createFileLoader(senderName.get(), syncFolderPath.get());
-      syncLog.set(new SyncReceiverLogger(new File(getSyncDataPath(), Constans.SYNC_LOG_NAME)));
+      syncLog.set(new SyncReceiverLogger(new File(getSyncDataPath(), SyncConstant.SYNC_LOG_NAME)));
       return getSuccessResult();
     } catch (DiskSpaceInsufficientException | IOException e) {
       logger.error("Can not receiver data from sender", e);
@@ -132,7 +132,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     String dataDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
         .getParentFile().getAbsolutePath();
     syncFolderPath
-        .set(FilePathUtils.regularizePath(dataDir) + Constans.SYNC_RECEIVER + File.separatorChar
+        .set(FilePathUtils.regularizePath(dataDir) + SyncConstant.SYNC_RECEIVER + File.separatorChar
             + senderName.get());
   }
 
@@ -141,7 +141,7 @@ public class SyncServiceImpl implements SyncService.Iface {
    */
   @Override
   public ResultStatus init(String storageGroup) {
-    logger.info("Sync process starts to receive data of storage group {}", storageGroup);
+    logger.info("Sync process started to receive data of storage group {}", storageGroup);
     currentSG.set(storageGroup);
     try {
       syncLog.get().startSyncDeletedFilesName();
@@ -307,6 +307,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     try {
       syncLog.get().close();
       FileLoaderManager.getInstance().getFileLoader(senderName.get()).endSync();
+      logger.info("Sync process for data of storage group {} ended.", currentSG.get());
     } catch (IOException e) {
       logger.error("Can not end sync", e);
       return getErrorResult(String.format("Can not end sync because %s", e.getMessage()));
@@ -315,7 +316,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   }
 
   private String getSyncDataPath() {
-    return syncFolderPath.get() + File.separatorChar + Constans.RECEIVER_DATA_FOLDER_NAME;
+    return syncFolderPath.get() + File.separatorChar + SyncConstant.RECEIVER_DATA_FOLDER_NAME;
   }
 
   private ResultStatus getSuccessResult() {

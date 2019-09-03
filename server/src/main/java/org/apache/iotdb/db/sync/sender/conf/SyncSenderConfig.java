@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.sync.sender.conf;
 
 import java.io.File;
+import java.util.List;
 
 public class SyncSenderConfig {
 
@@ -34,21 +35,27 @@ public class SyncSenderConfig {
 
   private String uuidPath;
 
-  private String lastFileInfo;
+  private String lastFileInfoPath;
 
   private String snapshotPath;
+
+  /**
+   * Storage groups which participate in sync process
+   */
+  private List<String> storageGroupList;
 
   /**
    * Update paths based on data directory
    */
   public void update(String dataDirectory) {
-    senderFolderPath = dataDirectory + File.separatorChar + Constans.SYNC_SENDER + File.separatorChar +
-        getSyncReceiverName();
-    lockFilePath = senderFolderPath + File.separatorChar + Constans.LOCK_FILE_NAME;
-    uuidPath = senderFolderPath + File.separatorChar + Constans.UUID_FILE_NAME;
-    lastFileInfo = senderFolderPath + File.separatorChar + Constans.LAST_LOCAL_FILE_NAME;
-    snapshotPath = senderFolderPath + File.separatorChar + Constans.DATA_SNAPSHOT_NAME;
-    if(!new File(snapshotPath).exists()){
+    senderFolderPath =
+        dataDirectory + File.separatorChar + SyncConstant.SYNC_SENDER + File.separatorChar +
+            getSyncReceiverName();
+    lockFilePath = senderFolderPath + File.separatorChar + SyncConstant.LOCK_FILE_NAME;
+    uuidPath = senderFolderPath + File.separatorChar + SyncConstant.UUID_FILE_NAME;
+    lastFileInfoPath = senderFolderPath + File.separatorChar + SyncConstant.LAST_LOCAL_FILE_NAME;
+    snapshotPath = senderFolderPath + File.separatorChar + SyncConstant.DATA_SNAPSHOT_NAME;
+    if (!new File(snapshotPath).exists()) {
       new File(snapshotPath).mkdirs();
     }
   }
@@ -93,12 +100,12 @@ public class SyncSenderConfig {
     this.lockFilePath = lockFilePath;
   }
 
-  public String getLastFileInfo() {
-    return lastFileInfo;
+  public String getLastFileInfoPath() {
+    return lastFileInfoPath;
   }
 
-  public void setLastFileInfo(String lastFileInfo) {
-    this.lastFileInfo = lastFileInfo;
+  public void setLastFileInfoPath(String lastFileInfoPath) {
+    this.lastFileInfoPath = lastFileInfoPath;
   }
 
   public String getSnapshotPath() {
@@ -114,6 +121,14 @@ public class SyncSenderConfig {
   }
 
   public String getSyncReceiverName() {
-    return serverIp + Constans.SYNC_DIR_NAME_SEPARATOR + serverPort;
+    return serverIp + SyncConstant.SYNC_DIR_NAME_SEPARATOR + serverPort;
+  }
+
+  public List<String> getStorageGroupList() {
+    return storageGroupList;
+  }
+
+  public void setStorageGroupList(List<String> storageGroupList) {
+    this.storageGroupList = storageGroupList;
   }
 }

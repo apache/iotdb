@@ -28,7 +28,7 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.sync.sender.conf.Constans;
+import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
 import org.apache.iotdb.db.sync.sender.conf.SyncSenderConfig;
 import org.apache.iotdb.db.sync.sender.conf.SyncSenderDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -59,7 +59,7 @@ public class SyncSenderLoggerTest {
   @Test
   public void testSyncSenderLogger() throws IOException {
     senderLogger = new SyncSenderLogger(
-        new File(config.getSenderFolderPath(), Constans.SYNC_LOG_NAME));
+        new File(config.getSenderFolderPath(), SyncConstant.SYNC_LOG_NAME));
     Set<String> deletedFileNames = new HashSet<>();
     Set<String> deletedFileNamesTest = new HashSet<>();
     senderLogger.startSyncDeletedFilesName();
@@ -81,7 +81,7 @@ public class SyncSenderLoggerTest {
     int count = 0;
     int mode = 0;
     try (BufferedReader br = new BufferedReader(
-        new FileReader(new File(config.getSenderFolderPath(), Constans.SYNC_LOG_NAME)))) {
+        new FileReader(new File(config.getSenderFolderPath(), SyncConstant.SYNC_LOG_NAME)))) {
       String line;
       while ((line = br.readLine()) != null) {
         count++;

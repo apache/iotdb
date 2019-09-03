@@ -28,12 +28,25 @@ import java.util.Set;
  */
 public interface ISyncSenderLogAnalyzer {
 
+  /**
+   * Recover sync tasks that were not completed properly last time, and clean up the environment.
+   */
   void recover() throws IOException;
 
+  /**
+   * Load last local files from last local info file.
+   */
   void loadLastLocalFiles(Set<String> lastLocalFiles);
 
+  /**
+   * Load the sync log, which indicates the progress of the last synchronization task.
+   * Deleted files and new tsfiles can be obtained by log analysis.
+   */
   void loadLogger(Set<String> deletedFiles, Set<String> newFiles);
 
+  /**
+   * Update the last local info file based on the log information of the last task
+   */
   void updateLastLocalFile(Set<String> currentLocalFiles) throws IOException;
 
 }

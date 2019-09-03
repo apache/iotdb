@@ -32,7 +32,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.sync.sender.conf.Constans;
+import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
 import org.apache.iotdb.db.sync.sender.conf.SyncSenderConfig;
 import org.apache.iotdb.db.sync.sender.conf.SyncSenderDescriptor;
 import org.apache.iotdb.db.sync.sender.manage.SyncFileManager;
@@ -61,7 +61,7 @@ public class SyncSenderLogAnalyzerTest {
         .getParentFile().getAbsolutePath();
     config.update(dataDir);
     senderLogger = new SyncSenderLogger(
-        new File(config.getSenderFolderPath(), Constans.SYNC_LOG_NAME));
+        new File(config.getSenderFolderPath(), SyncConstant.SYNC_LOG_NAME));
     senderLogAnalyzer = new SyncSenderLogAnalyzer(config.getSenderFolderPath());
   }
 
@@ -120,9 +120,9 @@ public class SyncSenderLogAnalyzerTest {
     }
 
     // delete some files
-    assert !new File(config.getSenderFolderPath(), Constans.SYNC_LOG_NAME).exists();
+    assert !new File(config.getSenderFolderPath(), SyncConstant.SYNC_LOG_NAME).exists();
     senderLogger = new SyncSenderLogger(
-        new File(config.getSenderFolderPath(), Constans.SYNC_LOG_NAME));
+        new File(config.getSenderFolderPath(), SyncConstant.SYNC_LOG_NAME));
     manager.getValidFiles(dataDir);
     assert !isEmpty(manager.getLastLocalFilesMap());
     senderLogger.startSyncDeletedFilesName();

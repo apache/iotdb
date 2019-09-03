@@ -22,15 +22,15 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * This interface is used to manage deleted files and new closed files that need to be synchronized in each
- * sync task.
+ * This interface is used to manage deleted files and new closed files that need to be synchronized
+ * in each sync task.
  */
 public interface ISyncFileManager {
 
   /**
    * Find out all closed and unmodified files, which means there has a .resource file and doesn't
-   * have a .mod file. For these files, they will eventually generate a new tsfile file as the merge
-   * operation is executed and executed in subsequent synchronization tasks.
+   * have a .mod file and .merge file. For these files, they will eventually generate a new tsfile
+   * file as the merge operation is executed and executed in subsequent synchronization tasks.
    *
    * @param dataDir data directory
    */

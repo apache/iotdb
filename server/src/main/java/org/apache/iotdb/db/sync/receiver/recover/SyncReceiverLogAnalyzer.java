@@ -27,7 +27,7 @@ import org.apache.iotdb.db.sync.receiver.load.FileLoader;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.load.LoadLogger;
 import org.apache.iotdb.db.sync.receiver.load.LoadType;
-import org.apache.iotdb.db.sync.sender.conf.Constans;
+import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,11 +49,11 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     LOGGER.info("Start to recover all sync state for sync receiver.");
     for (String dataDir : dataDirs) {
-      if (!new File(FilePathUtils.regularizePath(dataDir) + Constans.SYNC_RECEIVER).exists()) {
+      if (!new File(FilePathUtils.regularizePath(dataDir) + SyncConstant.SYNC_RECEIVER).exists()) {
         continue;
       }
       for (File syncFolder : new File(
-          FilePathUtils.regularizePath(dataDir) + Constans.SYNC_RECEIVER)
+          FilePathUtils.regularizePath(dataDir) + SyncConstant.SYNC_RECEIVER)
           .listFiles()) {
         recover(syncFolder);
       }
@@ -63,16 +63,16 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
 
   private boolean recover(File senderFolder) throws IOException {
     // check the state
-    if (!new File(senderFolder, Constans.SYNC_LOG_NAME).exists()) {
-      new File(senderFolder, Constans.LOAD_LOG_NAME).delete();
+    if (!new File(senderFolder, SyncConstant.SYNC_LOG_NAME).exists()) {
+      new File(senderFolder, SyncConstant.LOAD_LOG_NAME).delete();
       return true;
     }
     if (FileLoaderManager.getInstance().containsFileLoader(senderFolder.getName())) {
       FileLoaderManager.getInstance().getFileLoader(senderFolder.getName()).endSync();
     } else {
       scanLogger(FileLoader.createFileLoader(senderFolder),
-          new File(senderFolder, Constans.SYNC_LOG_NAME),
-          new File(senderFolder, Constans.LOAD_LOG_NAME));
+          new File(senderFolder, SyncConstant.SYNC_LOG_NAME),
+          new File(senderFolder, SyncConstant.LOAD_LOG_NAME));
     }
     return FileLoaderManager.getInstance().containsFileLoader(senderFolder.getName());
   }
@@ -82,11 +82,11 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     boolean recoverComplete = true;
     for (String dataDir : dataDirs) {
-      if (!new File(FilePathUtils.regularizePath(dataDir) + Constans.SYNC_RECEIVER).exists()) {
+      if (!new File(FilePathUtils.regularizePath(dataDir) + SyncConstant.SYNC_RECEIVER).exists()) {
         continue;
       }
       for (File syncFolder : new File(
-          FilePathUtils.regularizePath(dataDir) + Constans.SYNC_RECEIVER)
+          FilePathUtils.regularizePath(dataDir) + SyncConstant.SYNC_RECEIVER)
           .listFiles()) {
         if (syncFolder.getName().equals(senderName)) {
           recoverComplete &= recover(syncFolder);

@@ -27,6 +27,9 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * This class is to manage all FileLoader.
+ */
 public class FileLoaderManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileLoaderManager.class);
@@ -36,7 +39,6 @@ public class FileLoaderManager {
   private ConcurrentHashMap<String, FileLoader> fileLoaderMap;
 
   private ExecutorService loadTaskRunnerPool;
-
 
   private FileLoaderManager() {
   }

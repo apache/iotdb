@@ -21,14 +21,37 @@ package org.apache.iotdb.db.sync.receiver.load;
 import java.io.File;
 import java.io.IOException;
 
+/**
+ * This interface is used to log progress in the process of loading deleted files and new tsfiles.
+ * If the loading tasks are completed normally and there are no exceptions, the log records will be
+ * deleted; otherwise, the status can be restored according to the log at the start of each task. It
+ * ensures the correctness of synchronization module when system crash or network abnormality
+ * occur.
+ */
 public interface ILoadLogger {
 
+  /**
+   * Start to load deleted files.
+   */
   void startLoadDeletedFiles() throws IOException;
 
+  /**
+   * After a deleted file is loaded, record it in load log.
+   *
+   * @param file deleted file to be loaded
+   */
   void finishLoadDeletedFile(File file) throws IOException;
 
+  /**
+   * Start to load tsfiles
+   */
   void startLoadTsFiles() throws IOException;
 
+  /**
+   * After a new tsfile is loaded, record it in load log.
+   *
+   * @param file new tsfile to be loaded
+   */
   void finishLoadTsfile(File file) throws IOException;
 
   void close() throws IOException;

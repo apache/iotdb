@@ -37,7 +37,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.sync.sender.conf.Constans;
+import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -149,7 +149,7 @@ public class FileLoaderTest {
       LOGGER.error("Fail to wait for loading new tsfiles", e);
     }
 
-    assert !new File(getReceiverFolderFile(), Constans.RECEIVER_DATA_FOLDER_NAME).exists();
+    assert !new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists();
     Map<String, Set<File>> sequenceLoadedFileMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
@@ -235,7 +235,7 @@ public class FileLoaderTest {
       LOGGER.error("Fail to wait for loading new tsfiles", e);
     }
 
-    assert !new File(getReceiverFolderFile(), Constans.RECEIVER_DATA_FOLDER_NAME).exists();
+    assert !new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists();
     sequenceLoadedFileMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
@@ -339,7 +339,7 @@ public class FileLoaderTest {
       LOGGER.error("Fail to wait for loading new tsfiles", e);
     }
 
-    assert !new File(getReceiverFolderFile(), Constans.RECEIVER_DATA_FOLDER_NAME).exists();
+    assert !new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists();
     Map<String, Set<File>> loadedFileMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
@@ -414,11 +414,11 @@ public class FileLoaderTest {
   }
 
   private File getReceiverFolderFile() {
-    return new File(dataDir + File.separatorChar + Constans.SYNC_RECEIVER + File.separatorChar
+    return new File(dataDir + File.separatorChar + SyncConstant.SYNC_RECEIVER + File.separatorChar
         + "127.0.0.1_5555");
   }
 
   private File getSnapshotFolder() {
-    return new File(getReceiverFolderFile(), Constans.RECEIVER_DATA_FOLDER_NAME);
+    return new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME);
   }
 }

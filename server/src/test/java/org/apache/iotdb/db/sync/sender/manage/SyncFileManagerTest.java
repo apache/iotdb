@@ -270,7 +270,7 @@ public class SyncFileManagerTest {
 
   private void updateLastLocalFiles(Map<String, Set<File>> lastLocalFilesMap) {
     try (BufferedWriter bw = new BufferedWriter(
-        new FileWriter(new File(config.getLastFileInfo())))) {
+        new FileWriter(new File(config.getLastFileInfoPath())))) {
       for (Set<File> currentLocalFiles : lastLocalFilesMap.values()) {
         for (File file : currentLocalFiles) {
           bw.write(file.getAbsolutePath());
@@ -279,7 +279,7 @@ public class SyncFileManagerTest {
         bw.flush();
       }
     } catch (IOException e) {
-      logger.error("Can not clear sync log {}", config.getLastFileInfo(), e);
+      logger.error("Can not clear sync log {}", config.getLastFileInfoPath(), e);
     }
   }
 

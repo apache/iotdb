@@ -22,30 +22,28 @@ import java.io.File;
 import java.io.IOException;
 
 public interface ISyncReceiverLogger {
+
   /**
-   * Start sync deleted files name
-   * @throws IOException
+   * Start to sync deleted files name
    */
   void startSyncDeletedFilesName() throws IOException;
 
   /**
    * After a deleted file name is synced to the receiver end, record it in sync log.
+   *
    * @param file the deleted tsfile
-   * @throws IOException
    */
   void finishSyncDeletedFileName(File file) throws IOException;
 
   /**
-   * Start sync new tsfiles
-   * @throws IOException
+   * Start to sync new tsfiles
    */
   void startSyncTsFiles() throws IOException;
 
   /**
-   *
    * After a new tsfile is synced to the receiver end, record it in sync log.
+   *
    * @param file new tsfile
-   * @throws IOException
    */
   void finishSyncTsfile(File file) throws IOException;
 
