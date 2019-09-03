@@ -35,8 +35,8 @@
 		- Example 1: read from the local file system
 		- Example 2: read from the hadoop file system
 		- Example 3: read from a specific directory
-		- Example 4: query in old form
-		- Example 5: query in new form
+		- Example 4: query in wide form
+		- Example 5: query in narrow form
 		- Example 6: write
 	- Appendix A: Old Design of Schema Inference
         - the default way
@@ -144,7 +144,7 @@ The corresponding SparkSQL table is as follows:
 |    5 | null                          | null                     | null                       | null                          | false                    | null                       |
 |    6 | null                          | null                     | ccc                        | null                          | null                     | null                       |
 
-You can also use new table form which as follows: (You can see part 6 about how to use new form)
+You can also use narrow table form which as follows: (You can see part 6 about how to use narrow form)
 
 | time | device_name                   | status                   | hardware                   | temperature |
 |------|-------------------------------|--------------------------|----------------------------|-------------------------------|
@@ -167,22 +167,22 @@ NOTE: Remember to assign necessary read and write permissions in advance.
 
 ```scala
 import org.apache.iotdb.tsfile._
-val old_df = spark.read.tsfile("test.tsfile")  
-old_df.show
+val wide_df = spark.read.tsfile("test.tsfile")  
+wide_df.show
 
-val new_df = spark.read.tsfile("test.tsfile", true)  
-new_df.show
+val narrow_df = spark.read.tsfile("test.tsfile", true)  
+narrow_df.show
 ```
 
 ### Example 2: read from the hadoop file system
 
 ```scala
 import org.apache.iotdb.tsfile._
-val old_df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
-old_df.show
+val wide_df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
+wide_df.show
 
-val new_df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true)  
-new_df.show
+val narrow_df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true)  
+narrow_df.show
 ```
 
 ### Example 3: read from a specific directory
@@ -197,7 +197,7 @@ Note 1: Global time ordering of all TsFiles in a directory is not supported now.
 
 Note 2: Measurements of the same name should have the same schema.
 
-### Example 4: query in old form
+### Example 4: query in wide form
 
 ```scala
 import org.apache.iotdb.tsfile._
@@ -215,7 +215,7 @@ val newDf = spark.sql("select count(*) from tsfile_table")
 newDf.show
 ```
 
-### Example 5: query in new form
+### Example 5: query in narrow form
 ```scala
 import org.apache.iotdb.tsfile._
 val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true) 
@@ -235,7 +235,7 @@ newDf.show
 ### Example 6: write
 
 ```scala
-// we only support old_form table to write
+// we only support wide_form table to write
 import org.apache.iotdb.tsfile._
 
 val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 

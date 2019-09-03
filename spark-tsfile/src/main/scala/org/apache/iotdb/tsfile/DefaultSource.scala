@@ -59,15 +59,15 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
     options.getOrElse(DefaultSource.path, throw new TSFileDataSourceException(s"${DefaultSource.path} must be specified for org.apache.iotdb.tsfile DataSource"))
 
     if(options.getOrElse(DefaultSource.isNewForm, "").equals("new_form")){
-      val tsfileSchema = NewConverter.getUnionSeries(files, conf)
+      val tsfileSchema = NarrowConverter.getUnionSeries(files, conf)
 
-      NewConverter.toSqlSchema(tsfileSchema)
+      NarrowConverter.toSqlSchema(tsfileSchema)
     }
     else{
       //get union series in TsFile
-      val tsfileSchema = Converter.getUnionSeries(files, conf)
+      val tsfileSchema = WideConverter.getUnionSeries(files, conf)
 
-      Converter.toSqlSchema(tsfileSchema)
+      WideConverter.toSqlSchema(tsfileSchema)
     }
 
   }
@@ -108,14 +108,14 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       val tsFileMetaData = reader.readFileMetadata
 
       // get queriedSchema from requiredSchema
-      var queriedSchema = Converter.prepSchema(requiredSchema, tsFileMetaData)
+      var queriedSchema = WideConverter.prepSchema(requiredSchema, tsFileMetaData)
       val readTsFile: ReadOnlyTsFile = new ReadOnlyTsFile(reader)
 
       if (options.getOrElse(DefaultSource.isNewForm, "").equals("new_form")) {
         val device_names = tsFileMetaData.getDeviceMap.keySet()
         val measurement_names = tsFileMetaData.getMeasurementSchema.keySet()
         // construct queryExpression based on queriedSchema and filters
-        val queryExpressions = NewConverter.toQueryExpression(dataSchema, device_names, measurement_names, filters, reader, file.start.asInstanceOf[java.lang.Long], (file.start + file.length).asInstanceOf[java.lang.Long])
+        val queryExpressions = NarrowConverter.toQueryExpression(dataSchema, device_names, measurement_names, filters, reader, file.start.asInstanceOf[java.lang.Long], (file.start + file.length).asInstanceOf[java.lang.Long])
 
         val queryDataSets = Executor.query(readTsFile, queryExpressions, file.start.asInstanceOf[java.lang.Long], (file.start + file.length).asInstanceOf[java.lang.Long])
         var queryDataSet : QueryDataSet = null
@@ -166,16 +166,16 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
               if (field.name == QueryConstant.RESERVED_TIME) {
                 rowBuffer(index) = curRecord.getTimestamp
               }
-              else if(field.name == NewConverter.DEVICE_NAME){
+              else if(field.name == NarrowConverter.DEVICE_NAME){
                 rowBuffer(index) = device_name
               }
               else {
-                val pos = paths.indexOf(new org.apache.iotdb.tsfile.read.common.Path(device_name + "." + field.name))
+                val pos = paths.indexOf(new org.apache.iotdb.tsfile.read.common.Path(device_name, field.name))
                 var curField: Field = null
                 if (pos != -1) {
                   curField = fields.get(pos)
                 }
-                rowBuffer(index) = NewConverter.toSqlValue(curField)
+                rowBuffer(index) = NarrowConverter.toSqlValue(curField)
               }
               index += 1
             })
@@ -186,7 +186,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       }
       else {
         // construct queryExpression based on queriedSchema and filters
-        val queryExpression = Converter.toQueryExpression(queriedSchema, filters)
+        val queryExpression = WideConverter.toQueryExpression(queriedSchema, filters)
 
 
         val queryDataSet = readTsFile.query(queryExpression, file.start.asInstanceOf[java.lang.Long],
@@ -222,7 +222,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
                 if (pos != -1) {
                   curField = fields.get(pos)
                 }
-                rowBuffer(index) = Converter.toSqlValue(curField)
+                rowBuffer(index) = WideConverter.toSqlValue(curField)
               }
               index += 1
             })
