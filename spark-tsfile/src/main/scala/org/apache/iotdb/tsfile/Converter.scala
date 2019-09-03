@@ -164,6 +164,7 @@ abstract class Converter {
       val fullPath = new Path(name)
       val device = fullPath.getDevice
       val measurement = fullPath.getMeasurement
+      
       if (!deviceToRecord.contains(device)) {
         deviceToRecord.put(device, new TSRecord(time, device))
       }
