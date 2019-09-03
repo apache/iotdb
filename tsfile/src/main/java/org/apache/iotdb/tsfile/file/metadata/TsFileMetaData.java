@@ -37,292 +37,292 @@ import java.util.Map;
  */
 public class TsFileMetaData {
 
-    private Map<String, TsDeviceMetadataIndex> deviceIndexMap = new HashMap<>();
+  private Map<String, TsDeviceMetadataIndex> deviceIndexMap = new HashMap<>();
 
-    /**
-     * TSFile schema for this file. This schema contains metadata for all the measurements.
-     */
-    private Map<String, MeasurementSchema> measurementSchema = new HashMap<>();
+  /**
+   * TSFile schema for this file. This schema contains metadata for all the measurements.
+   */
+  private Map<String, MeasurementSchema> measurementSchema = new HashMap<>();
 
-    /**
-     * Version of this file.
-     */
-    private int currentVersion;
+  /**
+   * Version of this file.
+   */
+  private int currentVersion;
 
-    /**
-     * String for application that wrote this file. This should be in the format [Application] version
-     * [App Version](build [App Build Hash]). e.g. impala version 1.0 (build SHA-1_hash_code)
-     */
-    private String createdBy;
+  /**
+   * String for application that wrote this file. This should be in the format [Application] version
+   * [App Version](build [App Build Hash]). e.g. impala version 1.0 (build SHA-1_hash_code)
+   */
+  private String createdBy;
 
-    // fields below are IoTDB extensions and they does not affect TsFile's stand-alone functionality
-    private int totalChunkNum;
-    // invalid means a chunk has been rewritten by merge and the chunk's data is in
-    // another new chunk
-    private int invalidChunkNum;
+  // fields below are IoTDB extensions and they does not affect TsFile's stand-alone functionality
+  private int totalChunkNum;
+  // invalid means a chunk has been rewritten by merge and the chunk's data is in
+  // another new chunk
+  private int invalidChunkNum;
 
-    public TsFileMetaData() {
-        //do nothing
+  public TsFileMetaData() {
+    //do nothing
+  }
+
+  /**
+   * construct function for TsFileMetaData.
+   *
+   * @param measurementSchema - time series info list
+   * @param currentVersion - current version
+   */
+  public TsFileMetaData(Map<String, TsDeviceMetadataIndex> deviceMap,
+      Map<String, MeasurementSchema> measurementSchema, int currentVersion) {
+    this.deviceIndexMap = deviceMap;
+    this.measurementSchema = measurementSchema;
+    this.currentVersion = currentVersion;
+  }
+
+  /**
+   * deserialize data from the inputStream.
+   *
+   * @param inputStream -input stream use to deserialize
+   * @return -a instance of TsFileMetaData
+   */
+  public static TsFileMetaData deserializeFrom(InputStream inputStream) throws IOException {
+    TsFileMetaData fileMetaData = new TsFileMetaData();
+
+    int size = ReadWriteIOUtils.readInt(inputStream);
+    if (size > 0) {
+      Map<String, TsDeviceMetadataIndex> deviceMap = new HashMap<>();
+      String key;
+      TsDeviceMetadataIndex value;
+      for (int i = 0; i < size; i++) {
+        key = ReadWriteIOUtils.readString(inputStream);
+        value = TsDeviceMetadataIndex.deserializeFrom(inputStream);
+        deviceMap.put(key, value);
+      }
+      fileMetaData.deviceIndexMap = deviceMap;
     }
 
-    /**
-     * construct function for TsFileMetaData.
-     *
-     * @param measurementSchema - time series info list
-     * @param currentVersion - current version
-     */
-    public TsFileMetaData(Map<String, TsDeviceMetadataIndex> deviceMap,
-                          Map<String, MeasurementSchema> measurementSchema, int currentVersion) {
-        this.deviceIndexMap = deviceMap;
-        this.measurementSchema = measurementSchema;
-        this.currentVersion = currentVersion;
+    size = ReadWriteIOUtils.readInt(inputStream);
+    if (size > 0) {
+      fileMetaData.measurementSchema = new HashMap<>();
+      String key;
+      MeasurementSchema value;
+      for (int i = 0; i < size; i++) {
+        key = ReadWriteIOUtils.readString(inputStream);
+        value = MeasurementSchema.deserializeFrom(inputStream);
+        fileMetaData.measurementSchema.put(key, value);
+      }
     }
 
-    /**
-     * deserialize data from the inputStream.
-     *
-     * @param inputStream -input stream use to deserialize
-     * @return -a instance of TsFileMetaData
-     */
-    public static TsFileMetaData deserializeFrom(InputStream inputStream) throws IOException {
-        TsFileMetaData fileMetaData = new TsFileMetaData();
+    fileMetaData.currentVersion = ReadWriteIOUtils.readInt(inputStream);
 
-        int size = ReadWriteIOUtils.readInt(inputStream);
-        if (size > 0) {
-            Map<String, TsDeviceMetadataIndex> deviceMap = new HashMap<>();
-            String key;
-            TsDeviceMetadataIndex value;
-            for (int i = 0; i < size; i++) {
-                key = ReadWriteIOUtils.readString(inputStream);
-                value = TsDeviceMetadataIndex.deserializeFrom(inputStream);
-                deviceMap.put(key, value);
-            }
-            fileMetaData.deviceIndexMap = deviceMap;
-        }
+    if (ReadWriteIOUtils.readIsNull(inputStream)) {
+      fileMetaData.createdBy = ReadWriteIOUtils.readString(inputStream);
+    }
+    fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(inputStream);
+    fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(inputStream);
 
-        size = ReadWriteIOUtils.readInt(inputStream);
-        if (size > 0) {
-            fileMetaData.measurementSchema = new HashMap<>();
-            String key;
-            MeasurementSchema value;
-            for (int i = 0; i < size; i++) {
-                key = ReadWriteIOUtils.readString(inputStream);
-                value = MeasurementSchema.deserializeFrom(inputStream);
-                fileMetaData.measurementSchema.put(key, value);
-            }
-        }
+    return fileMetaData;
+  }
 
-        fileMetaData.currentVersion = ReadWriteIOUtils.readInt(inputStream);
+  /**
+   * deserialize data from the buffer.
+   *
+   * @param buffer -buffer use to deserialize
+   * @return -a instance of TsFileMetaData
+   */
+  public static TsFileMetaData deserializeFrom(ByteBuffer buffer) throws IOException {
+    TsFileMetaData fileMetaData = new TsFileMetaData();
 
-        if (ReadWriteIOUtils.readIsNull(inputStream)) {
-            fileMetaData.createdBy = ReadWriteIOUtils.readString(inputStream);
-        }
-        fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(inputStream);
-        fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(inputStream);
-
-        return fileMetaData;
+    int size = ReadWriteIOUtils.readInt(buffer);
+    if (size > 0) {
+      Map<String, TsDeviceMetadataIndex> deviceMap = new HashMap<>();
+      String key;
+      TsDeviceMetadataIndex value;
+      for (int i = 0; i < size; i++) {
+        key = ReadWriteIOUtils.readString(buffer);
+        value = TsDeviceMetadataIndex.deserializeFrom(buffer);
+        deviceMap.put(key, value);
+      }
+      fileMetaData.deviceIndexMap = deviceMap;
     }
 
-    /**
-     * deserialize data from the buffer.
-     *
-     * @param buffer -buffer use to deserialize
-     * @return -a instance of TsFileMetaData
-     */
-    public static TsFileMetaData deserializeFrom(ByteBuffer buffer) throws IOException {
-        TsFileMetaData fileMetaData = new TsFileMetaData();
-
-        int size = ReadWriteIOUtils.readInt(buffer);
-        if (size > 0) {
-            Map<String, TsDeviceMetadataIndex> deviceMap = new HashMap<>();
-            String key;
-            TsDeviceMetadataIndex value;
-            for (int i = 0; i < size; i++) {
-                key = ReadWriteIOUtils.readString(buffer);
-                value = TsDeviceMetadataIndex.deserializeFrom(buffer);
-                deviceMap.put(key, value);
-            }
-            fileMetaData.deviceIndexMap = deviceMap;
-        }
-
-        size = ReadWriteIOUtils.readInt(buffer);
-        if (size > 0) {
-            fileMetaData.measurementSchema = new HashMap<>();
-            String key;
-            MeasurementSchema value;
-            for (int i = 0; i < size; i++) {
-                key = ReadWriteIOUtils.readString(buffer);
-                value = MeasurementSchema.deserializeFrom(buffer);
-                fileMetaData.measurementSchema.put(key, value);
-            }
-        }
-
-        fileMetaData.currentVersion = ReadWriteIOUtils.readInt(buffer);
-
-        if (ReadWriteIOUtils.readIsNull(buffer)) {
-            fileMetaData.createdBy = ReadWriteIOUtils.readString(buffer);
-        }
-        fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
-        fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
-
-        return fileMetaData;
+    size = ReadWriteIOUtils.readInt(buffer);
+    if (size > 0) {
+      fileMetaData.measurementSchema = new HashMap<>();
+      String key;
+      MeasurementSchema value;
+      for (int i = 0; i < size; i++) {
+        key = ReadWriteIOUtils.readString(buffer);
+        value = MeasurementSchema.deserializeFrom(buffer);
+        fileMetaData.measurementSchema.put(key, value);
+      }
     }
 
-    /**
-     * add time series metadata to list. THREAD NOT SAFE
-     *
-     * @param measurementSchema series metadata to add
-     */
-    public void addMeasurementSchema(MeasurementSchema measurementSchema) {
-        this.measurementSchema.put(measurementSchema.getMeasurementId(), measurementSchema);
+    fileMetaData.currentVersion = ReadWriteIOUtils.readInt(buffer);
+
+    if (ReadWriteIOUtils.readIsNull(buffer)) {
+      fileMetaData.createdBy = ReadWriteIOUtils.readString(buffer);
+    }
+    fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
+    fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
+
+    return fileMetaData;
+  }
+
+  /**
+   * add time series metadata to list. THREAD NOT SAFE
+   *
+   * @param measurementSchema series metadata to add
+   */
+  public void addMeasurementSchema(MeasurementSchema measurementSchema) {
+    this.measurementSchema.put(measurementSchema.getMeasurementId(), measurementSchema);
+  }
+
+  @Override
+  public String toString() {
+    return "TsFileMetaData{" + "deviceIndexMap=" + deviceIndexMap + ", measurementSchema="
+        + measurementSchema
+        + ", CURRENT_VERSION=" + currentVersion + ", createdBy='" + createdBy + '\'' + '}';
+  }
+
+  public int getCurrentVersion() {
+    return currentVersion;
+  }
+
+  public void setCurrentVersion(int currentVersion) {
+    this.currentVersion = currentVersion;
+  }
+
+  public String getCreatedBy() {
+    return createdBy;
+  }
+
+  public void setCreatedBy(String createdBy) {
+    this.createdBy = createdBy;
+  }
+
+  public Map<String, TsDeviceMetadataIndex> getDeviceMap() {
+    return deviceIndexMap;
+  }
+
+  public void setDeviceMap(Map<String, TsDeviceMetadataIndex> deviceMap) {
+    this.deviceIndexMap = deviceMap;
+  }
+
+  public boolean containsDevice(String deltaObjUid) {
+    return this.deviceIndexMap.containsKey(deltaObjUid);
+  }
+
+  public TsDeviceMetadataIndex getDeviceMetadataIndex(String deltaObjUid) {
+    return this.deviceIndexMap.get(deltaObjUid);
+  }
+
+  public boolean containsMeasurement(String measurement) {
+    return measurementSchema.containsKey(measurement);
+  }
+
+  /**
+   * return the type of the measurement.
+   *
+   * @param measurement -measurement
+   * @return -type of the measurement
+   */
+  public TSDataType getType(String measurement) {
+    if (containsMeasurement(measurement)) {
+      return measurementSchema.get(measurement).getType();
+    } else {
+      return null;
+    }
+  }
+
+  public Map<String, MeasurementSchema> getMeasurementSchema() {
+    return measurementSchema;
+  }
+
+  /**
+   * use the given outputStream to serialize.
+   *
+   * @param outputStream -output stream to determine byte length
+   * @return -byte length
+   */
+  public int serializeTo(OutputStream outputStream) throws IOException {
+    int byteLen = 0;
+
+    byteLen += ReadWriteIOUtils.write(deviceIndexMap.size(), outputStream);
+    for (Map.Entry<String, TsDeviceMetadataIndex> entry : deviceIndexMap.entrySet()) {
+      byteLen += ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      byteLen += entry.getValue().serializeTo(outputStream);
     }
 
-    @Override
-    public String toString() {
-        return "TsFileMetaData{" + "deviceIndexMap=" + deviceIndexMap + ", measurementSchema="
-                + measurementSchema
-                + ", CURRENT_VERSION=" + currentVersion + ", createdBy='" + createdBy + '\'' + '}';
+    byteLen += ReadWriteIOUtils.write(measurementSchema.size(), outputStream);
+    for (Map.Entry<String, MeasurementSchema> entry : measurementSchema.entrySet()) {
+      byteLen += ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      byteLen += entry.getValue().serializeTo(outputStream);
     }
 
-    public int getCurrentVersion() {
-        return currentVersion;
+    byteLen += ReadWriteIOUtils.write(currentVersion, outputStream);
+
+    byteLen += ReadWriteIOUtils.writeIsNull(createdBy, outputStream);
+    if (createdBy != null) {
+      byteLen += ReadWriteIOUtils.write(createdBy, outputStream);
     }
 
-    public void setCurrentVersion(int currentVersion) {
-        this.currentVersion = currentVersion;
+    byteLen += ReadWriteIOUtils.write(totalChunkNum, outputStream);
+    byteLen += ReadWriteIOUtils.write(invalidChunkNum, outputStream);
+
+    return byteLen;
+  }
+
+  /**
+   * use the given buffer to serialize.
+   *
+   * @param buffer -buffer to determine byte length
+   * @return -byte length
+   */
+  public int serializeTo(ByteBuffer buffer) throws IOException {
+    int byteLen = 0;
+
+    byteLen += ReadWriteIOUtils.write(deviceIndexMap.size(), buffer);
+    for (Map.Entry<String, TsDeviceMetadataIndex> entry : deviceIndexMap.entrySet()) {
+      byteLen += ReadWriteIOUtils.write(entry.getKey(), buffer);
+      byteLen += entry.getValue().serializeTo(buffer);
     }
 
-    public String getCreatedBy() {
-        return createdBy;
+    byteLen += ReadWriteIOUtils.write(measurementSchema.size(), buffer);
+    for (Map.Entry<String, MeasurementSchema> entry : measurementSchema.entrySet()) {
+      byteLen += ReadWriteIOUtils.write(entry.getKey(), buffer);
+      byteLen += entry.getValue().serializeTo(buffer);
     }
 
-    public void setCreatedBy(String createdBy) {
-        this.createdBy = createdBy;
+    byteLen += ReadWriteIOUtils.write(currentVersion, buffer);
+
+    byteLen += ReadWriteIOUtils.writeIsNull(createdBy, buffer);
+    if (createdBy != null) {
+      byteLen += ReadWriteIOUtils.write(createdBy, buffer);
     }
 
-    public Map<String, TsDeviceMetadataIndex> getDeviceMap() {
-        return deviceIndexMap;
-    }
+    byteLen += ReadWriteIOUtils.write(totalChunkNum, buffer);
+    byteLen += ReadWriteIOUtils.write(invalidChunkNum, buffer);
 
-    public void setDeviceMap(Map<String, TsDeviceMetadataIndex> deviceMap) {
-        this.deviceIndexMap = deviceMap;
-    }
+    return byteLen;
+  }
 
-    public boolean containsDevice(String deltaObjUid) {
-        return this.deviceIndexMap.containsKey(deltaObjUid);
-    }
+  public int getTotalChunkNum() {
+    return totalChunkNum;
+  }
 
-    public TsDeviceMetadataIndex getDeviceMetadataIndex(String deltaObjUid) {
-        return this.deviceIndexMap.get(deltaObjUid);
-    }
+  public void setTotalChunkNum(int totalChunkNum) {
+    this.totalChunkNum = totalChunkNum;
+  }
 
-    public boolean containsMeasurement(String measurement) {
-        return measurementSchema.containsKey(measurement);
-    }
+  public int getInvalidChunkNum() {
+    return invalidChunkNum;
+  }
 
-    /**
-     * return the type of the measurement.
-     *
-     * @param measurement -measurement
-     * @return -type of the measurement
-     */
-    public TSDataType getType(String measurement) {
-        if (containsMeasurement(measurement)) {
-            return measurementSchema.get(measurement).getType();
-        } else {
-            return null;
-        }
-    }
+  public void setInvalidChunkNum(int invalidChunkNum) {
+    this.invalidChunkNum = invalidChunkNum;
+  }
 
-    public Map<String, MeasurementSchema> getMeasurementSchema() {
-        return measurementSchema;
-    }
-
-    /**
-     * use the given outputStream to serialize.
-     *
-     * @param outputStream -output stream to determine byte length
-     * @return -byte length
-     */
-    public int serializeTo(OutputStream outputStream) throws IOException {
-        int byteLen = 0;
-
-        byteLen += ReadWriteIOUtils.write(deviceIndexMap.size(), outputStream);
-        for (Map.Entry<String, TsDeviceMetadataIndex> entry : deviceIndexMap.entrySet()) {
-            byteLen += ReadWriteIOUtils.write(entry.getKey(), outputStream);
-            byteLen += entry.getValue().serializeTo(outputStream);
-        }
-
-        byteLen += ReadWriteIOUtils.write(measurementSchema.size(), outputStream);
-        for (Map.Entry<String, MeasurementSchema> entry : measurementSchema.entrySet()) {
-            byteLen += ReadWriteIOUtils.write(entry.getKey(), outputStream);
-            byteLen += entry.getValue().serializeTo(outputStream);
-        }
-
-        byteLen += ReadWriteIOUtils.write(currentVersion, outputStream);
-
-        byteLen += ReadWriteIOUtils.writeIsNull(createdBy, outputStream);
-        if (createdBy != null) {
-            byteLen += ReadWriteIOUtils.write(createdBy, outputStream);
-        }
-
-        byteLen += ReadWriteIOUtils.write(totalChunkNum, outputStream);
-        byteLen += ReadWriteIOUtils.write(invalidChunkNum, outputStream);
-
-        return byteLen;
-    }
-
-    /**
-     * use the given buffer to serialize.
-     *
-     * @param buffer -buffer to determine byte length
-     * @return -byte length
-     */
-    public int serializeTo(ByteBuffer buffer) throws IOException {
-        int byteLen = 0;
-
-        byteLen += ReadWriteIOUtils.write(deviceIndexMap.size(), buffer);
-        for (Map.Entry<String, TsDeviceMetadataIndex> entry : deviceIndexMap.entrySet()) {
-            byteLen += ReadWriteIOUtils.write(entry.getKey(), buffer);
-            byteLen += entry.getValue().serializeTo(buffer);
-        }
-
-        byteLen += ReadWriteIOUtils.write(measurementSchema.size(), buffer);
-        for (Map.Entry<String, MeasurementSchema> entry : measurementSchema.entrySet()) {
-            byteLen += ReadWriteIOUtils.write(entry.getKey(), buffer);
-            byteLen += entry.getValue().serializeTo(buffer);
-        }
-
-        byteLen += ReadWriteIOUtils.write(currentVersion, buffer);
-
-        byteLen += ReadWriteIOUtils.writeIsNull(createdBy, buffer);
-        if (createdBy != null) {
-            byteLen += ReadWriteIOUtils.write(createdBy, buffer);
-        }
-
-        byteLen += ReadWriteIOUtils.write(totalChunkNum, buffer);
-        byteLen += ReadWriteIOUtils.write(invalidChunkNum, buffer);
-
-        return byteLen;
-    }
-
-    public int getTotalChunkNum() {
-        return totalChunkNum;
-    }
-
-    public void setTotalChunkNum(int totalChunkNum) {
-        this.totalChunkNum = totalChunkNum;
-    }
-
-    public int getInvalidChunkNum() {
-        return invalidChunkNum;
-    }
-
-    public void setInvalidChunkNum(int invalidChunkNum) {
-        this.invalidChunkNum = invalidChunkNum;
-    }
-
-    public List<MeasurementSchema> getMeasurementSchemaList() {
-        return new ArrayList<MeasurementSchema>(measurementSchema.values());
-    }
+  public List<MeasurementSchema> getMeasurementSchemaList() {
+    return new ArrayList<MeasurementSchema>(measurementSchema.values());
+  }
 }
