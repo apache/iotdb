@@ -378,6 +378,9 @@ public class FileLoaderTest {
           File dataFile = new File(
               DirectoryManager.getInstance().getNextFolderForSequenceFile(),
               snapFile.getParentFile().getName() + File.separatorChar + snapFile.getName());
+          if(!correctLoadedFileMap.get(sg).contains(dataFile.getAbsolutePath())){
+            System.out.println("odd!!!!");
+          }
           correctLoadedFileMap.get(sg).remove(dataFile.getAbsolutePath());
           snapFile.delete();
           fileLoader.addDeletedFileName(snapFile);
