@@ -42,7 +42,7 @@ import org.apache.iotdb.db.tools.logvisual.LogVisualizer;
 import org.apache.iotdb.db.tools.logvisual.TimeSeriesStatistics;
 import org.apache.iotdb.db.tools.logvisual.VisualizationPlan;
 import org.apache.iotdb.db.tools.logvisual.conf.PropertyKeys;
-import org.apache.iotdb.db.tools.logvisual.exceptions.AnalyzeException;
+import org.apache.iotdb.db.tools.logvisual.exceptions.VisualizeException;
 import org.apache.iotdb.db.tools.logvisual.gui.LogVisualizationGui.PropertyChangeCallback;
 import org.jfree.chart.JFreeChart;
 
@@ -57,6 +57,7 @@ class PlanBox extends Box{
   private JButton savePlanButton;
   private JButton createPlanButton;
   private JButton deletePlanButton;
+  private JButton exportResultButton;
 
   // display of plans
   private JScrollPane scrollPane;
@@ -86,12 +87,14 @@ class PlanBox extends Box{
     savePlanButton = new JButton("Save plan");
     createPlanButton = new JButton("Create plan");
     deletePlanButton = new JButton("Delete plan");
+    exportResultButton = new JButton("Export result");
     panelName.setAlignmentX(CENTER_ALIGNMENT);
     loadPlanButton.setAlignmentX(CENTER_ALIGNMENT);
     executePlanButton.setAlignmentX(CENTER_ALIGNMENT);
     savePlanButton.setAlignmentX(CENTER_ALIGNMENT);
     createPlanButton.setAlignmentX(CENTER_ALIGNMENT);
     deletePlanButton.setAlignmentX(CENTER_ALIGNMENT);
+    exportResultButton.setAlignmentX(CENTER_ALIGNMENT);
 
     planListModel = new DefaultListModel<>();
     planList = new JList<>(planListModel);
@@ -111,6 +114,8 @@ class PlanBox extends Box{
     vBox.add(deletePlanButton);
     vBox.add(Box.createVerticalStrut(5));
     vBox.add(executePlanButton);
+    vBox.add(Box.createVerticalStrut(5));
+    vBox.add(exportResultButton);
     vBox.add(Box.createGlue());
     add(vBox);
 
@@ -119,11 +124,14 @@ class PlanBox extends Box{
     add(planDetailPanel);
 
     planList.addListSelectionListener(this::onPlanSelectionChanged);
-    loadPlanButton.addActionListener(this::onLoadPlanButtonClick);
-    executePlanButton.addActionListener(this::onExecutePlanButtonClick);
+    loadPlanButton.addActionListener(this::onLoadPlan);
+    executePlanButton.addActionListener(this::onExecutePlan);
     savePlanButton.addActionListener(this::onPlanSave);
     createPlanButton.addActionListener(this::onCreatePlan);
     deletePlanButton.addActionListener(this::onDeletePlan);
+    exportResultButton.addActionListener(this::onExportResult);
+
+    exportResultButton.setEnabled(false);
 
     if (defaultPlanPath != null) {
       // load default plans if given
@@ -144,7 +152,7 @@ class PlanBox extends Box{
     }
   }
 
-  private void onLoadPlanButtonClick(ActionEvent e) {
+  private void onLoadPlan(ActionEvent e) {
     JFileChooser fileChooser = new JFileChooser();
     fileChooser.setMultiSelectionEnabled(true);
     fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
@@ -180,21 +188,25 @@ class PlanBox extends Box{
     }
   }
 
-  private void onExecutePlanButtonClick(ActionEvent e) {
+  private void onExecutePlan(ActionEvent e) {
     VisualizationPlan plan = (VisualizationPlan) planList.getSelectedValue();
     if (plan == null) {
       return;
     }
     try {
       visualizer.executePlan(plan);
-    } catch (AnalyzeException e1) {
+    } catch (VisualizeException e1) {
       JOptionPane.showMessageDialog(this, "Cannot execute plan: " + e1.getMessage());
+      return;
     }
     // timeseries plots of each measurement in the visualization plan
     Map<String, JFreeChart> charts = visualizer.getCharts();
     // statistics (count, mean, max, min) of each measurement
     Map<String, List<TimeSeriesStatistics>> statisticMap = visualizer.getStatisticsMap();
     executePlanCallback.call(plan.getName(), charts, statisticMap);
+    exportResultButton.setEnabled(true);
+    JOptionPane.showMessageDialog(this,
+        String.format("Plan is successfully executed, found %d log groups", charts.size()));
   }
 
   private void onPlanSelectionChanged(ListSelectionEvent e) {
@@ -245,6 +257,22 @@ class PlanBox extends Box{
       planListModel.removeElement(plan);
       // update the display since the deleted one is always the one being displayed
       planDetailPanel.setPlan(null);
+    }
+  }
+
+  private void onExportResult(ActionEvent e) {
+    JFileChooser fileChooser = new JFileChooser();
+    fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+    // let the user choose plan files or directories that contain visualization plans
+    int status = fileChooser.showOpenDialog(this);
+    if (status == JFileChooser.APPROVE_OPTION) {
+      File distDir = fileChooser.getSelectedFile();
+      try {
+        visualizer.saveResults(distDir.getPath(), 800, 600);
+        JOptionPane.showMessageDialog(this, "Export successfully");
+      } catch (VisualizeException e1) {
+        JOptionPane.showMessageDialog(this,"Cannot export results:" + e1.getMessage());
+      }
     }
   }
 

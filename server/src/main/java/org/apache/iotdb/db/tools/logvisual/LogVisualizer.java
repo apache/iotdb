@@ -1,8 +1,12 @@
 package org.apache.iotdb.db.tools.logvisual;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -12,10 +16,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
-import org.apache.iotdb.db.tools.logvisual.exceptions.AnalyzeException;
 import org.apache.iotdb.db.tools.logvisual.exceptions.NoLogFileLoadedException;
 import org.apache.iotdb.db.tools.logvisual.exceptions.UnmatchedContentException;
+import org.apache.iotdb.db.tools.logvisual.exceptions.VisualizeException;
 import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
@@ -56,10 +61,12 @@ public class LogVisualizer {
 
   /**
    * the timeseries plots generated for each group of logs.
+   * measurement name -> the chart of the measurement
    */
   private Map<String, JFreeChart> charts;
   /**
    * the statistics (count, mean, min, max) of each group of logs.
+   * measurement name -> the statistics of the measurement of each group
    */
   private Map<String, List<TimeSeriesStatistics>> statisticsMap;
 
@@ -139,7 +146,7 @@ public class LogVisualizer {
     return plans.values();
   }
 
-  public void executePlan(VisualizationPlan plan) throws AnalyzeException {
+  public void executePlan(VisualizationPlan plan) throws VisualizeException {
     if (logParser == null) {
       throw new NoLogFileLoadedException();
     }
@@ -147,7 +154,7 @@ public class LogVisualizer {
       // read the logs fom the beginning
       logParser.reset();
     } catch (IOException e) {
-      throw new AnalyzeException(e);
+      throw new VisualizeException(e);
     }
     collectLogs(plan);
     groupLogs();
@@ -161,9 +168,9 @@ public class LogVisualizer {
   /**
    * Read all logs from the logParser and filter unwanted or malformed ones.
    * @param plan
-   * @throws AnalyzeException
+   * @throws VisualizeException
    */
-  private void collectLogs(VisualizationPlan plan) throws AnalyzeException {
+  private void collectLogs(VisualizationPlan plan) throws VisualizeException {
     LogFilter logFilter = plan.getLogFilter();
     try {
       LogEntry logEntry;
@@ -186,7 +193,7 @@ public class LogVisualizer {
         }
       }
     } catch (IOException e) {
-      throw new AnalyzeException(e);
+      throw new VisualizeException(e);
     }
     logger.info("Collected {} logs from {}", logCache.size(), logFile.getPath());
   }
@@ -298,6 +305,47 @@ public class LogVisualizer {
       ret.put(measurementName, seriesStatistics);
     }
     return ret;
+  }
+
+  public void saveResults(String destDirPath, int width, int height) throws VisualizeException {
+    if (charts == null || statisticsMap == null) {
+      throw new VisualizeException("No results to be saved");
+    }
+
+    File destDir = new File(destDirPath);
+    if (destDir.exists() && !destDir.isDirectory()) {
+      throw new VisualizeException(String.format("%s exists and is not a directory", destDirPath));
+    }
+    if (!destDir.exists() && !destDir.mkdirs()) {
+      throw new VisualizeException(String.format("Cannot create directory %s", destDirPath));
+    }
+    destDir.mkdirs();
+
+    // save charts
+    for (Entry<String, JFreeChart> chartEntry : charts.entrySet()) {
+      File chartFile = new File(destDir, chartEntry.getKey() + ".png");
+      JFreeChart chart = chartEntry.getValue();
+      try (FileOutputStream fileOutputStream = new FileOutputStream(chartFile);
+          BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream)) {
+        ChartUtils.writeChartAsPNG(bufferedOutputStream, chart, width, height);
+      } catch (IOException e) {
+        throw new VisualizeException(String.format("Cannot save chart of %s", chartEntry.getKey()), e);
+      }
+    }
+
+    // save statistics
+    File statisticFile = new File(destDir, "statistic.csv");
+    try (FileWriter fileWriter = new FileWriter(statisticFile);
+        BufferedWriter writer = new BufferedWriter(fileWriter)) {
+      TimeSeriesStatistics.serializeHeader(writer);
+      for (Entry<String, List<TimeSeriesStatistics>> statisticEntry : statisticsMap.entrySet()) {
+        for (TimeSeriesStatistics timeSeriesStatistics : statisticEntry.getValue()) {
+          timeSeriesStatistics.serialize(writer);
+        }
+      }
+    } catch (IOException e) {
+      throw new VisualizeException(String.format("Cannot save statistics to %s", destDirPath), e);
+    }
   }
 
   public Map<String, List<TimeSeriesStatistics>> getStatisticsMap() {

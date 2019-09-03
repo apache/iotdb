@@ -103,5 +103,4 @@ class MainPanel extends JPanel {
     propertyChangeCallback.call(PropertyKeys.DEFAULT_PARSER_FILE_PATH.getKey(), parserPropertyFile
         .getPath());
   }
-
 }

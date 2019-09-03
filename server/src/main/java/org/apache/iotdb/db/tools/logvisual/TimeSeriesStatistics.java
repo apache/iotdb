@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.tools.logvisual;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.Date;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.jfree.data.time.TimeSeries;
@@ -42,6 +47,8 @@ public class TimeSeriesStatistics {
   private double maxVal = Double.MIN_VALUE;
   private double minVal = Double.MAX_VALUE;
   private double valSum = 0.0;
+  
+  private Object[] statisticArray;
 
   TimeSeriesStatistics(TimeSeries timeSeries) {
     Date lastDate = null;
@@ -76,17 +83,33 @@ public class TimeSeriesStatistics {
   }
 
   public Object[] toArray() {
-    Object[] ret = new Object[HEADER.length];
+    if (statisticArray != null) {
+      return statisticArray;
+    }
+    statisticArray = new Object[HEADER.length];
     int i = 0;
-    ret[i++] = name;
-    ret[i++] = size;
-    ret[i++] = meanInterval;
-    ret[i++] = maxInterval;
-    ret[i++] = minInterval;
-    ret[i++] = meanVal;
-    ret[i++] = maxVal;
-    ret[i++] = minVal;
-    ret[i] = valSum;
-    return ret;
+    statisticArray[i++] = name;
+    statisticArray[i++] = size;
+    statisticArray[i++] = meanInterval;
+    statisticArray[i++] = maxInterval;
+    statisticArray[i++] = minInterval;
+    statisticArray[i++] = meanVal;
+    statisticArray[i++] = maxVal;
+    statisticArray[i++] = minVal;
+    statisticArray[i] = valSum;
+    return statisticArray;
+  }
+
+  public static void serializeHeader(Writer writer) throws IOException {
+    writer.write(String.join(",", HEADER) + "\n");
+  }
+  
+  public void serialize(Writer writer) throws IOException {
+    StringBuilder builder = new StringBuilder(statisticArray[0].toString());
+    for (int i = 1; i < statisticArray.length; i++) {
+      builder.append(",").append(statisticArray[i]);
+    }
+    builder.append("\n");
+    writer.write(builder.toString());
   }
 }
