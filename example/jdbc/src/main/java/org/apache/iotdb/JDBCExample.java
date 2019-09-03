@@ -36,21 +36,41 @@ public class JDBCExample {
       statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE");
       statement.execute("CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE");
 
-      for (int i = 0; i < 10; i++) {
-        for (int j = 0 ; j < 10; j++) {
-          statement.addBatch("insert into root.sg1.d1(timestamp, s1, s2, s3) values("+ (i * 10 + j) + "," + 1 + "," + 1 + "," + 1 + ")");
-        }
+      for (int i = 0; i <= 100; i++) {
+        statement.addBatch("insert into root.sg1.d1(timestamp, s1, s2, s3) values("+ i + "," + 1 + "," + 1 + "," + 1 + ")");
         statement.executeBatch();
         statement.clearBatch();
       }
-      ResultSet resultSet = statement.executeQuery("select * from root");
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      ResultSet resultSet = statement.executeQuery("select * from root where time <= 10");
+      outputResult(resultSet);
+      resultSet = statement.executeQuery("select count(*) from root");
+      outputResult(resultSet);
+      resultSet = statement.executeQuery("select count(*) from root where time >= 1 and time <= 100 group by (20ms, 0, [0, 100])");
+      outputResult(resultSet);
+    }
+  }
+
+  private static void outputResult(ResultSet resultSet) throws SQLException {
+    if (resultSet != null) {
+      System.out.println("--------------------------");
+      final ResultSetMetaData metaData = resultSet.getMetaData();
+      final int columnCount = metaData.getColumnCount();
+      for (int i = 0; i < columnCount; i++) {
+        System.out.print(metaData.getColumnLabel(i + 1) + " ");
+      }
+      System.out.println();
       while (resultSet.next()) {
-        StringBuilder builder = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          builder.append(resultSet.getString(i)).append(",");
+        for (int i = 1; ; i++) {
+          System.out.print(resultSet.getString(i));
+          if (i < columnCount) {
+            System.out.print(", ");
+          } else {
+            System.out.println();
+            break;
+          }
         }
       }
+      System.out.println("--------------------------\n");
     }
   }
 }

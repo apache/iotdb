@@ -118,7 +118,6 @@ public abstract class RegularDataEncoder extends Encoder {
     /**
      * constructor of IntRegularEncoder which is a sub-class of RegularDataEncoder.
      *
-     * @param size - the number how many numbers to be packed into a block.
      */
     public IntRegularEncoder() {
       this(BLOCK_DEFAULT_SIZE);
