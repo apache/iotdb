@@ -79,7 +79,7 @@ public class LogVisualizer {
         + "\\tools\\logAnalyze\\default.log.pattern"));
     visualizer.setLogFile( new File("C:\\Users\\admin\\Desktop\\logs\\log-all-2019-08-21.0.log"));
     visualizer.loadLogParser();
-    visualizer.loadPlan("E:\\codestore\\incubator-iotdb\\server\\src\\assembly\\resources\\tools\\logAnalyze\\plans\\flushTimeConsumption.plan");
+    visualizer.loadPlan("E:\\codestore\\incubator-iotdb\\server\\src\\assembly\\resources\\tools\\logAnalyze\\plans\\flushTimeConsumption.plan.example");
   }
 
   private void clearLogGroups() {

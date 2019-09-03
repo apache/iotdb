@@ -82,6 +82,15 @@ class FileSelectionBox extends Box{
 
   private void onSelectFileButtonClick() {
     JFileChooser fileChooser = new JFileChooser();
+    File currentFile = new File(filePathField.getText());
+    if (currentFile.exists()) {
+      if (currentFile.isDirectory()) {
+        fileChooser.setCurrentDirectory(currentFile);
+      } else {
+        fileChooser.setCurrentDirectory(currentFile.getParentFile());
+      }
+    }
+
     int status = fileChooser.showOpenDialog(this);
     if (status == JFileChooser.APPROVE_OPTION) {
       // only one file is allowed
