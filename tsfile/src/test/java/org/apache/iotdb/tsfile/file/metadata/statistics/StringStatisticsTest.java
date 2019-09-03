@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.junit.Test;
@@ -31,9 +32,9 @@ public class StringStatisticsTest {
   public void testUpdate() {
     Statistics<Binary> binaryStats = new BinaryStatistics();
     binaryStats.updateStats(new Binary("aaa"));
-    assertEquals(false, binaryStats.isEmpty());
+    assertFalse(binaryStats.isEmpty());
     binaryStats.updateStats(new Binary("bbb"));
-    assertEquals(false, binaryStats.isEmpty());
+    assertFalse(binaryStats.isEmpty());
     assertEquals("bbb", binaryStats.getMax().getStringValue());
     assertEquals("aaa", binaryStats.getMin().getStringValue());
     assertEquals(0, binaryStats.getSum(), maxError);
@@ -53,11 +54,11 @@ public class StringStatisticsTest {
 
     Statistics<Binary> stringStats3 = new BinaryStatistics();
     stringStats3.mergeStatistics(stringStats1);
-    assertEquals(false, stringStats3.isEmpty());
-    assertEquals("ccc", (String) stringStats3.getMax().getStringValue());
-    assertEquals("aaa", (String) stringStats3.getMin().getStringValue());
+    assertFalse(stringStats3.isEmpty());
+    assertEquals("ccc", stringStats3.getMax().getStringValue());
+    assertEquals("aaa", stringStats3.getMin().getStringValue());
     assertEquals(0, stringStats3.getSum(), maxError);
-    assertEquals("aaa", (String) stringStats3.getFirst().getStringValue());
+    assertEquals("aaa", stringStats3.getFirst().getStringValue());
     assertEquals("ccc", stringStats3.getLast().getStringValue());
 
     stringStats3.mergeStatistics(stringStats2);

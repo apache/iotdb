@@ -86,7 +86,6 @@ public class IoTDBSeriesReaderIT {
     daemon.active();
     EnvironmentUtils.envSetUp();
 
-    Thread.sleep(1000);
     insertData();
     connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -108,11 +107,10 @@ public class IoTDBSeriesReaderIT {
 
   private static void insertData() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement() ) {
+
 
       for (String sql : Constant.create_sql) {
         statement.execute(sql);
@@ -156,9 +154,7 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
-//      statement.execute("merge");
-
-      Thread.sleep(5000);
+      statement.execute("merge");
 
       // buffwrite data, unsealed file
       for (int time = 100000; time < 101000; time++) {
@@ -227,14 +223,9 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 

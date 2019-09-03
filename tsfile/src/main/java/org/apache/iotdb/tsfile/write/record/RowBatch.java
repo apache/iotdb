@@ -59,6 +59,11 @@ public class RowBatch {
   private int maxBatchSize;
 
   /**
+   * total byte size that values occupies
+   */
+  private int valueOccupation = -1;
+
+  /**
    * Return a row batch with default specified row number.
    * This is the standard constructor (all RowBatch should be the same size).
    *
@@ -133,5 +138,47 @@ public class RowBatch {
                   String.format("Data type %s is not supported.", dataType));
       }
     }
+  }
+
+  public int getTimeBytesSize() {
+    return batchSize * 8;
+  }
+
+  /**
+   * @return total bytes of values
+   */
+  public int getValueBytesSize() {
+    if (valueOccupation != -1) {
+      return valueOccupation;
+    }
+    valueOccupation = 0;
+    for (int i = 0; i < measurements.size(); i++) {
+      switch (measurements.get(i).getType()) {
+        case BOOLEAN:
+          valueOccupation += batchSize;
+          break;
+        case INT32:
+          valueOccupation += batchSize * 4;
+          break;
+        case INT64:
+          valueOccupation += batchSize * 8;
+          break;
+        case FLOAT:
+          valueOccupation += batchSize * 4;
+          break;
+        case DOUBLE:
+          valueOccupation += batchSize * 8;
+          break;
+        case TEXT:
+          for (Binary value: (Binary[]) values[i]) {
+            valueOccupation += value.getLength();
+          }
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", measurements.get(i).getType()));
+      }
+    }
+    return valueOccupation;
   }
 }

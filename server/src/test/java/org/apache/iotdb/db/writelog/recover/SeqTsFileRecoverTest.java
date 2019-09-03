@@ -45,21 +45,24 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 public class SeqTsFileRecoverTest {
+
   private File tsF;
   private TsFileWriter writer;
   private WriteLogNode node;
   private String logNodePrefix = "testNode";
-  private FileSchema schema;
+  private Schema schema;
   private TsFileResource resource;
   private VersionController versionController = new VersionController() {
     private int i;
+
     @Override
     public long nextVersion() {
       return ++i;
@@ -76,16 +79,23 @@ public class SeqTsFileRecoverTest {
     tsF = new File("temp", "test.ts");
     tsF.getParentFile().mkdirs();
 
-    schema = new FileSchema();
+    schema = new Schema();
     for (int i = 0; i < 10; i++) {
       schema.registerMeasurement(new MeasurementSchema("sensor" + i, TSDataType.INT64,
           TSEncoding.PLAIN));
     }
     writer = new TsFileWriter(tsF, schema);
 
+    TSRecord tsRecord = new TSRecord(100, "device99");
+    tsRecord.addTuple(DataPoint.getDataPoint(TSDataType.INT64, "sensor4", String.valueOf(0)));
+    writer.write(tsRecord);
+    tsRecord = new TSRecord(2, "device99");
+    tsRecord.addTuple(DataPoint.getDataPoint(TSDataType.INT64, "sensor1", String.valueOf(0)));
+    writer.write(tsRecord);
+
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
-        TSRecord tsRecord = new TSRecord(i, "device" + j);
+        tsRecord = new TSRecord(i, "device" + j);
         for (int k = 0; k < 10; k++) {
           tsRecord.addTuple(DataPoint.getDataPoint(TSDataType.INT64, "sensor" + k,
               String.valueOf(k)));
@@ -126,6 +136,13 @@ public class SeqTsFileRecoverTest {
         versionController, resource, true);
     performer.recover();
 
+    assertEquals(2, (long) resource.getStartTimeMap().get("device99"));
+    assertEquals(100, (long) resource.getEndTimeMap().get("device99"));
+    for (int i = 0; i < 10; i++) {
+      assertEquals(0, (long) resource.getStartTimeMap().get("device" + i));
+      assertEquals(19, (long) resource.getEndTimeMap().get("device" + i));
+    }
+
     ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(tsF.getPath()));
     List<Path> pathList = new ArrayList<>();
     for (int j = 0; j < 10; j++) {
@@ -144,6 +161,19 @@ public class SeqTsFileRecoverTest {
         assertEquals(j % 10, fields.get(j).getLongV());
       }
     }
+
+    pathList = new ArrayList<>();
+    pathList.add(new Path("device99", "sensor1"));
+    pathList.add(new Path("device99", "sensor4"));
+    queryExpression = QueryExpression.create(pathList, null);
+    dataSet = readOnlyTsFile.query(queryExpression);
+    Assert.assertTrue(dataSet.hasNext());
+    RowRecord record = dataSet.next();
+    Assert.assertEquals("2\t0\tnull", record.toString());
+    Assert.assertTrue(dataSet.hasNext());
+    record = dataSet.next();
+    Assert.assertEquals("100\tnull\t0", record.toString());
+
     readOnlyTsFile.close();
   }
 }

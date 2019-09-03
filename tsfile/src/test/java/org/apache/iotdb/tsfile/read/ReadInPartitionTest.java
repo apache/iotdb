@@ -54,7 +54,7 @@ import org.junit.Test;
   The test target here is the logic of converting the query partition constraint to an additional time filter.
 
   Note that the correctness of the constructed additional time filter, which is guaranteed and tested in
-  MetadataQuerierByFileImplTest and TimeRangeTest, is not the test focus here.
+  IMetadataQuerierByFileImplTest and TimeRangeTest, is not the test focus here.
 
  */
 public class ReadInPartitionTest {

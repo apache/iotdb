@@ -84,12 +84,11 @@ public class IoTDBTimeZoneIT {
   @Test
   public void timezoneTest() throws ClassNotFoundException, SQLException, TException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    IoTDBConnection connection = null;
-    try {
-      connection = (IoTDBConnection) DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-              "root", "root");
-      Statement statement = connection.createStatement();
+    try (IoTDBConnection connection = (IoTDBConnection) DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()) {
+
       String insertSQLTemplate = "insert into root.timezone(timestamp,tz1) values(%s,%s)";
       connection.setTimeZone("+08:00");
       // 1514779200000 = 2018-1-1T12:00:00+08:00
@@ -123,30 +122,21 @@ public class IoTDBTimeZoneIT {
         cnt++;
       }
       Assert.assertEquals(13, cnt);
-      statement.close();
-    } finally {
-      connection.close();
     }
   }
 
-  public void createTimeseries() throws ClassNotFoundException, SQLException {
+  private void createTimeseries() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
       for (String sql : insertSqls) {
         statement.execute(sql);
       }
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 }

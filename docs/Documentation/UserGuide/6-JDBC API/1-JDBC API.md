@@ -19,14 +19,14 @@
 
 -->
 
-# Chaper6: JDBC API
+# Chapter6: JDBC API
 
 # Usage
 
 ## Dependencies
 
 * JDK >= 1.8
-* Maven >= 3.0
+* Maven >= 3.1
 
 ## How to package only jdbc project
 
@@ -56,6 +56,8 @@ In root directory:
 This chapter provides an example of how to open a database connection, execute a SQL query, and display the results.
 
 Requires that you include the packages containing the JDBC classes needed for database programming.
+
+**NOTE: For faster insertion, the insertBatch() in Session is recommended.**
 
 ```Java
 import java.sql.*;

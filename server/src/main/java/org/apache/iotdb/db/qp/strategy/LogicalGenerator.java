@@ -425,7 +425,7 @@ public class LogicalGenerator {
   private void analyzeMetadataSetFileLevel(AstNode astNode) {
     MetadataOperator metadataOperator = new MetadataOperator(
         SQLConstant.TOK_METADATA_SET_FILE_LEVEL,
-        MetadataOperator.NamespaceType.SET_FILE_LEVEL);
+        MetadataOperator.NamespaceType.SET_STORAGE_GROUP);
     Path path = parsePath(astNode.getChild(0).getChild(0));
     metadataOperator.setPath(path);
     initializedOperator = metadataOperator;
@@ -532,10 +532,6 @@ public class LogicalGenerator {
     long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());
     if (filterOperator.getTokenIntType() == LESSTHAN) {
       time = time - 1;
-    }
-    // time must greater than 0 now
-    if (time <= 0) {
-      throw new LogicalOperatorException("delete Time:" + time + ", time must > 0");
     }
     return time;
   }
