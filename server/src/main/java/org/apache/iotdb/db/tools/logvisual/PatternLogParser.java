@@ -46,11 +46,12 @@ public class PatternLogParser implements LogParser{
   private int codeLocationIndex;
   private int contentIndex;
 
-  private String logFilePath;
+  private int logFileIdx;
+  private String[] logFilePaths;
   private BufferedReader reader;
   private DateFormat dateFormat;
 
-  PatternLogParser(Properties properties, String logFilePath) {
+  PatternLogParser(Properties properties, String[] logFilePaths) {
     this.pattern = Pattern.compile(properties.getProperty(PATTERN.getPropertyName()));
     this.dateIndex = Integer.parseInt(properties.getProperty(DATE_INDEX.getPropertyName()));
     this.threadNameIndex = Integer.parseInt(properties.getProperty(THREAD_NAME_INDEX
@@ -61,14 +62,25 @@ public class PatternLogParser implements LogParser{
         .getPropertyName(), String.valueOf(-1)));
     this.contentIndex = Integer.parseInt(properties.getProperty(CONTENT_INDEX.getPropertyName()));
     this.dateFormat = new SimpleDateFormat(properties.getProperty(DATE_PATTERN.getPropertyName()));
-    this.logFilePath = logFilePath;
+    this.logFilePaths = logFilePaths;
+    this.logFileIdx = -1;
+  }
+
+  private void nextFile() throws IOException {
+    close();
+    reader = new BufferedReader(new InputStreamReader(new FileInputStream(logFilePaths[++logFileIdx])));
   }
 
   @Override
   public LogEntry next() throws IOException {
     String line = reader.readLine();
-    if (line == null) {
-      return null;
+    while (line == null) {
+      if (logFileIdx + 1 < logFilePaths.length) {
+        nextFile();
+        line = reader.readLine();
+      } else {
+        return null;
+      }
     }
 
     Matcher matcher = pattern.matcher(line);
@@ -103,15 +115,16 @@ public class PatternLogParser implements LogParser{
 
   @Override
   public void close() throws IOException {
-    reader.close();
+    if (reader != null) {
+      reader.close();
+    }
   }
 
   @Override
   public void reset() throws IOException {
-    if (reader != null) {
-      reader.close();
-    }
-    reader = new BufferedReader(new InputStreamReader(new FileInputStream(logFilePath)));
+    close();
+    logFileIdx = 0;
+    reader = new BufferedReader(new InputStreamReader(new FileInputStream(logFilePaths[0])));
   }
 
   enum PatternProperties {

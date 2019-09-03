@@ -21,6 +21,7 @@ package org.apache.iotdb.db.tools.logvisual.gui;
 
 import java.io.File;
 import java.util.Properties;
+import javax.swing.JFileChooser;
 import javax.swing.JPanel;
 import org.apache.iotdb.db.tools.logvisual.LogVisualizer;
 import org.apache.iotdb.db.tools.logvisual.conf.PropertyKeys;
@@ -68,13 +69,13 @@ class MainPanel extends JPanel {
     setLayout(null);
 
     logFileSelectionBox = new FileSelectionBox("LogFilePath", this::onLogFileSelected,
-        properties.getProperty(PropertyKeys.DEFAULT_LOG_FILE_PATH.getKey()));
+        properties.getProperty(PropertyKeys.DEFAULT_LOG_FILE_PATH.getKey()), JFileChooser.FILES_AND_DIRECTORIES);
     logFileSelectionBox.setLocation(0, 0);
     logFileSelectionBox.setSize(380, 40);
 
     parserPropertyBox = new FileSelectionBox("ParserPropertyFilePath",
         this::onParserPropertySelected, properties.getProperty(PropertyKeys
-        .DEFAULT_PARSER_FILE_PATH.getKey()));
+        .DEFAULT_PARSER_FILE_PATH.getKey()), JFileChooser.FILES_ONLY);
     parserPropertyBox.setLocation(0, 45);
     parserPropertyBox.setSize(380, 40);
 

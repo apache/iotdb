@@ -141,13 +141,30 @@ public class LogVisualizer {
     // close the previous
     close();
     String propertyFilePath = parserPropertyFile.getPath();
-    String logFilePath = logFile.getPath();
+    List<String> logFilePaths = new ArrayList<>();
+    getLogFilePaths(logFile, logFilePaths);
     Properties properties = new Properties();
     try (FileInputStream inputStream = new FileInputStream(propertyFilePath);
         BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream)) {
       properties.load(bufferedInputStream);
     }
-    logParser = new PatternLogParser(properties, logFilePath);
+    logParser = new PatternLogParser(properties, logFilePaths.toArray(new String[0]));
+  }
+
+  private void getLogFilePaths(File currLogFile, List<String> logFilePaths) {
+    if (!currLogFile.exists()) {
+      return;
+    }
+    if (currLogFile.isFile()) {
+      logFilePaths.add(currLogFile.getPath());
+    } else {
+      File[] subFiles = currLogFile.listFiles();
+      if (subFiles != null) {
+        for (File subFile : subFiles) {
+          getLogFilePaths(subFile, logFilePaths);
+        }
+      }
+    }
   }
 
   public void close() throws IOException {

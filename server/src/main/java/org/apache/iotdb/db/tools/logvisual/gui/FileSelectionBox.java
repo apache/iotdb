@@ -41,11 +41,13 @@ class FileSelectionBox extends Box{
   private JTextField filePathField;
   private JButton selectFileButton;
   private FilePathBoxSelectionCallBack callBack;
+  private int selectionMode;
 
   FileSelectionBox(String name, FilePathBoxSelectionCallBack callBack, String
-      defaultFilePath) {
+      defaultFilePath, int selectionMode) {
     super(BoxLayout.X_AXIS);
     this.callBack = callBack;
+    this.selectionMode = selectionMode;
 
     panelName = new JLabel(name);
     filePathField = new JTextField("No file is selected");
@@ -82,6 +84,7 @@ class FileSelectionBox extends Box{
 
   private void onSelectFileButtonClick() {
     JFileChooser fileChooser = new JFileChooser();
+    fileChooser.setFileSelectionMode(selectionMode);
     File currentFile = new File(filePathField.getText());
     if (currentFile.exists()) {
       if (currentFile.isDirectory()) {
