@@ -16,6 +16,8 @@ package org.apache.iotdb.db.sync.receiver.load;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -25,6 +27,12 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +83,7 @@ public class FileLoader implements IFileLoader {
         if (loadTask != null) {
           try {
             handleLoadTask(loadTask);
-          } catch (IOException e) {
+          } catch (Exception e) {
             LOGGER.error("Can not load task {}", loadTask, e);
           }
         }
@@ -121,8 +129,12 @@ public class FileLoader implements IFileLoader {
       loadLog.startLoadTsFiles();
       curType = LoadType.ADD;
     }
+    if (!newTsFile.exists()) {
+      LOGGER.info("Tsfile {} doesn't exist.", newTsFile.getAbsolutePath());
+      return;
+    }
     TsFileResource tsFileResource = new TsFileResource(new File(newTsFile.getAbsolutePath()));
-    tsFileResource.deSerialize();
+    checkTsFileResource(tsFileResource);
     try {
       StorageEngine.getInstance().loadNewTsFile(newTsFile, tsFileResource);
     } catch (TsFileProcessorException | StorageEngineException e) {
@@ -130,6 +142,35 @@ public class FileLoader implements IFileLoader {
       throw new IOException(e);
     }
     loadLog.finishLoadDeletedFile(newTsFile);
+  }
+
+  private void checkTsFileResource(TsFileResource tsFileResource) throws IOException {
+    if (!tsFileResource.fileExists()) {
+      // .resource file does not exist, read file metadata and recover tsfile resource
+      try (TsFileSequenceReader reader = new TsFileSequenceReader(
+          tsFileResource.getFile().getAbsolutePath())) {
+        TsFileMetaData metaData = reader.readFileMetadata();
+        List<TsDeviceMetadataIndex> deviceMetadataIndexList = new ArrayList<>(
+            metaData.getDeviceMap().values());
+        for (TsDeviceMetadataIndex index : deviceMetadataIndexList) {
+          TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
+          List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata
+              .getChunkGroupMetaDataList();
+          for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
+            for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+              tsFileResource.updateStartTime(chunkGroupMetaData.getDeviceID(),
+                  chunkMetaData.getStartTime());
+              tsFileResource
+                  .updateEndTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
+            }
+          }
+        }
+      }
+      // write .resource file
+      tsFileResource.serialize();
+    } else {
+      tsFileResource.deSerialize();
+    }
   }
 
   private void loadDeletedFile(File deletedTsFile) throws IOException {

@@ -301,9 +301,11 @@ public class StorageGroupProcessor {
 
   // TsFileNameComparator compares TsFiles by the version number in its name
   // ({systemTime}-{versionNum}-{mergeNum}.tsfile)
-  public int compareFileName(File o1, File o2) {
-    String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split("-");
-    String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split("-");
+  private int compareFileName(File o1, File o2) {
+    String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "")
+        .split(IoTDBConstant.FILE_NAME_SEPARATOR);
+    String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "")
+        .split(IoTDBConstant.FILE_NAME_SEPARATOR);
     if (Long.valueOf(items1[0]) - Long.valueOf(items2[0]) == 0) {
       return Long.compare(Long.valueOf(items1[1]), Long.valueOf(items2[1]));
     } else {
@@ -495,8 +497,8 @@ public class StorageGroupProcessor {
     new File(baseDir, storageGroupName).mkdirs();
 
     String filePath = Paths.get(baseDir, storageGroupName,
-        System.currentTimeMillis() + "-" + versionController.nextVersion()).toString() + "-0"
-        + TSFILE_SUFFIX;
+        System.currentTimeMillis() + IoTDBConstant.FILE_NAME_SEPARATOR + versionController
+            .nextVersion()).toString() + IoTDBConstant.FILE_NAME_SEPARATOR + "0" + TSFILE_SUFFIX;
 
     if (sequence) {
       return new TsFileProcessor(storageGroupName, new File(filePath),
@@ -982,6 +984,9 @@ public class StorageGroupProcessor {
       // check new tsfile
       outer:
       for (int i = 0; i < sequenceFileList.size(); i++) {
+        if (sequenceFileList.get(i).getFile().getName().equals(newTsFile.getName())) {
+          return;
+        }
         if (i == sequenceFileList.size() - 1 && sequenceFileList.get(i).getEndTimeMap().isEmpty()) {
           continue;
         }
@@ -1032,7 +1037,7 @@ public class StorageGroupProcessor {
 
       // update latest time map
       updateLatestTimeMap(newTsFileResource);
-    } catch (TsFileProcessorException e) {
+    } catch (TsFileProcessorException | DiskSpaceInsufficientException e) {
       logger.error("Failed to append the tsfile {} to storage group processor {}.",
           newTsFile.getAbsolutePath(), newTsFile.getParentFile().getName());
       throw new TsFileProcessorException(e);
@@ -1072,54 +1077,87 @@ public class StorageGroupProcessor {
    * @UsedBy sync module
    */
   private void loadTsFileByType(int type, File tsFile, TsFileResource tsFileResource, int index)
-      throws TsFileProcessorException {
+      throws TsFileProcessorException, DiskSpaceInsufficientException {
     File targetFile;
     if (type == -1) {
       targetFile =
-          new File(tsFile.getParentFile().getParentFile().getParentFile().getParentFile()
-              .getParentFile(), IoTDBConstant.UNSEQUENCE_FLODER_NAME
-              + File.separatorChar + tsFile.getParentFile().getName() + File.separatorChar
-              + tsFile.getName());
+          new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(),
+              tsFile.getParentFile().getName() + File.separatorChar + tsFile.getName());
       tsFileResource.setFile(targetFile);
       unSequenceFileList.add(index, tsFileResource);
+      logger
+          .info("Load tsfile in unsequence list, move file from {} to {}", tsFile.getAbsolutePath(),
+              targetFile.getAbsolutePath());
     } else {
       targetFile =
-          new File(tsFile.getParentFile().getParentFile().getParentFile().getParentFile()
-              .getParentFile(), IoTDBConstant.SEQUENCE_FLODER_NAME
-              + File.separatorChar + tsFile.getParentFile().getName() + File.separatorChar
-              + tsFile.getName());
+          new File(DirectoryManager.getInstance().getNextFolderForSequenceFile(),
+              tsFile.getParentFile().getName() + File.separatorChar + getFileNameForLoadingFile(
+                  tsFile.getName(), index));
       tsFileResource.setFile(targetFile);
       sequenceFileList.add(index, tsFileResource);
+      logger.info("Load tsfile in sequence list, move file from {} to {}", tsFile.getAbsolutePath(),
+          targetFile.getAbsolutePath());
     }
 
     // move file from sync dir to data dir
     if (!targetFile.getParentFile().exists()) {
       targetFile.getParentFile().mkdirs();
     }
-    if (!new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists() && !new File(
+    if (tsFile.exists() && !targetFile.exists()) {
+      try {
+        FileUtils.moveFile(tsFile, targetFile);
+      } catch (IOException e) {
+        throw new TsFileProcessorException(String.format(
+            "File renaming failed when loading tsfile. Origin: %s, Target: %s",
+            tsFile.getAbsolutePath(), targetFile.getAbsolutePath()));
+      }
+    }
+    if (new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists() && !new File(
         targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()) {
-      throw new TsFileProcessorException(
-          String
-              .format("The new .resource file {%s} to be loaded does not exist.",
-                  tsFile.getAbsolutePath()));
+      try {
+        FileUtils.moveFile(new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+            new File(targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
+      } catch (IOException e) {
+        throw new TsFileProcessorException(String.format(
+            "File renaming failed when loading .resource file. Origin: %s, Target: %s",
+            new File(tsFile, TsFileResource.RESOURCE_SUFFIX).getAbsolutePath(),
+            new File(targetFile, TsFileResource.RESOURCE_SUFFIX).getAbsolutePath()));
+      }
     }
-    if (!new File(targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
-        && !new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX)
-        .renameTo(new File(targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX))) {
-      throw new TsFileProcessorException(String.format(
-          "File renaming failed when loading .resource file. Origin: %s, Target: %s",
-          new File(tsFile, TsFileResource.RESOURCE_SUFFIX).getAbsolutePath(),
-          new File(targetFile, TsFileResource.RESOURCE_SUFFIX).getAbsolutePath()));
+  }
+
+  /**
+   * Get an appropriate filename to ensure the order between files
+   *
+   * @param tsfileName origin tsfile name
+   * @param index the index to be inserted
+   * @return appropriate filename
+   */
+  private String getFileNameForLoadingFile(String tsfileName, int index) {
+    long currentTsFileTime = Long.parseLong(tsfileName.split(IoTDBConstant.FILE_NAME_SEPARATOR)[0]);
+    long preTime;
+    if (index == 0) {
+      preTime = 0L;
+    } else {
+      String preName = sequenceFileList.get(index - 1).getFile().getName();
+      preTime = Long.parseLong(preName.split(IoTDBConstant.FILE_NAME_SEPARATOR)[0]);
     }
-    if (!tsFile.exists() && !targetFile.exists()) {
-      throw new TsFileProcessorException(String
-          .format("The new tsfile {%s} to be loaded does not exist.",
-              tsFile.getAbsolutePath()));
-    }
-    if (!targetFile.exists() && !tsFile.renameTo(targetFile)) {
-      throw new TsFileProcessorException(String.format(
-          "File renaming failed when loading tsfile. Origin: %s, Target: %s",
-          tsFile.getAbsolutePath(), targetFile.getAbsolutePath()));
+    if (index == sequenceFileList.size()) {
+      return preTime < currentTsFileTime ? tsfileName
+          : System.currentTimeMillis() + IoTDBConstant.FILE_NAME_SEPARATOR + versionController
+              .nextVersion() + IoTDBConstant.FILE_NAME_SEPARATOR + "0" + TSFILE_SUFFIX;
+    } else {
+      String subsequenceName = sequenceFileList.get(index).getFile().getName();
+      long subsequenceTime = Long
+          .parseLong(subsequenceName.split(IoTDBConstant.FILE_NAME_SEPARATOR)[0]);
+      long subsequenceVersion = Long
+          .parseLong(subsequenceName.split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
+      if (preTime < currentTsFileTime && currentTsFileTime < subsequenceTime) {
+        return tsfileName;
+      } else {
+        return (preTime + ((subsequenceTime - preTime) >> 1)) + IoTDBConstant.FILE_NAME_SEPARATOR
+            + subsequenceVersion + IoTDBConstant.FILE_NAME_SEPARATOR + "0" + TSFILE_SUFFIX;
+      }
     }
   }
 
@@ -1168,7 +1206,8 @@ public class StorageGroupProcessor {
     deletedTsFileResource.getMergeQueryLock().writeLock().lock();
     try {
       deletedTsFileResource.getFile().delete();
-      new File(deletedTsFileResource.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).delete();
+      new File(deletedTsFileResource.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX)
+          .delete();
     } finally {
       deletedTsFileResource.getMergeQueryLock().writeLock().unlock();
     }

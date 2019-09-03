@@ -105,16 +105,17 @@ public class SyncReceiverLogAnalyzerTest {
         correctSequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
         String rand = String.valueOf(r.nextInt(10000));
         String fileName =
-            getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + rand + ".tsfile";
+            getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + System
+                .currentTimeMillis() + IoTDBConstant.FILE_NAME_SEPARATOR + rand
+                + IoTDBConstant.FILE_NAME_SEPARATOR + "0.tsfile";
         File syncFile = new File(fileName);
         receiverLogger
             .finishSyncTsfile(syncFile);
         toBeSyncedFiles.add(syncFile.getAbsolutePath());
         File dataFile = new File(
-            syncFile.getParentFile().getParentFile().getParentFile().getParentFile()
-                .getParentFile(), IoTDBConstant.SEQUENCE_FLODER_NAME
-            + File.separatorChar + syncFile.getParentFile().getName() + File.separatorChar
-            + syncFile.getName());
+            DirectoryManager.getInstance().getNextFolderForSequenceFile(),
+            syncFile.getParentFile().getName() + File.separatorChar
+                + syncFile.getName());
         correctSequenceLoadedFileMap.get(SG_NAME + i).add(dataFile);
         allFileList.get(SG_NAME + i).add(syncFile);
         if (!syncFile.getParentFile().exists()) {
@@ -154,13 +155,12 @@ public class SyncReceiverLogAnalyzerTest {
     assert new File(getReceiverFolderFile(), SyncConstant.LOAD_LOG_NAME).exists();
     assert new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME).exists();
     assert FileLoaderManager.getInstance().containsFileLoader(getReceiverFolderFile().getName());
-    int count = 0, mode = 0;
+    int mode = 0;
     Set<String> toBeSyncedFilesTest = new HashSet<>();
     try (BufferedReader br = new BufferedReader(
         new FileReader(new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME)))) {
       String line;
       while ((line = br.readLine()) != null) {
-        count++;
         if (line.equals(SyncReceiverLogger.SYNC_DELETED_FILE_NAME_START)) {
           mode = -1;
         } else if (line.equals(SyncReceiverLogger.SYNC_TSFILE_START)) {
