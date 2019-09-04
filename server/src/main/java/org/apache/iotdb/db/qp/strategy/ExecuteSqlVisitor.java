@@ -444,14 +444,13 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
 
   @Override
   public Object visitFillClause(TSParser.FillClauseContext ctx) {
-    FilterOperator filterOperator = ((SFWOperator) initializedOperator).getFilterOperator();
     fillTypes = new EnumMap<>(TSDataType.class);
     for (TSParser.TypeClauseContext typeClauseContext : ctx.typeClause()) {
       try {
         fillClauseDataType = parseType(typeClauseContext.Identifier().getText());
         visit(typeClauseContext.interTypeClause());
       } catch (LogicalOperatorException e) {
-        e.printStackTrace();
+        throw new SqlParseException(e.getMessage());
       }
     }
     ((QueryOperator) initializedOperator).setFillTypes(fillTypes);
