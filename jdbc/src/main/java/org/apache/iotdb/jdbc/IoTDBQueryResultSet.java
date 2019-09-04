@@ -46,13 +46,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
-import org.apache.iotdb.service.rpc.thrift.TSCloseOperationResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.rpc.IoTDBRPCException;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.thrift.TException;
@@ -213,10 +209,10 @@ public class IoTDBQueryResultSet implements ResultSet {
     try {
       if (operationHandle != null) {
         TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle, queryId);
-        TSCloseOperationResp closeResp = client.closeOperation(closeReq);
-        Utils.verifySuccess(closeResp.getStatus());
+        TSRPCResp closeResp = client.closeOperation(closeReq);
+        RpcUtils.verifySuccess(closeResp.getStatus());
       }
-    } catch (SQLException e) {
+    } catch (IoTDBRPCException e) {
       throw new SQLException("Error occurs for close opeation in server side becasuse " + e);
     } catch (TException e) {
       throw new SQLException(
@@ -701,13 +697,18 @@ public class IoTDBQueryResultSet implements ResultSet {
   }
 
   // the next record rule without constraints
-  private boolean nextWithoutConstraints() throws SQLException {
+  private boolean nextWithoutConstraints(int limitFetchSize) throws SQLException {
     if ((recordItr == null || !recordItr.hasNext()) && !emptyResultSet) {
-      TSFetchResultsReq req = new TSFetchResultsReq(sql, fetchSize, queryId);
+      int adaFetchSize = (limitFetchSize < fetchSize) ? limitFetchSize : fetchSize;
+      TSFetchResultsReq req = new TSFetchResultsReq(sql, adaFetchSize, queryId);
 
       try {
         TSFetchResultsResp resp = client.fetchResults(req);
-        Utils.verifySuccess(resp.getStatus());
+        try {
+          RpcUtils.verifySuccess(resp.getStatus());
+        } catch (IoTDBRPCException e) {
+          throw new IoTDBSQLException(e.getMessage());
+        }
         if (!resp.hasResultSet) {
           emptyResultSet = true;
         } else {
@@ -743,14 +744,19 @@ public class IoTDBQueryResultSet implements ResultSet {
     // When rowsOffset is constrained and the offset position has NOT been reached
     if (rowsOffset != 0) {
       for (int i = 0; i < rowsOffset; i++) { // Try to move to the offset position
-        if (!nextWithoutConstraints()) {
+        if (!nextWithoutConstraints(rowsOffset + maxRowsOrRowsLimit - i)) {
           return false; // No next record, i.e, fail to move to the offset position
         }
       }
       rowsOffset = 0; // The offset position has been reached
     }
 
-    boolean isNext = nextWithoutConstraints();
+    boolean isNext;
+    if (maxRowsOrRowsLimit > 0) {
+      isNext = nextWithoutConstraints(maxRowsOrRowsLimit - rowsFetched);
+    } else { // maxRowsOrRowsLimit=0 means neither maxRows nor LIMIT is constrained.
+      isNext = nextWithoutConstraints(fetchSize);
+    }
 
     if (isNext) {
       /*

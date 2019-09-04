@@ -120,6 +120,9 @@ public class IoTDBDescriptor {
 
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
 
+      conf.setRpcThriftCompressionEnable(Boolean.parseBoolean(properties.getProperty("rpc_thrift_compression_enable",
+              Boolean.toString(conf.isRpcThriftCompressionEnable()))));
+
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
           Integer.toString(conf.getRpcPort()))));
 
@@ -129,6 +132,10 @@ public class IoTDBDescriptor {
       conf.setEnableParameterAdapter(
           Boolean.parseBoolean(properties.getProperty("enable_parameter_adapter",
               Boolean.toString(conf.isEnableParameterAdapter()))));
+
+      conf.setMetaDataCacheEnable(
+          Boolean.parseBoolean(properties.getProperty("meta_data_cache_enable",
+              Boolean.toString(conf.isMetaDataCacheEnable()))));
 
       initMemoryAllocate(properties);
 
@@ -164,14 +171,6 @@ public class IoTDBDescriptor {
 
       conf.setMultiDirStrategyClassName(properties.getProperty("multi_dir_strategy",
           conf.getMultiDirStrategyClassName()));
-
-      conf.setMergeConcurrentThreads(Integer
-          .parseInt(properties.getProperty("merge_concurrent_threads",
-              Integer.toString(conf.getMergeConcurrentThreads()))));
-      if (conf.getMergeConcurrentThreads() <= 0
-          || conf.getMergeConcurrentThreads() > Runtime.getRuntime().availableProcessors()) {
-        conf.setMergeConcurrentThreads(Runtime.getRuntime().availableProcessors());
-      }
 
       conf.setFetchSize(Integer.parseInt(properties.getProperty("fetch_size",
           Integer.toString(conf.getFetchSize()))));
@@ -229,6 +228,24 @@ public class IoTDBDescriptor {
       conf.setExternalSortThreshold(Integer.parseInt(properties
           .getProperty("external_sort_threshold",
               Integer.toString(conf.getExternalSortThreshold()))));
+      conf.setMergeMemoryBudget(Long.parseLong(properties.getProperty("merge_memory_budget",
+          Long.toString(conf.getMergeMemoryBudget()))));
+      conf.setMergeThreadNum(Integer.parseInt(properties.getProperty("merge_thread_num",
+          Integer.toString(conf.getMergeThreadNum()))));
+      conf.setMergeChunkSubThreadNum(Integer.parseInt(properties.getProperty
+          ("merge_chunk_subthread_num",
+          Integer.toString(conf.getMergeChunkSubThreadNum()))));
+      conf.setContinueMergeAfterReboot(Boolean.parseBoolean(properties.getProperty(
+          "continue_merge_after_reboot", Boolean.toString(conf.isContinueMergeAfterReboot()))));
+      conf.setMergeFileSelectionTimeBudget(Long.parseLong(properties.getProperty
+          ("merge_fileSelection_time_budget",
+          Long.toString(conf.getMergeFileSelectionTimeBudget()))));
+      conf.setMergeIntervalSec(Long.parseLong(properties.getProperty("merge_interval_sec",
+          Long.toString(conf.getMergeIntervalSec()))));
+      conf.setForceFullMerge(Boolean.parseBoolean(properties.getProperty("force_full_merge",
+          Boolean.toString(conf.isForceFullMerge()))));
+      conf.setChunkMergePointThreshold(Integer.parseInt(properties.getProperty(
+          "chunk_merge_point_threshold", Integer.toString(conf.getChunkMergePointThreshold()))));
 
       conf.setEnablePerformanceStat(Boolean
           .parseBoolean(properties.getProperty("enable_performance_stat",
@@ -240,6 +257,15 @@ public class IoTDBDescriptor {
       conf.setPerformanceStatMemoryInKB(Integer
           .parseInt(properties.getProperty("performance_stat_memory_in_kb",
               Integer.toString(conf.getPerformanceStatMemoryInKB())).trim()));
+
+      int maxConcurrentClientNum = Integer.parseInt(properties.
+          getProperty("rpc_max_concurrent_client_num",
+              Integer.toString(conf.getRpcMaxConcurrentClientNum()).trim()));
+      if (maxConcurrentClientNum <= 0) {
+        maxConcurrentClientNum = 65535;
+      }
+      conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
+
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {
@@ -269,6 +295,33 @@ public class IoTDBDescriptor {
       conf.setAllocateMemoryForRead(
           maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
     }
+
+    if (!conf.isMetaDataCacheEnable()) {
+      return;
+    }
+
+    String queryMemoryAllocateProportion = properties
+        .getProperty("filemeta_chunkmeta_free_memory_proportion");
+    if (queryMemoryAllocateProportion != null) {
+      String[] proportions = queryMemoryAllocateProportion.split(":");
+      int proportionSum = 0;
+      for (String proportion : proportions) {
+        proportionSum += Integer.parseInt(proportion.trim());
+      }
+      long maxMemoryAvailable = conf.getAllocateMemoryForRead();
+      try {
+        conf.setAllocateMemoryForFileMetaDataCache(
+            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+        conf.setAllocateMemoryForChumkMetaDataCache(
+            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+      } catch (Exception e) {
+        throw new RuntimeException(
+            "Each subsection of configuration item filemeta_chunkmeta_free_memory_proportion should be an integer, which is "
+                + queryMemoryAllocateProportion);
+      }
+
+    }
+
   }
 
   private static class IoTDBDescriptorHolder {

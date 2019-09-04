@@ -66,23 +66,17 @@ public class IoTDBFlushQueryMergeTest {
     EnvironmentUtils.cleanEnv();
   }
 
-  private static void insertData() throws ClassNotFoundException, SQLException {
+  private static void insertData() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
       for (String sql : sqls) {
         statement.execute(sql);
       }
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -90,32 +84,22 @@ public class IoTDBFlushQueryMergeTest {
   public void selectAllSQLTest() throws ClassNotFoundException, SQLException {
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute("select * from root");
       Assert.assertTrue(hasResultSet);
 
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet()){
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
       }
-      statement.close();
-
-      statement = connection.createStatement();
-//      statement.execute("merge");
-      statement.close();
-
+      statement.execute("merge");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 }

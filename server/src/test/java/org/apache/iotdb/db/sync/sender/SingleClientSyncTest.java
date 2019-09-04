@@ -209,12 +209,11 @@ public class SingleClientSyncTest {
         Class.forName(Config.JDBC_DRIVER_NAME);
         try (Connection connection = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-                "root")) {
-          Statement statement = connection.createStatement();
+                "root");
+            Statement statement = connection.createStatement()) {
           for (String sql : sqls1) {
             statement.execute(sql);
           }
-          statement.close();
         }
       } catch (SQLException | ClassNotFoundException e) {
         fail(e.getMessage());
@@ -228,8 +227,8 @@ public class SingleClientSyncTest {
         Class.forName(Config.JDBC_DRIVER_NAME);
         try (Connection connection = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-                "root")) {
-          Statement statement = connection.createStatement();
+                "root");
+            Statement statement = connection.createStatement()) {
           boolean hasResultSet = statement.execute("select * from root.vehicle");
           if (hasResultSet) {
             ResultSet res = statement.getResultSet();
@@ -252,7 +251,6 @@ public class SingleClientSyncTest {
                   + res.getString("root.test.d0.s1") + res.getString("root.test.d1.g0.s0"));
             }
           }
-          statement.close();
         } catch (Exception e) {
           logger.error("", e);
         }
@@ -264,12 +262,11 @@ public class SingleClientSyncTest {
       dataReceiver.clear();
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
-        Connection connection = null;
-        try {
-          connection = DriverManager
-              .getConnection(String.format("jdbc:iotdb://%s:6667/", serverIpTest), "root",
-                  "root");
-          Statement statement = connection.createStatement();
+        try (Connection connection = DriverManager
+            .getConnection(String.format("jdbc:iotdb://%s:6667/", serverIpTest), "root",
+                "root");
+            Statement statement = connection.createStatement()) {
+
           boolean hasResultSet = statement.execute("select * from root.vehicle");
           if (hasResultSet) {
             ResultSet res = statement.getResultSet();
@@ -293,15 +290,10 @@ public class SingleClientSyncTest {
                   + res.getString("root.test.d0.s1") + res.getString("root.test.d1.g0.s0"));
             }
           }
-          statement.close();
         } catch (Exception e) {
           logger.error("", e);
-        } finally {
-          if (connection != null) {
-            connection.close();
-          }
         }
-      } catch (ClassNotFoundException | SQLException e) {
+      } catch (ClassNotFoundException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
@@ -318,24 +310,17 @@ public class SingleClientSyncTest {
       logger.debug("It's the second time to sync!");
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
-        Connection connection = null;
-        try {
-          connection = DriverManager
-              .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-                  "root");
-          Statement statement = connection.createStatement();
+        try (Connection connection = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+                "root");
+            Statement statement = connection.createStatement()) {
           for (String sql : sqls2) {
             statement.execute(sql);
           }
-          statement.close();
         } catch (Exception e) {
           logger.error("", e);
-        } finally {
-          if (connection != null) {
-            connection.close();
-          }
         }
-      } catch (ClassNotFoundException | SQLException e) {
+      } catch (ClassNotFoundException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
@@ -346,12 +331,10 @@ public class SingleClientSyncTest {
       dataSender.clear();
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
-        Connection connection = null;
-        try {
-          connection = DriverManager
-              .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-                  "root");
-          Statement statement = connection.createStatement();
+        try (Connection connection = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+                "root");
+            Statement statement = connection.createStatement()) {
           boolean hasResultSet = statement.execute("select * from root.vehicle");
           if (hasResultSet) {
             ResultSet res = statement.getResultSet();
@@ -374,15 +357,10 @@ public class SingleClientSyncTest {
                   + res.getString("root.test.d0.s1") + res.getString("root.test.d1.g0.s0"));
             }
           }
-          statement.close();
         } catch (Exception e) {
           logger.error("", e);
-        } finally {
-          if (connection != null) {
-            connection.close();
-          }
         }
-      } catch (ClassNotFoundException | SQLException e) {
+      } catch (ClassNotFoundException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
@@ -390,11 +368,9 @@ public class SingleClientSyncTest {
       dataReceiver.clear();
       {
         Class.forName(Config.JDBC_DRIVER_NAME);
-        Connection connection = null;
-        try {
-          connection = DriverManager
-              .getConnection(String.format("jdbc:iotdb://%s:6667/", serverIpTest), "root",
-                  "root");
+        try (Connection connection = DriverManager
+            .getConnection(String.format("jdbc:iotdb://%s:6667/", serverIpTest), "root",
+                "root")) {
           Statement statement = connection.createStatement();
           boolean hasResultSet = statement.execute("select * from root.vehicle");
           if (hasResultSet) {
@@ -421,10 +397,6 @@ public class SingleClientSyncTest {
           statement.close();
         } catch (Exception e) {
           logger.error("", e);
-        } finally {
-          if (connection != null) {
-            connection.close();
-          }
         }
       }
       logger.debug(String.valueOf(dataSender.size()));
@@ -442,12 +414,11 @@ public class SingleClientSyncTest {
         Class.forName(Config.JDBC_DRIVER_NAME);
         try (Connection connection = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-                "root")) {
-          Statement statement = connection.createStatement();
+                "root");
+            Statement statement = connection.createStatement()) {
           for (String sql : sqls3) {
             statement.execute(sql);
           }
-          statement.close();
         } catch (Exception e) {
           logger.error("", e);
         }
@@ -464,8 +435,8 @@ public class SingleClientSyncTest {
         Class.forName(Config.JDBC_DRIVER_NAME);
         try (Connection connection = DriverManager
             .getConnection(String.format("jdbc:iotdb://%s:6667/", serverIpTest), "root",
-                "root")) {
-          Statement statement = connection.createStatement();
+                "root");
+            Statement statement = connection.createStatement()) {
           boolean hasResultSet = statement.execute("select * from root.vehicle");
           if (hasResultSet) {
             ResultSet res = statement.getResultSet();
@@ -510,7 +481,6 @@ public class SingleClientSyncTest {
                   + res.getString("root.iotdb.d1.s3"));
             }
           }
-          statement.close();
         } catch (Exception e) {
           logger.error("", e);
         }
@@ -522,10 +492,8 @@ public class SingleClientSyncTest {
       dataReceiver.clear();
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
-        Connection connection = null;
-        try {
-          connection = DriverManager
-              .getConnection("jdbc:iotdb://192.168.130.8:6667/", "root", "root");
+        try (Connection connection = DriverManager
+            .getConnection("jdbc:iotdb://192.168.130.8:6667/", "root", "root")) {
           Statement statement = connection.createStatement();
           boolean hasResultSet = statement.execute("select * from root.vehicle");
           if (hasResultSet) {
@@ -574,12 +542,8 @@ public class SingleClientSyncTest {
           statement.close();
         } catch (Exception e) {
           logger.error("", e);
-        } finally {
-          if (connection != null) {
-            connection.close();
-          }
         }
-      } catch (ClassNotFoundException | SQLException e) {
+      } catch (ClassNotFoundException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }

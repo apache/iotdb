@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.utils;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -34,6 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataTest;
 import org.apache.iotdb.tsfile.file.metadata.TsDigest;
+import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaDataTest;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -94,8 +96,7 @@ public class TestHelper {
   }
 
   public static ChunkGroupMetaData createEmptySeriesChunkGroupMetaData() {
-    ChunkGroupMetaData metaData = new ChunkGroupMetaData("d1", new ArrayList<>(), 0);
-    return metaData;
+    return new ChunkGroupMetaData("d1", new ArrayList<>(), 0);
   }
 
   public static ChunkGroupMetaData createSimpleChunkGroupMetaData() {
@@ -117,20 +118,49 @@ public class TestHelper {
     return metaData;
   }
 
-  public static MeasurementSchema createSimpleMeasurementSchema() {
-    MeasurementSchema timeSeries = new MeasurementSchema(TimeSeriesMetadataTest.measurementUID,
-        TSDataType.INT64,
-        TSEncoding.RLE);
-    return timeSeries;
+  public static ChunkMetaData createNotCompleteSimpleTimeSeriesChunkMetaData() throws IOException {
+    ChunkMetaData metaData = new ChunkMetaData(ChunkMetaDataTest.MEASUREMENT_UID,
+        ChunkMetaDataTest.DATA_TYPE,
+        ChunkMetaDataTest.FILE_OFFSET, ChunkMetaDataTest.START_TIME, ChunkMetaDataTest.END_TIME
+    );
+    metaData.setNumOfPoints(ChunkMetaDataTest.NUM_OF_POINTS);
+    metaData.setDigest(createNotCompleteSimpleTsDigest());
+    return metaData;
   }
 
-  public static TsDigest createSimpleTsDigest() {
+  public static MeasurementSchema createSimpleMeasurementSchema() {
+    return new MeasurementSchema(TimeSeriesMetadataTest.measurementUID,
+        TSDataType.INT64,
+        TSEncoding.RLE);
+  }
+
+  public static TsDigest createSimpleTsDigest() throws IOException {
     TsDigest digest = new TsDigest();
-    digest.addStatistics("max", ByteBuffer.wrap(BytesUtils.stringToBytes(MAX_VALUE)));
-    digest.addStatistics("min", ByteBuffer.wrap(BytesUtils.stringToBytes(MIN_VALUE)));
-    digest.addStatistics("sum", ByteBuffer.wrap(BytesUtils.stringToBytes(SUM_VALUE)));
-    digest.addStatistics("first", ByteBuffer.wrap(BytesUtils.stringToBytes(FIRST_VALUE)));
-    digest.addStatistics("last", ByteBuffer.wrap(BytesUtils.stringToBytes(LAST_VALUE)));
+    ByteBuffer[] statisticsArray = new ByteBuffer[StatisticType.getTotalTypeNum()];
+    statisticsArray[StatisticType.min_value.ordinal()] = ByteBuffer
+        .wrap(BytesUtils.stringToBytes(MIN_VALUE));
+    statisticsArray[StatisticType.max_value.ordinal()] = ByteBuffer
+        .wrap(BytesUtils.stringToBytes(MAX_VALUE));
+    statisticsArray[StatisticType.first_value.ordinal()] = ByteBuffer
+        .wrap(BytesUtils.stringToBytes(FIRST_VALUE));
+    statisticsArray[StatisticType.last_value.ordinal()] = ByteBuffer
+        .wrap(BytesUtils.stringToBytes(LAST_VALUE));
+    statisticsArray[StatisticType.sum_value.ordinal()] = ByteBuffer
+        .wrap(BytesUtils.stringToBytes(SUM_VALUE));
+    digest.setStatistics(statisticsArray);
+    return digest;
+  }
+
+  public static TsDigest createNotCompleteSimpleTsDigest() throws IOException {
+    TsDigest digest = new TsDigest();
+    ByteBuffer[] statisticsArray = new ByteBuffer[StatisticType.getTotalTypeNum()];
+    statisticsArray[StatisticType.first_value.ordinal()] = ByteBuffer
+        .wrap(BytesUtils.stringToBytes(FIRST_VALUE));
+    statisticsArray[StatisticType.last_value.ordinal()] = ByteBuffer
+        .wrap(BytesUtils.stringToBytes(LAST_VALUE));
+    statisticsArray[StatisticType.sum_value.ordinal()] = ByteBuffer
+        .wrap(BytesUtils.stringToBytes(SUM_VALUE));
+    digest.setStatistics(statisticsArray);
     return digest;
   }
 
@@ -144,9 +174,8 @@ public class TestHelper {
   public static PageHeader createSimplePageHeader() {
     Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
     statistics.setEmpty(false);
-    PageHeader header = new PageHeader(PageHeaderTest.UNCOMPRESSED_SIZE,
+    return new PageHeader(PageHeaderTest.UNCOMPRESSED_SIZE,
         PageHeaderTest.COMPRESSED_SIZE, PageHeaderTest.NUM_OF_VALUES,
         statistics, PageHeaderTest.MAX_TIMESTAMO, PageHeaderTest.MIN_TIMESTAMO);
-    return header;
   }
 }

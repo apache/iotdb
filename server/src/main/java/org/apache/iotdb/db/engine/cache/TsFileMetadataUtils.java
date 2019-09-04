@@ -20,10 +20,12 @@ package org.apache.iotdb.db.engine.cache;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -46,37 +48,37 @@ public class TsFileMetadataUtils {
   /**
    * get tsfile meta data.
    *
-   * @param filePath -given path
+   * @param resource -given TsFile
    * @return -meta data
    */
-  public static TsFileMetaData getTsFileMetaData(String filePath) throws IOException {
-    TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
+  public static TsFileMetaData getTsFileMetaData(TsFileResource resource) throws IOException {
+    TsFileSequenceReader reader = FileReaderManager.getInstance().get(resource, true);
     return reader.readFileMetadata();
   }
 
   /**
    * get row group block meta data.
    *
-   * @param filePath -file path
+   * @param resource -TsFile
    * @param seriesPath -series path
    * @param fileMetaData -tsfile meta data
    * @return -device meta data
    */
-  public static TsDeviceMetadata getTsDeviceMetaData(String filePath, Path seriesPath,
+  public static TsDeviceMetadata getTsDeviceMetaData(TsFileResource resource, Path seriesPath,
       TsFileMetaData fileMetaData) throws IOException {
     if (!fileMetaData.getMeasurementSchema().containsKey(seriesPath.getMeasurement())) {
       return null;
     } else {
       // get the index information of TsDeviceMetadata
       TsDeviceMetadataIndex index = fileMetaData.getDeviceMetadataIndex(seriesPath.getDevice());
-      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
+      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(resource, true);
       // read TsDeviceMetadata from file
       return tsFileReader.readTsDeviceMetaData(index);
     }
   }
 
   /**
-   * get ChunkMetaData List of sensors in sensorSet included in all ChunkGroups of this device. If
+   * get ChunkMetaData List of measurements in sensorSet included in all ChunkGroups of this device. If
    * sensorSet is empty, then return metadata of all sensor included in this device.
    */
   public static Map<Path, List<ChunkMetaData>> getChunkMetaDataList(
@@ -95,7 +97,26 @@ public class TsFileMetadataUtils {
         }
       }
     }
+    for (List<ChunkMetaData> chunkMetaDataList : pathToChunkMetaDataList.values()) {
+      chunkMetaDataList.sort(Comparator.comparingLong(ChunkMetaData::getStartTime));
+    }
     return pathToChunkMetaDataList;
   }
 
+  public static List<ChunkMetaData> getChunkMetaDataList(String sensor,
+      TsDeviceMetadata tsDeviceMetadata) {
+    List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
+    for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
+      List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
+          .getChunkMetaDataList();
+
+      for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
+        if (sensor.equals(chunkMetaData.getMeasurementUid())) {
+          chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
+          chunkMetaDataList.add(chunkMetaData);
+        }
+      }
+    }
+    return chunkMetaDataList;
+  }
 }

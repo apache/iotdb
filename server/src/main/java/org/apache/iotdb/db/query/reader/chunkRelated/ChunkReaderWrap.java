@@ -24,7 +24,7 @@ import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
@@ -38,7 +38,7 @@ public class ChunkReaderWrap {
 
   // attributes for disk chunk
   private ChunkMetaData chunkMetaData;
-  private ChunkLoader chunkLoader;
+  private IChunkLoader chunkLoader;
 
   // attributes for mem chunk
   private ReadOnlyMemChunk readOnlyMemChunk;
@@ -53,7 +53,7 @@ public class ChunkReaderWrap {
   /**
    * constructor of diskChunkReader
    */
-  public ChunkReaderWrap(ChunkMetaData metaData, ChunkLoader chunkLoader, Filter filter) {
+  public ChunkReaderWrap(ChunkMetaData metaData, IChunkLoader chunkLoader, Filter filter) {
     this.type = ChunkReaderType.DISK_CHUNK;
     this.chunkMetaData = metaData;
     this.chunkLoader = chunkLoader;

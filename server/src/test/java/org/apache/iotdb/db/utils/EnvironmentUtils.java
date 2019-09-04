@@ -99,7 +99,7 @@ public class EnvironmentUtils {
     IoTDBConfigDynamicAdapter.getInstance().reset();
   }
 
-  private static void cleanAllDir() throws IOException {
+  public static void cleanAllDir() throws IOException {
     // delete sequential files
     for (String path : directoryManager.getAllSequenceFileFolders()) {
       cleanDir(path);

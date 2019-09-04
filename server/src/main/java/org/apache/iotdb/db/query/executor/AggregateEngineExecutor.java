@@ -86,8 +86,6 @@ public class AggregateEngineExecutor {
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
-    QueryResourceManager
-        .getInstance().beginQueryOfGivenQueryPaths(context.getJobId(), selectedSeries);
 
     List<IAggregateReader> readersOfSequenceData = new ArrayList<>();
     List<IPointReader> readersOfUnSequenceData = new ArrayList<>();
@@ -229,14 +227,16 @@ public class AggregateEngineExecutor {
       } else {
         // cal by pageData
         BatchData batchData = sequenceReader.nextBatch();
-        if (lastBatchTimeStamp > batchData.currentTime()) {
-          // the chunk is end.
-          isChunkEnd = true;
-        } else {
-          // current page and last page are in the same chunk.
-          lastBatchTimeStamp = batchData.currentTime();
+        if (batchData.length() > 0) {
+          if (lastBatchTimeStamp > batchData.currentTime()) {
+            // the chunk is end.
+            isChunkEnd = true;
+          } else {
+            // current page and last page are in the same chunk.
+            lastBatchTimeStamp = batchData.currentTime();
+          }
+          function.calculateValueFromPageData(batchData, unSequenceReader);
         }
-        function.calculateValueFromPageData(batchData, unSequenceReader);
       }
       if (isChunkEnd) {
         break;
@@ -258,9 +258,6 @@ public class AggregateEngineExecutor {
    */
   public QueryDataSet executeWithValueFilter(QueryContext context)
       throws StorageEngineException, PathErrorException, IOException, ProcessorException {
-    QueryResourceManager
-        .getInstance().beginQueryOfGivenQueryPaths(context.getJobId(), selectedSeries);
-    QueryResourceManager.getInstance().beginQueryOfGivenExpression(context.getJobId(), expression);
 
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(expression, context);
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();

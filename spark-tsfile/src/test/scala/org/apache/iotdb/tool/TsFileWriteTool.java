@@ -166,7 +166,7 @@ public class TsFileWriteTool {
     TsFileWriter tsFileWriter = new TsFileWriter(f);
 
     // add measurements into file schema
-    // NOTE the sensors here are different from those defined in create1 and
+    // NOTE the measurments here are different from those defined in create1 and
     // create2 function, despite their names are the same.
     tsFileWriter
         .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.BOOLEAN, TSEncoding.RLE));

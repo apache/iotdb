@@ -40,7 +40,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-public class MetadataQuerierByFileImpl implements MetadataQuerier {
+public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
   private static final int CHUNK_METADATA_CACHE_SIZE = 100000;
 
@@ -172,30 +172,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
   }
 
   private List<ChunkMetaData> loadChunkMetadata(Path path) throws IOException {
-
-    if (!fileMetaData.containsDevice(path.getDevice())) {
-      return new ArrayList<>();
-    }
-
-    // get the index information of TsDeviceMetadata
-    TsDeviceMetadataIndex index = fileMetaData.getDeviceMetadataIndex(path.getDevice());
-
-    // read TsDeviceMetadata from file
-    TsDeviceMetadata tsDeviceMetadata = tsFileReader.readTsDeviceMetaData(index);
-
-    // get all ChunkMetaData of this path included in all ChunkGroups of this device
-    List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
-    for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
-      List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
-          .getChunkMetaDataList();
-      for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
-        if (path.getMeasurement().equals(chunkMetaData.getMeasurementUid())) {
-          chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
-          chunkMetaDataList.add(chunkMetaData);
-        }
-      }
-    }
-    return chunkMetaDataList;
+    return tsFileReader.getChunkMetadataList(path);
   }
 
   @Override
@@ -302,4 +279,11 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
   private enum LocateStatus {
     in, before, after
   }
+
+  @Override
+  public void clear() {
+    chunkMetaDataCache.clear();
+  }
+
+
 }

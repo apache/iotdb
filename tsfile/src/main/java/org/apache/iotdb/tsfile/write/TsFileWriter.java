@@ -30,9 +30,10 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.write.chunk.ChunkGroupWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkGroupWriter;
+import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
@@ -52,7 +53,7 @@ public class TsFileWriter implements AutoCloseable{
   /**
    * schema of this TsFile.
    **/
-  protected final FileSchema schema;
+  protected final Schema schema;
   /**
    * IO writer of this TsFile.
    **/
@@ -77,7 +78,7 @@ public class TsFileWriter implements AutoCloseable{
    * @param file the File to be written by this TsFileWriter
    */
   public TsFileWriter(File file) throws IOException {
-    this(new TsFileIOWriter(file), new FileSchema(), TSFileDescriptor.getInstance().getConfig());
+    this(new TsFileIOWriter(file), new Schema(), TSFileDescriptor.getInstance().getConfig());
   }
 
   /**
@@ -86,7 +87,7 @@ public class TsFileWriter implements AutoCloseable{
    * @param fileWriter the io writer of this TsFile
    */
   public TsFileWriter(TsFileIOWriter fileWriter) throws IOException {
-    this(fileWriter, new FileSchema(), TSFileDescriptor.getInstance().getConfig());
+    this(fileWriter, new Schema(), TSFileDescriptor.getInstance().getConfig());
   }
 
   /**
@@ -95,7 +96,7 @@ public class TsFileWriter implements AutoCloseable{
    * @param file the File to be written by this TsFileWriter
    * @param schema the schema of this TsFile
    */
-  public TsFileWriter(File file, FileSchema schema) throws IOException {
+  public TsFileWriter(File file, Schema schema) throws IOException {
     this(new TsFileIOWriter(file), schema, TSFileDescriptor.getInstance().getConfig());
   }
 
@@ -106,7 +107,7 @@ public class TsFileWriter implements AutoCloseable{
    * @param schema the schema of this TsFile
    * @throws IOException
    */
-  public TsFileWriter(TsFileOutput output, FileSchema schema) throws IOException {
+  public TsFileWriter(TsFileOutput output, Schema schema) throws IOException {
     this(new TsFileIOWriter(output), schema, TSFileDescriptor.getInstance().getConfig());
   }
 
@@ -117,7 +118,7 @@ public class TsFileWriter implements AutoCloseable{
    * @param schema the schema of this TsFile
    * @param conf the configuration of this TsFile
    */
-  public TsFileWriter(File file, FileSchema schema, TSFileConfig conf) throws IOException {
+  public TsFileWriter(File file, Schema schema, TSFileConfig conf) throws IOException {
     this(new TsFileIOWriter(file), schema, conf);
   }
 
@@ -128,7 +129,7 @@ public class TsFileWriter implements AutoCloseable{
    * @param schema the schema of this TsFile
    * @param conf the configuration of this TsFile
    */
-  protected TsFileWriter(TsFileIOWriter fileWriter, FileSchema schema, TSFileConfig conf)
+  protected TsFileWriter(TsFileIOWriter fileWriter, Schema schema, TSFileConfig conf)
       throws IOException {
     if (!fileWriter.canWrite()) {
       throw new IOException(
@@ -158,14 +159,6 @@ public class TsFileWriter implements AutoCloseable{
   }
 
   /**
-   * add a new measurement according to json string.
-   *
-   * @param measurement example: { "measurement_id": "sensor_cpu_50", "data_type": "INT32",
-   * "encoding": "RLE" "compressor":"SNAPPY" }
-   * @throws WriteProcessException if the json is illegal or the measurement exists
-   */
-
-  /**
    * Confirm whether the record is legal. If legal, add it into this RecordWriter.
    *
    * @param record - a record responding a line
@@ -182,16 +175,44 @@ public class TsFileWriter implements AutoCloseable{
     }
 
     // add all SeriesWriter of measurements in this TSRecord to this ChunkGroupWriter
-    Map<String, MeasurementSchema> schemaDescriptorMap = schema.getAllMeasurementSchema();
+    Map<String, MeasurementSchema> schemaDescriptorMap = schema.getMeasurementSchemaMap();
     for (DataPoint dp : record.dataPointList) {
       String measurementId = dp.getMeasurementId();
       if (schemaDescriptorMap.containsKey(measurementId)) {
-        groupWriter.addSeriesWriter(schemaDescriptorMap.get(measurementId), pageSize);
+        groupWriter.tryToAddSeriesWriter(schemaDescriptorMap.get(measurementId), pageSize);
       } else {
         throw new NoMeasurementException("input measurement is invalid: " + measurementId);
       }
     }
     return true;
+  }
+
+  /**
+   * Confirm whether the row batch is legal.
+   *
+   * @param rowBatch - a row batch responding multiple columns
+   * @return - whether the row batch has been added into RecordWriter legally
+   * @throws WriteProcessException exception
+   */
+  private void checkIsTimeSeriesExist(RowBatch rowBatch) throws WriteProcessException {
+    IChunkGroupWriter groupWriter;
+    if (!groupWriters.containsKey(rowBatch.deviceId)) {
+      groupWriter = new ChunkGroupWriterImpl(rowBatch.deviceId);
+      groupWriters.put(rowBatch.deviceId, groupWriter);
+    } else {
+      groupWriter = groupWriters.get(rowBatch.deviceId);
+    }
+
+    // add all SeriesWriter of measurements in this RowBatch to this ChunkGroupWriter
+    Map<String, MeasurementSchema> schemaDescriptorMap = schema.getMeasurementSchemaMap();
+    for (MeasurementSchema measurement : rowBatch.measurements) {
+      String measurementId = measurement.getMeasurementId();
+      if (schemaDescriptorMap.containsKey(measurementId)) {
+        groupWriter.tryToAddSeriesWriter(schemaDescriptorMap.get(measurementId), pageSize);
+      } else {
+        throw new NoMeasurementException("input measurement is invalid: " + measurementId);
+      }
+    }
   }
 
   /**
@@ -208,6 +229,22 @@ public class TsFileWriter implements AutoCloseable{
     // get corresponding ChunkGroupWriter and write this TSRecord
     groupWriters.get(record.deviceId).write(record.time, record.dataPointList);
     ++recordCount;
+    return checkMemorySizeAndMayFlushGroup();
+  }
+
+  /**
+   * write a row batch
+   *
+   * @param rowBatch - multiple time series of one device that share a time column
+   * @throws IOException exception in IO
+   * @throws WriteProcessException exception in write process
+   */
+  public boolean write(RowBatch rowBatch) throws IOException, WriteProcessException {
+    // make sure the ChunkGroupWriter for this RowBatch exist
+    checkIsTimeSeriesExist(rowBatch);
+    // get corresponding ChunkGroupWriter and write this RowBatch
+    groupWriters.get(rowBatch.deviceId).write(rowBatch);
+    recordCount += rowBatch.batchSize;
     return checkMemorySizeAndMayFlushGroup();
   }
 

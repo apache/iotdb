@@ -32,6 +32,12 @@ public class Constant {
 
   public static final String GLOBAL_SHOW_TIMESERIES_REQ = "SHOW_TIMESERIES";
 
+  public static final String GLOBAL_COUNT_TIMESERIES_REQ = "COUNT_TIMESERIES";
+
+  public static final String GLOBAL_COUNT_NODE_TIMESERIES_REQ = "COUNT_NODE_TIMESERIES";
+
+  public static final String GLOBAL_COUNT_NODES_REQ = "COUNT_NODES";
+
   public static final String GLOBAL_SHOW_STORAGE_GROUP_REQ = "SHOW_STORAGE_GROUP";
 
   public static final String GLOBAL_COLUMNS_REQ = "ALL_COLUMNS";
@@ -41,4 +47,7 @@ public class Constant {
   public static final String CATALOG_TIMESERIES = "ts";
   public static final String CATALOG_STORAGE_GROUP = "sg";
   public static final String CATALOG_DEVICE = "delta";
+  public static final String COUNT_TIMESERIES = "cntts";
+  public static final String COUNT_NODE_TIMESERIES = "cnttsbg";
+  public static final String COUNT_NODES = "cntnode";
 }

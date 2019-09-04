@@ -31,14 +31,18 @@ public enum ServiceType {
   AUTHORIZATION_SERVICE("Authorization ServerService", ""),
   FILE_READER_MANAGER_SERVICE("File reader manager ServerService", ""),
   SYNC_SERVICE("SYNC ServerService", ""),
+  MERGE_SERVICE("Merge Manager", ""),
   PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE","PERFORMANCE_STATISTIC_SERVICE"),
+  MANAGE_DYNAMIC_PARAMETERS_SERVICE("Manage Dynamic Parameters", "Manage Dynamic Parameters"),
   TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
-  FLUSH_SERVICE("Flush ServerService", "");
+
+  FLUSH_SERVICE("Flush ServerService",
+      generateJmxName("org.apache.iotdb.db.engine.pool", "Flush Manager"));
 
   private String name;
   private String jmxName;
 
-  private ServiceType(String name, String jmxName) {
+  ServiceType(String name, String jmxName) {
     this.name = name;
     this.jmxName = jmxName;
   }
@@ -49,5 +53,10 @@ public enum ServiceType {
 
   public String getJmxName() {
     return jmxName;
+  }
+
+  private static String generateJmxName(String packageName,  String jmxName) {
+    return String
+        .format("%s:type=%s", packageName, jmxName);
   }
 }

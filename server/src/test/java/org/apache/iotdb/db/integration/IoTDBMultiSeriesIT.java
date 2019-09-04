@@ -73,7 +73,6 @@ public class IoTDBMultiSeriesIT {
     daemon.active();
     EnvironmentUtils.envSetUp();
 
-    Thread.sleep(5000);
     insertData();
   }
 
@@ -90,13 +89,11 @@ public class IoTDBMultiSeriesIT {
   }
 
   private static void insertData()
-      throws ClassNotFoundException, SQLException, InterruptedException {
+      throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
 
       for (String sql : Constant.create_sql) {
         statement.execute(sql);
@@ -139,9 +136,7 @@ public class IoTDBMultiSeriesIT {
       }
 
       statement.execute("flush");
-      // statement.execute("merge");
-
-      Thread.sleep(5000);
+      statement.execute("merge");
 
       // buffwrite data, unsealed file
       for (int time = 100000; time < 101000; time++) {
@@ -210,53 +205,40 @@ public class IoTDBMultiSeriesIT {
         statement.execute(sql);
       }
 
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
   // "select * from root.vehicle" : test select wild data
   @Test
-  public void selectAllTest() throws ClassNotFoundException, SQLException {
+  public void selectAllTest() throws ClassNotFoundException {
     String selectSql = "select * from root.vehicle";
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(selectSql);
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        String ans =
-            resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0)
-                + "," + resultSet.getString(Constant.d0s1) + "," + resultSet
-                .getString(Constant.d0s2) + ","
-                + resultSet.getString(Constant.d0s3) + "," + resultSet.getString(Constant.d0s4)
-                + ","
-                + resultSet.getString(Constant.d0s5);
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0)
+                  + "," + resultSet.getString(Constant.d0s1) + "," + resultSet
+                  .getString(Constant.d0s2) + ","
+                  + resultSet.getString(Constant.d0s3) + "," + resultSet.getString(Constant.d0s4)
+                  + ","
+                  + resultSet.getString(Constant.d0s5);
+          cnt++;
+        }
+        assertEquals(23400, cnt);
       }
-
-      assertEquals(23400, cnt);
-      statement.close();
-
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -267,31 +249,26 @@ public class IoTDBMultiSeriesIT {
     String selectSql = "select s0 from root.vehicle.d0 where s0 >= 20";
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
       boolean hasResultSet = statement.execute(selectSql);
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        String ans =
-            resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0);
-        // System.out.println("===" + ans);
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0);
+          // System.out.println("===" + ans);
+          cnt++;
+        }
+        assertEquals(16440, cnt);
       }
-      assertEquals(16440, cnt);
-      statement.close();
 
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -300,37 +277,29 @@ public class IoTDBMultiSeriesIT {
   public void seriesGlobalTimeFilterTest() throws ClassNotFoundException, SQLException {
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-            "root");
-    boolean hasResultSet;
-    Statement statement;
 
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      statement = connection.createStatement();
+    boolean hasResultSet;
+
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement();) {
       hasResultSet = statement.execute("select s0 from root.vehicle.d0 where time > 22987");
       assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        String ans =
-            resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0);
-        // System.out.println(ans);
-        cnt++;
-      }
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0);
+          // System.out.println(ans);
+          cnt++;
+        }
 
-      assertEquals(3012, cnt);
-      statement.close();
+        assertEquals(3012, cnt);
+      }
 
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -338,39 +307,31 @@ public class IoTDBMultiSeriesIT {
   @Test
   public void crossSeriesReadUpdateTest() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-            "root");
-    boolean hasResultSet;
-    Statement statement;
 
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      statement = connection.createStatement();
+    boolean hasResultSet;
+
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       hasResultSet = statement.execute("select s1 from root.vehicle.d0 where s0 < 111");
       assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        long time = Long.valueOf(resultSet.getString(Constant.TIMESTAMP_STR));
-        String value = resultSet.getString(Constant.d0s1);
-        if (time > 200900) {
-          assertEquals("7777", value);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          long time = Long.valueOf(resultSet.getString(Constant.TIMESTAMP_STR));
+          String value = resultSet.getString(Constant.d0s1);
+          if (time > 200900) {
+            assertEquals("7777", value);
+          }
+          // String ans = resultSet.getString(d0s1);
+          cnt++;
         }
-        // String ans = resultSet.getString(d0s1);
-        cnt++;
+        assertEquals(22800, cnt);
       }
-      assertEquals(22800, cnt);
-      statement.close();
 
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 }

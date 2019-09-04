@@ -25,8 +25,8 @@ import java.util.List;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
-import org.apache.iotdb.tsfile.read.controller.MetadataQuerier;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.read.controller.IMetadataQuerier;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -40,8 +40,8 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
 
 public class TimeGeneratorImpl implements TimeGenerator {
 
-  private ChunkLoader chunkLoader;
-  private MetadataQuerier metadataQuerier;
+  private IChunkLoader chunkLoader;
+  private IMetadataQuerier metadataQuerier;
   private Node operatorNode;
 
   private HashMap<Path, List<LeafNode>> leafCache;
@@ -53,8 +53,8 @@ public class TimeGeneratorImpl implements TimeGenerator {
    * @param chunkLoader -construct param
    * @param metadataQuerier -construct param
    */
-  public TimeGeneratorImpl(IExpression iexpression, ChunkLoader chunkLoader,
-      MetadataQuerier metadataQuerier)
+  public TimeGeneratorImpl(IExpression iexpression, IChunkLoader chunkLoader,
+      IMetadataQuerier metadataQuerier)
       throws IOException {
     this.chunkLoader = chunkLoader;
     this.metadataQuerier = metadataQuerier;

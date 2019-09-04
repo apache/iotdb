@@ -425,7 +425,7 @@ public class LogicalGenerator {
   private void analyzeMetadataSetFileLevel(AstNode astNode) {
     MetadataOperator metadataOperator = new MetadataOperator(
         SQLConstant.TOK_METADATA_SET_FILE_LEVEL,
-        MetadataOperator.NamespaceType.SET_FILE_LEVEL);
+        MetadataOperator.NamespaceType.SET_STORAGE_GROUP);
     Path path = parsePath(astNode.getChild(0).getChild(0));
     metadataOperator.setPath(path);
     initializedOperator = metadataOperator;
@@ -464,9 +464,15 @@ public class LogicalGenerator {
     }
     insertOp.setMeasurementList(measurementList);
 
-    String[] valueList = new String[astNode.getChild(2).getChildCount() - 1];
-    for (int i = 1; i < astNode.getChild(2).getChildCount(); i++) {
-      valueList[i - 1] = astNode.getChild(2).getChild(i).getText();
+    AstNode valueKey = astNode.getChild(2);
+    String[] valueList = new String[valueKey.getChildCount() - 1];
+    for (int i = 1; i < valueKey.getChildCount(); i++) {
+      AstNode node = valueKey.getChild(i);
+      if (node.getType() == TSParser.TOK_FLOAT_COMB) {
+        valueList[i - 1] = parseTokens(node);
+      } else {
+        valueList[i - 1] = node.getText();
+      }
     }
     insertOp.setValueList(valueList);
   }
@@ -526,10 +532,6 @@ public class LogicalGenerator {
     long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());
     if (filterOperator.getTokenIntType() == LESSTHAN) {
       time = time - 1;
-    }
-    // time must greater than 0 now
-    if (time <= 0) {
-      throw new LogicalOperatorException("delete Time:" + time + ", time must > 0");
     }
     return time;
   }
@@ -840,6 +842,8 @@ public class LogicalGenerator {
         throw new LogicalOperatorException("Date can only be used to time");
       }
       seriesValue = parseTokenTime(rightKey);
+    } else if (rightKey.getType() == TSParser.TOK_FLOAT_COMB) {
+      seriesValue = parseTokens(rightKey);
     } else {
       seriesValue = rightKey.getText();
     }
@@ -847,11 +851,15 @@ public class LogicalGenerator {
   }
 
   private String parseTokenTime(AstNode astNode) throws LogicalOperatorException {
+    return parseTimeFormat(parseTokens(astNode)) + "";
+  }
+
+  private String parseTokens(AstNode astNode) throws LogicalOperatorException {
     StringContainer sc = new StringContainer();
     for (int i = 0; i < astNode.getChildCount(); i++) {
       sc.addTail(astNode.getChild(i).getText());
     }
-    return parseTimeFormat(sc.toString()) + "";
+    return sc.toString();
   }
 
   /**
@@ -1121,7 +1129,7 @@ public class LogicalGenerator {
     boolean throwExp = false;
     switch (tsDataType) {
       case BOOLEAN:
-        if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN))){
+        if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN))) {
           throwExp = true;
         }
         break;

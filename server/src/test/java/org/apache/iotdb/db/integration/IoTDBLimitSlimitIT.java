@@ -101,22 +101,16 @@ public class IoTDBLimitSlimitIT {
 
   private static void insertData() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
       for (String sql : insertSqls) {
         statement.execute(sql);
       }
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -158,13 +152,14 @@ public class IoTDBLimitSlimitIT {
 
   private void executeSQL(String[] sqls) throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
+
+    try ( Connection  connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       String result = "";
       Long now_start = 0L;
       boolean cmp = false;
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+
       for (String sql : sqls) {
 //         System.out.println("----" + sql);
         if (cmp) {
@@ -178,44 +173,40 @@ public class IoTDBLimitSlimitIT {
           if (sql.contains("NOW()") && now_start == 0L) {
             now_start = System.currentTimeMillis();
           }
-          Statement statement = connection.createStatement();
+
           statement.execute(sql);
           if (sql.split(" ")[0].equals("SELECT") | sql.split(" ")[0].equals("select")) {
-            ResultSet resultSet = statement.getResultSet();
-            ResultSetMetaData metaData = resultSet.getMetaData();
-            int count = metaData.getColumnCount();
-            String[] column = new String[count];
-            for (int i = 0; i < count; i++) {
-              column[i] = metaData.getColumnName(i + 1);
-            }
-            result = "";
-            while (resultSet.next()) {
-              for (int i = 1; i <= count; i++) {
-                if (now_start > 0L && column[i - 1] == Constant.TIMESTAMP_STR) {
-                  String timestr = resultSet.getString(i);
-                  Long tn = Long.valueOf(timestr);
-                  Long now = System.currentTimeMillis();
-                  if (tn >= now_start && tn <= now) {
-                    timestr = "NOW()";
-                  }
-                  result += timestr + ',';
-                } else {
-                  result += resultSet.getString(i) + ',';
-                }
+            try (ResultSet resultSet = statement.getResultSet()) {
+              ResultSetMetaData metaData = resultSet.getMetaData();
+              int count = metaData.getColumnCount();
+              String[] column = new String[count];
+              for (int i = 0; i < count; i++) {
+                column[i] = metaData.getColumnName(i + 1);
               }
-              result += '\n';
+              result = "";
+              while (resultSet.next()) {
+                for (int i = 1; i <= count; i++) {
+                  if (now_start > 0L && column[i - 1] == Constant.TIMESTAMP_STR) {
+                    String timestr = resultSet.getString(i);
+                    Long tn = Long.valueOf(timestr);
+                    Long now = System.currentTimeMillis();
+                    if (tn >= now_start && tn <= now) {
+                      timestr = "NOW()";
+                    }
+                    result += timestr + ',';
+                  } else {
+                    result += resultSet.getString(i) + ',';
+                  }
+                }
+                result += '\n';
+              }
+              cmp = true;
             }
-            cmp = true;
           }
-          statement.close();
         }
       }
     } catch (Exception e) {
       e.printStackTrace();
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 }

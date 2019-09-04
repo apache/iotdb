@@ -23,6 +23,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.slf4j.Logger;
@@ -39,9 +40,19 @@ public class IoTDBConfig {
   private String rpcAddress = "0.0.0.0";
 
   /**
+   * whether to use thrift compression.
+   */
+  private boolean rpcThriftCompressionEnable = false;
+
+  /**
    * Port which the JDBC server listens to.
    */
   private int rpcPort = 6667;
+
+  /**
+   * Max concurrent client number
+   */
+  private int rpcMaxConcurrentClientNum = 65535;
 
   /**
    * Memory allocated for the read process
@@ -134,12 +145,6 @@ public class IoTDBConfig {
   private int maxMemtableNumber = 20;
 
   /**
-   * The maximum concurrent thread number for merging. When the value <=0 or > CPU core number, use
-   * the CPU core number.
-   */
-  private int mergeConcurrentThreads = Runtime.getRuntime().availableProcessors();
-
-  /**
    * The amount of data that is read every time when IoTDB merges data.
    */
   private int fetchSize = 10000;
@@ -160,6 +165,20 @@ public class IoTDBConfig {
    * When a memTable's size (in byte) exceeds this, the memtable is flushed to disk.
    */
   private long memtableSizeThreshold = 128 * 1024 * 1024L;
+
+  /**
+   * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
+   */
+  private boolean metaDataCacheEnable = true;
+  /**
+   * Memory allocated for fileMetaData cache in read process
+   */
+  private long allocateMemoryForFileMetaDataCache = allocateMemoryForRead * 3 / 19;
+
+  /**
+   * Memory allocated for chunkMetaData cache in read process
+   */
+  private long allocateMemoryForChumkMetaDataCache = allocateMemoryForRead * 6 / 19;
 
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
@@ -239,6 +258,57 @@ public class IoTDBConfig {
    * whether use chunkBufferPool.
    */
   private boolean chunkBufferPoolEnable = false;
+
+  /**
+   * How much memory (in byte) can be used by a single merge task.
+   */
+  private long mergeMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.2);
+
+  /**
+   * How many threads will be set up to perform main merge tasks.
+   */
+  private int mergeThreadNum = 1;
+
+  /**
+   * How many threads will be set up to perform merge chunk sub-tasks.
+   */
+  private int mergeChunkSubThreadNum = 4;
+
+  /**
+   * If one merge file selection runs for more than this time, it will be ended and its current
+   * selection will be used as final selection. Unit: millis.
+   * When < 0, it means time is unbounded.
+   */
+  private long mergeFileSelectionTimeBudget = 30 * 1000;
+
+  /**
+   * When set to true, if some crashed merges are detected during system rebooting, such merges will
+   * be continued, otherwise, the unfinished parts of such merges will not be continued while the
+   * finished parts still remain as they are.
+   */
+  private boolean continueMergeAfterReboot = true;
+
+  /**
+   * A global merge will be performed each such interval, that is, each storage group will be merged
+   * (if proper merge candidates can be found). Unit: second.
+   */
+  private long mergeIntervalSec = 2 * 3600L;
+
+  /**
+   * When set to true, all merges becomes full merge (the whole SeqFiles are re-written despite how
+   * much they are overflowed). This may increase merge overhead depending on how much the SeqFiles
+   * are overflowed.
+   */
+  private boolean forceFullMerge = false;
+
+  /**
+   * During a merge, if a chunk with less number of chunks than this parameter, the chunk will be
+   * merged with its succeeding chunks even if it is not overflowed, until the merged chunks reach
+   * this threshold and the new chunk will be flushed.
+   */
+  private int chunkMergePointThreshold = 20480;
+
+  private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
   public IoTDBConfig() {
     // empty constructor
@@ -412,14 +482,6 @@ public class IoTDBConfig {
     this.indexFileDir = indexFileDir;
   }
 
-  public int getMergeConcurrentThreads() {
-    return mergeConcurrentThreads;
-  }
-
-  void setMergeConcurrentThreads(int mergeConcurrentThreads) {
-    this.mergeConcurrentThreads = mergeConcurrentThreads;
-  }
-
   public int getFetchSize() {
     return fetchSize;
   }
@@ -470,6 +532,14 @@ public class IoTDBConfig {
 
   public void setEnableStatMonitor(boolean enableStatMonitor) {
     this.enableStatMonitor = enableStatMonitor;
+  }
+
+  public int getRpcMaxConcurrentClientNum() {
+    return rpcMaxConcurrentClientNum;
+  }
+
+  public void setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
+    this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
   }
 
   public int getStatMonitorDetectFreqSec() {
@@ -584,6 +654,38 @@ public class IoTDBConfig {
     this.chunkBufferPoolEnable = chunkBufferPoolEnable;
   }
 
+  public long getMergeMemoryBudget() {
+    return mergeMemoryBudget;
+  }
+
+  public void setMergeMemoryBudget(long mergeMemoryBudget) {
+    this.mergeMemoryBudget = mergeMemoryBudget;
+  }
+
+  public int getMergeThreadNum() {
+    return mergeThreadNum;
+  }
+
+  public void setMergeThreadNum(int mergeThreadNum) {
+    this.mergeThreadNum = mergeThreadNum;
+  }
+
+  public boolean isContinueMergeAfterReboot() {
+    return continueMergeAfterReboot;
+  }
+
+  public void setContinueMergeAfterReboot(boolean continueMergeAfterReboot) {
+    this.continueMergeAfterReboot = continueMergeAfterReboot;
+  }
+
+  public long getMergeIntervalSec() {
+    return mergeIntervalSec;
+  }
+
+  public void setMergeIntervalSec(long mergeIntervalSec) {
+    this.mergeIntervalSec = mergeIntervalSec;
+  }
+
   public boolean isEnableParameterAdapter() {
     return enableParameterAdapter;
   }
@@ -640,11 +742,84 @@ public class IoTDBConfig {
     this.performanceStatMemoryInKB = performanceStatMemoryInKB;
   }
 
+  public boolean isForceFullMerge() {
+    return forceFullMerge;
+  }
+
+  public void setForceFullMerge(boolean forceFullMerge) {
+    this.forceFullMerge = forceFullMerge;
+  }
+
+  public int getChunkMergePointThreshold() {
+    return chunkMergePointThreshold;
+  }
+
+  public void setChunkMergePointThreshold(int chunkMergePointThreshold) {
+    this.chunkMergePointThreshold = chunkMergePointThreshold;
+  }
+
   public long getMemtableSizeThreshold() {
     return memtableSizeThreshold;
   }
 
   public void setMemtableSizeThreshold(long memtableSizeThreshold) {
     this.memtableSizeThreshold = memtableSizeThreshold;
+  }
+  
+  public MergeFileStrategy getMergeFileStrategy() {
+    return mergeFileStrategy;
+  }
+
+  public void setMergeFileStrategy(
+      MergeFileStrategy mergeFileStrategy) {
+    this.mergeFileStrategy = mergeFileStrategy;
+  }
+
+  public int getMergeChunkSubThreadNum() {
+    return mergeChunkSubThreadNum;
+  }
+
+  public void setMergeChunkSubThreadNum(int mergeChunkSubThreadNum) {
+    this.mergeChunkSubThreadNum = mergeChunkSubThreadNum;
+  }
+
+  public long getMergeFileSelectionTimeBudget() {
+    return mergeFileSelectionTimeBudget;
+  }
+
+  public void setMergeFileSelectionTimeBudget(long mergeFileSelectionTimeBudget) {
+    this.mergeFileSelectionTimeBudget = mergeFileSelectionTimeBudget;
+  }
+
+  public boolean isRpcThriftCompressionEnable() {
+    return rpcThriftCompressionEnable;
+  }
+
+  public void setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
+    this.rpcThriftCompressionEnable = rpcThriftCompressionEnable;
+  }
+
+  public boolean isMetaDataCacheEnable() {
+    return metaDataCacheEnable;
+  }
+
+  public void setMetaDataCacheEnable(boolean metaDataCacheEnable) {
+    this.metaDataCacheEnable = metaDataCacheEnable;
+  }
+
+  public long getAllocateMemoryForFileMetaDataCache() {
+    return allocateMemoryForFileMetaDataCache;
+  }
+
+  public void setAllocateMemoryForFileMetaDataCache(long allocateMemoryForFileMetaDataCache) {
+    this.allocateMemoryForFileMetaDataCache = allocateMemoryForFileMetaDataCache;
+  }
+
+  public long getAllocateMemoryForChumkMetaDataCache() {
+    return allocateMemoryForChumkMetaDataCache;
+  }
+
+  public void setAllocateMemoryForChumkMetaDataCache(long allocateMemoryForChumkMetaDataCache) {
+    this.allocateMemoryForChumkMetaDataCache = allocateMemoryForChumkMetaDataCache;
   }
 }

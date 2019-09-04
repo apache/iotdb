@@ -38,13 +38,10 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
- * This class describes a measurement's information registered in {@linkplain FileSchema FilSchema},
+ * This class describes a measurement's information registered in {@linkplain Schema FilSchema},
  * including measurement id, data type, encoding and compressor type. For each TSEncoding,
  * MeasurementSchema maintains respective TSEncodingBuilder; For TSDataType, only ENUM has
  * TSDataTypeConverter up to now.
- *
- * @author kangrong
- * @since version 0.1.0
  */
 public class MeasurementSchema implements Comparable<MeasurementSchema>, Serializable {
 
@@ -291,13 +288,12 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     MeasurementSchema that = (MeasurementSchema) o;
     return type == that.type && encoding == that.encoding && Objects
         .equals(measurementId, that.measurementId)
-        && Objects.equals(encodingConverter, that.encodingConverter)
-        && Objects.equals(compressor, that.compressor) && Objects.equals(props, that.props);
+        && Objects.equals(compressor, that.compressor);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(type, encoding, measurementId, encodingConverter, compressor, props);
+    return Objects.hash(type, encoding, measurementId, compressor);
   }
 
   /**

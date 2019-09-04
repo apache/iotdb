@@ -26,14 +26,14 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 import java.util.TreeSet;
-
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.AbstractQueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
@@ -78,7 +78,7 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
       return TSDataType.INT32;
     }
     if (demoMemDataBase.containsKey(fullPath.toString())) {
-      return TSDataType.INT32;
+      return TSDataType.FLOAT;
     }
     return null;
   }
@@ -192,6 +192,11 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
       timeStampUnion.add(insertPlan.getTime());
     }
     return true;
+  }
+
+  @Override
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws ProcessorException {
+    return null;
   }
 
   @Override

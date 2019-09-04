@@ -26,7 +26,7 @@ public class IoTDBConstant {
   public static final String ENV_FILE_NAME = "iotdb-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
-  public static final String VERSION = "0.7.0";
+  public static final String VERSION = "0.9.0-SNAPSHOT";
   public static final String REMOTE_JMX_PORT_NAME = "com.sun.management.jmxremote.port";
   public static final String IOTDB_LOCAL_JMX_PORT_NAME = "iotdb.jmx.local.port";
   public static final String IOTDB_REMOTE_JMX_PORT_NAME = "iotdb.jmx.remote.port";
@@ -58,6 +58,8 @@ public class IoTDBConstant {
   public static final String SET_READ_CONSISTENCY_LEVEL_PATTERN = "set\\s+read.*level.*";
 
   public static final String SHOW_FLUSH_TASK_INFO = "show\\s+flush\\s+task\\s+info";
+
+  public static final String SHOW_DYNAMIC_PARAMETERS = "show\\s+dynamic\\s+parameters";
 
   public static final String ROLE = "Role";
   public static final String USER = "User";
