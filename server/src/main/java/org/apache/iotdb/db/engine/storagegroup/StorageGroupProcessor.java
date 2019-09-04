@@ -1205,6 +1205,7 @@ public class StorageGroupProcessor {
     }
     deletedTsFileResource.getMergeQueryLock().writeLock().lock();
     try {
+      logger.info("Delete tsfile {} in sync loading process.", deletedTsFileResource.getFile());
       deletedTsFileResource.getFile().delete();
       new File(deletedTsFileResource.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX)
           .delete();

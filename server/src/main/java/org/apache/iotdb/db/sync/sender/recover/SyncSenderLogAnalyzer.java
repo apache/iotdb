@@ -67,7 +67,7 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
   @Override
   public void loadLastLocalFiles(Set<String> lastLocalFiles) {
     if (!lastLocalFile.exists()) {
-      LOGGER.info("last local  file {} doesn't exist.", syncLogFile.getAbsolutePath());
+      LOGGER.info("last local file {} doesn't exist.", lastLocalFile.getAbsolutePath());
       return;
     }
     try (BufferedReader br = new BufferedReader(new FileReader(lastLocalFile))) {

@@ -196,6 +196,7 @@ public class FileLoader implements IFileLoader {
       new File(syncFolderPath, SyncConstant.LOAD_LOG_NAME).delete();
       FileUtils.deleteDirectory(new File(syncFolderPath, SyncConstant.RECEIVER_DATA_FOLDER_NAME));
       FileLoaderManager.getInstance().removeFileLoader(senderName);
+      LOGGER.info("Sync loading process for {} has finished.", senderName);
     } catch (IOException e) {
       LOGGER.error("Can not clean up sync resource.", e);
     }

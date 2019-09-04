@@ -396,7 +396,7 @@ public class DataTransferManager implements IDataTransferManager {
   private boolean checkMD5ForSchema(String md5OfSender) throws TException {
     ResultStatus status = serviceClient.checkDataMD5(md5OfSender);
     if (status.success && md5OfSender.equals(status.msg)) {
-      logger.info("Receiver has received schema successfully, retry.");
+      logger.info("Receiver has received schema successfully.");
       return true;
     } else {
       logger
@@ -479,7 +479,8 @@ public class DataTransferManager implements IDataTransferManager {
     for (File file : deletedFilesName) {
       try {
         if (serviceClient.syncDeletedFileName(file.getName()).success) {
-          lastLocalFilesMap.get(sgName).add(file);
+          logger.info("Receiver has received deleted file name {} successfully.", file.getName());
+          lastLocalFilesMap.get(sgName).remove(file);
           syncLog.finishSyncDeletedFileName(file);
         }
       } catch (TException e) {

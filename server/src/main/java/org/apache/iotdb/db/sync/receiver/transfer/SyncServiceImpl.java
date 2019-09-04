@@ -87,6 +87,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     if (SyncUtils.verifyIPSegment(config.getIpWhiteList(), ipAddress)) {
       senderName.set(ipAddress + SyncConstant.SYNC_DIR_NAME_SEPARATOR + uuid);
       if (checkRecovery()) {
+        logger.info("Start to sync with sender {}", senderName.get());
         return getSuccessResult();
       } else {
         return getErrorResult("Receiver is processing data from previous sync tasks");
@@ -226,6 +227,7 @@ public class SyncServiceImpl implements SyncService.Iface {
           loadMetadata();
         } else {
           if (!currentFile.get().getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
+            logger.info("Receiver has received {} successfully.", currentFile.get());
             syncLog.get().finishSyncTsfile(currentFile.get());
             FileLoaderManager.getInstance().getFileLoader(senderName.get())
                 .addTsfile(currentFile.get());
@@ -242,6 +244,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   }
 
   private boolean loadMetadata() {
+    logger.info("Start to load metadata in sync process.");
     if (currentFile.get().exists()) {
       try (BufferedReader br = new BufferedReader(
           new java.io.FileReader(currentFile.get()))) {
@@ -317,7 +320,7 @@ public class SyncServiceImpl implements SyncService.Iface {
         syncLog.get().close();
       }
       FileLoaderManager.getInstance().getFileLoader(senderName.get()).endSync();
-      logger.info("Sync process for data of storage group {} ended.", currentSG.get());
+      logger.info("Sync process with sender {} finished.", senderName.get());
     } catch (IOException e) {
       logger.error("Can not end sync", e);
       return getErrorResult(String.format("Can not end sync because %s", e.getMessage()));
