@@ -70,7 +70,6 @@ public class MergeLogTest extends MergeTest {
       String line;
       while ((line = bufferedReader.readLine()) != null) {
         lineCnt ++;
-        System.out.println(line);
       }
     } catch (IOException e) {
       e.printStackTrace();
