@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.qp.strategy;
 
-import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.sql.parse.SqlParseException;
 import org.junit.After;
@@ -47,7 +46,7 @@ public class ExecuteSqlVisitorTest {
   }
 
   @Test
-  public void testParseTimeFormatNow() throws LogicalOperatorException {
+  public void testParseTimeFormatNow() {
     long now = visitor.parseTimeFormat(SQLConstant.NOW_FUNC);
     for (int i = 0; i <= 12; i++) {
       ZoneOffset offset1, offset2;
@@ -68,12 +67,12 @@ public class ExecuteSqlVisitorTest {
   }
 
   @Test(expected = SqlParseException.class)
-  public void testParseTimeFormatFail1() throws LogicalOperatorException {
+  public void testParseTimeFormatFail1() {
     visitor.parseTimeFormat(null);
   }
 
   @Test(expected = SqlParseException.class)
-  public void testParseTimeFormatFail2() throws LogicalOperatorException {
+  public void testParseTimeFormatFail2() {
     visitor.parseTimeFormat("");
   }
 }
