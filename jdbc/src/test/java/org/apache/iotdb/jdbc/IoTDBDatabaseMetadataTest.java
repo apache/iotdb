@@ -21,16 +21,11 @@ package org.apache.iotdb.jdbc;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
-
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
+import java.util.*;
 import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.junit.Assert;
@@ -94,8 +89,124 @@ public class IoTDBDatabaseMetadataTest {
     when(fetchMetadataResp.getColumnsList()).thenReturn(columnList);
 
     String standard =
-        "Column,\n" + "root.vehicle.d0.s0,\n" + "root.vehicle.d0.s1,\n" + "root.vehicle.d0.s2,\n";
-    try (ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_COLUMN, "root", null, null)) {
+        "column,\n" + "root.vehicle.d0.s0,\n" + "root.vehicle.d0.s1,\n" + "root.vehicle.d0.s2,\n";
+    try {
+      ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_COLUMN, "root", null, null);
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      int colCount = resultSetMetaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      for (int i = 1; i < colCount + 1; i++) {
+        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
+      }
+      resultStr.append("\n");
+      while (resultSet.next()) {
+        for (int i = 1; i <= colCount; i++) {
+          resultStr.append(resultSet.getString(i)).append(",");
+        }
+        resultStr.append("\n");
+      }
+      Assert.assertEquals(resultStr.toString(), standard);
+    } catch (SQLException e) {
+      System.out.println(e);
+    }
+  }
+
+  /**
+   * get the timeseries number under a given path
+   */
+  @SuppressWarnings("resource")
+  @Test
+  public void CountTimeseries() throws Exception {
+    List<String> columnList = new ArrayList<>();
+    columnList.add("root.vehicle.d0.s0");
+    columnList.add("root.vehicle.d0.s1");
+    columnList.add("root.vehicle.d0.s2");
+
+    when(fetchMetadataResp.getColumnsList()).thenReturn(columnList);
+
+    String standard = "count,\n" + "3,\n";
+    try {
+      ResultSet resultSet = databaseMetaData.getColumns(Constant.COUNT_TIMESERIES, "root", null, null);
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      int colCount = resultSetMetaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      for (int i = 1; i < colCount + 1; i++) {
+        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
+      }
+      resultStr.append("\n");
+      while (resultSet.next()) {
+        for (int i = 1; i <= colCount; i++) {
+          resultStr.append(resultSet.getString(i)).append(",");
+        }
+        resultStr.append("\n");
+      }
+      Assert.assertEquals(resultStr.toString(), standard);
+    } catch (SQLException e) {
+      System.out.println(e);
+    }
+  }
+
+  /**
+   * get node number under a given node level
+   */
+  @SuppressWarnings("resource")
+  @Test
+  public void CountNodes() throws Exception {
+    List<String> nodes = new ArrayList<>();
+    nodes.add("root.vehicle1.d1");
+    nodes.add("root.vehicle1.d2");
+    nodes.add("root.vehicle2.d3");
+    nodes.add("root.vehicle2.d4");
+
+    when(fetchMetadataResp.getNodesList()).thenReturn(nodes);
+
+    String standard = "count,\n" + "4,\n";
+    try {
+      IoTDBDatabaseMetadata metadata = (IoTDBDatabaseMetadata) databaseMetaData;
+      String level = "3";
+      ResultSet resultSet = metadata.getNodes(Constant.COUNT_NODES, "root", null, null, level);
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      int colCount = resultSetMetaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      for (int i = 1; i < colCount + 1; i++) {
+        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
+      }
+      resultStr.append("\n");
+      while (resultSet.next()) {
+        for (int i = 1; i <= colCount; i++) {
+          resultStr.append(resultSet.getString(i)).append(",");
+        }
+        resultStr.append("\n");
+      }
+      Assert.assertEquals(resultStr.toString(), standard);
+    } catch (SQLException e) {
+      System.out.println(e);
+    }
+  }
+
+  /**
+   * get the timeseries number under a given node level
+   */
+  @SuppressWarnings("resource")
+  @Test
+  public void CountNodeTimeseries() throws Exception {
+    Map<String, String> nodeTimeseriesNum = new LinkedHashMap<>();
+    nodeTimeseriesNum.put("root.vehicle.d1", "3");
+    nodeTimeseriesNum.put("root.vehicle.d2", "2");
+    nodeTimeseriesNum.put("root.vehicle.d3", "4");
+    nodeTimeseriesNum.put("root.vehicle.d4", "2");
+
+    when(fetchMetadataResp.getNodeTimeseriesNum()).thenReturn(nodeTimeseriesNum);
+
+    String standard = "column,count,\n"
+            + "root.vehicle.d1,3,\n"
+            + "root.vehicle.d2,2,\n"
+            + "root.vehicle.d3,4,\n"
+            + "root.vehicle.d4,2,\n";
+    try {
+      IoTDBDatabaseMetadata metadata = (IoTDBDatabaseMetadata) databaseMetaData;
+      String level = "3";
+      ResultSet resultSet = metadata.getNodes(Constant.COUNT_NODE_TIMESERIES, "root", null, null, level);
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
@@ -126,9 +237,10 @@ public class IoTDBDatabaseMetadataTest {
 
     when(fetchMetadataResp.getColumnsList()).thenReturn(columnList);
 
-    String standard = "Column,\n" + "root.vehicle.d0,\n";
-    try (ResultSet resultSet = databaseMetaData
-        .getColumns(Constant.CATALOG_DEVICE, "vehicle", null, null)) {
+    String standard = "column,\n" + "root.vehicle.d0,\n";
+    try {
+      ResultSet resultSet = databaseMetaData
+          .getColumns(Constant.CATALOG_DEVICE, "vehicle", null, null);
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
