@@ -29,9 +29,9 @@ package object tsfile {
     */
   implicit class TsFileDataFrameReader(reader: DataFrameReader) {
     def tsfile(path: String,
-               isNewForm: Boolean = false): DataFrame = {
-      if (isNewForm) {
-        reader.option(DefaultSource.path, path).option(DefaultSource.isNewForm, "new_form").format("org.apache.iotdb.tsfile").load
+               isNarrowForm: Boolean = false): DataFrame = {
+      if (isNarrowForm) {
+        reader.option(DefaultSource.path, path).option(DefaultSource.isNarrowForm, "narrow_form").format("org.apache.iotdb.tsfile").load
       }
       else {
         reader.option(DefaultSource.path, path).format("org.apache.iotdb.tsfile").load
@@ -43,7 +43,15 @@ package object tsfile {
     * add a method 'tsfile' to DataFrameWriter to write tsfile
     */
   implicit class TsFileDataFrameWriter[T](writer: DataFrameWriter[T]) {
-    def tsfile: String => Unit = writer.format("org.apache.iotdb.tsfile").save
+    def tsfile(path: String,
+               isNarrowForm: Boolean = false): Unit = {
+      if (isNarrowForm) {
+        writer.option(DefaultSource.path, path).option(DefaultSource.isNarrowForm, "narrow_form").format("org.apache.iotdb.tsfile").save
+      }
+      else {
+        writer.option(DefaultSource.path, path).format("org.apache.iotdb.tsfile").save
+      }
+    }
   }
 
 }
