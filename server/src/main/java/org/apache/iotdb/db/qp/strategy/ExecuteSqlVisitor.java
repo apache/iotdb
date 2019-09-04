@@ -25,7 +25,6 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.constant.TSParserConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.*;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -267,14 +266,13 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
       return visit(ctx.precedenceAndExpression(0));
     }
     isOrWhereClause = true;
-    FilterOperator binaryOp = new FilterOperator(
-            TSParserConstant.getTSTokenIntType(TSParser.KW_OR));
+    FilterOperator binaryOp = new FilterOperator(KW_OR);
     int size = ctx.precedenceAndExpression().size();
     if (size > 2) {
       binaryOp.addChildOperator((FilterOperator) visit(ctx.precedenceAndExpression(0)));
       binaryOp.addChildOperator((FilterOperator) visit(ctx.precedenceAndExpression(1)));
       for (int i = 2; i < size; i++) {
-        FilterOperator op = new FilterOperator(TSParserConstant.getTSTokenIntType(TSParser.KW_OR));
+        FilterOperator op = new FilterOperator(KW_OR);
         op.addChildOperator(binaryOp);
         op.addChildOperator((FilterOperator) visit(ctx.precedenceAndExpression(i)));
         binaryOp = op;
@@ -296,8 +294,7 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
       return visit(ctx.precedenceNotExpression(0));
     }
     isAndWhereClause = true;
-    FilterOperator binaryOp = new FilterOperator(
-            TSParserConstant.getTSTokenIntType(TSParser.KW_AND));
+    FilterOperator binaryOp = new FilterOperator(KW_AND);
     if (!isOrWhereClause) {
       whereOp.addChildOperator(binaryOp);
     }
@@ -306,8 +303,7 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
       binaryOp.addChildOperator((FilterOperator) visit(ctx.precedenceNotExpression(0)));
       binaryOp.addChildOperator((FilterOperator) visit(ctx.precedenceNotExpression(1)));
       for (int i = 2; i < size; i++) {
-        FilterOperator op = new FilterOperator(
-                TSParserConstant.getTSTokenIntType(TSParser.KW_AND));
+        FilterOperator op = new FilterOperator(KW_AND);
         op.addChildOperator(binaryOp);
         op.addChildOperator((FilterOperator) visit(ctx.precedenceNotExpression(i)));
         binaryOp = op;
@@ -1090,8 +1086,7 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
     Pair<Path, String> pair = new Pair<>(whereSeriesPath, seriesValue);
     BasicFunctionOperator basic = null;
     try {
-      basic = new BasicFunctionOperator(
-              TSParserConstant.getTSTokenIntType((Integer) visit(ctx.precedenceEqualOperator())),
+      basic = new BasicFunctionOperator((Integer) visit(ctx.precedenceEqualOperator()),
               pair.left, pair.right);
       if (!isNotWhereClause && !isAndWhereClause && !isOrWhereClause) {
         whereOp.addChildOperator(basic);
@@ -1196,37 +1191,37 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
 
   @Override
   public Object visitPreEqual(TSParser.PreEqualContext ctx) {
-    return TSParser.EQUAL;
+    return SQLConstant.EQUAL;
   }
 
   @Override
   public Object visitPreEqual_NS(TSParser.PreEqual_NSContext ctx) {
-    return TSParser.EQUAL_NS;
+    return SQLConstant.EQUAL_NS;
   }
 
   @Override
   public Object visitPreNotEqual(TSParser.PreNotEqualContext ctx) {
-    return TSParser.NOTEQUAL;
+    return SQLConstant.NOTEQUAL;
   }
 
   @Override
   public Object visitPreLessThanOrEqualTo(TSParser.PreLessThanOrEqualToContext ctx) {
-    return TSParser.LESSTHANOREQUALTO;
+    return SQLConstant.LESSTHANOREQUALTO;
   }
 
   @Override
   public Object visitPreLessThan(TSParser.PreLessThanContext ctx) {
-    return TSParser.LESSTHAN;
+    return SQLConstant.LESSTHAN;
   }
 
   @Override
   public Object visitPreGreaterThanOrEqualTo(TSParser.PreGreaterThanOrEqualToContext ctx) {
-    return TSParser.GREATERTHANOREQUALTO;
+    return SQLConstant.GREATERTHANOREQUALTO;
   }
 
   @Override
   public Object visitPreGreaterThan(TSParser.PreGreaterThanContext ctx) {
-    return TSParser.GREATERTHAN;
+    return SQLConstant.GREATERTHAN;
   }
 
   @Override
