@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.externalsort.serialize;
 import java.io.IOException;
 import org.apache.iotdb.db.utils.TimeValuePair;
 
-public interface TimeValuePairSerializer {
+public interface IExternalSortFileSerializer {
 
   void write(TimeValuePair timeValuePair) throws IOException;
 

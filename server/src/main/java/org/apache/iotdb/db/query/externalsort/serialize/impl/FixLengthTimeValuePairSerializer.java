@@ -24,16 +24,22 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import org.apache.iotdb.db.query.externalsort.serialize.TimeValuePairSerializer;
+import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileSerializer;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
- * IMPORTANT: One instance of this class should used with same type of TimeValuePair. FileFormat:
- * [Header][Body][Header] = [DataTypeLength] + [DataTypeInStringBytes] [DataTypeLength] = 4 bytes
+ * IMPORTANT: One instance of this class should used with same type of TimeValuePair.
+ * <p>
+ * FileFormat: [Header][Body]
+ * <p>
+ * [Header] = [DataTypeLength] + [DataTypeInStringBytes]
+ * <p>
+ * [DataTypeLength] = 4 bytes
  */
-public class FixLengthTimeValuePairSerializer implements TimeValuePairSerializer {
+public class FixLengthTimeValuePairSerializer implements IExternalSortFileSerializer {
 
   private TimeValuePairWriter writer;
   private OutputStream outputStream;
@@ -60,9 +66,7 @@ public class FixLengthTimeValuePairSerializer implements TimeValuePairSerializer
   }
 
   private void writeHeader(TSDataType dataType) throws IOException {
-    String typeInString = dataType.toString();
-    outputStream.write(BytesUtils.intToBytes(typeInString.length()));
-    outputStream.write(BytesUtils.stringToBytes(typeInString));
+    ReadWriteIOUtils.write(dataType, outputStream);
   }
 
   private void checkPath(String tmpFilePath) throws IOException {

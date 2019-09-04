@@ -22,9 +22,9 @@
  import java.io.IOException;
  import java.util.List;
  import org.apache.iotdb.db.query.control.QueryResourceManager;
- import org.apache.iotdb.db.query.externalsort.serialize.TimeValuePairDeserializer;
- import org.apache.iotdb.db.query.externalsort.serialize.TimeValuePairSerializer;
- import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthTimeValuePairDeserializer;
+ import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
+ import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileSerializer;
+ import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthIExternalSortFileDeserializer;
  import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthTimeValuePairSerializer;
  import org.apache.iotdb.db.query.reader.IPointReader;
  import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
@@ -42,14 +42,14 @@
 
    public IPointReader merge(List<IPointReader> prioritySeriesReaders)
        throws IOException {
-     TimeValuePairSerializer serializer = new FixLengthTimeValuePairSerializer(tmpFilePath);
+     IExternalSortFileSerializer serializer = new FixLengthTimeValuePairSerializer(tmpFilePath);
      PriorityMergeReader reader = new PriorityMergeReader(prioritySeriesReaders, 1);
      while (reader.hasNext()) {
        serializer.write(reader.next());
      }
      reader.close();
      serializer.close();
-     TimeValuePairDeserializer deserializer = new FixLengthTimeValuePairDeserializer(tmpFilePath);
+     IExternalSortFileDeserializer deserializer = new FixLengthIExternalSortFileDeserializer(tmpFilePath);
      QueryResourceManager.getInstance().registerTempExternalSortFile(queryId, deserializer);
      return deserializer;
    }

@@ -25,13 +25,13 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
-import org.apache.iotdb.db.query.externalsort.serialize.TimeValuePairDeserializer;
+import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.db.utils.TimeValuePair;
 
 /**
  * Deserializer TimeValuePair.
  */
-public class SimpleTimeValuePairDeserializer implements TimeValuePairDeserializer {
+public class SimpleIExternalSortFileDeserializer implements IExternalSortFileDeserializer {
 
   private InputStream inputStream;
   private ObjectInputStream objectInputStream;
@@ -40,15 +40,10 @@ public class SimpleTimeValuePairDeserializer implements TimeValuePairDeserialize
   /**
    * init with file path.
    */
-  public SimpleTimeValuePairDeserializer(String tmpFilePath) throws IOException {
+  public SimpleIExternalSortFileDeserializer(String tmpFilePath) throws IOException {
     inputStream = new BufferedInputStream(new FileInputStream(tmpFilePath));
     objectInputStream = new ObjectInputStream(inputStream);
     this.tmpFilePath = tmpFilePath;
-  }
-
-  @Override
-  public Object getValueInTimestamp(long timestamp) throws IOException {
-    return null;
   }
 
   @Override
@@ -66,7 +61,7 @@ public class SimpleTimeValuePairDeserializer implements TimeValuePairDeserialize
   }
 
   /**
-   * This method will delete.
+   * This method will delete the tmp files.
    *
    * @throws IOException -Delete external sort tmp file error.
    */

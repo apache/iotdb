@@ -30,7 +30,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.externalsort.serialize.TimeValuePairDeserializer;
+import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
@@ -99,7 +99,7 @@ public class QueryResourceManager {
    *
    * Key: query job id. Value: temporary file list used for external sorting.
    */
-  private ConcurrentHashMap<Long, List<TimeValuePairDeserializer>> externalSortFileMap;
+  private ConcurrentHashMap<Long, List<IExternalSortFileDeserializer>> externalSortFileMap;
 
   private QueryResourceManager() {
     queryTokensMap = new ConcurrentHashMap<>();
@@ -176,7 +176,7 @@ public class QueryResourceManager {
    * @param jobId query job id
    * @param deserializer deserializer of temporary file in external sort.
    */
-  public void registerTempExternalSortFile(long jobId, TimeValuePairDeserializer deserializer) {
+  public void registerTempExternalSortFile(long jobId, IExternalSortFileDeserializer deserializer) {
     externalSortFileMap.computeIfAbsent(jobId, x -> new ArrayList<>()).add(deserializer);
   }
 
@@ -201,7 +201,7 @@ public class QueryResourceManager {
   public void endQueryForGivenJob(long jobId) throws StorageEngineException {
     // close file stream of external sort files, and delete
     if (externalSortFileMap.get(jobId) != null) {
-      for (TimeValuePairDeserializer deserializer : externalSortFileMap.get(jobId)) {
+      for (IExternalSortFileDeserializer deserializer : externalSortFileMap.get(jobId)) {
         try {
           deserializer.close();
         } catch (IOException e) {

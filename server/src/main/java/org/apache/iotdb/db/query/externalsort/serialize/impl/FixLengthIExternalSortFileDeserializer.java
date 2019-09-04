@@ -24,33 +24,32 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import org.apache.iotdb.db.query.externalsort.serialize.TimeValuePairDeserializer;
+import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
- * FileFormat: [Header][Body] [Header] = [DataTypeLength] + [DataTypeInStringBytes] [DataTypeLength]
- * = 4 bytes.
+ * FileFormat: [Header][Body]
+ * <p>
+ * [Header] = [DataTypeLength] + [DataTypeInStringBytes]
+ * <p>
+ * [DataTypeLength] = 4 bytes.
  */
-public class FixLengthTimeValuePairDeserializer implements TimeValuePairDeserializer {
+public class FixLengthIExternalSortFileDeserializer implements IExternalSortFileDeserializer {
 
   private TimeValuePairReader reader;
   private InputStream inputStream;
   private String tmpFilePath;
 
-  public FixLengthTimeValuePairDeserializer(String tmpFilePath) throws IOException {
+  public FixLengthIExternalSortFileDeserializer(String tmpFilePath) throws IOException {
     this.tmpFilePath = tmpFilePath;
     inputStream = new BufferedInputStream(new FileInputStream(tmpFilePath));
     TSDataType dataType = readHeader();
     setReader(dataType);
-  }
-
-  @Override
-  public Object getValueInTimestamp(long timestamp) throws IOException {
-    return null;
   }
 
   @Override
@@ -80,12 +79,7 @@ public class FixLengthTimeValuePairDeserializer implements TimeValuePairDeserial
   }
 
   private TSDataType readHeader() throws IOException {
-    byte[] lengthInBytes = new byte[4];
-    inputStream.read(lengthInBytes);
-    int length = BytesUtils.bytesToInt(lengthInBytes);
-    byte[] typeInBytes = new byte[length];
-    inputStream.read(typeInBytes);
-    return TSDataType.valueOf(BytesUtils.bytesToString(typeInBytes));
+    return TSDataType.deserialize(ReadWriteIOUtils.readShort(inputStream));
   }
 
   private void setReader(TSDataType type) {
@@ -119,7 +113,7 @@ public class FixLengthTimeValuePairDeserializer implements TimeValuePairDeserial
     public abstract TimeValuePair read(InputStream inputStream) throws IOException;
 
     private static class BooleanReader
-        extends FixLengthTimeValuePairDeserializer.TimeValuePairReader {
+        extends FixLengthIExternalSortFileDeserializer.TimeValuePairReader {
 
       byte[] timestampBytes = new byte[8];
       byte[] valueBytes = new byte[1];
@@ -133,7 +127,8 @@ public class FixLengthTimeValuePairDeserializer implements TimeValuePairDeserial
       }
     }
 
-    private static class IntReader extends FixLengthTimeValuePairDeserializer.TimeValuePairReader {
+    private static class IntReader extends
+        FixLengthIExternalSortFileDeserializer.TimeValuePairReader {
 
       byte[] timestampBytes = new byte[8];
       byte[] valueBytes = new byte[4];
@@ -147,7 +142,8 @@ public class FixLengthTimeValuePairDeserializer implements TimeValuePairDeserial
       }
     }
 
-    private static class LongReader extends FixLengthTimeValuePairDeserializer.TimeValuePairReader {
+    private static class LongReader extends
+        FixLengthIExternalSortFileDeserializer.TimeValuePairReader {
 
       byte[] timestampBytes = new byte[8];
       byte[] valueBytes = new byte[8];
@@ -162,7 +158,7 @@ public class FixLengthTimeValuePairDeserializer implements TimeValuePairDeserial
     }
 
     private static class FloatReader
-        extends FixLengthTimeValuePairDeserializer.TimeValuePairReader {
+        extends FixLengthIExternalSortFileDeserializer.TimeValuePairReader {
 
       byte[] timestampBytes = new byte[8];
       byte[] valueBytes = new byte[4];
@@ -177,7 +173,7 @@ public class FixLengthTimeValuePairDeserializer implements TimeValuePairDeserial
     }
 
     private static class DoubleReader
-        extends FixLengthTimeValuePairDeserializer.TimeValuePairReader {
+        extends FixLengthIExternalSortFileDeserializer.TimeValuePairReader {
 
       byte[] timestampBytes = new byte[8];
       byte[] valueBytes = new byte[8];
@@ -192,7 +188,7 @@ public class FixLengthTimeValuePairDeserializer implements TimeValuePairDeserial
     }
 
     private static class BinaryReader
-        extends FixLengthTimeValuePairDeserializer.TimeValuePairReader {
+        extends FixLengthIExternalSortFileDeserializer.TimeValuePairReader {
 
       byte[] timestampBytes = new byte[8];
       byte[] valueLength = new byte[4];

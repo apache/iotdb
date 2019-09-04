@@ -21,13 +21,12 @@ package org.apache.iotdb.db.query.externalsort.serialize;
 
 import java.io.IOException;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
 
-public interface TimeValuePairDeserializer extends IPointReader, IReaderByTimestamp {
+public interface IExternalSortFileDeserializer extends IPointReader {
 
   @Override
   default TimeValuePair current() throws IOException {
-    throw new IOException("TimeValuePairDeserializer doesn't implement current() method.");
+    throw new IOException("IExternalSortFileDeserializer doesn't implement current() method.");
   }
 }

@@ -24,13 +24,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import org.apache.iotdb.db.query.externalsort.serialize.TimeValuePairSerializer;
+import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileSerializer;
 import org.apache.iotdb.db.utils.TimeValuePair;
 
 /**
  * Serializer timeValuePair.
  */
-public class SimpleTimeValuePairSerializer implements TimeValuePairSerializer {
+public class SimpleTimeValuePairSerializer implements IExternalSortFileSerializer {
 
   private ObjectOutputStream objectOutputStream;
 

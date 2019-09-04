@@ -47,13 +47,14 @@
 
      // create queryDir
      try {
+       FileUtils.deleteDirectory(new File(queryDir));
        FileUtils.forceMkdir(new File(queryDir));
      } catch (IOException e) {
-       throw new StorageEngineFailureException("create system directory failed!");
+       throw new StorageEngineFailureException("create system directory failed! " + e.toString());
      }
    }
 
-   // This class is used in test.
+   // This constructor is used in test.
    public SimpleExternalSortEngine(String queryDir, int minExternalSortSourceCount) {
      this.queryDir = queryDir;
      this.minExternalSortSourceCount = minExternalSortSourceCount;
@@ -94,11 +95,9 @@
      while (ret.size() >= minExternalSortSourceCount) {
        List<ExternalSortJobPart> tmpPartList = new ArrayList<>();
        for (int i = 0; i < ret.size(); ) {
-         List<ExternalSortJobPart> partGroup = new ArrayList<>();
-         for (int j = 0; j < minExternalSortSourceCount && i < ret.size(); j++) {
-           partGroup.add(ret.get(i));
-           i++;
-         }
+         int toIndex = Math.min(i+minExternalSortSourceCount, ret.size());
+         List<ExternalSortJobPart> partGroup = ret.subList(i, toIndex);
+         i = toIndex;
          StringBuilder tmpFilePath = new StringBuilder(queryDir).append(jodId).append("_")
              .append(partId);
          MultiSourceExternalSortJobPart part = new MultiSourceExternalSortJobPart(queryId,
