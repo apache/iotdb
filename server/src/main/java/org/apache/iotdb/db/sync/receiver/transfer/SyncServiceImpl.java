@@ -20,7 +20,6 @@ package org.apache.iotdb.db.sync.receiver.transfer;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
@@ -216,7 +215,9 @@ public class SyncServiceImpl implements SyncService.Iface {
   public ResultStatus checkDataMD5(String md5OfSender) throws TException {
     String md5OfReceiver = (new BigInteger(1, messageDigest.get().digest())).toString(16);
     try {
-      currentFileWriter.get().close();
+      if (currentFileWriter.get() != null && currentFileWriter.get().isOpen()) {
+        currentFileWriter.get().close();
+      }
       if (!md5OfSender.equals(md5OfReceiver)) {
         currentFile.get().delete();
         currentFileWriter.set(new FileOutputStream(currentFile.get()).getChannel());
@@ -312,7 +313,9 @@ public class SyncServiceImpl implements SyncService.Iface {
   @Override
   public ResultStatus endSync() throws TException {
     try {
-      syncLog.get().close();
+      if (syncLog.get() != null) {
+        syncLog.get().close();
+      }
       FileLoaderManager.getInstance().getFileLoader(senderName.get()).endSync();
       logger.info("Sync process for data of storage group {} ended.", currentSG.get());
     } catch (IOException e) {

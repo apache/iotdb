@@ -78,6 +78,7 @@ public class SyncSenderLoggerTest {
       toBeSyncedFiles
           .add(new File(config.getSenderFolderPath(), "new" + i).getAbsolutePath());
     }
+    senderLogger.close();
     int count = 0;
     int mode = 0;
     try (BufferedReader br = new BufferedReader(
