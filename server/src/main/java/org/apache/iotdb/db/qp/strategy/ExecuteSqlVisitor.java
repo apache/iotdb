@@ -632,10 +632,6 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
     if (filterOperator.getTokenIntType() == LESSTHAN) {
       time = time - 1;
     }
-    // time must greater than 0 now
-    if (time <= 0) {
-      throw new SqlParseException("delete Time:" + time + ", time must > 0");
-    }
     return time;
   }
 
