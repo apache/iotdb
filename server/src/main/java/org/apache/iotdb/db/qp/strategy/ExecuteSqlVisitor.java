@@ -217,7 +217,7 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
   }
 
   @Override
-  public Object visitClusteredCommandPath(TSParser.ClusteredCommandPathContext ctx) {
+  public Object visitAggregateCommandPath(TSParser.AggregateCommandPathContext ctx) {
     Path path = parseSuffixPath(ctx.suffixPath());
     String aggregation = ctx.identifier().getText();
     selectOp.addClusterPath(path, aggregation);
@@ -291,7 +291,6 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
 
   @Override
   public Object visitPrecedenceAndExpression(TSParser.PrecedenceAndExpressionContext ctx) {
-
     if (ctx.precedenceNotExpression().size() == 1) {
       isAndWhereClause = false;
       return visit(ctx.precedenceNotExpression(0));

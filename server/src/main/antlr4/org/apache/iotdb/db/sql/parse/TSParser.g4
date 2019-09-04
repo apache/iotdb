@@ -24,27 +24,6 @@ options
 tokenVocab=TSLexer;
 }
 
-@header {
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
-}
-
-
-@members{
-
-  public static int type;
-
-  public int getType(){
-    return this.type;
-  }
-
-  public void setType(int type){
-    this.type = type;
-  }
-}
-
 // starting rule
 statement
 	: execStatement (SEMICOLON)? EOF
@@ -326,7 +305,7 @@ nodeName
     ;
 
 insertStatement
-   : KW_INSERT KW_INTO prefixPath multidentifier KW_VALUES multiValue {setType(RULE_insertStatement);}
+   : KW_INSERT KW_INTO prefixPath multidentifier KW_VALUES multiValue
    ;
 
 /*
@@ -412,7 +391,7 @@ selectClause
     ;
 
 clusteredPath
-	: clstcmd = identifier LPAREN suffixPath RPAREN  #clusteredCommandPath
+	: clstcmd = identifier LPAREN suffixPath RPAREN  #aggregateCommandPath
 	| suffixPath #simpleSuffixPath
 	;
 
