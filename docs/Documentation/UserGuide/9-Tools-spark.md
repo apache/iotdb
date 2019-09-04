@@ -37,7 +37,8 @@
 		- Example 3: read from a specific directory
 		- Example 4: query in wide form
 		- Example 5: query in narrow form
-		- Example 6: write
+		- Example 6: write in wide form
+		- Example 7: write in narrow form
 	- Appendix A: Old Design of Schema Inference
         - the default way
         - unfolding delta_object column
@@ -232,7 +233,7 @@ val newDf = spark.sql("select count(*) from tsfile_table")
 newDf.show
 ```
 
-### Example 6: write
+### Example 6: write in wide form
 
 ```scala
 // we only support wide_form table to write
@@ -243,6 +244,20 @@ df.show
 df.write.tsfile("hdfs://localhost:9000/output")
 
 val newDf = spark.read.tsfile("hdfs://localhost:9000/output")
+newDf.show
+```
+
+## Example 6: write in narrow form
+
+```scala
+// we only support wide_form table to write
+import org.apache.iotdb.tsfile._
+
+val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true) 
+df.show
+df.write.tsfile("hdfs://localhost:9000/output", true)
+
+val newDf = spark.read.tsfile("hdfs://localhost:9000/output", true)
 newDf.show
 ```
 

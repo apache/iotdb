@@ -218,20 +218,6 @@ object WideConverter extends Converter{
     fields
   }
 
-  private def isValidFilter(filter: Filter): Boolean = {
-    filter match {
-      case f: EqualTo => true
-      case f: GreaterThan => true
-      case f: GreaterThanOrEqual => true
-      case f: LessThan => true
-      case f: LessThanOrEqual => true
-      case f: Or => isValidFilter(f.left) && isValidFilter(f.right)
-      case f: And => isValidFilter(f.left) && isValidFilter(f.right)
-      case f: Not => isValidFilter(f.child)
-      case _ => false
-    }
-  }
-
   /**
     * Transform SparkSQL's filter binary tree to TsFile's filter expression.
     *
@@ -419,5 +405,90 @@ object WideConverter extends Converter{
           }
       }
     }
+  }
+
+  /**
+    * Construct MeasurementSchema from the given field.
+    *
+    * @param field   field
+    * @param options encoding options
+    * @return MeasurementSchema
+    */
+  def getSeriesSchema(field: StructField, options: Map[String, String]): MeasurementSchema = {
+    val dataType = getTsDataType(field.dataType)
+    val encodingStr = dataType match {
+      case TSDataType.BOOLEAN => options.getOrElse(QueryConstant.BOOLEAN, TSEncoding.PLAIN.toString)
+      case TSDataType.INT32 => options.getOrElse(QueryConstant.INT32, TSEncoding.RLE.toString)
+      case TSDataType.INT64 => options.getOrElse(QueryConstant.INT64, TSEncoding.RLE.toString)
+      case TSDataType.FLOAT => options.getOrElse(QueryConstant.FLOAT, TSEncoding.RLE.toString)
+      case TSDataType.DOUBLE => options.getOrElse(QueryConstant.DOUBLE, TSEncoding.RLE.toString)
+      case TSDataType.TEXT => options.getOrElse(QueryConstant.BYTE_ARRAY, TSEncoding.PLAIN.toString)
+      case other => throw new UnsupportedOperationException(s"Unsupported type $other")
+    }
+    val encoding = TSEncoding.valueOf(encodingStr)
+    val fullPath = new Path(field.name)
+    val measurement = fullPath.getMeasurement
+    new MeasurementSchema(measurement, dataType, encoding)
+  }
+
+  /**
+    * Given a SparkSQL struct type, generate the TsFile schema.
+    * Note: Measurements of the same name should have the same schema.
+    *
+    * @param structType given sql schema
+    * @return TsFile schema
+    */
+  def toTsFileSchema(structType: StructType, options: Map[String, String]): Schema = {
+    val schemaBuilder = new SchemaBuilder()
+    structType.fields.filter(f => {
+      !QueryConstant.RESERVED_TIME.equals(f.name)
+    }).foreach(f => {
+      val seriesSchema = getSeriesSchema(f, options)
+      schemaBuilder.addSeries(seriesSchema)
+    })
+    schemaBuilder.build()
+  }
+
+  /**
+    * Convert a row in the spark table to a list of TSRecord.
+    *
+    * @param row given spark sql row
+    * @return TSRecord
+    */
+  def toTsRecord(row: InternalRow, dataSchema: StructType): List[TSRecord] = {
+    val time = row.getLong(0)
+    val deviceToRecord = scala.collection.mutable.Map[String, TSRecord]()
+    var index = 1
+
+    dataSchema.fields.filter(f => {
+      !QueryConstant.RESERVED_TIME.equals(f.name)
+    }).foreach(f => {
+      val name = f.name
+      val fullPath = new Path(name)
+      val device = fullPath.getDevice
+      val measurement = fullPath.getMeasurement
+
+      if (!deviceToRecord.contains(device)) {
+        deviceToRecord.put(device, new TSRecord(time, device))
+      }
+      val tsRecord: TSRecord = deviceToRecord.getOrElse(device, new TSRecord(time, device))
+
+      val dataType = getTsDataType(f.dataType)
+      if (!row.isNullAt(index)) {
+        val value = f.dataType match {
+          case BooleanType => row.getBoolean(index)
+          case IntegerType => row.getInt(index)
+          case LongType => row.getLong(index)
+          case FloatType => row.getFloat(index)
+          case DoubleType => row.getDouble(index)
+          case StringType => row.getString(index)
+          case other => throw new UnsupportedOperationException(s"Unsupported type $other")
+        }
+        val dataPoint = DataPoint.getDataPoint(dataType, measurement, value.toString)
+        tsRecord.addTuple(dataPoint)
+      }
+      index += 1
+    })
+    deviceToRecord.values.toList
   }
 }

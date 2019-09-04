@@ -58,7 +58,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
     //check if the path is given
     options.getOrElse(DefaultSource.path, throw new TSFileDataSourceException(s"${DefaultSource.path} must be specified for org.apache.iotdb.tsfile DataSource"))
 
-    if(options.getOrElse(DefaultSource.isNewForm, "").equals("new_form")){
+    if(options.getOrElse(DefaultSource.isNarrowForm, "").equals("narrow_form")){
       val tsfileSchema = NarrowConverter.getUnionSeries(files, conf)
 
       NarrowConverter.toSqlSchema(tsfileSchema)
@@ -111,7 +111,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       var queriedSchema = WideConverter.prepSchema(requiredSchema, tsFileMetaData)
       val readTsFile: ReadOnlyTsFile = new ReadOnlyTsFile(reader)
 
-      if (options.getOrElse(DefaultSource.isNewForm, "").equals("new_form")) {
+      if (options.getOrElse(DefaultSource.isNarrowForm, "").equals("narrow_form")) {
         val device_names = tsFileMetaData.getDeviceMap.keySet()
         val measurement_names = tsFileMetaData.getMeasurementSchema.keySet()
         // construct queryExpression based on queriedSchema and filters
@@ -254,7 +254,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
 
 private[tsfile] object DefaultSource {
   val path = "path"
-  val isNewForm = "form"
+  val isNarrowForm = "form"
 
   class SerializableConfiguration(@transient var value: Configuration) extends Serializable {
     private def writeObject(out: ObjectOutputStream): Unit = {
