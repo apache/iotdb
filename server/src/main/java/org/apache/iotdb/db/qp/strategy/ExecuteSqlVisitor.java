@@ -678,8 +678,8 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
   @Override
   public Object visitCreateTimeseries(TSParser.CreateTimeseriesContext ctx) {
     Path series = parseTimeseriesPath(ctx.timeseries());
-    String dataType = ctx.propertyClauses().propertyName.getText();
-    String encodeType = ctx.propertyClauses().pv.getText();
+    String propertyName = ctx.propertyClauses().propertyName.getText();
+    String propertyValue = ctx.propertyClauses().pv.getText();
     String compressor;
     int offset = 2;
     if (ctx.propertyClauses().compressor != null) {
@@ -688,7 +688,7 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
     } else {
       compressor = TSFileConfig.compressor;
     }
-    checkMetadataArgs(dataType, encodeType, compressor);
+    checkMetadataArgs(propertyName, propertyValue, compressor);
     Map<String, String> props = new HashMap<>(ctx.propertyClauses().propertyClause().size() + 1, 1);
     for (TSParser.PropertyClauseContext propertyClauseContext : ctx.propertyClauses().propertyClause()) {
       props.put(propertyClauseContext.propertyName.getText().toLowerCase(), propertyClauseContext.pv.getText());
@@ -696,8 +696,8 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
     MetadataOperator metadataOperator = new MetadataOperator(SQLConstant.TOK_METADATA_CREATE,
             MetadataOperator.NamespaceType.ADD_PATH);
     metadataOperator.setPath(series);
-    metadataOperator.setDataType(TSDataType.valueOf(dataType));
-    metadataOperator.setEncoding(TSEncoding.valueOf(encodeType));
+    metadataOperator.setDataType(TSDataType.valueOf(propertyName));
+    metadataOperator.setEncoding(TSEncoding.valueOf(propertyValue));
     metadataOperator.setProps(props);
     metadataOperator.setCompressor(CompressionType.valueOf(compressor));
     initializedOperator = metadataOperator;
