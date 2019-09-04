@@ -269,8 +269,6 @@ public class IoTDBDescriptor {
       conf.setWatermarkMethod(
           properties.getProperty("watermark_method", conf.getWatermarkMethod()));
 
-      conf.setMaxConcurrentClientNum(maxConcurrentClientNum);
-
       conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
       
     } catch (IOException e) {
