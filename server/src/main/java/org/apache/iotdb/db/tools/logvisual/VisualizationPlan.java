@@ -33,6 +33,9 @@ import org.apache.iotdb.db.tools.logvisual.exceptions.UnmatchedContentException;
     date_pattern=yyyy-MM-dd hh:mm:ss
     start_date=2019-08-21 09:00:00
     end_date=2019-08-22 09:00:00
+
+    TODO-LogVisualizer: support expression computation like; sum(measurement1 * measurement2)
+    TODO-LogVisualizer: add tag filter
  */
 public class VisualizationPlan {
   // optional, this will be used as the title of the figure.

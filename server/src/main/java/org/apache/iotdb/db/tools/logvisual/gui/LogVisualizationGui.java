@@ -25,6 +25,8 @@ import org.jfree.chart.JFreeChart;
 /**
  * LogVisualizationGui provides a graphic way wo manipulate visualization plans and view the
  * results of visualization.
+ *
+ * TODO-LogVisualizer: improve the layout and display
  */
 public class LogVisualizationGui {
 
