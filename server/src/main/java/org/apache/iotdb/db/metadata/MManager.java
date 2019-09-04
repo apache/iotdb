@@ -18,23 +18,12 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.io.*;
+import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -765,6 +754,21 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mgraph.getAllStorageGroup();
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get all nodes from the given level
+   *
+   * @return A List instance which stores all node at given level
+   */
+  public List<String> getNodesList(String nodeLevel) {
+
+    lock.readLock().lock();
+    try {
+      return mgraph.getNodesList(nodeLevel);
     } finally {
       lock.readLock().unlock();
     }

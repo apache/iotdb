@@ -214,7 +214,7 @@ public class IoTDBMetadataFetchIT {
    */
   private void allColumns() throws SQLException {
     String standard =
-        "Column,\n" + "root.ln.wf01.wt01.status,\n" + "root.ln.wf01.wt01.temperature,\n";
+        "column,\n" + "root.ln.wf01.wt01.status,\n" + "root.ln.wf01.wt01.temperature,\n";
 
     try (ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_COLUMN, "root", null, null);) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -238,7 +238,7 @@ public class IoTDBMetadataFetchIT {
    * get all delta objects under a given column
    */
   private void device() throws SQLException {
-    String standard = "Column,\n" + "root.ln.wf01.wt01,\n";
+    String standard = "column,\n" + "root.ln.wf01.wt01,\n";
 
 
     try (ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_DEVICE, "ln", null,

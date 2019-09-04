@@ -254,13 +254,12 @@ public class IoTDBDescriptor {
               Integer.toString(conf.getPerformanceStatMemoryInKB())).trim()));
       
       int maxConcurrentClientNum = Integer.parseInt(properties.
-          getProperty("max_concurrent_client_num",
-              Integer.toString(conf.getMaxConcurrentClientNum()).trim()));
+          getProperty("rpc_max_concurrent_client_num",
+              Integer.toString(conf.getRpcMaxConcurrentClientNum()).trim()));
       if (maxConcurrentClientNum <= 0) {
         maxConcurrentClientNum = 65535;
       }
-      conf.setMaxConcurrentClientNum(maxConcurrentClientNum);
-    
+      
       conf.setEnableWatermark(Boolean.parseBoolean(properties.getProperty("watermark_module_opened",
           Boolean.toString(conf.isEnableWatermark()).trim())));
       conf.setWatermarkSecretKey(
@@ -270,6 +269,10 @@ public class IoTDBDescriptor {
       conf.setWatermarkMethod(
           properties.getProperty("watermark_method", conf.getWatermarkMethod()));
 
+      conf.setMaxConcurrentClientNum(maxConcurrentClientNum);
+
+      conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
+      
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {
