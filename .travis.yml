@@ -60,41 +60,41 @@ matrix:
       addons:
         homebrew:
           taps:
-           #- homebrew/cask-versions
-           - AdoptOpenJDK/openjdk
+            #- homebrew/cask-versions
+            - AdoptOpenJDK/openjdk
           update: true
           casks: adoptopenjdk-openjdk8
-#    - os: windows
-#      language: c
-#      name: win-oraclejdk11
-#      install:
-#        - choco install jdk11 -params 'installdir=c:\\java11'
-#        - export PATH=$PATH:"/c/java11/bin"
-#        - export JAVA_HOME="/c/java11"
-#        - wget -q https://www-eu.apache.org/dist/maven/maven-3/3.6.1/binaries/apache-maven-3.6.1-bin.zip
-#        - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.1-bin.zip -o/c/mvn361
-#        - export "MAVEN_HOME=/c/mvn361/apache-maven-3.6.1"
-#        - export "M2_HOME=/c/mvn361/apache-maven-3.6.1"
-#        - export "PATH=$MAVEN_HOME/bin:$PATH"
-#      script:
-#        - java -version
-#        - mvn -version
-#        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
-          
+          #    - os: windows
+          #      language: c
+          #      name: win-oraclejdk11
+          #      install:
+          #        - choco install jdk11 -params 'installdir=c:\\java11'
+          #        - export PATH=$PATH:"/c/java11/bin"
+          #        - export JAVA_HOME="/c/java11"
+          #        - wget -q https://www-eu.apache.org/dist/maven/maven-3/3.6.2/binaries/apache-maven-3.6.2-bin.zip
+          #        - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.2-bin.zip -o/c/mvn362
+          #        - export "MAVEN_HOME=/c/mvn362/apache-maven-3.6.2"
+          #        - export "M2_HOME=/c/mvn362/apache-maven-3.6.2"
+          #        - export "PATH=$MAVEN_HOME/bin:$PATH"
+          #      script:
+          #        - java -version
+          #        - mvn -version
+          #        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
+
     - os: windows
       language: c
       name: win-oraclejdk8
       before_install:
         - choco install jdk8 -params 'installdir=c:\\jdk8'
-        - wget --no-check-certificate https://www-eu.apache.org/dist/maven/maven-3/3.6.1/binaries/apache-maven-3.6.1-bin.zip
-        - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.1-bin.zip -o/c/mvn361
+        - wget --no-check-certificate https://www-eu.apache.org/dist/maven/maven-3/3.6.2/binaries/apache-maven-3.6.2-bin.zip
+        - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.2-bin.zip -o/c/mvn362
       before_script:
         - export "JAVA_HOME=/c/jdk8"
         - export "PATH=/c/jdk8/bin:$PATH"
         - export "PATH=/c/jdk8/jre/bin:$PATH"
-        - export "MAVEN_HOME=/c/mvn361/apache-maven-3.6.1"
-        - export "M2_HOME=/c/mvn361/apache-maven-3.6.1"
-        - export "PATH=/c/mvn361/apache-maven-3.6.1/bin:$PATH"
+        - export "MAVEN_HOME=/c/mvn362/apache-maven-3.6.2"
+        - export "M2_HOME=/c/mvn362/apache-maven-3.6.2"
+        - export "PATH=/c/mvn362/apache-maven-3.6.2/bin:$PATH"
       script:
         - java -version
         - mvn -version
@@ -150,4 +150,3 @@ script:
   - ./mvnw.sh -B -ntp clean integration-test
 
 after_success:
-
