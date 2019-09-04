@@ -361,6 +361,7 @@ public class LogVisualizer {
     return ret;
   }
 
+  // TODO-LogVisualizer: generate html to better view the results
   public void saveResults(String destDirPath) throws VisualizationException {
     if (charts == null || statisticsMap == null) {
       throw new VisualizationException("No results to be saved");
