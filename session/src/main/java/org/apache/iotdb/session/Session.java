@@ -173,6 +173,18 @@ public class Session {
     }
   }
 
+  public synchronized TSRPCResp delete(String path, long time) throws IoTDBSessionException {
+    TSDeleteReq request = new TSDeleteReq();
+    request.setPath(path);
+    request.setTimestamp(time);
+
+    try {
+      return client.deleteRow(request);
+    } catch (TException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
   public synchronized TSRPCResp setStorageGroup(String storageGroupId) throws IoTDBSessionException {
     TSSetStorageGroupReq request = new TSSetStorageGroupReq();
     request.setStorageGroupId(storageGroupId);
