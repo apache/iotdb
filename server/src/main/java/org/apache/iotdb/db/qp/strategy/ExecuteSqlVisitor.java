@@ -494,7 +494,7 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
     if (timeInterval <= 0) {
       throw new SqlParseException("Interval must more than 0.");
     }
-    switch (unit) {
+    switch (unit.toLowerCase()) {
       case "w":
         timeInterval *= 7;
       case "d":
