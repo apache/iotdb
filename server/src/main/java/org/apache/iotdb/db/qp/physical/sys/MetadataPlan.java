@@ -59,12 +59,13 @@ public class MetadataPlan extends PhysicalPlan {
   }
 
   public MetadataPlan(MetadataOperator.NamespaceType namespaceType, Path path, TSDataType dataType,
-                      TSEncoding encoding) {
+                      TSEncoding encoding, CompressionType compressor) {
     super(false, Operator.OperatorType.METADATA);
     this.namespaceType = namespaceType;
     this.path = path;
     this.dataType = dataType;
     this.encoding = encoding;
+    this.compressor = compressor;
     setOperatorType(namespaceType);
   }
 

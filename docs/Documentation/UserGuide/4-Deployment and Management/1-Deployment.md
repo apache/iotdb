@@ -33,7 +33,7 @@ IoTDB provides you two installation methods, you can refer to the following sugg
 To install and use IoTDB, you need to have:
 
 1. Java >= 1.8 (Please make sure the environment path has been set)
-2. Maven >= 3.0 (If you want to compile and install IoTDB from source code)
+2. Maven >= 3.1 (If you want to compile and install IoTDB from source code)
 3. TsFile >= 0.7.0 (TsFile Github page: [https://github.com/thulab/tsfile](https://github.com/thulab/tsfile))
 4. IoTDB-JDBC >= 0.7.0 (IoTDB-JDBC Github page: [https://github.com/thulab/iotdb-jdbc](https://github.com/thulab/iotdb-jdbc))
 

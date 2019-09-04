@@ -18,11 +18,7 @@
  */
 package org.apache.iotdb.jdbc;
 
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
-import java.sql.RowIdLifetime;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.rpc.IoTDBRPCException;
@@ -89,7 +85,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           } catch (IoTDBRPCException e) {
             throw new IoTDBSQLException(e.getMessage());
           }
-          return new IoTDBMetadataResultSet(resp.getColumnsList(), null, null);
+          return new IoTDBMetadataResultSet(resp.getColumnsList(), IoTDBMetadataResultSet.MetadataType.COLUMN);
         } catch (TException e) {
           throw new TException("Conncetion error when fetching column metadata", e);
         }
@@ -103,7 +99,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           } catch (IoTDBRPCException e) {
             throw new IoTDBSQLException(e.getMessage());
           }
-          return new IoTDBMetadataResultSet(resp.getColumnsList(), null, null);
+          return new IoTDBMetadataResultSet(resp.getColumnsList(), IoTDBMetadataResultSet.MetadataType.COLUMN);
         } catch (TException e) {
           throw new TException("Conncetion error when fetching delta object metadata", e);
         }
@@ -117,7 +113,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             throw new IoTDBSQLException(e.getMessage());
           }
           Set<String> showStorageGroup = resp.getShowStorageGroups();
-          return new IoTDBMetadataResultSet(null, showStorageGroup, null);
+          return new IoTDBMetadataResultSet(showStorageGroup, IoTDBMetadataResultSet.MetadataType.STORAGE_GROUP);
         } catch (TException e) {
           throw new TException("Conncetion error when fetching storage group metadata", e);
         }
@@ -132,9 +128,86 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             throw new IoTDBSQLException(e.getMessage());
           }
           List<List<String>> showTimeseriesList = resp.getShowTimeseriesList();
-          return new IoTDBMetadataResultSet(null, null, showTimeseriesList);
+          return new IoTDBMetadataResultSet(showTimeseriesList, IoTDBMetadataResultSet.MetadataType.TIMESERIES);
         } catch (TException e) {
           throw new TException("Conncetion error when fetching timeseries metadata", e);
+        }
+      case Constant.COUNT_TIMESERIES:
+        req = new TSFetchMetadataReq(Constant.GLOBAL_COUNT_TIMESERIES_REQ);
+        req.setColumnPath(schemaPattern);
+        try {
+          TSFetchMetadataResp resp = client.fetchMetadata(req);
+          try {
+            RpcUtils.verifySuccess(resp.getStatus());
+          } catch (IoTDBRPCException e) {
+            throw new IoTDBSQLException(e.getMessage());
+          }
+          return new IoTDBMetadataResultSet(resp.getColumnsList().size(), IoTDBMetadataResultSet.MetadataType.COUNT_TIMESERIES);
+        } catch (TException e) {
+          throw new TException("Connection error when fetching timeseries metadata", e);
+        }
+      default:
+        throw new SQLException(catalog + " is not supported. Please refer to the user guide"
+            + " for more details.");
+    }
+  }
+
+  public ResultSet getNodes(String catalog, String schemaPattern, String columnPattern,
+      String devicePattern, String nodeLevel) throws SQLException {
+    try {
+      return getNodesFunc(catalog, nodeLevel);
+    } catch (TException e) {
+      boolean flag = connection.reconnect();
+      this.client = connection.client;
+      if (flag) {
+        try {
+          return getNodesFunc(catalog, nodeLevel);
+        } catch (TException e2) {
+          throw new SQLException(String.format("Fail to get columns catalog=%s, schemaPattern=%s,"
+                  + " columnPattern=%s, devicePattern=%s, nodeLevel=%s after reconnecting."
+                  + " please check server status",
+              catalog, schemaPattern, columnPattern, devicePattern, nodeLevel));
+        }
+      } else {
+        throw new SQLException(String.format(
+            "Fail to reconnect to server when getting columns catalog=%s, schemaPattern=%s,"
+                + " columnPattern=%s, devicePattern=%s, nodeLevel=%s after reconnecting. "
+                + "please check server status",
+            catalog, schemaPattern, columnPattern, devicePattern, nodeLevel));
+      }
+    }
+  }
+
+  private ResultSet getNodesFunc(String catalog, String nodeLevel) throws TException, SQLException {
+    TSFetchMetadataReq req;
+    switch (catalog) {
+      case Constant.COUNT_NODES:
+        req = new TSFetchMetadataReq(Constant.GLOBAL_COUNT_NODES_REQ);
+        req.setNodeLevel(nodeLevel);
+        try {
+          TSFetchMetadataResp resp = client.fetchMetadata(req);
+          try {
+            RpcUtils.verifySuccess(resp.getStatus());
+          } catch (IoTDBRPCException e) {
+            throw new IoTDBSQLException(e.getMessage());
+          }
+          return new IoTDBMetadataResultSet(resp.getNodesList().size(), IoTDBMetadataResultSet.MetadataType.COUNT_NODES);
+        } catch (TException e) {
+          throw new TException("Conncetion error when fetching node metadata", e);
+        }
+      case Constant.COUNT_NODE_TIMESERIES:
+        req = new TSFetchMetadataReq(Constant.GLOBAL_COUNT_NODE_TIMESERIES_REQ);
+        req.setNodeLevel(nodeLevel);
+        try {
+          TSFetchMetadataResp resp = client.fetchMetadata(req);
+          try {
+            RpcUtils.verifySuccess(resp.getStatus());
+          } catch (IoTDBRPCException e) {
+            throw new IoTDBSQLException(e.getMessage());
+          }
+          return new IoTDBMetadataResultSet(resp.getNodeTimeseriesNum(), IoTDBMetadataResultSet.MetadataType.COUNT_NODE_TIMESERIES);
+        } catch (TException e) {
+          throw new TException("Conncetion error when fetching node metadata", e);
         }
       default:
         throw new SQLException(catalog + " is not supported. Please refer to the user guide"

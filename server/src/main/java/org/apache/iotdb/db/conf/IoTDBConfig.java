@@ -57,7 +57,7 @@ public class IoTDBConfig {
   /**
    * Max concurrent client number
    */
-  private int maxConcurrentClientNum = 65535;
+  private int rpcMaxConcurrentClientNum = 65535;
 
   /**
    * Memory allocated for the read process
@@ -526,12 +526,12 @@ public class IoTDBConfig {
     this.enableStatMonitor = enableStatMonitor;
   }
 
-  public int getMaxConcurrentClientNum() {
-    return maxConcurrentClientNum;
+  public int getRpcMaxConcurrentClientNum() {
+    return rpcMaxConcurrentClientNum;
   }
 
-  public void setMaxConcurrentClientNum(int maxConcurrentClientNum) {
-    this.maxConcurrentClientNum = maxConcurrentClientNum;
+  public void setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
+    this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
   }
 
   public int getStatMonitorDetectFreqSec() {
