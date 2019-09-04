@@ -35,6 +35,12 @@
             <groupId>org.apache.iotdb</groupId>
             <artifactId>tsfile</artifactId>
             <version>0.9.0-SNAPSHOT</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.hadoop</groupId>
+                    <artifactId>hadoop-common</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.hadoop</groupId>
