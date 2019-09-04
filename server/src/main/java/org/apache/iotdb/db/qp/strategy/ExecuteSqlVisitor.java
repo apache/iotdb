@@ -375,8 +375,8 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
       throw new SqlParseException("LIMIT <N>: N should be Int32.");
     }
     if (rowsLimit <= 0) {
-//      // seriesLimit is ensured to be a non negative integer after the lexical examination,
-//      // and seriesLimit is further required to be a positive integer here.
+//      // rowsLimit is ensured to be a non negative integer after the lexical examination,
+//      // and rowsLimit is further required to be a positive integer here.
       throw new SqlParseException(
               "LIMIT <N>: N must be a positive integer and can not be zero.");
     }
