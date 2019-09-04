@@ -71,6 +71,9 @@ public class Session {
 
   public void open(boolean enableRPCCompression, int connectionTimeoutInMs)
       throws IoTDBSessionException {
+    if (!isClosed) {
+      return;
+    }
     transport = new TSocket(host, port, connectionTimeoutInMs);
     if (!transport.isOpen()) {
       try {
