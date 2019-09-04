@@ -31,10 +31,13 @@ date_index=1
 date_pattern=yyyy-MM-dd hh:mm:ss,SSS
 # The index of the group which represents the thread name, one based, optional
 thread_name_index=2
-# The index of the group which represents the log level, one based, optional
+# The index of the group which represents the log level, one based, optional. If not set, all levels
+# of logs are accepted.
 level_index=3
 # The index of the group which represents the position of the code (class name and line number)
-# that generated the log, one based
+# that generated the log, one based and optional. Currently we only support code positions like:
+# "org.apache.iotdb.db.service.IoTDB:233". If your logs have different style of code position, please
+# do not set this.
 code_location_index=4
 # The index of the group which represents the message in the log, one based, optional
 content_index=6
