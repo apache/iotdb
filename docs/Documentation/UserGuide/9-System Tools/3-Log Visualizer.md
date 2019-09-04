@@ -30,7 +30,7 @@
 - [Preparation](#preparation)
 - [Usage(GUI)](#Usage(GUI))
   - [Run the gui](#Run the gui)
-  - [Choose a log file](#Choose a log file)
+  - [Choose a log file](#Choose the log file(s))
   - [Choose a parser property file](#Choose a parser property file)
   - [Load logs](#Load logs)
   - [Create new plans](#Create new plans)
@@ -86,9 +86,10 @@ This will bring you a gui like:
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/main_panel.png?raw=true">
 
-## Choose a log file
-First, you should choose a file containing the logs to be visualized. Notice that we currently 
-only support single-line logs and logs with multiple lines will be ignored.
+## Choose the log file(s)
+First, you should choose a file containing the logs (or a directory containing such files) to be 
+visualized. Notice that we currently only support single-line logs and logs with multiple lines 
+will be ignored.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/select_log_file.png?raw=true">
 

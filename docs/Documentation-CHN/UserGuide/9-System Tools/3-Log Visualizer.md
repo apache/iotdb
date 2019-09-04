@@ -81,8 +81,8 @@
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/main_panel.png?raw=true">
 
 ## 选择日志文件
-首先，您需要点击图示的按钮选择一个含有待可视化日志的文件。注意：我们目前仅支持单行日志，多行日志无法
-被正确解析而会被忽略。
+首先，您需要点击图示的按钮选择一个含有待可视化日志的文件或者一个仅包含该类文件的文件夹。注意：我们
+目前仅支持单行日志，多行日志无法被正确解析而会被忽略。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/select_log_file.png?raw=true">
 
