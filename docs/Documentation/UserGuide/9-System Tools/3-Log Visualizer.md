@@ -44,25 +44,25 @@
 
 # Introduction
 IoTDB generates a variety of logs during runtime like other software systems. The debug and trace
-logs can help the developers keep trace of the status of IoTDB and dig potential or unclear bugs
-The info logs may tell how healthy the system is and provide directions for database parameter
-optimization. The warn and error logs indicates the system is in a dangerous status or 
+logs can help the developers keep trace of the status of IoTDB and dig out potential or unclear bugs
+The info logs may tell how healthy the system is and point out directions for database parameter
+optimization. The warn and error logs indicate the system is in a dangerous status or 
 something unexpected happened (very likely a bug or an attack) and helps the database 
 administrator save the system before it crashes or find the reasons why it has crashed.
 
 With the logs being so valuable a source of monitoring system status, mining the logs for their 
 potential precious information has become quite a hot issue both in academy and industry. 
-Traditional ways often require much human-resource to discovery the value behind the logs by 
+Traditional ways often require much human-resource to discover the value behind the logs by 
 reading and analyzing the logs carefully. Usually, the logs of different sources (like Java 
 classes) are mixed together in several files and only the most experienced debugging experts know 
 from the beginning what logs exactly they long for, many less experienced programmers would spend 
-time reading unrelated logs and filtering them out. Nevertheless, logs are most composed with string 
-containing numbers which describe the system status and they are much less straight-forward for 
+time reading unrelated logs and filtering them out. Nevertheless, logs are mostly composed with 
+strings containing numbers which describe the system status and they are much less straight-forward for 
 humans to understand and compare than plots and statistics.
  
-To relieve the hardness of understanding what has happened behind these logs and better comparing
+To reduce the difficulty of understanding what has happened behind these logs and better comparing
 them, we present a simple tool LogVisualizer to retrieve interesting (specified by the user) 
-variants in a log file, generate timeseries based on these observations and draw plots to show 
+variables in the log files, generate timeseries based on these observations and draw plots to show 
 them in a more human-friendly way. LogVisualizer also collects the statistics of the logs to 
 present an overall view of what was going on.
 
@@ -111,38 +111,38 @@ dialog will show you what has gone wrong and you should fix it accordingly.
 ## Load plans
 Next, you can load existing visualization plans or create new ones. For loading existing plans, 
 just click the button `Load plans` and choose the log files or directories that contain log 
-files. Notice that if choose directory, then the directory must only contain visualization plans.
+files. Notice that if choose a directory, then the directory must only contain visualization plans.
 
  <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/load_plan.png?raw=true">
  
 ## Create new plans
 Now, we will present an example of how to create a new plan. First, click the `Create plan` 
 button and choose a place to save the new plan, then the plan will show up in the list in the 
-left. The name of the file will be used as the plan's name and it must not be different from 
+left. The name of the file will be used as the plan's name and it must be different from 
 any existing plans.
 
  <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/create_plan.png?raw=true">
 
 ## Edit plans
 After creating the new plan, you can edit it in the right panel. We provide an example in 
- `tools/logVisualize/plans/flushTimeConsumption.plan`, we strongly recommend you read it 
+ `tools/logVisualize/plans/flushTimeConsumption.plan.example`, we strongly recommend you read it 
 carefully to know how to fill the fields. You can also edit plans you have loaded here. Do not
-forget to click the `Save plan` button if you want to save what you have modified.If you 
-want to create a plan that show the time consumptions of jobs grouped by their type, you may set
+forget to click the `Save plan` button if you want to save what you have modified. If you 
+want to create a plan that shows the time consumptions of jobs grouped by their type, you may set
 the fields like the following one.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/edit_plan.png?raw=true">
 
 ## Delete plans
-If you don't want a plan anymore, you can select it and click `Delete plan` button. This will 
+If you don't need a plan anymore, you can select it and click `Delete plan` button. This will 
 remove the plan from the disk.
 
 ## Execute plans
 Finally, you can execute a plan by selecting it and click `Execute plan`. Please make sure you 
 have loaded the logs. Afterwards, two tabs will be added into the main panel. The first contains 
 timeseries charts each corresponding to log groups and plotting the measurements specified by the 
-plan. The second one presents the statistics of each log group. Once you have done browsing, you 
-can click the button on the up-right to close the tab.
+plan. The second one presents the statistics of each measurement of each log group. Once you have 
+done browsing, you can click the button on the up-right to close the tab.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/execute_plan.png?raw=true">
 
