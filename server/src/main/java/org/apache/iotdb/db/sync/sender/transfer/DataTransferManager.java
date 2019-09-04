@@ -132,16 +132,20 @@ public class DataTransferManager implements IDataTransferManager {
    * running.
    */
   private void verifySingleton() throws IOException {
-    File lockFile = new File(config.getLockFilePath());
-    if (!lockFile.getParentFile().exists()) {
-      lockFile.getParentFile().mkdirs();
-    }
-    if (!lockFile.exists()) {
-      lockFile.createNewFile();
-    }
-    if (!lockInstance(config.getLockFilePath())) {
-      logger.error("Sync client is already running.");
-      System.exit(1);
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    for (String dataDir : dataDirs) {
+      config.update(dataDir);
+      File lockFile = new File(config.getLockFilePath());
+      if (!lockFile.getParentFile().exists()) {
+        lockFile.getParentFile().mkdirs();
+      }
+      if (!lockFile.exists()) {
+        lockFile.createNewFile();
+      }
+      if (!lockInstance(config.getLockFilePath())) {
+        logger.error("Sync client is already running.");
+        System.exit(1);
+      }
     }
   }
 
@@ -343,8 +347,9 @@ public class DataTransferManager implements IDataTransferManager {
     try (BufferedReader br = new BufferedReader(new FileReader(getSchemaLogFile()));
         ByteArrayOutputStream bos = new ByteArrayOutputStream(SyncConstant.DATA_CHUNK_SIZE)) {
       schemaFileLinePos = 0;
-      while (schemaFileLinePos++ <= schemaPos) {
+      while (schemaFileLinePos < schemaPos) {
         br.readLine();
+        schemaFileLinePos++;
       }
       MessageDigest md = MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME);
       String line;
@@ -353,8 +358,9 @@ public class DataTransferManager implements IDataTransferManager {
         schemaFileLinePos++;
         byte[] singleLineData = BytesUtils.stringToBytes(line);
         bos.write(singleLineData);
-        md.update(singleLineData);
+        bos.write("\r\n".getBytes());
         if (cntLine++ == BATCH_LINE) {
+          md.update(bos.toByteArray());
           ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
           bos.reset();
           ResultStatus status = serviceClient.syncData(buffToSend);
@@ -366,6 +372,7 @@ public class DataTransferManager implements IDataTransferManager {
         }
       }
       if (bos.size() != 0) {
+        md.update(bos.toByteArray());
         ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
         bos.reset();
         ResultStatus status = serviceClient.syncData(buffToSend);
@@ -376,7 +383,7 @@ public class DataTransferManager implements IDataTransferManager {
       }
 
       // check md5
-      return checkMD5ForSchema((new BigInteger(1, md.digest())).toString(16));
+      return checkMD5ForSchema(new BigInteger(1, md.digest()).toString(16));
     } catch (NoSuchAlgorithmException | IOException | TException e) {
       logger.error("Can not finish transfer schema to receiver", e);
       return false;
@@ -497,7 +504,7 @@ public class DataTransferManager implements IDataTransferManager {
       try {
         File snapshotFile = makeFileSnapshot(tsfile);
         // firstly sync .restore file, then sync tsfile
-        syncSingleFile(new File(snapshotFile, TsFileResource.RESOURCE_SUFFIX));
+        syncSingleFile(new File(snapshotFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
         syncSingleFile(snapshotFile);
         lastLocalFilesMap.get(sgName).add(tsfile);
         syncLog.finishSyncTsfile(tsfile);

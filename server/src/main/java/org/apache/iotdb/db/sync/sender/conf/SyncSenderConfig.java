@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.sync.sender.conf;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SyncSenderConfig {
@@ -27,7 +28,7 @@ public class SyncSenderConfig {
 
   private int serverPort = 5555;
 
-  private int syncPeriodInSecond = 10;
+  private int syncPeriodInSecond = 600;
 
   private String senderFolderPath;
 
@@ -42,7 +43,7 @@ public class SyncSenderConfig {
   /**
    * Storage groups which participate in sync process
    */
-  private List<String> storageGroupList;
+  private List<String> storageGroupList = new ArrayList<>();
 
   /**
    * Update paths based on data directory

@@ -27,10 +27,10 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -103,7 +103,9 @@ public class SyncServiceImpl implements SyncService.Iface {
       if (currentFileWriter.get() != null && currentFileWriter.get().isOpen()) {
         currentFileWriter.get().close();
       }
-      syncLog.get().close();
+      if (syncLog.get() != null) {
+        syncLog.get().close();
+      }
       return SyncReceiverLogAnalyzer.getInstance().recover(senderName.get());
     } catch (IOException e) {
       logger.error("Check recovery state fail", e);
@@ -117,7 +119,7 @@ public class SyncServiceImpl implements SyncService.Iface {
       initPath();
       currentSG.remove();
       FileLoader.createFileLoader(senderName.get(), syncFolderPath.get());
-      syncLog.set(new SyncReceiverLogger(new File(getSyncDataPath(), SyncConstant.SYNC_LOG_NAME)));
+      syncLog.set(new SyncReceiverLogger(new File(syncFolderPath.get(), SyncConstant.SYNC_LOG_NAME)));
       return getSuccessResult();
     } catch (DiskSpaceInsufficientException | IOException e) {
       logger.error("Can not receiver data from sender", e);
@@ -175,6 +177,7 @@ public class SyncServiceImpl implements SyncService.Iface {
       } else {
         file = new File(getSyncDataPath(), currentSG.get() + File.separatorChar + filename);
       }
+      file.delete();
       currentFile.set(file);
       if (!file.getParentFile().exists()) {
         file.getParentFile().mkdirs();
@@ -184,7 +187,8 @@ public class SyncServiceImpl implements SyncService.Iface {
       }
       currentFileWriter.set(new FileOutputStream(file).getChannel());
       syncLog.get().startSyncTsFiles();
-    } catch (IOException e) {
+      messageDigest.set(MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME));
+    } catch (IOException | NoSuchAlgorithmException e) {
       logger.error("Can not init sync resource for file {}", filename, e);
       return getErrorResult(
           String.format("Can not init sync resource for file %s because %s", filename,
@@ -197,6 +201,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   public ResultStatus syncData(ByteBuffer buff) {
     try {
       currentFileWriter.get().write(buff);
+      buff.flip();
       messageDigest.get().update(buff);
     } catch (IOException e) {
       logger.error("Can not sync data for file {}", currentFile.get().getAbsoluteFile(), e);
@@ -213,7 +218,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     try {
       currentFileWriter.get().close();
       if (!md5OfSender.equals(md5OfReceiver)) {
-        FileUtils.forceDelete(currentFile.get());
+        currentFile.get().delete();
         currentFileWriter.set(new FileOutputStream(currentFile.get()).getChannel());
       } else {
         if (currentFile.get().getName().endsWith(MetadataConstant.METADATA_LOG)) {
@@ -241,13 +246,15 @@ public class SyncServiceImpl implements SyncService.Iface {
           new java.io.FileReader(currentFile.get()))) {
         String metadataOperation;
         while ((metadataOperation = br.readLine()) != null) {
-          operation(metadataOperation);
+          try {
+            operation(metadataOperation);
+          } catch (IOException | MetadataErrorException | PathErrorException e) {
+            // multiple insert schema, ignore it.
+          }
         }
-      } catch (FileNotFoundException e) {
+      } catch (IOException e) {
         logger.error("Cannot read the file {}.", currentFile.get().getAbsoluteFile(), e);
         return false;
-      } catch (IOException | MetadataErrorException | PathErrorException e) {
-        // multiple insert schema, ignore it.
       }
     }
     return true;

@@ -22,6 +22,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.sync.receiver.load.FileLoader;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
@@ -65,6 +66,7 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
     // check the state
     if (!new File(senderFolder, SyncConstant.SYNC_LOG_NAME).exists()) {
       new File(senderFolder, SyncConstant.LOAD_LOG_NAME).delete();
+      FileUtils.deleteDirectory(new File(senderFolder, SyncConstant.RECEIVER_DATA_FOLDER_NAME));
       return true;
     }
     if (FileLoaderManager.getInstance().containsFileLoader(senderFolder.getName())) {
