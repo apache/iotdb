@@ -25,13 +25,10 @@ tokenVocab=TSLexer;
 }
 
 @header {
-//package org.apache.iotdb.db.sql.parse;
-
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
-
 }
 
 
@@ -46,195 +43,6 @@ import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
   public void setType(int type){
     this.type = type;
   }
-
-//ArrayList<ParseError> errors = new ArrayList<ParseError>();
-//    Stack msgs = new Stack<String>();
-//
-//    private static HashMap<String, String> xlateMap;
-//    static {
-//        //this is used to support auto completion in CLI
-//        xlateMap = new HashMap<String, String>();
-//
-//        // Keywords
-//        // xlateMap.put("KW_TRUE", "TRUE");
-//        // xlateMap.put("KW_FALSE", "FALSE");
-//
-//        xlateMap.put("KW_AND", "AND");
-//        xlateMap.put("KW_OR", "OR");
-//        xlateMap.put("KW_NOT", "NOT");
-//        xlateMap.put("KW_LIKE", "LIKE");
-//
-//        xlateMap.put("KW_BY", "BY");
-//        xlateMap.put("KW_GROUP", "GROUP");
-//        xlateMap.put("KW_FILL", "FILL");
-//        xlateMap.put("KW_LINEAR", "LINEAR");
-//        xlateMap.put("KW_PREVIOUS", "PREVIOUS");
-//        xlateMap.put("KW_WHERE", "WHERE");
-//        xlateMap.put("KW_FROM", "FROM");
-//
-//        xlateMap.put("KW_SELECT", "SELECT");
-//        xlateMap.put("KW_INSERT", "INSERT");
-//
-//        xlateMap.put("KW_LIMIT","LIMIT");
-//        xlateMap.put("KW_OFFSET","OFFSET");
-//        xlateMap.put("KW_SLIMIT","SLIMIT");
-//        xlateMap.put("KW_SOFFSET","SOFFSET");
-//
-//        xlateMap.put("KW_ON", "ON");
-//        xlateMap.put("KW_ROOT", "ROOT");
-//
-//        xlateMap.put("KW_SHOW", "SHOW");
-//
-//        xlateMap.put("KW_CLUSTER", "CLUSTER");
-//
-//        xlateMap.put("KW_LOAD", "LOAD");
-//
-//        xlateMap.put("KW_NULL", "NULL");
-//        xlateMap.put("KW_CREATE", "CREATE");
-//
-//        xlateMap.put("KW_DESCRIBE", "DESCRIBE");
-//
-//        xlateMap.put("KW_TO", "TO");
-//        xlateMap.put("KW_ON", "ON");
-//        xlateMap.put("KW_USING", "USING");
-//
-//        xlateMap.put("KW_DATETIME", "DATETIME");
-//        xlateMap.put("KW_TIMESTAMP", "TIMESTAMP");
-//        xlateMap.put("KW_TIME", "TIME");
-//        xlateMap.put("KW_CLUSTERED", "CLUSTERED");
-//
-//        xlateMap.put("KW_INTO", "INTO");
-//
-//        xlateMap.put("KW_ROW", "ROW");
-//        xlateMap.put("KW_STORED", "STORED");
-//        xlateMap.put("KW_OF", "OF");
-//        xlateMap.put("KW_ADD", "ADD");
-//        xlateMap.put("KW_FUNCTION", "FUNCTION");
-//        xlateMap.put("KW_WITH", "WITH");
-//        xlateMap.put("KW_SET", "SET");
-//        xlateMap.put("KW_UPDATE", "UPDATE");
-//        xlateMap.put("KW_VALUES", "VALUES");
-//        xlateMap.put("KW_KEY", "KEY");
-//        xlateMap.put("KW_ENABLE", "ENABLE");
-//        xlateMap.put("KW_DISABLE", "DISABLE");
-//        xlateMap.put("KW_ALL", "ALL");
-//
-//        // Operators
-//        xlateMap.put("DOT", ".");
-//        xlateMap.put("COLON", ":");
-//        xlateMap.put("COMMA", ",");
-//        xlateMap.put("SEMICOLON", ");");
-//
-//        xlateMap.put("LPAREN", "(");
-//        xlateMap.put("RPAREN", ")");
-//        xlateMap.put("LSQUARE", "[");
-//        xlateMap.put("RSQUARE", "]");
-//
-//        xlateMap.put("EQUAL", "=");
-//        xlateMap.put("NOTEQUAL", "<>");
-//        xlateMap.put("EQUAL_NS", "<=>");
-//        xlateMap.put("LESSTHANOREQUALTO", "<=");
-//        xlateMap.put("LESSTHAN", "<");
-//        xlateMap.put("GREATERTHANOREQUALTO", ">=");
-//        xlateMap.put("GREATERTHAN", ">");
-//
-//        xlateMap.put("CharSetLiteral", "\\'");
-//        xlateMap.put("KW_LIST", "LIST");
-//    }
-//
-//    public static Collection<String> getKeywords() {
-//        return xlateMap.values();
-//    }
-//
-//    private static String xlate(String name) {
-//
-//        String ret = xlateMap.get(name);
-//        if (ret == null) {
-//            ret = name;
-//        }
-//
-//        return ret;
-//    }
-//
-//    @Override
-//    public Object recoverFromMismatchedSet(IntStream input,
-//                                           RecognitionException re, BitSet follow) throws RecognitionException {
-//        throw re;
-//    }
-//
-//    @Override
-//    public void displayRecognitionError(String[] tokenNames,
-//                                        RecognitionException e) {
-//        errors.add(new ParseError(this, e, tokenNames));
-//    }
-//
-//    @Override
-//    public String getErrorHeader(RecognitionException e) {
-//        String header = null;
-//        if (e.charPositionInLine < 0 && input.LT(-1) != null) {
-//            Token t = input.LT(-1);
-//            header = "line " + t.getLine() + ":" + t.getCharPositionInLine();
-//        } else {
-//            header = super.getErrorHeader(e);
-//        }
-//
-//        return header;
-//    }
-//
-//    @Override
-//    public String getErrorMessage(RecognitionException e, String[] tokenNames) {
-//        String msg = null;
-//
-//        // Translate the token names to something that the user can understand
-//        String[] xlateNames = new String[tokenNames.length];
-//        for (int i = 0; i < tokenNames.length; ++i) {
-//            xlateNames[i] = TSParser.xlate(tokenNames[i]);
-//        }
-//
-//        if (e instanceof NoViableAltException) {
-//            @SuppressWarnings("unused")
-//            NoViableAltException nvae = (NoViableAltException) e;
-//            // for development, can add
-//            // "decision=<<"+nvae.grammarDecisionDescription+">>"
-//            // and "(decision="+nvae.decisionNumber+") and
-//            // "state "+nvae.stateNumber
-//            msg = "cannot recognize input near "
-//                + input.LT(1) != null ? " " + getTokenErrorDisplay(input.LT(1)) : ""
-//                + input.LT(1) != null ? " " + getTokenErrorDisplay(input.LT(1)) : ""
-//                + input.LT(3) != null ? " " + getTokenErrorDisplay(input.LT(3)) : "";
-//
-//        } else if (e instanceof MismatchedTokenException) {
-//            MismatchedTokenException mte = (MismatchedTokenException) e;
-//            msg = super.getErrorMessage(e, xlateNames) + (input.LT(-1) == null ? "":" near '" + input.LT(-1).getText()) + "'"
-//            + ". Please refer to SQL document and check if there is any keyword conflict.";
-//        } else if (e instanceof FailedPredicateException) {
-//            FailedPredicateException fpe = (FailedPredicateException) e;
-//            msg = "Failed to recognize predicate '" + fpe.token.getText() + "'. Failed rule: '" + fpe.ruleName + "'";
-//        } else {
-//            if(xlateMap.containsKey("KW_"+e.token.getText().toUpperCase())){
-//                msg = e.token.getText() + " is a key word. Please refer to SQL document and check whether it can be used here or not.";
-//            } else {
-//                msg = super.getErrorMessage(e, xlateNames);
-//            }
-//        }
-//
-//        if (msgs.size() > 0) {
-//            msg = msg + " in " + msgs.peek();
-//        }
-//        return msg;
-//    }
-//
-//    // counter to generate unique union aliases
-
-
-}
-
-
-@rulecatch {
-//catch (RecognitionException e) {
-// reportError(e);
-//  throw e;
-//}
 }
 
 // starting rule
@@ -258,7 +66,7 @@ floatValue
     | NegativeFloat # x_negativeInteger
     | PositiveInteger DOT   # x_positiveIntegerDot
     | NegativeInteger DOT   # x_negativeIntegerDot
-    | UnsignedInteger DOT UnsignedInteger # x_unsignedIntegerDotUnsignedInteger///(UnsignedInteger DOT UnsignedInteger)=>UnsignedInteger DOT UnsignedInteger
+    | UnsignedInteger DOT UnsignedInteger # x_unsignedIntegerDotUnsignedInteger
     | UnsignedInteger DOT # x_unsignedIntegerDot
     | DOT UnsignedInteger   # x_dotUnsignedInteger
     | UnsignedInteger DoubleInScientificNotationSuffix # x_unsignedIntegerDoubleInScientificNotationSuffix
@@ -423,8 +231,8 @@ specialClause
     :
     limitClause slimitClause?
     |slimitClause limitClause?
-    |groupbyClause limitClause slimitClause? ///(groupbyClause limitClause)=>groupbyClause limitClause slimitClause?
-    |groupbyClause slimitClause limitClause? ///(groupbyClause slimitClause)=>groupbyClause slimitClause limitClause?
+    |groupbyClause limitClause slimitClause?
+    |groupbyClause slimitClause limitClause?
     |groupbyClause
     |fillClause slimitClause?
     ;
@@ -580,12 +388,6 @@ indexWithEqualExpression
     : k=Identifier EQUAL v=integer
     ;
 
-//indexWhereClause
-//    : KW_WHERE name=Identifier GREATERTHAN value=dateFormatWithNumber
-//    -> ^(TOK_WHERE $name $value)
-//    ;
-
-
 dropIndexStatement
     : KW_DROP KW_INDEX func=Identifier KW_ON p=timeseries
     ;
@@ -603,13 +405,6 @@ identifier
     :
     Identifier | integer
     ;
-
-//selectClause
-//    : KW_SELECT path (COMMA path)*
-//    -> ^(TOK_SELECT path+)
-//    | KW_SELECT clstcmd = identifier LPAREN path RPAREN (COMMA clstcmd=identifier LPAREN path RPAREN)*
-//    -> ^(TOK_SELECT ^(TOK_CLUSTER path $clstcmd)+ )
-//    ;
 
 selectClause
     : KW_SELECT KW_INDEX func=Identifier LPAREN p1=timeseries COMMA p2=timeseries COMMA n1=dateFormatWithNumber COMMA n2=dateFormatWithNumber COMMA epsilon=floatValue (COMMA alpha=floatValue COMMA beta=floatValue)? RPAREN (fromClause)? #selectIndex
@@ -735,9 +530,9 @@ nullCondition
 
 atomExpressionWithNumberPath
     :
-     KW_NULL # expNull///(KW_NULL) => KW_NULL
-    | (KW_TIME) # expTime///(KW_TIME) => KW_TIME
-    | (constant) # expConstant ///(constant) => constant
+     KW_NULL # expNull
+    | (KW_TIME) # expTime
+    | (constant) # expConstant
     | prefixPath # expPrefixPath
     | suffixPath # expSuffixPath
     | LPAREN expression RPAREN # expExpression
@@ -746,9 +541,9 @@ atomExpressionWithNumberPath
 
 atomExpression
     :
-    KW_NULL # atomNull///(KW_NULL) => KW_NULL
-    | KW_TIME # atomTime///(KW_TIME) => KW_TIME
-    | constant # atomConstant///(constant) => constant
+    KW_NULL # atomNull
+    | KW_TIME # atomTime
+    | constant # atomConstant
     | prefixPath # atomPrefixPath
     | suffixPath # atomSuffixPath
     | LPAREN expression RPAREN # atomExp
