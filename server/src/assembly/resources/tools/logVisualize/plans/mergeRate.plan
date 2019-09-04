@@ -1,7 +1,7 @@
 #
 #Tue Sep 03 09:20:46 CST 2019
 start_date=2019 08 29 00 30
-legends=Time,byteRate(MB/s),seriesRate,fileRate,ptRate
+legends=Time,byteRate(MBPS),seriesRate,fileRate,ptRate
 name=mergeRate
 min_level=DEBUG
 date_pattern=yyyy MM dd HH mm

@@ -29,7 +29,7 @@ content_pattern=Storage group (.*) memtable (.*) flushing a memtable has finishe
 # comma to separate the positions
 # the position of the groups in the pattern that will be plotted as values, must be real values
 measurement_positions=3
-# the name of each measurement
+# the name of each measurement, the legends should not contain special chars like '\' '/'.
 legends=Time
 # the position of the groups in the pattern that will be used to group the logs, each log group will
 # be plotted separately
