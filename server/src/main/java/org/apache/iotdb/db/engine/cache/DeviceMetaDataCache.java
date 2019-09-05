@@ -92,6 +92,10 @@ public class DeviceMetaDataCache {
       TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(resource);
       TsDeviceMetadata deviceMetaData = TsFileMetadataUtils
           .getTsDeviceMetaData(resource, seriesPath, fileMetaData);
+      // If measurement isn't included in the tsfile, empty list is returned.
+      if (deviceMetaData == null) {
+        return new ArrayList<>();
+      }
       return TsFileMetadataUtils.getChunkMetaDataList(seriesPath.getMeasurement(), deviceMetaData);
     }
 

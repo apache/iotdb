@@ -28,8 +28,8 @@ import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.IterateReader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
@@ -105,24 +105,33 @@ public class UnSealedTsFileIterateReader extends IterateReader {
   private IAggregateReader initUnSealedTsFileDiskReader(TsFileResource unSealedTsFile,
       Filter filter)
       throws IOException {
-
-    // prepare metaDataList
-    List<ChunkMetaData> metaDataList = unSealedTsFile.getChunkMetaDatas();
-    if (enableReverse && metaDataList != null && !metaDataList.isEmpty()) {
-      Collections.reverse(metaDataList);
-    }
-
-    // prepare chunkLoader
-    TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
-        .get(unSealedTsFile, false);
-    IChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
-
-    // init fileSeriesReader
     FileSeriesReader fileSeriesReader;
-    if (filter == null) {
-      fileSeriesReader = new FileSeriesReaderWithoutFilter(chunkLoader, metaDataList);
+    List<ChunkMetaData> metaDataList = unSealedTsFile.getChunkMetaDatas();
+
+    if (metaDataList == null || metaDataList.isEmpty()) {
+      // init fileSeriesReader
+      // no need to construct a IChunkLoader since it will never be used in this case
+      if (filter == null) {
+        fileSeriesReader = new FileSeriesReaderWithoutFilter(null, metaDataList);
+      } else {
+        fileSeriesReader = new FileSeriesReaderWithFilter(null, metaDataList, filter);
+      }
+
     } else {
-      fileSeriesReader = new FileSeriesReaderWithFilter(chunkLoader, metaDataList, filter);
+      // prepare metaDataList
+      if (enableReverse) {
+        Collections.reverse(metaDataList);
+      }
+      // prepare chunkLoader
+      TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
+          .get(unSealedTsFile, false);
+      IChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
+      // init fileSeriesReader
+      if (filter == null) {
+        fileSeriesReader = new FileSeriesReaderWithoutFilter(chunkLoader, metaDataList);
+      } else {
+        fileSeriesReader = new FileSeriesReaderWithFilter(chunkLoader, metaDataList, filter);
+      }
     }
 
     return new FileSeriesReaderAdapter(fileSeriesReader);
