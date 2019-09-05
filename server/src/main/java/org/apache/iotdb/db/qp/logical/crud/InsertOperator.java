@@ -19,9 +19,6 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.qp.logical.ExecutableOperator;
-import org.apache.iotdb.tsfile.read.common.Path;
-
-import java.util.List;
 
 /**
  * this class extends {@code RootOperator} and process insert statement.

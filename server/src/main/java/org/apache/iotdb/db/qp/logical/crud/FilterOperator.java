@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_AND;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
-
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -35,6 +30,12 @@ import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_AND;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
 
 /**
  * This class is for filter operator and implements {@link Operator} .<br>

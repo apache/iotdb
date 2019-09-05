@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-import java.util.Objects;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -32,6 +31,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
 
 /**
  * basic operator includes < > >= <= !=.
