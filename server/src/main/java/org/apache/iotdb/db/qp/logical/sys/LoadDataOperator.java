@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.ExecutableOperator;
 
 /**
  * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE.
  */
-public class LoadDataOperator extends RootOperator {
+public class LoadDataOperator extends ExecutableOperator {
 
   private final String inputFilePath;
   private final String measureType;

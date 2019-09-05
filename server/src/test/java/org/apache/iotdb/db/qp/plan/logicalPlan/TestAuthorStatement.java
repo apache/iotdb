@@ -22,7 +22,7 @@ package org.apache.iotdb.db.qp.plan.logicalPlan;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.ExecutableOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -43,7 +43,7 @@ public class TestAuthorStatement {
 
   @Test
   public void testCreateUser() {
-    RootOperator op = generator.getLogicalPlan("create user myname mypwd;");
+    ExecutableOperator op = generator.getLogicalPlan("create user myname mypwd;");
     assertEquals(AuthorOperator.class, op.getClass());
     assertEquals(SQLConstant.TOK_AUTHOR_CREATE, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.CREATE_USER, ((AuthorOperator)op).getAuthorType());
@@ -57,7 +57,7 @@ public class TestAuthorStatement {
 
   @Test
   public void testDropUser(){
-    RootOperator op = generator.getLogicalPlan("drop user myname");
+    ExecutableOperator op = generator.getLogicalPlan("drop user myname");
     assertEquals(SQLConstant.TOK_AUTHOR_DROP, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.DROP_USER, ((AuthorOperator)op).getAuthorType());
     assertEquals("myname", ((AuthorOperator)op).getUserName());
@@ -70,7 +70,7 @@ public class TestAuthorStatement {
 
   @Test
   public void testCreateRole() {
-    RootOperator op = generator.getLogicalPlan("create role admin");
+    ExecutableOperator op = generator.getLogicalPlan("create role admin");
     assertEquals(SQLConstant.TOK_AUTHOR_CREATE, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.CREATE_ROLE, ((AuthorOperator)op).getAuthorType());
     assertEquals("admin", ((AuthorOperator)op).getRoleName());
@@ -83,7 +83,7 @@ public class TestAuthorStatement {
 
   @Test
   public void testDropRole() {
-    RootOperator op = generator.getLogicalPlan("drop role admin;");
+    ExecutableOperator op = generator.getLogicalPlan("drop role admin;");
     assertEquals(SQLConstant.TOK_AUTHOR_DROP, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.DROP_ROLE, ((AuthorOperator)op).getAuthorType());
     assertEquals("admin", ((AuthorOperator)op).getRoleName());
@@ -97,7 +97,7 @@ public class TestAuthorStatement {
 
   @Test
   public void testGrantUser() {
-    RootOperator op = generator.getLogicalPlan("grant user myusername privileges 'create','delete' on root.laptop.d1.s1");
+    ExecutableOperator op = generator.getLogicalPlan("grant user myusername privileges 'create','delete' on root.laptop.d1.s1");
     assertEquals(SQLConstant.TOK_AUTHOR_GRANT, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.GRANT_USER, ((AuthorOperator)op).getAuthorType());
     assertEquals("myusername", ((AuthorOperator)op).getUserName());
@@ -115,7 +115,7 @@ public class TestAuthorStatement {
 
   @Test
   public void testGrantRole() {
-    RootOperator op = generator.getLogicalPlan("grant role admin privileges 'create','delete' on root.laptop.d1.s1;");
+    ExecutableOperator op = generator.getLogicalPlan("grant role admin privileges 'create','delete' on root.laptop.d1.s1;");
     assertEquals(SQLConstant.TOK_AUTHOR_GRANT, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.GRANT_ROLE, ((AuthorOperator)op).getAuthorType());
     assertEquals("admin", ((AuthorOperator)op).getRoleName());
@@ -133,7 +133,7 @@ public class TestAuthorStatement {
 
   @Test
   public void testRevokeUser() {
-    RootOperator op = generator.getLogicalPlan("revoke user myusername privileges 'create','delete' on root.laptop.d1.s1");
+    ExecutableOperator op = generator.getLogicalPlan("revoke user myusername privileges 'create','delete' on root.laptop.d1.s1");
     assertEquals(SQLConstant.TOK_AUTHOR_REVOKE, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.REVOKE_USER, ((AuthorOperator)op).getAuthorType());
     assertEquals("myusername", ((AuthorOperator)op).getUserName());
@@ -151,7 +151,7 @@ public class TestAuthorStatement {
 
   @Test
   public void testRevokeRole() {
-    RootOperator op = generator.getLogicalPlan("revoke role admin privileges 'create','delete' on root.laptop.d1.s1;");
+    ExecutableOperator op = generator.getLogicalPlan("revoke role admin privileges 'create','delete' on root.laptop.d1.s1;");
     assertEquals(SQLConstant.TOK_AUTHOR_REVOKE, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.REVOKE_ROLE, ((AuthorOperator)op).getAuthorType());
     assertEquals("admin", ((AuthorOperator)op).getRoleName());
@@ -169,7 +169,7 @@ public class TestAuthorStatement {
 
   @Test
   public void testGrantRoleToUser() {
-    RootOperator op = generator.getLogicalPlan("grant admin to Tom");
+    ExecutableOperator op = generator.getLogicalPlan("grant admin to Tom");
     assertEquals(SQLConstant.TOK_AUTHOR_GRANT, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.GRANT_ROLE_TO_USER, ((AuthorOperator)op).getAuthorType());
     assertEquals("admin", ((AuthorOperator)op).getRoleName());
@@ -182,7 +182,7 @@ public class TestAuthorStatement {
 
   @Test
   public void testRevokeRoleFromUser() {
-    RootOperator op = generator.getLogicalPlan("revoke admin from Tom;");
+    ExecutableOperator op = generator.getLogicalPlan("revoke admin from Tom;");
     assertEquals(SQLConstant.TOK_AUTHOR_REVOKE, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.REVOKE_ROLE_FROM_USER, ((AuthorOperator)op).getAuthorType());
     assertEquals("admin", ((AuthorOperator)op).getRoleName());

@@ -391,7 +391,7 @@ selectClause
     ;
 
 clusteredPath
-	: clstcmd = identifier LPAREN suffixPath RPAREN  #aggregateCommandPath
+	: aggregateFunction = identifier LPAREN suffixPath RPAREN  #aggregateCommandPath
 	| suffixPath #simpleSuffixPath
 	;
 

@@ -18,14 +18,20 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.qp.logical.ExecutableOperator;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.tsfile.read.common.Path;
+
+import java.util.List;
 
 /**
  * this class extends {@code RootOperator} and process delete statement.
  */
-public class DeleteOperator extends SFWOperator {
+public class DeleteOperator extends ExecutableOperator {
 
   private long time;
+  private SetPathOperator setPathOperator;
+  private FilterOperator filterOperator;
 
   public DeleteOperator(int tokenIntType) {
     super(tokenIntType);
@@ -39,5 +45,28 @@ public class DeleteOperator extends SFWOperator {
   public void setTime(long time) {
     this.time = time;
   }
+
+  @Override
+  public FilterOperator getFilterOperator() {
+    return filterOperator;
+  }
+
+  @Override
+  public boolean setFilterOperator(FilterOperator filterOperator) {
+    this.filterOperator = filterOperator;
+    return true;
+  }
+
+  @Override
+  public SetPathOperator getSetPathOperator() {
+    return setPathOperator;
+  }
+
+  @Override
+  public boolean setSetPathOperator(SetPathOperator setPathOperator) {
+    this.setPathOperator = setPathOperator;
+    return true;
+  }
+
 
 }

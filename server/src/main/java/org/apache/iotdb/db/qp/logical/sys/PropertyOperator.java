@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.ExecutableOperator;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * this class maintains information in Metadata.namespace statement
  */
-public class PropertyOperator extends RootOperator {
+public class PropertyOperator extends ExecutableOperator {
 
   private final PropertyType propertyType;
   private Path propertyPath;

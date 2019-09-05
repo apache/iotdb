@@ -22,7 +22,7 @@ package org.apache.iotdb.db.qp.plan.logicalPlan;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.ExecutableOperator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.UpdateOperator;
@@ -45,20 +45,20 @@ public class TestUpdateStatement {
 
   @Test(expected = SqlParseException.class)
   public void updateValueWithTimeFilter1() {
-     RootOperator op = generator.getLogicalPlan(
+     ExecutableOperator op = generator.getLogicalPlan(
              "UPDATE root.laptop SET d1.s1 = -33000, mac.d1.s2 = 'string' WHERE root.laptop.d1.s2 = TRUE");
   }
 
   @Test
   public void updateValueWithTimeFilter2() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "UPDATE root.laptop SET d1.s1 = -33000 WHERE root.laptop.d1.s2 = TRUE");
     assertEquals(SQLConstant.TOK_UPDATE, op.getTokenIntType());
     Path expectedFromPath = new Path("root.laptop");
     assertEquals(expectedFromPath, ((UpdateOperator)op).getFromOperator().getPrefixPaths().get(0));
     Path expectedSelectPath = new Path("d1.s1");
     assertEquals(expectedSelectPath, ((UpdateOperator)op).getSelectedPaths().get(0));
-    assertEquals(SQLConstant.TOK_SELECT, ((UpdateOperator)op).getSelectOperator().getTokenIntType());
+    assertEquals(SQLConstant.TOK_SELECT, ((UpdateOperator)op).getSetPathOperator().getTokenIntType());
     assertEquals("-33000", ((UpdateOperator)op).getValue());
     Path expectWherePath = new Path("root.laptop.d1.s2");
     assertEquals(expectWherePath, ((UpdateOperator)op).getFilterOperator().getSinglePath());
@@ -68,14 +68,14 @@ public class TestUpdateStatement {
 
   @Test
   public void updateValueWithTimeFilter3() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "UPDATE root.laptop SET mac.d1.s2 = 'string' WHERE root.laptop.d1.s2 = TRUE");
     assertEquals(SQLConstant.TOK_UPDATE, op.getTokenIntType());
     Path expectedFromPath = new Path("root.laptop");
     assertEquals(expectedFromPath, ((UpdateOperator)op).getFromOperator().getPrefixPaths().get(0));
     Path expectedSelectPath = new Path("mac.d1.s2");
     assertEquals(expectedSelectPath, ((UpdateOperator)op).getSelectedPaths().get(0));
-    assertEquals(SQLConstant.TOK_SELECT, ((UpdateOperator)op).getSelectOperator().getTokenIntType());
+    assertEquals(SQLConstant.TOK_SELECT, ((UpdateOperator)op).getSetPathOperator().getTokenIntType());
     assertEquals("'string'", ((UpdateOperator)op).getValue());
     Path expectWherePath = new Path("root.laptop.d1.s2");
     assertEquals(expectWherePath, ((UpdateOperator)op).getFilterOperator().getSinglePath());
@@ -85,14 +85,14 @@ public class TestUpdateStatement {
 
   @Test
   public void updateValueWithTimeFilter4() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "UPDATE root.laptop SET mac.d1.s2 = FALSE WHERE not(d1.s2 = TRUE)");
     assertEquals(SQLConstant.TOK_UPDATE, op.getTokenIntType());
     Path expectedFromPath = new Path("root.laptop");
     assertEquals(expectedFromPath, ((UpdateOperator)op).getFromOperator().getPrefixPaths().get(0));
     Path expectedSelectPath = new Path("mac.d1.s2");
     assertEquals(expectedSelectPath, ((UpdateOperator)op).getSelectedPaths().get(0));
-    assertEquals(SQLConstant.TOK_SELECT, ((UpdateOperator)op).getSelectOperator().getTokenIntType());
+    assertEquals(SQLConstant.TOK_SELECT, ((UpdateOperator)op).getSetPathOperator().getTokenIntType());
     assertEquals("FALSE", ((UpdateOperator)op).getValue());
     assertEquals(SQLConstant.KW_NOT, ((UpdateOperator)op).getFilterOperator().getTokenIntType());
     BasicFunctionOperator bf = (BasicFunctionOperator) ((UpdateOperator)op).getFilterOperator().getChildren().get(0);
@@ -103,14 +103,14 @@ public class TestUpdateStatement {
 
   @Test
   public void updateValueWithTimeFilter5() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "UPDATE root.laptop SET d1.s1 = -33.54 WHERE not(time <= 1) and  d1.s2 = TRUE;");
     assertEquals(SQLConstant.TOK_UPDATE, op.getTokenIntType());
     Path expectedFromPath = new Path("root.laptop");
     assertEquals(expectedFromPath, ((UpdateOperator)op).getFromOperator().getPrefixPaths().get(0));
     Path expectedSelectPath = new Path("d1.s1");
     assertEquals(expectedSelectPath, ((UpdateOperator)op).getSelectedPaths().get(0));
-    assertEquals(SQLConstant.TOK_SELECT, ((UpdateOperator)op).getSelectOperator().getTokenIntType());
+    assertEquals(SQLConstant.TOK_SELECT, ((UpdateOperator)op).getSetPathOperator().getTokenIntType());
     assertEquals("-33.54", ((UpdateOperator)op).getValue());
     assertEquals(SQLConstant.KW_AND, ((UpdateOperator)op).getFilterOperator().getTokenIntType());
     FilterOperator bf1 =  ((UpdateOperator)op).getFilterOperator().getChildren().get(0);

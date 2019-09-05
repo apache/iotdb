@@ -25,7 +25,7 @@ import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.ExecutableOperator;
 import org.apache.iotdb.db.qp.logical.crud.*;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
@@ -59,10 +59,10 @@ public class TestQueryStatement {
 
   @Test
   public void query1() {
-    RootOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle WHERE "
+    ExecutableOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle WHERE "
             + "not(root.laptop.device_1.sensor_1 < 2000) and root.laptop.device_2.sensor_2 > 1000");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -84,10 +84,10 @@ public class TestQueryStatement {
 
   @Test
   public void query2() {
-    RootOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+    ExecutableOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
             + "WHERE root.laptop.device_1.sensor_1 < -2.2E10;");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -102,10 +102,10 @@ public class TestQueryStatement {
 
   @Test
   public void query3() {
-    RootOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+    ExecutableOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
             + "WHERE root.laptop.device_1.sensor_1 < +2.2E10");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -120,10 +120,10 @@ public class TestQueryStatement {
 
   @Test
   public void query4() {
-    RootOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+    ExecutableOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
             + "WHERE root.laptop.device_1.sensor_1 < 2.2E10");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -138,10 +138,10 @@ public class TestQueryStatement {
 
   @Test
   public void query5() {
-    RootOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+    ExecutableOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
             + "WHERE root.laptop.device_1.sensor_1 < -2.2");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -156,10 +156,10 @@ public class TestQueryStatement {
 
   @Test
   public void query6() {
-    RootOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+    ExecutableOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
             + "WHERE root.laptop.device_1.sensor_1 < +2.2");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -174,10 +174,10 @@ public class TestQueryStatement {
 
   @Test
   public void query7() {
-    RootOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+    ExecutableOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
             + "WHERE root.laptop.device_1.sensor_1 < 2.2");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -192,10 +192,10 @@ public class TestQueryStatement {
 
   @Test
   public void query8() {
-    RootOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+    ExecutableOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
             + "WHERE root.laptop.device_1.sensor_1 < .2e2");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -210,10 +210,10 @@ public class TestQueryStatement {
 
   @Test
   public void query9() {
-    RootOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+    ExecutableOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
             + "WHERE root.laptop.device_1.sensor_1 < .2");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -228,10 +228,10 @@ public class TestQueryStatement {
 
   @Test
   public void query10() {
-    RootOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+    ExecutableOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
             + "WHERE root.laptop.device_1.sensor_1 < 2.");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -246,10 +246,10 @@ public class TestQueryStatement {
 
   @Test
   public void query11() {
-    RootOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+    ExecutableOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
             + "WHERE root.laptop.device_1.sensor_1 < +2.");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -265,10 +265,10 @@ public class TestQueryStatement {
 
   @Test
   public void query12() {
-    RootOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+    ExecutableOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
             + "WHERE root.laptop.device_1.sensor_1 < -2.");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -283,10 +283,10 @@ public class TestQueryStatement {
 
   @Test
   public void query13() {
-    RootOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+    ExecutableOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
             + "WHERE root.laptop.device_1.sensor_1 < -.2");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -301,10 +301,10 @@ public class TestQueryStatement {
 
   @Test
   public void query14() {
-    RootOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+    ExecutableOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
             + "WHERE root.laptop.device_1.sensor_1 < -.2e10");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -319,10 +319,10 @@ public class TestQueryStatement {
 
   @Test
   public void query15() {
-    RootOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+    ExecutableOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
             + "WHERE root.laptop.device_1.sensor_1 < -2.2E10 && time > now();");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -344,10 +344,10 @@ public class TestQueryStatement {
 
   @Test
   public void query16() throws LogicalOperatorException {
-    RootOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+    ExecutableOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
             + "WHERE time < 1234567 & time > 2017-6-2T12:00:12+07:00");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -369,9 +369,9 @@ public class TestQueryStatement {
 
   @Test
   public void query17() throws LogicalOperatorException {
-    RootOperator op = generator.getLogicalPlan("SELECT * FROM root.vehicle WHERE time < 1234567 || time > 2017.6.2 12:00:12+07:00;");
+    ExecutableOperator op = generator.getLogicalPlan("SELECT * FROM root.vehicle WHERE time < 1234567 || time > 2017.6.2 12:00:12+07:00;");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(1, select.getSuffixPaths().size());
     assertEquals(new Path("*"), select.getSuffixPaths().get(0));
     FromOperator from = ((QueryOperator) op).getFromOperator();
@@ -392,9 +392,9 @@ public class TestQueryStatement {
 
   @Test
   public void query18() {
-    RootOperator op = generator.getLogicalPlan("SELECT 456.*.890 FROM root.vehicle.123.abc WHERE root.333.222 < 11");
+    ExecutableOperator op = generator.getLogicalPlan("SELECT 456.*.890 FROM root.vehicle.123.abc WHERE root.333.222 < 11");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(1, select.getSuffixPaths().size());
     assertEquals(new Path("456.*.890"), select.getSuffixPaths().get(0));
     FromOperator from = ((QueryOperator) op).getFromOperator();
@@ -408,9 +408,9 @@ public class TestQueryStatement {
 
   @Test
   public void query19() {
-    RootOperator op = generator.getLogicalPlan("SELECT 000 FROM root.vehicle.123.abc WHERE 000 < 11");
+    ExecutableOperator op = generator.getLogicalPlan("SELECT 000 FROM root.vehicle.123.abc WHERE 000 < 11");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(1, select.getSuffixPaths().size());
     assertEquals(new Path("000"), select.getSuffixPaths().get(0));
     FromOperator from = ((QueryOperator) op).getFromOperator();
@@ -424,14 +424,15 @@ public class TestQueryStatement {
 
   @Test
   public void aggregation1() {
-    RootOperator op = generator.getLogicalPlan("select count(s1),max_time(s2) from root.vehicle.d1 where root.vehicle.d1.s1 < 0.32e6 and time <= now()");
+    ExecutableOperator op = generator.getLogicalPlan("select count(s1),max_time(s2) from root.vehicle.d1 where root.vehicle.d1.s1 < 0.32e6 and time <= now()");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
+    AggregationOperator aggregationOperator = ((QueryOperator)op).getAggregationOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("s1"), select.getSuffixPaths().get(0));
-    assertEquals("count", select.getAggregations().get(0));
+    assertEquals("count", aggregationOperator.getAggregations().get(0));
     assertEquals(new Path("s2"), select.getSuffixPaths().get(1));
-    assertEquals("max_time", select.getAggregations().get(1));
+    assertEquals("max_time", aggregationOperator.getAggregations().get(1));
     FromOperator from = ((QueryOperator) op).getFromOperator();
     assertEquals(1, from.getPrefixPaths().size());
     assertEquals(new Path("root.vehicle.d1"), from.getPrefixPaths().get(0));
@@ -450,13 +451,14 @@ public class TestQueryStatement {
 
   @Test
   public void aggregation2() {
-    RootOperator op = generator.getLogicalPlan("select sum(s2) FROM root.vehicle.d1 WHERE s1 < 2000 or time >= 1234567;");
+    ExecutableOperator op = generator.getLogicalPlan("select sum(s2) FROM root.vehicle.d1 WHERE s1 < 2000 or time >= 1234567;");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
+    AggregationOperator aggregationOperator = ((QueryOperator)op).getAggregationOperator();
     assertEquals(1, select.getSuffixPaths().size());
     assertEquals(new Path("s2"), select.getSuffixPaths().get(0));
-    assertEquals(1, select.getAggregations().size());
-    assertEquals("sum", select.getAggregations().get(0));
+    assertEquals(1, aggregationOperator.getAggregations().size());
+    assertEquals("sum", aggregationOperator.getAggregations().get(0));
     FromOperator from = ((QueryOperator) op).getFromOperator();
     assertEquals(1, from.getPrefixPaths().size());
     assertEquals(new Path("root.vehicle.d1"), from.getPrefixPaths().get(0));
@@ -476,14 +478,15 @@ public class TestQueryStatement {
   @Test
   public void aggregation3() {
     // TODO how to decide it is s1, sum(s2), or sum(s1), s2
-    RootOperator op = generator.getLogicalPlan("select s1,sum(s2) FROM root.vehicle.d1 WHERE root.vehicle.d1.s1 < 2000 | time >= 1234567");
+    ExecutableOperator op = generator.getLogicalPlan("select s1,sum(s2) FROM root.vehicle.d1 WHERE root.vehicle.d1.s1 < 2000 | time >= 1234567");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
+    AggregationOperator aggregationOperator = ((QueryOperator)op).getAggregationOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("s1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("s2"), select.getSuffixPaths().get(1));
-    assertEquals(1, select.getAggregations().size());
-    assertEquals("sum", select.getAggregations().get(0));
+    assertEquals(1, aggregationOperator.getAggregations().size());
+    assertEquals("sum", aggregationOperator.getAggregations().get(0));
     FromOperator from = ((QueryOperator) op).getFromOperator();
     assertEquals(1, from.getPrefixPaths().size());
     assertEquals(new Path("root.vehicle.d1"), from.getPrefixPaths().get(0));
@@ -503,17 +506,18 @@ public class TestQueryStatement {
 
   @Test
   public void groupby1() {
-    RootOperator op = generator.getLogicalPlan("select count(s1),max_time(s2) " + "from root.vehicle.d1 "
+    ExecutableOperator op = generator.getLogicalPlan("select count(s1),max_time(s2) " + "from root.vehicle.d1 "
             + "where root.vehicle.d1.s1 < 0.32e6 and time <= now() "
             + "group by(10w, 44, [1,3], [4,5])");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
+    AggregationOperator aggregationOperator = ((QueryOperator)op).getAggregationOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("s1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("s2"), select.getSuffixPaths().get(1));
-    assertEquals(2, select.getAggregations().size());
-    assertEquals("count", select.getAggregations().get(0));
-    assertEquals("max_time", select.getAggregations().get(1));
+    assertEquals(2, aggregationOperator.getAggregations().size());
+    assertEquals("count", aggregationOperator.getAggregations().get(0));
+    assertEquals("max_time", aggregationOperator.getAggregations().get(1));
     FromOperator from = ((QueryOperator) op).getFromOperator();
     assertEquals(1, from.getPrefixPaths().size());
     assertEquals(new Path("root.vehicle.d1"), from.getPrefixPaths().get(0));
@@ -540,16 +544,17 @@ public class TestQueryStatement {
 
   @Test
   public void groupby2() throws LogicalOperatorException {
-    RootOperator op = generator.getLogicalPlan("select sum(s2) "
+    ExecutableOperator op = generator.getLogicalPlan("select sum(s2) "
             + "FROM root.vehicle.d1 "
             + "WHERE s1 < 2000 or time >= 1234567 "
             + "group by(111ms, [123,2017-6-2T12:00:12+07:00], [55555, now()]);");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
+    AggregationOperator aggregationOperator = ((QueryOperator)op).getAggregationOperator();
     assertEquals(1, select.getSuffixPaths().size());
     assertEquals(new Path("s2"), select.getSuffixPaths().get(0));
-    assertEquals(1, select.getAggregations().size());
-    assertEquals("sum", select.getAggregations().get(0));
+    assertEquals(1, aggregationOperator.getAggregations().size());
+    assertEquals("sum", aggregationOperator.getAggregations().get(0));
     FromOperator from = ((QueryOperator) op).getFromOperator();
     assertEquals(1, from.getPrefixPaths().size());
     assertEquals(new Path("root.vehicle.d1"), from.getPrefixPaths().get(0));
@@ -577,7 +582,7 @@ public class TestQueryStatement {
 
   @Test(expected = SqlParseException.class)
   public void groupby3() throws LogicalOperatorException {
-    RootOperator op = generator.getLogicalPlan("select s1,sum(s2) "
+    ExecutableOperator op = generator.getLogicalPlan("select s1,sum(s2) "
             + "FROM root.vehicle.d1 "
             + "WHERE root.vehicle.d1.s1 < 2000 | time >= 1234567 "
             + "group by(111w, 2017-6-2T02:00:12+07:00, [2017-6-2T12:00:12+07:00, now()])");
@@ -585,13 +590,13 @@ public class TestQueryStatement {
 
   @Test
   public void fill1() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "select s1 "
                     + "FROM root.vehicle.d1 "
                     + "WHERE time = 1234567 "
                     + "fill(float[previous, 11h])");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(1, select.getSuffixPaths().size());
     assertEquals(new Path("s1"), select.getSuffixPaths().get(0));
     FromOperator from = ((QueryOperator) op).getFromOperator();
@@ -618,13 +623,13 @@ public class TestQueryStatement {
 
   @Test
   public void fill2() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "select s1 "
                     + "FROM root.vehicle.d1 "
                     + "WHERE time = 1234567 "
                     + "fill(float[previous])");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(1, select.getSuffixPaths().size());
     assertEquals(new Path("s1"), select.getSuffixPaths().get(0));
     FromOperator from = ((QueryOperator) op).getFromOperator();
@@ -650,7 +655,7 @@ public class TestQueryStatement {
 
   @Test(expected = SqlParseException.class)
   public void fill3() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "select s1 "
                     + "FROM root.vehicle.d1 "
                     + "WHERE time = 1234567 "
@@ -659,7 +664,7 @@ public class TestQueryStatement {
 
   @Test(expected = SqlParseException.class)
   public void fill4() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "select s1 "
                     + "FROM root.vehicle.d1 "
                     + "WHERE time = 1234567 "
@@ -668,7 +673,7 @@ public class TestQueryStatement {
 
   @Test(expected = SqlParseException.class)
   public void fill5() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "select s1,s2 "
                     + "FROM root.vehicle.d1 "
                     + "WHERE time = 1234567 "
@@ -677,7 +682,7 @@ public class TestQueryStatement {
 
   @Test
   public void testFill6() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "select sensor1 " +
                     "from root.vehicle.device1 " +
                     "where time = 50 " +
@@ -687,20 +692,20 @@ public class TestQueryStatement {
 
   @Test(expected = SqlParseException.class)
   public void limit1() {
-    RootOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle WHERE not(root.laptop.device_1.sensor_1 < 2000) "
+    ExecutableOperator op = generator.getLogicalPlan("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle WHERE not(root.laptop.device_1.sensor_1 < 2000) "
             + "and root.laptop.device_2.sensor_2 > 1000 LIMIT 0");
   }
 
   @Test
   public void limit2() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "SELECT device_1.sensor_1,device_2.sensor_2 " +
                     "FROM root.vehicle " +
                     "WHERE not(root.laptop.device_1.sensor_1 < 2000) " +
                     "and root.laptop.device_2.sensor_2 > 1000 " +
                     "LIMIT 10 OFFSET 2");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -726,13 +731,13 @@ public class TestQueryStatement {
 
   @Test
   public void limit3() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "SELECT device_1.sensor_1,device_2.* " +
                     "FROM root.vehicle " +
                     "WHERE root.laptop.device_1.sensor_1 < -2.2E10 && time > now() " +
                     "SLIMIT 10");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.*"), select.getSuffixPaths().get(1));
@@ -756,13 +761,13 @@ public class TestQueryStatement {
 
   @Test
   public void limit5() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "SELECT device_1.sensor_1,device_2.sensor_2 " +
                     "FROM root.*" +
                     "WHERE root.laptop.device_1.sensor_1 < -2.2E10 && time > now() " +
                     "SLIMIT 10 SOFFSET 3");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(2, select.getSuffixPaths().size());
     assertEquals(new Path("device_1.sensor_1"), select.getSuffixPaths().get(0));
     assertEquals(new Path("device_2.sensor_2"), select.getSuffixPaths().get(1));
@@ -788,7 +793,7 @@ public class TestQueryStatement {
 
   @Test
   public void limit6() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "select count(s1),max_time(s2) " +
                     "from root.vehicle.* " +
                     "where root.vehicle.d1.s1 < 0.32e6 and time <= now() " +
@@ -810,14 +815,14 @@ public class TestQueryStatement {
 
   @Test
   public void limit7() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "select * " +
                     "FROM root.vehicle.d1 " +
                     "WHERE time = 1234567 " +
                     "fill(float[previous, 11h])"
                     + "slimit 15" + "soffset 50");
     assertEquals(SQLConstant.TOK_QUERY, op.getTokenIntType());
-    SelectOperator select = ((QueryOperator) op).getSelectOperator();
+    SetPathOperator select = ((QueryOperator) op).getSetPathOperator();
     assertEquals(1, select.getSuffixPaths().size());
     assertEquals(new Path("*"), select.getSuffixPaths().get(0));
     FromOperator from = ((QueryOperator) op).getFromOperator();
@@ -846,24 +851,24 @@ public class TestQueryStatement {
 
   @Test
   public void limit8() {
-    RootOperator operator = generator.getLogicalPlan("select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10");
+    ExecutableOperator operator = generator.getLogicalPlan("select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10");
     assertEquals(operator.getClass(), QueryOperator.class);
     assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
   }
 
   @Test(expected = SqlParseException.class)
   public void limit9() {
-    RootOperator op = generator.getLogicalPlan("select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 1111111111111111111111");
+    ExecutableOperator op = generator.getLogicalPlan("select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 1111111111111111111111");
   }
 
   @Test(expected = SqlParseException.class)
   public void limit10() {
-    RootOperator op = generator.getLogicalPlan("select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 0");
+    ExecutableOperator op = generator.getLogicalPlan("select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 0");
   }
 
   @Test
   public void offset1() {
-    RootOperator operator = generator.getLogicalPlan("select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10 soffset 1");
+    ExecutableOperator operator = generator.getLogicalPlan("select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10 soffset 1");
     assertEquals(operator.getClass(), QueryOperator.class);
     assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
     assertEquals(1, ((QueryOperator) operator).getSeriesOffset());
@@ -871,7 +876,7 @@ public class TestQueryStatement {
 
   @Test(expected = LogicalOptimizeException.class)
   public void testSlimitLogicalOptimize() throws LogicalOptimizeException {
-    RootOperator op = generator.getLogicalPlan("select s1 from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10 soffset 1");
+    ExecutableOperator op = generator.getLogicalPlan("select s1 from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10 soffset 1");
 
     MemIntQpExecutor executor = new MemIntQpExecutor();
     Path path1 = new Path(
@@ -891,19 +896,19 @@ public class TestQueryStatement {
     executor.insert(new InsertPlan(path3.getDevice(), 10, path3.getMeasurement(), "10"));
     executor.insert(new InsertPlan(path4.getDevice(), 10, path4.getMeasurement(), "10"));
     ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer(executor);
-    op = (SFWOperator) concatPathOptimizer.transform(op);
+    op = (QueryOperator) concatPathOptimizer.transform(op);
   }
 
   @Test
   public void testx() {
-    RootOperator op = generator.getLogicalPlan( "SELECT s1 FROM root.vehicle.d1 WHERE time > 50 and time <= 100 or s1 < 10");
+    ExecutableOperator op = generator.getLogicalPlan( "SELECT s1 FROM root.vehicle.d1 WHERE time > 50 and time <= 100 or s1 < 10");
     FilterOperator fo = ((QueryOperator)op).getFilterOperator();
     System.out.println(fo.toString());
   }
 
   @Test (expected = SqlParseException.class)
   public void testLimit1() {
-    RootOperator op = generator.getLogicalPlan("select s1 from root.vehicle.d1 where s1 < 20 and time <= now() limit 111111111111111111111111");
+    ExecutableOperator op = generator.getLogicalPlan("select s1 from root.vehicle.d1 where s1 < 20 and time <= now() limit 111111111111111111111111");
 
   }
 

@@ -25,7 +25,7 @@ import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.ExecutableOperator;
 
 import java.time.ZoneId;
 
@@ -37,15 +37,15 @@ public class LogicalGenerator {
   private static final String ERR_INCORRECT_AUTHOR_COMMAND = "illegal ast tree in grant author "
       + "command, please check you SQL statement";
 
-  private RootOperator initializedOperator = null;
+  private ExecutableOperator initializedOperator = null;
   private ZoneId zoneId;
 
   public LogicalGenerator(ZoneId zoneId) {
     this.zoneId = zoneId;
   }
 
-  public RootOperator getLogicalPlan(String command){
-    RootOperator r = null;
+  public ExecutableOperator getLogicalPlan(String command){
+    ExecutableOperator r = null;
     CharStream input = CharStreams.fromString(command);
     TSLexer lexer = new TSLexer(input);
     CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -54,7 +54,7 @@ public class LogicalGenerator {
     parser.addErrorListener(new ExecuteSqlErrorListener());
     ParseTree tree = parser.statement();
     ExecuteSqlVisitor visitor = new ExecuteSqlVisitor(zoneId);
-    r = (RootOperator) visitor.visit(tree);
+    r = (ExecutableOperator) visitor.visit(tree);
     return r;
   }
 }

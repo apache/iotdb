@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,6 +20,8 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import java.util.List;
 import java.util.Map;
+
+import org.apache.iotdb.db.qp.logical.ExecutableOperator;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -28,7 +30,13 @@ import org.apache.iotdb.tsfile.utils.Pair;
 /**
  * this class extends {@code RootOperator} and process getIndex statement
  */
-public class QueryOperator extends SFWOperator {
+public class QueryOperator extends ExecutableOperator {
+
+  private SetPathOperator setPathOperator;
+  private AggregationOperator aggregationOperator;
+  private boolean hasAggregation = false;
+  private FromOperator fromOperator;
+  private FilterOperator filterOperator;
 
   private long unit;
   private long origin;
@@ -39,6 +47,7 @@ public class QueryOperator extends SFWOperator {
   private int seriesLimit;
   private int seriesOffset;
   private boolean hasSlimit = false; // false if sql does not contain SLIMIT clause
+
   public QueryOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.QUERY;
@@ -115,6 +124,72 @@ public class QueryOperator extends SFWOperator {
 
   public void setIntervals(List<Pair<Long, Long>> intervals) {
     this.intervals = intervals;
+  }
+
+  @Override
+  public SetPathOperator getSetPathOperator() {
+    return setPathOperator;
+  }
+
+  @Override
+  public boolean setSetPathOperator(SetPathOperator setPathOperator) {
+    this.setPathOperator = setPathOperator;
+    return true;
+  }
+
+  public AggregationOperator getAggregationOperator() {
+    return aggregationOperator;
+  }
+
+  public void setAggregationOperator(AggregationOperator aggregationOperator) {
+    if (aggregationOperator == null || !aggregationOperator.getAggregations().isEmpty()){
+      this.aggregationOperator = aggregationOperator;
+      hasAggregation = true;
+    }
+  }
+
+  public boolean isHasAggregation() {
+    return hasAggregation;
+  }
+
+  public void setHasAggregation(boolean hasAggregation) {
+    this.hasAggregation = hasAggregation;
+  }
+
+
+  @Override
+  public FromOperator getFromOperator() {
+    return fromOperator;
+  }
+
+
+  @Override
+  public boolean setFromOperator(FromOperator fromOperator) {
+    this.fromOperator = fromOperator;
+    return true;
+  }
+
+  @Override
+  public FilterOperator getFilterOperator() {
+    return filterOperator;
+  }
+
+  @Override
+  public boolean setFilterOperator(FilterOperator filterOperator) {
+    this.filterOperator = filterOperator;
+    return true;
+  }
+
+  public boolean isHasSlimit() {
+    return hasSlimit;
+  }
+
+  public void setHasSlimit(boolean hasSlimit) {
+    this.hasSlimit = hasSlimit;
+  }
+
+  public boolean hasAggregation() {
+    return hasAggregation;
   }
 
 }

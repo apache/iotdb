@@ -25,7 +25,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.ExecutableOperator;
 import org.apache.iotdb.db.qp.logical.crud.*;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
@@ -53,8 +53,11 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
   private static final String ERR_INCORRECT_AUTHOR_COMMAND = "illegal ast tree in grant author "
           + "command, please check you SQL statement";
 
-  private RootOperator initializedOperator = null;
-  private SelectOperator selectOp;
+  private StatementType statementType;
+
+  private ExecutableOperator initializedOperator = null;
+  private SetPathOperator setPathOperator;
+  private AggregationOperator aggregationOperator;
   private FilterOperator whereOp;
   private ZoneId zoneId;
   private Map<TSDataType, IFill> fillTypes;
@@ -76,7 +79,7 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
   }
 
   @Override
-  public RootOperator visitQueryStatement(TSParser.QueryStatementContext ctx) {
+  public ExecutableOperator visitQueryStatement(TSParser.QueryStatementContext ctx) {
     initializedOperator = new QueryOperator(SQLConstant.TOK_QUERY);
     visit(ctx.selectClause());
     if (ctx.whereClause() != null) {
@@ -150,15 +153,15 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
   }
 
   @Override
-  public RootOperator visitInsertStatement(TSParser.InsertStatementContext ctx) {
+  public ExecutableOperator visitInsertStatement(TSParser.InsertStatementContext ctx) {
     InsertOperator insertOp = new InsertOperator(SQLConstant.TOK_INSERT);
     initializedOperator = insertOp;
 
     // set select path
     Path selectPath = parsePrefixPath(ctx.prefixPath());
-    selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
-    selectOp.addSelectPath(selectPath);
-    ((SFWOperator) initializedOperator).setSelectOperator(selectOp);
+    setPathOperator = new SetPathOperator(SQLConstant.TOK_SELECT);
+    setPathOperator.addSelectPath(selectPath);
+    ((InsertOperator) initializedOperator).setSetPathOperator(setPathOperator);
 
     // set time
     long timestamp = (long) visit(ctx.multiValue().time);
@@ -206,12 +209,14 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
 
   @Override
   public Object visitSelectSimple(TSParser.SelectSimpleContext ctx) {
-    selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+    setPathOperator = new SetPathOperator(SQLConstant.TOK_SELECT);
+    aggregationOperator = new AggregationOperator(SQLConstant.TOK_AGGREGATION);
     for (TSParser.ClusteredPathContext cp : ctx.clusteredPath()) {
       visit(cp);
     }
     visit(ctx.fromClause());
-    ((SFWOperator) initializedOperator).setSelectOperator(selectOp);
+    ((QueryOperator) initializedOperator).setSetPathOperator(setPathOperator);
+    ((QueryOperator)initializedOperator).setAggregationOperator(aggregationOperator);
     return initializedOperator;
   }
 
@@ -219,15 +224,16 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
   public Object visitAggregateCommandPath(TSParser.AggregateCommandPathContext ctx) {
     Path path = parseSuffixPath(ctx.suffixPath());
     String aggregation = ctx.identifier().getText();
-    selectOp.addClusterPath(path, aggregation);
-    return selectOp;
+    setPathOperator.addSelectPath(path);
+    aggregationOperator.addAggregation(aggregation);
+    return setPathOperator;
   }
 
   @Override
   public Object visitSimpleSuffixPath(TSParser.SimpleSuffixPathContext ctx) {
     Path path = parseSuffixPath(ctx.suffixPath());
-    selectOp.addSelectPath(path);
-    return selectOp;
+    setPathOperator.addSelectPath(path);
+    return setPathOperator;
   }
 
   @Override
@@ -237,7 +243,16 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
       Path path = parsePrefixPath(prefixPathContext);
       from.addPrefixTablePath(path);
     }
-    ((SFWOperator) initializedOperator).setFromOperator(from);
+    switch (statementType){
+      case QUERY_STATEMENT:
+        ((QueryOperator)initializedOperator).setFromOperator(from);
+        break;
+      case UPDATE_STATEMENT:
+        ((UpdateOperator)initializedOperator).setFromOperator(from);
+        break;
+      default:
+        throw new SqlParseException("From clause is not supported in " + statementType.name());
+    }
     return initializedOperator;
   }
 
@@ -245,7 +260,7 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
   public Object visitWhereClause(TSParser.WhereClauseContext ctx) {
     whereOp = new FilterOperator(SQLConstant.TOK_WHERE);
     visit(ctx.searchCondition());
-    ((SFWOperator) initializedOperator).setFilterOperator(whereOp.getChildren().get(0));
+    initializedOperator.setFilterOperator(whereOp.getChildren().get(0));
     return initializedOperator;
   }
 
@@ -394,8 +409,10 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
 
   @Override
   public Object visitGroupbyClause(TSParser.GroupbyClauseContext ctx) {
-    selectOp = ((QueryOperator) initializedOperator).getSelectOperator();
-    if (selectOp.getSuffixPaths().size() != selectOp.getAggregations().size()) {
+    setPathOperator = ((QueryOperator) initializedOperator).getSetPathOperator();
+    aggregationOperator = ((QueryOperator)initializedOperator).getAggregationOperator();
+    if (aggregationOperator != null &&
+            setPathOperator.getSuffixPaths().size() != aggregationOperator.getAggregations().size()) {
       throw new SqlParseException(
               "Group by must bind each seriesPath with an aggregation function");
     }
@@ -556,9 +573,9 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
     FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
     fromOp.addPrefixTablePath(parsePrefixPath(ctx.prefixPath(0)));
     updateOp.setFromOperator(fromOp);
-    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
-    selectOp.addSelectPath(parseSuffixPath(ctx.setClause().setExpression(0).suffixPath()));
-    updateOp.setSelectOperator(selectOp);
+    SetPathOperator setPath = new SetPathOperator(SQLConstant.TOK_SELECT);
+    setPath.addSelectPath(parseSuffixPath(ctx.setClause().setExpression(0).suffixPath()));
+    updateOp.setSetPathOperator(setPath);
     updateOp.setValue(ctx.setClause().setExpression(0).numberOrStringWidely().getText());
     if (ctx.whereClause() != null) {
       visit(ctx.whereClause());
@@ -595,14 +612,13 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
   @Override
   public Object visitDeleteStatement(TSParser.DeleteStatementContext ctx) {
     initializedOperator = new DeleteOperator(SQLConstant.TOK_DELETE);
-    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+    SetPathOperator setPath = new SetPathOperator(SQLConstant.TOK_SELECT);
     for (TSParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
       Path tablePath = parsePrefixPath(prefixPathContext);
-      selectOp.addSelectPath(tablePath);
+      setPath.addSelectPath(tablePath);
     }
-    ((SFWOperator) initializedOperator).setSelectOperator(selectOp);
+    ((DeleteOperator) initializedOperator).setSetPathOperator(setPath);
     if (ctx.whereClause() != null) {
-
       visit(ctx.whereClause());
     }
     long deleteTime = parseDeleteTimeFilter((DeleteOperator) initializedOperator);
@@ -681,10 +697,8 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
     String propertyName = ctx.propertyClauses().propertyName.getText();
     String propertyValue = ctx.propertyClauses().pv.getText();
     String compressor;
-    int offset = 2;
     if (ctx.propertyClauses().compressor != null) {
       compressor = ctx.propertyClauses().compressor.getText();
-      offset++;
     } else {
       compressor = TSFileConfig.compressor;
     }
@@ -1221,51 +1235,61 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
 
   @Override
   public Object visitExeAuthorStat(TSParser.ExeAuthorStatContext ctx) {
+    statementType = StatementType.AUTHOR_STATEMENT;
     return visit(ctx.authorStatement());
   }
 
   @Override
   public Object visitExeDeleteStat(TSParser.ExeDeleteStatContext ctx) {
+    statementType = StatementType.DELETE_STATEMENT;
     return visit(ctx.deleteStatement());
   }
 
   @Override
   public Object visitExeUpdateStat(TSParser.ExeUpdateStatContext ctx) {
+    statementType = StatementType.UPDATE_STATEMENT;
     return visit(ctx.updateStatement());
   }
 
   @Override
   public Object visitExeInsertStat(TSParser.ExeInsertStatContext ctx) {
+    statementType = StatementType.INSERT_STATEMENT;
     return visit(ctx.insertStatement());
   }
 
   @Override
   public Object visitExeQueryStat(TSParser.ExeQueryStatContext ctx) {
+    statementType = StatementType.QUERY_STATEMENT;
     return visit(ctx.queryStatement());
   }
 
   @Override
   public Object visitExeMetaStat(TSParser.ExeMetaStatContext ctx) {
+    statementType = StatementType.METADATA_STATEMENT;
     return visit(ctx.metadataStatement());
   }
 
   @Override
   public Object visitExeMergeStat(TSParser.ExeMergeStatContext ctx) {
+    statementType = StatementType.MERGE_STATEMENT;
     return visit(ctx.mergeStatement());
   }
 
   @Override
   public Object visitExeIndexStat(TSParser.ExeIndexStatContext ctx) {
+    statementType = StatementType.INDEX_STATEMENT;
     return visit(ctx.indexStatement());
   }
 
   @Override
   public Object visitExeQuitStat(TSParser.ExeQuitStatContext ctx) {
+    statementType = StatementType.QUIT_STATEMENT;
     return visit(ctx.quitStatement());
   }
 
   @Override
   public Object visitExeListStat(TSParser.ExeListStatContext ctx) {
+    statementType = StatementType.LIST_STATEMENT;
     return visit(ctx.listStatement());
   }
 }

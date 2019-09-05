@@ -21,7 +21,7 @@ package org.apache.iotdb.db.qp.plan.logicalPlan;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.ExecutableOperator;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.sql.parse.SqlParseException;
 import org.junit.Before;
@@ -38,6 +38,6 @@ public class TestQuitStatement {
 
   @Test (expected = SqlParseException.class)
   public void quit() {
-    RootOperator op = generator.getLogicalPlan("quit;");
+    ExecutableOperator op = generator.getLogicalPlan("quit;");
   }
 }

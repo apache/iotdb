@@ -18,12 +18,17 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.qp.logical.ExecutableOperator;
+
 /**
  * this class extends {@code RootOperator} and process update statement.
  */
-public final class UpdateOperator extends SFWOperator {
+public final class UpdateOperator extends ExecutableOperator {
 
   private String value;
+  private SetPathOperator setPathOperator;
+  private FromOperator fromOperator;
+  private FilterOperator filterOperator;
 
   public UpdateOperator(int tokenIntType) {
     super(tokenIntType);
@@ -38,4 +43,36 @@ public final class UpdateOperator extends SFWOperator {
     this.value = value;
   }
 
+  @Override
+  public SetPathOperator getSetPathOperator() {
+    return setPathOperator;
+  }
+
+  @Override
+  public boolean setSetPathOperator(SetPathOperator setPathOperator) {
+    this.setPathOperator = setPathOperator;
+    return true;
+  }
+
+  @Override
+  public FromOperator getFromOperator() {
+    return fromOperator;
+  }
+
+  @Override
+  public boolean setFromOperator(FromOperator fromOperator) {
+    this.fromOperator = fromOperator;
+    return true;
+  }
+
+  @Override
+  public FilterOperator getFilterOperator() {
+    return filterOperator;
+  }
+
+  @Override
+  public boolean setFilterOperator(FilterOperator filterOperator) {
+    this.filterOperator = filterOperator;
+    return true;
+  }
 }

@@ -24,7 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.ExecutableOperator;
 import org.apache.iotdb.db.qp.logical.crud.DeleteOperator;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.sql.parse.SqlParseException;
@@ -46,7 +46,7 @@ public class TestDeleteStatement {
 
   @Test
   public void delete1() throws LogicalOperatorException {
-    RootOperator op = generator.getLogicalPlan("delete from root.d1.s1 where time < 2016-11-16 16:22:33+08:00");
+    ExecutableOperator op = generator.getLogicalPlan("delete from root.d1.s1 where time < 2016-11-16 16:22:33+08:00");
     assertEquals(SQLConstant.TOK_DELETE, op.getTokenIntType());
     assertEquals(DeleteOperator.OperatorType.DELETE, ((DeleteOperator) op).getType());
     Path expectedPath = new Path("root.d1.s1");
@@ -59,7 +59,7 @@ public class TestDeleteStatement {
 
   @Test
   public void delete2() throws LogicalOperatorException {
-    RootOperator op = generator.getLogicalPlan("delete from root.d1.s1 where time < now();");
+    ExecutableOperator op = generator.getLogicalPlan("delete from root.d1.s1 where time < now();");
     assertEquals(SQLConstant.TOK_DELETE, op.getTokenIntType());
     assertEquals(DeleteOperator.OperatorType.DELETE, ((DeleteOperator) op).getType());
     Path expectedPath = new Path("root.d1.s1");
@@ -70,7 +70,7 @@ public class TestDeleteStatement {
 
   @Test
   public void delete3() {
-    RootOperator op = generator.getLogicalPlan("delete from root.d1.s1 where time < 12345678909876");
+    ExecutableOperator op = generator.getLogicalPlan("delete from root.d1.s1 where time < 12345678909876");
     assertEquals(SQLConstant.TOK_DELETE, op.getTokenIntType());
     assertEquals(DeleteOperator.OperatorType.DELETE, ((DeleteOperator) op).getType());
     Path expectedPath = new Path("root.d1.s1");
@@ -83,7 +83,7 @@ public class TestDeleteStatement {
 
   @Test
   public void delete4() {
-    RootOperator op = generator.getLogicalPlan("delete from root.d1.s1,root.d2.s3 where time < now();");
+    ExecutableOperator op = generator.getLogicalPlan("delete from root.d1.s1,root.d2.s3 where time < now();");
     assertEquals(SQLConstant.TOK_DELETE, op.getTokenIntType());
     assertEquals(DeleteOperator.OperatorType.DELETE, ((DeleteOperator) op).getType());
     Path expectedPath1 = new Path("root.d1.s1"), expectedPath2 = new Path("root.d2.s3");
@@ -97,7 +97,7 @@ public class TestDeleteStatement {
 
   @Test(expected = SqlParseException.class)
   public void delete5() {
-    RootOperator op = generator.getLogicalPlan("delete from root.d1.*,root.*.s2 where !(time < 123456)");
+    ExecutableOperator op = generator.getLogicalPlan("delete from root.d1.*,root.*.s2 where !(time < 123456)");
   }
 
   private long parseTimeFormat(String timestampStr) throws LogicalOperatorException {

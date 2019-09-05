@@ -22,7 +22,7 @@ package org.apache.iotdb.db.qp.plan.logicalPlan;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.ExecutableOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -43,21 +43,21 @@ public class TestListStatement {
 
   @Test
   public void listUser() {
-    RootOperator op = generator.getLogicalPlan("list user;");
+    ExecutableOperator op = generator.getLogicalPlan("list user;");
     assertEquals(SQLConstant.TOK_LIST, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.LIST_USER, ((AuthorOperator)op).getAuthorType());
   }
 
   @Test
   public void listRole() {
-    RootOperator op = generator.getLogicalPlan("list role;");
+    ExecutableOperator op = generator.getLogicalPlan("list role;");
     assertEquals(SQLConstant.TOK_LIST, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.LIST_ROLE, ((AuthorOperator)op).getAuthorType());
   }
 
   @Test
   public void listPrivileges() {
-    RootOperator op = generator.getLogicalPlan("LIST PRIVILEGES USER sgcc_wirte_user ON root.sgcc;");
+    ExecutableOperator op = generator.getLogicalPlan("LIST PRIVILEGES USER sgcc_wirte_user ON root.sgcc;");
     assertEquals(SQLConstant.TOK_LIST, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.LIST_USER_PRIVILEGE, ((AuthorOperator)op).getAuthorType());
     assertEquals("sgcc_wirte_user", ((AuthorOperator)op).getUserName());
@@ -67,7 +67,7 @@ public class TestListStatement {
 
   @Test
   public void listPrivilegesOnRolesOnSpecificPath() {
-    RootOperator op = generator.getLogicalPlan("LIST PRIVILEGES ROLE wirte_role ON root.sgcc;");
+    ExecutableOperator op = generator.getLogicalPlan("LIST PRIVILEGES ROLE wirte_role ON root.sgcc;");
     assertEquals(SQLConstant.TOK_LIST, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE, ((AuthorOperator)op).getAuthorType());
     assertEquals("wirte_role", ((AuthorOperator)op).getRoleName());
@@ -77,7 +77,7 @@ public class TestListStatement {
 
   @Test
   public void listUserPrivileges() {
-    RootOperator op = generator.getLogicalPlan(" LIST USER PRIVILEGES tempuser;");
+    ExecutableOperator op = generator.getLogicalPlan(" LIST USER PRIVILEGES tempuser;");
     assertEquals(SQLConstant.TOK_LIST, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.LIST_USER_PRIVILEGE, ((AuthorOperator)op).getAuthorType());
     assertEquals("tempuser", ((AuthorOperator)op).getUserName());
@@ -87,7 +87,7 @@ public class TestListStatement {
 
   @Test
   public void listPrivilegesOfRoles() {
-    RootOperator op = generator.getLogicalPlan("LIST ROLE PRIVILEGES actor;");
+    ExecutableOperator op = generator.getLogicalPlan("LIST ROLE PRIVILEGES actor;");
     assertEquals(SQLConstant.TOK_LIST, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE, ((AuthorOperator)op).getAuthorType());
     assertEquals("actor", ((AuthorOperator)op).getRoleName());
@@ -97,7 +97,7 @@ public class TestListStatement {
 
   @Test
   public void listRolesOfUsers() {
-    RootOperator op = generator.getLogicalPlan(" LIST ALL ROLE OF USER tempuser;");
+    ExecutableOperator op = generator.getLogicalPlan(" LIST ALL ROLE OF USER tempuser;");
     assertEquals(SQLConstant.TOK_LIST, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.LIST_USER_ROLES, ((AuthorOperator)op).getAuthorType());
     assertEquals("tempuser", ((AuthorOperator)op).getUserName());
@@ -107,7 +107,7 @@ public class TestListStatement {
 
   @Test
   public void listUsersOfRoles() {
-    RootOperator op = generator.getLogicalPlan("LIST ALL USER OF ROLE roleuser;");
+    ExecutableOperator op = generator.getLogicalPlan("LIST ALL USER OF ROLE roleuser;");
     assertEquals(SQLConstant.TOK_LIST, op.getTokenIntType());
     assertEquals(AuthorOperator.AuthorType.LIST_ROLE_USERS, ((AuthorOperator)op).getAuthorType());
     assertEquals("roleuser", ((AuthorOperator)op).getRoleName());

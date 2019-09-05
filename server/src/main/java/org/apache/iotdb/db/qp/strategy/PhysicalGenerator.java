@@ -223,6 +223,8 @@ public class PhysicalGenerator {
   // }
   // }
 
+
+
   private PhysicalPlan transformQuery(QueryOperator queryOperator)
       throws QueryProcessorException {
 
@@ -233,7 +235,7 @@ public class PhysicalGenerator {
       ((GroupByPlan) queryPlan).setUnit(queryOperator.getUnit());
       ((GroupByPlan) queryPlan).setOrigin(queryOperator.getOrigin());
       ((GroupByPlan) queryPlan).setIntervals(queryOperator.getIntervals());
-      ((GroupByPlan) queryPlan).setAggregations(queryOperator.getSelectOperator().getAggregations());
+      ((GroupByPlan) queryPlan).setAggregations(queryOperator.getAggregationOperator().getAggregations());
     } else if (queryOperator.isFill()) {
       queryPlan = new FillQueryPlan();
       FilterOperator timeFilter = queryOperator.getFilterOperator();
@@ -245,8 +247,9 @@ public class PhysicalGenerator {
       ((FillQueryPlan) queryPlan).setFillType(queryOperator.getFillTypes());
     } else if (queryOperator.hasAggregation()) { // ordinary query
       queryPlan = new AggregationPlan();
+      System.out.println("++++++++++++++++++++++");
       ((AggregationPlan) queryPlan)
-          .setAggregations(queryOperator.getSelectOperator().getAggregations());
+          .setAggregations(queryOperator.getAggregationOperator().getAggregations());
     } else {
       queryPlan = new QueryPlan();
     }

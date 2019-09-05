@@ -24,7 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.ExecutableOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -44,7 +44,7 @@ public class TestInsertStatement {
 
   @Test
   public void multiInsert() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "insert into root.vehicle.d0 (timestamp, s0, s1, s2)  values(12345678 , -1011.666, 'da#$%fa', FALSE)");
     assertEquals(SQLConstant.TOK_INSERT, op.getTokenIntType());
     assertEquals(new Path("root.vehicle.d0"),((InsertOperator)op).getSelectedPaths().get(0));
@@ -57,7 +57,7 @@ public class TestInsertStatement {
 
   @Test
   public void multiInsert2() {
-    RootOperator op = generator.getLogicalPlan("insert into root.vehicle.d0 (timestamp, s0, s1)  values(now() , -1011.666, 1231);");
+    ExecutableOperator op = generator.getLogicalPlan("insert into root.vehicle.d0 (timestamp, s0, s1)  values(now() , -1011.666, 1231);");
     assertEquals(SQLConstant.TOK_INSERT, op.getTokenIntType());
     assertEquals(new Path("root.vehicle.d0"),((InsertOperator)op).getSelectedPaths().get(0));
     assertTrue(System.currentTimeMillis() - ((InsertOperator)op).getTime() < 10);
@@ -69,7 +69,7 @@ public class TestInsertStatement {
 
   @Test
   public void multiInsert3() throws LogicalOperatorException {
-    RootOperator op = generator.getLogicalPlan("insert into root.vehicle.d0 (timestamp, s0, s1)  values(2016-02-01 11:12:35, -1011.666, 1231)");
+    ExecutableOperator op = generator.getLogicalPlan("insert into root.vehicle.d0 (timestamp, s0, s1)  values(2016-02-01 11:12:35, -1011.666, 1231)");
     assertEquals(SQLConstant.TOK_INSERT, op.getTokenIntType());
     assertEquals(new Path("root.vehicle.d0"),((InsertOperator)op).getSelectedPaths().get(0));
     assertEquals(parseTimeFormat("2016-02-01 11:12:35"), ((InsertOperator)op).getTime());
@@ -81,7 +81,7 @@ public class TestInsertStatement {
 
   @Test
   public void multiInsert4() throws LogicalOperatorException {
-    RootOperator op = generator.getLogicalPlan("insert into root.vehicle.d0 (timestamp, s0, s1) "
+    ExecutableOperator op = generator.getLogicalPlan("insert into root.vehicle.d0 (timestamp, s0, s1) "
             + "values(2016-02-01 11:12:35, \'12\"3a\\'bc\', \"12\\\"3abc\")");
     assertEquals(SQLConstant.TOK_INSERT, op.getTokenIntType());
     assertEquals(new Path("root.vehicle.d0"),((InsertOperator)op).getSelectedPaths().get(0));

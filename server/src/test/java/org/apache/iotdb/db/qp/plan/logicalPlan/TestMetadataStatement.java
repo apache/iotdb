@@ -22,7 +22,7 @@ package org.apache.iotdb.db.qp.plan.logicalPlan;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.ExecutableOperator;
 import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
@@ -50,7 +50,7 @@ public class TestMetadataStatement {
 
   @Test
   public void createTimeseries() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "create timeseries root.laptop.d0.s2 with datatype=FLOAT"
                     + ",encoding=RLE,freq_encoding=DFT,write_main_freq=true,dft_pack_length=300,dft_rate=0.4,write_encoding=False;");
     assertEquals(SQLConstant.TOK_METADATA_CREATE, op.getTokenIntType());
@@ -69,14 +69,14 @@ public class TestMetadataStatement {
 
   @Test (expected = SqlParseException.class)
   public void createTimeseries2() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "create timeseries root.laptop.d1.s1 with datatype=INT64,encoding=rle");
 
   }
 
   @Test
   public void setStorageGroup1() {
-    RootOperator op = generator.getLogicalPlan("set storage group to root.a.b.c");
+    ExecutableOperator op = generator.getLogicalPlan("set storage group to root.a.b.c");
 
   }
 
@@ -91,7 +91,7 @@ public class TestMetadataStatement {
 
   @Test
   public void createProp() {
-    RootOperator op = generator.getLogicalPlan("create property myprop");
+    ExecutableOperator op = generator.getLogicalPlan("create property myprop");
     assertEquals(SQLConstant.TOK_PROPERTY_CREATE, op.getTokenIntType());
     assertEquals(PropertyOperator.PropertyType.ADD_TREE, ((PropertyOperator)op).getPropertyType());
     assertEquals(new Path("myprop"), ((PropertyOperator)op).getPropertyPath());
@@ -99,7 +99,7 @@ public class TestMetadataStatement {
 
   @Test
   public void addLabelToProp() {
-    RootOperator op = generator.getLogicalPlan("ADD LABEL myLabel TO PROPERTY myProp;");
+    ExecutableOperator op = generator.getLogicalPlan("ADD LABEL myLabel TO PROPERTY myProp;");
     assertEquals(SQLConstant.TOK_PROPERTY_ADD_LABEL, op.getTokenIntType());
     assertEquals(PropertyOperator.PropertyType.ADD_PROPERTY_LABEL, ((PropertyOperator)op).getPropertyType());
     assertEquals(new Path(new String[]{"myProp","myLabel"}), ((PropertyOperator)op).getPropertyPath());
@@ -107,7 +107,7 @@ public class TestMetadataStatement {
 
   @Test
   public void deleteLabelFromProp() {
-    RootOperator op = generator.getLogicalPlan("DELETE LABEL myLable FROM PROPERTY myProp");
+    ExecutableOperator op = generator.getLogicalPlan("DELETE LABEL myLable FROM PROPERTY myProp");
     String[] s = new String[]{"myProp", "myLable"};
     assertEquals(new Path(s), ((PropertyOperator)op).getPropertyPath());
   }
@@ -115,7 +115,7 @@ public class TestMetadataStatement {
 
   @Test
   public void linkLabel() {
-    RootOperator op = generator.getLogicalPlan("link root.a.b.c to myProp.myLabel;");
+    ExecutableOperator op = generator.getLogicalPlan("link root.a.b.c to myProp.myLabel;");
     assertEquals(SQLConstant.TOK_PROPERTY_LINK, op.getTokenIntType());
     assertEquals(PropertyOperator.PropertyType.ADD_PROPERTY_TO_METADATA, ((PropertyOperator)op).getPropertyType());
     assertEquals(new Path("root.a.b.c"), ((PropertyOperator)op).getMetadataPath());
@@ -124,7 +124,7 @@ public class TestMetadataStatement {
 
   @Test
   public void unlinkLabel() {
-    RootOperator op = generator.getLogicalPlan(
+    ExecutableOperator op = generator.getLogicalPlan(
             "unlink root.m1.m2 from myProp.myLabel");
     assertEquals(SQLConstant.TOK_PROPERTY_UNLINK, op.getTokenIntType());
     assertEquals(PropertyOperator.PropertyType.DEL_PROPERTY_FROM_METADATA, ((PropertyOperator)op).getPropertyType());
@@ -135,7 +135,7 @@ public class TestMetadataStatement {
 
   @Test
   public void deleteTimeseries1() {
-    RootOperator op = generator.getLogicalPlan("delete timeseries root.dt.a.b.d1.s1;");
+    ExecutableOperator op = generator.getLogicalPlan("delete timeseries root.dt.a.b.d1.s1;");
     assertEquals(SQLConstant.TOK_METADATA_DELETE, op.getTokenIntType());
     assertEquals(MetadataOperator.NamespaceType.DELETE_PATH, ((MetadataOperator)op).getNamespaceType());
     List<Path> deletePaths = ((MetadataOperator)op).getDeletePathList();
@@ -145,7 +145,7 @@ public class TestMetadataStatement {
 
   @Test
   public void deleteTimeseries2() {
-    RootOperator op = generator.getLogicalPlan("delete timeseries root.*");
+    ExecutableOperator op = generator.getLogicalPlan("delete timeseries root.*");
     assertEquals(SQLConstant.TOK_METADATA_DELETE, op.getTokenIntType());
     assertEquals(MetadataOperator.NamespaceType.DELETE_PATH, ((MetadataOperator)op).getNamespaceType());
     List<Path> deletePaths = ((MetadataOperator)op).getDeletePathList();
@@ -156,7 +156,7 @@ public class TestMetadataStatement {
 
   @Test
   public void deleteTimeseries3() {
-    RootOperator op = generator.getLogicalPlan("delete timeseries root.dt.a.b,root.*;");
+    ExecutableOperator op = generator.getLogicalPlan("delete timeseries root.dt.a.b,root.*;");
     assertEquals(SQLConstant.TOK_METADATA_DELETE, op.getTokenIntType());
     assertEquals(MetadataOperator.NamespaceType.DELETE_PATH, ((MetadataOperator)op).getNamespaceType());
     List<Path> deletePaths = ((MetadataOperator)op).getDeletePathList();
@@ -167,12 +167,12 @@ public class TestMetadataStatement {
 
   @Test (expected = SqlParseException.class)
   public void showMetadata() {
-    RootOperator op = generator.getLogicalPlan("show metadata;");
+    ExecutableOperator op = generator.getLogicalPlan("show metadata;");
   }
 
   @Test (expected = SqlParseException.class)
   public void describePath() {
-    RootOperator op = generator.getLogicalPlan("describe root");
+    ExecutableOperator op = generator.getLogicalPlan("describe root");
 
   }
 }

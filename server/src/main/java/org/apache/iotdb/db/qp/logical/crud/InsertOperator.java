@@ -18,14 +18,21 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.qp.logical.ExecutableOperator;
+import org.apache.iotdb.tsfile.read.common.Path;
+
+import java.util.List;
+
 /**
  * this class extends {@code RootOperator} and process insert statement.
  */
-public class InsertOperator extends SFWOperator {
+public class InsertOperator extends ExecutableOperator {
 
   private long time;
   private String[] measurementList;
   private String[] valueList;
+  private SetPathOperator setPathOperator;
+
 
   public InsertOperator(int tokenIntType) {
     super(tokenIntType);
@@ -56,4 +63,15 @@ public class InsertOperator extends SFWOperator {
     this.time = time;
   }
 
+
+  @Override
+  public SetPathOperator getSetPathOperator() {
+    return setPathOperator;
+  }
+
+  @Override
+  public boolean setSetPathOperator(SetPathOperator setPathOperator) {
+    this.setPathOperator = setPathOperator;
+    return false;
+  }
 }

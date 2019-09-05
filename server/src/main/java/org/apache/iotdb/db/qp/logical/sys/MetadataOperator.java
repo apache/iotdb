@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.logical.sys;
 
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.ExecutableOperator;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 /**
  * this class maintains information in Metadata.namespace statement
  */
-public class MetadataOperator extends RootOperator {
+public class MetadataOperator extends ExecutableOperator {
 
   private final NamespaceType namespaceType;
   private Path path;
