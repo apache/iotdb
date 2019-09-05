@@ -33,7 +33,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Properties;
@@ -45,7 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * PatternLogParser parse logs according to a property file which defines how a log looks like
+ * PatternLogParser parse logs according to a property file which defines what a log looks like
  * and what fields in the log are interesting.
  * A running example of the property file:
  *   pattern=([^\\[]*)(\\[.*])(\\s\\w+\\s)([^:]*:\\d+)(\\s-\\s)(.*)
@@ -55,6 +54,11 @@ import org.slf4j.LoggerFactory;
  *   code_location_index=4
  *   content_index=6
  *   date_pattern=yyyy-MM-dd hh:mm:ss,SSS
+ * which parses logs like:
+ * "2019-08-21 09:57:16,552 [pool-4-IoTDB-Flush-ServerServiceImpl-thread-4] INFO  org.apache
+ *  .iotdb.db.engine.flush.MemTableFlushTask:95 - Storage group root.perform.group_6 memtable org
+ *  .apache.iotdb.db.engine.memtable.PrimitiveMemTable@66 flushing a memtable has finished! Time
+ *  consumption: 9942ms"
  */
 public class PatternLogParser implements LogParser{
   private static final Logger logger = LoggerFactory.getLogger(LogParser.class);
@@ -91,8 +95,7 @@ public class PatternLogParser implements LogParser{
     reader = new BufferedReader(new InputStreamReader(new FileInputStream(logFilePaths[++logFileIdx])));
   }
 
-  @Override
-  public LogEntry next() throws IOException {
+  private String nextLine() throws IOException {
     String line = reader.readLine();
     while (line == null) {
       if (logFileIdx + 1 < logFilePaths.length) {
@@ -102,35 +105,64 @@ public class PatternLogParser implements LogParser{
         return null;
       }
     }
+    return line;
+  }
 
-    Matcher matcher = pattern.matcher(line);
-    if (!matcher.matches()) {
-      logger.error("Unrecognizable log: {}", line);
+  private Matcher nextMatchedLineMatcher() throws IOException {
+    String line = nextLine();
+    if (line == null) {
       return null;
     }
-    Date date;
-    try {
-      date = dateFormat.parse(matcher.group(dateIndex));
-    } catch (ParseException e) {
-      logger.error("Incorrect time format in {}", e);
-      return null;
+
+    boolean matched = false;
+    Matcher matcher = null;
+    while (!matched) {
+      matcher = pattern.matcher(line);
+      if (!matcher.matches()) {
+        logger.debug("Unrecognizable log: {}", line);
+        line = nextLine();
+        if (line == null) {
+          return null;
+        }
+      } else {
+        matched = true;
+      }
     }
-    String threadName = null;
-    if (threadNameIndex > 0) {
-      threadName = matcher.group(threadNameIndex).trim();
+    return matcher;
+  }
+
+  @Override
+  public LogEntry next() throws IOException {
+
+    Matcher matcher;
+    while ((matcher = nextMatchedLineMatcher()) != null) {
+      try {
+        Date date = dateFormat.parse(matcher.group(dateIndex));
+        String threadName = null;
+        if (threadNameIndex > 0) {
+          threadName = matcher.group(threadNameIndex).trim();
+        }
+        LogLevel logLevel = LogLevel.DEBUG;
+        if (levelIndex > 0) {
+          logLevel = LogLevel.valueOf(matcher.group(levelIndex).trim());
+        }
+        CodeLocation codeLocation = null;
+        if (codeLocationIndex > 0) {
+          String[] codeLocationStr = matcher.group(codeLocationIndex).split(":");
+          if (codeLocationStr.length > 1) {
+            codeLocation = new CodeLocation(codeLocationStr[0].trim(), Integer.parseInt
+                (codeLocationStr[1]));
+          } else {
+            codeLocation = new CodeLocation(codeLocationStr[0].trim(), -1);
+          }
+        }
+        String content = matcher.group(contentIndex).trim();
+        return new LogEntry(date, threadName, logLevel, codeLocation, content);
+      } catch (Exception e) {
+        logger.warn("Malformed log {}", matcher.group(0), e);
+      }
     }
-    LogLevel logLevel = LogLevel.DEBUG;
-    if (levelIndex > 0) {
-      logLevel = LogLevel.valueOf(matcher.group(levelIndex).trim());
-    }
-    CodeLocation codeLocation = null;
-    if (codeLocationIndex > 0) {
-      String[] codeLocationStr = matcher.group(codeLocationIndex).split(":");
-      codeLocation = new CodeLocation(codeLocationStr[0].trim(), Integer.parseInt
-          (codeLocationStr[1]));
-    }
-    String content = matcher.group(contentIndex).trim();
-    return new LogEntry(date, threadName, logLevel, codeLocation, content);
+    return null;
   }
 
   @Override

@@ -158,7 +158,7 @@ public class PlanDetailPanel extends JScrollPane {
 
     String name = nameField.getText();
     String contentPattern = patternField.getText();
-    String measurementPositons = measurementsField.getText();
+    String measurementPositions = measurementsField.getText();
     String legends = legendsField.getText();
     String tagPositions = tagField.getText();
     String logLevel = levelField.getText();
@@ -178,8 +178,8 @@ public class PlanDetailPanel extends JScrollPane {
       JOptionPane.showMessageDialog(this, "Content pattern cannot be empty");
       return;
     }
-    if (measurementPositons.matches("\\s*")) {
-      measurementPositons = null;
+    if (measurementPositions.matches("\\s*")) {
+      measurementPositions = null;
     }
     if (legends.matches("\\s*")) {
       legends = null;
@@ -217,22 +217,22 @@ public class PlanDetailPanel extends JScrollPane {
     try {
       plan.setName(name);
       plan.setContentPattern(Pattern.compile(contentPattern));
-      plan.setMeasurementPositions(measurementPositons != null ? VisualUtils.parseIntArray
-          (measurementPositons) : null);
+      plan.setMeasurementPositions(VisualUtils.parseIntArray(measurementPositions));
       plan.setLegends(legends != null ? legends.split(",") : null);
-      plan.setTagPositions(tagPositions != null ? VisualUtils.parseIntArray(tagPositions) : null);
+      plan.setTagPositions(VisualUtils.parseIntArray(tagPositions));
       plan.getLogFilter().setClassNameWhiteList(allowedClasses != null ? allowedClasses.split(",")
           : null);
       plan.getLogFilter().setThreadNameWhiteList(allowedThreads != null ? allowedThreads.split(","
           + "") : null);
-      plan.getLogFilter().setLineNumWhiteList(allowedLineNums != null ? VisualUtils.parseIntArray
-          (allowedLineNums) : null);
+      plan.getLogFilter().setLineNumWhiteList(VisualUtils.parseIntArray(allowedLineNums));
       plan.getLogFilter().setMinLevel(LogLevel.valueOf(logLevel));
       SimpleDateFormat simpleDateFormat = datePattern != null ? new SimpleDateFormat(datePattern) :
           null;
       plan.getLogFilter().setDatePattern(simpleDateFormat);
-      plan.getLogFilter().setStartDate(startDate != null ? simpleDateFormat.parse(startDate) : null);
-      plan.getLogFilter().setEndDate(endDate != null ? simpleDateFormat.parse(endDate) : null);
+      plan.getLogFilter().setStartDate(startDate != null && simpleDateFormat != null? simpleDateFormat
+          .parse(startDate) : null);
+      plan.getLogFilter().setEndDate(endDate != null && simpleDateFormat != null ? simpleDateFormat
+          .parse(endDate) : null);
 
       plan.saveAsFile();
     } catch (Exception e) {

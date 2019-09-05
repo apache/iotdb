@@ -20,13 +20,9 @@
 
 package org.apache.iotdb.db.tools.logvisual;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.Date;
-import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesDataItem;
 

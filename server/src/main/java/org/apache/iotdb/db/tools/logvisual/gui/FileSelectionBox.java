@@ -33,7 +33,7 @@ import javax.swing.JTextField;
 /**
  * FileSelectionBox is a combination of a JLabel (showing the name of this component), a
  * JTextField (showing the path of the chosen file) and a JButton (on clicking it the user can
- * choose a single file).
+ * choose a single file or directory).
  */
 class FileSelectionBox extends Box{
 

@@ -59,7 +59,7 @@ import org.apache.iotdb.db.tools.logvisual.exceptions.UnmatchedContentException;
  */
 public class VisualizationPlan {
   // optional, this will be used as the title of the figure.
-  private String name;
+  private String name = "untitled";
 
   // required, a regex that will capture the logs to be analyzed, the interesting values
   // (measurements and group-by tags) should be surrounded with bracelets e.g.:
@@ -67,7 +67,7 @@ public class VisualizationPlan {
   private Pattern contentPattern;
   // the following 3 are optional, if not set, then it means this plan only cares whether this
   // event happens or not and draws a scatter plot, other wise it will capture the given
-  // measurements and draw curves. Only numeric measurements are supported currently.
+  // measurements and draw timeseries plots. Only numeric measurements are supported currently.
   // if one of first 2 is set, the other must be set
   // comma-separated
   // e.g.:
@@ -75,7 +75,7 @@ public class VisualizationPlan {
   //  legends = temperature,pressure
   //  tagPositions = 1
   //  then the logs will be grouped-by their locations and for each group, there will be two
-  //  curves describing temperature and pressure respectively
+  //  timeseries describing temperature and pressure respectively
   private int[] measurementPositions;
   private String[] legends;
   private int[] tagPositions;
@@ -90,6 +90,7 @@ public class VisualizationPlan {
   }
 
   VisualizationPlan(String planFilePath) throws IOException {
+    // the plan file is a property file
     this.planFilePath = planFilePath;
     Properties properties = new Properties();
     try (FileInputStream reader = new FileInputStream(planFilePath);
@@ -112,14 +113,21 @@ public class VisualizationPlan {
       legends = legendStr.split(",");
     }
 
+    if (measurementPositions != null) {
+      if (legends == null || legends.length != measurementPositions.length) {
+        throw new IOException("Bad plan, the number of legends is different from the number of "
+            + "measurements");
+      }
+    }
+
     tagPositions = VisualUtils.parseIntArray(properties.getProperty(TAG_POSITIONS.getPropertyName()));
 
     logFilter = new LogFilter(properties);
   }
 
   /**
-   * parse the content in a LogEntry using contentPattern and store the parsed fields back to the
-   * entry.
+   * parse the content in a LogEntry using contentPattern and store the parsed tags and measurements
+   * back to the entry.
    * @param logEntry
    * @throws UnmatchedContentException
    */
@@ -131,7 +139,7 @@ public class VisualizationPlan {
 
     String[] matchedValues = new String[matcher.groupCount()];
     for (int i = 1; i <= matcher.groupCount(); i++) {
-      // group(0) is the whole string
+      // group(0) is the whole content and the remaining are the groups
       matchedValues[i - 1] = matcher.group(i);
     }
     if (tagPositions != null) {

@@ -41,7 +41,7 @@ import javax.swing.event.ListSelectionEvent;
 import org.apache.iotdb.db.tools.logvisual.LogVisualizer;
 import org.apache.iotdb.db.tools.logvisual.TimeSeriesStatistics;
 import org.apache.iotdb.db.tools.logvisual.VisualizationPlan;
-import org.apache.iotdb.db.tools.logvisual.conf.PropertyKeys;
+import org.apache.iotdb.db.tools.logvisual.conf.GuiPropertyKeys;
 import org.apache.iotdb.db.tools.logvisual.exceptions.VisualizationException;
 import org.apache.iotdb.db.tools.logvisual.gui.LogVisualizationGui.PropertyChangeCallback;
 import org.jfree.chart.JFreeChart;
@@ -131,6 +131,7 @@ class PlanBox extends Box{
     deletePlanButton.addActionListener(this::onDeletePlan);
     exportResultButton.addActionListener(this::onExportResult);
 
+    // cannot export until some plan is executed
     exportResultButton.setEnabled(false);
 
     if (defaultPlanPath != null) {
@@ -147,7 +148,7 @@ class PlanBox extends Box{
         // show plans in the gui
         updatePlan(planList);
       } catch (IOException e1) {
-        JOptionPane.showMessageDialog(this, "Cannot load plan: " + e1);
+        JOptionPane.showMessageDialog(this, "Cannot load plan: " + e1.getMessage());
       }
     }
   }
@@ -173,7 +174,7 @@ class PlanBox extends Box{
           for (int i = 1; i < chosenFiles.length; i++) {
             builder.append(";").append(chosenFiles[i].getPath());
           }
-          propertyChangeCallback.call(PropertyKeys.DEFAULT_PLAN_PATH.getKey(), builder.toString());
+          propertyChangeCallback.call(GuiPropertyKeys.DEFAULT_PLAN_PATH.getKey(), builder.toString());
         }
       } catch (IOException e1) {
         JOptionPane.showMessageDialog(this, "Cannot load plan: " + e1.getMessage());
@@ -230,9 +231,15 @@ class PlanBox extends Box{
     if (status == JFileChooser.APPROVE_OPTION) {
       File chosenFile = fileChooser.getSelectedFile();
       VisualizationPlan plan = new VisualizationPlan();
-      plan.setPlanFilePath(chosenFile.getPath());
       // the name of the file will also be the name of the plan
-      plan.setName(chosenFile.getName());
+      String planName = chosenFile.getName();
+      if (!validateNewPlanName(planName)) {
+        JOptionPane.showMessageDialog(this, String.format("A plan named %s alread exists",
+            planName));
+        return;
+      }
+      plan.setName(planName);
+      plan.setPlanFilePath(chosenFile.getPath());
       // a default plan matches every thing
       plan.setContentPattern(Pattern.compile(".*"));
 
@@ -241,6 +248,15 @@ class PlanBox extends Box{
       planList.setSelectedIndex(planListModel.getSize() - 1);
       planDetailPanel.setPlan(plan);
     }
+  }
+
+  private boolean validateNewPlanName(String planName) {
+    for (int i = 0; i < planListModel.getSize(); i++) {
+      if (planListModel.get(i).getName().equals(planName)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private void onDeletePlan(ActionEvent e) {

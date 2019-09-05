@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.tools.logvisual.conf;
 
 /**
- * PropertyKeys holds the keys of properties that store the paths chosen by the user the last
- * time he uses this tool for convenience.
+ * GuiPropertyKeys holds the keys of properties that store the paths chosen by the user the last
+ * time he used this tool's gui for convenience.
  */
-public enum PropertyKeys {
+public enum GuiPropertyKeys {
   /**
    * The last path of the parser property file chosen by the user.
    */
@@ -38,7 +38,7 @@ public enum PropertyKeys {
   DEFAULT_PLAN_PATH("plans_path");
   private String key;
 
-  PropertyKeys(String key) {
+  GuiPropertyKeys(String key) {
     this.key = key;
   }
 

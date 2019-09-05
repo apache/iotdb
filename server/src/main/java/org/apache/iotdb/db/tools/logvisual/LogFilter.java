@@ -47,7 +47,7 @@ public class LogFilter {
   private int[] lineNumWhiteList;
 
   /**
-   * optional, only time ranges within the interval will be analyzed
+   * optional, only logs whose time ranges within the interval will be analyzed
    * if startDate or endDate is set, datePattern must be set too
    */
   private DateFormat datePattern;
@@ -69,7 +69,7 @@ public class LogFilter {
 
     String classNameWhiteListStr = properties.getProperty(CLASS_NAME_WHITE_LIST.getPropertyName());
     if (classNameWhiteListStr != null) {
-      classNameWhiteList =classNameWhiteListStr.trim().split(",");
+      classNameWhiteList = classNameWhiteListStr.trim().split(",");
     }
 
     lineNumWhiteList = VisualUtils.parseIntArray(properties.getProperty(LINE_NUM_WHITE_LIST
@@ -90,7 +90,7 @@ public class LogFilter {
       }
 
       String endDatePattern = properties.getProperty(END_DATE.getPropertyName());
-      if (startDateStr != null) {
+      if (endDatePattern != null) {
         try {
           endDate = datePattern.parse(endDatePattern.trim());
         } catch (ParseException e) {
@@ -185,14 +185,15 @@ public class LogFilter {
       properties.put(LINE_NUM_WHITE_LIST.propertyName, VisualUtils.intArrayToString
           (lineNumWhiteList));
     }
-    if (startDate != null) {
-      properties.put(START_DATE.propertyName, datePattern.format(startDate));
-    }
-    if (endDate != null) {
-      properties.put(END_DATE.propertyName, datePattern.format(endDate));
-    }
+
     if (datePattern != null) {
       properties.put(DATE_PATTERN.propertyName, ((SimpleDateFormat) datePattern).toPattern());
+      if (startDate != null) {
+        properties.put(START_DATE.propertyName, datePattern.format(startDate));
+      }
+      if (endDate != null) {
+        properties.put(END_DATE.propertyName, datePattern.format(endDate));
+      }
     }
   }
 

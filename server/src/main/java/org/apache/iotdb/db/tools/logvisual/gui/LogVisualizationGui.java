@@ -1,5 +1,21 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license agreements.  See the NOTICE file distributed with this work for additional information regarding copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at      http://www.apache.org/licenses/LICENSE-2.0  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the specific language governing permissions and limitations under the License.
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
  */
 
 package org.apache.iotdb.db.tools.logvisual.gui;
@@ -23,7 +39,7 @@ import org.apache.iotdb.db.tools.logvisual.TimeSeriesStatistics;
 import org.jfree.chart.JFreeChart;
 
 /**
- * LogVisualizationGui provides a graphic way wo manipulate visualization plans and view the
+ * LogVisualizationGui provides a graphic way to manipulate visualization plans and view the
  * results of visualization.
  *
  * TODO-LogVisualizer: improve the layout and display
@@ -31,8 +47,8 @@ import org.jfree.chart.JFreeChart;
 public class LogVisualizationGui {
 
   /**
-   * if a config file is not provided, this will be used as a default config file saving the
-   * paths use chooses for the next usage.
+   * if a config file is not provided, this will be used as a default config file to remember the
+   * paths that were chosen for the default paths of the next start-up.
    */
   private final String DEFAULT_CONFIG = "visual.config";
   private final int DEFAULT_HEIGHT = 600;
@@ -57,18 +73,17 @@ public class LogVisualizationGui {
 
   /**
    * Each time a visualization plan is executed, two tabs will be generated, one (the
-   * ResultPlotTab) contains the
-   * timeseries plot of the visualized logs and the other (the ResultStatisticTab) contains a table
-   * showing the statistics of the observed logs.
-   * They will be store in the following maps with keys {planName}-plot and {planName}-statistic
+   * ResultPlotTab) contains the timeseries plots of the visualized logs and the other (the
+   * ResultStatisticTab) contains a table showing the statistics of the observed logs.
+   * They will be stored in the following maps with keys {planName}-plot and {planName}-statistic
    * respectively.
    */
   private Map<String, ResultPlotTab> resultPlotPanels = new HashMap<>();
   private Map<String, ResultStatisticTab> resultTablePanels = new HashMap<>();
 
   /**
-   * properties contain most recently chosen files, so when the next time the user use this tool,
-   * he will not need to set all from the beginning.
+   * properties contain most recently chosen files, so the next time the user uses this tool,
+   * he will not need to set the paths again.
    */
   private String propertyFilePath;
   private Properties properties;
@@ -88,6 +103,7 @@ public class LogVisualizationGui {
     }
 
     this.visualizer = new LogVisualizer();
+    // this is a lie, it does not feel decorated
     JFrame.setDefaultLookAndFeelDecorated(true);
     mainFrame = new JFrame("Log Visualizer");
     mainFrame.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
@@ -134,7 +150,7 @@ public class LogVisualizationGui {
         BufferedWriter bufferedWriter = new BufferedWriter(writer)) {
       properties.store(bufferedWriter,"");
     } catch (IOException e) {
-      JOptionPane.showMessageDialog(mainPanel, "Cannot save property files: ");
+      JOptionPane.showMessageDialog(mainPanel, "Cannot save property files: " + e.getMessage());
     }
   }
 

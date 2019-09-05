@@ -49,7 +49,7 @@ public class LogEntry {
    */
   private String threadName;
   /**
-   * The level of the log, one of "DEBUG", "INFO", "WARN", "ERROR".
+   * The level of the log, one of "TRACE", "DEBUG", "INFO", "WARN", "ERROR".
    * "INFO" in the example.
    */
   private LogLevel logLevel;
@@ -73,7 +73,7 @@ public class LogEntry {
   private List<String> tags = DEFAULT_TAG;
 
   /**
-   * measurements are real values occurred in the logContent that should be plotted.
+   * measurements are real values in the logContent that should be plotted.
    * This is also specified by a given visualization plan.
    */
   private List<Double> measurements;
@@ -123,7 +123,7 @@ public class LogEntry {
   }
 
   public enum LogLevel {
-    DEBUG, INFO, WARN, ERROR
+    TRACE, DEBUG, INFO, WARN, ERROR
   }
 
   static class CodeLocation {

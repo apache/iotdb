@@ -24,12 +24,12 @@ import java.util.Properties;
 import javax.swing.JFileChooser;
 import javax.swing.JPanel;
 import org.apache.iotdb.db.tools.logvisual.LogVisualizer;
-import org.apache.iotdb.db.tools.logvisual.conf.PropertyKeys;
+import org.apache.iotdb.db.tools.logvisual.conf.GuiPropertyKeys;
 import org.apache.iotdb.db.tools.logvisual.gui.LogVisualizationGui.PropertyChangeCallback;
 import org.apache.iotdb.db.tools.logvisual.gui.PlanBox.ExecutePlanCallback;
 
 /**
- * MainPanel provides components that enable the user to choose log file to be visualized,
+ * MainPanel provides components that enable the user to choose log files to be visualized,
  * manipulate or execute visualization plans.
  */
 class MainPanel extends JPanel {
@@ -47,7 +47,7 @@ class MainPanel extends JPanel {
    */
   private LoadLogBox loadLogBox;
   /**
-   * to provide means of manipulating the visualizations plans and execute them.
+   * to provide means of manipulating the visualization plans and execute them.
    */
   private PlanBox planBox;
 
@@ -69,12 +69,12 @@ class MainPanel extends JPanel {
     setLayout(null);
 
     logFileSelectionBox = new FileSelectionBox("LogFilePath", this::onLogFileSelected,
-        properties.getProperty(PropertyKeys.DEFAULT_LOG_FILE_PATH.getKey()), JFileChooser.FILES_AND_DIRECTORIES);
+        properties.getProperty(GuiPropertyKeys.DEFAULT_LOG_FILE_PATH.getKey()), JFileChooser.FILES_AND_DIRECTORIES);
     logFileSelectionBox.setLocation(0, 0);
     logFileSelectionBox.setSize(380, 40);
 
     parserPropertyBox = new FileSelectionBox("ParserPropertyFilePath",
-        this::onParserPropertySelected, properties.getProperty(PropertyKeys
+        this::onParserPropertySelected, properties.getProperty(GuiPropertyKeys
         .DEFAULT_PARSER_FILE_PATH.getKey()), JFileChooser.FILES_ONLY);
     parserPropertyBox.setLocation(0, 45);
     parserPropertyBox.setSize(380, 40);
@@ -83,7 +83,7 @@ class MainPanel extends JPanel {
     loadLogBox.setLocation(450, 0);
     loadLogBox.setSize(300, 50);
 
-    planBox = new PlanBox(logVisualizer, executePlanCallback, properties.getProperty(PropertyKeys
+    planBox = new PlanBox(logVisualizer, executePlanCallback, properties.getProperty(GuiPropertyKeys
         .DEFAULT_PLAN_PATH.getKey()), propertyChangeCallback);
     planBox.setLocation(0, 100);
     planBox.setSize(750, 430);
@@ -96,12 +96,12 @@ class MainPanel extends JPanel {
 
   private void onLogFileSelected(File logFile) {
     visualizer.setLogFile(logFile);
-    propertyChangeCallback.call(PropertyKeys.DEFAULT_LOG_FILE_PATH.getKey(), logFile.getPath());
+    propertyChangeCallback.call(GuiPropertyKeys.DEFAULT_LOG_FILE_PATH.getKey(), logFile.getPath());
   }
 
   private void onParserPropertySelected(File parserPropertyFile) {
     visualizer.setParserPropertyFile(parserPropertyFile);
-    propertyChangeCallback.call(PropertyKeys.DEFAULT_PARSER_FILE_PATH.getKey(), parserPropertyFile
+    propertyChangeCallback.call(GuiPropertyKeys.DEFAULT_PARSER_FILE_PATH.getKey(), parserPropertyFile
         .getPath());
   }
 }

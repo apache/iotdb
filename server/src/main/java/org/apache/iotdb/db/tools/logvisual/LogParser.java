@@ -28,7 +28,7 @@ import java.io.IOException;
 public interface LogParser {
 
   /**
-   * return the next LogEntry or null if there is no more logs.
+   * return the next LogEntry or null if there are no more logs.
    */
   LogEntry next() throws IOException;
 
