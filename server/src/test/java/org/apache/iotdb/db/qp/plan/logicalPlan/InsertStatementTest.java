@@ -33,7 +33,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-public class TestInsertStatement {
+public class InsertStatementTest {
   private LogicalGenerator generator;
 
   @Before

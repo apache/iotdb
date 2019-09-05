@@ -48,7 +48,7 @@ import java.util.Map;
 
 import static org.junit.Assert.*;
 
-public class TestQueryStatement {
+public class QueryStatementTest {
   private LogicalGenerator generator;
 
   @Before

@@ -39,7 +39,7 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
-public class TestMetadataStatement {
+public class MetadataStatementTest {
   private LogicalGenerator generator;
 
   @Before
