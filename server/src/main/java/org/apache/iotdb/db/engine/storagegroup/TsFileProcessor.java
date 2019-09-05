@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -53,7 +54,6 @@ import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -111,7 +111,7 @@ public class TsFileProcessor {
 
   private long totalMemTableSize;
 
-  TsFileProcessor(String storageGroupName, IoTDBFile tsfile, Schema schema,
+  TsFileProcessor(String storageGroupName, File tsfile, Schema schema,
                   VersionController versionController,
                   CloseTsFileCallBack closeTsFileCallback,
                   Supplier updateLatestFlushTimeCallback, boolean sequence)

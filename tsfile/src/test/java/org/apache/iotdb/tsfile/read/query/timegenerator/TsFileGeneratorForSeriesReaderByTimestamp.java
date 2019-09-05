@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -29,7 +30,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFileFactory;
 import org.apache.iotdb.tsfile.utils.FileUtils;
 import org.apache.iotdb.tsfile.utils.FileUtils.Unit;
 import org.apache.iotdb.tsfile.utils.RecordUtils;
@@ -78,22 +79,22 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
   public static void after() {
     TSFileDescriptor.getInstance().getConfig().groupSizeInByte = preChunkGroupSize;
     TSFileDescriptor.getInstance().getConfig().maxNumberOfPointsInPage = prePageSize;
-    IoTDBFile file = new IoTDBFile(inputDataFile);
+    File file = IoTDBFileFactory.INSTANCE.getIoTDBFile(inputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
-    file = new IoTDBFile(outputDataFile);
+    file = IoTDBFileFactory.INSTANCE.getIoTDBFile(outputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
-    file = new IoTDBFile(errorOutputDataFile);
+    file = IoTDBFileFactory.INSTANCE.getIoTDBFile(errorOutputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
   }
 
   static private void generateSampleInputDataFile() throws IOException {
-    IoTDBFile file = new IoTDBFile(inputDataFile);
+    File file = IoTDBFileFactory.INSTANCE.getIoTDBFile(inputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
@@ -146,8 +147,8 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
   }
 
   static public void write() throws IOException, InterruptedException, WriteProcessException {
-    IoTDBFile file = new IoTDBFile(outputDataFile);
-    IoTDBFile errorFile = new IoTDBFile(errorOutputDataFile);
+    File file = IoTDBFileFactory.INSTANCE.getIoTDBFile(outputDataFile);
+    File errorFile = IoTDBFileFactory.INSTANCE.getIoTDBFile(errorOutputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
@@ -213,7 +214,7 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
   }
 
   static private Scanner getDataFile(String path) {
-    IoTDBFile file = new IoTDBFile(path);
+    File file = IoTDBFileFactory.INSTANCE.getIoTDBFile(path);
     try {
       Scanner in = new Scanner(file);
       return in;

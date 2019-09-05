@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.write.writer;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
@@ -33,7 +34,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -69,7 +69,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @param file a given tsfile path you want to (continue to) write
    * @throws IOException if write failed, or the file is broken but autoRepair==false.
    */
-  public RestorableTsFileIOWriter(IoTDBFile file) throws IOException {
+  public RestorableTsFileIOWriter(File file) throws IOException {
     this.file = file;
     this.out = new DefaultTsFileOutput(file, true);
 
@@ -196,7 +196,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @param file a TsFile
    * @return a writable RestorableTsFileIOWriter
    */
-  public static RestorableTsFileIOWriter getWriterForAppendingDataOnCompletedTsFile(IoTDBFile file)
+  public static RestorableTsFileIOWriter getWriterForAppendingDataOnCompletedTsFile(File file)
       throws IOException {
     long position = file.length();
 

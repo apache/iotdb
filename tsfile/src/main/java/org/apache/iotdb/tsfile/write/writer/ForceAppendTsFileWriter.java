@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -37,7 +37,7 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter{
   private Map<String, MeasurementSchema> knownSchemas;
   private long truncatePosition;
 
-  public ForceAppendTsFileWriter(IoTDBFile file) throws IOException {
+  public ForceAppendTsFileWriter(File file) throws IOException {
     this.out = new DefaultTsFileOutput(file, true);
     this.file = file;
 

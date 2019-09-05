@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.client;
 
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFileFactory;
 
 import static org.junit.Assert.assertEquals;
 
@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class AbstractScript {
+
 
   protected void testOutput(ProcessBuilder builder, String[] output) throws IOException {
     builder.redirectErrorStream(true);
@@ -40,7 +41,6 @@ public abstract class AbstractScript {
         break;
       } else {
         outputList.add(line);
-        System.out.println(line);
       }
     }
     r.close();
@@ -53,12 +53,12 @@ public abstract class AbstractScript {
 
   protected String getCliPath() {
     // This is usually always set by the JVM
-    IoTDBFile userDir = new IoTDBFile(System.getProperty("user.dir"));
+    File userDir = IoTDBFileFactory.INSTANCE.getIoTDBFile(System.getProperty("user.dir"));
     if(!userDir.exists()) {
       throw new RuntimeException("user.dir " + userDir.getAbsolutePath() + " doesn't exist.");
     }
-    IoTDBFile targetDir = new IoTDBFile(userDir, "target");
-    IoTDBFile[] files = targetDir.listFiles(pathname -> pathname.isDirectory() && pathname.getName().startsWith("iotdb-client-"));
+    File targetDir = IoTDBFileFactory.INSTANCE.getIoTDBFile(userDir, "target");
+    File[] files = targetDir.listFiles(pathname -> pathname.isDirectory() && pathname.getName().startsWith("iotdb-client-"));
     if(files.length != 1) {
       throw new RuntimeException(
               "Exactly one directory starting with 'iotdb-client-' should have been found, but was " + files.length);

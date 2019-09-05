@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.write;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,7 +28,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 import org.apache.iotdb.tsfile.write.chunk.ChunkGroupWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkGroupWriter;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
@@ -77,7 +77,7 @@ public class TsFileWriter implements AutoCloseable{
    *
    * @param file the File to be written by this TsFileWriter
    */
-  public TsFileWriter(IoTDBFile file) throws IOException {
+  public TsFileWriter(File file) throws IOException {
     this(new TsFileIOWriter(file), new Schema(), TSFileDescriptor.getInstance().getConfig());
   }
 
@@ -96,7 +96,7 @@ public class TsFileWriter implements AutoCloseable{
    * @param file the File to be written by this TsFileWriter
    * @param schema the schema of this TsFile
    */
-  public TsFileWriter(IoTDBFile file, Schema schema) throws IOException {
+  public TsFileWriter(File file, Schema schema) throws IOException {
     this(new TsFileIOWriter(file), schema, TSFileDescriptor.getInstance().getConfig());
   }
 
@@ -118,7 +118,7 @@ public class TsFileWriter implements AutoCloseable{
    * @param schema the schema of this TsFile
    * @param conf the configuration of this TsFile
    */
-  public TsFileWriter(IoTDBFile file, Schema schema, TSFileConfig conf) throws IOException {
+  public TsFileWriter(File file, Schema schema, TSFileConfig conf) throws IOException {
     this(new TsFileIOWriter(file), schema, conf);
   }
 

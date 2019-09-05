@@ -61,7 +61,7 @@ import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFileFactory;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -145,7 +145,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     fileNodeStartTime.set(new HashMap<>());
     fileNodeEndTime.set(new HashMap<>());
     try {
-      FileUtils.deleteDirectory(new IoTDBFile(syncDataPath));
+      FileUtils.deleteDirectory(IoTDBFileFactory.INSTANCE.getIoTDBFile(syncDataPath));
     } catch (IOException e) {
       logger.error("cannot delete directory {} ", syncFolderPath);
       return false;
@@ -153,7 +153,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     for (String bufferWritePath : bufferWritePaths) {
       bufferWritePath = FilePathUtils.regularizePath(bufferWritePath);
       String backupPath = bufferWritePath + SYNC_SERVER + File.separator;
-        IoTDBFile backupDirectory = new IoTDBFile(backupPath, this.uuid.get());
+        File backupDirectory = IoTDBFileFactory.INSTANCE.getIoTDBFile(backupPath, this.uuid.get());
       if (backupDirectory.exists() && backupDirectory.list().length != 0) {
         try {
           FileUtils.deleteDirectory(backupDirectory);
@@ -202,7 +202,7 @@ public class SyncServiceImpl implements SyncService.Iface {
       /** sync metadata, include storage group and timeseries **/
       return Boolean.toString(loadMetadata());
     } else if (status == SyncDataStatus.PROCESSING_STATUS) {
-        IoTDBFile file = new IoTDBFile(schemaFromSenderPath.get());
+        File file = IoTDBFileFactory.INSTANCE.getIoTDBFile(schemaFromSenderPath.get());
       if (!file.getParentFile().exists()) {
         try {
           file.getParentFile().mkdirs();
@@ -229,7 +229,7 @@ public class SyncServiceImpl implements SyncService.Iface {
         }
         md5OfReceiver = (new BigInteger(1, md.digest())).toString(16);
         if (!md5.equals(md5OfReceiver)) {
-          FileUtils.forceDelete(new IoTDBFile(schemaFromSenderPath.get()));
+          FileUtils.forceDelete(IoTDBFileFactory.INSTANCE.getIoTDBFile(schemaFromSenderPath.get()));
         }
       } catch (Exception e) {
         logger.error("Receiver cannot generate md5 {}", schemaFromSenderPath.get(), e);
@@ -242,7 +242,7 @@ public class SyncServiceImpl implements SyncService.Iface {
    * Load metadata from sender
    */
   private boolean loadMetadata() {
-    if (new IoTDBFile(schemaFromSenderPath.get()).exists()) {
+    if (IoTDBFileFactory.INSTANCE.getIoTDBFile(schemaFromSenderPath.get()).exists()) {
       try (BufferedReader br = new BufferedReader(
           new java.io.FileReader(schemaFromSenderPath.get()))) {
         String metadataOperation;
@@ -327,7 +327,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     syncDataPath = FilePathUtils.regularizePath(syncDataPath);
     filePath = syncDataPath + filePath;
     if (status == SyncDataStatus.PROCESSING_STATUS) { // there are still data stream to add
-        IoTDBFile file = new IoTDBFile(filePath);
+        File file = IoTDBFileFactory.INSTANCE.getIoTDBFile(filePath);
       if (!file.getParentFile().exists()) {
         try {
           file.getParentFile().mkdirs();
@@ -359,7 +359,7 @@ public class SyncServiceImpl implements SyncService.Iface {
 
           logger.info(String.format("Receiver has received %d files from sender", fileNum.get()));
         } else {
-          FileUtils.forceDelete(new IoTDBFile(filePath));
+          FileUtils.forceDelete(IoTDBFileFactory.INSTANCE.getIoTDBFile(filePath));
         }
       } catch (Exception e) {
         logger.error("Receiver cannot generate md5 {}", filePath, e);
@@ -385,13 +385,13 @@ public class SyncServiceImpl implements SyncService.Iface {
    * Get all tsfiles' info which are sent from sender, it is preparing for merging these data
    */
   public void getFileNodeInfo() throws IOException {
-    IoTDBFile dataFileRoot = new IoTDBFile(syncDataPath);
-    IoTDBFile[] files = dataFileRoot.listFiles();
+    File dataFileRoot = IoTDBFileFactory.INSTANCE.getIoTDBFile(syncDataPath);
+    File[] files = dataFileRoot.listFiles();
     int processedNum = 0;
-    for (IoTDBFile storageGroupPB : files) {
+    for (File storageGroupPB : files) {
       List<String> filesPath = new ArrayList<>();
-      IoTDBFile[] filesSG = storageGroupPB.listFiles();
-      for (IoTDBFile fileTF : filesSG) { // fileTF means TsFiles
+      File[] filesSG = storageGroupPB.listFiles();
+      for (File fileTF : filesSG) { // fileTF means TsFiles
         Map<String, Long> startTimeMap = new HashMap<>();
         Map<String, Long> endTimeMap = new HashMap<>();
         TsFileSequenceReader reader = null;
@@ -465,7 +465,7 @@ public class SyncServiceImpl implements SyncService.Iface {
         String header = syncDataPath;
         String relativePath = path.substring(header.length());
         TsFileResource fileNode = new TsFileResource(
-            new IoTDBFile(DirectoryManager.getInstance().getNextFolderIndexForSequenceFile() +
+            IoTDBFileFactory.INSTANCE.getIoTDBFile(DirectoryManager.getInstance().getNextFolderIndexForSequenceFile() +
                 File.separator + relativePath), startTimeMap, endTimeMap
         );
         // call interface of load external file
@@ -714,7 +714,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     fileNodeEndTime.remove();
     schemaFromSenderPath.remove();
     try {
-      FileUtils.deleteDirectory(new IoTDBFile(syncFolderPath));
+      FileUtils.deleteDirectory(IoTDBFileFactory.INSTANCE.getIoTDBFile(syncFolderPath));
     } catch (IOException e) {
       logger.error("can not delete directory {}", syncFolderPath, e);
     }

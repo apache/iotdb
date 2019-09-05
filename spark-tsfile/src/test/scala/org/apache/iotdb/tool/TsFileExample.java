@@ -20,7 +20,7 @@ package org.apache.iotdb.tool;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFileFactory;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -30,13 +30,15 @@ import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.io.File;
+
 /**
  * Write an example TsFile as shown in README.
  */
 public class TsFileExample {
 
   public static void create(String tsfilePath) throws Exception {
-    IoTDBFile f = new IoTDBFile(tsfilePath);
+    File f = IoTDBFileFactory.INSTANCE.getIoTDBFile(tsfilePath);
     if (f.exists()) {
       f.delete();
     }

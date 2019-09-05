@@ -21,13 +21,16 @@ package org.apache.iotdb.tsfile;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFileFactory;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import java.io.File;
+
 /**
  * An example of writing data with TSRecord to TsFile
  * It uses the interface:
@@ -38,7 +41,7 @@ public class TsFileWriteWithTSRecord {
   public static void main(String args[]) {
     try {
       String path = "test.tsfile";
-      IoTDBFile f = new IoTDBFile(path);
+      File f = IoTDBFileFactory.INSTANCE.getIoTDBFile(path);
       if (f.exists()) {
         f.delete();
       }

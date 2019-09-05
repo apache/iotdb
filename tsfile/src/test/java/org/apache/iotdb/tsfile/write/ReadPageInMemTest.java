@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.write;
 
 import static org.junit.Assert.fail;
 
+import java.io.File;
 import java.io.IOException;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -27,7 +28,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFileFactory;
 import org.apache.iotdb.tsfile.utils.RecordUtils;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -39,7 +40,7 @@ import org.junit.Test;
 public class ReadPageInMemTest {
 
   private String filePath = "TsFileReadPageInMem";
-  private IoTDBFile file = new IoTDBFile(filePath);
+  private File file = IoTDBFileFactory.INSTANCE.getIoTDBFile(filePath);
   private TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
   private TsFileWriter innerWriter;
   private Schema schema = null;
@@ -71,7 +72,7 @@ public class ReadPageInMemTest {
     defaultMaxStringLength = conf.maxStringLength;
     conf.maxStringLength = 2;
     schema = getSchema();
-    innerWriter = new TsFileWriter(new IoTDBFile(filePath), schema, conf);
+    innerWriter = new TsFileWriter(IoTDBFileFactory.INSTANCE.getIoTDBFile(filePath), schema, conf);
   }
 
   @After

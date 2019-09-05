@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -44,7 +45,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -80,7 +80,7 @@ public class TsFileIOWriter {
   protected int totalChunkNum = 0;
   protected int invalidChunkNum;
 
-  protected IoTDBFile file;
+  protected File file;
 
   /**
    * empty construct function.
@@ -95,7 +95,7 @@ public class TsFileIOWriter {
    * @param file be used to output written data
    * @throws IOException if I/O error occurs
    */
-  public TsFileIOWriter(IoTDBFile file) throws IOException {
+  public TsFileIOWriter(File file) throws IOException {
     this.out = new DefaultTsFileOutput(file);
     startFile();
   }
@@ -230,7 +230,7 @@ public class TsFileIOWriter {
     out.write(chunk.getData());
     endChunk(chunkMetadata.getNumOfPoints());
   }
-  
+
   /**
    * end chunk and write some log.
    *
@@ -376,12 +376,8 @@ public class TsFileIOWriter {
   }
 
   /**
-<<<<<<< HEAD
-   * close the outputStream or file channel without writing FileMetadata.
-=======
    * close the outputStream or file channel without writing FileMetadata. This is just used for
    * Testing.
->>>>>>> master
    */
   public void close() throws IOException {
     canWrite = false;
@@ -412,7 +408,7 @@ public class TsFileIOWriter {
     return invalidChunkNum;
   }
 
-  public IoTDBFile getFile() {
+  public File getFile() {
     return file;
   }
 

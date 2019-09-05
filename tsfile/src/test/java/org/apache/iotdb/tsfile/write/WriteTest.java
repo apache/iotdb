@@ -34,7 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFileFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.RecordUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
@@ -91,8 +91,8 @@ public class WriteTest {
     } catch (IOException e) {
       fail();
     }
-    IoTDBFile file = new IoTDBFile(outputDataFile);
-    IoTDBFile errorFile = new IoTDBFile(errorOutputDataFile);
+    File file = IoTDBFileFactory.INSTANCE.getIoTDBFile(outputDataFile);
+    File errorFile = IoTDBFileFactory.INSTANCE.getIoTDBFile(errorOutputDataFile);
     if (file.exists()) {
       file.delete();
     }
@@ -118,15 +118,15 @@ public class WriteTest {
 
   @After
   public void after() {
-    IoTDBFile file = new IoTDBFile(inputDataFile);
+    File file = IoTDBFileFactory.INSTANCE.getIoTDBFile(inputDataFile);
     if (file.exists()) {
       file.delete();
     }
-    file = new IoTDBFile(outputDataFile);
+    file = IoTDBFileFactory.INSTANCE.getIoTDBFile(outputDataFile);
     if (file.exists()) {
       file.delete();
     }
-    file = new IoTDBFile(errorOutputDataFile);
+    file = IoTDBFileFactory.INSTANCE.getIoTDBFile(errorOutputDataFile);
     if (file.exists()) {
       file.delete();
     }
@@ -139,7 +139,7 @@ public class WriteTest {
   }
 
   private void generateSampleInputDataFile() throws IOException {
-    IoTDBFile file = new IoTDBFile(inputDataFile);
+    File file = IoTDBFileFactory.INSTANCE.getIoTDBFile(inputDataFile);
     if (file.exists()) {
       file.delete();
     }

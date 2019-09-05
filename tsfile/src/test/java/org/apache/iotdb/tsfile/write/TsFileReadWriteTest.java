@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.write;
 
 import static org.junit.Assert.*;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -27,7 +28,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFileFactory;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -48,11 +49,11 @@ public class TsFileReadWriteTest {
 
   private final double delta = 0.0000001;
   private String path = "read_write_rle.tsfile";
-  private IoTDBFile f;
+  private File f;
 
   @Before
   public void setUp() throws Exception {
-    f = new IoTDBFile(path);
+    f = IoTDBFileFactory.INSTANCE.getIoTDBFile(path);
     if (f.exists()) {
       assertTrue(f.delete());
     }
@@ -60,7 +61,7 @@ public class TsFileReadWriteTest {
 
   @After
   public void tearDown() throws Exception {
-    f = new IoTDBFile(path);
+    f = IoTDBFileFactory.INSTANCE.getIoTDBFile(path);
     if (f.exists()) {
       assertTrue(f.delete());;
     }

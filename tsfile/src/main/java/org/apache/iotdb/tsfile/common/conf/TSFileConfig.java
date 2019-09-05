@@ -141,7 +141,7 @@ public class TSFileConfig {
   /**
    * Default storage is in local file system, not in HDFS
    */
-  public static boolean isHdfsStorage = false;
+  public static String storageFs = "LOCAL";
 
   /**
    * only can be used by TsFileDescriptor.

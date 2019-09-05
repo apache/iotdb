@@ -21,11 +21,13 @@ package org.apache.iotdb.tsfile;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFileFactory;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
+
+import java.io.File;
 
 /**
  * An example of writing data with RowBatch to TsFile
@@ -35,7 +37,7 @@ public class TsFileWriteWithRowBatch {
   public static void main(String[] args) {
     try {
       String path = "test.tsfile";
-      IoTDBFile f = new IoTDBFile(path);
+      File f = IoTDBFileFactory.INSTANCE.getIoTDBFile(path);
       if (f.exists()) {
         f.delete();
       }

@@ -22,9 +22,9 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -45,7 +45,7 @@ public class IncompleteFileTestUtil {
      * @param file File to write
      * @throws IOException is thrown when encountering IO issues
      */
-    public static void writeFileWithOneIncompleteChunkHeader(IoTDBFile file) throws IOException {
+    public static void writeFileWithOneIncompleteChunkHeader(File file) throws IOException {
         TsFileWriter writer = new TsFileWriter(file);
 
         ChunkHeader header = new ChunkHeader("s1", 100, TSDataType.FLOAT, CompressionType.SNAPPY,

@@ -41,7 +41,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFile;
+import org.apache.iotdb.tsfile.fileSystem.IoTDBFileFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -76,7 +76,7 @@ public class TsFileProcessorTest {
   @Test
   public void testWriteAndFlush()
       throws WriteProcessException, IOException, TsFileProcessorException {
-    processor = new TsFileProcessor(storageGroup, new IoTDBFile(filePath),
+    processor = new TsFileProcessor(storageGroup, IoTDBFileFactory.INSTANCE.getIoTDBFile(filePath),
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
     },
         () -> true, true);
@@ -123,7 +123,7 @@ public class TsFileProcessorTest {
   @Test
   public void testWriteAndRestoreMetadata()
       throws IOException {
-    processor = new TsFileProcessor(storageGroup, new IoTDBFile(filePath),
+    processor = new TsFileProcessor(storageGroup, IoTDBFileFactory.INSTANCE.getIoTDBFile(filePath),
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
     },
         () -> true, true);
@@ -168,7 +168,7 @@ public class TsFileProcessorTest {
     RestorableTsFileIOWriter tsFileIOWriter = processor.getWriter();
     List<ChunkGroupMetaData> chunkGroupMetaDataList = tsFileIOWriter.getChunkGroupMetaDatas();
     RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(
-        new IoTDBFile(filePath));
+        IoTDBFileFactory.INSTANCE.getIoTDBFile(filePath));
     List<ChunkGroupMetaData> restoredChunkGroupMetaDataList = restorableTsFileIOWriter
         .getChunkGroupMetaDatas();
     assertEquals(chunkGroupMetaDataList.size(), restoredChunkGroupMetaDataList.size());
@@ -190,7 +190,7 @@ public class TsFileProcessorTest {
   @Test
   public void testMultiFlush()
       throws WriteProcessException, IOException, TsFileProcessorException {
-    processor = new TsFileProcessor(storageGroup, new IoTDBFile(filePath),
+    processor = new TsFileProcessor(storageGroup, IoTDBFileFactory.INSTANCE.getIoTDBFile(filePath),
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
     },
         () -> true, true);
@@ -226,7 +226,7 @@ public class TsFileProcessorTest {
   @Test
   public void testWriteAndClose()
       throws WriteProcessException, IOException {
-    processor = new TsFileProcessor(storageGroup, new IoTDBFile(filePath),
+    processor = new TsFileProcessor(storageGroup, IoTDBFileFactory.INSTANCE.getIoTDBFile(filePath),
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE,
         unsealedTsFileProcessor -> {
           TsFileResource resource = unsealedTsFileProcessor.getTsFileResource();
