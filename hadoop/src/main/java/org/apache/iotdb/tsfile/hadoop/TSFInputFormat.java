@@ -18,30 +18,25 @@
  */
 package org.apache.iotdb.tsfile.hadoop;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.*;
+import org.apache.hadoop.io.ArrayWritable;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
+import org.apache.iotdb.tsfile.file.metadata.RowGroupMetaData;
+import org.apache.iotdb.tsfile.hadoop.io.HDFSInput;
+import org.apache.iotdb.tsfile.read.FileReader;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.BlockLocation;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.LocatedFileStatus;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.ArrayWritable;
-import org.apache.hadoop.io.NullWritable;
-import org.apache.hadoop.mapreduce.InputSplit;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.JobContext;
-import org.apache.hadoop.mapreduce.RecordReader;
-import org.apache.hadoop.mapreduce.TaskAttemptContext;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.apache.iotdb.tsfile.file.metadata.RowGroupMetaData;
-import org.apache.iotdb.tsfile.hadoop.io.HDFSInputStream;
-import org.apache.iotdb.tsfile.read.FileReader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author liukun
@@ -150,8 +145,7 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
     if (measurementIds == null || measurementIds.length() < 1) {
       return null;
     } else {
-      List<String> measurementIdsList = Arrays.asList(measurementIds.split(SPERATOR));
-      return measurementIdsList;
+      return Arrays.asList(measurementIds.split(SPERATOR));
     }
   }
 
@@ -274,11 +268,9 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
           blockLocations = fileSystem.getFileBlockLocations(fileStatus, 0, length);
         }
         logger.info("The block location information is {}", Arrays.toString(blockLocations));
-        HDFSInputStream hdfsInputStream = new HDFSInputStream(path, configuration);
-        FileReader fileReader = new FileReader(hdfsInputStream);
-        // Get the timeserise to test
-        splits.addAll(generateSplits(path, fileReader, blockLocations));
-        fileReader.close();
+        try (TsFileSequenceReader fileReader = new TsFileSequenceReader(new HDFSInput(path, configuration))) {
+          splits.addAll(generateSplits(path, fileReader, blockLocations));
+        }
       } else {
         logger.warn("The file length is " + length);
       }
@@ -299,30 +291,24 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
    * @return
    * @throws IOException
    */
-  private List<TSFInputSplit> generateSplits(Path path, FileReader fileReader,
+  private List<TSFInputSplit> generateSplits(Path path, TsFileSequenceReader fileReader,
       BlockLocation[] blockLocations)
       throws IOException {
-    List<TSFInputSplit> splits = new ArrayList<TSFInputSplit>();
-    Comparator<BlockLocation> comparator = new Comparator<BlockLocation>() {
-      @Override
-      public int compare(BlockLocation o1, BlockLocation o2) {
+    List<TSFInputSplit> splits = new ArrayList<>();
 
-        return Long.signum(o1.getOffset() - o2.getOffset());
-      }
+    Arrays.sort(blockLocations, Comparator.comparingLong(BlockLocation::getOffset));
 
-    };
-    Arrays.sort(blockLocations, comparator);
-
-    List<RowGroupMetaData> rowGroupMetaDataList = new ArrayList<>();
+    List<ChunkGroupMetaData> chunkGroupMetaDataList = new ArrayList<>();
     int currentBlockIndex = 0;
     long splitSize = 0;
     long splitStart = 0;
     List<String> hosts = new ArrayList<>();
-    for (RowGroupMetaData rowGroupMetaData : fileReader.getSortedRowGroupMetaDataList()) {
-      logger.info("The rowGroupMetaData information is {}", rowGroupMetaData);
+    for (ChunkGroupMetaData chunkGroupMetaData : fileReader.getSortedChunkGroupMetaDataListByDeviceIds()) {
+      logger.info("The chunkGroupMetaData information is {}", chunkGroupMetaData);
 
-      long start = getRowGroupStart(rowGroupMetaData);
-      int blkIndex = getBlockLocationIndex(blockLocations, start);
+      long start = chunkGroupMetaData.getStartOffsetOfChunkGroup();
+      long middle = (chunkGroupMetaData.getStartOffsetOfChunkGroup() + chunkGroupMetaData.getEndOffsetOfChunkGroup()) / 2;
+      int blkIndex = getBlockLocationIndex(blockLocations, middle);
       if (hosts.size() == 0) {
         hosts.addAll(Arrays.asList(blockLocations[blkIndex].getHosts()));
         splitStart = start;
@@ -352,8 +338,8 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
     return splits;
   }
 
-  private long getRowGroupStart(RowGroupMetaData rowGroupMetaData) {
-    return rowGroupMetaData.getMetaDatas().get(0).getProperties().getFileOffset();
+  private long getChunkGroupStart(ChunkGroupMetaData chunkGroupMetaData) {
+    return chunkGroupMetaData.getChunkMetaDataList().get(0).getOffsetOfChunkHeader();
   }
 
   private int getBlockLocationIndex(BlockLocation[] blockLocations, long start) {

@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.ArrayWritable;
@@ -37,12 +39,18 @@ import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.RowGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TimeSeriesChunkMetaData;
-import org.apache.iotdb.tsfile.hadoop.io.HDFSInputStream;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
+import org.apache.iotdb.tsfile.hadoop.io.HDFSInput;
+import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.HadoopQueryEngine;
-import org.apache.iotdb.tsfile.read.query.QueryDataSet;
-import org.apache.iotdb.tsfile.read.support.Field;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.support.RowRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +71,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
   private boolean isReadDeviceId = false;
   private boolean isReadTime = false;
   private int arraySize = 0;
-  private HDFSInputStream hdfsInputStream;
+  private HDFSInput hdfsInput;
 
 
   @Override
@@ -72,17 +80,18 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
     if (split instanceof TSFInputSplit) {
       TSFInputSplit tsfInputSplit = (TSFInputSplit) split;
       Path path = tsfInputSplit.getPath();
-      List<RowGroupMetaData> rowGroupMetaDataList = tsfInputSplit.getDeviceRowGroupMetaDataList();
+      List<ChunkGroupMetaData> chunkGroupMetaDataList = tsfInputSplit.getChunkGroupMetaDataList();
       Configuration configuration = context.getConfiguration();
-      hdfsInputStream = new HDFSInputStream(path, configuration);
+      hdfsInput = new HDFSInput(path, configuration);
+
       // Get the read columns and filter information
       List<String> deltaObjectIdsList = TSFInputFormat.getReadDeltaObjectIds(configuration);
       if (deltaObjectIdsList == null) {
-        deltaObjectIdsList = initDeviceIdList(rowGroupMetaDataList);
+        deltaObjectIdsList = initDeviceIdList(chunkGroupMetaDataList);
       }
       List<String> measurementIdsList = TSFInputFormat.getReadMeasurementIds(configuration);
       if (measurementIdsList == null) {
-        measurementIdsList = initSensorIdList(rowGroupMetaDataList);
+        measurementIdsList = initSensorIdList(chunkGroupMetaDataList);
       }
       logger.info("deltaObjectIds:" + deltaObjectIdsList);
       logger.info("Sensors:" + measurementIdsList);
@@ -98,7 +107,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
       }
       arraySize += sensorNum;
 
-      HadoopQueryEngine queryEngine = new HadoopQueryEngine(hdfsInputStream, rowGroupMetaDataList);
+      ReadOnlyTsFile queryEngine = new ReadOnlyTsFile(hdfsInput, rowGroupMetaDataList);
       dataSet = queryEngine
           .queryWithSpecificRowGroups(deltaObjectIdsList, measurementIdsList, null, null, null);
     } else {
@@ -109,23 +118,19 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
     }
   }
 
-  private List<String> initDeviceIdList(List<RowGroupMetaData> rowGroupMetaDataList) {
-    Set<String> deviceIdSet = new HashSet<>();
-    for (RowGroupMetaData rowGroupMetaData : rowGroupMetaDataList) {
-      deviceIdSet.add(rowGroupMetaData.getDeltaObjectID());
-    }
-    return new ArrayList<>(deviceIdSet);
+  private List<String> initDeviceIdList(List<ChunkGroupMetaData> chunkGroupMetaDataList) {
+    return chunkGroupMetaDataList.stream()
+            .map(ChunkGroupMetaData::getDeviceID)
+            .distinct()
+            .collect(Collectors.toList());
   }
 
-  private List<String> initSensorIdList(List<RowGroupMetaData> rowGroupMetaDataList) {
-    Set<String> sensorIdSet = new HashSet<>();
-    for (RowGroupMetaData rowGroupMetaData : rowGroupMetaDataList) {
-      for (TimeSeriesChunkMetaData timeSeriesChunkMetaData : rowGroupMetaData
-          .getTimeSeriesChunkMetaDataList()) {
-        sensorIdSet.add(timeSeriesChunkMetaData.getProperties().getMeasurementUID());
-      }
-    }
-    return new ArrayList<>(sensorIdSet);
+  private List<String> initSensorIdList(List<ChunkGroupMetaData> chunkGroupMetaDataList) {
+    return chunkGroupMetaDataList.stream()
+            .flatMap(chunkGroupMetaData -> chunkGroupMetaData.getChunkMetaDataList().stream())
+            .map(ChunkMetaData::getMeasurementUid)
+            .distinct()
+            .collect(Collectors.toList());
   }
 
   @Override
@@ -134,14 +139,14 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
 
     if (fields == null || sensorIndex >= fields.size()) {
       logger.info("Start another row~");
-      if (!dataSet.next()) {
+      if (!dataSet.hasNext()) {
         logger.info("Finish all rows~");
         return false;
       }
 
-      RowRecord rowRecord = dataSet.getCurrentRecord();
+      RowRecord rowRecord = dataSxet.next();
       fields = rowRecord.getFields();
-      timestamp = rowRecord.getTime();
+      timestamp = rowRecord.getTimestamp();
       sensorIndex = 0;
     }
     deviceId = fields.get(sensorIndex).deltaObjectId;
@@ -158,18 +163,18 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
   public ArrayWritable getCurrentValue() throws IOException, InterruptedException {
 
     Writable[] writables = getEmptyWritables();
-    Text deviceid = new Text(deviceId);
+    Text deviceIdText = new Text(deviceId);
     LongWritable time = new LongWritable(timestamp);
     int index = 0;
     if (isReadTime && isReadDeviceId) {
       writables[0] = time;
-      writables[1] = deviceid;
+      writables[1] = deviceIdText;
       index = 2;
     } else if (isReadTime && !isReadDeviceId) {
       writables[0] = time;
       index = 1;
     } else if (!isReadTime && isReadDeviceId) {
-      writables[0] = deviceid;
+      writables[0] = deviceIdText;
       index = 1;
     }
 
@@ -179,7 +184,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
         logger.info("Current value is null");
         writables[index] = NullWritable.get();
       } else {
-        switch (field.dataType) {
+        switch (field.getDataType()) {
           case INT32:
             writables[index] = new IntWritable(field.getIntV());
             break;
@@ -199,9 +204,9 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
             writables[index] = new Text(field.getBinaryV().getStringValue());
             break;
           default:
-            logger.error("The data type is not support {}", field.dataType);
+            logger.error("The data type is not support {}", field.getDataType());
             throw new InterruptedException(
-                String.format("The data type %s is not support ", field.dataType));
+                String.format("The data type %s is not support ", field.getDataType()));
         }
       }
       index++;
@@ -217,7 +222,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
   @Override
   public void close() throws IOException {
     dataSet = null;
-    hdfsInputStream.close();
+    hdfsInput.close();
   }
 
   private Writable[] getEmptyWritables() {

@@ -18,22 +18,22 @@
  */
 package org.apache.iotdb.tsfile.hadoop;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.iotdb.tsfile.hadoop.io.HDFSInputStream;
+import org.apache.iotdb.tsfile.hadoop.io.HDFSInput;
 import org.apache.iotdb.tsfile.hadoop.io.HDFSOutputStream;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+
 
 public class InputOutputStreamTest {
 
-  private HDFSInputStream hdfsInputStream = null;
+  private HDFSInput hdfsInput = null;
   private HDFSOutputStream hdfsOutputStream = null;
   private int lenOfBytes = 50;
   private byte b = 10;
@@ -75,16 +75,16 @@ public class InputOutputStreamTest {
     hdfsOutputStream.close();
     assertEquals(true, fileSystem.exists(path));
     // read bytes using hdfs inputstream
-    hdfsInputStream = new HDFSInputStream(filename);
-    assertEquals(0, hdfsInputStream.getPos());
-    assertEquals(lenOfBytes, hdfsInputStream.length());
-    hdfsInputStream.seek(10);
-    assertEquals(10, hdfsInputStream.getPos());
-    hdfsInputStream.seek(0);
-    hdfsInputStream.read(rbs, 0, rbs.length);
-    assertEquals(lenOfBytes, hdfsInputStream.getPos());
+    hdfsInput = new HDFSInput(filename);
+    assertEquals(0, hdfsInput.position());
+    assertEquals(lenOfBytes, hdfsInput.size());
+    hdfsInput.position(10);
+    assertEquals(10, hdfsInput.position());
+    hdfsInput.position(0);
+    hdfsInput.read(rbs, 0, rbs.length);
+    assertEquals(lenOfBytes, hdfsInput.position());
     assertArrayEquals(bs, rbs);
-    hdfsInputStream.close();
+    hdfsInput.close();
     assertEquals(true, fileSystem.exists(path));
     fileSystem.delete(path, true);
     assertEquals(false, fileSystem.exists(path));

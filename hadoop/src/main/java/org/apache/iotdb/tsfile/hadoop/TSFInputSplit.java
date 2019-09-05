@@ -18,20 +18,18 @@
  */
 package org.apache.iotdb.tsfile.hadoop;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Arrays;
-import java.util.List;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.RowGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsRowGroupBlockMetaData;
 import org.apache.iotdb.tsfile.file.utils.ReadWriteThriftFormatUtils;
 import org.apache.iotdb.tsfile.format.RowGroupBlockMetaData;
+
+import java.io.*;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * This is tsfile <code>InputSplit</code>.<br>
@@ -43,8 +41,8 @@ import org.apache.iotdb.tsfile.format.RowGroupBlockMetaData;
 public class TSFInputSplit extends InputSplit implements Writable {
 
   private Path path;
-  private int numOfDeviceRowGroup;
-  private List<RowGroupMetaData> deviceRowGroupMetaDataList;
+  private int numOfChunkGroup;
+  private List<ChunkGroupMetaData> chunkGroupMetaDataList;
   private long start;
   private long length;
   private String[] hosts;
@@ -55,17 +53,17 @@ public class TSFInputSplit extends InputSplit implements Writable {
 
   /**
    * @param path
-   * @param deviceRowGroupMetaDataList
+   * @param chunkGroupMetaDataList
    * @param start
    * @param length
    * @param hosts
    */
-  public TSFInputSplit(Path path, List<RowGroupMetaData> deviceRowGroupMetaDataList, long start,
+  public TSFInputSplit(Path path, List<ChunkGroupMetaData> chunkGroupMetaDataList, long start,
       long length,
       String[] hosts) {
     this.path = path;
-    this.deviceRowGroupMetaDataList = deviceRowGroupMetaDataList;
-    this.numOfDeviceRowGroup = deviceRowGroupMetaDataList.size();
+    this.chunkGroupMetaDataList = chunkGroupMetaDataList;
+    this.numOfChunkGroup = chunkGroupMetaDataList.size();
     this.start = start;
     this.length = length;
     this.hosts = hosts;
@@ -79,41 +77,38 @@ public class TSFInputSplit extends InputSplit implements Writable {
   }
 
   /**
-   * @param path
-   *            the path to set
+   * @param path the path to set
    */
   public void setPath(Path path) {
     this.path = path;
   }
 
   /**
-   * @return the numOfDeviceRowGroup
+   * @return the numOfChunkGroup
    */
-  public int getNumOfDeviceRowGroup() {
-    return numOfDeviceRowGroup;
+  public int getNumOfChunkGroup() {
+    return numOfChunkGroup;
   }
 
   /**
-   * @param numOfDeviceRowGroup
-   *            the numOfDeviceRowGroup to set
+   * @param numOfChunkGroup the numOfChunkGroup to set
    */
-  public void setNumOfDeviceRowGroup(int numOfDeviceRowGroup) {
-    this.numOfDeviceRowGroup = numOfDeviceRowGroup;
+  public void setNumOfChunkGroup(int numOfChunkGroup) {
+    this.numOfChunkGroup = numOfChunkGroup;
   }
 
   /**
-   * @return the deviceRowGroupMetaDataList
+   * @return the chunkGroupMetaDataList
    */
-  public List<RowGroupMetaData> getDeviceRowGroupMetaDataList() {
-    return deviceRowGroupMetaDataList;
+  public List<ChunkGroupMetaData> getChunkGroupMetaDataList() {
+    return chunkGroupMetaDataList;
   }
 
   /**
-   * @param deviceRowGroupMetaDataList
-   *            the deviceRowGroupMetaDataList to set
+   * @param chunkGroupMetaDataList the chunkGroupMetaDataList to set
    */
-  public void setDeviceRowGroupMetaDataList(List<RowGroupMetaData> deviceRowGroupMetaDataList) {
-    this.deviceRowGroupMetaDataList = deviceRowGroupMetaDataList;
+  public void setChunkGroupMetaDataList(List<ChunkGroupMetaData> chunkGroupMetaDataList) {
+    this.chunkGroupMetaDataList = chunkGroupMetaDataList;
   }
 
   /**
@@ -153,7 +148,7 @@ public class TSFInputSplit extends InputSplit implements Writable {
     }
     out.writeInt(numOfDeviceRowGroup);
     RowGroupBlockMetaData rowGroupBlockMetaData = new TsRowGroupBlockMetaData(
-        deviceRowGroupMetaDataList)
+            chunkGroupMetaDataList)
         .convertToThrift();
     ReadWriteThriftFormatUtils
         .writeRowGroupBlockMetadata(rowGroupBlockMetaData, (OutputStream) out);
@@ -173,13 +168,13 @@ public class TSFInputSplit extends InputSplit implements Writable {
     TsRowGroupBlockMetaData tsRowGroupBlockMetaData = new TsRowGroupBlockMetaData();
     tsRowGroupBlockMetaData
         .convertToTSF(ReadWriteThriftFormatUtils.readRowGroupBlockMetaData((InputStream) in));
-    deviceRowGroupMetaDataList = tsRowGroupBlockMetaData.getRowGroups();
+    chunkGroupMetaDataList = tsRowGroupBlockMetaData.getRowGroups();
   }
 
   @Override
   public String toString() {
-    return "TSFInputSplit [path=" + path + ", numOfDeviceGroup=" + numOfDeviceRowGroup
-        + ", deviceRowGroupMetaDataList=" + deviceRowGroupMetaDataList + ", start=" + start
+    return "TSFInputSplit [path=" + path + ", numOfChunkGroup=" + numOfChunkGroup
+        + ", chunkGroupMetaDataList=" + chunkGroupMetaDataList + ", start=" + start
         + ", length="
         + length + ", hosts=" + Arrays.toString(hosts) + "]";
   }
