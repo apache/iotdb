@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.fileSystem;
+package org.apache.iotdb.db.engine.fileSystem;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;

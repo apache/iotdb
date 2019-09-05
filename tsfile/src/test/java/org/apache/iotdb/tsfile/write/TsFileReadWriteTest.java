@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFileFactory;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -53,7 +52,7 @@ public class TsFileReadWriteTest {
 
   @Before
   public void setUp() throws Exception {
-    f = IoTDBFileFactory.INSTANCE.getIoTDBFile(path);
+    f = new File(path);
     if (f.exists()) {
       assertTrue(f.delete());
     }
@@ -61,7 +60,7 @@ public class TsFileReadWriteTest {
 
   @After
   public void tearDown() throws Exception {
-    f = IoTDBFileFactory.INSTANCE.getIoTDBFile(path);
+    f = new File(path);
     if (f.exists()) {
       assertTrue(f.delete());;
     }

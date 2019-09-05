@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFileFactory;
+import org.apache.iotdb.db.engine.fileSystem.FileFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -80,7 +80,7 @@ public class UnseqTsFileRecoverTest {
 
   @Before
   public void setup() throws IOException, WriteProcessException {
-    tsF = IoTDBFileFactory.INSTANCE.getIoTDBFile("temp", "test.ts");
+    tsF = FileFactory.INSTANCE.getFile("temp", "test.ts");
     tsF.getParentFile().mkdirs();
 
     schema = new Schema();

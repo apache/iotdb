@@ -138,10 +138,6 @@ public class TSFileConfig {
    * Default endian value is BIG_ENDIAN.
    */
   public static String endian = "BIG_ENDIAN";
-  /**
-   * Default storage is in local file system, not in HDFS
-   */
-  public static String storageFs = "LOCAL";
 
   /**
    * only can be used by TsFileDescriptor.

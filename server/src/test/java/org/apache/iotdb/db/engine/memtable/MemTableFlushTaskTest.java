@@ -26,7 +26,7 @@ import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFileFactory;
+import org.apache.iotdb.db.engine.fileSystem.FileFactory;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
 import org.junit.Before;
@@ -45,7 +45,7 @@ public class MemTableFlushTaskTest {
   public void setUp() throws Exception {
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
-    writer = new RestorableTsFileIOWriter(IoTDBFileFactory.INSTANCE.getIoTDBFile(filePath));
+    writer = new RestorableTsFileIOWriter(FileFactory.INSTANCE.getFile(filePath));
     memTable = new PrimitiveMemTable();
   }
 

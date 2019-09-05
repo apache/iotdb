@@ -26,7 +26,7 @@ import java.io.IOException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFileFactory;
+import org.apache.iotdb.db.engine.fileSystem.FileFactory;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -61,7 +61,7 @@ public class FileReaderManagerTest {
     TsFileResource[] tsFileResources = new TsFileResource[MAX_FILE_SIZE + 1];
 
     for (int i = 1; i <= MAX_FILE_SIZE; i++) {
-      File file = IoTDBFileFactory.INSTANCE.getIoTDBFile(filePath + i);
+      File file = FileFactory.INSTANCE.getFile(filePath + i);
       file.createNewFile();
       tsFileResources[i] = new TsFileResource(file);
     }
@@ -116,7 +116,7 @@ public class FileReaderManagerTest {
     t2.join();
 
     for (int i = 1; i <= MAX_FILE_SIZE; i++) {
-      TsFileResource tsFile = new TsFileResource(IoTDBFileFactory.INSTANCE.getIoTDBFile(filePath + i));
+      TsFileResource tsFile = new TsFileResource(FileFactory.INSTANCE.getFile(filePath + i));
       Assert.assertTrue(manager.contains(tsFile, false));
     }
 
@@ -136,7 +136,7 @@ public class FileReaderManagerTest {
 
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     for (int i = 1; i < MAX_FILE_SIZE; i++) {
-      File file = IoTDBFileFactory.INSTANCE.getIoTDBFile(filePath + i);
+      File file = FileFactory.INSTANCE.getFile(filePath + i);
       boolean result = !file.exists() || file.delete();
       if (!result) {
         fail();

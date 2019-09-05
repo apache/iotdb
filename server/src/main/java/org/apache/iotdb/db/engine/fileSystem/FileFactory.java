@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -17,43 +17,45 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.fileSystem;
+package org.apache.iotdb.db.engine.fileSystem;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import java.io.File;
 import java.net.URI;
 
-public enum IoTDBFileFactory {
+public enum FileFactory {
 
   INSTANCE;
 
-  public File getIoTDBFile(String pathname) {
-    if (TSFileConfig.storageFs.equals("HDFS")) {
+  private static FSType FSType = IoTDBDescriptor.getInstance().getConfig().getStorageFs();
+
+  public File getFile(String pathname) {
+    if (FSType.equals(FSType.HDFS)) {
       return new HdfsFile(pathname);
     } else {
       return new File(pathname);
     }
   }
 
-  public File getIoTDBFile(String parent, String child) {
-    if (TSFileConfig.storageFs.equals("HDFS")) {
+  public File getFile(String parent, String child) {
+    if (FSType.equals(FSType.HDFS)) {
       return new HdfsFile(parent, child);
     } else {
       return new File(parent, child);
     }
   }
 
-  public File getIoTDBFile(File parent, String child) {
-    if (TSFileConfig.storageFs.equals("HDFS")) {
+  public File getFile(File parent, String child) {
+    if (FSType.equals(FSType.HDFS)) {
       return new HdfsFile(parent, child);
     } else {
       return new File(parent, child);
     }
   }
 
-  public File getIoTDBFile(URI uri) {
-    if (TSFileConfig.storageFs.equals("HDFS")) {
+  public File getFile(URI uri) {
+    if (FSType.equals(FSType.HDFS)) {
       return new HdfsFile(uri);
     } else {
       return new File(uri);

@@ -35,7 +35,6 @@ import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFileFactory;
 import org.apache.iotdb.tsfile.utils.RecordUtils;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -63,7 +62,7 @@ public class PerfTest {
   static public Random r = new Random();
 
   static private void generateSampleInputDataFile() throws IOException {
-    File file = IoTDBFileFactory.INSTANCE.getIoTDBFile(inputDataFile);
+    File file = new File(inputDataFile);
     if (file.exists()) {
       file.delete();
     }
@@ -107,8 +106,8 @@ public class PerfTest {
   }
 
   static private void write() throws IOException, InterruptedException, WriteProcessException {
-    File file = IoTDBFileFactory.INSTANCE.getIoTDBFile(outputDataFile);
-    File errorFile = IoTDBFileFactory.INSTANCE.getIoTDBFile(errorOutputDataFile);
+    File file = new File(outputDataFile);
+    File errorFile = new File(errorOutputDataFile);
     if (file.exists()) {
       file.delete();
     }
@@ -130,7 +129,7 @@ public class PerfTest {
   }
 
   static private Scanner getDataFile(String path) {
-    File file = IoTDBFileFactory.INSTANCE.getIoTDBFile(path);
+    File file = new File(path);
     try {
       Scanner in = new Scanner(file);
       return in;
@@ -182,15 +181,15 @@ public class PerfTest {
 
   @After
   public void after() {
-    File file = IoTDBFileFactory.INSTANCE.getIoTDBFile(inputDataFile);
+    File file = new File(inputDataFile);
     if (file.exists()) {
       file.delete();
     }
-    file = IoTDBFileFactory.INSTANCE.getIoTDBFile(outputDataFile);
+    file = new File(outputDataFile);
     if (file.exists()) {
       file.delete();
     }
-    file = IoTDBFileFactory.INSTANCE.getIoTDBFile(errorOutputDataFile);
+    file = new File(errorOutputDataFile);
     if (file.exists()) {
       file.delete();
     }

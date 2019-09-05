@@ -38,7 +38,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFileFactory;
+import org.apache.iotdb.db.engine.fileSystem.FileFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -82,7 +82,7 @@ public class TsFileRecoverPerformer {
     this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
         versionController,
         tsFileResource, schema, recoverMemTable, acceptUnseq);
-    File insertFile = IoTDBFileFactory.INSTANCE.getIoTDBFile(insertFilePath);
+    File insertFile = FileFactory.INSTANCE.getFile(insertFilePath);
     if (!insertFile.exists()) {
       logger.error("TsFile {} is missing, will skip its recovery.", insertFilePath);
       return;
@@ -142,7 +142,7 @@ public class TsFileRecoverPerformer {
     // clean logs
     try {
       MultiFileLogNodeManager.getInstance()
-          .deleteNode(logNodePrefix + IoTDBFileFactory.INSTANCE.getIoTDBFile(insertFilePath).getName());
+          .deleteNode(logNodePrefix + FileFactory.INSTANCE.getFile(insertFilePath).getName());
     } catch (IOException e) {
       throw new ProcessorException(e);
     }

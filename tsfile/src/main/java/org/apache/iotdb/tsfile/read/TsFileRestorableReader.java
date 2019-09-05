@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.tsfile.read;
 
+import java.io.File;
 import java.io.IOException;
 
-import org.apache.iotdb.tsfile.fileSystem.IoTDBFileFactory;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
@@ -60,7 +60,7 @@ public class TsFileRestorableReader extends TsFileSequenceReader {
     if (!isComplete()) {
       // Try to close it
       logger.info("File {} has no correct tail magic, try to repair...", file);
-      RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(IoTDBFileFactory.INSTANCE.getIoTDBFile(file));
+      RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(new File(file));
       TsFileWriter writer = new TsFileWriter(rWriter);
       // This writes the right magic string
       writer.close();
