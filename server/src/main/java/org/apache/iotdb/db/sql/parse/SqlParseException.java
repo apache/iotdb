@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.db.sql.parse;
 
+import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
+
 public class SqlParseException extends RuntimeException {
 
   public SqlParseException(String msg) {
     super(msg);
   }
 
+  public SqlParseException(LogicalOperatorException e) {
+    super(e);
+  }
 }

@@ -467,7 +467,7 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
         fillClauseDataType = parseType(typeClauseContext.Identifier().getText());
         visit(typeClauseContext.interTypeClause());
       } catch (LogicalOperatorException e) {
-        throw new SqlParseException(e.getMessage());
+        throw new SqlParseException(e);
       }
     }
     ((QueryOperator) initializedOperator).setFillTypes(fillTypes);
@@ -729,11 +729,6 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
   }
 
   private void checkMetadataArgs(String dataType, String encoding, String compressor) {
-//    final String rle = "RLE";
-//    final String plain = "PLAIN";
-//    final String ts2Diff = "TS_2DIFF";
-//    final String bitmap = "BITMAP";
-//    final String gorilla = "GORILLA";
     TSDataType tsDataType;
     TSEncoding tsEncoding;
     if (dataType == null) {
@@ -902,7 +897,7 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
     String[] privileges = new String[ctx.privileges().StringLiteral().size()];
     int i = 0;
     for (TerminalNode privilege : ctx.privileges().StringLiteral()) {
-      privileges[i++] = parseStringWithQuoto(privilege.getText());
+      privileges[i++] = parseStringWithQuote(privilege.getText());
     }
     Path nodePath = parsePrefixPath(ctx.prefixPath());
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT,
@@ -919,7 +914,7 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
     String[] privileges = new String[ctx.privileges().StringLiteral().size()];
     int i = 0;
     for (TerminalNode privilege : ctx.privileges().StringLiteral()) {
-      privileges[i++] = parseStringWithQuoto(privilege.getText());
+      privileges[i++] = parseStringWithQuote(privilege.getText());
     }
     Path nodePath = parsePrefixPath(ctx.prefixPath());
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT,
@@ -941,9 +936,9 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
     return initializedOperator;
   }
 
-  private String parseStringWithQuoto(String src) {
+  private String parseStringWithQuote(String src) {
     if (src.length() < 3 || src.charAt(0) != '\'' || src.charAt(src.length() - 1) != '\'') {
-      throw new SqlParseException("error format for string with quoto:" + src);
+      throw new SqlParseException("error format for string with quote:" + src);
     }
     return src.substring(1, src.length() - 1);
   }
@@ -953,7 +948,7 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
     String[] privileges = new String[ctx.privileges().StringLiteral().size()];
     int i = 0;
     for (TerminalNode privilege : ctx.privileges().StringLiteral()) {
-      privileges[i++] = parseStringWithQuoto(privilege.getText());
+      privileges[i++] = parseStringWithQuote(privilege.getText());
     }
     Path nodePath = parsePrefixPath(ctx.prefixPath());
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_REVOKE,
@@ -970,7 +965,7 @@ public class ExecuteSqlVisitor extends TSParserBaseVisitor {
     String[] privileges = new String[ctx.privileges().StringLiteral().size()];
     int i = 0;
     for (TerminalNode privilege : ctx.privileges().StringLiteral()) {
-      privileges[i++] = parseStringWithQuoto(privilege.getText());
+      privileges[i++] = parseStringWithQuote(privilege.getText());
     }
     Path nodePath = parsePrefixPath(ctx.prefixPath());
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_REVOKE,
