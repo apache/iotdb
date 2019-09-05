@@ -153,7 +153,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     for (String bufferWritePath : bufferWritePaths) {
       bufferWritePath = FilePathUtils.regularizePath(bufferWritePath);
       String backupPath = bufferWritePath + SYNC_SERVER + File.separator;
-        File backupDirectory = FileFactory.INSTANCE.getFile(backupPath, this.uuid.get());
+      File backupDirectory = FileFactory.INSTANCE.getFile(backupPath, this.uuid.get());
       if (backupDirectory.exists() && backupDirectory.list().length != 0) {
         try {
           FileUtils.deleteDirectory(backupDirectory);
@@ -202,7 +202,7 @@ public class SyncServiceImpl implements SyncService.Iface {
       /** sync metadata, include storage group and timeseries **/
       return Boolean.toString(loadMetadata());
     } else if (status == SyncDataStatus.PROCESSING_STATUS) {
-        File file = FileFactory.INSTANCE.getFile(schemaFromSenderPath.get());
+      File file = FileFactory.INSTANCE.getFile(schemaFromSenderPath.get());
       if (!file.getParentFile().exists()) {
         try {
           file.getParentFile().mkdirs();
@@ -327,7 +327,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     syncDataPath = FilePathUtils.regularizePath(syncDataPath);
     filePath = syncDataPath + filePath;
     if (status == SyncDataStatus.PROCESSING_STATUS) { // there are still data stream to add
-        File file = FileFactory.INSTANCE.getFile(filePath);
+      File file = FileFactory.INSTANCE.getFile(filePath);
       if (!file.getParentFile().exists()) {
         try {
           file.getParentFile().mkdirs();

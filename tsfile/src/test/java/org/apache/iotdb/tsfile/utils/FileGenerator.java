@@ -39,7 +39,6 @@ import org.slf4j.LoggerFactory;
 public class FileGenerator {
 
   private static final Logger LOG = LoggerFactory.getLogger(FileGenerator.class);
-
   public static int ROW_COUNT = 1000;
   public static TsFileWriter innerWriter;
   public static String inputDataFile;

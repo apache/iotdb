@@ -112,9 +112,9 @@ public class TsFileProcessor {
   private long totalMemTableSize;
 
   TsFileProcessor(String storageGroupName, File tsfile, Schema schema,
-                  VersionController versionController,
-                  CloseTsFileCallBack closeTsFileCallback,
-                  Supplier updateLatestFlushTimeCallback, boolean sequence)
+      VersionController versionController,
+      CloseTsFileCallBack closeTsFileCallback,
+      Supplier updateLatestFlushTimeCallback, boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.schema = schema;

@@ -26,7 +26,6 @@ import java.util.List;
 
 public abstract class AbstractScript {
 
-
   protected void testOutput(ProcessBuilder builder, String[] output) throws IOException {
     builder.redirectErrorStream(true);
     Process p = builder.start();

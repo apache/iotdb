@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.write;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;

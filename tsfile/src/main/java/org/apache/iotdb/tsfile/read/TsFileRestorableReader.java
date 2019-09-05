@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.read;
 
 import java.io.File;
 import java.io.IOException;
-
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
