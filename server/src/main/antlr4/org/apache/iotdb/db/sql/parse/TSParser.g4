@@ -344,7 +344,7 @@ setExpression
 /*
 ****
 *************
-Index Statment
+Index Statement
 *************
 ****
 */
