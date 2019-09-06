@@ -32,12 +32,6 @@ import org.apache.iotdb.db.service.TSServiceImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 public class IoTDBConfig {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
@@ -332,7 +326,7 @@ public class IoTDBConfig {
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
   /**
-   * Default storage is in local file system, not in HDFS
+   * Default storage is in local file system
    */
   private FSType storageFs = FSType.LOCAL;
 
@@ -898,10 +892,6 @@ public class IoTDBConfig {
   }
 
   public void setStorageFs(String storageFs) {
-    if (storageFs.equals("HDFS")) {
-      this.storageFs = FSType.HDFS;
-    } else if (storageFs.equals("LOCAL")) {
-      this.storageFs = FSType.LOCAL;
-    }
+    this.storageFs = FSType.valueOf(storageFs);
   }
 }
