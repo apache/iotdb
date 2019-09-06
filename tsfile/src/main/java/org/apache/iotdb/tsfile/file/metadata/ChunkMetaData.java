@@ -19,18 +19,26 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * MetaData of one chunk.
  */
 public class ChunkMetaData {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ChunkMetaData.class);
+
 
   private String measurementUid;
 
@@ -133,12 +141,19 @@ public class ChunkMetaData {
    * @return serialized size (int type)
    */
   public int getSerializedSize() {
-    return (Integer.BYTES + measurementUid.length()) + // measurementUid
-        4 * Long.BYTES + // 4 long: offsetOfChunkHeader, numOfPoints, startTime, endTime
-        TSDataType.getSerializedSize() + // TSDataType
-        (valuesStatistics == null ? TsDigest.getNullDigestSize()
-            : valuesStatistics.getSerializedSize());
-
+    int serializedSize = (Integer.BYTES  +
+            4 * Long.BYTES + // 4 long: offsetOfChunkHeader, numOfPoints, startTime, endTime
+            TSDataType.getSerializedSize() + // TSDataType
+            (valuesStatistics == null ? TsDigest.getNullDigestSize()
+                    : valuesStatistics.getSerializedSize()));
+    try {
+      serializedSize += measurementUid.getBytes(TSFileConfig.STRING_ENCODING).length;  // measurementUid
+    } catch (UnsupportedEncodingException e) {
+      // use the system default encoding
+      serializedSize += measurementUid.getBytes().length;  // measurementUid
+      LOG.error("{} encoding is not supported", TSFileConfig.STRING_ENCODING);
+    }
+    return serializedSize;
   }
 
   @Override
