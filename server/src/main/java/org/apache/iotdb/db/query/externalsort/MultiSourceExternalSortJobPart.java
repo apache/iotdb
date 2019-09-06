@@ -50,10 +50,10 @@
    }
 
    @Override
-   public IPointReader executeWithGlobalTimeFilter() throws IOException {
+   public IPointReader executeForIPointReader() throws IOException {
      List<IPointReader> prioritySeriesReaders = new ArrayList<>();
      for (ExternalSortJobPart part : source) {
-       prioritySeriesReaders.add(part.executeWithGlobalTimeFilter());
+       prioritySeriesReaders.add(part.executeForIPointReader());
      }
      LineMerger merger = new LineMerger(queryId, tmpFilePath);
      return merger.merge(prioritySeriesReaders);

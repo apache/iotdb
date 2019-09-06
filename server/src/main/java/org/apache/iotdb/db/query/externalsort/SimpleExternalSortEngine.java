@@ -54,13 +54,6 @@
      }
    }
 
-   // This constructor is used in test.
-   public SimpleExternalSortEngine(String queryDir, int minExternalSortSourceCount) {
-     this.queryDir = queryDir;
-     this.minExternalSortSourceCount = minExternalSortSourceCount;
-     scheduler = ExternalSortJobScheduler.getInstance();
-   }
-
    @Override
    public List<IPointReader> executeForIPointReader(long queryId,
        List<ChunkReaderWrap> chunkReaderWraps)
@@ -69,7 +62,7 @@
        return generateIPointReader(chunkReaderWraps, 0, chunkReaderWraps.size());
      }
      ExternalSortJob job = createJob(queryId, chunkReaderWraps);
-     return job.executeWithGlobalTimeFilter();
+     return job.executeForIPointReader();
    }
 
    @Override
@@ -79,10 +72,9 @@
        return generateIReaderByTimestamp(chunkReaderWraps, 0, chunkReaderWraps.size());
      }
      ExternalSortJob job = createJob(queryId, chunkReaderWraps);
-     return convert(job.executeWithGlobalTimeFilter());
+     return convert(job.executeForIPointReader());
    }
 
-   //TODO: this method could be optimized to have a better performance
    @Override
    public ExternalSortJob createJob(long queryId, List<ChunkReaderWrap> readerWrapList) {
      long jodId = scheduler.genJobId();
@@ -95,7 +87,7 @@
      while (ret.size() >= minExternalSortSourceCount) {
        List<ExternalSortJobPart> tmpPartList = new ArrayList<>();
        for (int i = 0; i < ret.size(); ) {
-         int toIndex = Math.min(i+minExternalSortSourceCount, ret.size());
+         int toIndex = Math.min(i + minExternalSortSourceCount, ret.size());
          List<ExternalSortJobPart> partGroup = ret.subList(i, toIndex);
          i = toIndex;
          StringBuilder tmpFilePath = new StringBuilder(queryDir).append(jodId).append("_")
@@ -108,6 +100,22 @@
        ret = tmpPartList;
      }
      return new ExternalSortJob(jodId, ret);
+   }
+
+   public String getQueryDir() {
+     return queryDir;
+   }
+
+   public void setQueryDir(String queryDir) {
+     this.queryDir = queryDir;
+   }
+
+   public int getMinExternalSortSourceCount() {
+     return minExternalSortSourceCount;
+   }
+
+   public void setMinExternalSortSourceCount(int minExternalSortSourceCount) {
+     this.minExternalSortSourceCount = minExternalSortSourceCount;
    }
 
    /**

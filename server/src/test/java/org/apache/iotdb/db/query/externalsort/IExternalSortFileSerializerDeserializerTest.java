@@ -25,8 +25,6 @@ import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeseria
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileSerializer;
 import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthIExternalSortFileDeserializer;
 import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthTimeValuePairSerializer;
-import org.apache.iotdb.db.query.externalsort.serialize.impl.SimpleIExternalSortFileDeserializer;
-import org.apache.iotdb.db.query.externalsort.serialize.impl.SimpleTimeValuePairSerializer;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -37,22 +35,14 @@ import org.junit.Test;
 /**
  * Created by zhangjinrui on 2018/1/20.
  */
-public class SimpleIExternalSortFileSerializerTest {
+public class IExternalSortFileSerializerDeserializerTest {
 
   private enum Type {
     SIMPLE, FIX_LENGTH
   }
 
   @Test
-  public void testSIMPLE() throws IOException, ClassNotFoundException {
-    String rootPath = "d1";
-    String filePath = rootPath + "/d2/d3/tmpFile1";
-    int count = 10000;
-    testReadWrite(genTimeValuePairs(count), count, rootPath, filePath, Type.SIMPLE);
-  }
-
-  @Test
-  public void testFIX_LENGTH() throws IOException, ClassNotFoundException {
+  public void testFIX_LENGTH() throws IOException {
     String rootPath = "tmpFile2";
     String filePath = rootPath;
     int count = 10000;
@@ -71,12 +61,12 @@ public class SimpleIExternalSortFileSerializerTest {
   }
 
   private void testReadWrite(TimeValuePair[] timeValuePairs, int count, String rootPath,
-      String filePath, Type type) throws IOException, ClassNotFoundException {
-    IExternalSortFileSerializer serializer = null;
-    if (type == Type.SIMPLE) {
-      serializer = new SimpleTimeValuePairSerializer(filePath);
-    } else if (type == Type.FIX_LENGTH) {
+      String filePath, Type type) throws IOException {
+    IExternalSortFileSerializer serializer;
+    if (type == Type.FIX_LENGTH) {
       serializer = new FixLengthTimeValuePairSerializer(filePath);
+    } else {
+      throw new IOException("Unsupported serializer type " + type);
     }
 
     for (TimeValuePair timeValuePair : timeValuePairs) {
@@ -84,11 +74,11 @@ public class SimpleIExternalSortFileSerializerTest {
     }
     serializer.close();
 
-    IExternalSortFileDeserializer deserializer = null;
-    if (type == Type.SIMPLE) {
-      deserializer = new SimpleIExternalSortFileDeserializer(filePath);
-    } else if (type == Type.FIX_LENGTH) {
+    IExternalSortFileDeserializer deserializer;
+    if (type == Type.FIX_LENGTH) {
       deserializer = new FixLengthIExternalSortFileDeserializer(filePath);
+    } else {
+      throw new IOException("Unsupported deserializer type " + type);
     }
 
     int idx = 0;
@@ -105,14 +95,6 @@ public class SimpleIExternalSortFileSerializerTest {
 
   private void deleteFileRecursively(File file) throws IOException {
     FileUtils.deleteDirectory(file);
-  }
-
-  private TimeValuePair[] genTimeValuePairs(int count) {
-    TimeValuePair[] timeValuePairs = new TimeValuePair[count];
-    for (int i = 0; i < count; i++) {
-      timeValuePairs[i] = new TimeValuePair(i, new TsPrimitiveType.TsInt(i));
-    }
-    return timeValuePairs;
   }
 
   private TimeValuePair[] genTimeValuePairs(int count, TSDataType dataType) {

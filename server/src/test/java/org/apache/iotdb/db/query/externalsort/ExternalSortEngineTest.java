@@ -34,22 +34,37 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 public class ExternalSortEngineTest {
 
-  private String baseDir = "externalSortTestTmp";
+  private String baseDir = "externalSortTestTmp/";
   private long queryId = EnvironmentUtils.TEST_QUERY_JOB_ID;
+  private SimpleExternalSortEngine engine;
+  private String preBaseDir;
+  private int preMinExternalSortSourceCount;
+
+  @Before
+  public void before() {
+    engine = SimpleExternalSortEngine.getInstance();
+    preBaseDir = engine.getQueryDir();
+    preMinExternalSortSourceCount = engine.getMinExternalSortSourceCount();
+    engine.setQueryDir(baseDir);
+  }
 
   @After
   public void after() throws IOException, StorageEngineException {
+    engine.setQueryDir(preBaseDir);
+    engine.setMinExternalSortSourceCount(preMinExternalSortSourceCount);
+    EnvironmentUtils.cleanAllDir();
     QueryResourceManager.getInstance().endQueryForGivenJob(queryId);
-    deleteDir();
+    deleteExternalTempDir();
   }
 
   @Test
   public void testSimple() throws IOException {
-    SimpleExternalSortEngine engine = new SimpleExternalSortEngine(baseDir + "/", 2);
+    engine.setMinExternalSortSourceCount(2);
     List<IPointReader> readerList1 = genSimple();
     List<IPointReader> readerList2 = genSimple();
     List<ChunkReaderWrap> chunkReaderWrapList = new ArrayList<>();
@@ -64,7 +79,7 @@ public class ExternalSortEngineTest {
 
   @Test
   public void testBig() throws IOException {
-    SimpleExternalSortEngine engine = new SimpleExternalSortEngine(baseDir + "/", 50);
+    engine.setMinExternalSortSourceCount(50);
     int lineCount = 100;
     int valueCount = 10000;
     List<long[]> data = genData(lineCount, valueCount);
@@ -83,7 +98,7 @@ public class ExternalSortEngineTest {
   }
 
   public void efficiencyTest() throws IOException {
-    SimpleExternalSortEngine engine = new SimpleExternalSortEngine(baseDir + "/", 50);
+    engine.setMinExternalSortSourceCount(50);
     int lineCount = 100000;
     int valueCount = 100;
     List<long[]> data = genData(lineCount, valueCount);
@@ -165,10 +180,10 @@ public class ExternalSortEngineTest {
     return readerList;
   }
 
-  private void deleteDir() throws IOException {
+  private void deleteExternalTempDir() throws IOException {
     File file = new File(baseDir);
     if (!file.delete()) {
-      throw new IOException("delete tmp file dir error");
+      throw new IOException("delete external sort tmp file dir error.");
     }
   }
 }

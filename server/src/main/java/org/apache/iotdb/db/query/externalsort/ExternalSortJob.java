@@ -37,10 +37,10 @@ public class ExternalSortJob {
     this.partList = partList;
   }
 
-  public List<IPointReader> executeWithGlobalTimeFilter() throws IOException {
+  public List<IPointReader> executeForIPointReader() throws IOException {
     List<IPointReader> readers = new ArrayList<>();
     for (ExternalSortJobPart part : partList) {
-      readers.add(part.executeWithGlobalTimeFilter());
+      readers.add(part.executeForIPointReader());
     }
     return readers;
   }

@@ -28,28 +28,30 @@ import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 
 public interface ExternalSortJobEngine {
 
- /**
-  * Receive a list of ChunkReaderWraps and judge whether it should be processed using external
-  * sort. If needed, do the merge sort for all ChunkReaderWraps using specific strategy.
-  *
-  * @param chunkReaderWraps A list include a set of ChunkReaderWraps
-  */
- List<IPointReader> executeForIPointReader(long queryId, List<ChunkReaderWrap>
-     chunkReaderWraps) throws IOException;
+  /**
+   * Receive a list of ChunkReaderWraps and judge whether it should be processed using external
+   * sort. If needed, do the merge sort for all ChunkReaderWraps using specific strategy.
+   *
+   * @param queryId query job id
+   * @param chunkReaderWraps A list of ChunkReaderWrap
+   */
+  List<IPointReader> executeForIPointReader(long queryId, List<ChunkReaderWrap>
+      chunkReaderWraps) throws IOException;
 
 
- /**
-  * Receive a list of chunkReaderWraps and judge whether it should be processed using external
-  * sort. If needed, do the merge sort for all ChunkReaderWraps using specific strategy.
-  *
-  * @param chunkReaderWraps A list include a set of ChunkReaderWraps
-  */
- List<IReaderByTimestamp> executeForByTimestampReader(long queryId, List<ChunkReaderWrap>
-     chunkReaderWraps) throws IOException;
+  /**
+   * Receive a list of chunkReaderWraps and judge whether it should be processed using external
+   * sort. If needed, do the merge sort for all ChunkReaderWraps using specific strategy.
+   *
+   * @param chunkReaderWraps A list of ChunkReaderWrap
+   */
+  List<IReaderByTimestamp> executeForByTimestampReader(long queryId, List<ChunkReaderWrap>
+      chunkReaderWraps) throws IOException;
 
- /**
-  * Create an external sort job which contains many parts.
-  */
- ExternalSortJob createJob(long queryId, List<ChunkReaderWrap> timeValuePairReaderList) throws IOException;
+  /**
+   * Create an external sort job which contains many parts.
+   */
+  ExternalSortJob createJob(long queryId, List<ChunkReaderWrap> timeValuePairReaderList)
+      throws IOException;
 
 }

@@ -31,7 +31,7 @@ public abstract class ExternalSortJobPart {
     this.type = type;
   }
 
-  public abstract IPointReader executeWithGlobalTimeFilter() throws IOException;
+  public abstract IPointReader executeForIPointReader() throws IOException;
 
   public ExternalSortJobPartType getType() {
     return type;

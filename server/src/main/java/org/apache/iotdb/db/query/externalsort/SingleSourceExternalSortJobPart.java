@@ -26,7 +26,6 @@
 
  public class SingleSourceExternalSortJobPart extends ExternalSortJobPart {
 
-   private IPointReader timeValuePairReader;
    private ChunkReaderWrap chunkReaderWrap;
 
    public SingleSourceExternalSortJobPart(ChunkReaderWrap chunkReaderWrap) {
@@ -35,8 +34,7 @@
    }
 
    @Override
-   public IPointReader executeWithGlobalTimeFilter() throws IOException {
-     timeValuePairReader = chunkReaderWrap.getIPointReader();
-     return this.timeValuePairReader;
+   public IPointReader executeForIPointReader() throws IOException {
+     return chunkReaderWrap.getIPointReader();
    }
  }
