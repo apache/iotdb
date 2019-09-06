@@ -19,18 +19,25 @@
 
 package org.apache.iotdb.tsfile.file.header;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 
 public class ChunkHeader {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ChunkHeader.class);
 
   public static final byte MARKER = MetaMarker.CHUNK_HEADER;
 
@@ -69,7 +76,12 @@ public class ChunkHeader {
   }
 
   public static int getSerializedSize(String measurementID) {
-    return Byte.BYTES + Integer.BYTES + getSerializedSize(measurementID.getBytes().length);
+    try {
+      return Byte.BYTES + Integer.BYTES + getSerializedSize(measurementID.getBytes(TSFileConfig.STRING_ENCODING).length);
+    } catch (UnsupportedEncodingException e) {
+      LOG.error("{} encoding is not supported", TSFileConfig.STRING_ENCODING);
+      return Byte.BYTES + Integer.BYTES + getSerializedSize(measurementID.getBytes().length);
+    }
   }
 
   private static int getSerializedSize(int measurementIdLength) {
@@ -150,7 +162,7 @@ public class ChunkHeader {
     return deserializePartFrom(measurementID, buffer);
   }
 
-  private static ChunkHeader deserializePartFrom(String measurementID, ByteBuffer buffer) {
+  private static ChunkHeader deserializePartFrom(String measurementID, ByteBuffer buffer) throws UnsupportedEncodingException {
     int dataSize = ReadWriteIOUtils.readInt(buffer);
     TSDataType dataType = TSDataType.deserialize(ReadWriteIOUtils.readShort(buffer));
     int numOfPages = ReadWriteIOUtils.readInt(buffer);
