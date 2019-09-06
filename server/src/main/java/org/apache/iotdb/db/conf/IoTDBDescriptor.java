@@ -18,16 +18,13 @@
  */
 package org.apache.iotdb.db.conf;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.time.ZoneId;
-import java.util.Properties;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.*;
+import java.time.ZoneId;
+import java.util.Properties;
 
 public class IoTDBDescriptor {
 
@@ -252,14 +249,14 @@ public class IoTDBDescriptor {
       conf.setPerformanceStatMemoryInKB(Integer
           .parseInt(properties.getProperty("performance_stat_memory_in_kb",
               Integer.toString(conf.getPerformanceStatMemoryInKB())).trim()));
-      
+
       int maxConcurrentClientNum = Integer.parseInt(properties.
           getProperty("rpc_max_concurrent_client_num",
               Integer.toString(conf.getRpcMaxConcurrentClientNum()).trim()));
       if (maxConcurrentClientNum <= 0) {
         maxConcurrentClientNum = 65535;
       }
-      
+
       conf.setEnableWatermark(Boolean.parseBoolean(properties.getProperty("watermark_module_opened",
           Boolean.toString(conf.isEnableWatermark()).trim())));
       conf.setWatermarkSecretKey(
@@ -270,7 +267,8 @@ public class IoTDBDescriptor {
           properties.getProperty("watermark_method", conf.getWatermarkMethod()));
 
       conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
-      
+
+      conf.setStorageFs(properties.getProperty("storage_fs"));
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {

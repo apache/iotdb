@@ -55,12 +55,7 @@ public abstract class AbstractScript {
       throw new RuntimeException("user.dir " + userDir.getAbsolutePath() + " doesn't exist.");
     }
     File targetDir = new File(userDir, "target");
-    File[] files = targetDir.listFiles(new FileFilter() {
-      @Override
-      public boolean accept(File pathname) {
-        return pathname.isDirectory() && pathname.getName().startsWith("iotdb-client-");
-      }
-    });
+    File[] files = targetDir.listFiles(pathname -> pathname.isDirectory() && pathname.getName().startsWith("iotdb-client-"));
     if(files.length != 1) {
       throw new RuntimeException(
               "Exactly one directory starting with 'iotdb-client-' should have been found, but was " + files.length);
