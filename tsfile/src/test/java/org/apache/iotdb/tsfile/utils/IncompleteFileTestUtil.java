@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.write.writer;
+package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -55,7 +55,7 @@ public class IncompleteFileTestUtil {
         buffer.flip();
         byte[] data = new byte[3];
         buffer.get(data, 0, 3);
-        writer.getIOWriter().out.write(data);
+        writer.getIOWriter().getIOWriterOut().write(data);
         writer.getIOWriter().close();
     }
 }

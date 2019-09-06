@@ -333,7 +333,7 @@ public class TsFileWriter implements AutoCloseable{
 
   /**
    * this function is only for Test.
-   * @return
+   * @return TsFileIOWriter
    */
    public TsFileIOWriter getIOWriter() {
     return this.fileWriter;
@@ -341,7 +341,7 @@ public class TsFileWriter implements AutoCloseable{
 
   /**
    * this function is only for Test
-   * @throws IOException
+   * @throws IOException exception in IO
    */
   public void flushForTest() throws IOException {
     flushAllChunkGroups();
