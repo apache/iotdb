@@ -144,7 +144,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
         return false;
       }
 
-      RowRecord rowRecord = dataSxet.next();
+      RowRecord rowRecord = dataSet.next();
       fields = rowRecord.getFields();
       timestamp = rowRecord.getTimestamp();
       sensorIndex = 0;
