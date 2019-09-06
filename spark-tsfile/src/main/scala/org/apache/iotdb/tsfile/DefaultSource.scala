@@ -7,7 +7,7 @@
   * "License"); you may not use this file except in compliance
   * with the License.  You may obtain a copy of the License at
   *
-  *     http://www.apache.org/licenses/LICENSE-2.0
+  * http://www.apache.org/licenses/LICENSE-2.0
   *
   * Unless required by applicable law or agreed to in writing,
   * software distributed under the License is distributed on an
@@ -28,7 +28,9 @@ import org.apache.hadoop.mapreduce.Job
 import org.apache.iotdb.tsfile.DefaultSource.SerializableConfiguration
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
 import org.apache.iotdb.tsfile.io.HDFSInput
+import org.apache.iotdb.tsfile.qp.Executor
 import org.apache.iotdb.tsfile.read.common.Field
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet
 import org.apache.iotdb.tsfile.read.{ReadOnlyTsFile, TsFileSequenceReader}
 import org.apache.spark.TaskContext
 import org.apache.spark.sql.SparkSession
@@ -56,10 +58,18 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
     //check if the path is given
     options.getOrElse(DefaultSource.path, throw new TSFileDataSourceException(s"${DefaultSource.path} must be specified for org.apache.iotdb.tsfile DataSource"))
 
-    //get union series in TsFile
-    val tsfileSchema = Converter.getUnionSeries(files, conf)
+    if (options.getOrElse(DefaultSource.isNarrowForm, "").equals("narrow_form")) {
+      val tsfileSchema = NarrowConverter.getUnionSeries(files, conf)
 
-    Converter.toSqlSchema(tsfileSchema)
+      NarrowConverter.toSqlSchema(tsfileSchema)
+    }
+    else {
+      //get union series in TsFile
+      val tsfileSchema = WideConverter.getUnionSeries(files, conf)
+
+      WideConverter.toSqlSchema(tsfileSchema)
+    }
+
   }
 
   override def isSplitable(
@@ -82,6 +92,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
 
     (file: PartitionedFile) => {
       val log = LoggerFactory.getLogger(classOf[DefaultSource])
+      log.info("This partition starts from " + file.start.asInstanceOf[java.lang.Long] + " and ends at " + (file.start + file.length).asInstanceOf[java.lang.Long])
       log.info(file.toString())
 
       val conf = broadcastedConf.value.value
@@ -98,51 +109,127 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       val tsFileMetaData = reader.readFileMetadata
 
       // get queriedSchema from requiredSchema
-      var queriedSchema = Converter.prepSchema(requiredSchema, tsFileMetaData)
-
-      // construct queryExpression based on queriedSchema and filters
-      val queryExpression = Converter.toQueryExpression(queriedSchema, filters)
-
+      var queriedSchema = WideConverter.prepSchema(requiredSchema, tsFileMetaData)
       val readTsFile: ReadOnlyTsFile = new ReadOnlyTsFile(reader)
-      val queryDataSet = readTsFile.query(queryExpression, file.start.asInstanceOf[java.lang.Long],
-        (file.start + file.length).asInstanceOf[java.lang.Long])
 
-      new Iterator[InternalRow] {
-        private val rowBuffer = Array.fill[Any](requiredSchema.length)(null)
+      if (options.getOrElse(DefaultSource.isNarrowForm, "").equals("narrow_form")) {
+        val device_names = tsFileMetaData.getDeviceMap.keySet()
+        val measurement_names = tsFileMetaData.getMeasurementSchema.keySet()
+        // construct queryExpression based on queriedSchema and filters
+        val queryExpressions = NarrowConverter.toQueryExpression(dataSchema, device_names, measurement_names, filters, reader, file.start.asInstanceOf[java.lang.Long], (file.start + file.length).asInstanceOf[java.lang.Long])
 
-        private val safeDataRow = new GenericRow(rowBuffer)
+        val queryDataSets = Executor.query(readTsFile, queryExpressions, file.start.asInstanceOf[java.lang.Long], (file.start + file.length).asInstanceOf[java.lang.Long])
+        var queryDataSet: QueryDataSet = null
+        var device_name: String = null
 
-        // Used to convert `Row`s containing data columns into `InternalRow`s.
-        private val encoderForDataColumns = RowEncoder(requiredSchema)
+        def queryNext(): Boolean = {
+          if (queryDataSet != null && queryDataSet.hasNext) {
+            return true
+          }
 
-        override def hasNext: Boolean = {
-          val hasNext = queryDataSet.hasNext
-          hasNext
+          if (queryDataSets.isEmpty) {
+            return false
+          }
+
+          queryDataSet = queryDataSets.remove(queryDataSets.size() - 1)
+          while (!queryDataSet.hasNext) {
+            if (queryDataSets.isEmpty) {
+              return false
+            }
+            queryDataSet = queryDataSets.remove(queryDataSets.size() - 1)
+          }
+          device_name = queryDataSet.getPaths.get(0).getDevice
+          true
         }
 
-        override def next(): InternalRow = {
+        new Iterator[InternalRow] {
+          private val rowBuffer = Array.fill[Any](requiredSchema.length)(null)
 
-          val curRecord = queryDataSet.next()
-          val fields = curRecord.getFields
-          val paths = queryDataSet.getPaths
+          private val safeDataRow = new GenericRow(rowBuffer)
 
-          //index in one required row
-          var index = 0
-          requiredSchema.foreach((field: StructField) => {
-            if (field.name == QueryConstant.RESERVED_TIME) {
-              rowBuffer(index) = curRecord.getTimestamp
-            } else {
-              val pos = paths.indexOf(new org.apache.iotdb.tsfile.read.common.Path(field.name))
-              var curField: Field = null
-              if (pos != -1) {
-                curField = fields.get(pos)
+          // Used to convert `Row`s containing data columns into `InternalRow`s.
+          private val encoderForDataColumns = RowEncoder(requiredSchema)
+
+          override def hasNext: Boolean = {
+            queryNext()
+          }
+
+          override def next(): InternalRow = {
+            queryNext()
+
+            val curRecord = queryDataSet.next()
+            val fields = curRecord.getFields
+            val paths = queryDataSet.getPaths
+
+            //index in one required row
+            var index = 0
+            requiredSchema.foreach((field: StructField) => {
+              if (field.name == QueryConstant.RESERVED_TIME) {
+                rowBuffer(index) = curRecord.getTimestamp
               }
-              rowBuffer(index) = Converter.toSqlValue(curField)
-            }
-            index += 1
-          })
+              else if (field.name == NarrowConverter.DEVICE_NAME) {
+                rowBuffer(index) = device_name
+              }
+              else {
+                val pos = paths.indexOf(new org.apache.iotdb.tsfile.read.common.Path(device_name, field.name))
+                var curField: Field = null
+                if (pos != -1) {
+                  curField = fields.get(pos)
+                }
+                rowBuffer(index) = NarrowConverter.toSqlValue(curField)
+              }
+              index += 1
+            })
 
-          encoderForDataColumns.toRow(safeDataRow)
+            encoderForDataColumns.toRow(safeDataRow)
+          }
+        }
+      }
+      else {
+        // construct queryExpression based on queriedSchema and filters
+        val queryExpression = WideConverter.toQueryExpression(queriedSchema, filters)
+
+
+        val queryDataSet = readTsFile.query(queryExpression, file.start.asInstanceOf[java.lang.Long],
+          (file.start + file.length).asInstanceOf[java.lang.Long])
+
+        new Iterator[InternalRow] {
+          private val rowBuffer = Array.fill[Any](requiredSchema.length)(null)
+
+          private val safeDataRow = new GenericRow(rowBuffer)
+
+          // Used to convert `Row`s containing data columns into `InternalRow`s.
+          private val encoderForDataColumns = RowEncoder(requiredSchema)
+
+          override def hasNext: Boolean = {
+            val hasNext = queryDataSet.hasNext
+            hasNext
+          }
+
+          override def next(): InternalRow = {
+
+            val curRecord = queryDataSet.next()
+            val fields = curRecord.getFields
+            val paths = queryDataSet.getPaths
+
+            //index in one required row
+            var index = 0
+            requiredSchema.foreach((field: StructField) => {
+              if (field.name == QueryConstant.RESERVED_TIME) {
+                rowBuffer(index) = curRecord.getTimestamp
+              } else {
+                val pos = paths.indexOf(new org.apache.iotdb.tsfile.read.common.Path(field.name))
+                var curField: Field = null
+                if (pos != -1) {
+                  curField = fields.get(pos)
+                }
+                rowBuffer(index) = WideConverter.toSqlValue(curField)
+              }
+              index += 1
+            })
+
+            encoderForDataColumns.toRow(safeDataRow)
+          }
         }
       }
     }
@@ -168,6 +255,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
 
 private[tsfile] object DefaultSource {
   val path = "path"
+  val isNarrowForm = "form"
 
   class SerializableConfiguration(@transient var value: Configuration) extends Serializable {
     private def writeObject(out: ObjectOutputStream): Unit = {

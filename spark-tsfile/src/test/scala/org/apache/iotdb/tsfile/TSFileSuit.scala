@@ -7,7 +7,7 @@
   * "License"); you may not use this file except in compliance
   * with the License.  You may obtain a copy of the License at
   *
-  *     http://www.apache.org/licenses/LICENSE-2.0
+  * http://www.apache.org/licenses/LICENSE-2.0
   *
   * Unless required by applicable law or agreed to in writing,
   * software distributed under the License is distributed on an
@@ -40,6 +40,8 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
   private val outputPathFile = outputPath + "/part-m-00000"
   private val outputPath2 = "../spark/src/test/resources/output2"
   private val outputPathFile2 = outputPath2 + "/part-m-00000"
+  private val outputPath3 = "../spark/src/test/resources/output3"
+  private val outputPathFile3 = outputPath3
   private val outputHDFSPath = "hdfs://localhost:9000/usr/hadoop/output"
   private val outputHDFSPathFile = outputHDFSPath + "/part-m-00000"
   private var spark: SparkSession = _
@@ -120,6 +122,13 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
     Assert.assertEquals(newDf.collectAsList(), df.collectAsList())
   }
 
+  test("test write 3") {
+    val df = spark.read.tsfile(tsfile3, isNarrowForm = true)
+    df.write.tsfile(outputPath3, isNarrowForm = true)
+    val newDf = spark.read.tsfile(outputPathFile3, isNarrowForm = true)
+    Assert.assertEquals(newDf.collectAsList(), df.collectAsList())
+  }
+
   test("testSelect * from tsfile1") {
     val df = spark.read.tsfile(tsfile1)
     df.createOrReplaceTempView("tsfile_table")
@@ -134,6 +143,18 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
     val newDf = spark.sql("select * from tsfile_table")
     val count = newDf.count()
     Assert.assertEquals(TsFileWriteTool.largeNum, count)
+  }
+
+  test("testSelect * from tsfile2 in part") {
+    spark.conf.set("spark.sql.files.maxPartitionBytes", 1024 * 256)
+
+    val df = spark.read.tsfile(tsfile2)
+    df.createOrReplaceTempView("tsfile_table")
+    val newDf = spark.sql("select * from tsfile_table")
+    val count = newDf.count()
+    Assert.assertEquals(TsFileWriteTool.largeNum, count)
+
+    spark.conf.set("spark.sql.files.maxPartitionBytes", 1024 * 1024 * 128)
   }
 
   test("testCount") {
@@ -212,6 +233,30 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
       StructField("device_2.sensor_2", IntegerType, nullable = true)
     ))
     Assert.assertEquals(expected, df.schema)
+  }
+
+  test("testTransform1") {
+    val df = spark.read.tsfile(tsfile1)
+    df.createOrReplaceTempView("tsfile_table")
+    val newDf = spark.sql("select * from tsfile_table " +
+      "where (`device_1.sensor_1`>0 or `device_1.sensor_2` < 22) and time < 4")
+    Assert.assertEquals(3, newDf.count())
+  }
+
+  test("testTransform2") {
+    val df = spark.read.tsfile(tsfile1, true)
+    df.createOrReplaceTempView("tsfile_table")
+    val newDf = spark.sql("select * from tsfile_table " +
+      "where `device_name` = 'device_1' and (`sensor_1`>0 or `sensor_2` < 22) and time < 4")
+    Assert.assertEquals(3, newDf.count())
+  }
+
+  test("testTransform3") {
+    val df = spark.read.tsfile(tsfile1, true)
+    df.createOrReplaceTempView("tsfile_table")
+    val newDf = spark.sql("select * from tsfile_table " +
+      "where (`sensor_1`>0 or `sensor_2` < 22) and time < 4")
+    Assert.assertEquals(5, newDf.count())
   }
 
 }

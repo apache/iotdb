@@ -7,7 +7,7 @@
   * "License"); you may not use this file except in compliance
   * with the License.  You may obtain a copy of the License at
   *
-  *     http://www.apache.org/licenses/LICENSE-2.0
+  * http://www.apache.org/licenses/LICENSE-2.0
   *
   * Unless required by applicable law or agreed to in writing,
   * software distributed under the License is distributed on an
@@ -29,7 +29,11 @@ private[tsfile] class TsFileWriterFactory(options: Map[String, String]) extends 
                             path: String,
                             dataSchema: StructType,
                             context: TaskAttemptContext): OutputWriter = {
-    new TsFileOutputWriter(path, dataSchema, options, context)
+    if (options.getOrElse(DefaultSource.isNarrowForm, "").equals("narrow_form")) {
+      new NarrowTsFileOutputWriter(path, dataSchema, options, context)
+    } else {
+      new WideTsFileOutputWriter(path, dataSchema, options, context)
+    }
   }
 
   override def getFileExtension(context: TaskAttemptContext): String = {
