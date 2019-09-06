@@ -37,16 +37,9 @@ set JAVA_OPTS=-ea^
  -DIOTDB_CLI_HOME=%IOTDB_CLI_HOME%
 
 REM For each jar in the IOTDB_CLI_HOME lib directory call append to build the CLASSPATH variable.
-for %%i in ("%IOTDB_CLI_HOME%\lib\*.jar") do call :append "%%i"
-goto okClasspath
-
-:append
-set CLASSPATH=%CLASSPATH%;%1
-goto :eof
+set CLASSPATH=%IOTDB_CLI_HOME%\lib\*
 
 REM -----------------------------------------------------------------------------
-:okClasspath
-
 set PARAMETERS=%*
 
 if "%PARAMETERS%" == "" set PARAMETERS=-h 127.0.0.1 -p 6667 -u root -pw root

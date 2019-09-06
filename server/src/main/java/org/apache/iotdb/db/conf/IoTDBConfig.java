@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.db.engine.fileSystem.FSType;
 import java.io.File;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -272,7 +273,7 @@ public class IoTDBConfig {
    * Watermark method and parameters
    */
   private String watermarkMethod = "GroupBasedLSBMethod(embed_row_cycle=5,embed_lsb_num=5)";
-  
+
   /**
    * How much memory (in byte) can be used by a single merge task.
    */
@@ -323,6 +324,11 @@ public class IoTDBConfig {
   private int chunkMergePointThreshold = 20480;
 
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
+
+  /**
+   * Default storage is in local file system
+   */
+  private FSType storageFs = FSType.LOCAL;
 
   public IoTDBConfig() {
     // empty constructor
@@ -879,5 +885,13 @@ public class IoTDBConfig {
       return m.group(1);
     }
     return null;
+  }
+
+  public FSType getStorageFs() {
+    return storageFs;
+  }
+
+  public void setStorageFs(String storageFs) {
+    this.storageFs = FSType.valueOf(storageFs);
   }
 }

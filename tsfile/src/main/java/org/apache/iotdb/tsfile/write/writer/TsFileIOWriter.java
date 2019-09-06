@@ -230,7 +230,7 @@ public class TsFileIOWriter {
     out.write(chunk.getData());
     endChunk(chunkMetadata.getNumOfPoints());
   }
-  
+
   /**
    * end chunk and write some log.
    *
@@ -376,12 +376,8 @@ public class TsFileIOWriter {
   }
 
   /**
-<<<<<<< HEAD
-   * close the outputStream or file channel without writing FileMetadata.
-=======
    * close the outputStream or file channel without writing FileMetadata. This is just used for
    * Testing.
->>>>>>> master
    */
   public void close() throws IOException {
     canWrite = false;
