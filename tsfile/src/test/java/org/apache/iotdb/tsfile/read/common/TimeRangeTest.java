@@ -19,6 +19,8 @@
 package org.apache.iotdb.tsfile.read.common;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import org.junit.Assert;
@@ -57,8 +59,8 @@ public class TimeRangeTest {
     assertEquals(1, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 1);
     assertEquals(remainRanges.get(0).getMax(), 10);
-    assertEquals(remainRanges.get(0).getLeftClose(), true);
-    assertEquals(remainRanges.get(0).getRightClose(), true);
+    assertTrue(remainRanges.get(0).getLeftClose());
+    assertTrue(remainRanges.get(0).getRightClose());
   }
 
   @Test
@@ -90,8 +92,8 @@ public class TimeRangeTest {
     assertEquals(1, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 3);
     assertEquals(remainRanges.get(0).getMax(), 10);
-    assertEquals(remainRanges.get(0).getLeftClose(), false);
-    assertEquals(remainRanges.get(0).getRightClose(), true);
+    assertFalse(remainRanges.get(0).getLeftClose());
+    assertTrue(remainRanges.get(0).getRightClose());
   }
 
   @Test
@@ -109,8 +111,8 @@ public class TimeRangeTest {
     assertEquals(1, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 1);
     assertEquals(remainRanges.get(0).getMax(), 5);
-    assertEquals(remainRanges.get(0).getLeftClose(), true);
-    assertEquals(remainRanges.get(0).getRightClose(), false);
+    assertTrue(remainRanges.get(0).getLeftClose());
+    assertFalse(remainRanges.get(0).getRightClose());
   }
 
   @Test
@@ -128,12 +130,12 @@ public class TimeRangeTest {
     assertEquals(2, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 1);
     assertEquals(remainRanges.get(0).getMax(), 3);
-    assertEquals(remainRanges.get(0).getLeftClose(), true);
-    assertEquals(remainRanges.get(0).getRightClose(), false);
+    assertTrue(remainRanges.get(0).getLeftClose());
+    assertFalse(remainRanges.get(0).getRightClose());
     assertEquals(remainRanges.get(1).getMin(), 8);
     assertEquals(remainRanges.get(1).getMax(), 10);
-    assertEquals(remainRanges.get(1).getLeftClose(), false);
-    assertEquals(remainRanges.get(1).getRightClose(), true);
+    assertFalse(remainRanges.get(1).getLeftClose());
+    assertTrue(remainRanges.get(1).getRightClose());
   }
 
 
@@ -152,8 +154,8 @@ public class TimeRangeTest {
     assertEquals(1, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 5);
     assertEquals(remainRanges.get(0).getMax(), 10);
-    assertEquals(remainRanges.get(0).getLeftClose(), false);
-    assertEquals(remainRanges.get(0).getRightClose(), true);
+    assertFalse(remainRanges.get(0).getLeftClose());
+    assertTrue(remainRanges.get(0).getRightClose());
   }
 
   @Test
@@ -171,8 +173,8 @@ public class TimeRangeTest {
     assertEquals(1, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 2);
     assertEquals(remainRanges.get(0).getMax(), 10);
-    assertEquals(remainRanges.get(0).getLeftClose(), false);
-    assertEquals(remainRanges.get(0).getRightClose(), true);
+    assertFalse(remainRanges.get(0).getLeftClose());
+    assertTrue(remainRanges.get(0).getRightClose());
   }
 
   @Test
@@ -190,8 +192,8 @@ public class TimeRangeTest {
     assertEquals(1, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 1);
     assertEquals(remainRanges.get(0).getMax(), 6);
-    assertEquals(remainRanges.get(0).getLeftClose(), true);
-    assertEquals(remainRanges.get(0).getRightClose(), false);
+    assertTrue(remainRanges.get(0).getLeftClose());
+    assertFalse(remainRanges.get(0).getRightClose());
   }
 
   @Test
@@ -209,8 +211,8 @@ public class TimeRangeTest {
     assertEquals(1, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 1);
     assertEquals(remainRanges.get(0).getMax(), 11);
-    assertEquals(remainRanges.get(0).getLeftClose(), true);
-    assertEquals(remainRanges.get(0).getRightClose(), false);
+    assertTrue(remainRanges.get(0).getLeftClose());
+    assertFalse(remainRanges.get(0).getRightClose());
   }
 
   @Test
@@ -228,16 +230,16 @@ public class TimeRangeTest {
     assertEquals(3, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 1);
     assertEquals(remainRanges.get(0).getMax(), 3);
-    assertEquals(remainRanges.get(0).getLeftClose(), true);
-    assertEquals(remainRanges.get(0).getRightClose(), false);
+    assertTrue(remainRanges.get(0).getLeftClose());
+    assertFalse(remainRanges.get(0).getRightClose());
     assertEquals(remainRanges.get(1).getMin(), 4);
     assertEquals(remainRanges.get(1).getMax(), 6);
-    assertEquals(remainRanges.get(1).getLeftClose(), false);
-    assertEquals(remainRanges.get(1).getRightClose(), false);
+    assertFalse(remainRanges.get(1).getLeftClose());
+    assertFalse(remainRanges.get(1).getRightClose());
     assertEquals(remainRanges.get(2).getMin(), 8);
     assertEquals(remainRanges.get(2).getMax(), 10);
-    assertEquals(remainRanges.get(2).getLeftClose(), false);
-    assertEquals(remainRanges.get(2).getRightClose(), true);
+    assertFalse(remainRanges.get(2).getLeftClose());
+    assertTrue(remainRanges.get(2).getRightClose());
   }
 
   @Test
@@ -255,11 +257,11 @@ public class TimeRangeTest {
     assertEquals(2, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 1);
     assertEquals(remainRanges.get(0).getMax(), 3);
-    assertEquals(remainRanges.get(0).getLeftClose(), true);
-    assertEquals(remainRanges.get(0).getRightClose(), false);
+    assertTrue(remainRanges.get(0).getLeftClose());
+    assertFalse(remainRanges.get(0).getRightClose());
     assertEquals(remainRanges.get(1).getMin(), 4);
     assertEquals(remainRanges.get(1).getMax(), 11); // NOTE here is the technical detail.
-    assertEquals(remainRanges.get(1).getLeftClose(), false);
-    assertEquals(remainRanges.get(1).getRightClose(), false);
+    assertFalse(remainRanges.get(1).getLeftClose());
+    assertFalse(remainRanges.get(1).getRightClose());
   }
 }

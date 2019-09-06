@@ -26,7 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
-import org.apache.iotdb.tsfile.write.writer.IncompleteFileTestUtil;
+import org.apache.iotdb.tsfile.utils.IncompleteFileTestUtil;
 import org.junit.Test;
 
 public class TsFileRestorableReaderTest {
