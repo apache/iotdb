@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Metadata of ChunkGroup.
@@ -102,8 +103,9 @@ public class ChunkGroupMetaData {
     chunkGroupMetaData.version = ReadWriteIOUtils.readLong(inputStream);
 
     int size = ReadWriteIOUtils.readInt(inputStream);
-    chunkGroupMetaData.serializedSize = Integer.BYTES + chunkGroupMetaData.deviceID.length()
-        + Integer.BYTES + Long.BYTES + Long.BYTES + Long.BYTES;
+    chunkGroupMetaData.serializedSize = Integer.BYTES
+            + chunkGroupMetaData.deviceID.getBytes(TSFileConfig.STRING_ENCODING).length
+            + Integer.BYTES + Long.BYTES + Long.BYTES + Long.BYTES;
 
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
 
@@ -123,7 +125,7 @@ public class ChunkGroupMetaData {
    * @param buffer ByteBuffer
    * @return ChunkGroupMetaData object
    */
-  public static ChunkGroupMetaData deserializeFrom(ByteBuffer buffer) {
+  public static ChunkGroupMetaData deserializeFrom(ByteBuffer buffer) throws IOException {
     ChunkGroupMetaData chunkGroupMetaData = new ChunkGroupMetaData();
 
     chunkGroupMetaData.deviceID = ReadWriteIOUtils.readString(buffer);
@@ -133,7 +135,7 @@ public class ChunkGroupMetaData {
 
     int size = ReadWriteIOUtils.readInt(buffer);
 
-    chunkGroupMetaData.serializedSize = Integer.BYTES + chunkGroupMetaData.deviceID.length()
+    chunkGroupMetaData.serializedSize = Integer.BYTES + chunkGroupMetaData.deviceID.getBytes(TSFileConfig.STRING_ENCODING).length
         + Integer.BYTES + Long.BYTES + Long.BYTES + Long.BYTES;
 
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
