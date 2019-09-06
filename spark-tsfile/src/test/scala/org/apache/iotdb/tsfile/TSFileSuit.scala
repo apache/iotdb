@@ -153,7 +153,7 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
     val newDf = spark.sql("select * from tsfile_table")
     val count = newDf.count()
     Assert.assertEquals(TsFileWriteTool.largeNum, count)
-    
+
     spark.conf.set("spark.sql.files.maxPartitionBytes", 1024 * 1024 * 128)
   }
 
