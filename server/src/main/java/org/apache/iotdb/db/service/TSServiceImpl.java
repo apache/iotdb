@@ -57,11 +57,14 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
+import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -761,9 +764,26 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       int fetchSize = req.getFetch_size();
-      TSQueryDataSet result = QueryDataSetUtils
-          .convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
-
+      IAuthorizer authorizer;
+      try {
+        authorizer = LocalFileAuthorizer.getInstance();
+      } catch (AuthException e) {
+        throw new TException(e);
+      }
+      TSQueryDataSet result;
+      if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(username.get())) {
+        WatermarkEncoder encoder;
+        if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
+          encoder = new GroupedLSBWatermarkEncoder(config);
+        } else {
+          throw new UnSupportedDataTypeException(String.format(
+              "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
+        }
+        result = QueryDataSetUtils
+            .convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
+      } else {
+        result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
+      }
       boolean hasResultSet = !result.getRecords().isEmpty();
       if (!hasResultSet && queryRet.get() != null) {
         queryRet.get().remove(statement);

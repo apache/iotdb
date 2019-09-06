@@ -297,4 +297,14 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public User getUser(String username) throws AuthException {
     return userManager.getUser(username);
   }
+
+  @Override
+  public boolean isUserUseWaterMark(String userName) throws AuthException {
+    return userManager.isUserUseWaterMark(userName);
+  }
+
+  @Override
+  public void setUserUseWaterMark(String userName, boolean useWaterMark) throws AuthException {
+    userManager.setUserUseWaterMark(userName, useWaterMark);
+  }
 }

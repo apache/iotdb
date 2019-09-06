@@ -110,6 +110,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
         roleList.add(userName);
       }
       user.setRoleList(roleList);
+      user.setUseWaterMark(dataInputStream.readInt() != 0);
       return user;
     } catch (Exception e) {
       throw new IOException(e);
@@ -147,6 +148,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
               .writeString(outputStream, user.getRoleList().get(i), STRING_ENCODING,
                   encodingBufferLocal);
         }
+        IOUtils.writeInt(outputStream, user.isUseWaterMark()? 1 : 0, encodingBufferLocal);
         outputStream.flush();
 
       } catch (Exception e) {
