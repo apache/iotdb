@@ -447,4 +447,12 @@ public class TsFileIOWriter {
       }
     }
   }
+
+  /**
+   * this function is only for Test.
+   * @return TsFileOutput
+   */
+  public TsFileOutput getIOWriterOut() {
+    return this.out;
+  }
 }
