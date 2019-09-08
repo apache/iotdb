@@ -18,60 +18,45 @@
  */
 package org.apache.iotdb.tsfile.hadoop;
 
-import java.io.IOException;
-
-import com.alibaba.fastjson.JSONObject;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
-import org.apache.iotdb.tsfile.hadoop.io.HDFSOutputStream;
-import org.apache.iotdb.tsfile.timeseries.basis.TsFile;
-import org.apache.iotdb.tsfile.write.exception.InvalidJsonSchemaException;
-import org.apache.iotdb.tsfile.write.exception.WriteProcessException;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.hadoop.io.HDFSOutput;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TSFRecordWriter extends RecordWriter<NullWritable, TSRow> {
+import java.io.IOException;
+
+public class TSFRecordWriter extends RecordWriter<NullWritable, TSRecord> {
 
   private static final Logger logger = LoggerFactory.getLogger(TSFRecordWriter.class);
 
-  private TsFile write = null;
+  private TsFileWriter writer;
 
-  public TSFRecordWriter(Path path, JSONObject schema) throws InterruptedException, IOException {
-    // construct the internalrecordwriter
-    Schema fileSchema = null;
-    try {
-      fileSchema = new Schema(schema);
-    } catch (InvalidJsonSchemaException e) {
-      throw new InterruptedException(String.format("Construct the tsfile schema failed"), e);
-    }
+  public TSFRecordWriter(TaskAttemptContext job, Path path, Schema schema) throws IOException {
 
-    HDFSOutputStream hdfsOutputStream = new HDFSOutputStream(path, new Configuration(), false);
-    try {
-      write = new TsFile(hdfsOutputStream, fileSchema);
-    } catch (WriteProcessException e) {
-      throw new IOException(e);
-    }
+    HDFSOutput hdfsOutput = new HDFSOutput(path, job.getConfiguration(), false);
+    writer = new TsFileWriter(hdfsOutput, schema);
   }
 
   @Override
-  public void write(NullWritable key, TSRow value) throws IOException, InterruptedException {
-
+  public void write(NullWritable key, TSRecord value) throws IOException, InterruptedException {
     try {
-      write.writeRecord(value.getRow());
+      writer.write(value);
     } catch (WriteProcessException e) {
-      throw new InterruptedException(String.format("Write tsfile record error"), e);
+      throw new InterruptedException(String.format("Write tsfile record error %s", e));
     }
   }
 
   @Override
   public void close(TaskAttemptContext context) throws IOException, InterruptedException {
-
-    logger.info("Close the recordwriter, the task attempt id is {}", context.getTaskAttemptID());
-    write.close();
+    logger.info("Close the record writer, the task attempt id is {}", context.getTaskAttemptID());
+    writer.close();
   }
 
 }

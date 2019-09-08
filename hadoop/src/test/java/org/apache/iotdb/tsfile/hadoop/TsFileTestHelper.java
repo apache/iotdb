@@ -18,128 +18,107 @@
  */
 package org.apache.iotdb.tsfile.hadoop;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.hadoop.example.TsFileHelper;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.record.RowBatch;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
-import org.apache.iotdb.tsfile.common.utils.ITsRandomAccessFileWriter;
-import org.apache.iotdb.tsfile.common.utils.TsRandomAccessFileWriter;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TsRandomAccessLocalFileReader;
-import org.apache.iotdb.tsfile.timeseries.basis.TsFile;
-import org.apache.iotdb.tsfile.write.exception.WriteProcessException;
-
 public class TsFileTestHelper {
 
-  public static void deleteTsFile(String filePath) {
+
+  private static final Logger logger = LoggerFactory.getLogger(TsFileHelper.class);
+
+  public static boolean deleteTsFile(String filePath) {
     File file = new File(filePath);
-    file.delete();
-  }
-
-  public static void restoreConf() {
-
+    return file.delete();
   }
 
   public static void writeTsFile(String filePath) {
 
-    TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    conf.pageSizeInByte = 100;
-    conf.groupSizeInByte = 3000;
-    conf.pageCheckSizeThreshold = 1;
-    conf.maxStringLength = 2;
-
-    File file = new File(filePath);
-
-    if (file.exists()) {
-      file.delete();
-    }
-
-    JSONObject jsonSchema = getJsonSchema();
+    TSFileConfig.pageSizeInByte = 100;
+    TSFileConfig.groupSizeInByte = 2000;
+    TSFileConfig.pageCheckSizeThreshold = 1;
+    TSFileConfig.maxStringLength = 2;
 
     try {
-      ITsRandomAccessFileWriter output = new TsRandomAccessFileWriter(new File(filePath));
-      TsFile tsFile = new TsFile(output, jsonSchema);
-      String line = "";
-      for (int i = 1; i < 10; i++) {
-        line = "root.car.d1," + i + ",s1,1,s2,1,s3,0.1,s4,0.1,s5,true,s6,tsfile";
-        tsFile.writeLine(line);
+      File file = new File(filePath);
+
+      if (file.exists()) {
+        file.delete();
       }
-      tsFile.writeLine("root.car.d2,5, s1, 5, s2, 50, s3, 200.5, s4, 0.5");
-      tsFile.writeLine("root.car.d2,6, s1, 6, s2, 60, s3, 200.6, s4, 0.6");
-      tsFile.writeLine("root.car.d2,7, s1, 7, s2, 70, s3, 200.7, s4, 0.7");
-      tsFile.writeLine("root.car.d2,8, s1, 8, s2, 80, s3, 200.8, s4, 0.8");
-      tsFile.close();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    } catch (WriteProcessException e) {
-      throw new RuntimeException(e);
+
+      Schema schema = new Schema();
+
+      // the number of rows to include in the row batch
+      int rowNum = 1000000;
+      // the number of values to include in the row batch
+      int sensorNum = 10;
+
+      // add measurements into file schema (all with INT64 data type)
+      for (int i = 0; i < sensorNum; i++) {
+        schema.registerMeasurement(
+                new MeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
+      }
+
+      // add measurements into TSFileWriter
+      TsFileWriter tsFileWriter = new TsFileWriter(file, schema);
+
+      // construct the row batch
+      RowBatch rowBatch = schema.createRowBatch("device_1");
+
+      long[] timestamps = rowBatch.timestamps;
+      Object[] values = rowBatch.values;
+
+      long timestamp = 1;
+      long value = 1000000L;
+
+      for (int r = 0; r < rowNum; r++, value++) {
+        int row = rowBatch.batchSize++;
+        timestamps[row] = timestamp++;
+        for (int i = 0; i < sensorNum; i++) {
+          long[] sensor = (long[]) values[i];
+          sensor[row] = value;
+        }
+        // write RowBatch to TsFile
+        if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
+          tsFileWriter.write(rowBatch);
+          rowBatch.reset();
+        }
+      }
+      // write RowBatch to TsFile
+      if (rowBatch.batchSize != 0) {
+        tsFileWriter.write(rowBatch);
+        rowBatch.reset();
+      }
+
+      // close TsFile
+      tsFileWriter.close();
+    } catch (Throwable e) {
+      e.printStackTrace();
+      System.out.println(e.getMessage());
     }
-  }
-
-  private static JSONObject getJsonSchema() {
-    TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    JSONObject s1 = new JSONObject();
-    s1.put(JsonFormatConstant.MEASUREMENT_UID, "s1");
-    s1.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT32.toString());
-    s1.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
-
-    JSONObject s2 = new JSONObject();
-    s2.put(JsonFormatConstant.MEASUREMENT_UID, "s2");
-    s2.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-    s2.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
-
-    JSONObject s3 = new JSONObject();
-    s3.put(JsonFormatConstant.MEASUREMENT_UID, "s3");
-    s3.put(JsonFormatConstant.DATA_TYPE, TSDataType.FLOAT.toString());
-    s3.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
-
-    JSONObject s4 = new JSONObject();
-    s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");
-    s4.put(JsonFormatConstant.DATA_TYPE, TSDataType.DOUBLE.toString());
-    s4.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
-
-    JSONObject s5 = new JSONObject();
-    s5.put(JsonFormatConstant.MEASUREMENT_UID, "s5");
-    s5.put(JsonFormatConstant.DATA_TYPE, TSDataType.BOOLEAN.toString());
-    s5.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
-
-    JSONObject s6 = new JSONObject();
-    s6.put(JsonFormatConstant.MEASUREMENT_UID, "s6");
-    s6.put(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());
-    s6.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
-
-    JSONArray measureGroup = new JSONArray();
-    measureGroup.add(s1);
-    measureGroup.add(s2);
-    measureGroup.add(s3);
-    measureGroup.add(s4);
-    measureGroup.add(s5);
-    measureGroup.add(s6);
-
-    JSONObject jsonSchema = new JSONObject();
-    jsonSchema.put(JsonFormatConstant.DELTA_TYPE, "test_type");
-    jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, measureGroup);
-    return jsonSchema;
   }
 
   public static void main(String[] args) throws FileNotFoundException, IOException {
-    String filePath = "tsfile";
+    String filePath = "example_mr.tsfile";
     File file = new File(filePath);
-    System.out.println(file.exists());
-    file.delete();
+    if (file.exists()) {
+      file.delete();
+    }
     writeTsFile(filePath);
-    TsFile tsFile = new TsFile(new TsRandomAccessLocalFileReader(filePath));
-    System.out.println(tsFile.getAllColumns());
-    System.out.println(tsFile.getAllDeltaObject());
-    System.out.println(tsFile.getAllSeries());
-    System.out.println(tsFile.getDeltaObjectRowGroupCount());
-    System.out.println(tsFile.getDeltaObjectTypes());
-    System.out.println(tsFile.getRowGroupPosList());
-    tsFile.close();
+    TsFileSequenceReader reader = new TsFileSequenceReader(filePath);
+    logger.info("Get file meta data: {}", reader.readFileMetadata());
+    reader.close();
   }
 }

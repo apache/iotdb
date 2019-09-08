@@ -18,75 +18,78 @@
  */
 package org.apache.iotdb.tsfile.hadoop.io;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.iotdb.tsfile.common.utils.ITsRandomAccessFileWriter;
+import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 /**
  * This class is used to wrap the {@link}FSDataOutputStream and implement the
- * interface {@link}TSRandomAccessFileWriter
+ * interface {@link}TsFileOutput
  *
- * @author liukun
+ * @author Yuan Tian
  */
-public class HDFSOutputStream implements ITsRandomAccessFileWriter {
+public class HDFSOutput implements TsFileOutput {
 
   private FSDataOutputStream fsDataOutputStream;
 
-  public HDFSOutputStream(String filePath, boolean overwriter) throws IOException {
+  public HDFSOutput(String filePath, boolean overWrite) throws IOException {
 
-    this(filePath, new Configuration(), overwriter);
+    this(filePath, new Configuration(), overWrite);
   }
 
-  public HDFSOutputStream(String filePath, Configuration configuration, boolean overwriter)
+  public HDFSOutput(String filePath, Configuration configuration, boolean overWrite)
       throws IOException {
 
-    this(new Path(filePath), configuration, overwriter);
+    this(new Path(filePath), configuration, overWrite);
   }
 
-  public HDFSOutputStream(Path path, Configuration configuration, boolean overwriter)
+  public HDFSOutput(Path path, Configuration configuration, boolean overWrite)
       throws IOException {
 
     FileSystem fsFileSystem = FileSystem.get(configuration);
-    fsDataOutputStream = fsFileSystem.create(path, overwriter);
+    fsDataOutputStream = fsFileSystem.create(path, overWrite);
+  }
+
+
+  @Override
+  public void write(byte[] b) throws IOException {
+    fsDataOutputStream.write(b);
   }
 
   @Override
-  public OutputStream getOutputStream() {
-
-    return fsDataOutputStream;
+  public void write(ByteBuffer b) throws IOException {
+    fsDataOutputStream.write(b.array());
   }
 
   @Override
-  public long getPos() throws IOException {
-
+  public long getPosition() throws IOException {
+    fsDataOutputStream.flush();
     return fsDataOutputStream.getPos();
   }
 
   @Override
-  public void seek(long offset) throws IOException {
-    throw new IOException("Not support");
-  }
-
-  @Override
-  public void write(int b) throws IOException {
-
-    fsDataOutputStream.write(b);
-  }
-
-  @Override
-  public void write(byte[] b) throws IOException {
-
-    fsDataOutputStream.write(b);
-  }
-
-  @Override
   public void close() throws IOException {
-
     fsDataOutputStream.close();
   }
 
+  @Override
+  public OutputStream wrapAsStream() {
+    return fsDataOutputStream;
+  }
+
+  @Override
+  public void flush() throws IOException {
+    fsDataOutputStream.hflush();
+  }
+
+  @Override
+  public void truncate(long position) throws UnsupportedOperationException {
+    throw new UnsupportedOperationException("Truncate operation unsupported by output stream");
+  }
 }

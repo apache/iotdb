@@ -18,41 +18,34 @@
  */
 package org.apache.iotdb.tsfile.hadoop;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.util.List;
-import org.apache.hadoop.io.BooleanWritable;
-import org.apache.hadoop.io.DoubleWritable;
-import org.apache.hadoop.io.FloatWritable;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Text;
-import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl;
-import org.apache.iotdb.tsfile.common.utils.ITsRandomAccessFileReader;
-import org.apache.iotdb.tsfile.read.TsRandomAccessLocalFileReader;
-import org.apache.iotdb.tsfile.timeseries.basis.TsFile;
+import org.apache.iotdb.tsfile.hadoop.io.HDFSInput;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Objects;
+
+import static org.junit.Assert.*;
+
 public class TSFHadoopTest {
 
-  private TSFInputFormat inputformat = null;
+  private TSFInputFormat inputFormat = null;
 
-  private String tsfilePath = "tsfile";
+  private String tsfilePath = "example_mr.tsfile";
 
   @Before
   public void setUp() throws Exception {
 
     TsFileTestHelper.deleteTsFile(tsfilePath);
-    inputformat = new TSFInputFormat();
+    inputFormat = new TSFInputFormat();
   }
 
   @After
@@ -76,7 +69,7 @@ public class TSFHadoopTest {
     String[] value = {"s1", "s2", "s3"};
     try {
       TSFInputFormat.setReadMeasurementIds(job, value);
-      String[] getValue = (String[]) TSFInputFormat.getReadMeasurementIds(job.getConfiguration())
+      String[] getValue = (String[]) Objects.requireNonNull(TSFInputFormat.getReadMeasurementIds(job.getConfiguration()))
           .toArray();
       assertArrayEquals(value, getValue);
     } catch (TSFHadoopException e) {
@@ -87,20 +80,20 @@ public class TSFHadoopTest {
     // deviceid
     //
     TSFInputFormat.setReadDeltaObjectId(job, true);
-    assertEquals(true, TSFInputFormat.getReadDeltaObject(job.getConfiguration()));
+    assertTrue(TSFInputFormat.getReadDeltaObject(job.getConfiguration()));
 
     //
     // time
     //
 
     TSFInputFormat.setReadTime(job, true);
-    assertEquals(true, TSFInputFormat.getReadTime(job.getConfiguration()));
+    assertTrue(TSFInputFormat.getReadTime(job.getConfiguration()));
 
     //
     // filter
     //
     TSFInputFormat.setHasFilter(job, true);
-    assertEquals(true, TSFInputFormat.getHasFilter(job.getConfiguration()));
+    assertTrue(TSFInputFormat.getHasFilter(job.getConfiguration()));
 
     String filterType = "singleFilter";
     TSFInputFormat.setFilterType(job, filterType);
@@ -122,10 +115,9 @@ public class TSFHadoopTest {
       Job job = Job.getInstance();
       // set input path to the job
       TSFInputFormat.setInputPaths(job, tsfilePath);
-      List<InputSplit> inputSplits = inputformat.getSplits(job);
-      ITsRandomAccessFileReader reader = new TsRandomAccessLocalFileReader(tsfilePath);
-      TsFile tsFile = new TsFile(reader);
-      System.out.println(tsFile.getDeltaObjectRowGroupCount());
+      List<InputSplit> inputSplits = inputFormat.getSplits(job);
+      TsFileSequenceReader reader = new TsFileSequenceReader(new HDFSInput(tsfilePath, job.getConfiguration()));
+      System.out.println(reader.readFileMetadata());
       //assertEquals(tsFile.getRowGroupPosList().size(), inputSplits.size());
       for (InputSplit inputSplit : inputSplits) {
         System.out.println(inputSplit);
@@ -150,10 +142,9 @@ public class TSFHadoopTest {
       TSFInputFormat.setReadMeasurementIds(job, sensors);
       TSFInputFormat.setReadDeltaObjectId(job, false);
       TSFInputFormat.setReadTime(job, false);
-      List<InputSplit> inputSplits = inputformat.getSplits(job);
-      ITsRandomAccessFileReader reader = new TsRandomAccessLocalFileReader(tsfilePath);
-      TsFile tsFile = new TsFile(reader);
-      System.out.println(tsFile.getDeltaObjectRowGroupCount());
+      List<InputSplit> inputSplits = inputFormat.getSplits(job);
+      TsFileSequenceReader reader = new TsFileSequenceReader(new HDFSInput(tsfilePath, job.getConfiguration()));
+      System.out.println(reader.readFileMetadata());
       //assertEquals(tsFile.getRowGroupPosList().size(), inputSplits.size());
       for (InputSplit inputSplit : inputSplits) {
         System.out.println(inputSplit);
@@ -185,13 +176,7 @@ public class TSFHadoopTest {
         }
       }
       recordReader.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    } catch (TSFHadoopException e) {
+    } catch (IOException | InterruptedException | TSFHadoopException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

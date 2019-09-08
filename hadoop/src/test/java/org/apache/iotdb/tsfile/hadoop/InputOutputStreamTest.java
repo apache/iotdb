@@ -22,19 +22,18 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.iotdb.tsfile.hadoop.io.HDFSInput;
-import org.apache.iotdb.tsfile.hadoop.io.HDFSOutputStream;
+import org.apache.iotdb.tsfile.hadoop.io.HDFSOutput;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 
 public class InputOutputStreamTest {
 
   private HDFSInput hdfsInput = null;
-  private HDFSOutputStream hdfsOutputStream = null;
+  private HDFSOutput hdfsOutput = null;
   private int lenOfBytes = 50;
   private byte b = 10;
   private byte[] bs = new byte[lenOfBytes];
@@ -60,21 +59,16 @@ public class InputOutputStreamTest {
 
   @Test
   public void test() throws Exception {
-    // write one byte
-    hdfsOutputStream = new HDFSOutputStream(filename, new Configuration(), true);
-    hdfsOutputStream.write(b);
-    assertEquals(1, hdfsOutputStream.getPos());
-    hdfsOutputStream.close();
-    assertEquals(true, fileSystem.exists(path));
+    // write one byte array
+    hdfsOutput = new HDFSOutput(filename, new Configuration(), true);
+    hdfsOutput.write(bs);
+    assertEquals(lenOfBytes, hdfsOutput.getPosition());
+    hdfsOutput.close();
+    assertTrue(fileSystem.exists(path));
     fileSystem.delete(path, true);
-    assertEquals(false, fileSystem.exists(path));
-    // write bytes
-    hdfsOutputStream = new HDFSOutputStream(filename, new Configuration(), true);
-    hdfsOutputStream.write(bs);
-    assertEquals(bs.length, hdfsOutputStream.getPos());
-    hdfsOutputStream.close();
-    assertEquals(true, fileSystem.exists(path));
-    // read bytes using hdfs inputstream
+    assertFalse(fileSystem.exists(path));
+
+    // read bytes using hdfs inputStream
     hdfsInput = new HDFSInput(filename);
     assertEquals(0, hdfsInput.position());
     assertEquals(lenOfBytes, hdfsInput.size());
@@ -85,9 +79,9 @@ public class InputOutputStreamTest {
     assertEquals(lenOfBytes, hdfsInput.position());
     assertArrayEquals(bs, rbs);
     hdfsInput.close();
-    assertEquals(true, fileSystem.exists(path));
+    assertTrue(fileSystem.exists(path));
     fileSystem.delete(path, true);
-    assertEquals(false, fileSystem.exists(path));
+    assertFalse(fileSystem.exists(path));
   }
 
 }
