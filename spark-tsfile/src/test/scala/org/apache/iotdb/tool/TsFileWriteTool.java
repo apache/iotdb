@@ -19,6 +19,7 @@
 package org.apache.iotdb.tool;
 
 import java.io.File;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -210,6 +211,60 @@ public class TsFileWriteTool {
     tsFileWriter.write(tsRecord);
 
     // close TsFile
+    tsFileWriter.close();
+  }
+
+  /**
+   * Create a tsfile that contains data from device_1 and device_2;
+   * device_1's chunkgroups and device_2's chunkgroups are interleaved.
+   *
+   * Below is the created tsfile's statistics in one case. Note that the absolute values may change
+   * under different tsfile versions or hardware environments.
+   *
+   * |  space pos         | device.chunkgroup     | time range of this chunkgroup |
+   * |  [12,290545]       | device_1.chunkgroup_1 | [0,131044]                    |
+   * |  [290545,1042103]  | device_2.chunkgroup_1 | [0,262088]                    |
+   * |  [1042103,1345041] | device_1.chunkgroup_2 | [131045,254915]               |
+   * |  [1345041,2110092] | device_2.chunkgroup_2 | [262090,509830]               |
+   * |  [2110092,2421676] | device_1.chunkgroup_3 | [254916,376146]               |
+   * |  [2421676,3194704] | device_2.chunkgroup_3 | [509832,752292]               |
+   * |  [3194704,3256098] | device_1.chunkgroup_4 | [376147,399999]               |
+   * |  [3256098,3410323] | device_2.chunkgroup_4 | [752294,799998]               |
+   *
+   */
+  public void create4(String tsfilePath) throws Exception {
+    TSFileDescriptor.getInstance().getConfig().groupSizeInByte = 1024 * 1024;
+    File f = new File(tsfilePath);
+    if (f.exists()) {
+      f.delete();
+    }
+    TsFileWriter tsFileWriter = new TsFileWriter(f);
+
+    tsFileWriter
+        .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.INT32, TSEncoding.RLE));
+    tsFileWriter
+        .addMeasurement(new MeasurementSchema("sensor_2", TSDataType.FLOAT, TSEncoding.RLE));
+    tsFileWriter
+        .addMeasurement(new MeasurementSchema("sensor_3", TSDataType.BOOLEAN, TSEncoding.RLE));
+
+    int j = 0;
+    for (int i = 0; i < 400000; i++) {
+      TSRecord tsRecord_d1 = new TSRecord(i, "device_1");
+      DataPoint dPoint = new IntDataPoint("sensor_1", i);
+      tsRecord_d1.addTuple(dPoint);
+      tsFileWriter.write(tsRecord_d1);
+
+      j = i * 2; // mimic devices at two different sample rates
+      TSRecord tsRecord_d2 = new TSRecord(j, "device_2");
+      DataPoint dPoint1 = new IntDataPoint("sensor_1", j);
+      DataPoint dPoint2 = new FloatDataPoint("sensor_2", (float) j);
+      DataPoint dPoint3 = new BooleanDataPoint("sensor_3", j % 2 == 0);
+      tsRecord_d2.addTuple(dPoint1);
+      tsRecord_d2.addTuple(dPoint2);
+      tsRecord_d2.addTuple(dPoint3);
+      tsFileWriter.write(tsRecord_d2);
+    }
+
     tsFileWriter.close();
   }
 }

@@ -56,7 +56,8 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
     val conf = spark.sparkContext.hadoopConfiguration
 
     //check if the path is given
-    options.getOrElse(DefaultSource.path, throw new TSFileDataSourceException(s"${DefaultSource.path} must be specified for org.apache.iotdb.tsfile DataSource"))
+    options.getOrElse(DefaultSource.path, throw new TSFileDataSourceException(
+      s"${DefaultSource.path} must be specified for org.apache.iotdb.tsfile DataSource"))
 
     if (options.getOrElse(DefaultSource.isNarrowForm, "").equals("narrow_form")) {
       val tsfileSchema = NarrowConverter.getUnionSeries(files, conf)
@@ -86,13 +87,15 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
                             requiredSchema: StructType,
                             filters: Seq[Filter],
                             options: Map[String, String],
-                            hadoopConf: Configuration): (PartitionedFile) => Iterator[InternalRow] = {
+                            hadoopConf: Configuration): (PartitionedFile) => Iterator[InternalRow]
+  = {
     val broadcastedConf =
       sparkSession.sparkContext.broadcast(new SerializableConfiguration(hadoopConf))
 
     (file: PartitionedFile) => {
       val log = LoggerFactory.getLogger(classOf[DefaultSource])
-      log.info("This partition starts from " + file.start.asInstanceOf[java.lang.Long] + " and ends at " + (file.start + file.length).asInstanceOf[java.lang.Long])
+      log.info("This partition starts from " + file.start.asInstanceOf[java.lang.Long]
+        + " and ends at " + (file.start + file.length).asInstanceOf[java.lang.Long])
       log.info(file.toString())
 
       val conf = broadcastedConf.value.value
@@ -100,25 +103,30 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
 
       val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
 
-      Option(TaskContext.get()).foreach { taskContext => {
-        taskContext.addTaskCompletionListener { _ => in.close() }
-        log.info("task Id: " + taskContext.taskAttemptId() + " partition Id: " + taskContext.partitionId())
-      }
-      }
-
       val tsFileMetaData = reader.readFileMetadata
 
-      // get queriedSchema from requiredSchema
-      var queriedSchema = WideConverter.prepSchema(requiredSchema, tsFileMetaData)
       val readTsFile: ReadOnlyTsFile = new ReadOnlyTsFile(reader)
+
+      Option(TaskContext.get()).foreach { taskContext => {
+        taskContext.addTaskCompletionListener { _ => readTsFile.close() }
+        log.info("task Id: " + taskContext.taskAttemptId() + " partition Id: " +
+          taskContext.partitionId())
+      }
+      }
 
       if (options.getOrElse(DefaultSource.isNarrowForm, "").equals("narrow_form")) {
         val device_names = tsFileMetaData.getDeviceMap.keySet()
         val measurement_names = tsFileMetaData.getMeasurementSchema.keySet()
-        // construct queryExpression based on queriedSchema and filters
-        val queryExpressions = NarrowConverter.toQueryExpression(dataSchema, device_names, measurement_names, filters, reader, file.start.asInstanceOf[java.lang.Long], (file.start + file.length).asInstanceOf[java.lang.Long])
 
-        val queryDataSets = Executor.query(readTsFile, queryExpressions, file.start.asInstanceOf[java.lang.Long], (file.start + file.length).asInstanceOf[java.lang.Long])
+        // construct queryExpression based on queriedSchema and filters
+        val queryExpressions = NarrowConverter.toQueryExpression(dataSchema, device_names,
+          measurement_names, filters, reader, file.start.asInstanceOf[java.lang.Long],
+          (file.start + file.length).asInstanceOf[java.lang.Long])
+
+        val queryDataSets = Executor.query(readTsFile, queryExpressions,
+          file.start.asInstanceOf[java.lang.Long],
+          (file.start + file.length).asInstanceOf[java.lang.Long])
+
         var queryDataSet: QueryDataSet = null
         var device_name: String = null
 
@@ -155,8 +163,6 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
           }
 
           override def next(): InternalRow = {
-            queryNext()
-
             val curRecord = queryDataSet.next()
             val fields = curRecord.getFields
             val paths = queryDataSet.getPaths
@@ -171,7 +177,8 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
                 rowBuffer(index) = device_name
               }
               else {
-                val pos = paths.indexOf(new org.apache.iotdb.tsfile.read.common.Path(device_name, field.name))
+                val pos = paths.indexOf(new org.apache.iotdb.tsfile.read.common.Path(device_name,
+                  field.name))
                 var curField: Field = null
                 if (pos != -1) {
                   curField = fields.get(pos)
@@ -186,11 +193,15 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
         }
       }
       else {
+        // get queriedSchema from requiredSchema
+        var queriedSchema = WideConverter.prepSchema(requiredSchema, tsFileMetaData)
+
         // construct queryExpression based on queriedSchema and filters
         val queryExpression = WideConverter.toQueryExpression(queriedSchema, filters)
 
 
-        val queryDataSet = readTsFile.query(queryExpression, file.start.asInstanceOf[java.lang.Long],
+        val queryDataSet = readTsFile.query(queryExpression,
+          file.start.asInstanceOf[java.lang.Long],
           (file.start + file.length).asInstanceOf[java.lang.Long])
 
         new Iterator[InternalRow] {
