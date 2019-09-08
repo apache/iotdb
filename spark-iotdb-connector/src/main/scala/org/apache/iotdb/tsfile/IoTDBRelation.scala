@@ -1,3 +1,21 @@
+/**
+  * Licensed to the Apache Software Foundation (ASF) under one
+  * or more contributor license agreements.  See the NOTICE file
+  * distributed with this work for additional information
+  * regarding copyright ownership.  The ASF licenses this file
+  * to you under the Apache License, Version 2.0 (the
+  * "License"); you may not use this file except in compliance
+  * with the License.  You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing,
+  * software distributed under the License is distributed on an
+  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  * KIND, either express or implied.  See the License for the
+  * specific language governing permissions and limitations
+  * under the License.
+  */
 package org.apache.iotdb.tsfile
 
 import org.apache.spark.Partition
@@ -14,9 +32,9 @@ import scala.collection.mutable.ArrayBuffer
   * Created by qjl on 16-8-25.
   */
 private case class IoTDBPartitioningInfo(
-                                           start: Long,
-                                           end: Long,
-                                           numPartitions: Int)
+                                          start: Long,
+                                          end: Long,
+                                          numPartitions: Int)
 
 private object IoTDBRelation {
 
@@ -31,22 +49,22 @@ private object IoTDBRelation {
     val end = partitionInfo.end
 
     //if start <= end , can not partition
-    require (start <= end,
+    require(start <= end,
       "Operation not allowed: the start time is larger than end time " +
         s"time start: $start; end: $end")
 
     //numPartitions needs to be less and equal than (end - start)
     val numPartitions =
-      if ((end - start) >= partitionInfo.numPartitions) {
-        partitionInfo.numPartitions
-      } else {
-        logger.warn("The number of partitions is reduced because the specified number of " +
-          "partitions is less than the difference between upper bound and lower bound. " +
-          s"Updated number of partitions: ${end - start}; Input number of " +
-          s"partitions: ${partitionInfo.numPartitions}; Lower bound: $start; " +
-          s"Upper bound: $end.")
-        end - start
-      }
+    if ((end - start) >= partitionInfo.numPartitions) {
+      partitionInfo.numPartitions
+    } else {
+      logger.warn("The number of partitions is reduced because the specified number of " +
+        "partitions is less than the difference between upper bound and lower bound. " +
+        s"Updated number of partitions: ${end - start}; Input number of " +
+        s"partitions: ${partitionInfo.numPartitions}; Lower bound: $start; " +
+        s"Upper bound: $end.")
+      end - start
+    }
 
     var partitions = new ArrayBuffer[Partition]()
 
@@ -55,14 +73,14 @@ private object IoTDBRelation {
     var currentValue: Long = start
     while (i < numPartitions) {
       var where = s""
-      if(i == 0){
+      if (i == 0) {
 
         where = s"${SQLConstant.RESERVED_TIME} >= $currentValue and ${SQLConstant.RESERVED_TIME} <= ${currentValue + length}"
         partitions += IoTDBPartition(where, i, currentValue, currentValue + length)
       }
       else {
         where = s"${SQLConstant.RESERVED_TIME} > $currentValue and ${SQLConstant.RESERVED_TIME} <= ${currentValue + length}"
-        partitions += IoTDBPartition(where, i, currentValue+1, currentValue + length)
+        partitions += IoTDBPartition(where, i, currentValue + 1, currentValue + length)
       }
 
       i = i + 1
