@@ -83,6 +83,10 @@ public class LogVisualizer {
    * measurement name -> the statistics of the measurement of each group
    */
   private Map<String, List<TimeSeriesStatistics>> statisticsMap;
+  /**
+   *  how many groups are found by the given tags.
+   */
+  private int groupNum = 0;
 
   /**
    * the file that defines how to parse the logs in the log file.
@@ -275,7 +279,8 @@ public class LogVisualizer {
       logGroups.computeIfAbsent(logEntry.getTags(), tag -> new ArrayList<>()).add(logEntry);
     }
     logCache.clear();
-    logger.info("Found {} different tags", logGroups.size());
+    groupNum = logGroups.size();
+    logger.info("Found {} different tags", groupNum);
     return logGroups;
   }
 
@@ -424,5 +429,9 @@ public class LogVisualizer {
 
   public Map<String, List<TimeSeriesStatistics>> getStatisticsMap() {
     return statisticsMap;
+  }
+
+  public int getGroupNum() {
+    return groupNum;
   }
 }

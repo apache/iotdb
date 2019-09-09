@@ -207,7 +207,7 @@ class PlanBox extends Box{
     executePlanCallback.call(plan.getName(), charts, statisticMap);
     exportResultButton.setEnabled(true);
     JOptionPane.showMessageDialog(this,
-        String.format("Plan is successfully executed, found %d log groups", charts.size()));
+        String.format("Plan is successfully executed, found %d log groups", visualizer.getGroupNum()));
   }
 
   private void onPlanSelectionChanged(ListSelectionEvent e) {

@@ -24,7 +24,7 @@
 # Time consumption: 7756ms"
 
 # A regular expression defines what a log looks like. A log must be exactly one line.
-pattern=([^\\[]*)(\\[.*])(\\s\\w+\\s)([^:]*:\\d+)(\\s-\\s)(.*)
+pattern=(.*) \\[(.*)] (.*) (.*) - (.*)
 # The index of the group which represents the date that the log is generated, one based
 date_index=1
 # How the date is formatted
@@ -40,6 +40,6 @@ level_index=3
 # different style of code position, please do not set this.
 code_location_index=4
 # The index of the group which represents the message in the log, one based, optional
-content_index=6
+content_index=5
 
 

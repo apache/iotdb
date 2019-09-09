@@ -95,7 +95,8 @@ will be ignored.
 
 ## Choose a parser property file
 Second, you should also choose a file describing how to parse the log file. For log files 
-produced by IoTDB, we provide an example in `tools\default.log.pattern`. If your logs have 
+produced by IoTDB, we provide an example in 
+`server/src/assembly/resources/tools/logVisualize/default.log.pattern`. If your logs have 
 similar structure as the IoTDB ones, you may just use it, otherwise, you should read that file 
 carefully and modify it for your logs.
 
@@ -125,11 +126,11 @@ any existing plans.
 
 ## Edit plans
 After creating the new plan, you can edit it in the right panel. We provide an example in 
- `tools/logVisualize/plans/flushTimeConsumption.plan.example`, we strongly recommend you read it 
-carefully to know how to fill the fields. You can also edit plans you have loaded here. Do not
-forget to click the `Save plan` button if you want to save what you have modified. If you 
-want to create a plan that shows the time consumptions of jobs grouped by their type, you may set
-the fields like the following one.
+ `server/src/assembly/resources/tools/logVisualize/plans/flushTimeConsumption.plan.example`, 
+we strongly recommend you read it carefully to know how to fill the fields. You can also edit plans 
+you have loaded here. Do not forget to click the `Save plan` button if you want to save what you 
+have modified. If you want to create a plan that shows the time consumptions of jobs grouped by 
+their type, you may set the fields like the following one.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/edit_plan.png?raw=true">
 

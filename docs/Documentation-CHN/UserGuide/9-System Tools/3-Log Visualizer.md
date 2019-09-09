@@ -88,8 +88,9 @@
 
 ## 选择解析器配置文件
 然后，您还需要选择一个解析器配置文件，该文件将告诉LogVisualizer如何解析日志。对于IoTDB产生的日志，我们在
-`tools\default.log.pattern`里提供了一个例子。如果您需要解析的日志与IoTDB的日志具有相同的格式，您可以
-直接使用该文件。否则，您需要仔细阅读该样例文件，并根据您的日志结构进行相应的修改。
+`server/src/assembly/resources/tools/logVisualize/default.log.pattern`里提供了一个例子。如果您需要
+解析的日志与IoTDB的日志具有相同的格式，您可以直接使用该文件。否则，您需要仔细阅读该样例文件，并根据
+您的日志结构进行相应的修改。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/select_log_parser_property.png?raw=true">
 
@@ -114,7 +115,7 @@
  <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/jt2594838/PicHub/blob/master/log-visualizer/create_plan.png?raw=true">
 
 ## 编辑可视化计划
-在创建了一个新的计划以后，您可以在右边的面板中对其进行编辑。我们在 `tools/logVisualize/plans/flushTimeConsumption.plan.example`
+在创建了一个新的计划以后，您可以在右边的面板中对其进行编辑。我们在 `server/src/assembly/resources/tools/logVisualize/plans/flushTimeConsumption.plan.example`
 提供了一个样例来帮助您理解计划的每一个字段的含义以及应该如何设置它们，我们强烈推荐您仔细阅读该样例。
 您也可以编辑其他已经加载了的计划。编辑结束后请务必点击`Save plan`按钮来保存您的修改。在下图的例子中，
 我们给出了如何设计一个计划让它能对任务的完成时间进行可视化，并将任务按照其类别进行分组。

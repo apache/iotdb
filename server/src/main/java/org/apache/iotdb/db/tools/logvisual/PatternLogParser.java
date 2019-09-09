@@ -119,7 +119,7 @@ public class PatternLogParser implements LogParser{
     while (!matched) {
       matcher = pattern.matcher(line);
       if (!matcher.matches()) {
-        logger.debug("Unrecognizable log: {}", line);
+        logger.debug("Unrecognizable log: {}, pattern: {}", line, matcher.pattern().toString());
         line = nextLine();
         if (line == null) {
           return null;
