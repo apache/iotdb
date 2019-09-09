@@ -127,7 +127,7 @@ public class IOTDBGroupByIT {
   }
 
   @Test
-  public void countSumavgTest() throws SQLException {
+  public void countSumAvgTest() throws SQLException {
     String[] retArray1 = new String[]{
         "2,1,4.4,4.4",
         "5,3,35.8,11.933333333333332",
