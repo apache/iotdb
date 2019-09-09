@@ -21,10 +21,11 @@ package org.apache.iotdb.tsfile
 import org.apache.iotdb.db.service.IoTDB
 import org.apache.iotdb.jdbc.Config
 import org.apache.spark.sql.{SQLContext, SparkSession}
-import org.junit.{After, Before, Test}
+import org.junit._
+import org.scalatest.{BeforeAndAfterAll, FunSuite}
 import org.scalatest.junit.JUnitSuite
 
-class IoTDBTest extends JUnitSuite {
+class IoTDBTest extends FunSuite with BeforeAndAfterAll {
   private var daemon: IoTDB = null
 
   private val testFile = "/home/hadoop/git/tsfile/delta-spark/src/test/resources/test.tsfile"
@@ -35,7 +36,9 @@ class IoTDBTest extends JUnitSuite {
   private var spark: SparkSession = _
 
   @Before
-  def before(): Unit = {
+  override protected def beforeAll(): Unit = {
+    super.beforeAll()
+
     EnvironmentUtils.closeStatMonitor()
     daemon = IoTDB.getInstance
     daemon.active()
@@ -50,33 +53,44 @@ class IoTDBTest extends JUnitSuite {
       .getOrCreate()
   }
 
-  @After
-  def after(): Unit = {
+  @AfterClass
+  override protected def afterAll(): Unit = {
     if (spark != null) {
       spark.sparkContext.stop()
     }
 
     daemon.stop()
     EnvironmentUtils.cleanEnv()
+    super.afterAll()
   }
 
-  @Test
-  def showData(): Unit = {
+  test("test show data") {
     val df = spark.read.format("org.apache.iotdb.tsfile").option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root").load
     df.printSchema()
     df.show()
-    println(df.count())
+    Assert.assertEquals(7505, df.count())
   }
 
-  @Test
-  def showDataWithPartition(): Unit = {
+  test("test show data with partition") {
     val df = spark.read.format("org.apache.iotdb.tsfile").option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root").option("lowerBound", 1).option("upperBound", System.nanoTime() / 1000 / 1000).option("numPartition", 10).load
 
     df.printSchema()
 
     df.show()
 
-    println(df.count())
+    Assert.assertEquals(7505, df.count())
+  }
+
+  test("test filter data") {
+    val df = spark.read.format("org.apache.iotdb.tsfile").option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root where time < 2000 and time > 1000").load
+
+    Assert.assertEquals(499, df.count())
+  }
+
+  test("test filter data with partition") {
+    val df = spark.read.format("org.apache.iotdb.tsfile").option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root where time < 2000 and time > 1000").option("lowerBound", 1).option("upperBound", 10000).option("numPartition", 20).load
+
+    Assert.assertEquals(499, df.count())
   }
 }
 
