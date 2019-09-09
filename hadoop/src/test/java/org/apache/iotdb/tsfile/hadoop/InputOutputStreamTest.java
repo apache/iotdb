@@ -65,8 +65,6 @@ public class InputOutputStreamTest {
     assertEquals(lenOfBytes, hdfsOutput.getPosition());
     hdfsOutput.close();
     assertTrue(fileSystem.exists(path));
-    fileSystem.delete(path, true);
-    assertFalse(fileSystem.exists(path));
 
     // read bytes using hdfs inputStream
     hdfsInput = new HDFSInput(filename);
@@ -74,9 +72,9 @@ public class InputOutputStreamTest {
     assertEquals(lenOfBytes, hdfsInput.size());
     hdfsInput.position(10);
     assertEquals(10, hdfsInput.position());
-    hdfsInput.position(0);
+    // verify that this read method does not modify the position
     hdfsInput.read(rbs, 0, rbs.length);
-    assertEquals(lenOfBytes, hdfsInput.position());
+    assertEquals(10, hdfsInput.position());
     assertArrayEquals(bs, rbs);
     hdfsInput.close();
     assertTrue(fileSystem.exists(path));

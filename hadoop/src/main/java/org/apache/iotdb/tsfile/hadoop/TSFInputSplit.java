@@ -101,7 +101,7 @@ public class TSFInputSplit extends InputSplit implements Writable {
     for (String string : hosts) {
       out.writeUTF(string);
     }
-    out.write(chunkGroupInfoList.size());
+    out.writeInt(chunkGroupInfoList.size());
     ChunkGroupInfo.convertToThrift(chunkGroupInfoList, out);
   }
 

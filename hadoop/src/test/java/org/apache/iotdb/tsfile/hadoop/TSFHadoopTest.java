@@ -30,8 +30,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 import static org.junit.Assert.*;
 
@@ -69,9 +68,9 @@ public class TSFHadoopTest {
     String[] value = {"s1", "s2", "s3"};
     try {
       TSFInputFormat.setReadMeasurementIds(job, value);
-      String[] getValue = (String[]) Objects.requireNonNull(TSFInputFormat.getReadMeasurementIds(job.getConfiguration()))
-          .toArray();
-      assertArrayEquals(value, getValue);
+      Set<String> getValue = TSFInputFormat.getReadMeasurementIds(job.getConfiguration());
+      assertEquals(new HashSet<>(Arrays.asList(value)), getValue);
+
     } catch (TSFHadoopException e) {
       e.printStackTrace();
       fail(e.getMessage());
