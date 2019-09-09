@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -26,7 +28,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TsDeviceMetadata {
 
@@ -86,7 +87,7 @@ public class TsDeviceMetadata {
    * @param buffer -buffer to deserialize
    * @return -device meta data
    */
-  public static TsDeviceMetadata deserializeFrom(ByteBuffer buffer) {
+  public static TsDeviceMetadata deserializeFrom(ByteBuffer buffer) throws IOException {
     TsDeviceMetadata deviceMetadata = new TsDeviceMetadata();
 
     deviceMetadata.startTime = ReadWriteIOUtils.readLong(buffer);

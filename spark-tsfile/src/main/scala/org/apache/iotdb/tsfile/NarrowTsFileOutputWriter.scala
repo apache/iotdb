@@ -7,7 +7,7 @@
   * "License"); you may not use this file except in compliance
   * with the License.  You may obtain a copy of the License at
   *
-  *     http://www.apache.org/licenses/LICENSE-2.0
+  * http://www.apache.org/licenses/LICENSE-2.0
   *
   * Unless required by applicable law or agreed to in writing,
   * software distributed under the License is distributed on an
@@ -26,23 +26,20 @@ import org.apache.spark.sql.execution.datasources.OutputWriter
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.catalyst.InternalRow
 
-private[tsfile] class TsFileOutputWriter(
-                                          pathStr: String,
-                                          dataSchema: StructType,
-                                          options: Map[String, String],
-                                          context: TaskAttemptContext) extends OutputWriter {
+private[tsfile] class NarrowTsFileOutputWriter(
+                                                pathStr: String,
+                                                dataSchema: StructType,
+                                                options: Map[String, String],
+                                                context: TaskAttemptContext) extends OutputWriter {
 
   private val recordWriter: RecordWriter[NullWritable, TSRecord] = {
-    val fileSchema = Converter.toTsFileSchema(dataSchema, options)
+    val fileSchema = NarrowConverter.toTsFileSchema(dataSchema, options)
     new TsFileOutputFormat(fileSchema).getRecordWriter(context)
   }
 
   override def write(row: InternalRow): Unit = {
     if (row != null) {
-      val tsRecord = Converter.toTsRecord(row, dataSchema)
-      tsRecord.foreach(r => {
-        recordWriter.write(NullWritable.get(), r)
-      })
+      recordWriter.write(NullWritable.get(), NarrowConverter.toTsRecord(row, dataSchema))
     }
   }
 

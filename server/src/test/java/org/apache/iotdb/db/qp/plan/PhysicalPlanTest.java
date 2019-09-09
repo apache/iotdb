@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.QueryProcessor;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
@@ -50,6 +52,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.StringContainer;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -440,5 +443,25 @@ public class PhysicalPlanTest {
     IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
         ValueFilter.gt(-20.0));
     assertEquals(expect.toString(), queryFilter.toString());
+  }
+
+  @Test
+  public void testGrantWatermarkEmbedding()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+    String sqlStr = "GRANT WATERMARK_EMBEDDING to a,b";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    DataAuthPlan dataAuthPlan = (DataAuthPlan) plan;
+    Assert.assertEquals(2, dataAuthPlan.getUsers().size());
+    Assert.assertEquals(OperatorType.GRANT_WATERMARK_EMBEDDING, dataAuthPlan.getOperatorType());
+  }
+
+  @Test
+  public void testRevokeWatermarkEmbedding()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+    String sqlStr = "REVOKE WATERMARK_EMBEDDING from a,b";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    DataAuthPlan dataAuthPlan = (DataAuthPlan) plan;
+    Assert.assertEquals(2, dataAuthPlan.getUsers().size());
+    Assert.assertEquals(OperatorType.REVOKE_WATERMARK_EMBEDDING, dataAuthPlan.getOperatorType());
   }
 }

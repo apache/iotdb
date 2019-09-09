@@ -45,7 +45,6 @@ KW_AND : 'AND' | '&' | '&&';
 KW_OR : 'OR' | '|' | '||';
 KW_NOT : 'NOT' | '!';
 
-
 KW_ORDER : 'ORDER';
 KW_GROUP : 'GROUP';
 KW_FILL : 'FILL';
@@ -96,6 +95,7 @@ KW_LIST: 'LIST';
 KW_OF: 'OF';
 KW_ALL: 'ALL';
 
+KW_WATERMARK_EMBEDDING : 'WATERMARK_EMBEDDING';
 
 QUOTE : '\'' ;
 

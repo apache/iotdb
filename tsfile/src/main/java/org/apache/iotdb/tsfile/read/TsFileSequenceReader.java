@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -58,13 +58,11 @@ import org.slf4j.LoggerFactory;
 public class TsFileSequenceReader implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileSequenceReader.class);
-
+  protected String file;
   private TsFileInput tsFileInput;
   private long fileMetadataPos;
   private int fileMetadataSize;
   private ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
-  protected String file;
-
   private int totalChunkNum;
   private TsFileMetaData tsFileMetaData;
 
@@ -103,7 +101,8 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
   }
 
-  public TsFileSequenceReader(String file, boolean loadMetadata, boolean cacheDeviceMetadata) throws IOException {
+  public TsFileSequenceReader(String file, boolean loadMetadata, boolean cacheDeviceMetadata)
+      throws IOException {
     this(file, loadMetadata);
     this.cacheDeviceMetadata = cacheDeviceMetadata;
     if (cacheDeviceMetadata) {
@@ -260,7 +259,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       deviceMetadata = TsDeviceMetadata.deserializeFrom(readData(index.getOffset()
           , index.getLen()));
       if (cacheDeviceMetadata) {
-       deviceMetadataMap.put(index, deviceMetadata);
+        deviceMetadataMap.put(index, deviceMetadata);
       }
     }
     return deviceMetadata;
@@ -596,7 +595,7 @@ public class TsFileSequenceReader implements AutoCloseable {
               this.skipPageData(pageHeader);
             }
             currentChunk = new ChunkMetaData(measurementID, dataType, fileOffsetOfChunk,
-              startTimeOfChunk, endTimeOfChunk);
+                startTimeOfChunk, endTimeOfChunk);
             currentChunk.setNumOfPoints(numOfPoints);
             ByteBuffer[] statisticsArray = new ByteBuffer[StatisticType.getTotalTypeNum()];
             statisticsArray[StatisticType.min_value.ordinal()] = ByteBuffer
@@ -614,7 +613,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             currentChunk.setDigest(tsDigest);
             chunks.add(currentChunk);
             numOfPoints = 0;
-            chunkCnt ++;
+            chunkCnt++;
             break;
           case MetaMarker.CHUNK_GROUP_FOOTER:
             //this is a chunk group
@@ -684,5 +683,72 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     chunkMetaDataList.sort(Comparator.comparingLong(ChunkMetaData::getStartTime));
     return chunkMetaDataList;
+  }
+
+  /**
+   * get device names in range
+   *
+   * @param start start of the file
+   * @param end end of the file
+   * @return device names in range
+   */
+  public List<String> getDeviceNameInRange(long start, long end) {
+    List<String> res = new ArrayList<>();
+
+    try {
+      TsFileMetaData tsFileMetaData = readFileMetadata();
+      for (Map.Entry<String, TsDeviceMetadataIndex> entry : tsFileMetaData.getDeviceMap()
+          .entrySet()) {
+        TsDeviceMetadata tsDeviceMetadata = readTsDeviceMetaData(entry.getValue());
+        for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata
+            .getChunkGroupMetaDataList()) {
+          LocateStatus mode = checkLocateStatus(chunkGroupMetaData, start,
+              end);
+          if (mode == LocateStatus.in) {
+            res.add(entry.getKey());
+            break;
+          }
+        }
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    return res;
+  }
+
+  /**
+   * Check the location of a given chunkGroupMetaData with respect to a space partition constraint.
+   *
+   * @param chunkGroupMetaData the given chunkGroupMetaData
+   * @param spacePartitionStartPos the start position of the space partition
+   * @param spacePartitionEndPos the end position of the space partition
+   * @return LocateStatus
+   */
+  private LocateStatus checkLocateStatus(ChunkGroupMetaData chunkGroupMetaData,
+      long spacePartitionStartPos, long spacePartitionEndPos) {
+    long startOffsetOfChunkGroup = chunkGroupMetaData.getStartOffsetOfChunkGroup();
+    long endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup();
+    long middleOffsetOfChunkGroup = (startOffsetOfChunkGroup + endOffsetOfChunkGroup) / 2;
+    if (spacePartitionStartPos <= middleOffsetOfChunkGroup
+        && middleOffsetOfChunkGroup < spacePartitionEndPos) {
+      return LocateStatus.in;
+    } else if (middleOffsetOfChunkGroup < spacePartitionStartPos) {
+      return LocateStatus.before;
+    } else {
+      return LocateStatus.after;
+    }
+  }
+
+  /**
+   * The location of a chunkGroupMetaData with respect to a space partition constraint.
+   * <p>
+   * in - the middle point of the chunkGroupMetaData is located in the current space partition.
+   * before - the middle point of the chunkGroupMetaData is located before the current space
+   * partition. after - the middle point of the chunkGroupMetaData is located after the current
+   * space partition.
+   */
+  private enum LocateStatus {
+    in, before, after
   }
 }

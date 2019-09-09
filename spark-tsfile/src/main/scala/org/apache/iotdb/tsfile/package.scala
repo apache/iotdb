@@ -7,7 +7,7 @@
   * "License"); you may not use this file except in compliance
   * with the License.  You may obtain a copy of the License at
   *
-  *     http://www.apache.org/licenses/LICENSE-2.0
+  * http://www.apache.org/licenses/LICENSE-2.0
   *
   * Unless required by applicable law or agreed to in writing,
   * software distributed under the License is distributed on an
@@ -19,22 +19,39 @@
 
 package org.apache.iotdb
 
-import org.apache.spark.sql.{DataFrame, DataFrameReader, DataFrameWriter}
+import org.apache.spark.sql.{DataFrame, DataFrameReader, DataFrameWriter, SparkSession}
 
 package object tsfile {
 
   /**
     * add a method 'tsfile' to DataFrameReader to read tsfile
+    * @param reader dataframeReader
     */
   implicit class TsFileDataFrameReader(reader: DataFrameReader) {
-    def tsfile: String => DataFrame = reader.format("org.apache.iotdb.tsfile").load
+    def tsfile(path: String,
+               isNarrowForm: Boolean = false): DataFrame = {
+      if (isNarrowForm) {
+        reader.option(DefaultSource.path, path).option(DefaultSource.isNarrowForm, "narrow_form").format("org.apache.iotdb.tsfile").load
+      }
+      else {
+        reader.option(DefaultSource.path, path).format("org.apache.iotdb.tsfile").load
+      }
+    }
   }
 
   /**
     * add a method 'tsfile' to DataFrameWriter to write tsfile
     */
   implicit class TsFileDataFrameWriter[T](writer: DataFrameWriter[T]) {
-    def tsfile: String => Unit = writer.format("org.apache.iotdb.tsfile").save
+    def tsfile(path: String,
+               isNarrowForm: Boolean = false): Unit = {
+      if (isNarrowForm) {
+        writer.option(DefaultSource.path, path).option(DefaultSource.isNarrowForm, "narrow_form").format("org.apache.iotdb.tsfile").save
+      }
+      else {
+        writer.option(DefaultSource.path, path).format("org.apache.iotdb.tsfile").save
+      }
+    }
   }
 
 }

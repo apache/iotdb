@@ -221,22 +221,24 @@ public class TsFileWriteWithTSRecord {
 
       // add measurements into file schema
       tsFileWriter
-              .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
+          .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.INT64, TSEncoding.RLE));
       tsFileWriter
-              .addMeasurement(new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+          .addMeasurement(new MeasurementSchema("sensor_2", TSDataType.INT64, TSEncoding.RLE));
       tsFileWriter
-              .addMeasurement(new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
+          .addMeasurement(new MeasurementSchema("sensor_3", TSDataType.INT64, TSEncoding.RLE));
+            
       // construct TSRecord
       TSRecord tsRecord = new TSRecord(1, "device_1");
-      DataPoint dPoint1 = new FloatDataPoint("sensor_1", 1.2f);
-      DataPoint dPoint2 = new IntDataPoint("sensor_2", 20);
-
-     //For time 1 in device_1, the data will be 1.2, 20, null
+      DataPoint dPoint1 = new LongDataPoint("sensor_1", 1);
+      DataPoint dPoint2 = new LongDataPoint("sensor_2", 2);
+      DataPoint dPoint3 = new LongDataPoint("sensor_3", 3);
       tsRecord.addTuple(dPoint1);
       tsRecord.addTuple(dPoint2);
-
-      // write a TSRecord to TsFile
+      tsRecord.addTuple(dPoint3);
+            
+      // write TSRecord
       tsFileWriter.write(tsRecord);
+      
       // close TsFile
       tsFileWriter.close();
     } catch (Throwable e) {
