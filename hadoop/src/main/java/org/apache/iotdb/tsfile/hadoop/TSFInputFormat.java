@@ -256,16 +256,11 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
       // Check the file length. if the length is less than 0, return the
       // empty splits
       if (length > 0) {
-        // Get block information in the local file system or hdfs
-        if (fileStatus instanceof LocatedFileStatus) {
-          logger.info("The file status is {}", LocatedFileStatus.class.getName());
-          blockLocations = ((LocatedFileStatus) fileStatus).getBlockLocations();
-        } else {
-          FileSystem fileSystem = path.getFileSystem(configuration);
-          logger.info("The file status is {}", fileStatus.getClass().getName());
-          logger.info("The file system is " + fileSystem.getClass());
-          blockLocations = fileSystem.getFileBlockLocations(fileStatus, 0, length);
-        }
+        FileSystem fileSystem = path.getFileSystem(configuration);
+        logger.info("The file status is {}", fileStatus.getClass().getName());
+        logger.info("The file system is " + fileSystem.getClass());
+        blockLocations = fileSystem.getFileBlockLocations(fileStatus, 0, length);
+
         logger.info("The block location information is {}", Arrays.toString(blockLocations));
         try (TsFileSequenceReader fileReader = new TsFileSequenceReader(new HDFSInput(path, configuration))) {
           splits.addAll(generateSplits(path, fileReader, blockLocations));
@@ -301,7 +296,9 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
     int currentBlockIndex = 0;
     long splitSize = 0;
     List<String> hosts = new ArrayList<>();
-    for (ChunkGroupMetaData chunkGroupMetaData : fileReader.getSortedChunkGroupMetaDataListByDeviceIds()) {
+    List<ChunkGroupMetaData> chunkGroupMetaDataList1 = fileReader.getSortedChunkGroupMetaDataListByDeviceIds();
+    System.out.println("chunkGroupMetaDataList1 size: " + chunkGroupMetaDataList1.size());
+    for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList1) {
       logger.info("The chunkGroupMetaData information is {}", chunkGroupMetaData);
 
       // middle offset point of the chunkGroup

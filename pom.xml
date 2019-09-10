@@ -54,7 +54,7 @@
         <module>example</module>
         <module>grafana</module>
         <module>spark-tsfile</module>
-        <!-- <module>hadoop</module> -->
+        <module>hadoop</module>
         <module>distribution</module>
     </modules>
     <!-- Properties Management -->

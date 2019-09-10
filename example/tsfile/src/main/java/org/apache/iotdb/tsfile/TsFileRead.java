@@ -17,8 +17,6 @@
  * under the License.
  */
 package org.apache.iotdb.tsfile;
-import java.io.IOException;
-import java.util.ArrayList;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -30,6 +28,9 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
+import java.io.IOException;
+import java.util.ArrayList;
 
 /**
  * The class is to show how to read TsFile file named "test.tsfile".
