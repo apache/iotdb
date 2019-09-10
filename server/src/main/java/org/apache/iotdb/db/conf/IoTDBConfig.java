@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.db.engine.fileSystem.FSType;
 import java.io.File;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
@@ -36,6 +39,9 @@ public class IoTDBConfig {
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
+
+  /* Names of Watermark methods */
+  public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
 
   private String rpcAddress = "0.0.0.0";
 
@@ -52,7 +58,7 @@ public class IoTDBConfig {
   /**
    * Max concurrent client number
    */
-  private int maxConcurrentClientNum = 65535;
+  private int rpcMaxConcurrentClientNum = 65535;
 
   /**
    * Memory allocated for the read process
@@ -249,6 +255,26 @@ public class IoTDBConfig {
   private boolean chunkBufferPoolEnable = false;
 
   /**
+   * Switch of watermark function
+   */
+  private boolean enableWatermark = false;
+
+  /**
+   * Secret key for watermark
+   */
+  private String watermarkSecretKey = "QWERTYUIOP*&=";
+
+  /**
+   * Bit string of watermark
+   */
+  private String watermarkBitString = "11001010010101";
+
+  /**
+   * Watermark method and parameters
+   */
+  private String watermarkMethod = "GroupBasedLSBMethod(embed_row_cycle=5,embed_lsb_num=5)";
+
+  /**
    * How much memory (in byte) can be used by a single merge task.
    */
   private long mergeMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.2);
@@ -298,6 +324,11 @@ public class IoTDBConfig {
   private int chunkMergePointThreshold = 20480;
 
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
+
+  /**
+   * Default storage is in local file system
+   */
+  private FSType storageFs = FSType.LOCAL;
 
   public IoTDBConfig() {
     // empty constructor
@@ -513,12 +544,12 @@ public class IoTDBConfig {
     this.enableStatMonitor = enableStatMonitor;
   }
 
-  public int getMaxConcurrentClientNum() {
-    return maxConcurrentClientNum;
+  public int getRpcMaxConcurrentClientNum() {
+    return rpcMaxConcurrentClientNum;
   }
 
-  public void setMaxConcurrentClientNum(int maxConcurrentClientNum) {
-    this.maxConcurrentClientNum = maxConcurrentClientNum;
+  public void setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
+    this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
   }
 
   public int getStatMonitorDetectFreqSec() {
@@ -792,5 +823,75 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForChumkMetaDataCache(long allocateMemoryForChumkMetaDataCache) {
     this.allocateMemoryForChumkMetaDataCache = allocateMemoryForChumkMetaDataCache;
+  }
+
+  public boolean isEnableWatermark() {
+    return enableWatermark;
+  }
+
+  public void setEnableWatermark(boolean enableWatermark) {
+    this.enableWatermark = enableWatermark;
+  }
+
+  public String getWatermarkSecretKey() {
+    return watermarkSecretKey;
+  }
+
+  public void setWatermarkSecretKey(String watermarkSecretKey) {
+    this.watermarkSecretKey = watermarkSecretKey;
+  }
+
+  public String getWatermarkBitString() {
+    return watermarkBitString;
+  }
+
+  public void setWatermarkBitString(String watermarkBitString) {
+    this.watermarkBitString = watermarkBitString;
+  }
+
+  public void setWatermarkMethod(String watermarkMethod) {
+    this.watermarkMethod = watermarkMethod;
+  }
+
+  public String getWatermarkMethod() {
+    return this.watermarkMethod;
+  }
+
+  public String getWatermarkMethodName() {
+    return watermarkMethod.split("\\(")[0];
+  }
+
+  public int getWatermarkParamMarkRate() {
+    return Integer.parseInt(getWatermarkParamValue("embed_row_cycle", "5"));
+  }
+
+  public int getWatermarkParamMaxRightBit() {
+    return Integer.parseInt(getWatermarkParamValue("embed_lsb_num", "5"));
+  }
+
+  public String getWatermarkParamValue(String key, String defaultValue) {
+    String res = getWatermarkParamValue(key);
+    if (res != null) {
+      return res;
+    }
+    return defaultValue;
+  }
+
+  public String getWatermarkParamValue(String key) {
+    String pattern = key + "=(\\w*)";
+    Pattern r = Pattern.compile(pattern);
+    Matcher m = r.matcher(watermarkMethod);
+    if (m.find() && m.groupCount() > 0) {
+      return m.group(1);
+    }
+    return null;
+  }
+
+  public FSType getStorageFs() {
+    return storageFs;
+  }
+
+  public void setStorageFs(String storageFs) {
+    this.storageFs = FSType.valueOf(storageFs);
   }
 }

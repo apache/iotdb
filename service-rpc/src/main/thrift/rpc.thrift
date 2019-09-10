@@ -196,11 +196,14 @@ struct TSFetchMetadataResp{
 		4: optional string dataType
 		5: optional list<list<string>> showTimeseriesList
 		7: optional set<string> showStorageGroups
+		8: optional list<string> nodesList
+		9: optional map<string, string> nodeTimeseriesNum
 }
 
 struct TSFetchMetadataReq{
 		1: required string type
 		2: optional string columnPath
+		3: optional string nodeLevel
 }
 
 struct TSColumnSchema{
@@ -234,6 +237,13 @@ struct TSBatchInsertionReq {
     4: required binary timestamps
     5: required list<i32> types
     6: required i32 size
+}
+
+struct TSInsertReq {
+    1: required string deviceId
+    2: required list<string> measurements
+    3: required list<string> values
+    4: required i64 timestamp
 }
 
 struct TSSetStorageGroupReq {
@@ -291,6 +301,8 @@ service TSIService {
 	TSRPCResp setStorageGroup(1:TSSetStorageGroupReq req);
 
 	TSRPCResp createTimeseries(1:TSCreateTimeseriesReq req);
+
+	TSRPCResp insertRow(1:TSInsertReq req);
 
 	i64 requestStatementId();
 	}

@@ -134,7 +134,7 @@ public class TimeRange implements Comparable<TimeRange> {
    *
    * [1,3] does not intersect with (4,5].
    *
-   * [1,3) does not intersect with (3,5]
+   * [1,3) does not intersect with (3,5].
    *
    * [1,3] does not intersect with [5,6].
    *
@@ -147,7 +147,7 @@ public class TimeRange implements Comparable<TimeRange> {
    * @param r the given time range
    * @return true if the current time range intersects with the given time range r
    */
-  private boolean intersects(TimeRange r) {
+  public boolean intersects(TimeRange r) {
     if ((!leftClose || !r.rightClose) && (r.max < min)) {
       // e.g., [1,3] does not intersect with (4,5].
       return false;
@@ -156,10 +156,10 @@ public class TimeRange implements Comparable<TimeRange> {
       return false;
     } else if (leftClose && r.rightClose && r.max <= min - 2) {
       // e.g.,[1,3] does not intersect with [5,6].
-      return true;
+      return false;
     } else if ((!rightClose || !r.leftClose) && (r.min > max)) {
       return false;
-    } else if (!rightClose && r.leftClose && r.min >= max) {
+    } else if (!rightClose && !r.leftClose && r.min >= max) {
       return false;
     } else if (rightClose && r.leftClose && r.min >= max + 2) {
       return false;
@@ -190,11 +190,11 @@ public class TimeRange implements Comparable<TimeRange> {
   private boolean leftClose = true; // default true
   private boolean rightClose = true; // default true
 
-  private void setLeftClose(boolean leftClose) {
+  public void setLeftClose(boolean leftClose) {
     this.leftClose = leftClose;
   }
 
-  private void setRightClose(boolean rightClose) {
+  public void setRightClose(boolean rightClose) {
     this.rightClose = rightClose;
   }
 

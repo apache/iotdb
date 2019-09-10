@@ -63,6 +63,7 @@ Requires that you include the packages containing the JDBC classes needed for da
 import java.sql.*;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
+public class JDBCExample {
   /**
    * Before executing a SQL statement with a Statement object, you need to create a Statement object using the createStatement() method of the Connection object.
    * After creating a Statement object, you can use its execute() method to execute a SQL statement
@@ -98,6 +99,16 @@ import org.apache.iotdb.jdbc.IoTDBSQLException;
     //Show time series
     statement.execute("SHOW TIMESERIES root.demo");
     outputResult(statement.getResultSet());
+    //Count time series
+    statement.execute("COUNT TIMESERIES root");
+    outputResult(statement.getResultSet());
+    //Count nodes at the given level
+    statement.execute("COUNT NODES root LEVEL=3");
+    outputResult(statement.getResultSet());
+    //Count timeseries group by each node at the given level
+    statement.execute("COUNT TIMESERIES root GROUP BY LEVEL=3");
+    outputResult(statement.getResultSet());
+    
 
     //Execute insert statements in batch
     statement.addBatch("insert into root.demo(timestamp,s0) values(1,1);");
@@ -187,4 +198,5 @@ import org.apache.iotdb.jdbc.IoTDBSQLException;
       System.out.println("--------------------------\n");
     }
   }
+}
 ```

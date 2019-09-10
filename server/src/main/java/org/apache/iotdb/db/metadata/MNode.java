@@ -106,6 +106,16 @@ public class MNode implements Serializable {
   }
 
   /**
+   * function for checking whether the mnode has child mnode.
+   */
+  public boolean hasChildren() {
+    if (!isLeaf) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * function for checking whether mnode's children contain the given key.
    */
   public boolean hasChild(String key) {

@@ -1895,6 +1895,37 @@ public class SQLParserTest {
     }
   }
 
+
+  @Test
+  public void grantWatermarkEmbedding() throws ParseException {
+    ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_GRANT_WATERMARK_EMBEDDING", "a", "b"));
+    ArrayList<String> rec = new ArrayList<>();
+    AstNode astTree = ParseGenerator.generateAST("GRANT watermark_embedding to a,b");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(rec.get(i), ans.get(i));
+      i++;
+    }
+  }
+
+  @Test
+  public void revokeWatermarkEmbedding() throws ParseException {
+    ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_REVOKE_WATERMARK_EMBEDDING", "a", "b"));
+    ArrayList<String> rec = new ArrayList<>();
+    AstNode astTree = ParseGenerator.generateAST("revoke watermark_embedding from a,b");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(rec.get(i), ans.get(i));
+      i++;
+    }
+  }
+
   public void recursivePrintSon(Node ns, ArrayList<String> rec) {
     rec.add(ns.toString());
     if (ns.getChildren() != null) {
