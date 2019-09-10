@@ -176,7 +176,7 @@ public class TSFHadoopTest {
         }
         value++;
       }
-      System.out.println(value);
+      assertEquals(2000000L, value);
       recordReader.close();
     } catch (IOException | TSFHadoopException | InterruptedException e) {
       e.printStackTrace();
