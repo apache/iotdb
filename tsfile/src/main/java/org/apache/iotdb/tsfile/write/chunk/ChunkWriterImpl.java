@@ -199,8 +199,8 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long[] timestamps, int[] values, int batchSize) {
-    this.time = timestamps[timestamps.length - 1];
-    valueCountInOnePage += timestamps.length;
+    this.time = timestamps[batchSize - 1];
+    valueCountInOnePage += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
@@ -211,8 +211,8 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long[] timestamps, long[] values, int batchSize) {
-    this.time = timestamps[timestamps.length - 1];
-    valueCountInOnePage += timestamps.length;
+    this.time = timestamps[batchSize - 1];
+    valueCountInOnePage += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
@@ -223,8 +223,8 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long[] timestamps, boolean[] values, int batchSize) {
-    this.time = timestamps[timestamps.length - 1];
-    valueCountInOnePage += timestamps.length;
+    this.time = timestamps[batchSize - 1];
+    valueCountInOnePage += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
@@ -235,8 +235,8 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long[] timestamps, float[] values, int batchSize) {
-    this.time = timestamps[timestamps.length - 1];
-    valueCountInOnePage += timestamps.length;
+    this.time = timestamps[batchSize - 1];
+    valueCountInOnePage += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
@@ -247,8 +247,8 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long[] timestamps, double[] values, int batchSize) {
-    this.time = timestamps[timestamps.length - 1];
-    valueCountInOnePage += timestamps.length;
+    this.time = timestamps[batchSize - 1];
+    valueCountInOnePage += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
@@ -259,8 +259,8 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long[] timestamps, BigDecimal[] values, int batchSize) {
-    this.time = timestamps[timestamps.length - 1];
-    valueCountInOnePage += timestamps.length;
+    this.time = timestamps[batchSize - 1];
+    valueCountInOnePage += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
@@ -271,8 +271,8 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long[] timestamps, Binary[] values, int batchSize) {
-    this.time = timestamps[timestamps.length - 1];
-    valueCountInOnePage += timestamps.length;
+    this.time = timestamps[batchSize - 1];
+    valueCountInOnePage += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
