@@ -45,11 +45,6 @@ public class TsFileTestHelper {
 
   public static void writeTsFile(String filePath) {
 
-//    TSFileConfig.pageSizeInByte = 100;
-//    TSFileConfig.groupSizeInByte = 2000;
-//    TSFileConfig.pageCheckSizeThreshold = 1;
-//    TSFileConfig.maxStringLength = 2;
-
     try {
       File file = new File(filePath);
 

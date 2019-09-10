@@ -296,9 +296,7 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
     int currentBlockIndex = 0;
     long splitSize = 0;
     List<String> hosts = new ArrayList<>();
-    List<ChunkGroupMetaData> chunkGroupMetaDataList1 = fileReader.getSortedChunkGroupMetaDataListByDeviceIds();
-    System.out.println("chunkGroupMetaDataList1 size: " + chunkGroupMetaDataList1.size());
-    for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList1) {
+    for (ChunkGroupMetaData chunkGroupMetaData : fileReader.getSortedChunkGroupMetaDataListByDeviceIds()) {
       logger.info("The chunkGroupMetaData information is {}", chunkGroupMetaData);
 
       // middle offset point of the chunkGroup
