@@ -62,7 +62,6 @@ class IoTDBRDD private[iotdb](
     Option(TaskContext.get()).foreach { taskContext => {
       taskContext.addTaskCompletionListener { _ => conn.close() }
       taskInfo = "task Id: " + taskContext.taskAttemptId() + " partition Id: " + taskContext.partitionId()
-      println(taskInfo)
     }
     }
 
