@@ -20,14 +20,8 @@ package org.apache.iotdb.tsfile
 
 import java.util
 
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor
-import org.apache.iotdb.tsfile.common.constant.QueryConstant
-import org.apache.iotdb.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
-import org.apache.iotdb.tsfile.read.common.{Field, Path}
-import org.apache.iotdb.tsfile.write.record.TSRecord
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint
-import org.apache.iotdb.tsfile.write.schema.{MeasurementSchema, Schema, SchemaBuilder}
-import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType
+import org.apache.iotdb.tsfile.read.common.Field
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
 
@@ -98,8 +92,8 @@ abstract class Converter {
       case t: StructType => Some(t)
       case _ => throw new RuntimeException(
         s"""TSFile schema cannot be converted to a Spark SQL StructType:
-            |${tsfileSchema.toString}
-            |""".stripMargin)
+           |${tsfileSchema.toString}
+           |""".stripMargin)
     }
   }
 
