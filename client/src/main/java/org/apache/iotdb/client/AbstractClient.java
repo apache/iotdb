@@ -599,10 +599,11 @@ public abstract class AbstractClient {
       showHelp();
       return OperationResult.CONTINUE_OPER;
     }
+    /*
     if (SHOW_METADATA_COMMAND.equals(specialCmd)) {
       showMetaData(connection);
       return OperationResult.CONTINUE_OPER;
-    }
+    }*/
     if (specialCmd.startsWith(SET_TIMESTAMP_DISPLAY)) {
       setTimestampDisplay(specialCmd, cmd);
       return OperationResult.CONTINUE_OPER;
