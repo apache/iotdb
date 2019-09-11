@@ -34,9 +34,6 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <hadoop.version>2.6.5</hadoop.version>
         <compile.version>1.8</compile.version>
-        <!--<spark.version>2.4.3</spark.version>-->
-        <!--<junit.version>4.12</junit.version>-->
-        <!--<iotdb.version>0.7.0</iotdb.version>-->
     </properties>
     <dependencies>
         <dependency>
