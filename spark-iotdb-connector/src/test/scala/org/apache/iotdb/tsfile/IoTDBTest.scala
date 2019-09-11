@@ -23,10 +23,9 @@ import org.apache.iotdb.jdbc.Config
 import org.apache.spark.sql.{SQLContext, SparkSession}
 import org.junit._
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
-import org.scalatest.junit.JUnitSuite
 
 class IoTDBTest extends FunSuite with BeforeAndAfterAll {
-  private var daemon: IoTDB = null
+  private var daemon: IoTDB = _
 
   private val testFile = "/home/hadoop/git/tsfile/delta-spark/src/test/resources/test.tsfile"
   private val csvPath: java.lang.String = "/home/hadoop/git/tsfile/delta-spark/src/test/resources/test.csv"
@@ -61,6 +60,7 @@ class IoTDBTest extends FunSuite with BeforeAndAfterAll {
 
     daemon.stop()
     EnvironmentUtils.cleanEnv()
+
     super.afterAll()
   }
 
@@ -88,9 +88,28 @@ class IoTDBTest extends FunSuite with BeforeAndAfterAll {
   }
 
   test("test filter data with partition") {
-    val df = spark.read.format("org.apache.iotdb.tsfile").option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root where time < 2000 and time > 1000").option("lowerBound", 1).option("upperBound", 10000).option("numPartition", 20).load
+    val df = spark.read.format("org.apache.iotdb.tsfile").option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root where time < 2000 and time > 1000").option("lowerBound", 1).option("upperBound", 10000).option("numPartition", 10).load
 
     Assert.assertEquals(499, df.count())
+  }
+
+  test("test transform to narrow") {
+    val df = spark.read.format("org.apache.iotdb.tsfile").option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root where time < 1100 and time > 1000").load
+    val narrow_df = Transformer.toNarrowForm(spark, df)
+    Assert.assertEquals(198, narrow_df.count())
+  }
+
+  test("test transform to narrow with partition") {
+    val df = spark.read.format("org.apache.iotdb.tsfile").option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root where time < 1100 and time > 1000").option("lowerBound", 1).option("upperBound", 10000).option("numPartition", 10).load
+    val narrow_df = Transformer.toNarrowForm(spark, df)
+    Assert.assertEquals(198, narrow_df.count())
+  }
+
+  test("test transform back to wide") {
+    val df = spark.read.format("org.apache.iotdb.tsfile").option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root where time < 1100 and time > 1000").load
+    val narrow_df = Transformer.toNarrowForm(spark, df)
+    val wide_df = Transformer.toWideForm(spark, narrow_df)
+    Assert.assertEquals(99, wide_df.count())
   }
 }
 
