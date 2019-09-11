@@ -16,7 +16,7 @@
   * specific language governing permissions and limitations
   * under the License.
   */
-package org.apache.iotdb.tsfile
+package org.apache.iotdb.sparkdb
 
 import org.apache.spark.{Partition, SparkContext, TaskContext}
 import org.apache.spark.rdd.RDD
@@ -107,6 +107,7 @@ class IoTDBRDD private[iotdb](
         null
       }
     }
+
 
     override def hasNext: Boolean = {
       if (!finished) {

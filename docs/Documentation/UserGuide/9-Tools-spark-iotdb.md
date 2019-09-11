@@ -45,11 +45,11 @@ mvn clean scala:compile compile install
 # 2. spark-shell user guide
 
 ```
-spark-shell --jars spark-iotdb-connector-0.9.0-SNAPSHOT.jar,tsfile-0.9.0-SNAPSHOT-jar-with-dependencies.jar,iotdb-jdbc-0.9.0-SNAPSHOT-jar-with-dependencies.jar
+spark-shell --jars spark-iotdb-connector-0.9.0-SNAPSHOT.jar,iotdb-jdbc-0.9.0-SNAPSHOT-jar-with-dependencies.jar
 
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.sparkdb._
 
-val df = spark.read.format("org.apache.iotdb.tsfile").option("url","jdbc:iotdb://127.0.0.1:6667/").option("sql","select * from root").load
+val df = spark.read.format("org.apache.iotdb.sparkdb").option("url","jdbc:iotdb://127.0.0.1:6667/").option("sql","select * from root").load
 
 df.printSchema()
 
@@ -58,11 +58,11 @@ df.show()
 
 ### if you want to partition your rdd, you can do as following
 ```
-spark-shell --jars spark-iotdb-connector-0.9.0-SNAPSHOT.jar,tsfile-0.9.0-SNAPSHOT-jar-with-dependencies.jar,iotdb-jdbc-0.9.0-SNAPSHOT-jar-with-dependencies.jar
+spark-shell --jars spark-iotdb-connector-0.9.0-SNAPSHOT.jar,iotdb-jdbc-0.9.0-SNAPSHOT-jar-with-dependencies.jar
 
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.sparkdb._
 
-val df = spark.read.format("org.apache.iotdb.tsfile").option("url","jdbc:iotdb://127.0.0.1:6667/").option("sql","select * from root").
+val df = spark.read.format("org.apache.iotdb.sparkdb").option("url","jdbc:iotdb://127.0.0.1:6667/").option("sql","select * from root").
                         option("lowerBound", [lower bound of time that you want query(include)]).option("upperBound", [upper bound of time that you want query(include)]).
                         option("numPartition", [the partition number you want]).load
 
@@ -127,15 +127,15 @@ You can also use narrow table form which as follows: (You can see part 4 about h
 
 ## from wide to narrow
 ```
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.sparkdb._
 
-val wide_df = spark.read.format("org.apache.iotdb.tsfile").option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root where time < 1100 and time > 1000").load
+val wide_df = spark.read.format("org.apache.iotdb.sparkdb").option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root where time < 1100 and time > 1000").load
 val narrow_df = Transformer.toNarrowForm(spark, wide_df)
 ```
 
 ## from narrow to wide
 ```
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.sparkdb._
 
 val wide_df = Transformer.toWideForm(spark, narrow_df)
 ```

@@ -16,7 +16,7 @@
   * specific language governing permissions and limitations
   * under the License.
   */
-package org.apache.iotdb.tsfile
+package org.apache.iotdb.sparkdb
 
 import java.sql._
 
@@ -25,10 +25,6 @@ import org.slf4j.LoggerFactory
 import java.sql.Statement
 
 import scala.collection.mutable.ListBuffer
-
-/**
-  * Created by qjl on 16-11-3.
-  */
 
 class Converter
 
@@ -70,6 +66,7 @@ object Converter {
       }
 
       val colCount = resultSetMetaData.getColumnCount
+
       for (i <- 2 to colCount) {
         fields += StructField(resultSetMetaData.getColumnLabel(i), resultSetMetaData.getColumnType(i) match {
           case Types.BOOLEAN => BooleanType

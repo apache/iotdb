@@ -16,21 +16,17 @@
   * specific language governing permissions and limitations
   * under the License.
   */
-package org.apache.iotdb.tsfile
+package org.apache.iotdb.sparkdb
 
 import org.apache.spark.Partition
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{Row, SQLContext, SparkSession}
-import org.apache.spark.sql.sources.{BaseRelation, PrunedFilteredScan}
+import org.apache.spark.sql.sources.{BaseRelation, Filter, PrunedFilteredScan}
 import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{Row, SQLContext, SparkSession}
 import org.slf4j.LoggerFactory
-import org.apache.spark.sql.sources.Filter
 
 import scala.collection.mutable.ArrayBuffer
 
-/**
-  * Created by qjl on 16-8-25.
-  */
 private case class IoTDBPartitioningInfo(
                                           start: Long,
                                           end: Long,

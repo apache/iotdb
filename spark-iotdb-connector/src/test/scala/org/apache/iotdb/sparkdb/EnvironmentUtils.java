@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile;
+package org.apache.iotdb.sparkdb;
 
 import java.io.File;
 import java.io.IOException;
