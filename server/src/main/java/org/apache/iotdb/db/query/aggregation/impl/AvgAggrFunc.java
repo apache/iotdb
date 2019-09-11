@@ -29,14 +29,14 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class MeanAggrFunc extends AggregateFunction {
+public class AvgAggrFunc extends AggregateFunction {
 
   protected double sum = 0.0;
   private int cnt = 0;
   private TSDataType seriesDataType;
-  private static final String MEAN_AGGR_NAME = "MEAN";
+  private static final String AVG_AGGR_NAME = "AVG";
 
-  public MeanAggrFunc(TSDataType seriesDataType) {
+  public AvgAggrFunc(TSDataType seriesDataType) {
     super(TSDataType.DOUBLE);
     this.seriesDataType = seriesDataType;
   }
@@ -167,6 +167,6 @@ public class MeanAggrFunc extends AggregateFunction {
    * Return type name of aggregation
    */
   public String getAggreTypeName() {
-    return MEAN_AGGR_NAME;
+    return AVG_AGGR_NAME;
   }
 }
