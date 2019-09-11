@@ -21,6 +21,7 @@ package org.apache.iotdb.tool;
 import java.io.File;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -36,7 +37,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 public class TsFileExample {
 
   public static void create(String tsfilePath) throws Exception {
-    File f = new File(tsfilePath);
+    File f = TSFileFactory.INSTANCE.getFile(tsfilePath);
     if (f.exists()) {
       f.delete();
     }

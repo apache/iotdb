@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.common.conf;
 
+import org.apache.iotdb.tsfile.fileSystem.FSType;
+
 /**
  * TSFileConfig is a configure class. Every variables is public and has default value.
  *
@@ -140,9 +142,24 @@ public class TSFileConfig {
   public static String endian = "BIG_ENDIAN";
 
   /**
+   * Default storage is in local file system
+   */
+  public static FSType storageFs = FSType.LOCAL;
+
+  /**
    * only can be used by TsFileDescriptor.
    */
   protected TSFileConfig() {
 
   }
+
+
+  public FSType getStorageFs() {
+    return storageFs;
+  }
+
+  public void setStorageFs(String storageFs) {
+    this.storageFs = FSType.valueOf(storageFs);
+  }
+
 }

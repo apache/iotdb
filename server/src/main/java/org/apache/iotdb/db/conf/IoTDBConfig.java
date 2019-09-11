@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.db.engine.fileSystem.FSType;
 import java.io.File;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -29,6 +28,8 @@ import java.util.regex.Pattern;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,6 +105,11 @@ public class IoTDBConfig {
    * is smaller than this parameter, then the insert plan will be rejected by WAL.
    */
   private int walBufferSize = 16 * 1024 * 1024;
+
+  /**
+   * HDFS dir, uses for data stored in HDFS
+   */
+  private String hdfsDir =  "hdfs://localhost:9000";
 
   /**
    * system base dir, stores all system metadata and wal
@@ -273,7 +279,7 @@ public class IoTDBConfig {
    * Watermark method and parameters
    */
   private String watermarkMethod = "GroupBasedLSBMethod(embed_row_cycle=5,embed_lsb_num=5)";
-
+  
   /**
    * How much memory (in byte) can be used by a single merge task.
    */
@@ -339,7 +345,11 @@ public class IoTDBConfig {
   }
 
   void updatePath() {
-    formulateFolders();
+    if (TSFileConfig.storageFs.equals(FSType.HDFS)) {
+      formulateFoldersWithHdfs();
+    } else {
+      formulateFolders();
+    }
     confirmMultiDirStrategy();
   }
 
@@ -367,6 +377,43 @@ public class IoTDBConfig {
         }
         dirs.set(i, dir);
       }
+    }
+    baseDir = dirs.get(0);
+    systemDir = dirs.get(1);
+    schemaDir = dirs.get(2);
+    walFolder = dirs.get(3);
+    indexFileDir = dirs.get(4);
+    for (int i = 0; i < dataDirs.length; i++) {
+      dataDirs[i] = dirs.get(i + 5);
+    }
+  }
+
+  private void formulateFoldersWithHdfs() {
+    List<String> dirs = new ArrayList<>();
+    dirs.add(baseDir);
+    dirs.add(systemDir);
+    dirs.add(schemaDir);
+    dirs.add(walFolder);
+    dirs.add(indexFileDir);
+    dirs.addAll(Arrays.asList(dataDirs));
+
+    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+    for (int i = 0; i < 4; i++) {
+      String dir = dirs.get(i);
+      if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
+        if (!homeDir.endsWith(File.separator)) {
+          dir = homeDir + File.separatorChar + dir;
+        } else {
+          dir = homeDir + dir;
+        }
+        dirs.set(i, dir);
+      }
+    }
+
+    for (int i = 5; i < dirs.size(); i++) {
+      String dir = dirs.get(i);
+      dir = hdfsDir + File.separatorChar + dir;
+      dirs.set(i, dir);
     }
     baseDir = dirs.get(0);
     systemDir = dirs.get(1);

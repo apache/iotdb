@@ -27,7 +27,7 @@ import org.apache.hadoop.fs.{FileStatus, Path}
 import org.apache.hadoop.mapreduce.Job
 import org.apache.iotdb.tsfile.DefaultSource.SerializableConfiguration
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
-import org.apache.iotdb.tsfile.io.HDFSInput
+import org.apache.iotdb.tsfile.fileSystem.HDFSInput
 import org.apache.iotdb.tsfile.qp.Executor
 import org.apache.iotdb.tsfile.read.common.Field
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet

@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -45,6 +46,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
+import org.apache.iotdb.tsfile.fileSystem.HDFSOutput;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -63,7 +66,8 @@ import org.slf4j.LoggerFactory;
 public class TsFileIOWriter {
 
   public static final byte[] magicStringBytes;
-  private static final Logger LOG = LoggerFactory.getLogger(TsFileIOWriter.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileIOWriter.class);
+  protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 
   static {
     magicStringBytes = BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING);
@@ -120,7 +124,11 @@ public class TsFileIOWriter {
    */
   public TsFileIOWriter(TsFileOutput out, List<ChunkGroupMetaData> chunkGroupMetaDataList)
       throws IOException {
-    this.out = out;
+    if (config.getStorageFs().equals(FSType.HDFS)) {
+      this.out = new HDFSOutput(file.getPath(), false); //NOTE overwrite false here
+    } else {
+      this.out = new DefaultTsFileOutput(file);
+    }
     this.chunkGroupMetaDataList = chunkGroupMetaDataList;
     if (chunkGroupMetaDataList.isEmpty()) {
       startFile();
@@ -148,7 +156,7 @@ public class TsFileIOWriter {
    * @param deviceId device id
    */
   public void startChunkGroup(String deviceId) throws IOException {
-    LOG.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
+    logger.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
     currentChunkGroupMetaData = new ChunkGroupMetaData(deviceId, new ArrayList<>(),
         out.getPosition());
   }
@@ -165,7 +173,7 @@ public class TsFileIOWriter {
     currentChunkGroupMetaData.setEndOffsetOfChunkGroup(out.getPosition());
     currentChunkGroupMetaData.setVersion(version);
     chunkGroupMetaDataList.add(currentChunkGroupMetaData);
-    LOG.debug("end chunk group:{}", currentChunkGroupMetaData);
+    logger.debug("end chunk group:{}", currentChunkGroupMetaData);
     currentChunkGroupMetaData = null;
   }
 
@@ -186,7 +194,7 @@ public class TsFileIOWriter {
       TSDataType tsDataType, TSEncoding encodingType, Statistics<?> statistics, long maxTime,
       long minTime,
       int dataSize, int numOfPages) throws IOException {
-    LOG.debug("start series chunk:{}, file position {}", descriptor, out.getPosition());
+    logger.debug("start series chunk:{}, file position {}", descriptor, out.getPosition());
 
     currentChunkMetaData = new ChunkMetaData(descriptor.getMeasurementId(), tsDataType,
         out.getPosition(), minTime, maxTime);
@@ -195,7 +203,7 @@ public class TsFileIOWriter {
         compressionCodecName,
         encodingType, numOfPages);
     header.serializeTo(out.wrapAsStream());
-    LOG.debug("finish series chunk:{} header, file position {}", header, out.getPosition());
+    logger.debug("finish series chunk:{} header, file position {}", header, out.getPosition());
 
     // TODO add your statistics
     ByteBuffer[] statisticsArray = new ByteBuffer[StatisticType.getTotalTypeNum()];
@@ -239,7 +247,7 @@ public class TsFileIOWriter {
   public void endChunk(long totalValueCount) {
     currentChunkMetaData.setNumOfPoints(totalValueCount);
     currentChunkGroupMetaData.addTimeSeriesChunkMetaData(currentChunkMetaData);
-    LOG.debug("end series chunk:{},totalvalue:{}", currentChunkMetaData, totalValueCount);
+    logger.debug("end series chunk:{},totalvalue:{}", currentChunkMetaData, totalValueCount);
     currentChunkMetaData = null;
     totalChunkNum ++;
   }
@@ -257,7 +265,7 @@ public class TsFileIOWriter {
 
     // get all measurementSchema of this TsFile
     Map<String, MeasurementSchema> schemaDescriptors = schema.getMeasurementSchemaMap();
-    LOG.debug("get time series list:{}", schemaDescriptors);
+    logger.debug("get time series list:{}", schemaDescriptors);
 
     Map<String, TsDeviceMetadataIndex> tsDeviceMetadataIndexMap = flushTsDeviceMetaDataAndGetIndex(
         this.chunkGroupMetaDataList);
@@ -268,11 +276,11 @@ public class TsFileIOWriter {
     tsFileMetaData.setInvalidChunkNum(invalidChunkNum);
 
     long footerIndex = out.getPosition();
-    LOG.debug("start to flush the footer,file pos:{}", footerIndex);
+    logger.debug("start to flush the footer,file pos:{}", footerIndex);
 
     // write TsFileMetaData
     int size = tsFileMetaData.serializeTo(out.wrapAsStream());
-    LOG.debug("finish flushing the footer {}, file pos:{}", tsFileMetaData, out.getPosition());
+    logger.debug("finish flushing the footer {}, file pos:{}", tsFileMetaData, out.getPosition());
 
     // write TsFileMetaData size
     ReadWriteIOUtils.write(size, out.wrapAsStream());// write the size of the file metadata.
@@ -283,7 +291,7 @@ public class TsFileIOWriter {
     // close file
     out.close();
     canWrite = false;
-    LOG.info("output stream is closed");
+    logger.info("output stream is closed");
   }
 
   /**

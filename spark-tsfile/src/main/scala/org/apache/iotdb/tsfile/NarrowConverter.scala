@@ -25,7 +25,7 @@ import org.apache.hadoop.fs.FileStatus
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData
 import org.apache.iotdb.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
-import org.apache.iotdb.tsfile.io.HDFSInput
+import org.apache.iotdb.tsfile.fileSystem.HDFSInput
 import org.apache.iotdb.tsfile.qp.QueryProcessor
 import org.apache.iotdb.tsfile.qp.common.{BasicOperator, FilterOperator, SQLConstant, TSQueryPlan}
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader
