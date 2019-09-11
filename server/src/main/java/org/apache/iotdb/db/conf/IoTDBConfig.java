@@ -107,11 +107,6 @@ public class IoTDBConfig {
   private int walBufferSize = 16 * 1024 * 1024;
 
   /**
-   * HDFS dir, uses for data stored in HDFS
-   */
-  private String hdfsDir =  "hdfs://localhost:9000";
-
-  /**
    * system base dir, stores all system metadata and wal
    */
   private String baseDir = "data";
@@ -279,7 +274,7 @@ public class IoTDBConfig {
    * Watermark method and parameters
    */
   private String watermarkMethod = "GroupBasedLSBMethod(embed_row_cycle=5,embed_lsb_num=5)";
-  
+
   /**
    * How much memory (in byte) can be used by a single merge task.
    */
@@ -366,7 +361,8 @@ public class IoTDBConfig {
       addHomeDir(dirs, i);
     }
 
-    if (TSFileConfig.TSFileStorageFs.equals(FSType.HDFS)) {
+    if (TSFileConfig.getTSFileStorageFs().equals(FSType.HDFS)) {
+      String hdfsDir = "hdfs://" + TSFileConfig.getHdfsIp() + ":" + TSFileConfig.getHdfsPort();
       for (int i = 5; i < dirs.size(); i++) {
         String dir = dirs.get(i);
         dir = hdfsDir + File.separatorChar + dir;
@@ -788,7 +784,7 @@ public class IoTDBConfig {
   public void setMemtableSizeThreshold(long memtableSizeThreshold) {
     this.memtableSizeThreshold = memtableSizeThreshold;
   }
-  
+
   public MergeFileStrategy getMergeFileStrategy() {
     return mergeFileStrategy;
   }

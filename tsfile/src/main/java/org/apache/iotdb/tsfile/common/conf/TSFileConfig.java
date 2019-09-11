@@ -144,22 +144,44 @@ public class TSFileConfig {
   /**
    * Default storage is in local file system
    */
-  public static FSType TSFileStorageFs = FSType.LOCAL;
+  public static FSType TSFileStorageFs = FSType.HDFS;
 
   /**
-   * only can be used by TsFileDescriptor.
+   * Default hdfs ip is localhost
    */
-  protected TSFileConfig() {
+  public static String hdfsIp = "localhost";
+
+  /**
+   * Default hdfs port is 9000
+   */
+  public static String hdfsPort = "9000";
+
+  public TSFileConfig() {
 
   }
 
 
-  public FSType getTSFileStorageFs() {
+  public static FSType getTSFileStorageFs() {
     return TSFileStorageFs;
   }
 
-  public void setTSFileStorageFs(String TSFileStorageFs) {
-    this.TSFileStorageFs = FSType.valueOf(TSFileStorageFs);
+  public static void setTSFileStorageFs(String TSFileStorageFs) {
+    TSFileConfig.TSFileStorageFs = FSType.valueOf(TSFileStorageFs);
   }
 
+  public static String getHdfsIp() {
+    return hdfsIp;
+  }
+
+  public static void setHdfsIp(String hdfsIp) {
+    TSFileConfig.hdfsIp = hdfsIp;
+  }
+
+  public static String getHdfsPort() {
+    return hdfsPort;
+  }
+
+  public static void setHdfsPort(String hdfsPort) {
+    TSFileConfig.hdfsPort = hdfsPort;
+  }
 }

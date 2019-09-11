@@ -24,7 +24,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -494,7 +493,6 @@ public class StorageGroupProcessor {
     String filePath = baseDir + File.separator + storageGroupName + File.separator +
         System.currentTimeMillis() + "-" + versionController.nextVersion() + TSFILE_SUFFIX;
 
-    logger.error("file path in storageGroupProcessor: ", filePath);
     if (sequence) {
       return new TsFileProcessor(storageGroupName, TSFileFactory.INSTANCE.getFile(filePath),
           schema, versionController, this::closeUnsealedTsFileProcessor,
