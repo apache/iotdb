@@ -144,7 +144,7 @@ public class TSFileConfig {
   /**
    * Default storage is in local file system
    */
-  public static FSType TSFileStorageFs = FSType.LOCAL;
+  public static FSType TSFileStorageFs = FSType.HDFS;
 
   /**
    * Default hdfs ip is localhost
