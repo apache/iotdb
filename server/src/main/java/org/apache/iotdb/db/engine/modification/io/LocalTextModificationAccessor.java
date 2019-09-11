@@ -67,7 +67,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
     String line;
     List<Modification> modificationList = new ArrayList<>();
     try {
-      BufferedReader reader = TSFileFactory.INSTANCE.getBufferedReader(filePath);
+      BufferedReader reader = new BufferedReader(new FileReader(filePath)); //TSFileFactory.INSTANCE.getBufferedReader(filePath);
       while ((line = reader.readLine()) != null) {
         if (line.equals(ABORT_MARK) && !modificationList.isEmpty()) {
           modificationList.remove(modificationList.size() - 1);
@@ -93,7 +93,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
   @Override
   public void abort() throws IOException {
     if (writer == null) {
-      writer = TSFileFactory.INSTANCE.getBufferedWriter(filePath, true);
+      writer = new BufferedWriter(new FileWriter(filePath, true)); // TSFileFactory.INSTANCE.getBufferedWriter(filePath, true);
     }
     writer.write(ABORT_MARK);
     writer.newLine();
@@ -103,7 +103,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
   @Override
   public void write(Modification mod) throws IOException {
     if (writer == null) {
-      writer = TSFileFactory.INSTANCE.getBufferedWriter(filePath, true);
+      writer = new BufferedWriter(new FileWriter(filePath, true)); // TSFileFactory.INSTANCE.getBufferedWriter(filePath, true);
     }
     writer.write(encodeModification(mod));
     writer.newLine();
