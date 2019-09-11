@@ -144,7 +144,7 @@ public class TSFileConfig {
   /**
    * Default storage is in local file system
    */
-  public static FSType storageFs = FSType.LOCAL;
+  public static FSType TSFileStorageFs = FSType.LOCAL;
 
   /**
    * only can be used by TsFileDescriptor.
@@ -154,12 +154,12 @@ public class TSFileConfig {
   }
 
 
-  public FSType getStorageFs() {
-    return storageFs;
+  public FSType getTSFileStorageFs() {
+    return TSFileStorageFs;
   }
 
-  public void setStorageFs(String storageFs) {
-    this.storageFs = FSType.valueOf(storageFs);
+  public void setTSFileStorageFs(String TSFileStorageFs) {
+    this.TSFileStorageFs = FSType.valueOf(TSFileStorageFs);
   }
 
 }

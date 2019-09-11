@@ -124,7 +124,7 @@ public class TsFileIOWriter {
    */
   public TsFileIOWriter(TsFileOutput out, List<ChunkGroupMetaData> chunkGroupMetaDataList)
       throws IOException {
-    if (config.getStorageFs().equals(FSType.HDFS)) {
+    if (config.getTSFileStorageFs().equals(FSType.HDFS)) {
       this.out = new HDFSOutput(file.getPath(), false); //NOTE overwrite false here
     } else {
       this.out = new DefaultTsFileOutput(file);

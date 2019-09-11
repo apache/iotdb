@@ -345,11 +345,7 @@ public class IoTDBConfig {
   }
 
   void updatePath() {
-    if (TSFileConfig.storageFs.equals(FSType.HDFS)) {
-      formulateFoldersWithHdfs();
-    } else {
-      formulateFolders();
-    }
+    formulateFolders();
     confirmMultiDirStrategy();
   }
 
@@ -366,16 +362,19 @@ public class IoTDBConfig {
     dirs.add(indexFileDir);
     dirs.addAll(Arrays.asList(dataDirs));
 
-    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-    for (int i = 0; i < dirs.size(); i++) {
-      String dir = dirs.get(i);
-      if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-        if (!homeDir.endsWith(File.separator)) {
-          dir = homeDir + File.separatorChar + dir;
-        } else {
-          dir = homeDir + dir;
-        }
+    for (int i = 0; i < 4; i++) {
+      addHomeDir(dirs, i);
+    }
+
+    if (TSFileConfig.TSFileStorageFs.equals(FSType.HDFS)) {
+      for (int i = 5; i < dirs.size(); i++) {
+        String dir = dirs.get(i);
+        dir = hdfsDir + File.separatorChar + dir;
         dirs.set(i, dir);
+      }
+    } else {
+      for (int i = 5; i < dirs.size(); i++) {
+        addHomeDir(dirs, i);
       }
     }
     baseDir = dirs.get(0);
@@ -388,43 +387,18 @@ public class IoTDBConfig {
     }
   }
 
-  private void formulateFoldersWithHdfs() {
-    List<String> dirs = new ArrayList<>();
-    dirs.add(baseDir);
-    dirs.add(systemDir);
-    dirs.add(schemaDir);
-    dirs.add(walFolder);
-    dirs.add(indexFileDir);
-    dirs.addAll(Arrays.asList(dataDirs));
-
+  private void addHomeDir(List<String> dirs, int i) {
+    String dir = dirs.get(i);
     String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-    for (int i = 0; i < 4; i++) {
-      String dir = dirs.get(i);
-      if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-        if (!homeDir.endsWith(File.separator)) {
-          dir = homeDir + File.separatorChar + dir;
-        } else {
-          dir = homeDir + dir;
-        }
-        dirs.set(i, dir);
+    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
+      if (!homeDir.endsWith(File.separator)) {
+        dir = homeDir + File.separatorChar + dir;
+      } else {
+        dir = homeDir + dir;
       }
-    }
-
-    for (int i = 5; i < dirs.size(); i++) {
-      String dir = dirs.get(i);
-      dir = hdfsDir + File.separatorChar + dir;
       dirs.set(i, dir);
     }
-    baseDir = dirs.get(0);
-    systemDir = dirs.get(1);
-    schemaDir = dirs.get(2);
-    walFolder = dirs.get(3);
-    indexFileDir = dirs.get(4);
-    for (int i = 0; i < dataDirs.length; i++) {
-      dataDirs[i] = dirs.get(i + 5);
-    }
   }
-
 
   private void confirmMultiDirStrategy() {
     if (getMultiDirStrategyClassName() == null) {

@@ -95,7 +95,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
     this.file = file;
-    if (config.getStorageFs().equals(FSType.HDFS)) {
+    if (config.getTSFileStorageFs().equals(FSType.HDFS)) {
       tsFileInput = new HDFSInput(file);
     } else {
       tsFileInput = new DefaultTsFileInput(Paths.get(file));

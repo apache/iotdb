@@ -34,12 +34,12 @@ public enum TSFileFactory {
 
   INSTANCE;
 
-  private static FSType fSType = TSFileDescriptor.getInstance().getConfig().getStorageFs();
+  private static FSType fSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
   private static final Logger logger = LoggerFactory.getLogger(TsFileWriter.class);
 
   public File getFile(String pathname) {
     if (fSType.equals(fSType.HDFS)) {
-      return new HdfsFile(pathname);
+      return new HDFSFile(pathname);
     } else {
       return new File(pathname);
     }
@@ -47,7 +47,7 @@ public enum TSFileFactory {
 
   public File getFile(String parent, String child) {
     if (fSType.equals(fSType.HDFS)) {
-      return new HdfsFile(parent, child);
+      return new HDFSFile(parent, child);
     } else {
       return new File(parent, child);
     }
@@ -55,7 +55,7 @@ public enum TSFileFactory {
 
   public File getFile(File parent, String child) {
     if (fSType.equals(fSType.HDFS)) {
-      return new HdfsFile(parent, child);
+      return new HDFSFile(parent, child);
     } else {
       return new File(parent, child);
     }
@@ -63,7 +63,7 @@ public enum TSFileFactory {
 
   public File getFile(URI uri) {
     if (fSType.equals(fSType.HDFS)) {
-      return new HdfsFile(uri);
+      return new HDFSFile(uri);
     } else {
       return new File(uri);
     }

@@ -32,32 +32,32 @@ import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 
-public class HdfsFile extends File {
+public class HDFSFile extends File {
 
   private Path hdfsPath;
   private Configuration conf = new Configuration();
   private static final Logger logger = LoggerFactory.getLogger(TsFileWriter.class);
 
 
-  public HdfsFile(String pathname) {
+  public HDFSFile(String pathname) {
     super(pathname);
     hdfsPath = new Path(pathname);
     conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
   }
 
-  public HdfsFile(String parent, String child) {
+  public HDFSFile(String parent, String child) {
     super(parent, child);
     hdfsPath = new Path(parent + child);
     conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
   }
 
-  public HdfsFile(File parent, String child) {
+  public HDFSFile(File parent, String child) {
     super(parent, child);
     hdfsPath = new Path(parent.getAbsolutePath() + child);
     conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
   }
 
-  public HdfsFile(URI uri) {
+  public HDFSFile(URI uri) {
     super(uri);
     hdfsPath = new Path(uri);
     conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
@@ -97,16 +97,16 @@ public class HdfsFile extends File {
 
   @Override
   public File[] listFiles() {
-    ArrayList<HdfsFile> files = new ArrayList<>();
+    ArrayList<HDFSFile> files = new ArrayList<>();
     try {
       FileSystem fs = hdfsPath.getFileSystem(conf);
       RemoteIterator<LocatedFileStatus> iterator = fs.listFiles(hdfsPath, true);
       while (iterator.hasNext()) {
         LocatedFileStatus fileStatus = iterator.next();
         Path fullPath = fileStatus.getPath();
-        files.add(new HdfsFile(fullPath.toUri()));
+        files.add(new HDFSFile(fullPath.toUri()));
       }
-      return files.toArray(new HdfsFile[files.size()]);
+      return files.toArray(new HDFSFile[files.size()]);
     } catch (IOException e) {
       logger.error("Fail to list files. ", e);
       return null;
@@ -115,7 +115,7 @@ public class HdfsFile extends File {
 
   @Override
   public File[] listFiles(FileFilter filter) {
-    ArrayList<HdfsFile> files = new ArrayList<>();
+    ArrayList<HDFSFile> files = new ArrayList<>();
     try {
       PathFilter pathFilter = new GlobFilter(filter.toString()); // TODO
       FileSystem fs = hdfsPath.getFileSystem(conf);
@@ -124,10 +124,10 @@ public class HdfsFile extends File {
         LocatedFileStatus fileStatus = iterator.next();
         Path fullPath = fileStatus.getPath();
         if (pathFilter.accept(fullPath)) {
-          files.add(new HdfsFile(fullPath.toUri()));
+          files.add(new HDFSFile(fullPath.toUri()));
         }
       }
-      return files.toArray(new HdfsFile[files.size()]);
+      return files.toArray(new HDFSFile[files.size()]);
     } catch (IOException e) {
       logger.error("Fail to list files. ", e);
       return null;
@@ -136,7 +136,7 @@ public class HdfsFile extends File {
 
   @Override
   public File getParentFile() {
-    return new HdfsFile(hdfsPath.getParent().toUri());
+    return new HDFSFile(hdfsPath.getParent().toUri());
   }
 
   @Override

@@ -33,7 +33,7 @@ public enum FileInputFactory {
 
   INSTANCE;
 
-  private static FSType fsType = TSFileDescriptor.getInstance().getConfig().getStorageFs();
+  private static FSType fsType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
   private static final Logger logger = LoggerFactory.getLogger(TsFileIOWriter.class);
 
   public TsFileInput getTsFileInput(String filePath) {
