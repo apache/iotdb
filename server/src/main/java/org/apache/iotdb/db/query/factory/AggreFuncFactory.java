@@ -21,12 +21,12 @@ package org.apache.iotdb.db.query.factory;
 
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
+import org.apache.iotdb.db.query.aggregation.impl.AvgAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.CountAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.FirstAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.LastAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MaxValueAggrFunc;
-import org.apache.iotdb.db.query.aggregation.impl.MeanAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MinTimeAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MinValueAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.SumAggrFunc;
@@ -64,8 +64,8 @@ public class AggreFuncFactory {
         return new MaxValueAggrFunc(dataType);
       case StatisticConstant.COUNT:
         return new CountAggrFunc();
-      case StatisticConstant.MEAN:
-        return new MeanAggrFunc(dataType);
+      case StatisticConstant.AVG:
+        return new AvgAggrFunc(dataType);
       case StatisticConstant.FIRST:
         return new FirstAggrFunc(dataType);
       case StatisticConstant.SUM:
