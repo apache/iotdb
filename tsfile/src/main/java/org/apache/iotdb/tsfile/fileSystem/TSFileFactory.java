@@ -78,8 +78,7 @@ public enum TSFileFactory {
         fs = path.getFileSystem(conf);
         return new BufferedReader(new InputStreamReader(fs.open(path)));
       } else {
-        throw new IOException("reader into LOCAL file system");
-        // return new BufferedReader(new FileReader(filePath));
+        return new BufferedReader(new FileReader(filePath));
       }
     } catch (IOException e) {
       logger.error("Fail to get buffered reader. ", e);
@@ -94,8 +93,7 @@ public enum TSFileFactory {
         fs = path.getFileSystem(conf);
         return new BufferedWriter(new OutputStreamWriter(fs.create(path)));
       } else {
-        throw new IOException("writer into LOCAL file system.");
-        // return new BufferedWriter(new FileWriter(filePath, append));
+        return new BufferedWriter(new FileWriter(filePath, append));
       }
     } catch (IOException e) {
       logger.error("Fail to get buffered writer. ", e);
