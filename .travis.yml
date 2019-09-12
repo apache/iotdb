@@ -89,8 +89,7 @@ matrix:
         - wget --no-check-certificate https://www-eu.apache.org/dist/maven/maven-3/3.6.2/binaries/apache-maven-3.6.2-bin.zip
         - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.2-bin.zip -o/c/mvn362
         - mkdir C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/steveloughran/winutils/raw/master/hadoop-3.0.0/bin/winutils.exe
-        - move winutils.exe C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/steveloughran/winutils/raw/master/hadoop-3.0.0/bin/winutils.exe -o C:\hadoop\bin
       before_script:
         - export "JAVA_HOME=/c/jdk8"
         - export "PATH=/c/jdk8/bin:$PATH"
