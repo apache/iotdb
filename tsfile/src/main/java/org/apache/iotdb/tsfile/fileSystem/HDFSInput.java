@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.io;
+package org.apache.iotdb.tsfile.fileSystem;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -99,16 +99,7 @@ public class HDFSInput implements TsFileInput {
     long srcPosition = fsDataInputStream.getPos();
 
     fsDataInputStream.seek(position);
-
-    int res;
-    if (byteBufferReadable) {
-      res = fsDataInputStream.read(dst);
-    } else {
-      byte[] bytes = new byte[dst.remaining()];
-      res = fsDataInputStream.read(bytes);
-      dst.put(bytes);
-    }
-
+    int res = read(dst);
     fsDataInputStream.seek(srcPosition);
 
     return res;

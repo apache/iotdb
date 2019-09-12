@@ -50,6 +50,8 @@ import org.slf4j.LoggerFactory;
 public class TsFileWriter implements AutoCloseable{
 
   private static final Logger LOG = LoggerFactory.getLogger(TsFileWriter.class);
+  protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+
   /**
    * schema of this TsFile.
    **/
@@ -140,6 +142,7 @@ public class TsFileWriter implements AutoCloseable{
     this.schema.registerMeasurements(fileWriter.getKnownSchema());
     this.pageSize = TSFileConfig.pageSizeInByte;
     this.chunkGroupSizeThreshold = TSFileConfig.groupSizeInByte;
+    config.setTSFileStorageFs(conf.getTSFileStorageFs().name());
     if (this.pageSize >= chunkGroupSizeThreshold) {
       LOG.warn(
           "TsFile's page size {} is greater than chunk group size {}, please enlarge the chunk group"

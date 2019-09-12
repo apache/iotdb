@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
@@ -29,9 +30,10 @@ import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.fileSystem.FileInputFactory;
+import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -49,6 +51,8 @@ import static org.apache.iotdb.tsfile.write.writer.TsFileIOWriter.magicStringByt
 public class TsFileSequenceReader implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileSequenceReader.class);
+  protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+
   protected String file;
   private TsFileInput tsFileInput;
   private long fileMetadataPos;
@@ -80,8 +84,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
     this.file = file;
-    final java.nio.file.Path path = Paths.get(file);
-    tsFileInput = new DefaultTsFileInput(path);
+    tsFileInput = FileInputFactory.INSTANCE.getTsFileInput(file);
     try {
       if (loadMetadataSize) {
         loadMetadataSize();
@@ -496,7 +499,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public long selfCheck(Map<String, MeasurementSchema> newSchema,
       List<ChunkGroupMetaData> newMetaData, boolean fastFinish) throws IOException {
-    File checkFile = new File(this.file);
+    File checkFile = TSFileFactory.INSTANCE.getFile(this.file);
     long fileSize;
     if (!checkFile.exists()) {
       return TsFileCheckStatus.FILE_NOT_FOUND;

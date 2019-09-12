@@ -27,7 +27,7 @@ import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
 import org.apache.iotdb.tool.TsFileWriteTool
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType
-import org.apache.iotdb.tsfile.io.HDFSInput
+import org.apache.iotdb.tsfile.fileSystem.HDFSInput
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader
 import org.apache.iotdb.tsfile.read.common.Field
 import org.apache.iotdb.tsfile.utils.Binary

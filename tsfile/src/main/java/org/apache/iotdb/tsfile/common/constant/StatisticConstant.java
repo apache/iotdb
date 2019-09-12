@@ -31,7 +31,7 @@ public class StatisticConstant {
 
   public static final String FIRST = "first";
 
-  public static final String MEAN = "mean";
+  public static final String AVG = "avg";
 
   public static final String SUM = "sum";
 
