@@ -161,7 +161,7 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
    * @return
    */
   public static boolean getReadDeltaObject(Configuration configuration) {
-    return configuration.getBoolean(READ_DELTAOBJECT_ENABLE, false);
+    return configuration.getBoolean(READ_DELTAOBJECT_ENABLE, true);
   }
 
   /**
@@ -173,7 +173,7 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
   }
 
   public static boolean getReadTime(Configuration configuration) {
-    return configuration.getBoolean(READ_TIME_ENABLE, false);
+    return configuration.getBoolean(READ_TIME_ENABLE, true);
   }
 
   /**
