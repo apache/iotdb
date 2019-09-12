@@ -21,16 +21,14 @@ package org.apache.iotdb.db.engine.modification.io;
 
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
-import org.apache.iotdb.tsfile.fileSystem.HDFSInput;
-import org.apache.iotdb.tsfile.fileSystem.HDFSOutput;
 import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -66,8 +64,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
 
     String line;
     List<Modification> modificationList = new ArrayList<>();
-    try {
-      BufferedReader reader = new BufferedReader(new FileReader(filePath)); //TSFileFactory.INSTANCE.getBufferedReader(filePath);
+    try(BufferedReader reader = TSFileFactory.INSTANCE.getBufferedReader(filePath)) {
       while ((line = reader.readLine()) != null) {
         if (line.equals(ABORT_MARK) && !modificationList.isEmpty()) {
           modificationList.remove(modificationList.size() - 1);
@@ -93,7 +90,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
   @Override
   public void abort() throws IOException {
     if (writer == null) {
-      writer = new BufferedWriter(new FileWriter(filePath, true)); // TSFileFactory.INSTANCE.getBufferedWriter(filePath, true);
+      writer = TSFileFactory.INSTANCE.getBufferedWriter(filePath, true);
     }
     writer.write(ABORT_MARK);
     writer.newLine();
@@ -103,7 +100,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
   @Override
   public void write(Modification mod) throws IOException {
     if (writer == null) {
-      writer = new BufferedWriter(new FileWriter(filePath, true)); // TSFileFactory.INSTANCE.getBufferedWriter(filePath, true);
+      writer = TSFileFactory.INSTANCE.getBufferedWriter(filePath, true);
     }
     writer.write(encodeModification(mod));
     writer.newLine();
