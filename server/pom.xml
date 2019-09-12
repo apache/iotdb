@@ -31,7 +31,6 @@
     <name>IoTDB Server</name>
     <properties>
         <iotdb.test.skip>false</iotdb.test.skip>
-        <hadoop.version>2.7.3</hadoop.version>
         <iotdb.it.skip>${iotdb.test.skip}</iotdb.it.skip>
         <iotdb.ut.skip>${iotdb.test.skip}</iotdb.ut.skip>
     </properties>
