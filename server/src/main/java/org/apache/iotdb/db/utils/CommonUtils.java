@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.utils;
 
-import java.io.File;
+import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,8 +42,14 @@ public class CommonUtils {
     }
   }
 
+  /**
+   * NOTICE: This method is currently used only for data dir, thus using TSFileFactory to get file
+   *
+   * @param dir directory path
+   * @return
+   */
   public static long getUsableSpace(String dir) {
-    return new File(dir).getFreeSpace();
+    return TSFileFactory.INSTANCE.getFile(dir).getFreeSpace();
   }
 
   public static boolean hasSpace(String dir) {

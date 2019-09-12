@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.engine.fileSystem;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
+import org.apache.iotdb.tsfile.fileSystem.HDFSFile;
 
 import java.io.File;
 import java.net.URI;
@@ -28,35 +30,35 @@ public enum FileFactory {
 
   INSTANCE;
 
-  private static FSType FSType = IoTDBDescriptor.getInstance().getConfig().getStorageFs();
+  private static FSType fsType = IoTDBDescriptor.getInstance().getConfig().getStorageFs();
 
   public File getFile(String pathname) {
-    if (FSType.equals(FSType.HDFS)) {
-      return new HdfsFile(pathname);
+    if (fsType.equals(FSType.HDFS)) {
+      return new HDFSFile(pathname);
     } else {
       return new File(pathname);
     }
   }
 
   public File getFile(String parent, String child) {
-    if (FSType.equals(FSType.HDFS)) {
-      return new HdfsFile(parent, child);
+    if (fsType.equals(FSType.HDFS)) {
+      return new HDFSFile(parent, child);
     } else {
       return new File(parent, child);
     }
   }
 
   public File getFile(File parent, String child) {
-    if (FSType.equals(FSType.HDFS)) {
-      return new HdfsFile(parent, child);
+    if (fsType.equals(FSType.HDFS)) {
+      return new HDFSFile(parent, child);
     } else {
       return new File(parent, child);
     }
   }
 
   public File getFile(URI uri) {
-    if (FSType.equals(FSType.HDFS)) {
-      return new HdfsFile(uri);
+    if (fsType.equals(FSType.HDFS)) {
+      return new HDFSFile(uri);
     } else {
       return new File(uri);
     }

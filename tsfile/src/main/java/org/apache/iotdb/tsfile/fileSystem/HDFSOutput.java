@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.io;
+package org.apache.iotdb.tsfile.fileSystem;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -35,44 +35,44 @@ import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 public class HDFSOutput implements TsFileOutput {
 
   private FSDataOutputStream fsDataOutputStream;
+  private FileSystem fs;
+  private Path path;
 
-  public HDFSOutput(String filePath, boolean overwriter) throws IOException {
-
-    this(filePath, new Configuration(), overwriter);
+  public HDFSOutput(String filePath, boolean overwrite) throws IOException {
+    this(filePath, new Configuration(), overwrite);
+    path = new Path(filePath);
   }
 
 
   public HDFSOutput(String filePath, Configuration configuration, boolean overwriter)
       throws IOException {
-
     this(new Path(filePath), configuration, overwriter);
+    path = new Path(filePath);
   }
 
   public HDFSOutput(Path path, Configuration configuration, boolean overwriter)
       throws IOException {
-    FileSystem fs = path.getFileSystem(configuration);
+    fs = path.getFileSystem(configuration);
     fsDataOutputStream = fs.create(path, overwriter);
+    this.path = path;
   }
 
   @Override
   public void write(byte[] b) throws IOException {
-
     fsDataOutputStream.write(b);
   }
 
   public void write(ByteBuffer b) throws IOException {
-    throw new IOException("Not support");
+    throw new UnsupportedOperationException("Unsupported operation.");
   }
 
   @Override
   public long getPosition() throws IOException {
-
     return fsDataOutputStream.getPos();
   }
 
   @Override
   public void close() throws IOException {
-
     fsDataOutputStream.close();
   }
 
@@ -88,6 +88,6 @@ public class HDFSOutput implements TsFileOutput {
 
   @Override
   public void truncate(long position) throws IOException {
-    throw new IOException("Not support");
+    fs.truncate(path, position);
   }
 }
