@@ -112,7 +112,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           } catch (IoTDBRPCException e) {
             throw new IoTDBSQLException(e.getMessage());
           }
-          Set<String> showStorageGroup = resp.getShowStorageGroups();
+          List<String> showStorageGroup = resp.getShowStorageGroups();
           return new IoTDBMetadataResultSet(showStorageGroup, IoTDBMetadataResultSet.MetadataType.STORAGE_GROUP);
         } catch (TException e) {
           throw new TException("Conncetion error when fetching storage group metadata", e);

@@ -114,7 +114,7 @@ public class StorageGroupProcessor {
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
   /**
-   *
+   * closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done.
    */
   private final Object closeStorageGroupCondition = new Object();
   /**
@@ -176,6 +176,11 @@ public class StorageGroupProcessor {
   private LinkedList<String> lruForSensorUsedInQuery = new LinkedList<>();
   private static final int MAX_CACHE_SENSORS = 5000;
 
+  /**
+   * when the data in a storage group are older than dataTTL, it is considered invalid and will
+   * be eventually removed.
+   */
+  private long dataTTL = Long.MAX_VALUE;
 
   public StorageGroupProcessor(String systemInfoDir, String storageGroupName)
       throws ProcessorException {
@@ -299,7 +304,7 @@ public class StorageGroupProcessor {
 
   // TsFileNameComparator compares TsFiles by the version number in its name
   // ({systemTime}-{versionNum}.tsfile)
-  public int compareFileName(File o1, File o2) {
+  private int compareFileName(File o1, File o2) {
     String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split("-");
     String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split("-");
     if (Long.valueOf(items1[0]) - Long.valueOf(items2[0]) == 0) {
@@ -336,6 +341,10 @@ public class StorageGroupProcessor {
   }
 
   public boolean insert(InsertPlan insertPlan) {
+    // reject insertions that are out of ttl
+    if (!checkTTL(insertPlan.getTime())) {
+      return false;
+    }
     writeLock();
     try {
       // init map
@@ -363,8 +372,13 @@ public class StorageGroupProcessor {
 
       for (int i = 0; i < batchInsertPlan.getRowCount(); i++) {
         results[i] = TSStatusType.SUCCESS_STATUS.getStatusCode();
-        if (batchInsertPlan.getTimes()[i] > latestFlushedTimeForEachDevice
-            .get(batchInsertPlan.getDeviceId())) {
+        long currTime = batchInsertPlan.getTimes()[i];
+        // skip points that do not satisfy TTL
+        if (!checkTTL(currTime)) {
+          results[i] = TSStatusType.OUT_OF_TTL_ERROR.getStatusCode();
+          continue;
+        }
+        if (currTime > latestFlushedTimeForEachDevice.get(batchInsertPlan.getDeviceId())) {
           sequenceIndexes.add(i);
         } else {
           unsequenceIndexes.add(i);
@@ -382,6 +396,15 @@ public class StorageGroupProcessor {
     } finally {
       writeUnlock();
     }
+  }
+
+  /**
+   *
+   * @param time
+   * @return whether the given time falls in ttl
+   */
+  private boolean checkTTL(long time) {
+    return dataTTL == Long.MAX_VALUE || (System.currentTimeMillis() - time) <= dataTTL;
   }
 
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
@@ -616,6 +639,7 @@ public class StorageGroupProcessor {
       if (filePathsManager != null) {
         filePathsManager.addUsedFilesForGivenJob(context.getJobId(), dataSource);
       }
+      dataSource.setDataTTL(dataTTL);
       return dataSource;
     } finally {
       insertLock.readLock().unlock();
@@ -664,30 +688,38 @@ public class StorageGroupProcessor {
     TSDataType dataType = mSchema.getType();
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
+    long timeLowerBound = dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long
+        .MIN_VALUE;
     for (TsFileResource tsFileResource : tsFileResources) {
       // TODO: try filtering files if the query contains time filter
       if (!tsFileResource.containsDevice(deviceId)) {
         continue;
       }
-      if (!tsFileResource.getStartTimeMap().isEmpty()) {
-        closeQueryLock.readLock().lock();
-        try {
-          if (tsFileResource.isClosed()) {
-            tsfileResourcesForQuery.add(tsFileResource);
-          } else {
-            // left: in-memory data, right: meta of disk data
-            Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair;
-            pair = tsFileResource
-                .getUnsealedFileProcessor()
-                .query(deviceId, measurementId, dataType, mSchema.getProps(), context);
-            tsfileResourcesForQuery
-                .add(new TsFileResource(tsFileResource.getFile(),
-                    tsFileResource.getStartTimeMap(),
-                    tsFileResource.getEndTimeMap(), pair.left, pair.right));
-          }
-        } finally {
-          closeQueryLock.readLock().unlock();
+      closeQueryLock.readLock().lock();
+
+      if (dataTTL != Long.MAX_VALUE) {
+        Long deviceEndTime = tsFileResource.getEndTimeMap().get(deviceId);
+        if (deviceEndTime != null && !checkTTL(deviceEndTime)) {
+          continue;
         }
+      }
+
+      try {
+        if (tsFileResource.isClosed()) {
+          tsfileResourcesForQuery.add(tsFileResource);
+        } else {
+          // left: in-memory data, right: meta of disk data
+          Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair;
+          pair = tsFileResource
+              .getUnsealedFileProcessor()
+              .query(deviceId, measurementId, dataType, mSchema.getProps(), context, timeLowerBound);
+          tsfileResourcesForQuery
+              .add(new TsFileResource(tsFileResource.getFile(),
+                  tsFileResource.getStartTimeMap(),
+                  tsFileResource.getEndTimeMap(), pair.left, pair.right));
+        }
+      } finally {
+        closeQueryLock.readLock().unlock();
       }
     }
     return tsfileResourcesForQuery;
@@ -962,4 +994,11 @@ public class StorageGroupProcessor {
     void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
   }
 
+  public long getDataTTL() {
+    return dataTTL;
+  }
+
+  public void setDataTTL(long dataTTL) {
+    this.dataTTL = dataTTL;
+  }
 }

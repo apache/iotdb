@@ -144,12 +144,12 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      Map<String, String> props) {
+      Map<String, String> props, long timeLowerBound) {
     TimeValuePairSorter sorter;
     if (!checkPath(deviceId, measurement)) {
       return null;
     } else {
-      long undeletedTime = findUndeletedTime(deviceId, measurement);
+      long undeletedTime = findUndeletedTime(deviceId, measurement, timeLowerBound);
       IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
       IWritableMemChunk chunkCopy = new WritableMemChunk(dataType, memChunk.getTVList().clone());
       chunkCopy.setTimeOffset(undeletedTime);
@@ -159,7 +159,7 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
 
-  private long findUndeletedTime(String deviceId, String measurement) {
+  private long findUndeletedTime(String deviceId, String measurement, long timeLowerBound) {
     long undeletedTime = Long.MIN_VALUE;
     for (Modification modification : modifications) {
       if (modification instanceof Deletion) {
@@ -170,7 +170,7 @@ public abstract class AbstractMemTable implements IMemTable {
         }
       }
     }
-    return undeletedTime + 1;
+    return undeletedTime + 1 < timeLowerBound ? timeLowerBound : undeletedTime + 1;
   }
 
   @Override

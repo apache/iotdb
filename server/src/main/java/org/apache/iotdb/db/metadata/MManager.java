@@ -272,7 +272,7 @@ public class MManager {
       throw new MetadataErrorException(
           String.format("Timeseries %s already exist", path.getFullPath()));
     }
-    if (!checkFileNameByPath(path.getFullPath())) {
+    if (!checkStorageGroupByPath(path.getFullPath())) {
       throw new MetadataErrorException("Storage group should be created first");
     }
     // optimize the speed of adding timeseries
@@ -489,7 +489,7 @@ public class MManager {
     try {
       checkAndGetDataTypeCache.clear();
       mNodeCache.clear();
-      String dataFileName = mgraph.deletePath(path);
+      String storageGroupName = mgraph.deletePath(path);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
         writer.write(MetadataOperationType.DELETE_PATH_FROM_MTREE + "," + path);
@@ -510,7 +510,7 @@ public class MManager {
       } else {
         maxSeriesNumberAmongStorageGroup--;
       }
-      return dataFileName;
+      return storageGroupName;
     } finally {
       lock.writeLock().unlock();
     }
@@ -745,21 +745,6 @@ public class MManager {
   }
 
   /**
-   * Get the full storage group info.
-   *
-   * @return A HashSet instance which stores all storage group info
-   */
-  public Set<String> getAllStorageGroup() throws PathErrorException {
-
-    lock.readLock().lock();
-    try {
-      return mgraph.getAllStorageGroup();
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
    * Get all nodes from the given level
    *
    * @return A List instance which stores all node at given level
@@ -877,42 +862,55 @@ public class MManager {
   }
 
   /**
-   * function for checking file name by path.
+   * function for checking storage group name by path.
    */
-  boolean checkFileNameByPath(String path) {
+  boolean checkStorageGroupByPath(String path) {
 
     lock.readLock().lock();
     try {
-      return mgraph.checkFileNameByPath(path);
+      return mgraph.checkStorageGroupByPath(path);
     } finally {
       lock.readLock().unlock();
     }
   }
 
   /**
-   * function for getting all file names.
-   */
-  public List<String> getAllStorageGroupNames() throws MetadataErrorException {
-
-    lock.readLock().lock();
-    try {
-      Map<String, ArrayList<String>> res = getAllPathGroupByFileName(ROOT_NAME);
-      return new ArrayList<>(res.keySet());
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * Get all file names for given seriesPath
+   * Get the full storage group info.
    *
-   * @return List of String represented all file names
+   * @return A list which stores all storage group info
    */
-  List<String> getAllFileNamesByPath(String path) throws MetadataErrorException {
+  public List<String> getAllStorageGroupNames() {
 
     lock.readLock().lock();
     try {
-      return mgraph.getAllFileNamesByPath(path);
+      return mgraph.getAllStorageGroup();
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * function for getting all storage groups' MNodes
+   */
+  public List<MNode> getAllStorageGroups() {
+    lock.readLock().lock();
+    try {
+      return mgraph.getAllStorageGroups();
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get all storage group names for given seriesPath
+   *
+   * @return List of String represented all storage group names
+   */
+  List<String> getAllStorageGroupNamesByPath(String path) throws MetadataErrorException {
+
+    lock.readLock().lock();
+    try {
+      return mgraph.getAllStorageGroupNamesByPath(path);
     } catch (PathErrorException e) {
       throw new MetadataErrorException(e);
     } finally {
@@ -921,13 +919,13 @@ public class MManager {
   }
 
   /**
-   * return a HashMap contains all the paths separated by File Name.
+   * return a HashMap contains all the paths separated by storage group name.
    */
-  Map<String, ArrayList<String>> getAllPathGroupByFileName(String path)
+  Map<String, ArrayList<String>> getAllPathGroupByStorageGroup(String path)
       throws MetadataErrorException {
     lock.readLock().lock();
     try {
-      return mgraph.getAllPathGroupByFilename(path);
+      return mgraph.getAllPathGroupByStorageGroup(path);
     } catch (PathErrorException e) {
       throw new MetadataErrorException(e);
     } finally {
@@ -944,8 +942,8 @@ public class MManager {
     lock.readLock().lock();
     try {
       ArrayList<String> res = new ArrayList<>();
-      Map<String, ArrayList<String>> pathsGroupByFilename = getAllPathGroupByFileName(path);
-      for (ArrayList<String> ps : pathsGroupByFilename.values()) {
+      Map<String, ArrayList<String>> pathsGroupBySG = getAllPathGroupByStorageGroup(path);
+      for (ArrayList<String> ps : pathsGroupBySG.values()) {
         res.addAll(ps);
       }
       return res;

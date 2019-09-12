@@ -75,18 +75,6 @@ import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.time.ZoneId;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.regex.Pattern;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.*;
-
 /**
  * Thrift RPC implementation at server side.
  */
@@ -271,7 +259,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = new TS_Status(getStatus(TSStatusType.SUCCESS_STATUS));
           break;
         case "SHOW_STORAGE_GROUP":
-          Set<String> storageGroups = getAllStorageGroups();
+          List<String> storageGroups = getAllStorageGroups();
           resp.setShowStorageGroups(storageGroups);
           status = new TS_Status(getStatus(TSStatusType.SUCCESS_STATUS));
           break;
@@ -337,8 +325,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return MManager.getInstance().getNodesList(level);
   }
 
-  private Set<String> getAllStorageGroups() throws PathErrorException {
-    return MManager.getInstance().getAllStorageGroup();
+  private List<String> getAllStorageGroups() throws PathErrorException {
+    return MManager.getInstance().getAllStorageGroupNames();
   }
 
   private List<List<String>> getTimeSeriesForPath(String path)
@@ -526,7 +514,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             IoTDBDescriptor.getInstance().getConfig().getMaxMemtableNumber(),
             IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold(),
             CompressionRatio.getInstance().getRatio(),
-            MManager.getInstance().getAllStorageGroup().size(),
+            MManager.getInstance().getAllStorageGroupNames().size(),
             IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries(),
             MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups());
         return getTSExecuteStatementResp(getStatus(TSStatusType.SUCCESS_STATUS, msg));

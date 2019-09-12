@@ -177,7 +177,7 @@ public class MGraph implements Serializable {
    *
    * @return A HashMap whose Keys are separated by the storage file name.
    */
-  HashMap<String, ArrayList<String>> getAllPathGroupByFilename(String path)
+  HashMap<String, ArrayList<String>> getAllPathGroupByStorageGroup(String path)
       throws PathErrorException {
     String rootName = path.trim().split(DOUB_SEPARATOR)[0];
     if (mtree.getRoot().getName().equals(rootName)) {
@@ -187,6 +187,10 @@ public class MGraph implements Serializable {
       return ptree.getAllLinkedPath(path);
     }
     throw new PathErrorException(TIME_SERIES_INCORRECT + rootName);
+  }
+
+  List<MNode> getAllStorageGroups() {
+    return mtree.getAllStorageGroups();
   }
 
   /**
@@ -243,7 +247,7 @@ public class MGraph implements Serializable {
     return new Metadata(deviceIdMap);
   }
 
-  HashSet<String> getAllStorageGroup() {
+  List<String> getAllStorageGroup() {
     return mtree.getAllStorageGroup();
   }
 
@@ -304,14 +308,14 @@ public class MGraph implements Serializable {
     return mtree.getStorageGroupNameByPath(node, path);
   }
 
-  boolean checkFileNameByPath(String path) {
+  boolean checkStorageGroupByPath(String path) {
     return mtree.checkFileNameByPath(path);
   }
 
   /**
    * Get all file names for given seriesPath
    */
-  List<String> getAllFileNamesByPath(String path) throws PathErrorException {
+  List<String> getAllStorageGroupNamesByPath(String path) throws PathErrorException {
     return mtree.getAllFileNamesByPath(path);
   }
 
@@ -384,7 +388,7 @@ public class MGraph implements Serializable {
    */
   Map<String, Integer> countSeriesNumberInEachStorageGroup() throws PathErrorException {
     Map<String, Integer> res = new HashMap<>();
-    Set<String> storageGroups = this.getAllStorageGroup();
+    List<String> storageGroups = this.getAllStorageGroup();
     for (String sg : storageGroups) {
       MNode node = mtree.getNodeByPath(sg);
       res.put(sg, node.getLeafCount());

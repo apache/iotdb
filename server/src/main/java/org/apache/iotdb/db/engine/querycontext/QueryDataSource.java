@@ -23,11 +23,19 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.util.List;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 
 public class QueryDataSource {
   private Path seriesPath;
   private List<TsFileResource> seqResources;
   private List<TsFileResource> unseqResources;
+
+  /**
+   * data older than currentTime - dataTTL should be ignored.
+   */
+  private long dataTTL = Long.MAX_VALUE;
 
   public QueryDataSource(Path seriesPath, List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
     this.seriesPath = seriesPath;
@@ -45,5 +53,29 @@ public class QueryDataSource {
 
   public List<TsFileResource> getUnseqResources() {
     return unseqResources;
+  }
+
+  public long getDataTTL() {
+    return dataTTL;
+  }
+
+  public void setDataTTL(long dataTTL) {
+    this.dataTTL = dataTTL;
+  }
+
+  /**
+   *
+   * @return an updated time filter considering TTL
+   */
+  public Filter updateTimeFilter(Filter timeFilter) {
+    if (dataTTL != Long.MAX_VALUE) {
+      if (timeFilter != null) {
+        timeFilter = new AndFilter(timeFilter, TimeFilter.gtEq(System.currentTimeMillis() -
+            dataTTL));
+      } else {
+        timeFilter = TimeFilter.gtEq(System.currentTimeMillis() - dataTTL);
+      }
+    }
+    return timeFilter;
   }
 }

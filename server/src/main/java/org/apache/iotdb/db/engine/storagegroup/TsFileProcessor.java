@@ -536,10 +536,12 @@ public class TsFileProcessor {
    * @param deviceId device id
    * @param measurementId sensor id
    * @param dataType data type
+   * @param timeLowerBound data older than this is ignored
    * @return left: the chunk data in memory; right: the chunkMetadatas of data on disk
    */
   public Pair<ReadOnlyMemChunk, List<ChunkMetaData>> query(String deviceId,
-      String measurementId, TSDataType dataType, Map<String, String> props, QueryContext context) {
+      String measurementId, TSDataType dataType, Map<String, String> props, QueryContext context,
+      long timeLowerBound) {
     flushQueryLock.readLock().lock();
     try {
       MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
@@ -548,13 +550,14 @@ public class TsFileProcessor {
           continue;
         }
         ReadOnlyMemChunk memChunk = flushingMemTable
-            .query(deviceId, measurementId, dataType, props);
+            .query(deviceId, measurementId, dataType, props, timeLowerBound);
         if (memChunk != null) {
           memSeriesLazyMerger.addMemSeries(memChunk);
         }
       }
       if (workMemTable != null) {
-        ReadOnlyMemChunk memChunk = workMemTable.query(deviceId, measurementId, dataType, props);
+        ReadOnlyMemChunk memChunk = workMemTable.query(deviceId, measurementId, dataType, props,
+            timeLowerBound);
         if (memChunk != null) {
           memSeriesLazyMerger.addMemSeries(memChunk);
         }
@@ -572,6 +575,8 @@ public class TsFileProcessor {
           .getVisibleMetadataList(deviceId, measurementId, dataType);
       QueryUtils.modifyChunkMetaData(chunkMetaDataList,
           modifications);
+
+      chunkMetaDataList.removeIf(chunkMetaData -> chunkMetaData.getEndTime() < timeLowerBound);
 
       return new Pair<>(timeValuePairSorter, chunkMetaDataList);
     } finally {

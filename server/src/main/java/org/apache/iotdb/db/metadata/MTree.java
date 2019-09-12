@@ -652,6 +652,26 @@ public class MTree implements Serializable {
   }
 
   /**
+   *
+   * @return all storage groups' MNodes
+   * @throws PathErrorException
+   */
+  List<MNode> getAllStorageGroups() {
+    List<MNode> ret = new ArrayList<>();
+    Stack<MNode> nodeStack = new Stack<>();
+    nodeStack.add(getRoot());
+    while (!nodeStack.isEmpty()) {
+      MNode current = nodeStack.pop();
+      if (current.isStorageLevel()) {
+        ret.add(current);
+      } else if (current.hasChildren()){
+        nodeStack.addAll(current.getChildren().values());
+      }
+    }
+    return ret;
+  }
+
+  /**
    * function for getting all timeseries paths under the given seriesPath.
    */
   List<List<String>> getShowTimeseriesPath(String pathReg) throws PathErrorException {
@@ -740,8 +760,8 @@ public class MTree implements Serializable {
    *
    * @return a list contains all distinct storage groups
    */
-  HashSet<String> getAllStorageGroup() {
-    HashSet<String> res = new HashSet<>();
+  List<String> getAllStorageGroup() {
+    List<String> res = new ArrayList<>();
     MNode rootNode;
     if ((rootNode = getRoot()) != null) {
       findStorageGroup(rootNode, "root", res);
@@ -749,7 +769,7 @@ public class MTree implements Serializable {
     return res;
   }
 
-  private void findStorageGroup(MNode node, String path, HashSet<String> res) {
+  private void findStorageGroup(MNode node, String path, List<String> res) {
     if (node.isStorageLevel()) {
       res.add(path);
       return;

@@ -27,6 +27,7 @@ public enum TSStatusType {
   UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR(302, "Unsupported fetch metadata operation"),
   FETCH_METADATA_ERROR(303, "Failed to fetch metadata"),
   CHECK_FILE_LEVEL_ERROR(304, "Meet error while checking file level"),
+  OUT_OF_TTL_ERROR(305, "timestamp falls out of TTL"),
   EXECUTE_STATEMENT_ERROR(400, "Execute statement error"),
   SQL_PARSE_ERROR(401, "Meet error while parsing SQL"),
   GENERATE_TIME_ZONE_ERROR(402, "Meet error while generating time zone"),

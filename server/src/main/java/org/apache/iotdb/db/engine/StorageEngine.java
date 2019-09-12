@@ -37,6 +37,7 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -87,13 +88,14 @@ public class StorageEngine implements IService {
      * recover all storage group processors.
      */
     try {
-      List<String> storageGroups = MManager.getInstance().getAllStorageGroupNames();
-      for (String storageGroup : storageGroups) {
-        StorageGroupProcessor processor = new StorageGroupProcessor(systemDir, storageGroup);
-        logger.info("Storage Group Processor {} is recovered successfully", storageGroup);
-        processorMap.put(storageGroup, processor);
+      List<MNode> sgNodes = MManager.getInstance().getAllStorageGroups();
+      for (MNode storageGroup : sgNodes) {
+        StorageGroupProcessor processor = new StorageGroupProcessor(systemDir, storageGroup.getFullPath());
+        processor.setDataTTL(storageGroup.getDataTTL());
+        logger.info("Storage Group Processor {} is recovered successfully", storageGroup.getFullPath());
+        processorMap.put(storageGroup.getFullPath(), processor);
       }
-    } catch (ProcessorException | MetadataErrorException e) {
+    } catch (ProcessorException e) {
       logger.error("init a storage group processor failed. ", e);
       throw new StorageEngineFailureException(e);
     }
@@ -326,13 +328,8 @@ public class StorageEngine implements IService {
    */
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
-    try {
-      for (String storageGroup : MManager.getInstance().getAllStorageGroupNames()) {
-        this.deleteAllDataFilesInOneStorageGroup(storageGroup);
-      }
-    } catch (MetadataErrorException e) {
-      logger.error("delete storage groups failed.", e);
-      return false;
+    for (String storageGroup : MManager.getInstance().getAllStorageGroupNames()) {
+      this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
     return true;
   }
