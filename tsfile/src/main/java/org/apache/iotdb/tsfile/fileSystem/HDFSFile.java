@@ -35,32 +35,42 @@ import java.util.ArrayList;
 public class HDFSFile extends File {
 
   private Path hdfsPath;
-  private Configuration conf = new Configuration();
+  private FileSystem fs;
   private static final Logger logger = LoggerFactory.getLogger(TsFileWriter.class);
 
 
   public HDFSFile(String pathname) {
     super(pathname);
     hdfsPath = new Path(pathname);
-    conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
+    setConfAndGetFS();
   }
 
   public HDFSFile(String parent, String child) {
     super(parent, child);
     hdfsPath = new Path(parent + child);
-    conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
+    setConfAndGetFS();
   }
 
   public HDFSFile(File parent, String child) {
     super(parent, child);
     hdfsPath = new Path(parent.getAbsolutePath() + child);
-    conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
+    setConfAndGetFS();
   }
 
   public HDFSFile(URI uri) {
     super(uri);
     hdfsPath = new Path(uri);
+    setConfAndGetFS();
+  }
+
+  private void setConfAndGetFS() {
+    Configuration conf = new Configuration();
     conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
+    try {
+      fs = hdfsPath.getFileSystem(conf);
+    } catch (IOException e) {
+      logger.error("Fail to get HDFS. ", e);
+    }
   }
 
   @Override
@@ -76,7 +86,6 @@ public class HDFSFile extends File {
   @Override
   public long length() {
     try {
-      FileSystem fs = hdfsPath.getFileSystem(conf);
       return fs.getFileStatus(hdfsPath).getLen();
     } catch (IOException e) {
       logger.error("Fail to get length of the file. ", e);
@@ -87,7 +96,6 @@ public class HDFSFile extends File {
   @Override
   public boolean exists() {
     try {
-      FileSystem fs = hdfsPath.getFileSystem(conf);
       return fs.exists(hdfsPath);
     } catch (IOException e) {
       logger.error("Fail to check whether the file or directory exists. ", e);
@@ -99,7 +107,6 @@ public class HDFSFile extends File {
   public File[] listFiles() {
     ArrayList<HDFSFile> files = new ArrayList<>();
     try {
-      FileSystem fs = hdfsPath.getFileSystem(conf);
       RemoteIterator<LocatedFileStatus> iterator = fs.listFiles(hdfsPath, true);
       while (iterator.hasNext()) {
         LocatedFileStatus fileStatus = iterator.next();
@@ -118,7 +125,6 @@ public class HDFSFile extends File {
     ArrayList<HDFSFile> files = new ArrayList<>();
     try {
       PathFilter pathFilter = new GlobFilter(filter.toString()); // TODO
-      FileSystem fs = hdfsPath.getFileSystem(conf);
       RemoteIterator<LocatedFileStatus> iterator = fs.listFiles(hdfsPath, true);
       while (iterator.hasNext()) {
         LocatedFileStatus fileStatus = iterator.next();
@@ -141,14 +147,12 @@ public class HDFSFile extends File {
 
   @Override
   public boolean createNewFile() throws IOException {
-    FileSystem fs = hdfsPath.getFileSystem(conf);
     return fs.createNewFile(hdfsPath);
   }
 
   @Override
   public boolean delete() {
     try {
-      FileSystem fs = hdfsPath.getFileSystem(conf);
       return fs.delete(hdfsPath, true);
     } catch (IOException e) {
       logger.error("Fail to delete file. ", e);
@@ -159,7 +163,6 @@ public class HDFSFile extends File {
   @Override
   public boolean mkdirs() {
     try {
-      FileSystem fs = hdfsPath.getFileSystem(conf);
       return fs.mkdirs(hdfsPath);
     } catch (IOException e) {
       logger.error("Fail to create directory. ", e);
@@ -170,7 +173,6 @@ public class HDFSFile extends File {
   @Override
   public boolean isDirectory() {
     try {
-      FileSystem fs = hdfsPath.getFileSystem(conf);
       return fs.getFileStatus(hdfsPath).isDirectory();
     } catch (IOException e) {
       logger.error("Fail to judge whether it is a directory. ", e);
@@ -181,7 +183,6 @@ public class HDFSFile extends File {
   @Override
   public long getFreeSpace() {
     try {
-      FileSystem fs = hdfsPath.getFileSystem(conf);
       return fs.getStatus().getRemaining();
     } catch (IOException e) {
       logger.error("Fail to get free space. ", e);
