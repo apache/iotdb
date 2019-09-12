@@ -48,28 +48,56 @@ IoTDB's features are as following:
 
 For the latest information about IoTDB, please visit our [IoTDB official website](https://iotdb.apache.org/).
 
-# Prerequisites
+<!-- TOC -->
 
-IoTDB requires Java (>= 1.8).
-To use IoTDB, JRE should be installed. To compile IoTDB, JDK should be installed.
+## Outline
 
-If you want to compile and install IoTDB from source code, JDK and Maven (>= 3.1) are required.
-While Maven is not mandatory to be installed standalone, you can use the provided Maven wrapper, `./mvnw.sh` on Linux/OS X or `.\mvnw.cmd` on Windows, to facilitate development.
+- Quick Start
+ - Prerequisites
+ - Installation
+ 	- Build from source
+    	- Configurations
+ - Start
+    - Start IoTDB
+    - Use IoTDB
+       	- Use Cli
+        - Basic commands for IoTDB
+    - Stop IoTDB
+ - Only build server
+ - Only build client
 
-Set the max open files num as 65535 to avoid "too many open files" problem.
-
-If you want to use Hadoop or Spark to analyze IoTDB data file (called as TsFile), you need to compile the hadoop and spark modules.
+<!-- /TOC -->
 
 # Quick Start
 
 This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](https://iotdb.apache.org/#/Documents/0.8.0/chap1/sec1).
 
-## Get source code
+## Prerequisites
 
-* https://iotdb.apache.org/#/Download
-* https://github.com/apache/incubator-iotdb/tree/master
+To use IoTDB, you need to have:
+
+1. Java >= 1.8 (Please make sure the environment path has been set)
+2. Maven >= 3.1 (If you want to compile and install IoTDB from source code)
+3. Set the max open files num as 65535 to avoid "too many open files" problem.
+
+## Installation
+
+IoTDB provides you three installation methods, you can refer to the following suggestions, choose one of them:
+
+* Installation from source code. If you need to modify the code yourself, you can use this method.
+* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Comming Soon...)
+* Using Docker：The path to the dockerfile is https://github.com/apache/incubator-iotdb/blob/master/docker/Dockerfile
+
+
+Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to Chapter 4 of the User Guide.
 
 ## Build from source
+
+You can download the source code from:
+
+```
+git clone https://github.com/apache/incubator-iotdb.git
+```
 
 Under the root path of incubator-iotdb:
 
@@ -85,13 +113,19 @@ Then the binary version (including both server and client) can be found at **dis
 
 configuration files are under "conf" folder
 
-  * environment config module (`iotdb-env.bat`, `iotdb-env.sh`), 
+  * environment config module (`iotdb-env.bat`, `iotdb-env.sh`),
   * system config module (`tsfile-format.properties`, `iotdb-engine.properties`)
-  * log config module (`logback.xml`). 
+  * log config module (`logback.xml`).
 
 For more, see [Chapter4: Deployment and Management](https://iotdb.apache.org/#/Documents/0.8.0/chap4/sec1) in detail.
 
-### Start server
+## Start
+
+You can go through the following step to test the installation, if there is no error after execution, the installation is completed.
+
+### Start IoTDB
+
+Users can start IoTDB by the start-server script under the sbin folder.
 
 ```
 # Unix/OS X
@@ -101,7 +135,142 @@ For more, see [Chapter4: Deployment and Management](https://iotdb.apache.org/#/D
 > sbin\start-server.bat
 ```
 
-### Stop Server
+
+### Use IoTDB
+
+#### Use Cli
+
+IoTDB offers different ways to interact with server, here we introduce basic steps of using Cli tool to insrert and query data.
+
+After installing IoTDB, there is a default user 'root', its default password is also 'root'. Users can use this
+default user to login Cli to use IoTDB. The startup script of Cli is the start-client script in the folder sbin. When executing the script, user should assign
+IP, PORT, USER_NAME and PASSWORD. The default parameters are "-h 127.0.0.1 -p 6667 -u root -pw -root".
+
+Here is the command for starting the Cli:
+
+```
+# Unix/OS X
+> sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
+
+# Windows
+> sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
+```
+
+The command line client is interactive so if everything is ready you should see the welcome logo and statements:
+
+```
+ _____       _________  ______   ______
+|_   _|     |  _   _  ||_   _ `.|_   _ \
+  | |   .--.|_/ | | \_|  | | `. \ | |_) |
+  | | / .'`\ \  | |      | |  | | |  __'.
+ _| |_| \__. | _| |_    _| |_.' /_| |__) |
+|_____|'.__.' |_____|  |______.'|_______/  version x.x.x
+
+
+IoTDB> login successfully
+IoTDB>
+```
+
+#### Basic commands for IoTDB
+
+Now, let us introduce the way of creating timeseries, inserting data and querying data.
+
+The data in IoTDB is organized as timeseries, in each timeseries there are some data-time pairs, and every timeseries is owned by a storage group. Before defining a timeseries, we should difine a storage group using SET STORAGE GROUP, and here is an example:
+
+```
+IoTDB> SET STORAGE GROUP TO root.ln
+```
+
+We can also use SHOW STORAGE GROUP to check created storage group:
+
+```
+IoTDB> SHOW STORAGE GROUP
++-----------------------------------+
+|                      Storage Group|
++-----------------------------------+
+|                            root.ln|
++-----------------------------------+
+storage group number = 1
+```
+
+After the storage group is set, we can use CREATE TIMESERIES to create new timeseries. When we create a timeseries, we should define its data type and the encoding scheme. We create two timeseries as follow:
+
+```
+IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
+IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
+```
+
+Inorder to query the specific timeseries, we can use SHOW TIMESERIES <Path>. <Path> represent the path of the timeseries. Its default value is null, which means quering all the timeseries in the system(the same as using "SHOW TIMESERIES root"). Here are the examples:
+
+1. Querying all timeseries in the system:
+
+```
+IoTDB> SHOW TIMESERIES
++-------------------------------+---------------+--------+--------+
+|                     Timeseries|  Storage Group|DataType|Encoding|
++-------------------------------+---------------+--------+--------+
+|       root.ln.wf01.wt01.status|        root.ln| BOOLEAN|   PLAIN|
+|  root.ln.wf01.wt01.temperature|        root.ln|   FLOAT|     RLE|
++-------------------------------+---------------+--------+--------+
+Total timeseries number = 2
+```
+
+2.Querying a specific timeseries(root.ln.wf01.wt01.status):
+
+```
+IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
++------------------------------+--------------+--------+--------+
+|                    Timeseries| Storage Group|DataType|Encoding|
++------------------------------+--------------+--------+--------+
+|      root.ln.wf01.wt01.status|       root.ln| BOOLEAN|   PLAIN|
++------------------------------+--------------+--------+--------+
+Total timeseries number = 1
+```
+
+Insert timeseries data is the basic operation of IoTDB, you can use ‘INSERT’ command to finish this. Before inserting you should assign the timestamp and the suffix path name:
+
+```
+IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(100,true);
+IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status,temperature) values(200,false,20.71)
+```
+
+The data we’ve just inserted displays like this:
+
+```
+IoTDB> SELECT status FROM root.ln.wf01.wt01
++-----------------------+------------------------+
+|                   Time|root.ln.wf01.wt01.status|
++-----------------------+------------------------+
+|1970-01-01T08:00:00.100|                    true|
+|1970-01-01T08:00:00.200|                   false|
++-----------------------+------------------------+
+Total line number = 2
+```
+
+We can also query several timeseries data at once like this:
+
+```
+IoTDB> SELECT * FROM root.ln.wf01.wt01
++-----------------------+--------------------------+-----------------------------+
+|                   Time|  root.ln.wf01.wt01.status|root.ln.wf01.wt01.temperature|
++-----------------------+--------------------------+-----------------------------+
+|1970-01-01T08:00:00.100|                      true|                         null|
+|1970-01-01T08:00:00.200|                     false|                        20.71|
++-----------------------+--------------------------+-----------------------------+
+Total line number = 2
+```
+
+The commands to exit the Cli is:
+
+```
+IoTDB> quit
+or
+IoTDB> exit
+```
+
+For more on what commands are supported by IoTDB SQL, see [Chapter 5: IoTDB SQL Documentation](https://iotdb.apache.org/#/Documents/0.8.0/chap5/sec1).
+
+### Stop IoTDB
 
 The server can be stopped with ctrl-C or the following script:
 
@@ -113,66 +282,23 @@ The server can be stopped with ctrl-C or the following script:
 > sbin\stop-server.bat
 ```
 
-### Using client 
-
-```
-# Unix/OS X
-> sbin/start-cli.sh -h <IP> -p <PORT> -u <USER_NAME>
-
-# Windows
-> sbin\start-cli.bat -h <IP> -p <PORT> -u <USER_NAME>
-```
-
-> The default user is 'root'. The default password for 'root' is 'root'.
-
-> The default parameters are "-h 127.0.0.1 -p 6667 -u root -pw root".
-
-``` 
-IoTDB> set storage group to root.vehicle
-
-IoTDB> create timeseries root.vehicle.d0.s0 with datatype=INT32, encoding=RLE
-
-IoTDB> show timeseries root
-+-----------------------------+---------------------+--------+--------+
-|                   Timeseries|        Storage Group|DataType|Encoding|
-+-----------------------------+---------------------+--------+--------+
-|           root.vehicle.d0.s0|         root.vehicle|   INT32|     RLE|
-+-----------------------------+---------------------+--------+--------+
-
-IoTDB> insert into root.vehicle.d0(timestamp,s0) values(1,101);
-
-IoTDB> SELECT d0.s0 FROM root.vehicle
-+-----------------------------+------------------+
-|                         Time|root.vehicle.d0.s0|
-+-----------------------------+------------------+
-|1970-01-01T08:00:00.001+08:00|               101|
-+-----------------------------+------------------+
-Total line number = 1
-
-IoTDB> quit
-or
-IoTDB> exit
-```
-
-For more on what commands are supported by IoTDB SQL, see [Chapter 5: IoTDB SQL Documentation](https://iotdb.apache.org/#/Documents/0.8.0/chap5/sec1).
-
 ## Only build server
 
 Under the root path of incubator-iotdb:
 
 ```
-> mvn clean package -pl server -am -DskipTests=true
+> mvn clean package -pl server -am -DskipTests
 ```
 
-After build, the IoTDB server will be at the folder "server/target/iotdb-server-{project.version}". 
- 
+After build, the IoTDB server will be at the folder "server/target/iotdb-server-{project.version}".
 
-## Only build client 
+
+## Only build client
 
 Under the root path of incubator-iotdb:
 
 ```
-> mvn clean package -pl client -am -DskipTests=true
+> mvn clean package -pl client -am -DskipTests
 ```
 
 After build, the IoTDB client will be at the folder "client/target/iotdb-client-{project.version}".
