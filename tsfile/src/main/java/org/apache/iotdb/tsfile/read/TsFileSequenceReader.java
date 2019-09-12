@@ -47,12 +47,10 @@ import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
-import org.apache.iotdb.tsfile.fileSystem.HDFSInput;
+import org.apache.iotdb.tsfile.fileSystem.FileInputFactory;
 import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -95,11 +93,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
     this.file = file;
-    if (config.getTSFileStorageFs().equals(FSType.HDFS)) {
-      tsFileInput = new HDFSInput(file);
-    } else {
-      tsFileInput = new DefaultTsFileInput(Paths.get(file));
-    }
+    tsFileInput = FileInputFactory.INSTANCE.getTsFileInput(file);
     try {
       if (loadMetadataSize) {
         loadMetadataSize();

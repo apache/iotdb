@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -36,6 +36,8 @@ public enum TSFileFactory {
 
   private static FSType fSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
   private static final Logger logger = LoggerFactory.getLogger(TsFileWriter.class);
+  private FileSystem fs;
+  private Configuration conf = new Configuration();
 
   public File getFile(String pathname) {
     if (fSType.equals(fSType.HDFS)) {
@@ -73,8 +75,7 @@ public enum TSFileFactory {
     try {
       if (fSType.equals(fSType.HDFS)) {
         Path path = new Path(filePath);
-        Configuration conf = new Configuration();
-        FileSystem fs = path.getFileSystem(conf);
+        fs = path.getFileSystem(conf);
         return new BufferedReader(new InputStreamReader(fs.open(path)));
       } else {
         return new BufferedReader(new FileReader(filePath));
@@ -89,8 +90,7 @@ public enum TSFileFactory {
     try {
       if (fSType.equals(fSType.HDFS)) {
         Path path = new Path(filePath);
-        Configuration conf = new Configuration();
-        FileSystem fs = path.getFileSystem(conf);
+        fs = path.getFileSystem(conf);
         return new BufferedWriter(new OutputStreamWriter(fs.create(path)));
       } else {
         return new BufferedWriter(new FileWriter(filePath, append));

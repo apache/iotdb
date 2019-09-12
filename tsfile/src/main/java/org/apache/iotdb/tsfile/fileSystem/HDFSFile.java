@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -69,7 +69,7 @@ public class HDFSFile extends File {
     try {
       fs = hdfsPath.getFileSystem(conf);
     } catch (IOException e) {
-      logger.error("Fail to get HDFS. ", e);
+      logger.error("Fail to get HDFS! ", e);
     }
   }
 
@@ -88,7 +88,7 @@ public class HDFSFile extends File {
     try {
       return fs.getFileStatus(hdfsPath).getLen();
     } catch (IOException e) {
-      logger.error("Fail to get length of the file. ", e);
+      logger.error("Fail to get length of the file {}, ", hdfsPath.toUri().toString(), e);
       return 0;
     }
   }
@@ -98,7 +98,7 @@ public class HDFSFile extends File {
     try {
       return fs.exists(hdfsPath);
     } catch (IOException e) {
-      logger.error("Fail to check whether the file or directory exists. ", e);
+      logger.error("Fail to check whether the file {} exists. ", hdfsPath.toUri().toString(), e);
       return false;
     }
   }
@@ -115,7 +115,7 @@ public class HDFSFile extends File {
       }
       return files.toArray(new HDFSFile[files.size()]);
     } catch (IOException e) {
-      logger.error("Fail to list files. ", e);
+      logger.error("Fail to list files in {}. ", hdfsPath.toUri().toString(), e);
       return null;
     }
   }
@@ -124,7 +124,7 @@ public class HDFSFile extends File {
   public File[] listFiles(FileFilter filter) {
     ArrayList<HDFSFile> files = new ArrayList<>();
     try {
-      PathFilter pathFilter = new GlobFilter(filter.toString()); // TODO
+      PathFilter pathFilter = new GlobFilter(filter.toString()); // TODO test this filter in the future
       RemoteIterator<LocatedFileStatus> iterator = fs.listFiles(hdfsPath, true);
       while (iterator.hasNext()) {
         LocatedFileStatus fileStatus = iterator.next();
@@ -135,7 +135,7 @@ public class HDFSFile extends File {
       }
       return files.toArray(new HDFSFile[files.size()]);
     } catch (IOException e) {
-      logger.error("Fail to list files. ", e);
+      logger.error("Fail to list files in {}. ", hdfsPath.toUri().toString(), e);
       return null;
     }
   }
@@ -155,7 +155,7 @@ public class HDFSFile extends File {
     try {
       return fs.delete(hdfsPath, true);
     } catch (IOException e) {
-      logger.error("Fail to delete file. ", e);
+      logger.error("Fail to delete file {}. ", hdfsPath.toUri().toString(), e);
       return false;
     }
   }
@@ -165,7 +165,7 @@ public class HDFSFile extends File {
     try {
       return fs.mkdirs(hdfsPath);
     } catch (IOException e) {
-      logger.error("Fail to create directory. ", e);
+      logger.error("Fail to create directory {}. ", hdfsPath.toUri().toString(), e);
       return false;
     }
   }
@@ -175,7 +175,7 @@ public class HDFSFile extends File {
     try {
       return fs.getFileStatus(hdfsPath).isDirectory();
     } catch (IOException e) {
-      logger.error("Fail to judge whether it is a directory. ", e);
+      logger.error("Fail to judge whether {} is a directory. ", hdfsPath.toUri().toString(), e);
       return false;
     }
   }
@@ -185,7 +185,7 @@ public class HDFSFile extends File {
     try {
       return fs.getStatus().getRemaining();
     } catch (IOException e) {
-      logger.error("Fail to get free space. ", e);
+      logger.error("Fail to get free space of {}. ", hdfsPath.toUri().toString(), e);
       return 0L;
     }
   }
@@ -204,6 +204,25 @@ public class HDFSFile extends File {
   public int hashCode() {
     return hdfsPath.hashCode();
   }
+
+  @Override
+  public int compareTo(File pathname) {
+    if(pathname instanceof HDFSFile) {
+      return hdfsPath.toUri().toString().compareTo(pathname.getPath());
+    } else {
+      logger.error("File {} is not HDFS file. ", pathname.getPath());
+      throw new IllegalArgumentException("Compare file is not HDFS file.");
+    }
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if ((obj != null) && (obj instanceof HDFSFile)) {
+      return compareTo((HDFSFile)obj) == 0;
+    }
+    return false;
+  }
+
 
   @Override
   public String getParent() {
@@ -347,16 +366,6 @@ public class HDFSFile extends File {
 
   @Override
   public long getUsableSpace() {
-    throw new UnsupportedOperationException("Unsupported operation.");
-  }
-
-  @Override
-  public int compareTo(File pathname) {
-    throw new UnsupportedOperationException("Unsupported operation.");
-  }
-
-  @Override
-  public boolean equals(Object obj) {
     throw new UnsupportedOperationException("Unsupported operation.");
   }
 

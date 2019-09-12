@@ -46,8 +46,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
-import org.apache.iotdb.tsfile.fileSystem.HDFSOutput;
+import org.apache.iotdb.tsfile.fileSystem.FileOutputFactory;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -124,11 +123,7 @@ public class TsFileIOWriter {
    */
   public TsFileIOWriter(TsFileOutput out, List<ChunkGroupMetaData> chunkGroupMetaDataList)
       throws IOException {
-    if (config.getTSFileStorageFs().equals(FSType.HDFS)) {
-      this.out = new HDFSOutput(file.getPath(), false); //NOTE overwrite false here
-    } else {
-      this.out = new DefaultTsFileOutput(file);
-    }
+    this.out = FileOutputFactory.INSTANCE.getTsFileOutput(file.getPath(), false); //NOTE overwrite false here
     this.chunkGroupMetaDataList = chunkGroupMetaDataList;
     if (chunkGroupMetaDataList.isEmpty()) {
       startFile();

@@ -44,7 +44,7 @@ public enum FileInputFactory {
         return new DefaultTsFileInput(Paths.get(filePath));
       }
     } catch (IOException e) {
-      logger.error("Failed to get TsFile Input: ", e);
+      logger.error("Failed to get TsFile input of file: {}, ", filePath, e);
       return null;
     }
   }
