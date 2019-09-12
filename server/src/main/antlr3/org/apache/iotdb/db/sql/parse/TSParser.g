@@ -78,6 +78,7 @@ TOK_SLIMIT;
 TOK_SOFFSET;
 TOK_LIMIT;
 TOK_FLOAT_COMB;
+TOK_TTL;
 
 TOK_GRANT_WATERMARK_EMBEDDING;
 TOK_REVOKE_WATERMARK_EMBEDDING;
@@ -96,6 +97,7 @@ TOK_COMPRESSOR;
 TOK_CLAUSE;
 TOK_TIMESERIES;
 TOK_SET;
+TOK_UNSET;
 TOK_ADD;
 TOK_PROPERTY;
 TOK_LABEL;
@@ -182,12 +184,14 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
         xlateMap.put("KW_FUNCTION", "FUNCTION");
         xlateMap.put("KW_WITH", "WITH");
         xlateMap.put("KW_SET", "SET");
+        xlateMap.put("KW_UNSET", "UNSET");
         xlateMap.put("KW_UPDATE", "UPDATE");
         xlateMap.put("KW_VALUES", "VALUES");
         xlateMap.put("KW_KEY", "KEY");
         xlateMap.put("KW_ENABLE", "ENABLE");
         xlateMap.put("KW_DISABLE", "DISABLE");
         xlateMap.put("KW_ALL", "ALL");
+        xlateMap.put("KW_TTL", "TTL");
 
         // Operators
         xlateMap.put("DOT", ".");
@@ -362,6 +366,7 @@ execStatement
     | indexStatement
     | quitStatement
     | listStatement
+    | ttlStatement
     ;
 
 
@@ -902,4 +907,22 @@ constant
     : number
     | StringLiteral
     | dateFormat
+    ;
+
+ttlStatement
+    :
+    setTTLStatement
+    | unsetTTLStatement
+    ;
+
+setTTLStatement
+    :
+    KW_SET KW_TTL KW_TO path=prefixPath time=DATETIME
+    -> ^(TOK_TTL TOK_SET $path $time)
+    ;
+
+unsetTTLStatement
+    :
+     KW_UNSET KW_TTL KW_TO path=prefixPath
+    -> ^(TOK_TTL TOK_UNSET $path)
     ;
