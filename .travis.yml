@@ -98,6 +98,7 @@ matrix:
         - export "M2_HOME=/c/mvn362/apache-maven-3.6.2"
         - export "PATH=/c/mvn362/apache-maven-3.6.2/bin:$PATH"
         - export "HADOOP_HOME=/c/hadoop"
+        - export "PATH=/c/hadoop/bin:$PATH"
       script:
         - java -version
         - mvn -version
