@@ -599,10 +599,6 @@ public abstract class AbstractClient {
       showHelp();
       return OperationResult.CONTINUE_OPER;
     }
-    if (SHOW_METADATA_COMMAND.equals(specialCmd)) {
-      showMetaData(connection);
-      return OperationResult.CONTINUE_OPER;
-    }
     if (specialCmd.startsWith(SET_TIMESTAMP_DISPLAY)) {
       setTimestampDisplay(specialCmd, cmd);
       return OperationResult.CONTINUE_OPER;
@@ -661,15 +657,6 @@ public abstract class AbstractClient {
     println(
         String.format("    %s=xxx\t eg. set max lines for cli to ouput, -1 equals to unlimited.",
             SET_MAX_DISPLAY_NUM));
-  }
-
-  private static void showMetaData(IoTDBConnection connection) {
-    try {
-      println(((IoTDBDatabaseMetadata) connection.getMetaData()).getMetadataInJson());
-    } catch (SQLException e) {
-      println("Failed to show timeseries because: " + e.getMessage());
-      handleException(e);
-    }
   }
 
   private static void setTimestampDisplay(String specialCmd, String cmd) {
