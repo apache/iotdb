@@ -27,12 +27,12 @@
  - Prerequisites
  - Installation
     - Build from source
-        - Configurations
+       - Configurations
  - Start
     - Start IoTDB
     - Use IoTDB
-       	- Use Cli
-        - Basic commands for IoTDB
+       - Use Cli
+       - Basic commands for IoTDB
     - Stop IoTDB
  - Only build server
  - Only build client

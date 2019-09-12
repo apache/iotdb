@@ -56,12 +56,12 @@ For the latest information about IoTDB, please visit our [IoTDB official website
  - Prerequisites
  - Installation
     - Build from source
-        - Configurations
+       - Configurations
  - Start
     - Start IoTDB
     - Use IoTDB
-       	- Use Cli
-        - Basic commands for IoTDB
+       - Use Cli
+       - Basic commands for IoTDB
     - Stop IoTDB
  - Only build server
  - Only build client
