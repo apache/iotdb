@@ -55,8 +55,8 @@ For the latest information about IoTDB, please visit our [IoTDB official website
 - Quick Start
  - Prerequisites
  - Installation
- 	- Build from source
-    	- Configurations
+    - Build from source
+        - Configurations
  - Start
     - Start IoTDB
     - Use IoTDB
@@ -215,7 +215,7 @@ IoTDB> SHOW TIMESERIES
 Total timeseries number = 2
 ```
 
-2.Querying a specific timeseries(root.ln.wf01.wt01.status):
+2. Querying a specific timeseries(root.ln.wf01.wt01.status):
 
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
