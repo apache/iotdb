@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class SumAggrFunc extends MeanAggrFunc {
+public class SumAggrFunc extends AvgAggrFunc {
 
   private static final String SUM_AGGR_NAME = "SUM";
 

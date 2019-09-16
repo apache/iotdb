@@ -18,14 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +30,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TsFileResource {
@@ -124,8 +118,8 @@ public class TsFileResource {
         ReadWriteIOUtils.write(entry.getValue(), outputStream);
       }
     }
-    File src = new File(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
-    File dest = new File(file + RESOURCE_SUFFIX);
+    File src = TSFileFactory.INSTANCE.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
+    File dest = TSFileFactory.INSTANCE.getFile(file + RESOURCE_SUFFIX);
     dest.delete();
     FileUtils.moveFile(src, dest);
   }
@@ -167,7 +161,7 @@ public class TsFileResource {
   }
 
   public boolean fileExists() {
-    return new File(file+RESOURCE_SUFFIX).exists();
+    return TSFileFactory.INSTANCE.getFile(file + RESOURCE_SUFFIX).exists();
   }
 
   public void forceUpdateEndTime(String device, long time) {
@@ -246,8 +240,8 @@ public class TsFileResource {
 
   public void remove() {
     file.delete();
-    new File(file.getPath() + RESOURCE_SUFFIX).delete();
-    new File(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
+    TSFileFactory.INSTANCE.getFile(file.getPath() + RESOURCE_SUFFIX).delete();
+    TSFileFactory.INSTANCE.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
   }
 
   @Override

@@ -47,6 +47,7 @@ import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.db.qp.logical.crud.UpdateOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
@@ -178,6 +179,12 @@ public class LogicalGenerator {
         return;
       case TSParser.TOK_GRANT:
         analyzeAuthorGrant(astNode);
+        return;
+      case TSParser.TOK_GRANT_WATERMARK_EMBEDDING:
+        analyzeWatermarkEmbedding(astNode, SQLConstant.TOK_GRANT_WATERMARK_EMBEDDING);
+        return;
+      case TSParser.TOK_REVOKE_WATERMARK_EMBEDDING:
+        analyzeWatermarkEmbedding(astNode, SQLConstant.TOK_REVOKE_WATERMARK_EMBEDDING);
         return;
       case TSParser.TOK_REVOKE:
         analyzeAuthorRevoke(astNode);
@@ -1002,6 +1009,17 @@ public class LogicalGenerator {
           ERR_INCORRECT_AUTHOR_COMMAND);
     }
     initializedOperator = authorOperator;
+  }
+
+  private void analyzeWatermarkEmbedding(AstNode astNode, int tokenIntType) {
+    int childCount = astNode.getChildCount();
+
+    List<String> users = new ArrayList<>();
+    for (int i = 0; i < childCount; i++) {
+      String user = astNode.getChild(i).getText();
+      users.add(user);
+    }
+    initializedOperator = new DataAuthOperator(tokenIntType, users);
   }
 
   private void analyzeAuthorGrant(AstNode astNode) throws IllegalASTFormatException {

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategy;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +49,7 @@ public class DirectoryManager {
       sequenceFileFolders
           .set(i, sequenceFileFolders.get(i) + File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME);
     }
-    mkDirs(sequenceFileFolders);
+    mkDataDirs(sequenceFileFolders);
 
     unsequenceFileFolders =
         new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
@@ -56,7 +57,7 @@ public class DirectoryManager {
       unsequenceFileFolders.set(i,
           unsequenceFileFolders.get(i) + File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME);
     }
-    mkDirs(unsequenceFileFolders);
+    mkDataDirs(unsequenceFileFolders);
 
     String strategyName = "";
     try {
@@ -75,9 +76,9 @@ public class DirectoryManager {
     return DirectoriesHolder.INSTANCE;
   }
 
-  private void mkDirs(List<String> folders) {
+  private void mkDataDirs(List<String> folders) {
     for (String folder : folders) {
-      File file = new File(folder);
+      File file = TSFileFactory.INSTANCE.getFile(folder);
       if (file.mkdirs()) {
         logger.info("folder {} doesn't exist, create it", file.getPath());
       } else {

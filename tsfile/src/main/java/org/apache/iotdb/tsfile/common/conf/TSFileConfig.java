@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.common.conf;
 
+import org.apache.iotdb.tsfile.fileSystem.FSType;
+
 /**
  * TSFileConfig is a configure class. Every variables is public and has default value.
  *
@@ -140,9 +142,46 @@ public class TSFileConfig {
   public static String endian = "BIG_ENDIAN";
 
   /**
-   * only can be used by TsFileDescriptor.
+   * Default storage is in local file system
    */
-  protected TSFileConfig() {
+  public static FSType TSFileStorageFs = FSType.LOCAL;
 
+  /**
+   * Default hdfs ip is localhost
+   */
+  public static String hdfsIp = "localhost";
+
+  /**
+   * Default hdfs port is 9000
+   */
+  public static String hdfsPort = "9000";
+
+  public TSFileConfig() {
+
+  }
+
+
+  public static FSType getTSFileStorageFs() {
+    return TSFileStorageFs;
+  }
+
+  public static void setTSFileStorageFs(String TSFileStorageFs) {
+    TSFileConfig.TSFileStorageFs = FSType.valueOf(TSFileStorageFs);
+  }
+
+  public static String getHdfsIp() {
+    return hdfsIp;
+  }
+
+  public static void setHdfsIp(String hdfsIp) {
+    TSFileConfig.hdfsIp = hdfsIp;
+  }
+
+  public static String getHdfsPort() {
+    return hdfsPort;
+  }
+
+  public static void setHdfsPort(String hdfsPort) {
+    TSFileConfig.hdfsPort = hdfsPort;
   }
 }

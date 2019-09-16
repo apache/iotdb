@@ -72,6 +72,9 @@ public class SQLConstant {
   public static final int TOK_DROP_INDEX = 32;
   public static final int TOK_QUERY_INDEX = 33;
 
+  public static final int TOK_GRANT_WATERMARK_EMBEDDING = 34;
+  public static final int TOK_REVOKE_WATERMARK_EMBEDDING = 35;
+
   public static final int TOK_AUTHOR_CREATE = 41;
   public static final int TOK_AUTHOR_DROP = 42;
   public static final int TOK_AUTHOR_GRANT = 43;
