@@ -361,7 +361,7 @@ public class MTree implements Serializable {
   }
 
   private MNode getLeafByPath(String path) throws PathErrorException {
-    checkPath(path);
+    getNode(path);
     String[] node = path.split(DOUB_SEPARATOR);
     MNode cur = getRoot();
     for (int i = 1; i < node.length; i++) {
@@ -427,19 +427,6 @@ public class MTree implements Serializable {
   }
 
   /**
-   * function for getting node by path.
-   */
-  MNode getNodeByPath(String path) throws PathErrorException {
-    checkPath(path);
-    String[] node = path.split(DOUB_SEPARATOR);
-    MNode cur = getRoot();
-    for (int i = 1; i < node.length; i++) {
-      cur = cur.getChild(node[i]);
-    }
-    return cur;
-  }
-
-  /**
    * function for getting node by path with file level check.
    */
   MNode getNodeByPathWithFileLevelCheck(String path) throws PathErrorException {
@@ -472,7 +459,7 @@ public class MTree implements Serializable {
    * @return String represents the deviceId
    */
   String getDeviceTypeByPath(String path) throws PathErrorException {
-    checkPath(path);
+    getNode(path);
     String[] nodes = path.split(DOUB_SEPARATOR);
     if (nodes.length < 2) {
       throw new PathErrorException(
@@ -482,11 +469,11 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Check whether a seriesPath is available.
+   * find and return a seriesPath specified by the path
    *
-   * @return last node in given seriesPath if current seriesPath is available
+   * @return last node in given seriesPath
    */
-  private MNode checkPath(String path) throws PathErrorException {
+  MNode getNode(String path) throws PathErrorException {
     String[] nodes = path.split(DOUB_SEPARATOR);
     if (nodes.length < 2 || !nodes[0].equals(getRoot().getName())) {
       throw new PathErrorException(String.format(SERIES_NOT_CORRECT, path));
@@ -691,7 +678,7 @@ public class MTree implements Serializable {
    */
   List<String> getLeafNodePathInNextLevel(String path) throws PathErrorException {
     List<String> ret = new ArrayList<>();
-    MNode cur = checkPath(path);
+    MNode cur = getNode(path);
     for (MNode child : cur.getChildren().values()) {
       if (child.isLeaf()) {
         ret.add(path + "." + child.getName());
@@ -817,7 +804,7 @@ public class MTree implements Serializable {
    */
   ArrayList<String> getDeviceForOneType(String type) throws PathErrorException {
     String path = getRoot().getName() + "." + type;
-    checkPath(path);
+    getNode(path);
     HashMap<String, Integer> deviceMap = new HashMap<>();
     MNode typeNode = getRoot().getChild(type);
     putDeviceToMap(getRoot().getName(), typeNode, deviceMap);

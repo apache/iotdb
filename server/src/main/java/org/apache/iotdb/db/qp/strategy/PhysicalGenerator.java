@@ -35,6 +35,7 @@ import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
+import org.apache.iotdb.db.qp.logical.sys.TTLOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -47,6 +48,8 @@ import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
+import org.apache.iotdb.db.qp.physical.sys.TTLPlan;
+import org.apache.iotdb.db.sql.parse.TSParser;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
@@ -121,6 +124,13 @@ public class PhysicalGenerator {
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query);
+      case TTL:
+        TTLOperator ttlOperator = (TTLOperator) operator;
+        if (ttlOperator.getTokenIntType() == TSParser.TOK_SET) {
+          return new TTLPlan(ttlOperator.getStorageGroup(), ttlOperator.getDataTTL());
+        } else {
+          return new TTLPlan(ttlOperator.getStorageGroup());
+        }
       default:
         throw new LogicalOperatorException("not supported operator type: " + operator.getType());
     }

@@ -334,4 +334,8 @@ public class StorageEngine implements IService {
     return true;
   }
 
+  public void setTTL(String storageGroup, long dataTTL) throws StorageEngineException {
+    StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroup);
+    storageGroupProcessor.setDataTTL(dataTTL);
+  }
 }

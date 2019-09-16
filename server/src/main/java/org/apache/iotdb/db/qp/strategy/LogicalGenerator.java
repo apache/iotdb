@@ -51,6 +51,7 @@ import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
+import org.apache.iotdb.db.qp.logical.sys.TTLOperator;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
@@ -82,7 +83,7 @@ public class LogicalGenerator {
   }
 
   public RootOperator getLogicalPlan(AstNode astNode)
-      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+      throws QueryProcessorException, MetadataErrorException {
     analyze(astNode);
     return initializedOperator;
   }
@@ -94,7 +95,7 @@ public class LogicalGenerator {
    * @throws ArgsErrorException args error
    */
   private void analyze(AstNode astNode)
-      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+      throws QueryProcessorException, MetadataErrorException {
     Token token = astNode.getToken();
     if (token == null) {
       throw new QueryProcessorException("given token is null");
@@ -210,12 +211,45 @@ public class LogicalGenerator {
       case TSParser.TOK_SOFFSET:
         analyzeSoffset(astNode);
         return;
+      case TSParser.TOK_TTL:
+        analyzeTTL(astNode);
+        return;
       default:
         throw new QueryProcessorException("Not supported TSParser type" + tokenIntType);
     }
     for (Node node : astNode.getChildren()) {
       analyze((AstNode) node);
     }
+  }
+
+  private void analyzeTTL(AstNode astNode) throws QueryProcessorException {
+    int tokenType = astNode.getChild(0).getToken().getType();
+    switch (tokenType) {
+      case TSParser.TOK_SET:
+        analyzeSetTTL(astNode);
+        break;
+      case TSParser.TOK_UNSET:
+        analyzeUnsetTTL(astNode);
+        break;
+      default:
+        throw new QueryProcessorException("Not supported TSParser type in TTL:" + tokenType);
+    }
+  }
+
+  private void analyzeSetTTL(AstNode astNode) {
+    String path = astNode.getChild(1).getText();
+    long dataTTL = Long.parseLong(astNode.getChild(2).getText());
+    TTLOperator operator = new TTLOperator(TSParser.TOK_SET);
+    initializedOperator = operator;
+    operator.setStorageGroup(path);
+    operator.setDataTTL(dataTTL);
+  }
+
+  private void analyzeUnsetTTL(AstNode astNode) {
+    String path = astNode.getChild(1).getText();
+    TTLOperator operator = new TTLOperator(TSParser.TOK_UNSET);
+    initializedOperator = operator;
+    operator.setStorageGroup(path);
   }
 
   private void analyzeSlimit(AstNode astNode) throws LogicalOperatorException {

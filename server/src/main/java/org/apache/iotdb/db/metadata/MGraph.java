@@ -331,7 +331,7 @@ public class MGraph implements Serializable {
   }
 
   MNode getNodeByPath(String path) throws PathErrorException {
-    return mtree.getNodeByPath(path);
+    return mtree.getNode(path);
   }
 
   MNode getNodeByPathWithCheck(String path) throws PathErrorException {
@@ -390,7 +390,7 @@ public class MGraph implements Serializable {
     Map<String, Integer> res = new HashMap<>();
     List<String> storageGroups = this.getAllStorageGroup();
     for (String sg : storageGroups) {
-      MNode node = mtree.getNodeByPath(sg);
+      MNode node = mtree.getNode(sg);
       res.put(sg, node.getLeafCount());
     }
     return res;

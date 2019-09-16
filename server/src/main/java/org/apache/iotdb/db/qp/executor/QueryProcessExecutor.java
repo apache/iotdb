@@ -54,6 +54,7 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
+import org.apache.iotdb.db.qp.physical.sys.TTLPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AuthDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -119,9 +120,21 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       case PROPERTY:
         PropertyPlan property = (PropertyPlan) plan;
         return operateProperty(property);
+      case TTL:
+        operateTTL((TTLPlan) plan);
+        return true;
       default:
         throw new UnsupportedOperationException(
-            String.format("operation %s does not support", plan.getOperatorType()));
+            String.format("operation %s is not supported", plan.getOperatorType()));
+    }
+  }
+
+  private void operateTTL(TTLPlan plan) throws ProcessorException {
+    try {
+      MManager.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
+      StorageEngine.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
+    } catch (PathErrorException | IOException | StorageEngineException e) {
+      throw new ProcessorException(e);
     }
   }
 

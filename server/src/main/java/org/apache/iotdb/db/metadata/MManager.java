@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.monitor.MonitorConstants;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
@@ -224,6 +225,9 @@ public class MManager {
         break;
       case MetadataOperationType.UNLINK_MNODE_FROM_PTREE:
         unlinkMNodeFromPTree(args[1], args[2]);
+        break;
+      case MetadataOperationType.SET_TTL:
+        setTTL(args[1], Long.parseLong(args[2]));
         break;
       default:
         logger.error("Unrecognizable command {}", cmd);
@@ -1231,6 +1235,22 @@ public class MManager {
 
     public TSDataType getDataType() {
       return dataType;
+    }
+  }
+
+  public void setTTL(String storageGroup, long dataTTL) throws PathErrorException, IOException {
+    lock.writeLock().lock();
+    try {
+      MNode sgNode = getNodeByPath(storageGroup);
+      sgNode.setDataTTL(dataTTL);
+      if (writeToLog) {
+        BufferedWriter writer = getLogWriter();
+        writer.write(String.format("%s,%s,%s", OperatorType.TTL, storageGroup, dataTTL));
+        writer.newLine();
+        writer.flush();
+      }
+    } finally {
+      lock.writeLock().unlock();
     }
   }
 }
