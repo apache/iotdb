@@ -361,7 +361,7 @@ public class IoTDBDatabaseMetadataTest {
   @SuppressWarnings("resource")
   @Test
   public void ShowStorageGroup() throws Exception {
-    Set<String> sgSet = new HashSet<>();
+    List<String> sgSet = new ArrayList<>();
     sgSet.add("root.vehicle");
     when(fetchMetadataResp.getShowStorageGroups()).thenReturn(sgSet);
 

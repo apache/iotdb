@@ -106,7 +106,7 @@ public class UnSealedTsFileIterateReader extends IterateReader {
       Filter filter)
       throws IOException {
     FileSeriesReader fileSeriesReader;
-    List<ChunkMetaData> metaDataList = unSealedTsFile.getChunkMetaDatas();
+    List<ChunkMetaData> metaDataList = unSealedTsFile.getChunkMetaDataList();
 
     if (metaDataList == null || metaDataList.isEmpty()) {
       // init fileSeriesReader

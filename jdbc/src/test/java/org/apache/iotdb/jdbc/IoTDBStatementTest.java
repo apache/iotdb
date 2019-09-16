@@ -141,7 +141,7 @@ public class IoTDBStatementTest {
   @Test
   public void testExecuteSQL3() throws SQLException, TException {
     IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
-    Set<String> sgSet = new HashSet<>();
+    List<String> sgSet = new ArrayList<>();
     sgSet.add("root.vehicle");
     when(fetchMetadataResp.getShowStorageGroups()).thenReturn(sgSet);
     String standard = "Storage Group,\nroot.vehicle,\n";

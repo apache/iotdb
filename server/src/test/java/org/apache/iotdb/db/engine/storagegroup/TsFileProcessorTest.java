@@ -82,7 +82,7 @@ public class TsFileProcessorTest {
         () -> true, true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
-        .query(deviceId, measurementId, dataType, props, context);
+        .query(deviceId, measurementId, dataType, props, context, Long.MIN_VALUE);
     ReadOnlyMemChunk left = pair.left;
     List<ChunkMetaData> right = pair.right;
     assertTrue(left.isEmpty());
@@ -95,7 +95,7 @@ public class TsFileProcessorTest {
     }
 
     // query data in memory
-    pair = processor.query(deviceId, measurementId, dataType, props, context);
+    pair = processor.query(deviceId, measurementId, dataType, props, context, Long.MIN_VALUE);
     left = pair.left;
     assertFalse(left.isEmpty());
     int num = 1;
@@ -110,7 +110,7 @@ public class TsFileProcessorTest {
     // flush synchronously
     processor.syncFlush();
 
-    pair = processor.query(deviceId, measurementId, dataType, props, context);
+    pair = processor.query(deviceId, measurementId, dataType, props, context, Long.MIN_VALUE);
     left = pair.left;
     right = pair.right;
     assertTrue(left.isEmpty());
@@ -129,7 +129,7 @@ public class TsFileProcessorTest {
         () -> true, true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
-        .query(deviceId, measurementId, dataType, props, context);
+        .query(deviceId, measurementId, dataType, props, context, Long.MIN_VALUE);
     ReadOnlyMemChunk left = pair.left;
     List<ChunkMetaData> right = pair.right;
     assertTrue(left.isEmpty());
@@ -142,7 +142,7 @@ public class TsFileProcessorTest {
     }
 
     // query data in memory
-    pair = processor.query(deviceId, measurementId, dataType, props, context);
+    pair = processor.query(deviceId, measurementId, dataType, props, context, Long.MIN_VALUE);
     left = pair.left;
     assertFalse(left.isEmpty());
     int num = 1;
@@ -157,7 +157,7 @@ public class TsFileProcessorTest {
     // flush synchronously
     processor.syncFlush();
 
-    pair = processor.query(deviceId, measurementId, dataType, props, context);
+    pair = processor.query(deviceId, measurementId, dataType, props, context, Long.MIN_VALUE);
     left = pair.left;
     right = pair.right;
     assertTrue(left.isEmpty());
@@ -196,7 +196,7 @@ public class TsFileProcessorTest {
         () -> true, true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
-        .query(deviceId, measurementId, dataType, props, context);
+        .query(deviceId, measurementId, dataType, props, context, Long.MIN_VALUE);
     ReadOnlyMemChunk left = pair.left;
     List<ChunkMetaData> right = pair.right;
     assertTrue(left.isEmpty());
@@ -212,7 +212,7 @@ public class TsFileProcessorTest {
     }
     processor.syncFlush();
 
-    pair = processor.query(deviceId, measurementId, dataType, props, context);
+    pair = processor.query(deviceId, measurementId, dataType, props, context, Long.MIN_VALUE);
     left = pair.left;
     right = pair.right;
     assertTrue(left.isEmpty());
@@ -244,7 +244,7 @@ public class TsFileProcessorTest {
         }, () -> true, true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
-        .query(deviceId, measurementId, dataType, props, context);
+        .query(deviceId, measurementId, dataType, props, context, Long.MIN_VALUE);
     ReadOnlyMemChunk left = pair.left;
     List<ChunkMetaData> right = pair.right;
     assertTrue(left.isEmpty());
@@ -257,7 +257,7 @@ public class TsFileProcessorTest {
     }
 
     // query data in memory
-    pair = processor.query(deviceId, measurementId, dataType, props, context);
+    pair = processor.query(deviceId, measurementId, dataType, props, context, Long.MIN_VALUE);
     left = pair.left;
     assertFalse(left.isEmpty());
     int num = 1;

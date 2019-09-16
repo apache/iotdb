@@ -21,17 +21,20 @@ package org.apache.iotdb.db.engine;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -57,6 +60,7 @@ public class StorageEngine implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final long TTL_CHECK_INTERVAL = 60 * 1000;
 
   /**
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
@@ -74,6 +78,8 @@ public class StorageEngine implements IService {
   public static StorageEngine getInstance() {
     return INSTANCE;
   }
+
+  private ScheduledExecutorService ttlCheckThread;
 
   private StorageEngine() {
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
@@ -104,11 +110,32 @@ public class StorageEngine implements IService {
   @Override
   public void start() {
     // nothing to be done
+    ttlCheckThread = Executors.newSingleThreadScheduledExecutor();
+    ttlCheckThread.scheduleAtFixedRate(this::checkTTL, TTL_CHECK_INTERVAL, TTL_CHECK_INTERVAL
+    ,TimeUnit.MILLISECONDS);
+  }
+
+  private void checkTTL() {
+    try {
+      for (StorageGroupProcessor processor : processorMap.values()) {
+        processor.checkFilesTTL();
+      }
+    } catch (ConcurrentModificationException e) {
+      // ignore
+    } catch (Exception e) {
+      logger.error("An error occurred when checking TTL", e);
+    }
   }
 
   @Override
   public void stop() {
     syncCloseAllProcessor();
+    ttlCheckThread.shutdownNow();
+    try {
+      ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      logger.warn("TTL check thread still doesn't exist after 30s");
+    }
   }
 
   @Override
@@ -193,15 +220,6 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * only for unit test
-   */
-  public void asyncFlushAndSealAllFiles() {
-    for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
-      storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
-    }
-  }
-
-  /**
    * flush command Sync asyncCloseOneProcessor all file node processors.
    */
   public void syncCloseAllProcessor() {
@@ -270,7 +288,7 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * get all overlap tsfiles which are conflict with the appendFile.
+   * get all overlap TsFiles which are conflict with the appendFile.
    *
    * @param storageGroupName the seriesPath of storage group
    * @param appendFile the appended tsfile information

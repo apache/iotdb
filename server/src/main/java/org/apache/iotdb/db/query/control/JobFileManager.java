@@ -59,13 +59,26 @@ public class JobFileManager {
   public void addUsedFilesForGivenJob(long jobId, QueryDataSource dataSource) {
 
     //sequence data
-    for(TsFileResource tsFileResource : dataSource.getSeqResources()){
-      addFilePathToMap(jobId, tsFileResource, tsFileResource.isClosed());
-    }
+    addUsedFilesForGivenJob(jobId, dataSource.getSeqResources());
 
     //unsequence data
-    for(TsFileResource tsFileResource : dataSource.getUnseqResources()){
-      addFilePathToMap(jobId, tsFileResource, tsFileResource.isClosed());
+    addUsedFilesForGivenJob(jobId, dataSource.getUnseqResources());
+  }
+
+  private void addUsedFilesForGivenJob(long jobId, List<TsFileResource> resources) {
+    for (TsFileResource tsFileResource : resources) {
+      // the file may change from open to closed within the few statements, so the initial status
+      // should be recorded to ensure consistency
+      boolean isClosed = tsFileResource.isClosed();
+      addFilePathToMap(jobId, tsFileResource, isClosed);
+      // this file may be deleted just before we lock it
+      if (tsFileResource.isDeleted()) {
+        ConcurrentHashMap<Long, Set<TsFileResource>> pathMap = !isClosed ?
+            unsealedFilePathsMap : sealedFilePathsMap;
+        pathMap.get(jobId).remove(tsFileResource);
+        FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, isClosed);
+        resources.remove(tsFileResource);
+      }
     }
   }
 
@@ -97,7 +110,7 @@ public class JobFileManager {
    * must not return null.
    */
   void addFilePathToMap(long jobId, TsFileResource tsFile, boolean isClosed) {
-    ConcurrentHashMap<Long, Set<TsFileResource>> pathMap = !isClosed ? unsealedFilePathsMap :
+    ConcurrentHashMap<Long, Set<TsFileResource>> pathMap = !tsFile.isClosed() ? unsealedFilePathsMap :
         sealedFilePathsMap;
     //TODO this is not an atomic operation, is there concurrent problem?
     if (!pathMap.get(jobId).contains(tsFile)) {
