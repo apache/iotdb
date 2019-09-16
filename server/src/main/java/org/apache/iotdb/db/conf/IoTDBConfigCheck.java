@@ -24,6 +24,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Properties;
+
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +55,7 @@ public class IoTDBConfigCheck {
   }
 
   public void createDir(String filepath) {
-    File dir = new File(filepath);
+    File dir = SystemFileFactory.INSTANCE.getFile(filepath);
     if (!dir.exists()) {
       dir.mkdirs();
       logger.info(" {} dir has been created.", SCHEMA_DIR);
@@ -63,7 +65,7 @@ public class IoTDBConfigCheck {
   public void checkFile(String filepath) {
     // create file : read timestamp precision from engine.properties, create system_properties.txt
     // use output stream to write timestamp precision to file.
-    File file = new File(filepath + File.separator + PROPERTIES_FILE_NAME);
+    File file = SystemFileFactory.INSTANCE.getFile(filepath + File.separator + PROPERTIES_FILE_NAME);
     try {
       if (!file.exists()) {
         file.createNewFile();
@@ -77,7 +79,7 @@ public class IoTDBConfigCheck {
       logger.error("Can not create {}.", file.getAbsolutePath(), e);
     }
     // get existed properties from system_properties.txt
-    File inputFile = new File(filepath + File.separator + PROPERTIES_FILE_NAME);
+    File inputFile = SystemFileFactory.INSTANCE.getFile(filepath + File.separator + PROPERTIES_FILE_NAME);
     try (FileInputStream inputStream = new FileInputStream(inputFile.toString())) {
       properties.load(new InputStreamReader(inputStream, TSFileConfig.STRING_ENCODING));
       if (!properties.getProperty("timestamp_precision").equals(TIMESTAMP_PRECISION)) {

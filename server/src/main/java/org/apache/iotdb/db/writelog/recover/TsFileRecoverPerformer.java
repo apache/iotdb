@@ -38,7 +38,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
-import org.apache.iotdb.db.engine.fileSystem.FileFactory;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -143,7 +143,7 @@ public class TsFileRecoverPerformer {
     // clean logs
     try {
       MultiFileLogNodeManager.getInstance()
-          .deleteNode(logNodePrefix + FileFactory.INSTANCE.getFile(insertFilePath).getName());
+          .deleteNode(logNodePrefix + SystemFileFactory.INSTANCE.getFile(insertFilePath).getName());
     } catch (IOException e) {
       throw new ProcessorException(e);
     }

@@ -31,6 +31,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.monitor.IStatistic;
 import org.apache.iotdb.db.monitor.MonitorConstants;
@@ -139,7 +140,7 @@ public class FileSize implements IStatistic {
       if (kinds.equals(FileSizeConstants.SYS)) {
         fileSizes.put(kinds, collectSeqFileSize(fileSizes, kinds));
       } else {
-        File file = new File(kinds.getPath());
+        File file = SystemFileFactory.INSTANCE.getFile(kinds.getPath());
         if (file.exists()) {
           try {
             fileSizes.put(kinds, FileUtils.sizeOfDirectory(file));
@@ -162,7 +163,7 @@ public class FileSize implements IStatistic {
       if (sequenceDir.contains("unsequence")) {
         continue;
       }
-      File settledFile = new File(sequenceDir);
+      File settledFile = SystemFileFactory.INSTANCE.getFile(sequenceDir);
       if (settledFile.exists()) {
         try {
           fileSize += FileUtils.sizeOfDirectory(settledFile);

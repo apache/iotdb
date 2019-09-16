@@ -268,7 +268,7 @@ public class IoTDBDescriptor {
 
       conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
-      conf.setStorageFs(properties.getProperty("storage_fs"));
+      conf.setSystemFileStorageFs(properties.getProperty("storage_fs"));
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {

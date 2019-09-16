@@ -25,6 +25,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.SysCheckException;
 import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
 import org.slf4j.Logger;
@@ -52,7 +54,7 @@ public class WalChecker {
    * @throws SysCheckException if the root wal dir does not exist.
    */
   public List<File> doCheck() throws SysCheckException {
-    File walFolderFile = new File(walFolder);
+    File walFolderFile = SystemFileFactory.INSTANCE.getFile(walFolder);
     logger.info("Checking folder: {}", walFolderFile.getAbsolutePath());
     if(!walFolderFile.exists() || !walFolderFile.isDirectory()) {
       throw new SysCheckException(String.format("%s is not a directory", walFolder));
@@ -68,7 +70,7 @@ public class WalChecker {
     for (int dirIndex = 0; dirIndex < storageWalFolders.length; dirIndex++) {
       File storageWalFolder = storageWalFolders[dirIndex];
       logger.info("Checking the No.{} directory {}", dirIndex, storageWalFolder.getName());
-      File walFile = new File(storageWalFolder, WAL_FILE_NAME);
+      File walFile = SystemFileFactory.INSTANCE.getFile(storageWalFolder, WAL_FILE_NAME);
       if (!checkFile(walFile)) {
         failedFiles.add(walFile);
       }

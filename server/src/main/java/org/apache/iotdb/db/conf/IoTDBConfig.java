@@ -329,7 +329,7 @@ public class IoTDBConfig {
   /**
    * Default storage is in local file system
    */
-  private FSType storageFs = FSType.LOCAL;
+  private FSType systemFileStorageFs = FSType.LOCAL;
 
   public IoTDBConfig() {
     // empty constructor
@@ -904,11 +904,11 @@ public class IoTDBConfig {
     return null;
   }
 
-  public FSType getStorageFs() {
-    return storageFs;
+  public FSType getSystemFileStorageFs() {
+    return systemFileStorageFs;
   }
 
-  public void setStorageFs(String storageFs) {
-    this.storageFs = FSType.valueOf(storageFs);
+  public void setSystemFileStorageFs(String systemFileStorageFs) {
+    this.systemFileStorageFs = FSType.valueOf(systemFileStorageFs);
   }
 }
