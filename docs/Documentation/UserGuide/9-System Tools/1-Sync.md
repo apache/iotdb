@@ -210,7 +210,7 @@ The parameters of the sync sender are configured in a separate configuration fil
    </tr>
    <tr>
       <td width="20%">Description</td>
-      <td>This parameter represents storage groups that participate in the synchronization task, which distinguishes each storage group by comma.If the list is empty, it means that all storage groups participate in synchronization.By default, it is empty list.</td>
+      <td>This parameter represents storage groups that participate in the synchronization task, which distinguishes each storage group by comma. If the list is empty, it means that all storage groups participate in synchronization. By default, it is an empty list.</td>
    </tr>
    <tr>
       <td>Type</td>
@@ -219,6 +219,28 @@ The parameters of the sync sender are configured in a separate configuration fil
    <tr>
       <td>Example</td>
       <td>root.sg1, root.sg2</td>
+   </tr>
+   <tr>
+      <td>Modalities for Entry into Force after Modification</td>
+      <td>Restart client</td>
+   </tr>
+</table>
+
+<table>
+   <tr>
+      <td colspan="2">parameter: max_number_of_sync_file_retry</td>
+   </tr>
+   <tr>
+      <td width="20%">Description</td>
+      <td>The maximum number of retry when syncing a file to receiver fails.</td>
+   </tr>
+   <tr>
+      <td>Type</td>
+      <td>Int : [0,2147483647]</td>
+   </tr>
+   <tr>
+      <td>Example</td>
+      <td>5</td>
    </tr>
    <tr>
       <td>Modalities for Entry into Force after Modification</td>

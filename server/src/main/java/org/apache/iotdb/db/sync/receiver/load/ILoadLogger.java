@@ -25,8 +25,8 @@ import java.io.IOException;
  * This interface is used to log progress in the process of loading deleted files and new tsfiles.
  * If the loading tasks are completed normally and there are no exceptions, the log records will be
  * deleted; otherwise, the status can be restored according to the log at the start of each task. It
- * ensures the correctness of synchronization module when system crash or network abnormality
- * occur.
+ * ensures the correctness of synchronization module when system crashed or network abnormality
+ * occurred.
  */
 public interface ILoadLogger {
 

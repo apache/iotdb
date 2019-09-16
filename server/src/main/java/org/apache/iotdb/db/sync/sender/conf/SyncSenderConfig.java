@@ -41,6 +41,11 @@ public class SyncSenderConfig {
   private String snapshotPath;
 
   /**
+   * The maximum number of retry when syncing a file to receiver fails.
+   */
+  private int maxNumOfSyncFileRetry = 5;
+
+  /**
    * Storage groups which participate in sync process
    */
   private List<String> storageGroupList = new ArrayList<>();
@@ -131,5 +136,13 @@ public class SyncSenderConfig {
 
   public void setStorageGroupList(List<String> storageGroupList) {
     this.storageGroupList = storageGroupList;
+  }
+
+  public int getMaxNumOfSyncFileRetry() {
+    return maxNumOfSyncFileRetry;
+  }
+
+  public void setMaxNumOfSyncFileRetry(int maxNumOfSyncFileRetry) {
+    this.maxNumOfSyncFileRetry = maxNumOfSyncFileRetry;
   }
 }

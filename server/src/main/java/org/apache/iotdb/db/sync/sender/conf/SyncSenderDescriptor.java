@@ -98,6 +98,9 @@ public class SyncSenderDescriptor {
         Arrays.stream(splits).forEach(sg -> storageGroupList.add(sg.trim()));
         conf.setStorageGroupList(storageGroupList);
       }
+      conf.setMaxNumOfSyncFileRetry(Integer
+          .parseInt(properties.getProperty("max_number_of_sync_file_retry",
+              Integer.toString(conf.getMaxNumOfSyncFileRetry()))));
     } catch (IOException e) {
       logger.warn("Cannot load sync config file, use default sync configuration.", e);
     } catch (Exception e) {

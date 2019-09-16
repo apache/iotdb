@@ -204,6 +204,28 @@
    </tr>
 </table>
 
+<table>
+   <tr>
+      <td colspan="2">参数名: max_number_of_sync_file_retry</td>
+   </tr>
+   <tr>
+      <td width="20%">描述</td>
+      <td>发送端同步文件到接收端失败时的最大重试次数</td>
+   </tr>
+   <tr>
+      <td>类型</td>
+      <td>Int : [0,2147483647]</td>
+   </tr>
+   <tr>
+      <td>示例</td>
+      <td>5</td>
+   </tr>
+   <tr>
+      <td>改后生效方式</td>
+      <td>重启同步功能发送端生效</td>
+   </tr>
+</table>
+
 # 使用方式
 ## 启动同步功能接收端
 1. 配置接收端的参数，例如：

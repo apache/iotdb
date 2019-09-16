@@ -50,7 +50,7 @@ public interface IDataTransferManager {
   void syncSchema() throws SyncConnectionException, TException;
 
   /**
-   * For deleted files in a storage group, sync them to receiver side and load these data in
+   * For deleted files in a storage group, sync them to receiver side and load these files in
    * receiver.
    *
    * @param sgName storage group name

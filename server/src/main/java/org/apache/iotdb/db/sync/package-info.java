@@ -24,10 +24,10 @@
  * operations can be synced.
  *
  * On the sender side of the sync, the sync module is a separate process, independent of the IoTDB
- * process. It can be started and closed through a separate script.
+ * process. It can be started and closed through separate scripts.
  *
  * On the receiver side of the sync, the sync module is embedded in the engine of IoTDB and is in
- * the same process with IoTDB. The receiver module listens for a separate port. Before using it, it
+ * the same process with IoTDB. The receiver module listens to a separate port. Before using it, it
  * needs to set up a whitelist at the sync receiver, which is expressed as a network segment. The
  * receiver only accepts the data transferred from the sender located in the whitelist segment.
  *

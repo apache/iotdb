@@ -338,9 +338,9 @@ public class StorageEngine implements IService {
   }
 
 
-  public void loadNewTsFile(File newTsFile, TsFileResource resource)
+  public void loadNewTsFile(TsFileResource newTsFileResource)
       throws TsFileProcessorException, StorageEngineException {
-    getProcessor(newTsFile.getParentFile().getName()).loadNewTsFile(newTsFile, resource);
+    getProcessor(newTsFileResource.getFile().getParentFile().getName()).loadNewTsFile(newTsFileResource);
   }
 
   public void deleteTsfile(File deletedTsfile) throws StorageEngineException {

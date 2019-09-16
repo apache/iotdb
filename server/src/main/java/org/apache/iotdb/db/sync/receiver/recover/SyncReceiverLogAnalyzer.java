@@ -59,7 +59,7 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
         recover(syncFolder);
       }
     }
-    LOGGER.info("Finish to recover all sync state for sync receiver.");
+    LOGGER.info("Finish to recover all sync states for sync receiver.");
   }
 
   private boolean recover(File senderFolder) throws IOException {

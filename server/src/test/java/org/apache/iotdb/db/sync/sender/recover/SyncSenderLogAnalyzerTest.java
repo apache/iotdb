@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.sync.sender.recover;
 
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -80,7 +82,7 @@ public class SyncSenderLogAnalyzerTest {
         if (!allFileList.containsKey(String.valueOf(i))) {
           allFileList.put(String.valueOf(i), new HashSet<>());
         }
-        String rand = String.valueOf(r.nextInt(10000));
+        String rand = r.nextInt(10000) + TSFILE_SUFFIX;
         String fileName = FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
             + File.separator + i
             + File.separator + rand;

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.sync.sender.manage;
 
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -75,7 +77,7 @@ public class SyncFileManagerTest {
         if (!allFileList.containsKey(String.valueOf(i))) {
           allFileList.put(String.valueOf(i), new HashSet<>());
         }
-        String rand = String.valueOf(r.nextInt(10000));
+        String rand = r.nextInt(10000) + TSFILE_SUFFIX;
         String fileName = FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
             + File.separator + i
             + File.separator + rand;
@@ -120,7 +122,7 @@ public class SyncFileManagerTest {
           allFileList.put(String.valueOf(i), new HashSet<>());
         }
         correctToBeSyncedFiles.putIfAbsent(String.valueOf(i), new HashSet<>());
-        String rand = String.valueOf(r.nextInt(10000));
+        String rand = r.nextInt(10000) + TSFILE_SUFFIX;
         String fileName =
             FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
                 + File.separator + i
@@ -141,9 +143,7 @@ public class SyncFileManagerTest {
       }
     }
     manager.getValidFiles(dataDir);
-    lastFileMap = manager.getLastLocalFilesMap();
     curFileMap = manager.getCurrentSealedLocalFilesMap();
-    deletedFilesMap = manager.getDeletedFilesMap();
     toBeSyncedFilesMap = manager.getToBeSyncedFilesMap();
     for (Entry<String, Set<File>> entry : allFileList.entrySet()) {
       assert curFileMap.containsKey(entry.getKey());
@@ -170,7 +170,7 @@ public class SyncFileManagerTest {
           allFileList.put(String.valueOf(i), new HashSet<>());
         }
         correctToBeSyncedFiles.putIfAbsent(String.valueOf(i), new HashSet<>());
-        String rand = String.valueOf(r.nextInt(10000));
+        String rand = r.nextInt(10000) +  TSFILE_SUFFIX;
         String fileName =
             FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
                 + File.separator + i

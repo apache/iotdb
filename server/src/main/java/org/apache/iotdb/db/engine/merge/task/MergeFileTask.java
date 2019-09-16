@@ -234,11 +234,11 @@ class MergeFileTask {
 
   private File getNextMergeVersionFile(File seqFile) {
     String[] splits = seqFile.getName().replace(TSFILE_SUFFIX, "")
-        .split(IoTDBConstant.FILE_NAME_SEPARATOR);
+        .split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
     int mergeVersion = Integer.parseInt(splits[2]) + 1;
     return new File(seqFile.getParentFile(),
-        splits[0] + IoTDBConstant.FILE_NAME_SEPARATOR + splits[1]
-            + IoTDBConstant.FILE_NAME_SEPARATOR + mergeVersion + TSFILE_SUFFIX);
+        splits[0] + IoTDBConstant.TSFILE_NAME_SEPARATOR + splits[1]
+            + IoTDBConstant.TSFILE_NAME_SEPARATOR + mergeVersion + TSFILE_SUFFIX);
   }
 
   private long writeUnmergedChunks(List<Long> chunkStartTimes,

@@ -234,7 +234,7 @@ public class DataTransferManager implements IDataTransferManager {
 
       config.update(dataDir);
       syncFileManager.getValidFiles(dataDir);
-      allSG = syncFileManager.getAllSG();
+      allSG = syncFileManager.getAllSGs();
       lastLocalFilesMap = syncFileManager.getLastLocalFilesMap();
       deletedFilesMap = syncFileManager.getDeletedFilesMap();
       toBeSyncedFilesMap = syncFileManager.getToBeSyncedFilesMap();
@@ -328,9 +328,9 @@ public class DataTransferManager implements IDataTransferManager {
     int retryCount = 0;
     serviceClient.initSyncData(MetadataConstant.METADATA_LOG);
     while (true) {
-      if (retryCount > SyncConstant.MAX_SYNC_FILE_TRY) {
+      if (retryCount > config.getMaxNumOfSyncFileRetry()) {
         throw new SyncConnectionException(String
-            .format("Can not sync schema after %s retries.", SyncConstant.MAX_SYNC_FILE_TRY));
+            .format("Can not sync schema after %s retries.", config.getMaxNumOfSyncFileRetry()));
       }
       if (tryToSyncSchema()) {
         writeSyncSchemaPos(getSchemaPosFile());
@@ -551,10 +551,10 @@ public class DataTransferManager implements IDataTransferManager {
       outer:
       while (true) {
         retryCount++;
-        if (retryCount > SyncConstant.MAX_SYNC_FILE_TRY) {
+        if (retryCount > config.getMaxNumOfSyncFileRetry()) {
           throw new SyncConnectionException(String
               .format("Can not sync file %s after %s tries.", snapshotFile.getAbsoluteFile(),
-                  SyncConstant.MAX_SYNC_FILE_TRY));
+                  config.getMaxNumOfSyncFileRetry()));
         }
         md.reset();
         byte[] buffer = new byte[SyncConstant.DATA_CHUNK_SIZE];

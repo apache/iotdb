@@ -25,7 +25,7 @@ import org.apache.iotdb.db.sync.receiver.load.FileLoader.LoadTask;
 /**
  * This interface is used to load files, including deleted files and new tsfiles. The
  * producer-consumer model is used to load files. A background consumer thread is used to load
- * files. There is a queue recording task. After receiving a file, the receiver adds a task to the
+ * files. There is a queue recording tasks. After receiving a file, the receiver adds a task to the
  * queue. When all files are loaded and the synchronization task is completed, the thread is
  * closed.
  */

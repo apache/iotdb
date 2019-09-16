@@ -68,6 +68,6 @@ public class IoTDBConstant {
   // data folder name
   public static final String SEQUENCE_FLODER_NAME = "sequence";
   public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
-  public static final String FILE_NAME_SEPARATOR = "-";
+  public static final String TSFILE_NAME_SEPARATOR = "-";
 
 }

@@ -98,8 +98,8 @@ public class FileLoaderTest {
         String rand = String.valueOf(r.nextInt(10000));
         String fileName =
             getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + (time + i * 100
-                + j) + IoTDBConstant.FILE_NAME_SEPARATOR + rand
-                + IoTDBConstant.FILE_NAME_SEPARATOR + "0.tsfile";
+                + j) + IoTDBConstant.TSFILE_NAME_SEPARATOR + rand
+                + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0.tsfile";
         File syncFile = new File(fileName);
         File dataFile = new File(
             syncFile.getParentFile().getParentFile().getParentFile().getParentFile()
@@ -187,8 +187,8 @@ public class FileLoaderTest {
         String rand = String.valueOf(r.nextInt(10000));
         String fileName =
             getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + (time + i * 100
-                + j) + IoTDBConstant.FILE_NAME_SEPARATOR + rand
-                + IoTDBConstant.FILE_NAME_SEPARATOR + "0.tsfile";
+                + j) + IoTDBConstant.TSFILE_NAME_SEPARATOR + rand
+                + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0.tsfile";
         File syncFile = new File(fileName);
         File dataFile = new File(
             syncFile.getParentFile().getParentFile().getParentFile().getParentFile()
@@ -296,8 +296,8 @@ public class FileLoaderTest {
         String rand = String.valueOf(r.nextInt(10000));
         String fileName =
             getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + (time + i * 100
-                + j) + IoTDBConstant.FILE_NAME_SEPARATOR + rand
-                + IoTDBConstant.FILE_NAME_SEPARATOR + "0.tsfile";
+                + j) + IoTDBConstant.TSFILE_NAME_SEPARATOR + rand
+                + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0.tsfile";
         File syncFile = new File(fileName);
         File dataFile = new File(
             DirectoryManager.getInstance().getNextFolderForSequenceFile(),
@@ -378,9 +378,6 @@ public class FileLoaderTest {
           File dataFile = new File(
               DirectoryManager.getInstance().getNextFolderForSequenceFile(),
               snapFile.getParentFile().getName() + File.separatorChar + snapFile.getName());
-          if(!correctLoadedFileMap.get(sg).contains(dataFile.getAbsolutePath())){
-            System.out.println("odd!!!!");
-          }
           correctLoadedFileMap.get(sg).remove(dataFile.getAbsolutePath());
           snapFile.delete();
           fileLoader.addDeletedFileName(snapFile);

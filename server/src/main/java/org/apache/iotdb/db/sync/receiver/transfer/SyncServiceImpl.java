@@ -27,9 +27,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -40,7 +37,6 @@ import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.MetadataOperationType;
 import org.apache.iotdb.db.sync.receiver.load.FileLoader;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogAnalyzer;
@@ -50,10 +46,6 @@ import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SyncUtils;
 import org.apache.iotdb.service.sync.thrift.ResultStatus;
 import org.apache.iotdb.service.sync.thrift.SyncService;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -128,7 +120,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   }
 
   /**
-   * Init file path and clear data if last sync process failed.
+   * Init file path.
    */
   private void initPath() throws DiskSpaceInsufficientException {
     String dataDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
@@ -139,7 +131,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   }
 
   /**
-   * Init threadLocal variable and delete old useless files.
+   * Init threadLocal variable.
    */
   @Override
   public ResultStatus init(String storageGroup) {
@@ -243,7 +235,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     return new ResultStatus(true, null, md5OfReceiver);
   }
 
-  private boolean loadMetadata() {
+  private void loadMetadata() {
     logger.info("Start to load metadata in sync process.");
     if (currentFile.get().exists()) {
       try (BufferedReader br = new BufferedReader(
@@ -251,65 +243,14 @@ public class SyncServiceImpl implements SyncService.Iface {
         String metadataOperation;
         while ((metadataOperation = br.readLine()) != null) {
           try {
-            operation(metadataOperation);
+            MManager.getInstance().operation(metadataOperation);
           } catch (IOException | MetadataErrorException | PathErrorException e) {
-            // multiple insert schema, ignore it.
+            logger.error("Can not operate metadata operation {} ", metadataOperation, e);
           }
         }
       } catch (IOException e) {
         logger.error("Cannot read the file {}.", currentFile.get().getAbsoluteFile(), e);
-        return false;
       }
-    }
-    return true;
-  }
-
-  /**
-   * Operate metadata operation in MManager
-   *
-   * @param cmd metadata operation
-   */
-  private void operation(String cmd)
-      throws PathErrorException, IOException, MetadataErrorException {
-    String[] args = cmd.trim().split(",");
-    switch (args[0]) {
-      case MetadataOperationType.ADD_PATH_TO_MTREE:
-        Map<String, String> props;
-        String[] kv;
-        props = new HashMap<>(args.length - 5 + 1, 1);
-        for (int k = 5; k < args.length; k++) {
-          kv = args[k].split("=");
-          props.put(kv[0], kv[1]);
-        }
-        MManager.getInstance()
-            .addPathToMTree(new Path(args[1]), TSDataType.deserialize(Short.valueOf(args[2])),
-                TSEncoding.deserialize(Short.valueOf(args[3])),
-                CompressionType.deserialize(Short.valueOf(args[4])),
-                props);
-        break;
-      case MetadataOperationType.DELETE_PATH_FROM_MTREE:
-        MManager.getInstance().deletePaths(Collections.singletonList(new Path(args[1])));
-        break;
-      case MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE:
-        MManager.getInstance().setStorageLevelToMTree(args[1]);
-        break;
-      case MetadataOperationType.ADD_A_PTREE:
-        MManager.getInstance().addAPTree(args[1]);
-        break;
-      case MetadataOperationType.ADD_A_PATH_TO_PTREE:
-        MManager.getInstance().addPathToPTree(args[1]);
-        break;
-      case MetadataOperationType.DELETE_PATH_FROM_PTREE:
-        MManager.getInstance().deletePathFromPTree(args[1]);
-        break;
-      case MetadataOperationType.LINK_MNODE_TO_PTREE:
-        MManager.getInstance().linkMNodeToPTree(args[1], args[2]);
-        break;
-      case MetadataOperationType.UNLINK_MNODE_FROM_PTREE:
-        MManager.getInstance().unlinkMNodeFromPTree(args[1], args[2]);
-        break;
-      default:
-        logger.error("Unrecognizable command {}", cmd);
     }
   }
 

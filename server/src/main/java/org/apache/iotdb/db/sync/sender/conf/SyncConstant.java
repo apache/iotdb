@@ -54,11 +54,6 @@ public class SyncConstant {
 
   public static final String SYNC_LOG_NAME = "sync.log";
 
-  /**
-   * Maximum try when syncing the same file to receiver fails.
-   */
-  public static final int MAX_SYNC_FILE_TRY = 5;
-
   private static final SyncSenderConfig CONFIG = SyncSenderDescriptor.getInstance().getConfig();
 
   public static final long SYNC_PROCESS_DELAY = 0;

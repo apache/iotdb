@@ -183,7 +183,7 @@ public class MManager {
     }
   }
 
-  private void operation(String cmd)
+  public void operation(String cmd)
       throws PathErrorException, IOException, MetadataErrorException {
     //see addPathToMTree() to get the detailed format of the cmd
     String[] args = cmd.trim().split(",");
