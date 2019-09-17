@@ -292,3 +292,30 @@
 |类型| Int32 |
 |默认值|600 |
 |改后生效方式|重启服务器生效|
+
+* tsfile\_storage\_fs
+
+|名字| tsfile\_storage\_fs |
+|:---:|:---|
+|描述| Tsfile和相关数据文件的存储文件系统。目前支持LOCAL（本地文件系统）和HDFS两种|
+|类型| String |
+|默认值|LOCAL |
+|改后生效方式|重启服务器生效|
+
+* hdfs\_ip
+
+|名字| hdfs\_ip |
+|:---:|:---|
+|描述| 在Tsfile和相关数据文件存储到HDFS的情况下用于配置HDFS的IP|
+|类型| String |
+|默认值|localhost |
+|改后生效方式|重启服务器生效|
+
+* hdfs\_port
+
+|名字| hdfs\_port |
+|:---:|:---|
+|描述| 在Tsfile和相关数据文件存储到HDFS的情况下用于配置HDFS的端口|
+|类型| String |
+|默认值|9000 |
+|改后生效方式|重启服务器生效|

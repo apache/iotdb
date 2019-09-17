@@ -327,9 +327,24 @@ public class IoTDBConfig {
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
   /**
-   * Default storage is in local file system
+   * Default system file storage is in local file system (unsupported)
    */
   private FSType systemFileStorageFs = FSType.LOCAL;
+
+  /**
+   * Default TSfile storage is in local file system
+   */
+  private FSType tsFileStorageFs = FSType.LOCAL;
+
+  /**
+   * Default HDFS ip is localhost
+   */
+  private String hdfsIp = "localhost";
+
+  /**
+   * Default HDFS port is 9000
+   */
+  private String hdfsPort = "9000";
 
   public IoTDBConfig() {
     // empty constructor
@@ -910,5 +925,29 @@ public class IoTDBConfig {
 
   public void setSystemFileStorageFs(String systemFileStorageFs) {
     this.systemFileStorageFs = FSType.valueOf(systemFileStorageFs);
+  }
+
+  public FSType getTsFileStorageFs() {
+    return tsFileStorageFs;
+  }
+
+  public void setTsFileStorageFs(String tsFileStorageFs) {
+    this.tsFileStorageFs = FSType.valueOf(tsFileStorageFs);
+  }
+
+  public String getHdfsIp() {
+    return hdfsIp;
+  }
+
+  public void setHdfsIp(String hdfsIp) {
+    this.hdfsIp = hdfsIp;
+  }
+
+  public String getHdfsPort() {
+    return hdfsPort;
+  }
+
+  public void setHdfsPort(String hdfsPort) {
+    this.hdfsPort = hdfsPort;
   }
 }
