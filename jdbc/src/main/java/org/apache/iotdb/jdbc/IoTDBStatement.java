@@ -217,7 +217,7 @@ public class IoTDBStatement implements Statement {
   }
 
   /**
-   * There are four kinds of sql here: (1) show timeseries path (2) show storage group (3) query sql
+   * There are four kinds of sql here: (1) show timeseries path/show timeseries (2) show storage group (3) query sql
    * (4) update sql . <p></p> (1) and (2) return new TsfileMetadataResultSet (3) return new
    * TsfileQueryResultSet (4) simply get executed
    */
@@ -225,14 +225,20 @@ public class IoTDBStatement implements Statement {
     isCancelled = false;
     String sqlToLowerCase = sql.toLowerCase().trim();
     if (sqlToLowerCase.startsWith(SHOW_TIMESERIES_COMMAND_LOWERCASE)) {
-      String[] cmdSplited = sql.split("\\s+");
-      if (cmdSplited.length != 3) {
-        throw new SQLException("Error format of \'SHOW TIMESERIES <PATH>\'");
-      } else {
-        String path = cmdSplited[2];
+      if (sqlToLowerCase.equals(SHOW_TIMESERIES_COMMAND_LOWERCASE)) {
         DatabaseMetaData databaseMetaData = connection.getMetaData();
-        resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, path, null, null);
+        resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, "root", null, null);
         return true;
+      } else {
+        String[] cmdSplited = sql.split("\\s+");
+        if (cmdSplited.length != 3) {
+          throw new SQLException("Error format of \'SHOW TIMESERIES <PATH>\'");
+        } else {
+          String path = cmdSplited[2];
+          DatabaseMetaData databaseMetaData = connection.getMetaData();
+          resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, path, null, null);
+          return true;
+        }
       }
     } else if (sqlToLowerCase.equals(SHOW_STORAGE_GROUP_COMMAND_LOWERCASE)) {
       DatabaseMetaData databaseMetaData = connection.getMetaData();

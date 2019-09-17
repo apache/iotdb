@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.integration;
 
+import static org.apache.iotdb.db.integration.Constant.avg;
 import static org.apache.iotdb.db.integration.Constant.count;
 import static org.apache.iotdb.db.integration.Constant.first;
 import static org.apache.iotdb.db.integration.Constant.max_time;
 import static org.apache.iotdb.db.integration.Constant.max_value;
-import static org.apache.iotdb.db.integration.Constant.mean;
 import static org.apache.iotdb.db.integration.Constant.min_value;
 import static org.apache.iotdb.db.integration.Constant.sum;
 import static org.junit.Assert.fail;
@@ -132,7 +132,7 @@ public class IoTDBAggregationLargeDataIT {
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");) {
       lastAggreWithSingleFilterTest();
-      meanAggreWithSingleFilterTest();
+      avgAggreWithSingleFilterTest();
       sumAggreWithSingleFilterTest();
       firstAggreWithSingleFilterTest();
       countAggreWithSingleFilterTest();
@@ -146,7 +146,7 @@ public class IoTDBAggregationLargeDataIT {
       maxTimeAggreWithMultiFilterTest();
       minValueAggreWithMultiFilterTest();
       maxValueAggreWithMultiFilterTest();
-      meanAggreWithMultiFilterTest();
+      avgAggreWithMultiFilterTest();
       sumAggreWithMultiFilterTest();
       firstAggreWithMultiFilterTest();
     }
@@ -275,7 +275,7 @@ Statement statement = connection.createStatement()) {
     }
   }
 
-  private void meanAggreWithSingleFilterTest() {
+  private void avgAggreWithSingleFilterTest() {
     String[] retArray = new String[]{
         "0,75,212,28"
     };
@@ -284,15 +284,15 @@ Statement statement = connection.createStatement()) {
         Statement statement = connection.createStatement();) {
 
       boolean hasResultSet = statement.execute(
-          "select mean(s0),mean(s1),mean(s2) from root.vehicle.d0 where s1 >= 0");
+          "select avg(s0),avg(s1),avg(s2) from root.vehicle.d0 where s1 >= 0");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR) + "," + Math.round(resultSet.getDouble(mean(d0s0)))
-                  + "," + Math.round(resultSet.getDouble(mean(d0s1))) + "," +
-                  Math.round(resultSet.getDouble(mean(d0s2)));
+              resultSet.getString(TIMESTAMP_STR) + "," + Math.round(resultSet.getDouble(avg(d0s0)))
+                  + "," + Math.round(resultSet.getDouble(avg(d0s1))) + "," +
+                  Math.round(resultSet.getDouble(avg(d0s2)));
           //System.out.println("!!!!!============ " + ans);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
@@ -457,7 +457,7 @@ Statement statement = connection.createStatement()) {
     }
   }
 
-  private void meanAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
+  private void avgAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
         "0,55061.0,733,75,212,28"
     };
@@ -467,8 +467,8 @@ Statement statement = connection.createStatement()) {
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
 Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select sum(s0),count(s0),mean(s0),mean(s1),"
-          + "mean(s2) from root.vehicle.d0 " +
+      boolean hasResultSet = statement.execute("select sum(s0),count(s0),avg(s0),avg(s1),"
+          + "avg(s2) from root.vehicle.d0 " +
           "where s1 >= 0 or s2 < 10");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
@@ -476,10 +476,10 @@ Statement statement = connection.createStatement()) {
       while (resultSet.next()) {
         String ans =
             resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(sum(d0s0)) + "," +
-                resultSet.getString(count(d0s0)) + "," + Math.round(resultSet.getDouble(mean(d0s0)))
+                resultSet.getString(count(d0s0)) + "," + Math.round(resultSet.getDouble(avg(d0s0)))
                 + "," +
-                Math.round(resultSet.getDouble(mean(d0s1))) + "," + Math
-                .round(resultSet.getDouble(mean(d0s2)));
+                Math.round(resultSet.getDouble(avg(d0s1))) + "," + Math
+                .round(resultSet.getDouble(avg(d0s2)));
         //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;

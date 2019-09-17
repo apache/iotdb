@@ -52,6 +52,7 @@ import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
@@ -368,7 +369,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         case StatisticConstant.MIN_VALUE:
         case StatisticConstant.MAX_VALUE:
           return getSeriesType(innerPath);
-        case StatisticConstant.MEAN:
+        case StatisticConstant.AVG:
         case StatisticConstant.SUM:
           return TSDataType.DOUBLE;
         default:
@@ -1011,6 +1012,24 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
+  public TSRPCResp deleteData(TSDeleteReq req) throws TException {
+    if (!checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return new TSRPCResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
+    }
+
+    DeletePlan plan = new DeletePlan();
+    plan.setDeleteTime(req.getTimestamp());
+    plan.addPath(new Path(req.getPath()));
+
+    TS_Status status = checkAuthority(plan);
+    if (status != null) {
+      return new TSRPCResp(status);
+    }
+    return new TSRPCResp(executePlan(plan));
+  }
+
+  @Override
   public TSExecuteBatchStatementResp insertBatch(TSBatchInsertionReq req) {
     long t1 = System.currentTimeMillis();
     try {
@@ -1058,13 +1077,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSRPCResp setStorageGroup(TSSetStorageGroupReq req) {
+  public TSRPCResp setStorageGroup(String storageGroup) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSRPCResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
     }
 
-    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.SET_STORAGE_GROUP, new Path(req.getStorageGroupId()));
+    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.SET_STORAGE_GROUP, new Path(storageGroup));
     TS_Status status = checkAuthority(plan);
     if (status != null) {
       return new TSRPCResp(status);

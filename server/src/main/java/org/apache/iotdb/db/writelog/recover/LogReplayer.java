@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -84,7 +85,7 @@ public class LogReplayer {
    */
   public void replayLogs() throws ProcessorException {
     WriteLogNode logNode = MultiFileLogNodeManager.getInstance().getNode(
-        logNodePrefix + new File(insertFilePath).getName());
+        logNodePrefix + SystemFileFactory.INSTANCE.getFile(insertFilePath).getName());
 
     ILogReader logReader = logNode.getLogReader();
     try {

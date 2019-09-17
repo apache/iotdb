@@ -188,7 +188,6 @@ public class  DeletionQueryTest {
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
       count++;
-      System.out.println(record.getTimestamp());
     }
     assertEquals(150, count);
   }

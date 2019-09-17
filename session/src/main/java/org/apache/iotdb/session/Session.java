@@ -21,6 +21,7 @@ package org.apache.iotdb.session;
 import java.util.List;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -34,9 +35,12 @@ import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
 import java.time.ZoneId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Session {
 
+  private static final Logger logger = LoggerFactory.getLogger(Session.class);
   private String host;
   private int port;
   private String username;
@@ -49,7 +53,7 @@ public class Session {
   private ZoneId zoneId;
 
   public Session(String host, int port) {
-    this(host, port, Config.DEFAULT_USER, Config.DEFALUT_PASSWORD);
+    this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
   }
 
   public Session(String host, String port, String username, String password) {
@@ -95,7 +99,6 @@ public class Session {
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);
 
-      // validate connectiontry {
       RpcUtils.verifySuccess(openResp.getStatus());
 
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
@@ -152,7 +155,7 @@ public class Session {
     request.setSize(rowBatch.batchSize);
 
     try {
-      return client.insertBatch(request);
+      return checkAndReturn(client.insertBatch(request));
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }
@@ -167,18 +170,27 @@ public class Session {
     request.setValues(values);
 
     try {
-      return client.insertRow(request);
+      return checkAndReturn(client.insertRow(request));
+    } catch (TException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
+  public synchronized TSRPCResp delete(String path, long time) throws IoTDBSessionException {
+    TSDeleteReq request = new TSDeleteReq();
+    request.setPath(path);
+    request.setTimestamp(time);
+
+    try {
+      return checkAndReturn(client.deleteData(request));
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }
   }
 
   public synchronized TSRPCResp setStorageGroup(String storageGroupId) throws IoTDBSessionException {
-    TSSetStorageGroupReq request = new TSSetStorageGroupReq();
-    request.setStorageGroupId(storageGroupId);
-
     try {
-      return client.setStorageGroup(request);
+      return checkAndReturn(client.setStorageGroup(storageGroupId));
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }
@@ -192,10 +204,24 @@ public class Session {
     request.setCompressor(compressor.ordinal());
 
     try {
-      return client.createTimeseries(request);
+      return checkAndReturn(client.createTimeseries(request));
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }
+  }
+
+  private TSRPCResp checkAndReturn(TSRPCResp resp) {
+    if (resp.status.statusType.getCode() != TSStatusType.SUCCESS_STATUS.getStatusCode()) {
+      logger.error(resp.status.statusType.getMessage());
+    }
+    return resp;
+  }
+
+  private TSExecuteBatchStatementResp checkAndReturn(TSExecuteBatchStatementResp resp) {
+    if (resp.status.statusType.getCode() != TSStatusType.SUCCESS_STATUS.getStatusCode()) {
+      logger.error(resp.status.statusType.getMessage());
+    }
+    return resp;
   }
 
   public synchronized String getTimeZone() throws TException, IoTDBRPCException {

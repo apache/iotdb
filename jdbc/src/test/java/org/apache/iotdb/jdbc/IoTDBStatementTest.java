@@ -74,11 +74,60 @@ public class IoTDBStatementTest {
   public void tearDown() throws Exception {
   }
 
-  @SuppressWarnings("resource")
-  @Test(expected = SQLException.class)
-  public void testExecuteSQL1() throws SQLException {
+  @SuppressWarnings({"resource", "serial"})
+  @Test
+  public void testExecuteSQL1() throws SQLException, TException {
     IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
-    stmt.execute("show timeseries");
+    List<List<String>> tslist = new ArrayList<>();
+    tslist.add(new ArrayList<String>(4) {
+      {
+        add("root.vehicle.d0.s0");
+        add("root.vehicle");
+        add("INT32");
+        add("RLE");
+      }
+    });
+    tslist.add(new ArrayList<String>(4) {
+      {
+        add("root.vehicle.d0.s1");
+        add("root.vehicle");
+        add("INT64");
+        add("RLE");
+      }
+    });
+    tslist.add(new ArrayList<String>(4) {
+      {
+        add("root.vehicle.d0.s2");
+        add("root.vehicle");
+        add("FLOAT");
+        add("RLE");
+      }
+    });
+    String standard = "Timeseries,Storage Group,DataType,Encoding,\n"
+            + "root.vehicle.d0.s0,root.vehicle,INT32,RLE,\n"
+            + "root.vehicle.d0.s1,root.vehicle,INT64,RLE,\n"
+            + "root.vehicle.d0.s2,root.vehicle,FLOAT,RLE,\n";
+    when(fetchMetadataResp.getShowTimeseriesList()).thenReturn(tslist);
+    boolean res = stmt.execute("show timeseries");
+    assertTrue(res);
+    try (ResultSet resultSet = stmt.getResultSet()) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      int colCount = resultSetMetaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      for (int i = 1; i < colCount + 1; i++) {
+        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
+      }
+      resultStr.append("\n");
+      while (resultSet.next()) {
+        for (int i = 1; i <= colCount; i++) {
+          resultStr.append(resultSet.getString(i)).append(",");
+        }
+        resultStr.append("\n");
+      }
+      Assert.assertEquals(resultStr.toString(), standard);
+    } catch (SQLException e) {
+      System.out.println(e);
+    }
   }
 
   @SuppressWarnings({"resource", "serial"})
@@ -115,7 +164,7 @@ public class IoTDBStatementTest {
         + "root.vehicle.d0.s1,root.vehicle,INT64,RLE,\n"
         + "root.vehicle.d0.s2,root.vehicle,FLOAT,RLE,\n";
     when(fetchMetadataResp.getShowTimeseriesList()).thenReturn(tslist);
-    boolean res = stmt.execute("show timeseries root");
+    boolean res = stmt.execute("show timeseries root.vehicle.d0");
     assertTrue(res);
     try (ResultSet resultSet = stmt.getResultSet()) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();

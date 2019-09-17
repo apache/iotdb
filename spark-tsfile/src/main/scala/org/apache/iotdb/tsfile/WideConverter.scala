@@ -7,7 +7,7 @@
   * "License"); you may not use this file except in compliance
   * with the License.  You may obtain a copy of the License at
   *
-  *     http://www.apache.org/licenses/LICENSE-2.0
+  * http://www.apache.org/licenses/LICENSE-2.0
   *
   * Unless required by applicable law or agreed to in writing,
   * software distributed under the License is distributed on an
@@ -22,20 +22,19 @@ import java.util
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileStatus
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData
 import org.apache.iotdb.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
-import org.apache.iotdb.tsfile.io.HDFSInput
+import org.apache.iotdb.tsfile.fileSystem.HDFSInput
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader
-import org.apache.iotdb.tsfile.read.common.{Field, Path}
+import org.apache.iotdb.tsfile.read.common.Path
 import org.apache.iotdb.tsfile.read.expression.impl.{BinaryExpression, GlobalTimeExpression, SingleSeriesExpression}
 import org.apache.iotdb.tsfile.read.expression.{IExpression, QueryExpression}
 import org.apache.iotdb.tsfile.read.filter.{TimeFilter, ValueFilter}
 import org.apache.iotdb.tsfile.utils.Binary
 import org.apache.iotdb.tsfile.write.record.TSRecord
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint
-import org.apache.iotdb.tsfile.write.schema.{Schema, MeasurementSchema, SchemaBuilder}
+import org.apache.iotdb.tsfile.write.schema.{MeasurementSchema, Schema, SchemaBuilder}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
@@ -46,10 +45,11 @@ import scala.collection.mutable.ListBuffer
 
 
 /**
-  * This object contains methods that are used to convert schema and data between SparkSQL and TSFile.
+  * This object contains methods that are used to convert schema and data between SparkSQL
+  * and TSFile.
   *
   */
-object WideConverter extends Converter{
+object WideConverter extends Converter {
 
   /**
     * Get series from the given tsFileMetaData.
@@ -103,7 +103,7 @@ object WideConverter extends Converter{
           }
         })
       })
-      in.close()
+      reader.close()
     })
 
     unionSeries
@@ -120,7 +120,8 @@ object WideConverter extends Converter{
     var queriedSchema: StructType = new StructType()
 
     if (requiredSchema.isEmpty
-      || (requiredSchema.size == 1 && requiredSchema.iterator.next().name == QueryConstant.RESERVED_TIME)) {
+      || (requiredSchema.size == 1 && requiredSchema.iterator.next().name ==
+      QueryConstant.RESERVED_TIME)) {
       // for example, (i) select count(*) from table; (ii) select time from table
 
       val fileSchema = WideConverter.getSeries(tsFileMetaData)
@@ -196,7 +197,8 @@ object WideConverter extends Converter{
     * @param addTimeField true to add a time field; false to not
     * @return the converted list of fields
     */
-  def toSqlField(tsfileSchema: util.ArrayList[Series], addTimeField: Boolean): ListBuffer[StructField] = {
+  def toSqlField(tsfileSchema: util.ArrayList[Series], addTimeField: Boolean):
+  ListBuffer[StructField] = {
     val fields = new ListBuffer[StructField]()
 
     if (addTimeField) {
@@ -232,11 +234,13 @@ object WideConverter extends Converter{
         throw new Exception("NOT filter is not supported now")
 
       case node: And =>
-        filter = BinaryExpression.and(transformFilter(schema, node.left), transformFilter(schema, node.right))
+        filter = BinaryExpression.and(transformFilter(schema, node.left), transformFilter(schema,
+          node.right))
         filter
 
       case node: Or =>
-        filter = BinaryExpression.or(transformFilter(schema, node.left), transformFilter(schema, node.right))
+        filter = BinaryExpression.or(transformFilter(schema, node.left), transformFilter(schema,
+          node.right))
         filter
 
       case node: EqualTo =>
@@ -284,7 +288,8 @@ object WideConverter extends Converter{
     }
   }
 
-  def constructFilter(schema: StructType, nodeName: String, nodeValue: Any, filterType: FilterTypes.Value): IExpression = {
+  def constructFilter(schema: StructType, nodeName: String, nodeValue: Any,
+                      filterType: FilterTypes.Value): IExpression = {
     val fieldNames = schema.fieldNames
     val index = fieldNames.indexOf(nodeName)
     if (index == -1) {

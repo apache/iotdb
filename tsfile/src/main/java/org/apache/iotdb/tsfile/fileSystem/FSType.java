@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.fileSystem;
+package org.apache.iotdb.tsfile.fileSystem;
 
 public enum FSType {
   LOCAL, HDFS

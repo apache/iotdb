@@ -22,9 +22,9 @@ import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.mapreduce.{RecordWriter, TaskAttemptContext}
 import org.apache.iotdb.tsfile.io.TsFileOutputFormat
 import org.apache.iotdb.tsfile.write.record.TSRecord
+import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.execution.datasources.OutputWriter
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.catalyst.InternalRow
 
 private[tsfile] class NarrowTsFileOutputWriter(
                                                 pathStr: String,
