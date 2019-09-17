@@ -251,10 +251,6 @@ struct TSDeleteReq {
     2: required i64 timestamp
 }
 
-struct TSSetStorageGroupReq {
-  1: required string storageGroupId
-}
-
 struct TSRPCResp {
   1: required TS_Status status
 }
@@ -303,13 +299,13 @@ service TSIService {
 
 	TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
 
-	TSRPCResp setStorageGroup(1:TSSetStorageGroupReq req);
+	TSRPCResp setStorageGroup(1:string storageGroup);
 
 	TSRPCResp createTimeseries(1:TSCreateTimeseriesReq req);
 
 	TSRPCResp insertRow(1:TSInsertReq req);
 
-	TSRPCResp deleteRow(1:TSDeleteReq req);
+	TSRPCResp deleteData(1:TSDeleteReq req);
 
 	i64 requestStatementId();
 }

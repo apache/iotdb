@@ -1023,7 +1023,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSRPCResp deleteRow(TSDeleteReq req) throws TException {
+  public TSRPCResp deleteData(TSDeleteReq req) throws TException {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSRPCResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
@@ -1088,13 +1088,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSRPCResp setStorageGroup(TSSetStorageGroupReq req) throws TException {
+  public TSRPCResp setStorageGroup(String storageGroup) throws TException {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSRPCResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
     }
 
-    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.SET_STORAGE_GROUP, new Path(req.getStorageGroupId()));
+    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.SET_STORAGE_GROUP, new Path(storageGroup));
     TS_Status status = checkAuthority(plan);
     if (status != null) {
       return new TSRPCResp(status);
