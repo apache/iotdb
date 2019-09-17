@@ -24,6 +24,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -71,7 +72,7 @@ public class MManager {
     schemaDir =
         IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "schema";
 
-    File systemFolder = new File(schemaDir);
+    File systemFolder = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!systemFolder.exists()) {
       if (systemFolder.mkdirs()) {
         logger.info("create system folder {}", systemFolder.getAbsolutePath());
@@ -124,7 +125,7 @@ public class MManager {
       return;
     }
     lock.writeLock().lock();
-    File logFile = new File(logFilePath);
+    File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
     try {
       initFromLog(logFile);
@@ -232,8 +233,8 @@ public class MManager {
 
   private BufferedWriter getLogWriter() throws IOException {
     if (logWriter == null) {
-      File logFile = new File(logFilePath);
-      File metadataDir = new File(schemaDir);
+      File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
+      File metadataDir = SystemFileFactory.INSTANCE.getFile(schemaDir);
       if (!metadataDir.exists()) {
         if (metadataDir.mkdirs()) {
           logger.info("create schema folder {}.", metadataDir);
