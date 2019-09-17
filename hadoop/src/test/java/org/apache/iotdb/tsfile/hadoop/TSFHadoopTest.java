@@ -30,10 +30,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.Assert.*;
 
@@ -71,7 +68,7 @@ public class TSFHadoopTest {
     String[] value = {"s1", "s2", "s3"};
     try {
       TSFInputFormat.setReadMeasurementIds(job, value);
-      Set<String> getValue = TSFInputFormat.getReadMeasurementIds(job.getConfiguration());
+      Set<String> getValue = new HashSet<>(Objects.requireNonNull(TSFInputFormat.getReadMeasurementIds(job.getConfiguration())));
       assertEquals(new HashSet<>(Arrays.asList(value)), getValue);
 
     } catch (TSFHadoopException e) {
@@ -156,8 +153,8 @@ public class TSFHadoopTest {
       System.out.println(inputSplits.get(0));
       long value = 1000000L;
       while (recordReader.nextKeyValue()) {
-        assertEquals(recordReader.getCurrentValue().get().length, sensors.length);
-        for (Writable writable : recordReader.getCurrentValue().get()) {
+        assertEquals(recordReader.getCurrentValue().size(), sensors.length);
+        for (Writable writable : recordReader.getCurrentValue().values()) {
           if (writable instanceof IntWritable) {
             assertEquals("1", writable.toString());
           } else if (writable instanceof LongWritable) {

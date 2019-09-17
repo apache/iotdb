@@ -39,15 +39,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
 
 /**
  * @author Yuan Tian
  */
-public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
+public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
 
   private static final Logger logger = LoggerFactory.getLogger(TSFRecordReader.class);
 
@@ -70,6 +68,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
   private boolean isReadTime = false;
   private int arraySize = 0;
   private TsFileSequenceReader reader;
+  private List<String> measurementIds;
 
 
   @Override
@@ -83,14 +82,15 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
       reader = new TsFileSequenceReader(new HDFSInput(path, configuration));
 
       // Get the read columns and filter information
-      Set<String> deltaObjectIds = TSFInputFormat.getReadDeltaObjectIds(configuration);
+      List<String> deltaObjectIds = TSFInputFormat.getReadDeltaObjectIds(configuration);
       if (deltaObjectIds == null) {
         deltaObjectIds = initDeviceIdList(chunkGroupInfoList);
       }
-      Set<String> measurementIds = TSFInputFormat.getReadMeasurementIds(configuration);
+      List<String> measurementIds = TSFInputFormat.getReadMeasurementIds(configuration);
       if (measurementIds == null) {
         measurementIds = initSensorIdList(chunkGroupInfoList);
       }
+      this.measurementIds = measurementIds;
       logger.info("deltaObjectIds:" + deltaObjectIds);
       logger.info("Sensors:" + measurementIds);
 
@@ -126,16 +126,18 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
     }
   }
 
-  private Set<String> initDeviceIdList(List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList) {
+  private List<String> initDeviceIdList(List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList) {
     return chunkGroupInfoList.stream()
             .map(TSFInputSplit.ChunkGroupInfo::getDeviceId)
-            .collect(toSet());
+            .distinct()
+            .collect(toList());
   }
 
-  private Set<String> initSensorIdList(List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList) {
+  private List<String> initSensorIdList(List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList) {
     return chunkGroupInfoList.stream()
             .flatMap(chunkGroupMetaData -> Arrays.stream(chunkGroupMetaData.getMeasurementIds()))
-            .collect(toSet());
+            .distinct()
+            .collect(toList());
   }
 
   @Override
@@ -160,60 +162,56 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
   }
 
   @Override
-  public ArrayWritable getCurrentValue() throws IOException, InterruptedException {
-
-    Writable[] writables = getEmptyWritables();
+  public MapWritable getCurrentValue() throws IOException, InterruptedException {
+    MapWritable mapWritable = new MapWritable();
     Text deviceIdText = new Text(deviceIdList.get(currentIndex));
     LongWritable time = new LongWritable(timestamp);
     int index = 0;
 
     if (isReadTime && isReadDeviceId) { // Both time and deviceId need to be written into value
-      writables[0] = time;
-      writables[1] = deviceIdText;
-      index = 2;
+      mapWritable.put(new Text("timestamp"), time);
+      mapWritable.put(new Text("device_id"), deviceIdText);
     } else if (isReadTime) { // Only Time needs to be written into value
-      writables[0] = time;
-      index = 1;
+      mapWritable.put(new Text("timestamp"), time);
     } else if (isReadDeviceId) { // Only deviceId need to be written into value
-      writables[0] = deviceIdText;
-      index = 1;
+      mapWritable.put(new Text("device_id"), deviceIdText);
     }
 
-    readFieldsValue(writables, index);
+    readFieldsValue(mapWritable);
 
-    return new ArrayWritable(Writable.class, writables);
+    return mapWritable;
   }
 
   /**
    * Read from current fields value
-   * @param writables where to write
-   * @param index the start index that should be written into
+   * @param mapWritable where to write
    * @throws InterruptedException
    */
-  private void readFieldsValue(Writable[] writables, int index) throws InterruptedException {
+  private void readFieldsValue(MapWritable mapWritable) throws InterruptedException {
+    int index = 0;
     for (Field field : fields) {
       if (field.isNull()) {
         logger.info("Current value is null");
-        writables[index] = NullWritable.get();
+        mapWritable.put(new Text(measurementIds.get(index)), NullWritable.get());
       } else {
         switch (field.getDataType()) {
           case INT32:
-            writables[index] = new IntWritable(field.getIntV());
+            mapWritable.put(new Text(measurementIds.get(index)), new IntWritable(field.getIntV()));
             break;
           case INT64:
-            writables[index] = new LongWritable(field.getLongV());
+            mapWritable.put(new Text(measurementIds.get(index)), new LongWritable(field.getLongV()));
             break;
           case FLOAT:
-            writables[index] = new FloatWritable(field.getFloatV());
+            mapWritable.put(new Text(measurementIds.get(index)), new FloatWritable(field.getFloatV()));
             break;
           case DOUBLE:
-            writables[index] = new DoubleWritable(field.getDoubleV());
+            mapWritable.put(new Text(measurementIds.get(index)), new DoubleWritable(field.getDoubleV()));
             break;
           case BOOLEAN:
-            writables[index] = new BooleanWritable(field.getBoolV());
+            mapWritable.put(new Text(measurementIds.get(index)), new BooleanWritable(field.getBoolV()));
             break;
           case TEXT:
-            writables[index] = new Text(field.getBinaryV().getStringValue());
+            mapWritable.put(new Text(measurementIds.get(index)), new Text(field.getBinaryV().getStringValue()));
             break;
           default:
             logger.error("The data type is not support {}", field.getDataType());

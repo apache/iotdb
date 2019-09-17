@@ -21,10 +21,7 @@ package org.apache.iotdb.tsfile.hadoop;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.ArrayWritable;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.NullWritable;
-import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -32,6 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.hadoop.record.HDFSTSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -55,9 +53,13 @@ public class TSMRWriteExample {
         int sensorNum = 3;
 
         // add measurements into file schema (all with INT64 data type)
-        for (int i = 0; i < sensorNum; i++) {
+        for (int i = 0; i < 2; i++) {
             schema.registerMeasurement(
                     new MeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
+        }
+        for (int i = 2; i < sensorNum; i++) {
+            schema.registerMeasurement(
+                    new MeasurementSchema("sensor_" + (i + 1), TSDataType.DOUBLE, TSEncoding.TS_2DIFF));
         }
         TSFOutputFormat.setSchema(schema);
 
@@ -88,7 +90,7 @@ public class TSMRWriteExample {
 
         // set mapper output key and value
         job.setMapOutputKeyClass(Text.class);
-        job.setMapOutputValueClass(HDFSTSRecord.class);
+        job.setMapOutputValueClass(MapWritable.class);
         // set reducer output key and value
         job.setOutputKeyClass(NullWritable.class);
         job.setOutputValueClass(HDFSTSRecord.class);
@@ -125,29 +127,19 @@ public class TSMRWriteExample {
         }
     }
 
-    public static class TSMapper extends Mapper<NullWritable, ArrayWritable, Text, HDFSTSRecord> {
+    public static class TSMapper extends Mapper<NullWritable, MapWritable, Text, MapWritable> {
 
         private static final Logger logger = LoggerFactory.getLogger(TSMapper.class);
 
         @Override
-        protected void map(NullWritable key, ArrayWritable value,
-                           Mapper<NullWritable, ArrayWritable, Text, HDFSTSRecord>.Context context)
+        protected void map(NullWritable key, MapWritable value,
+                           Mapper<NullWritable, MapWritable, Text, MapWritable>.Context context)
                 throws IOException, InterruptedException {
 
-            Text deltaObjectId = (Text) value.get()[1];
-            long timestamp = ((LongWritable)value.get()[0]).get();
+            Text deltaObjectId = (Text) value.get(new Text("device_id"));
+            long timestamp = ((LongWritable)value.get(new Text("timestamp"))).get();
             if (timestamp % 100000 == 0) {
-                long sensor1_value = ((LongWritable)value.get()[2]).get();
-                long sensor2_value = ((LongWritable)value.get()[3]).get();
-                long sensor3_value = ((LongWritable)value.get()[4]).get();
-                HDFSTSRecord tsRecord = new HDFSTSRecord(timestamp, deltaObjectId.toString());
-                DataPoint dPoint1 = new LongDataPoint("sensor_1", sensor1_value);
-                DataPoint dPoint2 = new LongDataPoint("sensor_2", sensor2_value);
-                DataPoint dPoint3 = new LongDataPoint("sensor_3", sensor3_value);
-                tsRecord.addTuple(dPoint1);
-                tsRecord.addTuple(dPoint2);
-                tsRecord.addTuple(dPoint3);
-                context.write(deltaObjectId, tsRecord);
+                context.write(deltaObjectId, new MapWritable(value));
             }
         }
     }
@@ -155,30 +147,31 @@ public class TSMRWriteExample {
     /**
      * This reducer only save the even value.
      */
-    public static class TSReducer extends Reducer<Text, HDFSTSRecord, NullWritable, HDFSTSRecord> {
+    public static class TSReducer extends Reducer<Text, MapWritable, NullWritable, HDFSTSRecord> {
         private static final Logger logger = LoggerFactory.getLogger(TSReducer.class);
 
         @Override
-        protected void reduce(Text key, Iterable<HDFSTSRecord> values,
-                              Reducer<Text, HDFSTSRecord, NullWritable, HDFSTSRecord>.Context context) throws IOException, InterruptedException {
+        protected void reduce(Text key, Iterable<MapWritable> values,
+                              Reducer<Text, MapWritable, NullWritable, HDFSTSRecord>.Context context) throws IOException, InterruptedException {
             long sensor1_value_sum = 0;
             long sensor2_value_sum = 0;
-            long sensor3_value_sum = 0;
+            double sensor3_value_sum = 0;
             long num = 0;
-            for (HDFSTSRecord value : values) {
+            for (MapWritable value : values) {
                 num++;
-                sensor1_value_sum += (long) value.getDataPointList().get(0).getValue();
-                sensor2_value_sum += (long) value.getDataPointList().get(1).getValue();
-                sensor3_value_sum += (long) value.getDataPointList().get(2).getValue();
+                sensor1_value_sum += ((LongWritable)value.get(new Text("sensor_1"))).get();
+                sensor2_value_sum += ((LongWritable)value.get(new Text("sensor_2"))).get();
+                sensor3_value_sum += ((DoubleWritable)value.get(new Text("sensor_3"))).get();
             }
             HDFSTSRecord tsRecord = new HDFSTSRecord(1L, key.toString());
             DataPoint dPoint1 = new LongDataPoint("sensor_1", sensor1_value_sum / num);
             DataPoint dPoint2 = new LongDataPoint("sensor_2", sensor2_value_sum / num);
-            DataPoint dPoint3 = new LongDataPoint("sensor_3", sensor3_value_sum / num);
+            DataPoint dPoint3 = new DoubleDataPoint("sensor_3", sensor3_value_sum / num);
             tsRecord.addTuple(dPoint1);
             tsRecord.addTuple(dPoint2);
             tsRecord.addTuple(dPoint3);
             context.write(NullWritable.get(), tsRecord);
         }
     }
+
 }

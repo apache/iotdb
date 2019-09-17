@@ -64,9 +64,14 @@ public class TsFileHelper {
       int sensorNum = 10;
 
       // add measurements into file schema (all with INT64 data type)
-      for (int i = 0; i < sensorNum; i++) {
+      for (int i = 0; i < 2; i++) {
         schema.registerMeasurement(
                 new MeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
+      }
+
+      for (int i = 2; i < sensorNum; i++) {
+        schema.registerMeasurement(
+                new MeasurementSchema("sensor_" + (i + 1), TSDataType.DOUBLE, TSEncoding.TS_2DIFF));
       }
 
       // add measurements into TSFileWriter
@@ -80,13 +85,18 @@ public class TsFileHelper {
 
       long timestamp = 1;
       long value = 1000000L;
+      double doubleValue = 1.1;
 
-      for (int r = 0; r < rowNum; r++, value++) {
+      for (int r = 0; r < rowNum; r++, value++, doubleValue = doubleValue + 0.1) {
         int row = rowBatch.batchSize++;
         timestamps[row] = timestamp++;
-        for (int i = 0; i < sensorNum; i++) {
+        for (int i = 0; i < 2; i++) {
           long[] sensor = (long[]) values[i];
           sensor[row] = value;
+        }
+        for (int i = 2; i < sensorNum; i++) {
+          double[] sensor = (double[]) values[i];
+          sensor[row] = doubleValue;
         }
         // write RowBatch to TsFile
         if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {

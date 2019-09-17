@@ -19,8 +19,11 @@
 package org.apache.iotdb.tsfile.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.*;
-import org.apache.hadoop.io.ArrayWritable;
+import org.apache.hadoop.fs.BlockLocation;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
@@ -31,15 +34,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Collectors;
-
-import static java.util.stream.Collectors.toSet;
 
 /**
  * @author liukun
  */
-public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable> {
+public class TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
 
   /**
    * key to configure whether reading time enable
@@ -102,12 +106,12 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
    * @return Set of deltaObject, if configuration has been set the deltaObjectIds.
    * 		   null, if configuration has not been set the deltaObjectIds.
    */
-  public static Set<String> getReadDeltaObjectIds(Configuration configuration) {
+  public static List<String> getReadDeltaObjectIds(Configuration configuration) {
     String deltaObjectIds = configuration.get(READ_DELTAOBJECTS);
     if (deltaObjectIds == null || deltaObjectIds.length() < 1) {
       return null;
     } else {
-      return Arrays.stream(deltaObjectIds.split(SPERATOR)).collect(toSet());
+      return Arrays.stream(deltaObjectIds.split(SPERATOR)).collect(Collectors.toList());
     }
   }
 
@@ -139,12 +143,12 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
    * @param configuration hadoop configuration
    * @return if not set the measurementIds, return null
    */
-  public static Set<String> getReadMeasurementIds(Configuration configuration) {
+  public static List<String> getReadMeasurementIds(Configuration configuration) {
     String measurementIds = configuration.get(READ_MEASUREMENTID);
     if (measurementIds == null || measurementIds.length() < 1) {
       return null;
     } else {
-      return Arrays.stream(measurementIds.split(SPERATOR)).collect(toSet());
+      return Arrays.stream(measurementIds.split(SPERATOR)).collect(Collectors.toList());
     }
   }
 
@@ -232,7 +236,7 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
   }
 
   @Override
-  public RecordReader<NullWritable, ArrayWritable> createRecordReader(InputSplit split,
+  public RecordReader<NullWritable, MapWritable> createRecordReader(InputSplit split,
       TaskAttemptContext context)
       throws IOException, InterruptedException {
     return new TSFRecordReader();
