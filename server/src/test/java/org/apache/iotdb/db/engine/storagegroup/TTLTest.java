@@ -211,9 +211,7 @@ public class TTLTest {
     File unseqDir = new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(), sg1);
     File[] seqFiles = seqDir.listFiles(f -> f.getName().endsWith(TsFileConstant.TSFILE_SUFFIX));
     File[] unseqFiles = unseqDir.listFiles(f -> f.getName().endsWith(TsFileConstant.TSFILE_SUFFIX));
-    for (File file : seqFiles) {
-      System.out.println(file.getPath());
-    }
+
     assertEquals(4, seqFiles.length);
     assertEquals(4, unseqFiles.length);
 
