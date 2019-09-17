@@ -23,7 +23,7 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl;
-import org.apache.iotdb.tsfile.hadoop.io.HDFSInput;
+import org.apache.iotdb.tsfile.fileSystem.HDFSInput;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.junit.After;
 import org.junit.Before;
