@@ -501,3 +501,36 @@ SELECT SUM(Path) (COMMA SUM(Path))* FROM <FromClause> [WHERE <WhereClause>]?
 Eg. SELECT SUM(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
+
+### TTL
+IoTDB supports storage-level TTL settings, which means it is able to delete old data
+automatically and periodically. The beneficial of using TTL is that hopefully you can control the 
+total disk space usage to prevent the machine from running out of disk. Moreover, the query
+performance may downgrade as the total number of files goes up. Timely removing such files also
+helps to keep at a high query performance level. The TTL operations in IoTDB are supported by the
+following two statements:
+
+* Set TTL
+```
+SET TTL TO StorageGroupName TTLTime
+Eg.1 SET TTL TO root.group1 3600000
+Eg.2 SET TTL TO root.group1 1h
+This example means that for data in root.group1, only that of the latest 1 hour will remain, the
+older one is removed or made invisible. 
+Note: TTLTime can be millisecond timestamp or date format. When TTL is set, insertions that fall
+out of TTL will be rejected.
+```
+
+* Unset TTL
+```
+UNSET TTL TO StorageGroupName
+Eg.1 UNSET TTL TO root.group1
+This example means that data of all time will be stored in this group. 
+```
+
+Notice: When you set TTL to some storage groups, data out of the TTL will be made invisible
+immediately, but because the data files may contain both out-dated and living data or the data files may
+be being used by queries, the physical removal of data is stale. If you increase or unset TTL
+just after setting it previously, some previously invisible data may be seen again, but the
+physically removed one is lost forever. So we recommend that you do not change the TTL once it is
+set or do not reset it frequently, unless you are determined to suffer this unpredictability. 
