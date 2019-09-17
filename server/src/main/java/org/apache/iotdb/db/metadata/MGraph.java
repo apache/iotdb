@@ -22,10 +22,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -335,7 +333,7 @@ public class MGraph implements Serializable {
   }
 
   MNode getNodeByPathWithCheck(String path) throws PathErrorException {
-    return mtree.getNodeByPathWithFileLevelCheck(path);
+    return mtree.getNodeByPathWithStorageGroupCheck(path);
   }
 
   /**

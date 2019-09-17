@@ -99,7 +99,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // TODO: remove unclosed statements
   private Map<Long, PhysicalPlan> idStmtMap = new ConcurrentHashMap<>();
 
-  public TSServiceImpl() throws IOException {
+  public TSServiceImpl() {
     processor = new QueryProcessor(new QueryProcessExecutor());
   }
 
@@ -189,7 +189,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return new TSRPCResp(getStatus(TSStatusType.SUCCESS_STATUS));
   }
 
-  private void releaseQueryResource(TSCloseOperationReq req) throws StorageEngineException {
+  private void releaseQueryResource(TSCloseOperationReq req) {
     Map<Long, QueryContext> contextMap = contextMapLocal.get();
     if (contextMap == null) {
       return;
@@ -223,8 +223,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    */
   private TS_Status getStatus(TSStatusType statusType) {
     TS_StatusType statusCodeAndMessage = new TS_StatusType(statusType.getStatusCode(), statusType.getStatusMessage());
-    TS_Status status = new TS_Status(statusCodeAndMessage);
-    return status;
+    return new TS_Status(statusCodeAndMessage);
   }
 
   /**
@@ -237,8 +236,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private TS_Status getStatus(TSStatusType statusType, String appendMessage) {
     TS_StatusType statusCodeAndMessage = new TS_StatusType(statusType.getStatusCode(),
             statusType.getStatusMessage() + ": " + appendMessage);
-    TS_Status status = new TS_Status(statusCodeAndMessage);
-    return status;
+    return new TS_Status(statusCodeAndMessage);
   }
 
   @Override
@@ -268,7 +266,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setMetadataInJson(metadataInJson);
           status = new TS_Status(getStatus(TSStatusType.SUCCESS_STATUS));
           break;
-        case "DELTA_OBEJECT":
+        case "DELTA_OBJECT":
           Metadata metadata = getMetadata();
           String column = req.getColumnPath();
           Map<String, List<String>> deviceMap = metadata.getDeviceMap();
@@ -321,11 +319,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return nodeColumnsNum;
   }
 
-  private List<String> getNodesList(String level) throws PathErrorException {
+  private List<String> getNodesList(String level) {
     return MManager.getInstance().getNodesList(level);
   }
 
-  private List<String> getAllStorageGroups() throws PathErrorException {
+  private List<String> getAllStorageGroups() {
     return MManager.getInstance().getAllStorageGroupNames();
   }
 
@@ -472,9 +470,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
     } catch (Exception e) {
       String errMessage = String.format(
-          "Fail to generate physcial plan and execute for statement "
-              + "%s beacuse %s",
-          statement, e.getMessage());
+          "Fail to generate physical plan and execute for statement "
+              + "%s because %s", statement, e.getMessage());
       logger.warn("Error occurred when executing {}", statement, e);
       result.add(Statement.EXECUTE_FAILED);
       batchErrorMessage.append(errMessage).append("\n");
@@ -550,11 +547,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return false;
     }
     statement = statement.toLowerCase().trim();
-    if (Pattern.matches(IoTDBConstant.SHOW_FLUSH_TASK_INFO, statement)) {
-      return true;
-    } else {
-      return false;
-    }
+    return Pattern.matches(IoTDBConstant.SHOW_FLUSH_TASK_INFO, statement);
   }
 
   /**
@@ -565,11 +558,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return false;
     }
     statement = statement.toLowerCase().trim();
-    if (Pattern.matches(IoTDBConstant.SHOW_DYNAMIC_PARAMETERS, statement)) {
-      return true;
-    } else {
-      return false;
-    }
+    return Pattern.matches(IoTDBConstant.SHOW_DYNAMIC_PARAMETERS, statement);
   }
 
   /**
@@ -922,7 +911,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  void handleClientExit() throws TException {
+  void handleClientExit() {
     closeOperation(null);
     closeSession(null);
   }
@@ -1002,7 +991,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSRPCResp insertRow(TSInsertReq req) throws TException {
+  public TSRPCResp insertRow(TSInsertReq req) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSRPCResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
@@ -1069,7 +1058,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSRPCResp setStorageGroup(TSSetStorageGroupReq req) throws TException {
+  public TSRPCResp setStorageGroup(TSSetStorageGroupReq req) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSRPCResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
@@ -1084,7 +1073,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSRPCResp createTimeseries(TSCreateTimeseriesReq req) throws TException {
+  public TSRPCResp createTimeseries(TSCreateTimeseriesReq req) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSRPCResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));
@@ -1127,7 +1116,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       execRet = executeNonQuery(plan);
     } catch (ProcessorException e) {
       logger.debug("meet error while processing non-query. ", e);
-      return getStatus(TSStatusType.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      if (e.getCause() instanceof OutOfTTLException) {
+        return getStatus(TSStatusType.OUT_OF_TTL_ERROR, e.getMessage());
+      } else if (e.getCause() instanceof PathErrorException) {
+        return getStatus(TSStatusType.NOT_A_STORAGE_GROUP_ERROR, e.getMessage());
+      } else {
+        return getStatus(TSStatusType.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      }
     }
 
     return execRet ? getStatus(TSStatusType.SUCCESS_STATUS, "Execute successfully")

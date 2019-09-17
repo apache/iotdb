@@ -24,10 +24,12 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -52,13 +54,15 @@ public class MTreeTest {
   public void testAddLeftNodePath() {
     MTree root = new MTree("root");
     try {
-      root.addTimeseriesPath("root.laptop.d1.s1", "INT32", "RLE");
+      root.addTimeseriesPath("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
     } catch (PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      root.addTimeseriesPath("root.laptop.d1.s1.b", "INT32", "RLE");
+      root.addTimeseriesPath("root.laptop.d1.s1.b", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
     } catch (PathErrorException e) {
       Assert.assertEquals(
           String.format("The Node [%s] is left node, the timeseries %s can't be created", "s1",
@@ -73,7 +77,8 @@ public class MTreeTest {
     assertEquals(true, root.isPathExist(path1));
     assertEquals(false, root.isPathExist("root.laptop.d1"));
     try {
-      root.addTimeseriesPath("root.laptop.d1.s1", "INT32", "RLE");
+      root.addTimeseriesPath("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
     } catch (PathErrorException e1) {
       fail(e1.getMessage());
     }
@@ -81,7 +86,8 @@ public class MTreeTest {
     assertEquals(true, root.isPathExist("root.laptop"));
     assertEquals(false, root.isPathExist("root.laptop.d1.s2"));
     try {
-      root.addTimeseriesPath("aa.bb.cc", "INT32", "RLE");
+      root.addTimeseriesPath("aa.bb.cc", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
     } catch (PathErrorException e) {
       Assert.assertEquals(String.format("Timeseries %s is not right.", "aa.bb.cc"), e.getMessage());
     }
@@ -94,17 +100,22 @@ public class MTreeTest {
       assertEquals(false, root.isPathExist("root.a.d0"));
       assertEquals(false, root.checkFileNameByPath("root.a.d0"));
       root.setStorageGroup("root.a.d0");
-      root.addTimeseriesPath("root.a.d0.s0", "INT32", "RLE");
-      root.addTimeseriesPath("root.a.d0.s1", "INT32", "RLE");
+      root.addTimeseriesPath("root.a.d0.s0", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
+      root.addTimeseriesPath("root.a.d0.s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
 
       assertEquals(false, root.isPathExist("root.a.d1"));
       assertEquals(false, root.checkFileNameByPath("root.a.d1"));
       root.setStorageGroup("root.a.d1");
-      root.addTimeseriesPath("root.a.d1.s0", "INT32", "RLE");
-      root.addTimeseriesPath("root.a.d1.s1", "INT32", "RLE");
+      root.addTimeseriesPath("root.a.d1.s0", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
+      root.addTimeseriesPath("root.a.d1.s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
 
       root.setStorageGroup("root.a.b.d0");
-      root.addTimeseriesPath("root.a.b.d0.s0", "INT32", "RLE");
+      root.addTimeseriesPath("root.a.b.d0.s0", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
 
     } catch (PathErrorException e1) {
       e1.printStackTrace();
@@ -136,32 +147,42 @@ public class MTreeTest {
     MTree root3 = new MTree("root");
     try {
       root.setStorageGroup("root.a.d0");
-      root.addTimeseriesPath("root.a.d0.s0", "INT32", "RLE");
-      root.addTimeseriesPath("root.a.d0.s1", "INT32", "RLE");
+      root.addTimeseriesPath("root.a.d0.s0", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
+      root.addTimeseriesPath("root.a.d0.s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
 
       root.setStorageGroup("root.a.d1");
-      root.addTimeseriesPath("root.a.d1.s0", "INT32", "RLE");
-      root.addTimeseriesPath("root.a.d1.s1", "INT32", "RLE");
+      root.addTimeseriesPath("root.a.d1.s0", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
+      root.addTimeseriesPath("root.a.d1.s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
 
       root.setStorageGroup("root.a.b.d0");
-      root.addTimeseriesPath("root.a.b.d0.s0", "INT32", "RLE");
+      root.addTimeseriesPath("root.a.b.d0.s0", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
 
       root1.setStorageGroup("root.a.d0");
-      root1.addTimeseriesPath("root.a.d0.s0", "INT32", "RLE");
-      root1.addTimeseriesPath("root.a.d0.s1", "INT32", "RLE");
+      root1.addTimeseriesPath("root.a.d0.s0", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
+      root1.addTimeseriesPath("root.a.d0.s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
 
       root2.setStorageGroup("root.a.d1");
-      root2.addTimeseriesPath("root.a.d1.s0", "INT32", "RLE");
-      root2.addTimeseriesPath("root.a.d1.s1", "INT32", "RLE");
+      root2.addTimeseriesPath("root.a.d1.s0", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
+      root2.addTimeseriesPath("root.a.d1.s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
 
       root3.setStorageGroup("root.a.b.d0");
-      root3.addTimeseriesPath("root.a.b.d0.s0", "INT32", "RLE");
+      root3.addTimeseriesPath("root.a.b.d0.s0", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
 
-      String[] metadatas = new String[3];
-      metadatas[0] = root1.toString();
-      metadatas[1] = root2.toString();
-      metadatas[2] = root3.toString();
-      assertEquals(MTree.combineMetadataInStrings(metadatas), root.toString());
+      String[] metadataStrs = new String[3];
+      metadataStrs[0] = root1.toString();
+      metadataStrs[1] = root2.toString();
+      metadataStrs[2] = root3.toString();
+      assertEquals(MTree.combineMetadataInStrings(metadataStrs), root.toString());
     } catch (PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -204,13 +225,17 @@ public class MTreeTest {
 
     try {
       assertEquals("root.laptop.d1", root.getStorageGroupNameByPath("root.laptop.d1.s0"));
-      root.addTimeseriesPath("root.laptop.d1.s0", "INT32", "RLE");
+      root.addTimeseriesPath("root.laptop.d1.s0", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
       assertEquals("root.laptop.d1", root.getStorageGroupNameByPath("root.laptop.d1.s1"));
-      root.addTimeseriesPath("root.laptop.d1.s1", "INT32", "RLE");
+      root.addTimeseriesPath("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
       assertEquals("root.laptop.d2", root.getStorageGroupNameByPath("root.laptop.d2.s0"));
-      root.addTimeseriesPath("root.laptop.d2.s0", "INT32", "RLE");
+      root.addTimeseriesPath("root.laptop.d2.s0", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
       assertEquals("root.laptop.d2", root.getStorageGroupNameByPath("root.laptop.d2.s1"));
-      root.addTimeseriesPath("root.laptop.d2.s1", "INT32", "RLE");
+      root.addTimeseriesPath("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
+          (TSFileConfig.compressor), Collections.EMPTY_MAP);
     } catch (PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());

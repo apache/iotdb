@@ -23,6 +23,7 @@ import java.util.List;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
@@ -126,7 +127,7 @@ public class PhysicalGenerator {
         return transformQuery(query);
       case TTL:
         TTLOperator ttlOperator = (TTLOperator) operator;
-        if (ttlOperator.getTokenIntType() == TSParser.TOK_SET) {
+        if (ttlOperator.getTokenIntType() == SQLConstant.TOK_SET) {
           return new TTLPlan(ttlOperator.getStorageGroup(), ttlOperator.getDataTTL());
         } else {
           return new TTLPlan(ttlOperator.getStorageGroup());

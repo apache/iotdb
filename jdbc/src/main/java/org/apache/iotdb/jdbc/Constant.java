@@ -28,7 +28,7 @@ public class Constant {
 
   public static final String GLOBAL_COLUMN_REQ = "COLUMN";
 
-  public static final String GLOBAL_DELTA_OBJECT_REQ = "DELTA_OBEJECT";
+  public static final String GLOBAL_DELTA_OBJECT_REQ = "DELTA_OBJECT";
 
   public static final String GLOBAL_SHOW_TIMESERIES_REQ = "SHOW_TIMESERIES";
 

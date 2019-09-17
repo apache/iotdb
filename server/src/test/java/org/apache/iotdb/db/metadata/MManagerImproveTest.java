@@ -213,7 +213,7 @@ public class MManagerImproveTest {
 
   public void doCacheTest(String deviceId, List<String> measurementList)
       throws PathErrorException, ProcessorException {
-    MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
+    MNode node = mManager.getNodeByPathFromCache(deviceId);
     for (int i = 0; i < measurementList.size(); i++) {
       assertEquals(true, node.hasChild(measurementList.get(i)));
       MNode measurementNode = node.getChild(measurementList.get(i));

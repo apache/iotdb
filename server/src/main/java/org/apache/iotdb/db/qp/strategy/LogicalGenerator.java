@@ -236,18 +236,23 @@ public class LogicalGenerator {
     }
   }
 
-  private void analyzeSetTTL(AstNode astNode) {
-    String path = astNode.getChild(1).getText();
-    long dataTTL = Long.parseLong(astNode.getChild(2).getText());
-    TTLOperator operator = new TTLOperator(TSParser.TOK_SET);
+  private void analyzeSetTTL(AstNode astNode) throws LogicalOperatorException {
+    String path = parsePath(astNode.getChild(1)).getFullPath();
+    long dataTTL;
+    try {
+      dataTTL = Long.parseLong(astNode.getChild(2).getText());
+    } catch (NumberFormatException e) {
+      dataTTL = parseTimeFormat(astNode.getChild(2).getText());
+    }
+    TTLOperator operator = new TTLOperator(SQLConstant.TOK_SET);
     initializedOperator = operator;
     operator.setStorageGroup(path);
     operator.setDataTTL(dataTTL);
   }
 
   private void analyzeUnsetTTL(AstNode astNode) {
-    String path = astNode.getChild(1).getText();
-    TTLOperator operator = new TTLOperator(TSParser.TOK_UNSET);
+    String path = parsePath(astNode.getChild(1)).getFullPath();
+    TTLOperator operator = new TTLOperator(SQLConstant.TOK_UNSET);
     initializedOperator = operator;
     operator.setStorageGroup(path);
   }

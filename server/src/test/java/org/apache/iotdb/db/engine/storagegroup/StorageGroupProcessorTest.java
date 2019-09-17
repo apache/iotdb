@@ -21,20 +21,17 @@ package org.apache.iotdb.db.engine.storagegroup;
 import static org.junit.Assert.assertFalse;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.ArrayList;
-
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
-
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.JobFileManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -72,7 +69,7 @@ public class StorageGroupProcessorTest {
 
 
   @Test
-  public void testSequenceSyncClose() {
+  public void testSequenceSyncClose() throws StorageEngineException {
     for (int j = 1; j <= 10; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -146,7 +143,7 @@ public class StorageGroupProcessorTest {
 
 
   @Test
-  public void testSeqAndUnSeqSyncClose() {
+  public void testSeqAndUnSeqSyncClose() throws StorageEngineException {
 
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
@@ -178,7 +175,7 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testMerge() {
+  public void testMerge() throws StorageEngineException {
 
     mergeLock = new AtomicLong(0);
     for (int j = 21; j <= 30; j++) {

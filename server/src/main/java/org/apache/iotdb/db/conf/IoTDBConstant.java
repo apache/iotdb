@@ -65,4 +65,13 @@ public class IoTDBConstant {
   public static final String USER = "User";
   public static final String PRIVILEGE = "Privilege";
 
+  // JDBC constants
+  public static final String GLOBAL_COLUMN_REQ = "COLUMN";
+  public static final String GLOBAL_DELTA_OBJECT_REQ = "DELTA_OBJECT";
+  public static final String GLOBAL_SHOW_TIMESERIES_REQ = "SHOW_TIMESERIES";
+  public static final String GLOBAL_COUNT_TIMESERIES_REQ = "COUNT_TIMESERIES";
+  public static final String GLOBAL_COUNT_NODE_TIMESERIES_REQ = "COUNT_NODE_TIMESERIES";
+  public static final String GLOBAL_COUNT_NODES_REQ = "COUNT_NODES";
+  public static final String GLOBAL_SHOW_STORAGE_GROUP_REQ = "SHOW_STORAGE_GROUP";
+  public static final String GLOBAL_COLUMNS_REQ = "ALL_COLUMNS";
 }

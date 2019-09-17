@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.ConcurrentModificationException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -60,7 +61,9 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
+import org.apache.iotdb.db.exception.OutOfTTLException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -341,10 +344,10 @@ public class StorageGroupProcessor {
     }
   }
 
-  public boolean insert(InsertPlan insertPlan) {
+  public boolean insert(InsertPlan insertPlan) throws StorageEngineException {
     // reject insertions that are out of ttl
     if (!checkTTL(insertPlan.getTime())) {
-      return false;
+      throw new OutOfTTLException(insertPlan.getTime(), System.currentTimeMillis() - dataTTL);
     }
     writeLock();
     try {
@@ -512,6 +515,7 @@ public class StorageGroupProcessor {
     } else {
       baseDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
     }
+    logger.info("Got a base dir for new TsFileProcessor {}, sequence {}", baseDir, sequence);
     new File(baseDir, storageGroupName).mkdirs();
 
     String filePath = Paths.get(baseDir, storageGroupName,
@@ -586,11 +590,15 @@ public class StorageGroupProcessor {
   public synchronized void checkFilesTTL() {
     long timeBound = System.currentTimeMillis() - dataTTL;
     logger.info("TTL removing files before {}", new Date(timeBound));
-    for (TsFileResource tsFileResource : unSequenceFileList) {
-      checkFileTTL(tsFileResource, timeBound, true);
-    }
-    for (TsFileResource tsFileResource : sequenceFileList) {
-      checkFileTTL(tsFileResource, timeBound, false);
+    try {
+      for (TsFileResource tsFileResource : unSequenceFileList) {
+        checkFileTTL(tsFileResource, timeBound, true);
+      }
+      for (TsFileResource tsFileResource : sequenceFileList) {
+        checkFileTTL(tsFileResource, timeBound, false);
+      }
+    } catch (ConcurrentModificationException e) {
+      // ignore
     }
   }
 
@@ -744,14 +752,14 @@ public class StorageGroupProcessor {
       }
       closeQueryLock.readLock().lock();
 
-      if (dataTTL != Long.MAX_VALUE) {
-        Long deviceEndTime = tsFileResource.getEndTimeMap().get(deviceId);
-        if (deviceEndTime != null && !checkTTL(deviceEndTime)) {
-          continue;
-        }
-      }
-
       try {
+        if (dataTTL != Long.MAX_VALUE) {
+          Long deviceEndTime = tsFileResource.getEndTimeMap().get(deviceId);
+          if (deviceEndTime != null && !checkTTL(deviceEndTime)) {
+            continue;
+          }
+        }
+
         if (tsFileResource.isClosed()) {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {

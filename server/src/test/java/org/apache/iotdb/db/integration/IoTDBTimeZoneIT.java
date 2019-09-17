@@ -43,25 +43,25 @@ public class IoTDBTimeZoneIT {
   private final String tz1 = "root.timezone.tz1";
 
   // private boolean testFlag = TestUtils.testFlag;
-  String[] retArray = new String[]{"1514775603000,4", "1514779200000,1", "1514779201000,2",
+  private String[] retArray = new String[]{"1514775603000,4", "1514779200000,1", "1514779201000,2",
       "1514779202000,3",
       "1514779203000,8", "1514782804000,5", "1514782805000,7", "1514782806000,9",
       "1514782807000,10",
       "1514782808000,11", "1514782809000,12", "1514782810000,13", "1514789200000,6",};
-  private IoTDB deamon;
+  private IoTDB daemon;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    deamon = IoTDB.getInstance();
-    deamon.active();
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
     createTimeseries();
   }
 
   @After
   public void tearDown() throws Exception {
-    deamon.stop();
+    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 

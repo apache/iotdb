@@ -38,7 +38,7 @@ public class UnseqResourceReaderTest extends ReaderTestHelper {
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
   @Override
-  protected void insertData() throws IOException {
+  protected void insertData() throws IOException, StorageEngineException {
     for (int j = 1; j <= 100; j++) {
       insertOneRecord(j, j);
     }
@@ -111,7 +111,7 @@ public class UnseqResourceReaderTest extends ReaderTestHelper {
   }
 
   @Test
-  public void testUnseqResourceReaderByTimestamp() throws IOException, StorageEngineException {
+  public void testUnseqResourceReaderByTimestamp() throws IOException {
     Path path = new Path(deviceId, measurementId);
     QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context,
         null);

@@ -274,7 +274,7 @@ public class IoTDBStatement implements Statement {
       try {
         RpcUtils.verifySuccess(execResp.getStatus());
       } catch (IoTDBRPCException e) {
-        throw new IoTDBSQLException(e.getMessage());
+        throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
       }
       if (execResp.getOperationHandle().hasResultSet) {
         IoTDBQueryResultSet resSet = new IoTDBQueryResultSet(this,
@@ -378,7 +378,7 @@ public class IoTDBStatement implements Statement {
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
     } catch (IoTDBRPCException e) {
-      throw new IoTDBSQLException(e.getMessage());
+      throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
     IoTDBQueryResultSet resSet = new IoTDBQueryResultSet(this, execResp.getColumns(), client,
         operationHandle, sql, execResp.getOperationType(), execResp.getDataTypeList(),
@@ -435,7 +435,7 @@ public class IoTDBStatement implements Statement {
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
     } catch (IoTDBRPCException e) {
-      throw new IoTDBSQLException(e.getMessage());
+      throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
     return 0;
   }

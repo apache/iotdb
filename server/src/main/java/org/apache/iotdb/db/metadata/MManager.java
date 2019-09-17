@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
+import org.apache.iotdb.db.exception.NotStorageGroupException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -1021,10 +1022,10 @@ public class MManager {
   /**
    * function for getting node by deviceId from cache.
    */
-  public MNode getNodeByDeviceIdFromCache(String deviceId) throws PathErrorException {
+  public MNode getNodeByPathFromCache(String path) throws PathErrorException {
     lock.readLock().lock();
     try {
-      return mNodeCache.get(deviceId);
+      return mNodeCache.get(path);
     } catch (CacheException e) {
       throw new PathErrorException(e);
     } finally {
@@ -1242,6 +1243,9 @@ public class MManager {
     lock.writeLock().lock();
     try {
       MNode sgNode = getNodeByPath(storageGroup);
+      if (!sgNode.isStorageLevel()) {
+        throw new NotStorageGroupException(storageGroup);
+      }
       sgNode.setDataTTL(dataTTL);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();

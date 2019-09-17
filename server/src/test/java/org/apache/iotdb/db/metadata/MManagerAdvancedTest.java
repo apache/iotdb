@@ -114,11 +114,11 @@ public class MManagerAdvancedTest {
     Assert.assertEquals(null,
         mmanager.checkPathStorageLevelAndGetDataType("root.vehicle.d0.s100").getDataType());
 
-    MNode node = mmanager.getNodeByDeviceIdFromCache("root.vehicle.d0");
+    MNode node = mmanager.getNodeByPathFromCache("root.vehicle.d0");
     Assert.assertEquals(TSDataType.INT32, node.getChild("s0").getSchema().getType());
 
     try {
-      MNode node1 = mmanager.getNodeByDeviceIdFromCache("root.vehicle.d100");
+      MNode node1 = mmanager.getNodeByPathFromCache("root.vehicle.d100");
       fail();
     } catch (PathErrorException e) {
 

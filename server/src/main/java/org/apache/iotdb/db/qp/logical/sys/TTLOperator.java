@@ -29,6 +29,7 @@ public class TTLOperator extends RootOperator {
 
   public TTLOperator(int tokenIntType) {
     super(tokenIntType);
+    this.operatorType = OperatorType.TTL;
   }
 
   public String getStorageGroup() {

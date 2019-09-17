@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import java.sql.SQLException;
+import org.apache.iotdb.service.rpc.thrift.TS_Status;
 
 public class IoTDBSQLException extends SQLException {
 
@@ -27,6 +28,10 @@ public class IoTDBSQLException extends SQLException {
 
   public IoTDBSQLException(String reason) {
     super(reason);
+  }
+
+  public IoTDBSQLException(String reason, TS_Status status) {
+    super(reason, status.sqlState, status.statusType.code);
   }
 
   public IoTDBSQLException(Throwable cause) {

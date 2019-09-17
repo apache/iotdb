@@ -59,9 +59,6 @@ public class TsFileMetaDataCache {
   private long versionAndCreatebySize = 10;
 
   private TsFileMetaDataCache() {
-    if (!cacheEnable) {
-      return;
-    }
     cache = new LRULinkedHashMap<TsFileResource, TsFileMetaData>(MEMORY_THRESHOLD_IN_B, true) {
       @Override
       protected long calEntrySize(TsFileResource key, TsFileMetaData value) {

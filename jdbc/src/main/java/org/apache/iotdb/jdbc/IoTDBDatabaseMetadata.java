@@ -83,7 +83,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           try {
             RpcUtils.verifySuccess(resp.getStatus());
           } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage());
+            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
           }
           return new IoTDBMetadataResultSet(resp.getColumnsList(), IoTDBMetadataResultSet.MetadataType.COLUMN);
         } catch (TException e) {
@@ -97,7 +97,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           try {
             RpcUtils.verifySuccess(resp.getStatus());
           } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage());
+            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
           }
           return new IoTDBMetadataResultSet(resp.getColumnsList(), IoTDBMetadataResultSet.MetadataType.COLUMN);
         } catch (TException e) {
@@ -110,7 +110,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           try {
             RpcUtils.verifySuccess(resp.getStatus());
           } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage());
+            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
           }
           List<String> showStorageGroup = resp.getShowStorageGroups();
           return new IoTDBMetadataResultSet(showStorageGroup, IoTDBMetadataResultSet.MetadataType.STORAGE_GROUP);
@@ -125,7 +125,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           try {
             RpcUtils.verifySuccess(resp.getStatus());
           } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage());
+            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
           }
           List<List<String>> showTimeseriesList = resp.getShowTimeseriesList();
           return new IoTDBMetadataResultSet(showTimeseriesList, IoTDBMetadataResultSet.MetadataType.TIMESERIES);
@@ -140,7 +140,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           try {
             RpcUtils.verifySuccess(resp.getStatus());
           } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage());
+            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
           }
           return new IoTDBMetadataResultSet(resp.getColumnsList().size(), IoTDBMetadataResultSet.MetadataType.COUNT_TIMESERIES);
         } catch (TException e) {
@@ -189,7 +189,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           try {
             RpcUtils.verifySuccess(resp.getStatus());
           } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage());
+            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
           }
           return new IoTDBMetadataResultSet(resp.getNodesList().size(), IoTDBMetadataResultSet.MetadataType.COUNT_NODES);
         } catch (TException e) {
@@ -203,7 +203,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           try {
             RpcUtils.verifySuccess(resp.getStatus());
           } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage());
+            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
           }
           return new IoTDBMetadataResultSet(resp.getNodeTimeseriesNum(), IoTDBMetadataResultSet.MetadataType.COUNT_NODE_TIMESERIES);
         } catch (TException e) {
@@ -1341,7 +1341,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     try {
       RpcUtils.verifySuccess(resp.getStatus());
     } catch (IoTDBRPCException e) {
-      throw new IoTDBSQLException(e.getMessage());
+      throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
     }
     return resp.getMetadataInJson();
   }
