@@ -1,0 +1,184 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iotdb.tsfile.hadoop;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.ArrayWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.hadoop.record.HDFSTSRecord;
+import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.URISyntaxException;
+
+/**
+ * One example for writing TsFile with MapReduce.
+ * @author Yuan Tian
+ */
+public class TSMRWriteExample {
+
+    public static void main(String[] args)
+            throws IOException, ClassNotFoundException, TSFHadoopException, URISyntaxException {
+
+        Schema schema = new Schema();
+        // the number of values to include in the row record
+        int sensorNum = 3;
+
+        // add measurements into file schema (all with INT64 data type)
+        for (int i = 0; i < sensorNum; i++) {
+            schema.registerMeasurement(
+                    new MeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
+        }
+        TSFOutputFormat.setSchema(schema);
+
+        if (args.length != 3) {
+            System.out.println("Please give hdfs url, input path, output path");
+            return;
+        }
+        String HDFSURL = args[0];
+        Path inputPath = new Path(args[1]);
+        Path outputPath = new Path(args[2]);
+
+        Configuration configuration = new Configuration();
+        // set file system configuration
+        //configuration.set("fs.defaultFS", HDFSURL);
+        Job job = Job.getInstance(configuration);
+
+        FileSystem fs = FileSystem.get(configuration);
+        if(fs.exists(outputPath)){
+            fs.delete(outputPath,true);
+        }
+
+        job.setJobName("TsFile write jar");
+        job.setJarByClass(TSMRWriteExample.class);
+        // set mapper and reducer
+        job.setMapperClass(TSMapper.class);
+        job.setReducerClass(TSReducer.class);
+
+
+        // set mapper output key and value
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(HDFSTSRecord.class);
+        // set reducer output key and value
+        job.setOutputKeyClass(NullWritable.class);
+        job.setOutputValueClass(HDFSTSRecord.class);
+
+        // set input format and output format
+        job.setInputFormatClass(TSFInputFormat.class);
+        job.setOutputFormatClass(TSFOutputFormat.class);
+
+        // set input file path
+        TSFInputFormat.setInputPaths(job, inputPath);
+        // set output file path
+        TSFOutputFormat.setOutputPath(job, outputPath);
+
+
+        /**
+         * special configuration for reading tsfile with TSFInputFormat
+         */
+        TSFInputFormat.setReadTime(job, true); // configure reading time enable
+        TSFInputFormat.setReadDeltaObjectId(job, true); // configure reading deltaObjectId enable
+        String[] deltaObjectIds = {"device_1"};// configure reading which deltaObjectIds
+        TSFInputFormat.setReadDeltaObjectIds(job, deltaObjectIds);
+        String[] measurementIds = {"sensor_1", "sensor_2", "sensor_3"};// configure reading which measurementIds
+        TSFInputFormat.setReadMeasurementIds(job, measurementIds);
+        boolean isSuccess = false;
+        try {
+            isSuccess = job.waitForCompletion(true);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        if (isSuccess) {
+            System.out.println("Execute successfully");
+        } else {
+            System.out.println("Execute unsuccessfully");
+        }
+    }
+
+    public static class TSMapper extends Mapper<NullWritable, ArrayWritable, Text, HDFSTSRecord> {
+
+        private static final Logger logger = LoggerFactory.getLogger(TSMapper.class);
+
+        @Override
+        protected void map(NullWritable key, ArrayWritable value,
+                           Mapper<NullWritable, ArrayWritable, Text, HDFSTSRecord>.Context context)
+                throws IOException, InterruptedException {
+
+            Text deltaObjectId = (Text) value.get()[1];
+            long timestamp = ((LongWritable)value.get()[0]).get();
+            if (timestamp % 100000 == 0) {
+                long sensor1_value = ((LongWritable)value.get()[2]).get();
+                long sensor2_value = ((LongWritable)value.get()[3]).get();
+                long sensor3_value = ((LongWritable)value.get()[4]).get();
+                HDFSTSRecord tsRecord = new HDFSTSRecord(timestamp, deltaObjectId.toString());
+                DataPoint dPoint1 = new LongDataPoint("sensor_1", sensor1_value);
+                DataPoint dPoint2 = new LongDataPoint("sensor_2", sensor2_value);
+                DataPoint dPoint3 = new LongDataPoint("sensor_3", sensor3_value);
+                tsRecord.addTuple(dPoint1);
+                tsRecord.addTuple(dPoint2);
+                tsRecord.addTuple(dPoint3);
+                context.write(deltaObjectId, tsRecord);
+            }
+        }
+    }
+
+    /**
+     * This reducer only save the even value.
+     */
+    public static class TSReducer extends Reducer<Text, HDFSTSRecord, NullWritable, HDFSTSRecord> {
+        private static final Logger logger = LoggerFactory.getLogger(TSReducer.class);
+
+        @Override
+        protected void reduce(Text key, Iterable<HDFSTSRecord> values,
+                              Reducer<Text, HDFSTSRecord, NullWritable, HDFSTSRecord>.Context context) throws IOException, InterruptedException {
+            long sensor1_value_sum = 0;
+            long sensor2_value_sum = 0;
+            long sensor3_value_sum = 0;
+            long num = 0;
+            for (HDFSTSRecord value : values) {
+                num++;
+                sensor1_value_sum += (long) value.getDataPointList().get(0).getValue();
+                sensor2_value_sum += (long) value.getDataPointList().get(1).getValue();
+                sensor3_value_sum += (long) value.getDataPointList().get(2).getValue();
+            }
+            HDFSTSRecord tsRecord = new HDFSTSRecord(1L, key.toString());
+            DataPoint dPoint1 = new LongDataPoint("sensor_1", sensor1_value_sum / num);
+            DataPoint dPoint2 = new LongDataPoint("sensor_2", sensor2_value_sum / num);
+            DataPoint dPoint3 = new LongDataPoint("sensor_3", sensor3_value_sum / num);
+            tsRecord.addTuple(dPoint1);
+            tsRecord.addTuple(dPoint2);
+            tsRecord.addTuple(dPoint3);
+            context.write(NullWritable.get(), tsRecord);
+        }
+    }
+}

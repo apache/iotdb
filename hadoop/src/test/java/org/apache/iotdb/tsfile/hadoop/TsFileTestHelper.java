@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.hadoop;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.hadoop.example.TsFileHelper;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
@@ -36,7 +35,7 @@ import java.io.IOException;
 public class TsFileTestHelper {
 
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileHelper.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileTestHelper.class);
 
   public static boolean deleteTsFile(String filePath) {
     File file = new File(filePath);

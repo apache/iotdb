@@ -23,7 +23,7 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.hadoop.record.HDFSTSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,18 +34,22 @@ import java.util.Objects;
 /**
  * @author Yuan Tian
  */
-public class TSFOutputFormat extends FileOutputFormat<NullWritable, TSRecord> {
+public class TSFOutputFormat extends FileOutputFormat<NullWritable, HDFSTSRecord> {
 
   private static final Logger logger = LoggerFactory.getLogger(TSFOutputFormat.class);
-  private static final String extension = "tsfile";
-  private Schema schema;
+  private static final String extension = "";
+  private static Schema schema;
 
-  public TSFOutputFormat(Schema schema) {
-    this.schema = schema;
+  public static Schema getSchema() {
+    return schema;
+  }
+
+  public static void setSchema(Schema schema) {
+    TSFOutputFormat.schema = schema;
   }
 
   @Override
-  public RecordWriter<NullWritable, TSRecord> getRecordWriter(TaskAttemptContext job)
+  public RecordWriter<NullWritable, HDFSTSRecord> getRecordWriter(TaskAttemptContext job)
       throws IOException {
 
     Path outputPath = getDefaultWorkFile(job, extension);

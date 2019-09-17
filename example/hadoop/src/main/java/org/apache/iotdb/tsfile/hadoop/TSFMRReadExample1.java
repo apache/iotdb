@@ -21,13 +21,12 @@ package org.apache.iotdb.tsfile.hadoop;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.ArrayWritable;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.NullWritable;
-import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -39,10 +38,10 @@ import java.net.URISyntaxException;
  * @author Yuan Tian
  *
  */
-public class TSFMRReadExample {
+public class TSFMRReadExample1 {
 
   public static void main(String[] args)
-      throws IOException, ClassNotFoundException, TSFHadoopException, URISyntaxException {
+          throws IOException, ClassNotFoundException, TSFHadoopException, URISyntaxException {
 
     if (args.length != 3) {
       System.out.println("Please give hdfs url, input path, output path");
@@ -71,7 +70,7 @@ public class TSFMRReadExample {
     job.setInputFormatClass(TSFInputFormat.class);
     // set mapper output key and value
     job.setMapOutputKeyClass(Text.class);
-    job.setMapOutputValueClass(IntWritable.class);
+    job.setMapOutputValueClass(ArrayWritable.class);
     // set reducer output key and value
     job.setOutputKeyClass(Text.class);
     job.setOutputValueClass(IntWritable.class);
@@ -102,30 +101,38 @@ public class TSFMRReadExample {
     }
   }
 
-  public static class TSMapper extends Mapper<NullWritable, ArrayWritable, Text, IntWritable> {
+  public static class TSMapper extends Mapper<NullWritable, ArrayWritable, Text, ArrayWritable> {
 
     private static final IntWritable one = new IntWritable(1);
+    private static final Logger logger = LoggerFactory.getLogger(TSMapper.class);
+
 
     @Override
     protected void map(NullWritable key, ArrayWritable value,
-        Mapper<NullWritable, ArrayWritable, Text, IntWritable>.Context context)
-        throws IOException, InterruptedException {
+                       Mapper<NullWritable, ArrayWritable, Text, ArrayWritable>.Context context)
+            throws IOException, InterruptedException {
+
+      Writable[] writables = new Writable[1];
+      writables[0] = one;
 
       Text deltaObjectId = (Text) value.get()[1];
-      context.write(deltaObjectId, one);
+      context.write(deltaObjectId, new ArrayWritable(Writable.class, writables));
     }
   }
 
-  public static class TSReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+  public static class TSReducer extends Reducer<Text, ArrayWritable, Text, IntWritable> {
+
+    private static final Logger logger = LoggerFactory.getLogger(TSReducer.class);
 
     @Override
-    protected void reduce(Text key, Iterable<IntWritable> values,
-        Reducer<Text, IntWritable, Text, IntWritable>.Context context)
-        throws IOException, InterruptedException {
+    protected void reduce(Text key, Iterable<ArrayWritable> values,
+                          Reducer<Text, ArrayWritable, Text, IntWritable>.Context context)
+            throws IOException, InterruptedException {
+
 
       int sum = 0;
-      for (IntWritable intWritable : values) {
-        sum = sum + intWritable.get();
+      for (ArrayWritable value : values) {
+        sum = sum + ((IntWritable)value.get()[0]).get();
       }
       context.write(key, new IntWritable(sum));
     }

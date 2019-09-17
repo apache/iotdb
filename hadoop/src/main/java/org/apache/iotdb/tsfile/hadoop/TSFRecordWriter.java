@@ -23,31 +23,32 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.hadoop.io.HDFSOutput;
+import org.apache.iotdb.tsfile.fileSystem.HDFSOutput;
+import org.apache.iotdb.tsfile.hadoop.record.HDFSTSRecord;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class TSFRecordWriter extends RecordWriter<NullWritable, TSRecord> {
+public class TSFRecordWriter extends RecordWriter<NullWritable, HDFSTSRecord> {
 
   private static final Logger logger = LoggerFactory.getLogger(TSFRecordWriter.class);
 
   private TsFileWriter writer;
 
+
   public TSFRecordWriter(TaskAttemptContext job, Path path, Schema schema) throws IOException {
 
-    HDFSOutput hdfsOutput = new HDFSOutput(path, job.getConfiguration(), false);
+    HDFSOutput hdfsOutput = new HDFSOutput(path.toString(), job.getConfiguration(), false);
     writer = new TsFileWriter(hdfsOutput, schema);
   }
 
   @Override
-  public void write(NullWritable key, TSRecord value) throws IOException, InterruptedException {
+  public synchronized void write(NullWritable key, HDFSTSRecord value) throws IOException, InterruptedException {
     try {
-      writer.write(value);
+      writer.write(value.convertToTSRecord());
     } catch (WriteProcessException e) {
       throw new InterruptedException(String.format("Write tsfile record error %s", e));
     }

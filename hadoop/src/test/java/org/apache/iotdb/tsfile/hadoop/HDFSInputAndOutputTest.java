@@ -21,8 +21,8 @@ package org.apache.iotdb.tsfile.hadoop;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.iotdb.tsfile.fileSystem.HDFSOutput;
 import org.apache.iotdb.tsfile.hadoop.io.HDFSInput;
-import org.apache.iotdb.tsfile.hadoop.io.HDFSOutput;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,7 +35,6 @@ import static org.junit.Assert.*;
 
 /**
  * Test the {@link org.apache.iotdb.tsfile.hadoop.io.HDFSInput}
- * and the {@link org.apache.iotdb.tsfile.hadoop.io.HDFSOutput}
  *
  * @author Yuan Tian
  */
