@@ -246,6 +246,11 @@ struct TSInsertReq {
     4: required i64 timestamp
 }
 
+struct TSDeleteReq {
+    1: required string path
+    2: required i64 timestamp
+}
+
 struct TSSetStorageGroupReq {
   1: required string storageGroupId
 }
@@ -304,5 +309,7 @@ service TSIService {
 
 	TSRPCResp insertRow(1:TSInsertReq req);
 
+	TSRPCResp deleteRow(1:TSDeleteReq req);
+
 	i64 requestStatementId();
-	}
+}

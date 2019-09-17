@@ -25,10 +25,12 @@
 
 * Use struct **TSRPCResp** to replace all structs with only one field `1: required TS_Status status`, including: ~~TSCloseSessionResp~~ closeSession, ~~TSCancelOperationResp~~ cancelOperation, ~~TSCloseOperationResp~~ closeOperation, ~~TSSetTimeZoneResp~~ setTimeZone.
 
-* Add **TSBatchInsertionReq**, **TSCreateTimeseriesReq** and **TSSetStorageGroupReq**.
+* Add **TSBatchInsertionReq**, **TSCreateTimeseriesReq**, **TSSetStorageGroupReq** and **TSDeleteReq**.
 
 * Change method name ~~TSExecuteStatementResp executeInsertion(1:TSInsertionReq req)~~ to **TSExecuteStatementResp insert(1:TSInsertionReq req)**, and add method **TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req)** for batch inserting interface.
 
-* Add method **TSRPCResp setStorageGroup(1:TSSetStorageGroupReq req)** and **TSRPCResp createTimeseries(1:TSCreateTimeseriesReq req)** for creating matadata interface.
+* Add method **TSRPCResp setStorageGroup(1:TSSetStorageGroupReq req)** and **TSRPCResp createTimeseries(1:TSCreateTimeseriesReq req)** for creating metadata interface.
+
+* Add method **TSRPCResp deleteTimeseries(1:TSDeleteReq req)** for deleting timeseries.
 
 * Change item in enum **TSProtocolVersion** from ~~TSFILE_SERVICE_PROTOCOL_V1~~ to IOTDB_SERVICE_PROTOCOL_V1.

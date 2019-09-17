@@ -84,6 +84,7 @@ public class SessionExample {
 
     insert();
 //    insertRowBatch();
+    delete();
 
     session.close();
   }
@@ -101,6 +102,12 @@ public class SessionExample {
       values.add("3");
       session.insert(deviceId, time, measurements, values);
     }
+  }
+
+  private static void delete() throws IoTDBSessionException {
+    String path = "root.sg1.d1.s1";
+    long deleteTime = 29999;
+    session.delete(path, deleteTime);
   }
 
   private static void insertRowBatch() throws IoTDBSessionException {
