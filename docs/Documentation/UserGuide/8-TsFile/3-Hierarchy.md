@@ -297,3 +297,69 @@ Such as "max_point_number""2".
 After the `FileMetaData`, there will be another Magic String and you have finished the journey of discovering TsFile!
 
 You can also use /tsfile/example/TsFileSequenceRead to read and validate a TsFile.
+
+## TsFile Sketch Tool
+`org.apache.iotdb.tsfile.TsFileSketchTool` under the example/tsfile module is a tool to help you dive into the physical storage layout of a specific TsFile.
+
+Below is an example result:
+```$xslt
+-------------------------------- TsFile Sketch --------------------------------
+file path: D:\1568815495311-101.tsfile
+file length: 1959
+
+            POSITION|	CONTENT
+            -------- 	-------
+                   0|	[magic head] TsFilev0.8.0
+>>>>>>>>>>>>>>>>>>>>>	[Chunk Group] of root.vehicle.d1 begins at pos 12, version:0, num of Chunks:1
+                  12|	[Chunk] of s0, numOfPoints:2, time range:[1,1000], tsDataType:INT32, 
+                     	TsDigest:[min_value:888,max_value:999,first_value:999,last_value:888,sum_value:1887.0]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		num of pages: 1
+                    |	[marker] 0
+                    |	[Chunk Group Footer]
+<<<<<<<<<<<<<<<<<<<<<	[Chunk Group] of root.vehicle.d1 ends at pos 164
+>>>>>>>>>>>>>>>>>>>>>	[Chunk Group] of root.vehicle.d0 begins at pos 164, version:0, num of Chunks:5
+                 164|	[Chunk] of s3, numOfPoints:6, time range:[60,946684800000], tsDataType:TEXT, 
+                     	TsDigest:[min_value:aaaaa,max_value:good,first_value:aaaaa,last_value:good,sum_value:0.0]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		num of pages: 1
+                 366|	[Chunk] of s4, numOfPoints:1, time range:[100,100], tsDataType:BOOLEAN, 
+                     	TsDigest:[min_value:true,max_value:true,first_value:true,last_value:true,sum_value:0.0]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		num of pages: 1
+                 461|	[Chunk] of s0, numOfPoints:11, time range:[1,1000], tsDataType:INT32, 
+                     	TsDigest:[min_value:80,max_value:22222,first_value:101,last_value:22222,sum_value:42988.0]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		num of pages: 1
+                 614|	[Chunk] of s1, numOfPoints:11, time range:[1,946684800000], tsDataType:INT64, 
+                     	TsDigest:[min_value:100,max_value:55555,first_value:1101,last_value:100,sum_value:147922.0]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		num of pages: 1
+                 822|	[Chunk] of s2, numOfPoints:6, time range:[2,1000], tsDataType:FLOAT, 
+                     	TsDigest:[min_value:2.22,max_value:1000.11,first_value:2.22,last_value:1000.11,sum_value:1031.2099850177765]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		num of pages: 1
+                    |	[marker] 0
+                    |	[Chunk Group Footer]
+<<<<<<<<<<<<<<<<<<<<<	[Chunk Group] of root.vehicle.d0 ends at pos 989
+                    |	[marker] 2
+                 990|	[TsDeviceMetadata] of root.vehicle.d0, startTime:1, endTime:946684800000
+                    |		num of ChunkGroupMetaData: 1
+                1553|	[TsDeviceMetadata] of root.vehicle.d1, startTime:1, endTime:1000
+                    |		num of ChunkGroupMetaData: 1
+                1718|	[TsFileMetaData]
+                    |		num of TsDeviceMetadataIndex: 2
+                    |		num of measurementSchema: 5
+                1943|	[TsFileMetaDataSize] 225
+                1947|	[magic tail] TsFilev0.8.0
+                1959|	END of TsFile
+
+---------------------------------- TsFile Sketch End ----------------------------------
+
+```
