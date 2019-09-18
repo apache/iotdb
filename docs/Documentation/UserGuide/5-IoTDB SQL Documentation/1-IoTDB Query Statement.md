@@ -513,18 +513,17 @@ following two statements:
 * Set TTL
 ```
 SET TTL TO StorageGroupName TTLTime
-Eg.1 SET TTL TO root.group1 3600000
-Eg.2 SET TTL TO root.group1 1h
+Eg. SET TTL TO root.group1 3600000
 This example means that for data in root.group1, only that of the latest 1 hour will remain, the
 older one is removed or made invisible. 
-Note: TTLTime can be millisecond timestamp or date format. When TTL is set, insertions that fall
+Note: TTLTime should be millisecond timestamp. When TTL is set, insertions that fall
 out of TTL will be rejected.
 ```
 
 * Unset TTL
 ```
 UNSET TTL TO StorageGroupName
-Eg.1 UNSET TTL TO root.group1
+Eg. UNSET TTL TO root.group1
 This example means that data of all time will be stored in this group. 
 ```
 

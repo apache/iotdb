@@ -236,14 +236,10 @@ public class LogicalGenerator {
     }
   }
 
-  private void analyzeSetTTL(AstNode astNode) throws LogicalOperatorException {
+  private void analyzeSetTTL(AstNode astNode) {
     String path = parsePath(astNode.getChild(1)).getFullPath();
     long dataTTL;
-    try {
-      dataTTL = Long.parseLong(astNode.getChild(2).getText());
-    } catch (NumberFormatException e) {
-      dataTTL = parseTimeFormat(astNode.getChild(2).getText());
-    }
+    dataTTL = Long.parseLong(astNode.getChild(2).getText());
     TTLOperator operator = new TTLOperator(SQLConstant.TOK_SET);
     initializedOperator = operator;
     operator.setStorageGroup(path);
@@ -490,9 +486,9 @@ public class LogicalGenerator {
       }
       AstNode timeValue = astNode.getChild(2).getChild(0);
       if (timeValue.getType() == TSParser.TOK_DATETIME) {
-        timestamp = Long.valueOf(parseTokenTime(timeValue));
+        timestamp = parseTimeFormat(parseTokens(timeValue));
       } else {
-        timestamp = Long.valueOf(astNode.getChild(2).getChild(0).getText());
+        timestamp = Long.parseLong(astNode.getChild(2).getChild(0).getText());
       }
     } catch (NumberFormatException e) {
       throw new LogicalOperatorException(
@@ -647,7 +643,7 @@ public class LogicalGenerator {
       case TSParser.KW_NOT:
         if (childCount != 1) {
           throw new LogicalOperatorException(
-              "parsing where clause failed: NOT operator requries one param");
+              "parsing where clause failed: NOT operator requires one param");
         }
         FilterOperator notOp = new FilterOperator(SQLConstant.KW_NOT);
         filterOp.addChildOperator(notOp);
@@ -659,7 +655,7 @@ public class LogicalGenerator {
       case TSParser.KW_OR:
         if (childCount != 2) {
           throw new LogicalOperatorException(
-              "parsing where clause failed! node has " + childCount + " paramter.");
+              "parsing where clause failed! node has " + childCount + " parameter.");
         }
         FilterOperator binaryOp = new FilterOperator(
             TSParserConstant.getTSTokenIntType(tokenIntType));
@@ -714,15 +710,15 @@ public class LogicalGenerator {
       intervalNode = intervalsNode.getChild(i);
       AstNode startNode = intervalNode.getChild(0);
       if (startNode.getType() == TSParser.TOK_DATETIME) {
-        startTime = Long.valueOf(parseTokenTime(startNode));
+        startTime = Long.parseLong(parseTokenTime(startNode));
       } else {
-        startTime = Long.valueOf(startNode.getText());
+        startTime = Long.parseLong(startNode.getText());
       }
       AstNode endNode = intervalNode.getChild(1);
       if (endNode.getType() == TSParser.TOK_DATETIME) {
-        endTime = Long.valueOf(parseTokenTime(endNode));
+        endTime = Long.parseLong(parseTokenTime(endNode));
       } else {
-        endTime = Long.valueOf(endNode.getText());
+        endTime = Long.parseLong(endNode.getText());
       }
       intervals.add(new Pair<>(startTime, endTime));
     }
@@ -734,9 +730,9 @@ public class LogicalGenerator {
     if (childCount == 3) {
       AstNode originNode = astNode.getChild(1).getChild(0);
       if (originNode.getType() == TSParser.TOK_DATETIME) {
-        originTime = Long.valueOf(parseTokenTime(originNode));
+        originTime = Long.parseLong(parseTokenTime(originNode));
       } else {
-        originTime = Long.valueOf(originNode.getText());
+        originTime = Long.parseLong(originNode.getText());
       }
     } else {
       originTime = parseTimeFormat(SQLConstant.START_TIME_STR);
@@ -900,7 +896,7 @@ public class LogicalGenerator {
     return parseTimeFormat(parseTokens(astNode)) + "";
   }
 
-  private String parseTokens(AstNode astNode) throws LogicalOperatorException {
+  private String parseTokens(AstNode astNode) {
     StringContainer sc = new StringContainer();
     for (int i = 0; i < astNode.getChildCount(); i++) {
       sc.addTail(astNode.getChild(i).getText());
@@ -911,7 +907,7 @@ public class LogicalGenerator {
   /**
    * function for parsing time format.
    */
-  public long parseTimeFormat(String timestampStr) throws LogicalOperatorException {
+  long parseTimeFormat(String timestampStr) throws LogicalOperatorException {
     if (timestampStr == null || timestampStr.trim().equals("")) {
       throw new LogicalOperatorException("input timestamp cannot be empty");
     }
@@ -949,9 +945,9 @@ public class LogicalGenerator {
     return new Path(new StringContainer(path, TsFileConstant.PATH_SEPARATOR));
   }
 
-  private String parseStringWithQuoto(String src) throws IllegalASTFormatException {
+  private String parseStringWithQuote(String src) throws IllegalASTFormatException {
     if (src.length() < 3 || src.charAt(0) != '\'' || src.charAt(src.length() - 1) != '\'') {
-      throw new IllegalASTFormatException("error format for string with quoto:" + src);
+      throw new IllegalASTFormatException("error format for string with quote:" + src);
     }
     return src.substring(1, src.length() - 1);
   }
@@ -1074,7 +1070,7 @@ public class LogicalGenerator {
       AstNode privilegesNode = astNode.getChild(1);
       String[] privileges = new String[privilegesNode.getChildCount()];
       for (int i = 0; i < privileges.length; i++) {
-        privileges[i] = parseStringWithQuoto(privilegesNode.getChild(i).getText());
+        privileges[i] = parseStringWithQuote(privilegesNode.getChild(i).getText());
       }
       Path nodePath = parsePath(astNode.getChild(2));
       if (astNode.getChild(0).getType() == TSParser.TOK_USER) {
@@ -1115,7 +1111,7 @@ public class LogicalGenerator {
       AstNode privilegesNode = astNode.getChild(1);
       String[] privileges = new String[privilegesNode.getChildCount()];
       for (int i = 0; i < privileges.length; i++) {
-        privileges[i] = parseStringWithQuoto(privilegesNode.getChild(i).getText());
+        privileges[i] = parseStringWithQuote(privilegesNode.getChild(i).getText());
       }
       Path nodePath = parsePath(astNode.getChild(2));
       if (astNode.getChild(0).getType() == TSParser.TOK_USER) {

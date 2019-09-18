@@ -481,19 +481,18 @@ IoTDB支持对存储组级别设置数据存活时间（TTL），这使得IoTDB�
 可以帮助您控制IoTDB占用的总磁盘空间以避免出现磁盘写满等异常。并且，随着文件数量的增多，查询性能往往随之下降。
 及时地删除一些较老的文件有助于使得查询性能维持在一个较高的水平。IoTDB中的TTL操作通过以下的语句进行支持：
 
-* Set TTL
+* 设置 TTL
 ```
 SET TTL TO StorageGroupName TTLTime
-Eg.1 SET TTL TO root.group1 3600000
-Eg.2 SET TTL TO root.group1 1h
+Eg. SET TTL TO root.group1 3600000
 这个例子展示了如何使得root.group1这个存储组只保留近一个小时的数据，一个小时前的数据会被删除或者进入不可见状态。
-Note: TTLTime 可以是毫秒时间戳或是日期格式。一旦TTL被设置，超过TTL时间范围的写入将被拒绝。
+Note: TTLTime 应是毫秒时间戳。一旦TTL被设置，超过TTL时间范围的写入将被拒绝。
 ```
 
-* Unset TTL
+* 取消 TTL
 ```
 UNSET TTL TO StorageGroupName
-Eg.1 UNSET TTL TO root.group1
+Eg. UNSET TTL TO root.group1
 这个例子展示了如何取消存储组root.group1的TTL，这将使得该存储组接受任意时刻的数据。
 ```
 

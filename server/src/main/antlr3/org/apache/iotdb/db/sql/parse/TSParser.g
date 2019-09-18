@@ -917,7 +917,7 @@ ttlStatement
 
 setTTLStatement
     :
-    KW_SET KW_TTL KW_TO path=prefixPath time=dateFormatWithNumber
+    KW_SET KW_TTL KW_TO path=prefixPath time=UnsignedInteger
     -> ^(TOK_TTL TOK_SET $path $time)
     ;
 
