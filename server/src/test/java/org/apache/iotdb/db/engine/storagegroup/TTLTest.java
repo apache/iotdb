@@ -153,8 +153,6 @@ public class TTLTest {
   public void testTTLRead() throws IOException, StorageEngineException {
     prepareData();
 
-    storageGroupProcessor.merge(true);
-
     // files before ttl
     QueryDataSource dataSource = storageGroupProcessor.query(sg1, s1, EnvironmentUtils.TEST_QUERY_CONTEXT
         , null);
