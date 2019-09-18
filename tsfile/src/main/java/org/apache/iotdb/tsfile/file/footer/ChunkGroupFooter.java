@@ -55,7 +55,7 @@ public class ChunkGroupFooter {
     this.dataSize = dataSize;
     this.numberOfChunks = numberOfChunks;
     this.serializedSize =
-        Byte.BYTES + Integer.BYTES + deviceID.getBytes(TSFileConfig.STRING_ENCODING).length + Long.BYTES + Integer.BYTES;
+        Byte.BYTES + Integer.BYTES + deviceID.getBytes(TSFileConfig.STRING_CHARSET).length + Long.BYTES + Integer.BYTES;
   }
 
   public static int getSerializedSize(String deviceID) {
