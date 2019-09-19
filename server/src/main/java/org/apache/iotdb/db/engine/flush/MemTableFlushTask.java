@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.exception.FlushRunTimeException;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
@@ -39,7 +40,7 @@ import org.slf4j.LoggerFactory;
 public class MemTableFlushTask {
 
   private static final Logger logger = LoggerFactory.getLogger(MemTableFlushTask.class);
-  private static final int PAGE_SIZE_THRESHOLD = TSFileConfig.pageSizeInByte;
+  private static final int PAGE_SIZE_THRESHOLD = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
   private static final FlushSubTaskPoolManager subTaskPoolManager = FlushSubTaskPoolManager
       .getInstance();
   private Future ioTaskFuture;

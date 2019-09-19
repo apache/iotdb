@@ -61,129 +61,266 @@ public class TSFileConfig {
    * The default grow size of class BatchData.
    */
   public static final int DYNAMIC_DATA_SIZE = 1000;
+
+  public int getGroupSizeInByte() {
+    return groupSizeInByte;
+  }
+
+  public void setGroupSizeInByte(int groupSizeInByte) {
+    this.groupSizeInByte = groupSizeInByte;
+  }
+
+  public int getPageSizeInByte() {
+    return pageSizeInByte;
+  }
+
+  public void setPageSizeInByte(int pageSizeInByte) {
+    this.pageSizeInByte = pageSizeInByte;
+  }
+
+  public int getMaxNumberOfPointsInPage() {
+    return maxNumberOfPointsInPage;
+  }
+
+  public void setMaxNumberOfPointsInPage(int maxNumberOfPointsInPage) {
+    this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
+  }
+
+  public String getTimeSeriesDataType() {
+    return timeSeriesDataType;
+  }
+
+  public void setTimeSeriesDataType(String timeSeriesDataType) {
+    this.timeSeriesDataType = timeSeriesDataType;
+  }
+
+  public int getMaxStringLength() {
+    return maxStringLength;
+  }
+
+  public void setMaxStringLength(int maxStringLength) {
+    this.maxStringLength = maxStringLength;
+  }
+
+  public int getFloatPrecision() {
+    return floatPrecision;
+  }
+
+  public void setFloatPrecision(int floatPrecision) {
+    this.floatPrecision = floatPrecision;
+  }
+
+  public String getTimeEncoder() {
+    return timeEncoder;
+  }
+
+  public void setTimeEncoder(String timeEncoder) {
+    this.timeEncoder = timeEncoder;
+  }
+
+  public String getValueEncoder() {
+    return valueEncoder;
+  }
+
+  public void setValueEncoder(String valueEncoder) {
+    this.valueEncoder = valueEncoder;
+  }
+
+  public int getRleBitWidth() {
+    return rleBitWidth;
+  }
+
+  public void setRleBitWidth(int rleBitWidth) {
+    this.rleBitWidth = rleBitWidth;
+  }
+
+  public int getDeltaBlockSize() {
+    return deltaBlockSize;
+  }
+
+  public void setDeltaBlockSize(int deltaBlockSize) {
+    this.deltaBlockSize = deltaBlockSize;
+  }
+
+  public String getFreqType() {
+    return freqType;
+  }
+
+  public void setFreqType(String freqType) {
+    this.freqType = freqType;
+  }
+
+  public double getPlaMaxError() {
+    return plaMaxError;
+  }
+
+  public void setPlaMaxError(double plaMaxError) {
+    this.plaMaxError = plaMaxError;
+  }
+
+  public double getSdtMaxError() {
+    return sdtMaxError;
+  }
+
+  public void setSdtMaxError(double sdtMaxError) {
+    this.sdtMaxError = sdtMaxError;
+  }
+
+  public double getDftSatisfyRate() {
+    return dftSatisfyRate;
+  }
+
+  public void setDftSatisfyRate(double dftSatisfyRate) {
+    this.dftSatisfyRate = dftSatisfyRate;
+  }
+
+  public String getCompressor() {
+    return compressor;
+  }
+
+  public void setCompressor(String compressor) {
+    this.compressor = compressor;
+  }
+
+  public int getPageCheckSizeThreshold() {
+    return pageCheckSizeThreshold;
+  }
+
+  public void setPageCheckSizeThreshold(int pageCheckSizeThreshold) {
+    this.pageCheckSizeThreshold = pageCheckSizeThreshold;
+  }
+
+  public String getEndian() {
+    return endian;
+  }
+
+  public void setEndian(String endian) {
+    this.endian = endian;
+  }
+
   /**
    * Memory size threshold for flushing to disk, default value is 128MB.
    */
-  public static int groupSizeInByte = 128 * 1024 * 1024;
+  private int groupSizeInByte = 128 * 1024 * 1024;
   /**
    * The memory size for each series writer to pack page, default value is 64KB.
    */
-  public static int pageSizeInByte = 64 * 1024;
+  private int pageSizeInByte = 64 * 1024;
 
   // TS_2DIFF configuration
   /**
    * The maximum number of data points in a page, default value is 1024 * 1024.
    */
-  public static int maxNumberOfPointsInPage = 1024 * 1024;
+  private int maxNumberOfPointsInPage = 1024 * 1024;
   /**
    * Data type for input timestamp, TsFile supports INT32 or INT64.
    */
-  public static String timeSeriesDataType = "INT64";
+  private String timeSeriesDataType = "INT64";
 
   // Freq encoder configuration
   /**
    * Max length limitation of input string.
    */
-  public static int maxStringLength = 128;
+  private int maxStringLength = 128;
   /**
    * Floating-point precision.
    */
-  public static int floatPrecision = 2;
+  private int floatPrecision = 2;
   /**
    * Encoder of time column, TsFile supports TS_2DIFF, PLAIN and RLE(run-length encoding) Default
    * value is TS_2DIFF.
    */
-  public static String timeEncoder = "TS_2DIFF";
+  private String timeEncoder = "TS_2DIFF";
   /**
    * Encoder of value series. default value is PLAIN. For int, long data type, TsFile also supports
    * TS_2DIFF and RLE(run-length encoding). For float, double data type, TsFile also supports
    * TS_2DIFF, RLE(run-length encoding) and GORILLA. For text data type, TsFile only supports
    * PLAIN.
    */
-  public static String valueEncoder = "PLAIN";
+  private String valueEncoder = "PLAIN";
 
   // Compression configuration
   /**
    * Default bit width of RLE encoding is 8.
    */
-  public static int rleBitWidth = 8;
+  private int rleBitWidth = 8;
 
   // Don't change the following configuration
   /**
    * Default block size of two-diff. delta encoding is 128
    */
-  public static int deltaBlockSize = 128;
+  private int deltaBlockSize = 128;
   /**
    * Default frequency type is SINGLE_FREQ.
    */
-  public static String freqType = "SINGLE_FREQ";
+  private String freqType = "SINGLE_FREQ";
   /**
    * Default PLA max error is 100.
    */
-  public static double plaMaxError = 100;
+  private double plaMaxError = 100;
   /**
    * Default SDT max error is 100.
    */
-  public static double sdtMaxError = 100;
+  private double sdtMaxError = 100;
   /**
    * Default DFT satisfy rate is 0.1
    */
-  public static double dftSatisfyRate = 0.1;
+  private double dftSatisfyRate = 0.1;
   /**
    * Data compression method, TsFile supports UNCOMPRESSED or SNAPPY. Default value is UNCOMPRESSED
    * which means no compression
    */
-  public static String compressor = "UNCOMPRESSED";
+  private String compressor = "UNCOMPRESSED";
   /**
    * Line count threshold for checking page memory occupied size.
    */
-  public static int pageCheckSizeThreshold = 100;
+  private int pageCheckSizeThreshold = 100;
   /**
    * Default endian value is BIG_ENDIAN.
    */
-  public static String endian = "BIG_ENDIAN";
+  private String endian = "BIG_ENDIAN";
 
   /**
    * Default storage is in local file system
    */
-  public static FSType TSFileStorageFs = FSType.LOCAL;
+  private FSType TSFileStorageFs = FSType.LOCAL;
 
   /**
    * Default hdfs ip is localhost
    */
-  public static String hdfsIp = "localhost";
+  private String hdfsIp = "localhost";
 
   /**
    * Default hdfs port is 9000
    */
-  public static String hdfsPort = "9000";
+  private String hdfsPort = "9000";
 
   public TSFileConfig() {
 
   }
 
 
-  public static FSType getTSFileStorageFs() {
-    return TSFileStorageFs;
+  public FSType getTSFileStorageFs() {
+    return this.TSFileStorageFs;
   }
 
-  public static void setTSFileStorageFs(String TSFileStorageFs) {
-    TSFileConfig.TSFileStorageFs = FSType.valueOf(TSFileStorageFs);
+  public void setTSFileStorageFs(String TSFileStorageFs) {
+    this.TSFileStorageFs = FSType.valueOf(TSFileStorageFs);
   }
 
-  public static String getHdfsIp() {
-    return hdfsIp;
+  public String getHdfsIp() {
+    return this.hdfsIp;
   }
 
-  public static void setHdfsIp(String hdfsIp) {
-    TSFileConfig.hdfsIp = hdfsIp;
+  public void setHdfsIp(String hdfsIp) {
+    this.hdfsIp = hdfsIp;
   }
 
-  public static String getHdfsPort() {
-    return hdfsPort;
+  public String getHdfsPort() {
+    return this.hdfsPort;
   }
 
-  public static void setHdfsPort(String hdfsPort) {
-    TSFileConfig.hdfsPort = hdfsPort;
+  public void setHdfsPort(String hdfsPort) {
+    this.hdfsPort = hdfsPort;
   }
 }

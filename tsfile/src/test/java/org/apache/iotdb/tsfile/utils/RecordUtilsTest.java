@@ -46,10 +46,14 @@ public class RecordUtilsTest {
   private static Schema generateTestData() {
     Schema schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.valueEncoder)));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
-    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.valueEncoder)));
-    schema.registerMeasurement(new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.valueEncoder)));
+    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32,
+        TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64,
+        TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.FLOAT,
+        TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerMeasurement(new MeasurementSchema("s4", TSDataType.DOUBLE,
+        TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerMeasurement(new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     schema.registerMeasurement(new MeasurementSchema("s6", TSDataType.TEXT, TSEncoding.PLAIN));
     return schema;

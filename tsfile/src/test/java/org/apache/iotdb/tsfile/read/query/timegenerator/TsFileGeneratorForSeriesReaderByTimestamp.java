@@ -76,8 +76,8 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
   }
 
   public static void after() {
-    TSFileDescriptor.getInstance().getConfig().groupSizeInByte = preChunkGroupSize;
-    TSFileDescriptor.getInstance().getConfig().maxNumberOfPointsInPage = prePageSize;
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(preChunkGroupSize);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(prePageSize);
     File file = new File(inputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
@@ -156,10 +156,10 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
     }
 
     // LOG.info(jsonSchema.toString());
-    preChunkGroupSize = TSFileDescriptor.getInstance().getConfig().groupSizeInByte;
-    prePageSize = TSFileDescriptor.getInstance().getConfig().maxNumberOfPointsInPage;
-    TSFileDescriptor.getInstance().getConfig().groupSizeInByte = chunkGroupSize;
-    TSFileDescriptor.getInstance().getConfig().maxNumberOfPointsInPage = pageSize;
+    preChunkGroupSize = TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
+    prePageSize = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
     innerWriter = new TsFileWriter(file, schema, TSFileDescriptor.getInstance().getConfig());
 
     // write
@@ -174,9 +174,9 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
   private static void generateTestData() {
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
     schema = new Schema();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.valueEncoder)));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder), CompressionType.UNCOMPRESSED));
-    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder), CompressionType.SNAPPY));
+    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder()), CompressionType.UNCOMPRESSED));
+    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder()), CompressionType.SNAPPY));
     schema.registerMeasurement(new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
     schema.registerMeasurement(new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     schema.registerMeasurement(new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));

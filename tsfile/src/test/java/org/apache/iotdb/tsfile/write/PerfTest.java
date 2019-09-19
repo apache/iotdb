@@ -153,9 +153,12 @@ public class PerfTest {
   private static Schema generateTestData() {
     Schema schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
-    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
+    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64,
+        TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64,
+        TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64,
+        TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerMeasurement(new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
     JSONObject s4 = new JSONObject();
     s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");

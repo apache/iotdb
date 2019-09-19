@@ -47,7 +47,7 @@ public class ReadOnlyTsFileTest {
 
   @Test
   public void test1() throws InterruptedException, WriteProcessException, IOException {
-    TSFileDescriptor.getInstance().getConfig().timeEncoder = "TS_2DIFF";
+    TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
     int rowCount = 1000;
     TsFileGeneratorForTest.generateFile(rowCount, 16 * 1024 * 1024, 10000);
     fileReader = new TsFileSequenceReader(FILE_PATH);
@@ -111,7 +111,7 @@ public class ReadOnlyTsFileTest {
   @Test
   public void test2() throws InterruptedException, WriteProcessException, IOException {
     int minRowCount = 1000, maxRowCount=100000;
-    TSFileDescriptor.getInstance().getConfig().timeEncoder = "TS_2DIFF";
+    TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
     TsFileGeneratorForTest.generateFile(minRowCount, maxRowCount, 16 * 1024 * 1024, 10000);
     fileReader = new TsFileSequenceReader(FILE_PATH);
     tsFile = new ReadOnlyTsFile(fileReader);
