@@ -58,6 +58,7 @@ import org.apache.iotdb.db.sql.parse.AstNode;
 import org.apache.iotdb.db.sql.parse.Node;
 import org.apache.iotdb.db.sql.parse.TSParser;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -400,7 +401,7 @@ public class LogicalGenerator {
       compressor = paramNode.getChild(offset).getChild(0).getText();
       offset++;
     } else {
-      compressor = TSFileConfig.compressor;
+      compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
     }
     checkMetadataArgs(dataType, encodingType, compressor);
     Map<String, String> props = new HashMap<>(paramNode.getChildCount() - offset + 1, 1);

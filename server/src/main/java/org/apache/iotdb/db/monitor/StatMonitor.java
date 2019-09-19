@@ -42,6 +42,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -165,7 +166,7 @@ public class StatMonitor implements IService {
 
         if (!mManager.pathExist(entry.getKey())) {
           mManager.addPathToMTree(new Path(entry.getKey()), TSDataType.valueOf(entry.getValue()),
-              TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileConfig.compressor),
+              TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
               Collections.emptyMap());
         }
       }

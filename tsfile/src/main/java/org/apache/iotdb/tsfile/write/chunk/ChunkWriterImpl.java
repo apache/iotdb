@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.write.chunk;
 import java.io.IOException;
 import java.math.BigDecimal;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -100,7 +101,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     resetPageStatistics();
 
     this.dataPageWriter = new PageWriter();
-    this.pageCountUpperBound = TSFileConfig.maxNumberOfPointsInPage;
+    this.pageCountUpperBound = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
     this.dataPageWriter.setTimeEncoder(measurementSchema.getTimeEncoder());
     this.dataPageWriter.setValueEncoder(measurementSchema.getValueEncoder());
