@@ -54,7 +54,7 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSRPCResp;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.thrift.TException;
@@ -216,8 +216,8 @@ public class IoTDBQueryResultSet implements ResultSet {
     try {
       if (operationHandle != null) {
         TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle, queryId);
-        TSRPCResp closeResp = client.closeOperation(closeReq);
-        RpcUtils.verifySuccess(closeResp.getStatus());
+        TSStatus closeResp = client.closeOperation(closeReq);
+        RpcUtils.verifySuccess(closeResp);
       }
     } catch (IoTDBRPCException e) {
       throw new SQLException("Error occurs for close opeation in server side becasuse " + e);
