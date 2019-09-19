@@ -267,6 +267,19 @@ public class IoTDBDescriptor {
       conf.setWatermarkMethod(
           properties.getProperty("watermark_method", conf.getWatermarkMethod()));
 
+      conf.setAutoCreateSchemaEnable(Boolean.parseBoolean(properties.getProperty("enable_auto_create_schema",
+          Boolean.toString(conf.isAutoCreateSchemaEnable()).trim())));
+      conf.setAutoStorageGroupLevel(Integer.parseInt(properties.getProperty("auto_storage_group_level",
+          Integer.toString(conf.getAutoStorageGroupLevel()))));
+      conf.setAutoBooleanEncoding(
+          properties.getProperty("auto_boolean_encoding", conf.getAutoBooleanEncoding()));
+      conf.setAutoLongEncoding(
+          properties.getProperty("auto_long_encoding", conf.getAutoLongEncoding()));
+      conf.setAutoDoubleEncoding(
+          properties.getProperty("auto_double_encoding", conf.getAutoDoubleEncoding()));
+      conf.setAutoStringEncoding(
+          properties.getProperty("auto_string_encoding", conf.getAutoStringEncoding()));
+
       conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
       conf.setTsFileStorageFs(properties.getProperty("tsfile_storage_fs"));

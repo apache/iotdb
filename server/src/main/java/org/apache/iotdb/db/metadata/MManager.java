@@ -274,7 +274,8 @@ public class MManager {
           String.format("Timeseries %s already exist", path.getFullPath()));
     }
     if (!checkFileNameByPath(path.getFullPath())) {
-      throw new MetadataErrorException("Storage group should be created first");
+
+//      throw new MetadataErrorException("Storage group should be created first");
     }
     // optimize the speed of adding timeseries
     String fileNodePath;

@@ -276,6 +276,36 @@ public class IoTDBConfig {
   private String watermarkMethod = "GroupBasedLSBMethod(embed_row_cycle=5,embed_lsb_num=5)";
 
   /**
+   * Switch of creating schema automatically
+   */
+  private boolean autoCreateSchemaEnable = false;
+
+  /**
+   * Storage group level when creating schema automatically is enable
+   */
+  private int autoStorageGroupLevel = 2;
+
+  /**
+   * Boolean encoding when creating schema automatically is enable
+   */
+  private String autoBooleanEncoding = "RLE";
+
+  /**
+   * Long encoding when creating schema automatically is enable
+   */
+  private String autoLongEncoding = "RLE";
+
+  /**
+   * Double encoding when creating schema automatically is enable
+   */
+  private String autoDoubleEncoding = "GORILLA";
+
+  /**
+   * String encoding when creating schema automatically is enable
+   */
+  private String autoStringEncoding = "PLAIN";
+
+  /**
    * How much memory (in byte) can be used by a single merge task.
    */
   private long mergeMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.2);
@@ -917,6 +947,54 @@ public class IoTDBConfig {
       return m.group(1);
     }
     return null;
+  }
+
+  public boolean isAutoCreateSchemaEnable() {
+    return autoCreateSchemaEnable;
+  }
+
+  public void setAutoCreateSchemaEnable(boolean autoCreateSchemaEnable) {
+    this.autoCreateSchemaEnable = autoCreateSchemaEnable;
+  }
+
+  public int getAutoStorageGroupLevel() {
+    return autoStorageGroupLevel;
+  }
+
+  public void setAutoStorageGroupLevel(int autoStorageGroupLevel) {
+    this.autoStorageGroupLevel = autoStorageGroupLevel;
+  }
+
+  public String getAutoBooleanEncoding() {
+    return autoBooleanEncoding;
+  }
+
+  public void setAutoBooleanEncoding(String autoBooleanEncoding) {
+    this.autoBooleanEncoding = autoBooleanEncoding;
+  }
+
+  public String getAutoLongEncoding() {
+    return autoLongEncoding;
+  }
+
+  public void setAutoLongEncoding(String autoLongEncoding) {
+    this.autoLongEncoding = autoLongEncoding;
+  }
+
+  public String getAutoDoubleEncoding() {
+    return autoDoubleEncoding;
+  }
+
+  public void setAutoDoubleEncoding(String autoDoubleEncoding) {
+    this.autoDoubleEncoding = autoDoubleEncoding;
+  }
+
+  public String getAutoStringEncoding() {
+    return autoStringEncoding;
+  }
+
+  public void setAutoStringEncoding(String autoStringEncoding) {
+    this.autoStringEncoding = autoStringEncoding;
   }
 
   public FSType getSystemFileStorageFs() {
