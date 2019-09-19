@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.fileSystem;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -81,7 +82,7 @@ public enum TSFileFactory {
         return new BufferedReader(new FileReader(filePath));
       }
     } catch (IOException e) {
-      logger.error("Fail to get buffered reader. ", e);
+      logger.error("Failed to get buffered reader for {}. ", filePath, e);
       return null;
     }
   }
@@ -96,9 +97,53 @@ public enum TSFileFactory {
         return new BufferedWriter(new FileWriter(filePath, append));
       }
     } catch (IOException e) {
-      logger.error("Fail to get buffered writer. ", e);
+      logger.error("Failed to get buffered writer for {}. ", filePath, e);
       return null;
     }
   }
 
+  public BufferedInputStream getBufferedInputStream(String filePath) {
+    try {
+      if (fSType.equals(fSType.HDFS)) {
+        Path path = new Path(filePath);
+        fs = path.getFileSystem(conf);
+        return new BufferedInputStream(fs.open(path));
+      } else {
+        return new BufferedInputStream(new FileInputStream(filePath));
+      }
+    } catch (IOException e) {
+      logger.error("Failed to get buffered input stream for {}. ", filePath, e);
+      return null;
+    }
+  }
+
+  public BufferedOutputStream getBufferedOutputStream(String filePath) {
+    try {
+      if (fSType.equals(fSType.HDFS)) {
+        Path path = new Path(filePath);
+        fs = path.getFileSystem(conf);
+        return new BufferedOutputStream(fs.create(path));
+      } else {
+        return new BufferedOutputStream(new FileOutputStream(filePath));
+      }
+    } catch (IOException e) {
+      logger.error("Failed to get buffered output stream for {}. ", filePath, e);
+      return null;
+    }
+  }
+
+  public void moveFile(File srcFile, File destFile) {
+    try {
+      if (fSType.equals(fSType.HDFS)) {
+        boolean rename = srcFile.renameTo(destFile);
+        if (!rename) {
+          logger.error("Failed to rename file from {} to {}. ", srcFile.getName(), destFile.getName());
+        }
+      } else {
+        FileUtils.moveFile(srcFile, destFile);
+      }
+    } catch (IOException e) {
+      logger.error("Failed to move file from {} to {}. ", srcFile.getAbsolutePath(), destFile.getAbsolutePath(), e);
+    }
+  }
 }
