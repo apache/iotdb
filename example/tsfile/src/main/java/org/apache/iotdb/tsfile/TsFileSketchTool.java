@@ -90,7 +90,8 @@ public class TsFileSketchTool {
     for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataSortedList) {
       printlnBoth(pw, str1.toString() + "\t[Chunk Group] of "
           + chunkGroupMetaData.getDeviceID() + " begins at pos " + chunkGroupMetaData
-          .getStartOffsetOfChunkGroup() + ", version:" + chunkGroupMetaData.getVersion()
+          .getStartOffsetOfChunkGroup() + ", ends at pos " + chunkGroupMetaData
+          .getEndOffsetOfChunkGroup() + ", version:" + chunkGroupMetaData.getVersion()
           + ", num of Chunks:" + chunkGroupMetaData.getChunkMetaDataList().size());
       for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
         printlnBoth(pw,
@@ -111,11 +112,11 @@ public class TsFileSketchTool {
       printlnBoth(pw, String.format("%20s", "") + "|\t[marker] 0");
       printlnBoth(pw, String.format("%20s", "") + "|\t[Chunk Group Footer]");
       printlnBoth(pw, str2.toString() + "\t[Chunk Group] of "
-          + chunkGroupMetaData.getDeviceID() + " ends at pos " + chunkGroupMetaData
-          .getEndOffsetOfChunkGroup());
+          + chunkGroupMetaData.getDeviceID() + " ends");
     }
 
-    printlnBoth(pw, String.format("%20s", "") + "|\t[marker] 2");
+    printlnBoth(pw, String.format("%20s", tsDeviceMetadataIndexSortedList.get(0).getOffset() - 1)
+        + "|\t[marker] 2");
     for (
         int i = 0; i < tsDeviceMetadataSortedList.size(); i++) {
       TsDeviceMetadata tsDeviceMetadata = tsDeviceMetadataSortedList.get(i);

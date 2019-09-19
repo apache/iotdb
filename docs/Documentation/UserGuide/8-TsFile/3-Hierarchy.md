@@ -299,9 +299,24 @@ After the `FileMetaData`, there will be another Magic String and you have finish
 You can also use /tsfile/example/TsFileSequenceRead to read and validate a TsFile.
 
 ## TsFile Sketch Tool
-`org.apache.iotdb.tsfile.TsFileSketchTool` under the example/tsfile module is a tool to help you dive into the physical storage layout of a specific TsFile.
+`org.apache.iotdb.tsfile.TsFileSketchTool` under the example/tsfile module is a tool to help you dive into the physical storage layout of a specific TsFile.  
 
-Below is an example result:
+Command:   
+java -cp `<path of tsfile-example-0.9.0-SNAPSHOT.jar>` 
+`<path of tsfile-0.9.0-SNAPSHOT-jar-with-dependencies.jar>` 
+`org.apache.iotdb.tsfile.TsFileSketchTool`
+`<path of your TsFile>` (`<path of the file for saving the output result>`) 
+
+Note: 
+- if `<path of the file for saving the output result>` is not set, 
+the default path "TsFile_sketch_view.txt" will be used. 
+
+Command example:
+```
+java -cp tsfile-example-0.9.0-SNAPSHOT.jar;D:\incubator-iotdb\tsfile\target\tsfile-0.9.0-SNAPSHOT-jar-with-dependencies.jar org.apache.iotdb.tsfile.TsFileSketchTool D:\1567769299010-101.tsfile
+```
+
+An example output result:
 ```$xslt
 -------------------------------- TsFile Sketch --------------------------------
 file path: D:\1568815495311-101.tsfile
@@ -310,7 +325,7 @@ file length: 1959
             POSITION|	CONTENT
             -------- 	-------
                    0|	[magic head] TsFilev0.8.0
->>>>>>>>>>>>>>>>>>>>>	[Chunk Group] of root.vehicle.d1 begins at pos 12, version:0, num of Chunks:1
+>>>>>>>>>>>>>>>>>>>>>	[Chunk Group] of root.vehicle.d1 begins at pos 12, ends at pos 164, version:0, num of Chunks:1
                   12|	[Chunk] of s0, numOfPoints:2, time range:[1,1000], tsDataType:INT32, 
                      	TsDigest:[min_value:888,max_value:999,first_value:999,last_value:888,sum_value:1887.0]
                     |		[marker] 1
@@ -318,8 +333,8 @@ file length: 1959
                     |		num of pages: 1
                     |	[marker] 0
                     |	[Chunk Group Footer]
-<<<<<<<<<<<<<<<<<<<<<	[Chunk Group] of root.vehicle.d1 ends at pos 164
->>>>>>>>>>>>>>>>>>>>>	[Chunk Group] of root.vehicle.d0 begins at pos 164, version:0, num of Chunks:5
+<<<<<<<<<<<<<<<<<<<<<	[Chunk Group] of root.vehicle.d1 ends
+>>>>>>>>>>>>>>>>>>>>>	[Chunk Group] of root.vehicle.d0 begins at pos 164, ends at pos 989, version:0, num of Chunks:5
                  164|	[Chunk] of s3, numOfPoints:6, time range:[60,946684800000], tsDataType:TEXT, 
                      	TsDigest:[min_value:aaaaa,max_value:good,first_value:aaaaa,last_value:good,sum_value:0.0]
                     |		[marker] 1
@@ -347,8 +362,8 @@ file length: 1959
                     |		num of pages: 1
                     |	[marker] 0
                     |	[Chunk Group Footer]
-<<<<<<<<<<<<<<<<<<<<<	[Chunk Group] of root.vehicle.d0 ends at pos 989
-                    |	[marker] 2
+<<<<<<<<<<<<<<<<<<<<<	[Chunk Group] of root.vehicle.d0 ends
+                 989|	[marker] 2
                  990|	[TsDeviceMetadata] of root.vehicle.d0, startTime:1, endTime:946684800000
                     |		num of ChunkGroupMetaData: 1
                 1553|	[TsDeviceMetadata] of root.vehicle.d1, startTime:1, endTime:1000
@@ -361,5 +376,8 @@ file length: 1959
                 1959|	END of TsFile
 
 ---------------------------------- TsFile Sketch End ----------------------------------
-
 ```
+
+## A TsFile Visualization Example (v0.8.0)
+![A TsFile Visualization Example v0.8.0](https://user-images.githubusercontent.com/33376433/65209576-2bd36000-dacb-11e9-9e43-49e0dd01274e.png)
+
