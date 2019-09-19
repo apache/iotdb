@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.rpc;
 
-public enum TSStatusType {
+public enum TSStatusCode {
   SUCCESS_STATUS(200, ""),
   STILL_EXECUTING_STATUS(201, ""),
   INVALID_HANDLE_STATUS(202, ""),
@@ -40,7 +40,7 @@ public enum TSStatusType {
   private int statusCode;
   private String statusMessage;
 
-  private TSStatusType(int statusCode, String statusMessage) {
+  private TSStatusCode(int statusCode, String statusMessage) {
     this.statusCode = statusCode;
     this.statusMessage = statusMessage;
   }
