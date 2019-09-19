@@ -76,12 +76,7 @@ public class ChunkHeader {
   }
 
   public static int getSerializedSize(String measurementID) {
-    try {
-      return Byte.BYTES + Integer.BYTES + getSerializedSize(measurementID.getBytes(TSFileConfig.STRING_ENCODING).length);
-    } catch (UnsupportedEncodingException e) {
-      LOG.error("{} encoding is not supported", TSFileConfig.STRING_ENCODING);
-      return Byte.BYTES + Integer.BYTES + getSerializedSize(measurementID.getBytes().length);
-    }
+      return Byte.BYTES + Integer.BYTES + getSerializedSize(measurementID.getBytes(TSFileConfig.STRING_CHARSET).length);
   }
 
   private static int getSerializedSize(int measurementIdLength) {
