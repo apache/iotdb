@@ -148,6 +148,9 @@ public class RowBatch {
    * @return total bytes of values
    */
   public int getValueBytesSize() {
+    if (valueOccupation != -1) {
+      return valueOccupation;
+    }
     valueOccupation = 0;
     for (int i = 0; i < measurements.size(); i++) {
       switch (measurements.get(i).getType()) {
@@ -167,8 +170,7 @@ public class RowBatch {
           valueOccupation += batchSize * 8;
           break;
         case TEXT:
-          valueOccupation += batchSize * 4;
-          for (Binary value : (Binary[]) values[i]) {
+          for (Binary value: (Binary[]) values[i]) {
             valueOccupation += value.getLength();
           }
           break;

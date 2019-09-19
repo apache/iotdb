@@ -61,6 +61,7 @@ public class IoTDBPreparedStatementTest {
     when(execStatementResp.getStatus()).thenReturn(Status_SUCCESS);
     when(execStatementResp.getOperationHandle()).thenReturn(tOperationHandle);
 
+    when(getOperationStatusResp).thenReturn(Status_SUCCESS);
     when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
   }
 
