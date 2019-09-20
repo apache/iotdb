@@ -19,14 +19,14 @@
 namespace java org.apache.iotdb.service.rpc.thrift
 
 // The return status code and message in each response.
-struct TS_StatusType {
+struct TSStatusType {
   1: required i32 code
   2: required string message
 }
 
 // The return status of a remote request
-struct TS_Status {
-  1: required TS_StatusType statusType
+struct TSStatus {
+  1: required TSStatusType statusType
   2: optional list<string> infoMessages
   3: optional string sqlState  // as defined in the ISO/IEF CLIENT specification
 }
@@ -57,7 +57,7 @@ struct TSOperationHandle {
 }
 
 struct TSExecuteStatementResp {
-	1: required TS_Status status
+	1: required TSStatus status
 	2: optional TSOperationHandle operationHandle
   // Column names in select statement of SQL
 	3: optional list<string> columns
@@ -79,7 +79,7 @@ struct TS_SessionHandle {
 
 
 struct TSOpenSessionResp {
-  1: required TS_Status status
+  1: required TSStatus status
 
   // The protocol version that the server is using.
   2: required TSProtocolVersion serverProtocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1
@@ -101,7 +101,7 @@ struct TSOpenSessionReq {
 }
 
 // CloseSession()
-// Closes the specified session and frees any resources currently allocated to that session. 
+// Closes the specified session and frees any resources currently allocated to that session.
 // Any open operations in that session will be canceled.
 struct TSCloseSessionReq {
   1: required TS_SessionHandle sessionHandle
@@ -122,8 +122,8 @@ struct TSExecuteStatementReq {
 
 
 struct TSExecuteBatchStatementResp{
-	1: required TS_Status status
-  // For each value in result, Statement.SUCCESS_NO_INFO represents success, Statement.EXECUTE_FAILED represents fail otherwise.  
+	1: required TSStatus status
+  // For each value in result, Statement.SUCCESS_NO_INFO represents success, Statement.EXECUTE_FAILED represents fail otherwise.
 	2: optional list<i32> result
 }
 
@@ -184,13 +184,13 @@ struct TSFetchResultsReq{
 }
 
 struct TSFetchResultsResp{
-	1: required TS_Status status
+	1: required TSStatus status
 	2: required bool hasResultSet
 	3: optional TSQueryDataSet queryDataSet
 }
 
 struct TSFetchMetadataResp{
-		1: required TS_Status status
+		1: required TSStatus status
 		2: optional string metadataInJson
 		3: optional list<string> ColumnsList
 		4: optional string dataType
@@ -214,7 +214,7 @@ struct TSColumnSchema{
 }
 
 struct TSGetTimeZoneResp {
-    1: required TS_Status status
+    1: required TSStatus status
     2: required string timeZone
 }
 
@@ -246,12 +246,9 @@ struct TSInsertReq {
     4: required i64 timestamp
 }
 
-struct TSSetStorageGroupReq {
-  1: required string storageGroupId
-}
-
-struct TSRPCResp {
-  1: required TS_Status status
+struct TSDeleteReq {
+    1: required string path
+    2: required i64 timestamp
 }
 
 struct TSCreateTimeseriesReq {
@@ -270,7 +267,7 @@ struct ServerProperties {
 service TSIService {
 	TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
-	TSRPCResp closeSession(1:TSCloseSessionReq req);
+	TSStatus closeSession(1:TSCloseSessionReq req);
 
 	TSExecuteStatementResp executeStatement(1:TSExecuteStatementReq req);
 
@@ -284,25 +281,27 @@ service TSIService {
 
 	TSFetchMetadataResp fetchMetadata(1:TSFetchMetadataReq req)
 
-	TSRPCResp cancelOperation(1:TSCancelOperationReq req);
+	TSStatus cancelOperation(1:TSCancelOperationReq req);
 
-	TSRPCResp closeOperation(1:TSCloseOperationReq req);
+	TSStatus closeOperation(1:TSCloseOperationReq req);
 
 	TSGetTimeZoneResp getTimeZone();
 
-	TSRPCResp setTimeZone(1:TSSetTimeZoneReq req);
-	
+	TSStatus setTimeZone(1:TSSetTimeZoneReq req);
+
 	ServerProperties getProperties();
 
 	TSExecuteStatementResp insert(1:TSInsertionReq req);
 
 	TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
 
-	TSRPCResp setStorageGroup(1:TSSetStorageGroupReq req);
+	TSStatus setStorageGroup(1:string storageGroup);
 
-	TSRPCResp createTimeseries(1:TSCreateTimeseriesReq req);
+	TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
 
-	TSRPCResp insertRow(1:TSInsertReq req);
+	TSStatus insertRow(1:TSInsertReq req);
+
+	TSStatus deleteData(1:TSDeleteReq req);
 
 	i64 requestStatementId();
-	}
+}

@@ -41,7 +41,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.fileSystem.FileFactory;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
@@ -69,13 +68,14 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.JobFileManager;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
-import org.apache.iotdb.rpc.TSStatusType;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -187,7 +187,7 @@ public class StorageGroupProcessor {
     this.schema = constructSchema(storageGroupName);
 
     try {
-      storageGroupSysDir = FileFactory.INSTANCE.getFile(systemInfoDir, storageGroupName);
+      storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemInfoDir, storageGroupName);
       if (storageGroupSysDir.mkdirs()) {
         logger.info("Storage Group system Directory {} doesn't exist, create it",
             storageGroupSysDir.getPath());
@@ -218,7 +218,7 @@ public class StorageGroupProcessor {
       recoverUnseqFiles(unseqTsFiles);
 
       String taskName = storageGroupName + "-" + System.currentTimeMillis();
-      File mergingMods = FileFactory.INSTANCE.getFile(storageGroupSysDir, MERGING_MODIFICAITON_FILE_NAME);
+      File mergingMods = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, MERGING_MODIFICAITON_FILE_NAME);
       if (mergingMods.exists()) {
         mergingModification = new ModificationFile(mergingMods.getPath());
       }
@@ -368,7 +368,7 @@ public class StorageGroupProcessor {
       List<Integer> unsequenceIndexes = new ArrayList<>();
 
       for (int i = 0; i < batchInsertPlan.getRowCount(); i++) {
-        results[i] = TSStatusType.SUCCESS_STATUS.getStatusCode();
+        results[i] = TSStatusCode.SUCCESS_STATUS.getStatusCode();
         if (batchInsertPlan.getTimes()[i] > latestFlushedTimeForEachDevice
             .get(batchInsertPlan.getDeviceId())) {
           sequenceIndexes.add(i);
@@ -396,7 +396,7 @@ public class StorageGroupProcessor {
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(sequence);
     if (tsFileProcessor == null) {
       for (int index : indexes) {
-        results[index] = TSStatusType.INTERNAL_SERVER_ERROR.getStatusCode();
+        results[index] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
       }
       return;
     }

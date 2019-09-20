@@ -24,12 +24,14 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -71,7 +73,7 @@ public class MManager {
     schemaDir =
         IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
 
-    File systemFolder = new File(schemaDir);
+    File systemFolder = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!systemFolder.exists()) {
       if (systemFolder.mkdirs()) {
         logger.info("create system folder {}", systemFolder.getAbsolutePath());
@@ -124,7 +126,7 @@ public class MManager {
       return;
     }
     lock.writeLock().lock();
-    File logFile = new File(logFilePath);
+    File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
     try {
       initFromLog(logFile);
@@ -232,8 +234,8 @@ public class MManager {
 
   private BufferedWriter getLogWriter() throws IOException {
     if (logWriter == null) {
-      File logFile = new File(logFilePath);
-      File metadataDir = new File(schemaDir);
+      File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
+      File metadataDir = SystemFileFactory.INSTANCE.getFile(schemaDir);
       if (!metadataDir.exists()) {
         if (metadataDir.mkdirs()) {
           logger.info("create schema folder {}.", metadataDir);
@@ -378,7 +380,7 @@ public class MManager {
       throws PathErrorException, IOException {
     TSDataType tsDataType = TSDataType.valueOf(dataType);
     TSEncoding tsEncoding = TSEncoding.valueOf(encoding);
-    CompressionType type = CompressionType.valueOf(TSFileConfig.compressor);
+    CompressionType type = CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
     addPathToMTreeInternal(path, tsDataType, tsEncoding, type, Collections.emptyMap());
   }
 

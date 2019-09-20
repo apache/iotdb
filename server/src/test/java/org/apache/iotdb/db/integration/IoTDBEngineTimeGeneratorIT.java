@@ -68,14 +68,14 @@ public class IoTDBEngineTimeGeneratorIT {
 
     // use small page setting
     // origin value
-    maxNumberOfPointsInPage = tsFileConfig.maxNumberOfPointsInPage;
-    pageSizeInByte = tsFileConfig.pageSizeInByte;
-    groupSizeInByte = tsFileConfig.groupSizeInByte;
+    maxNumberOfPointsInPage = tsFileConfig.getMaxNumberOfPointsInPage();
+    pageSizeInByte = tsFileConfig.getPageSizeInByte();
+    groupSizeInByte = tsFileConfig.getGroupSizeInByte();
 
     // new value
-    tsFileConfig.maxNumberOfPointsInPage = 100;
-    tsFileConfig.pageSizeInByte = 1024 * 1024 * 150;
-    tsFileConfig.groupSizeInByte = 1024 * 1024 * 100;
+    tsFileConfig.setMaxNumberOfPointsInPage(100);
+    tsFileConfig.setPageSizeInByte(1024 * 1024 * 150);
+    tsFileConfig.setGroupSizeInByte(1024 * 1024 * 100);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1024 * 100);
 
     daemon = IoTDB.getInstance();
@@ -90,9 +90,9 @@ public class IoTDBEngineTimeGeneratorIT {
   public static void tearDown() throws Exception {
     daemon.stop();
     // recovery value
-    tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
-    tsFileConfig.pageSizeInByte = pageSizeInByte;
-    tsFileConfig.groupSizeInByte = groupSizeInByte;
+    tsFileConfig.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
+    tsFileConfig.setPageSizeInByte(pageSizeInByte);
+    tsFileConfig.setGroupSizeInByte(groupSizeInByte);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
 
     EnvironmentUtils.cleanEnv();

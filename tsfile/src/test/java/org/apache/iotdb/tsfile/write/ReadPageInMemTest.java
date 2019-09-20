@@ -52,24 +52,28 @@ public class ReadPageInMemTest {
   private static Schema getSchema() {
     Schema schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.valueEncoder)));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
-    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.valueEncoder)));
-    schema.registerMeasurement(new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.valueEncoder)));
+    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32,
+        TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64,
+        TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.FLOAT,
+        TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerMeasurement(new MeasurementSchema("s4", TSDataType.DOUBLE,
+        TSEncoding.valueOf(conf.getValueEncoder())));
     return schema;
   }
 
   @Before
   public void setUp() throws Exception {
     file.delete();
-    pageSize = conf.pageSizeInByte;
-    conf.pageSizeInByte = 200;
-    ChunkGroupSize = conf.groupSizeInByte;
-    conf.groupSizeInByte = 100000;
-    pageCheckSizeThreshold = conf.pageCheckSizeThreshold;
-    conf.pageCheckSizeThreshold = 1;
-    defaultMaxStringLength = conf.maxStringLength;
-    conf.maxStringLength = 2;
+    pageSize = conf.getPageSizeInByte();
+    conf.setPageSizeInByte(200);
+    ChunkGroupSize = conf.getGroupSizeInByte();
+    conf.setGroupSizeInByte(100000);
+    pageCheckSizeThreshold = conf.getPageCheckSizeThreshold();
+    conf.setPageCheckSizeThreshold(1);
+    defaultMaxStringLength = conf.getMaxStringLength();
+    conf.setMaxStringLength(2);
     schema = getSchema();
     innerWriter = new TsFileWriter(new File(filePath), schema, conf);
   }
@@ -77,10 +81,10 @@ public class ReadPageInMemTest {
   @After
   public void tearDown() throws Exception {
     file.delete();
-    conf.pageSizeInByte = pageSize;
-    conf.groupSizeInByte = ChunkGroupSize;
-    conf.pageCheckSizeThreshold = pageCheckSizeThreshold;
-    conf.maxStringLength = defaultMaxStringLength;
+    conf.setPageSizeInByte(pageSize);
+    conf.setGroupSizeInByte(ChunkGroupSize);
+    conf.setPageCheckSizeThreshold(pageCheckSizeThreshold);
+    conf.setMaxStringLength(defaultMaxStringLength);
   }
 
   @Test

@@ -26,6 +26,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -60,7 +61,7 @@ public class MTree implements Serializable {
       throws PathErrorException {
     TSDataType tsDataType = TSDataType.valueOf(dataType);
     TSEncoding tsEncoding = TSEncoding.valueOf(encoding);
-    CompressionType compressionType = CompressionType.valueOf(TSFileConfig.compressor);
+    CompressionType compressionType = CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
     addTimeseriesPath(timeseriesPath, tsDataType, tsEncoding, compressionType,
         Collections.emptyMap());
   }

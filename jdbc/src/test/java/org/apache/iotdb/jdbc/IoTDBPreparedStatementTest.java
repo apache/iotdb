@@ -27,7 +27,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.ZoneId;
 
-import org.apache.iotdb.rpc.TSStatusType;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
 import org.junit.Before;
@@ -41,7 +41,7 @@ public class IoTDBPreparedStatementTest {
   @Mock
   TSExecuteStatementResp execStatementResp;
   @Mock
-  TSRPCResp getOperationStatusResp;
+  TSStatus getOperationStatusResp;
   private ZoneId zoneId = ZoneId.systemDefault();
   @Mock
   private IoTDBConnection connection;
@@ -49,8 +49,8 @@ public class IoTDBPreparedStatementTest {
   private Iface client;
   @Mock
   private TS_SessionHandle sessHandle;
-  private TS_StatusType successStatus = new TS_StatusType(TSStatusType.SUCCESS_STATUS.getStatusCode(), "");
-  private TS_Status Status_SUCCESS = new TS_Status(successStatus);
+  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
+  private TSStatus Status_SUCCESS = new TSStatus(successStatus);
 
   @Mock
   private TSOperationHandle tOperationHandle;
@@ -61,7 +61,6 @@ public class IoTDBPreparedStatementTest {
     when(execStatementResp.getStatus()).thenReturn(Status_SUCCESS);
     when(execStatementResp.getOperationHandle()).thenReturn(tOperationHandle);
 
-    when(getOperationStatusResp.getStatus()).thenReturn(Status_SUCCESS);
     when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
   }
 

@@ -106,34 +106,30 @@ public class TSFileDescriptor {
     Properties properties = new Properties();
     try {
       properties.load(inputStream);
-      TSFileConfig.groupSizeInByte = Integer
-          .parseInt(
-              properties.getProperty("group_size_in_byte",
-                  Integer.toString(TSFileConfig.groupSizeInByte)));
-      TSFileConfig.pageSizeInByte = Integer
-          .parseInt(properties
-              .getProperty("page_size_in_byte", Integer.toString(TSFileConfig.pageSizeInByte)));
-      if (TSFileConfig.pageSizeInByte > TSFileConfig.groupSizeInByte) {
+      conf.setGroupSizeInByte(Integer
+          .parseInt(properties.getProperty("group_size_in_byte",
+                  Integer.toString(conf.getGroupSizeInByte()))));
+      conf.setPageSizeInByte(Integer
+          .parseInt(properties.getProperty("page_size_in_byte",
+              Integer.toString(conf.getPageSizeInByte()))));
+      if (conf.getPageSizeInByte() > conf.getGroupSizeInByte()) {
         logger.warn("page_size is greater than group size, will set it as the same with group size");
-        TSFileConfig.pageSizeInByte = TSFileConfig.groupSizeInByte;
+        conf.setPageSizeInByte(conf.getGroupSizeInByte());
       }
-      TSFileConfig.maxNumberOfPointsInPage = Integer.parseInt(
-          properties
-              .getProperty("max_number_of_points_in_page",
-                  Integer.toString(TSFileConfig.maxNumberOfPointsInPage)));
-      TSFileConfig.timeSeriesDataType = properties
-          .getProperty("time_series_data_type", TSFileConfig.timeSeriesDataType);
-      TSFileConfig.maxStringLength = Integer
+      conf.setMaxNumberOfPointsInPage(Integer
+          .parseInt(properties.getProperty("max_number_of_points_in_page",
+                  Integer.toString(conf.getMaxNumberOfPointsInPage()))));
+      conf.setTimeSeriesDataType(properties
+          .getProperty("time_series_data_type", conf.getTimeSeriesDataType()));
+      conf.setMaxStringLength(Integer
+          .parseInt(properties.getProperty("max_string_length",
+              Integer.toString(conf.getMaxStringLength()))));
+      conf.setFloatPrecision(Integer
           .parseInt(properties
-              .getProperty("max_string_length", Integer.toString(TSFileConfig.maxStringLength)));
-      TSFileConfig.floatPrecision = Integer
-          .parseInt(properties
-              .getProperty("float_precision", Integer.toString(TSFileConfig.floatPrecision)));
-      TSFileConfig.timeEncoder = properties
-          .getProperty("time_encoder", TSFileConfig.timeEncoder);
-      TSFileConfig.valueEncoder = properties
-          .getProperty("value_encoder", TSFileConfig.valueEncoder);
-      TSFileConfig.compressor = properties.getProperty("compressor", TSFileConfig.compressor);
+              .getProperty("float_precision", Integer.toString(conf.getFloatPrecision()))));
+      conf.setTimeEncoder(properties.getProperty("time_encoder", conf.getTimeEncoder()));
+      conf.setValueEncoder(properties.getProperty("value_encoder", conf.getValueEncoder()));
+      conf.setCompressor(properties.getProperty("compressor", conf.getCompressor()));
     } catch (IOException e) {
       logger.warn("Cannot load config file, use default configuration", e);
     } catch (Exception e) {

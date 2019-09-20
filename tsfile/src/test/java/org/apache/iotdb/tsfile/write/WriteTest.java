@@ -80,10 +80,10 @@ public class WriteTest {
     outputDataFile = "target/writeTestOutputData.tsfile";
     errorOutputDataFile = "target/writeTestErrorOutputData.tsfile";
     // for each row, flush page forcely
-    prePageSize = conf.pageSizeInByte;
-    conf.pageSizeInByte = 0;
-    prePageCheckThres = conf.pageCheckSizeThreshold;
-    conf.pageCheckSizeThreshold = 0;
+    prePageSize = conf.getPageSizeInByte();
+    conf.setPageSizeInByte(0);
+    prePageCheckThres = conf.getPageCheckSizeThreshold();
+    conf.setPageCheckSizeThreshold(0);
 
     try {
       generateSampleInputDataFile();
@@ -104,11 +104,11 @@ public class WriteTest {
     HashMap<String,String> props = new HashMap<>();
     props.put("max_point_number", "2");
     measurementArray.add(new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE,
-                              CompressionType.valueOf(TSFileConfig.compressor), props));
+                              CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()), props));
     props = new HashMap<>();
     props.put("max_point_number", "3");
     measurementArray.add(new MeasurementSchema("s3", TSDataType.DOUBLE, TSEncoding.TS_2DIFF,
-            CompressionType.valueOf(TSFileConfig.compressor), props));
+            CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()), props));
     measurementArray.add(new MeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     schema = new Schema();
     LOG.info(schema.toString());
@@ -133,8 +133,8 @@ public class WriteTest {
 
   @After
   public void end() {
-    conf.pageSizeInByte = prePageSize;
-    conf.pageCheckSizeThreshold = prePageCheckThres;
+    conf.setPageSizeInByte(prePageSize);
+    conf.setPageCheckSizeThreshold(prePageCheckThres);
   }
 
   private void generateSampleInputDataFile() throws IOException {

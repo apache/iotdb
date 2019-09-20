@@ -30,11 +30,19 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusType;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.thrift.TException;
 
 public class IoTDBStatement implements Statement {
@@ -126,8 +134,8 @@ public class IoTDBStatement implements Statement {
     try {
       if (operationHandle != null) {
         TSCancelOperationReq closeReq = new TSCancelOperationReq(operationHandle);
-        TSRPCResp closeResp = client.cancelOperation(closeReq);
-        RpcUtils.verifySuccess(closeResp.getStatus());
+        TSStatus closeResp = client.cancelOperation(closeReq);
+        RpcUtils.verifySuccess(closeResp);
       }
     } catch (Exception e) {
       throw new SQLException("Error occurs when canceling statement.", e);
@@ -153,8 +161,8 @@ public class IoTDBStatement implements Statement {
       if (operationHandle != null) {
         TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle, -1);
         closeReq.setStmtId(stmtId);
-        TSRPCResp closeResp = client.closeOperation(closeReq);
-        RpcUtils.verifySuccess(closeResp.getStatus());
+        TSStatus closeResp = client.closeOperation(closeReq);
+        RpcUtils.verifySuccess(closeResp);
       }
     } catch (Exception e) {
       throw new SQLException("Error occurs when closing statement.", e);
@@ -283,12 +291,9 @@ public class IoTDBStatement implements Statement {
         throw new IoTDBSQLException(e.getMessage());
       }
       if (execResp.getOperationHandle().hasResultSet) {
-        IoTDBQueryResultSet resSet = new IoTDBQueryResultSet(this,
-            execResp.getColumns(), client,
-            operationHandle, sql, execResp.getOperationType(),
-            execResp.getDataTypeList(), queryId.getAndIncrement());
-        resSet.setIgnoreTimeStamp(execResp.ignoreTimeStamp);
-        this.resultSet = resSet;
+        this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
+            execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, operationHandle, sql,
+            queryId.getAndIncrement());
         return true;
       }
       return false;
@@ -323,7 +328,7 @@ public class IoTDBStatement implements Statement {
     TSExecuteBatchStatementReq execReq = new TSExecuteBatchStatementReq(sessionHandle,
         batchSQLList);
     TSExecuteBatchStatementResp execResp = client.executeBatchStatement(execReq);
-    if (execResp.getStatus().getStatusType().getCode() == TSStatusType.SUCCESS_STATUS.getStatusCode()) {
+    if (execResp.getStatus().getStatusType().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       if (execResp.getResult() == null) {
         return new int[0];
       } else {
@@ -386,11 +391,9 @@ public class IoTDBStatement implements Statement {
     } catch (IoTDBRPCException e) {
       throw new IoTDBSQLException(e.getMessage());
     }
-    IoTDBQueryResultSet resSet = new IoTDBQueryResultSet(this, execResp.getColumns(), client,
-        operationHandle, sql, execResp.getOperationType(), execResp.getDataTypeList(),
+    this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
+        execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, operationHandle, sql,
         queryId.getAndIncrement());
-    resSet.setIgnoreTimeStamp(execResp.ignoreTimeStamp);
-    this.resultSet = resSet;
     return resultSet;
   }
 

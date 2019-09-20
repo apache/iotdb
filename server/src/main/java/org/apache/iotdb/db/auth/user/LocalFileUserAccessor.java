@@ -18,24 +18,20 @@
  */
 package org.apache.iotdb.db.auth.user;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import org.apache.iotdb.db.auth.entity.PathPrivilege;
+import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.utils.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.db.auth.entity.PathPrivilege;
-import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.utils.IOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This class loads a user's information from the corresponding file.The user file is a sequential
@@ -75,11 +71,11 @@ public class LocalFileUserAccessor implements IUserAccessor {
    */
   @Override
   public User loadUser(String username) throws IOException {
-    File userProfile = new File(
+    File userProfile = SystemFileFactory.INSTANCE.getFile(
         userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX);
     if (!userProfile.exists() || !userProfile.isFile()) {
       // System may crush before a newer file is renamed.
-      File newProfile = new File(
+      File newProfile = SystemFileFactory.INSTANCE.getFile(
           userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
       if (newProfile.exists() && newProfile.isFile()) {
         if(!newProfile.renameTo(userProfile)) {
@@ -124,7 +120,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
    */
   @Override
   public void saveUser(User user) throws IOException {
-    File userProfile = new File(
+    File userProfile = SystemFileFactory.INSTANCE.getFile(
         userDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
     try(BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(userProfile))) {
       try {
@@ -156,7 +152,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
       }
     }
 
-    File oldFile = new File(
+    File oldFile = SystemFileFactory.INSTANCE.getFile(
         userDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX);
     IOUtils.replaceFile(userProfile, oldFile);
   }
@@ -170,9 +166,9 @@ public class LocalFileUserAccessor implements IUserAccessor {
    */
   @Override
   public boolean deleteUser(String username) throws IOException {
-    File userProfile = new File(
+    File userProfile = SystemFileFactory.INSTANCE.getFile(
         userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX);
-    File backFile = new File(
+    File backFile = SystemFileFactory.INSTANCE.getFile(
         userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
     if (!userProfile.exists() && !backFile.exists()) {
       return false;
@@ -186,7 +182,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
 
   @Override
   public List<String> listAllUsers() {
-    File userDir = new File(userDirPath);
+    File userDir = SystemFileFactory.INSTANCE.getFile(userDirPath);
     String[] names = userDir
         .list((dir, name) -> name.endsWith(IoTDBConstant.PROFILE_SUFFIX) || name
             .endsWith(TEMP_SUFFIX));
@@ -205,9 +201,9 @@ public class LocalFileUserAccessor implements IUserAccessor {
 
   @Override
   public void reset() {
-    if (new File(userDirPath).mkdirs()) {
+    if (SystemFileFactory.INSTANCE.getFile(userDirPath).mkdirs()) {
       logger.info("user info dir {} is created", userDirPath);
-    } else if (!new File(userDirPath).exists()) {
+    } else if (!SystemFileFactory.INSTANCE.getFile(userDirPath).exists()) {
       logger.error("user info dir {} can not be created", userDirPath);
     }
   }
