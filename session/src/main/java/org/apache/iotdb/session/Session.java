@@ -236,8 +236,8 @@ public class Session {
   }
 
   public synchronized TSStatus deleteStorageGroup(String storageGroupId, long time) throws IoTDBSessionException {
-    TSDeleteStorageGroupReq request = new TSDeleteStorageGroupReq();
-    request.setStorageGroupId(storageGroupId);
+    TSDeleteReq request = new TSDeleteReq();
+    request.setPath(storageGroupId);
     request.setTimestamp(time);
     try {
       return checkAndReturn(client.deleteStorageGroup(request));
