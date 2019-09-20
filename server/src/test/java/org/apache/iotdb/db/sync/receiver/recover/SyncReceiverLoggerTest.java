@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.sync.receiver.recover;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -95,11 +98,11 @@ public class SyncReceiverLoggerTest {
         }
       }
     }
-    assert count == 402;
-    assert deletedFileNames.size() == deletedFileNamesTest.size();
-    assert toBeSyncedFiles.size() == toBeSyncedFilesTest.size();
-    assert deletedFileNames.containsAll(deletedFileNamesTest);
-    assert toBeSyncedFiles.containsAll(toBeSyncedFilesTest);
+    assertEquals(402, count);
+    assertEquals(deletedFileNames.size(), deletedFileNamesTest.size());
+    assertEquals(toBeSyncedFiles.size(), toBeSyncedFilesTest.size());
+    assertTrue(deletedFileNames.containsAll(deletedFileNamesTest));
+    assertTrue(toBeSyncedFiles.containsAll(toBeSyncedFilesTest));
   }
 
   private File getReceiverFolderFile() {

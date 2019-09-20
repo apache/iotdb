@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.db.sync.receiver.recover;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -138,11 +142,11 @@ public class SyncReceiverLogAnalyzerTest {
 
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
-      assert processor.getSequenceFileList().isEmpty();
-      assert processor.getUnSequenceFileList().isEmpty();
+      assertTrue(processor.getSequenceFileList().isEmpty());
+      assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
 
-    assert getReceiverFolderFile().exists();
+    assertTrue(getReceiverFolderFile().exists());
     for (Set<File> set : allFileList.values()) {
       for (File newTsFile : set) {
         if (!newTsFile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
@@ -152,9 +156,10 @@ public class SyncReceiverLogAnalyzerTest {
     }
 
     receiverLogger.close();
-    assert new File(getReceiverFolderFile(), SyncConstant.LOAD_LOG_NAME).exists();
-    assert new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME).exists();
-    assert FileLoaderManager.getInstance().containsFileLoader(getReceiverFolderFile().getName());
+    assertTrue(new File(getReceiverFolderFile(), SyncConstant.LOAD_LOG_NAME).exists());
+    assertTrue(new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME).exists());
+    assertTrue(
+        FileLoaderManager.getInstance().containsFileLoader(getReceiverFolderFile().getName()));
     int mode = 0;
     Set<String> toBeSyncedFilesTest = new HashSet<>();
     try (BufferedReader br = new BufferedReader(
@@ -172,8 +177,8 @@ public class SyncReceiverLogAnalyzerTest {
         }
       }
     }
-    assert toBeSyncedFilesTest.size() == toBeSyncedFiles.size();
-    assert toBeSyncedFilesTest.containsAll(toBeSyncedFiles);
+    assertEquals(toBeSyncedFilesTest.size(), toBeSyncedFiles.size());
+    assertTrue(toBeSyncedFilesTest.containsAll(toBeSyncedFiles));
 
     logAnalyze.recover(getReceiverFolderFile().getName());
 
@@ -189,8 +194,8 @@ public class SyncReceiverLogAnalyzerTest {
       LOGGER.error("Fail to wait for loading new tsfiles", e);
     }
 
-    assert !new File(getReceiverFolderFile(), SyncConstant.LOAD_LOG_NAME).exists();
-    assert !new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME).exists();
+    assertFalse(new File(getReceiverFolderFile(), SyncConstant.LOAD_LOG_NAME).exists());
+    assertFalse(new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME).exists());
   }
 
 

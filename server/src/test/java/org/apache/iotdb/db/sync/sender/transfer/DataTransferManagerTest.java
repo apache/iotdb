@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.db.sync.sender.transfer;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -97,7 +101,7 @@ public class DataTransferManagerTest {
 
     Map<String, Set<String>> dataFileMap = new HashMap<>();
     File sequenceFile = new File(dataDir, IoTDBConstant.SEQUENCE_FLODER_NAME);
-    for(File sgFile: sequenceFile.listFiles()){
+    for (File sgFile : sequenceFile.listFiles()) {
       dataFileMap.putIfAbsent(sgFile.getName(), new HashSet<>());
       for (File tsfile : sgFile.listFiles()) {
         if (!tsfile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
@@ -107,29 +111,29 @@ public class DataTransferManagerTest {
       }
     }
 
-    assert new File(config.getSenderFolderPath()).exists();
-    assert new File(config.getSnapshotPath()).exists();
+    assertTrue(new File(config.getSenderFolderPath()).exists());
+    assertTrue(new File(config.getSnapshotPath()).exists());
 
     Map<String, Set<String>> snapFileMap = new HashMap<>();
-    for(File sgFile: new File(config.getSnapshotPath()).listFiles()){
+    for (File sgFile : new File(config.getSnapshotPath()).listFiles()) {
       snapFileMap.putIfAbsent(sgFile.getName(), new HashSet<>());
-      for(File snapshotTsfile: sgFile.listFiles()){
+      for (File snapshotTsfile : sgFile.listFiles()) {
         snapFileMap.get(sgFile.getName()).add(snapshotTsfile.getName());
       }
     }
 
-    assert dataFileMap.size() == snapFileMap.size();
-    for(Entry<String, Set<String>> entry: dataFileMap.entrySet()){
+    assertEquals(dataFileMap.size(), snapFileMap.size());
+    for (Entry<String, Set<String>> entry : dataFileMap.entrySet()) {
       String sg = entry.getKey();
       Set<String> tsfiles = entry.getValue();
-      assert snapFileMap.containsKey(sg);
-      assert snapFileMap.get(sg).size() == tsfiles.size();
-      assert snapFileMap.get(sg).containsAll(tsfiles);
+      assertTrue(snapFileMap.containsKey(sg));
+      assertEquals(snapFileMap.get(sg).size(), tsfiles.size());
+      assertTrue(snapFileMap.get(sg).containsAll(tsfiles));
     }
 
-    assert !new File(config.getLastFileInfoPath()).exists();
+    assertFalse(new File(config.getLastFileInfoPath()).exists());
     senderLogAnalyzer.recover();
-    assert !new File(config.getSnapshotPath()).exists();
-    assert new File(config.getLastFileInfoPath()).exists();
+    assertFalse(new File(config.getSnapshotPath()).exists());
+    assertTrue(new File(config.getLastFileInfoPath()).exists());
   }
 }

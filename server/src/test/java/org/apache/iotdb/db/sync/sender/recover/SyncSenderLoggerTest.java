@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.sync.sender.recover;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -86,23 +89,23 @@ public class SyncSenderLoggerTest {
       String line;
       while ((line = br.readLine()) != null) {
         count++;
-        if(line.equals(SyncSenderLogger.SYNC_DELETED_FILE_NAME_START)){
+        if (line.equals(SyncSenderLogger.SYNC_DELETED_FILE_NAME_START)) {
           mode = -1;
-        } else if(line.equals(SyncSenderLogger.SYNC_TSFILE_START)){
+        } else if (line.equals(SyncSenderLogger.SYNC_TSFILE_START)) {
           mode = 1;
         } else {
-          if(mode == -1){
+          if (mode == -1) {
             deletedFileNamesTest.add(line);
-          } else if(mode == 1){
+          } else if (mode == 1) {
             toBeSyncedFilesTest.add(line);
           }
         }
       }
     }
-    assert count == 202;
-    assert deletedFileNames.size() == deletedFileNamesTest.size();
-    assert toBeSyncedFiles.size() == toBeSyncedFilesTest.size();
-    assert deletedFileNames.containsAll(deletedFileNamesTest);
-    assert toBeSyncedFiles.containsAll(toBeSyncedFilesTest);
+    assertEquals(202, count);
+    assertEquals(deletedFileNames.size(), deletedFileNamesTest.size());
+    assertEquals(toBeSyncedFiles.size(), toBeSyncedFilesTest.size());
+    assertTrue(deletedFileNames.containsAll(deletedFileNamesTest));
+    assertTrue(toBeSyncedFiles.containsAll(toBeSyncedFilesTest));
   }
 }

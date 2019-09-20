@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.db.sync.receiver.load;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -128,11 +132,11 @@ public class FileLoaderTest {
 
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
-      assert processor.getSequenceFileList().isEmpty();
-      assert processor.getUnSequenceFileList().isEmpty();
+      assertTrue(processor.getSequenceFileList().isEmpty());
+      assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
 
-    assert getReceiverFolderFile().exists();
+    assertTrue(getReceiverFolderFile().exists());
     for (List<File> set : allFileList.values()) {
       for (File newTsFile : set) {
         if (!newTsFile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
@@ -154,25 +158,24 @@ public class FileLoaderTest {
       LOGGER.error("Fail to wait for loading new tsfiles", e);
     }
 
-    assert !new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists();
+    assertFalse(new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists());
     Map<String, Set<String>> sequenceLoadedFileMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
       sequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-      assert processor.getSequenceFileList().size() == 10;
+      assertEquals(10, processor.getSequenceFileList().size());
       for (TsFileResource tsFileResource : processor.getSequenceFileList()) {
         sequenceLoadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
       }
-      assert processor.getUnSequenceFileList().isEmpty();
+      assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
 
-    assert sequenceLoadedFileMap.size() == correctSequenceLoadedFileMap.size();
+    assertEquals(sequenceLoadedFileMap.size(), correctSequenceLoadedFileMap.size());
     for (Entry<String, Set<String>> entry : correctSequenceLoadedFileMap.entrySet()) {
       String sg = entry.getKey();
-      assert entry.getValue().size() == sequenceLoadedFileMap.get(sg).size();
-      assert entry.getValue().containsAll(sequenceLoadedFileMap.get(sg));
+      assertEquals(entry.getValue().size(), sequenceLoadedFileMap.get(sg).size());
+      assertTrue(entry.getValue().containsAll(sequenceLoadedFileMap.get(sg)));
     }
-
 
     // add some overlap new tsfiles
     fileLoader = FileLoader.createFileLoader(getReceiverFolderFile());
@@ -217,11 +220,11 @@ public class FileLoaderTest {
 
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
-      assert !processor.getSequenceFileList().isEmpty();
-      assert processor.getUnSequenceFileList().isEmpty();
+      assertFalse(processor.getSequenceFileList().isEmpty());
+      assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
 
-    assert getReceiverFolderFile().exists();
+    assertTrue(getReceiverFolderFile().exists());
     for (List<File> set : allFileList.values()) {
       for (File newTsFile : set) {
         if (!newTsFile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
@@ -243,45 +246,46 @@ public class FileLoaderTest {
       LOGGER.error("Fail to wait for loading new tsfiles", e);
     }
 
-    assert !new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists();
+    assertFalse(new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists());
     sequenceLoadedFileMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
       sequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-      assert processor.getSequenceFileList().size() == 10;
+      assertEquals(10, processor.getSequenceFileList().size());
       for (TsFileResource tsFileResource : processor.getSequenceFileList()) {
         sequenceLoadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
       }
-      assert !processor.getUnSequenceFileList().isEmpty();
+      assertFalse(processor.getUnSequenceFileList().isEmpty());
     }
 
-    assert sequenceLoadedFileMap.size() == correctSequenceLoadedFileMap.size();
+    assertEquals(sequenceLoadedFileMap.size(), correctSequenceLoadedFileMap.size());
     for (Entry<String, Set<String>> entry : correctSequenceLoadedFileMap.entrySet()) {
       String sg = entry.getKey();
-      assert entry.getValue().size() == sequenceLoadedFileMap.get(sg).size();
-      assert entry.getValue().containsAll(sequenceLoadedFileMap.get(sg));
+      assertEquals(entry.getValue().size(), sequenceLoadedFileMap.get(sg).size());
+      assertTrue(entry.getValue().containsAll(sequenceLoadedFileMap.get(sg)));
     }
 
     Map<String, Set<String>> unsequenceLoadedFileMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
       unsequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-      assert processor.getUnSequenceFileList().size() == 10;
+      assertEquals(10, processor.getUnSequenceFileList().size());
       for (TsFileResource tsFileResource : processor.getUnSequenceFileList()) {
         unsequenceLoadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
       }
     }
 
-    assert unsequenceLoadedFileMap.size() == correctUnSequenceLoadedFileMap.size();
+    assertEquals(unsequenceLoadedFileMap.size(), correctUnSequenceLoadedFileMap.size());
     for (Entry<String, Set<String>> entry : correctUnSequenceLoadedFileMap.entrySet()) {
       String sg = entry.getKey();
-      assert entry.getValue().size() == unsequenceLoadedFileMap.get(sg).size();
-      assert entry.getValue().containsAll(unsequenceLoadedFileMap.get(sg));
+      assertEquals(entry.getValue().size(), unsequenceLoadedFileMap.get(sg).size());
+      assertTrue(entry.getValue().containsAll(unsequenceLoadedFileMap.get(sg)));
     }
   }
 
   @Test
-  public void loadDeletedFileName() throws IOException, StorageEngineException, InterruptedException {
+  public void loadDeletedFileName()
+      throws IOException, StorageEngineException, InterruptedException {
     fileLoader = FileLoader.createFileLoader(getReceiverFolderFile());
     Map<String, List<File>> allFileList = new HashMap<>();
     Map<String, Set<String>> correctLoadedFileMap = new HashMap<>();
@@ -322,11 +326,11 @@ public class FileLoaderTest {
 
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
-      assert processor.getSequenceFileList().isEmpty();
-      assert processor.getUnSequenceFileList().isEmpty();
+      assertTrue(processor.getSequenceFileList().isEmpty());
+      assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
 
-    assert getReceiverFolderFile().exists();
+    assertTrue(getReceiverFolderFile().exists());
     for (List<File> set : allFileList.values()) {
       for (File newTsFile : set) {
         if (!newTsFile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
@@ -348,32 +352,32 @@ public class FileLoaderTest {
       LOGGER.error("Fail to wait for loading new tsfiles", e);
     }
 
-    assert !new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists();
+    assertFalse(new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists());
     Map<String, Set<String>> loadedFileMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
       loadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-      assert processor.getSequenceFileList().size() == 25;
+      assertEquals(25, processor.getSequenceFileList().size());
       for (TsFileResource tsFileResource : processor.getSequenceFileList()) {
         loadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
       }
-      assert processor.getUnSequenceFileList().isEmpty();
+      assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
 
-    assert loadedFileMap.size() == correctLoadedFileMap.size();
+    assertEquals(loadedFileMap.size(), correctLoadedFileMap.size());
     for (Entry<String, Set<String>> entry : correctLoadedFileMap.entrySet()) {
       String sg = entry.getKey();
-      assert entry.getValue().size() == loadedFileMap.get(sg).size();
-      assert entry.getValue().containsAll(loadedFileMap.get(sg));
+      assertEquals(entry.getValue().size(), loadedFileMap.get(sg).size());
+      assertTrue(entry.getValue().containsAll(loadedFileMap.get(sg)));
     }
 
     // delete some tsfiles
     fileLoader = FileLoader.createFileLoader(getReceiverFolderFile());
-    for(Entry<String, List<File>> entry:allFileList.entrySet()){
+    for (Entry<String, List<File>> entry : allFileList.entrySet()) {
       String sg = entry.getKey();
       List<File> files = entry.getValue();
       int cnt = 0;
-      for(File snapFile:files){
+      for (File snapFile : files) {
         if (!snapFile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
           File dataFile = new File(
               DirectoryManager.getInstance().getNextFolderForSequenceFile(),
@@ -382,7 +386,7 @@ public class FileLoaderTest {
           snapFile.delete();
           fileLoader.addDeletedFileName(snapFile);
           new File(snapFile + TsFileResource.RESOURCE_SUFFIX).delete();
-          if(++cnt == 15){
+          if (++cnt == 15) {
             break;
           }
         }
@@ -409,14 +413,14 @@ public class FileLoaderTest {
       for (TsFileResource tsFileResource : processor.getSequenceFileList()) {
         loadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
       }
-      assert processor.getUnSequenceFileList().isEmpty();
+      assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
 
-    assert loadedFileMap.size() == correctLoadedFileMap.size();
+    assertEquals(loadedFileMap.size(), correctLoadedFileMap.size());
     for (Entry<String, Set<String>> entry : correctLoadedFileMap.entrySet()) {
       String sg = entry.getKey();
-      assert entry.getValue().size() == loadedFileMap.get(sg).size();
-      assert entry.getValue().containsAll(loadedFileMap.get(sg));
+      assertEquals(entry.getValue().size(), loadedFileMap.get(sg).size());
+      assertTrue(entry.getValue().containsAll(loadedFileMap.get(sg)));
     }
   }
 

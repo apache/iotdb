@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.sync.sender.manage;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+import static org.junit.Assert.assertTrue;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -102,15 +103,15 @@ public class SyncFileManagerTest {
 
     // lastFileList is empty
     manager.getValidFiles(dataDir);
-    assert isEmpty(manager.getLastLocalFilesMap());
+    assertTrue(isEmpty(manager.getLastLocalFilesMap()));
 
     updateLastLocalFiles(allFileList);
 
     manager.getValidFiles(dataDir);
     lastFileMap = manager.getLastLocalFilesMap();
     for (Entry<String, Set<File>> entry : allFileList.entrySet()) {
-      assert lastFileMap.containsKey(entry.getKey());
-      assert lastFileMap.get(entry.getKey()).containsAll(entry.getValue());
+      assertTrue(lastFileMap.containsKey(entry.getKey()));
+      assertTrue(lastFileMap.get(entry.getKey()).containsAll(entry.getValue()));
     }
 
     // add some files
@@ -146,19 +147,19 @@ public class SyncFileManagerTest {
     curFileMap = manager.getCurrentSealedLocalFilesMap();
     toBeSyncedFilesMap = manager.getToBeSyncedFilesMap();
     for (Entry<String, Set<File>> entry : allFileList.entrySet()) {
-      assert curFileMap.containsKey(entry.getKey());
-      assert curFileMap.get(entry.getKey()).containsAll(entry.getValue());
+      assertTrue(curFileMap.containsKey(entry.getKey()));
+      assertTrue(curFileMap.get(entry.getKey()).containsAll(entry.getValue()));
     }
     for (Entry<String, Set<File>> entry : correctToBeSyncedFiles.entrySet()) {
-      assert toBeSyncedFilesMap.containsKey(entry.getKey());
-      assert toBeSyncedFilesMap.get(entry.getKey()).containsAll(entry.getValue());
+      assertTrue(toBeSyncedFilesMap.containsKey(entry.getKey()));
+      assertTrue(toBeSyncedFilesMap.get(entry.getKey()).containsAll(entry.getValue()));
     }
     updateLastLocalFiles(allFileList);
     manager.getValidFiles(dataDir);
     lastFileMap = manager.getLastLocalFilesMap();
     for (Entry<String, Set<File>> entry : allFileList.entrySet()) {
-      assert lastFileMap.containsKey(entry.getKey());
-      assert lastFileMap.get(entry.getKey()).containsAll(entry.getValue());
+      assertTrue(lastFileMap.containsKey(entry.getKey()));
+      assertTrue(lastFileMap.get(entry.getKey()).containsAll(entry.getValue()));
     }
 
     // add some files and delete some files
@@ -170,7 +171,7 @@ public class SyncFileManagerTest {
           allFileList.put(String.valueOf(i), new HashSet<>());
         }
         correctToBeSyncedFiles.putIfAbsent(String.valueOf(i), new HashSet<>());
-        String rand = r.nextInt(10000) +  TSFILE_SUFFIX;
+        String rand = r.nextInt(10000) + TSFILE_SUFFIX;
         String fileName =
             FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
                 + File.separator + i
@@ -214,16 +215,16 @@ public class SyncFileManagerTest {
     deletedFilesMap = manager.getDeletedFilesMap();
     toBeSyncedFilesMap = manager.getToBeSyncedFilesMap();
     for (Entry<String, Set<File>> entry : allFileList.entrySet()) {
-      assert curFileMap.containsKey(entry.getKey());
-      assert curFileMap.get(entry.getKey()).containsAll(entry.getValue());
+      assertTrue(curFileMap.containsKey(entry.getKey()));
+      assertTrue(curFileMap.get(entry.getKey()).containsAll(entry.getValue()));
     }
     for (Entry<String, Set<File>> entry : correctDeleteFile.entrySet()) {
-      assert deletedFilesMap.containsKey(entry.getKey());
-      assert deletedFilesMap.get(entry.getKey()).containsAll(entry.getValue());
+      assertTrue(deletedFilesMap.containsKey(entry.getKey()));
+      assertTrue(deletedFilesMap.get(entry.getKey()).containsAll(entry.getValue()));
     }
     for (Entry<String, Set<File>> entry : correctToBeSyncedFiles.entrySet()) {
-      assert toBeSyncedFilesMap.containsKey(entry.getKey());
-      assert toBeSyncedFilesMap.get(entry.getKey()).containsAll(entry.getValue());
+      assertTrue(toBeSyncedFilesMap.containsKey(entry.getKey()));
+      assertTrue(toBeSyncedFilesMap.get(entry.getKey()).containsAll(entry.getValue()));
     }
 
     // add some invalid files
@@ -254,17 +255,17 @@ public class SyncFileManagerTest {
     deletedFilesMap = manager.getDeletedFilesMap();
     toBeSyncedFilesMap = manager.getToBeSyncedFilesMap();
     for (Entry<String, Set<File>> entry : curFileMap.entrySet()) {
-      assert allFileList.containsKey(entry.getKey());
-      assert allFileList.get(entry.getKey()).size() != entry.getValue().size();
-      assert allFileList.get(entry.getKey()).containsAll(entry.getValue());
+      assertTrue(allFileList.containsKey(entry.getKey()));
+      assertTrue(allFileList.get(entry.getKey()).size() != entry.getValue().size());
+      assertTrue(allFileList.get(entry.getKey()).containsAll(entry.getValue()));
     }
     for (Entry<String, Set<File>> entry : correctDeleteFile.entrySet()) {
-      assert deletedFilesMap.containsKey(entry.getKey());
-      assert deletedFilesMap.get(entry.getKey()).containsAll(entry.getValue());
+      assertTrue(deletedFilesMap.containsKey(entry.getKey()));
+      assertTrue(deletedFilesMap.get(entry.getKey()).containsAll(entry.getValue()));
     }
     for (Entry<String, Set<File>> entry : correctToBeSyncedFiles.entrySet()) {
-      assert toBeSyncedFilesMap.containsKey(entry.getKey());
-      assert toBeSyncedFilesMap.get(entry.getKey()).containsAll(entry.getValue());
+      assertTrue(toBeSyncedFilesMap.containsKey(entry.getKey()));
+      assertTrue(toBeSyncedFilesMap.get(entry.getKey()).containsAll(entry.getValue()));
     }
   }
 
