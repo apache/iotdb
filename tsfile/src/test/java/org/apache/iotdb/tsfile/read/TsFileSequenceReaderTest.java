@@ -32,34 +32,30 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.utils.FileGenerator;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 public class TsFileSequenceReaderTest {
 
-  private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
-  private TsFileSequenceReader fileReader;
-  private int rowCount = 1000;
+  private static final String FILE_PATH = FileGenerator.outputDataFile;
   private ReadOnlyTsFile tsFile;
 
   @Before
   public void before() throws InterruptedException, WriteProcessException, IOException {
-    TsFileGeneratorForTest.generateFile(rowCount, 16 * 1024 * 1024, 10000);
-    fileReader = new TsFileSequenceReader(FILE_PATH);
+    int rowCount = 1000;
+    FileGenerator.generateFile(rowCount, 10000);
+    TsFileSequenceReader fileReader = new TsFileSequenceReader(FILE_PATH);
     tsFile = new ReadOnlyTsFile(fileReader);
   }
 
   @After
   public void after() throws IOException {
     tsFile.close();
-    TsFileGeneratorForTest.after();
+    FileGenerator.after();
   }
 
   @Test
