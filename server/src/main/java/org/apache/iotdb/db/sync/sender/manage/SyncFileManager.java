@@ -162,22 +162,27 @@ public class SyncFileManager implements ISyncFileManager {
     }
   }
 
+  @Override
   public Map<String, Set<File>> getCurrentSealedLocalFilesMap() {
     return currentSealedLocalFilesMap;
   }
 
+  @Override
   public Map<String, Set<File>> getLastLocalFilesMap() {
     return lastLocalFilesMap;
   }
 
+  @Override
   public Map<String, Set<File>> getDeletedFilesMap() {
     return deletedFilesMap;
   }
 
+  @Override
   public Map<String, Set<File>> getToBeSyncedFilesMap() {
     return toBeSyncedFilesMap;
   }
 
+  @Override
   public Set<String> getAllSGs() {
     return allSGs;
   }

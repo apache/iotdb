@@ -26,6 +26,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.sync.receiver.load.FileLoader;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
+import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
 import org.apache.iotdb.db.sync.receiver.load.LoadLogger;
 import org.apache.iotdb.db.sync.receiver.load.LoadType;
 import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
@@ -99,7 +100,7 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
   }
 
   @Override
-  public void scanLogger(FileLoader loader, File syncLog, File loadLog) {
+  public void scanLogger(IFileLoader loader, File syncLog, File loadLog) {
     LoadType loadType = LoadType.NONE;
     try (BufferedReader syncReader = new BufferedReader(new FileReader(syncLog))) {
       String line;

@@ -52,7 +52,7 @@ public class FileLoader implements IFileLoader {
 
   private BlockingQueue<LoadTask> queue = new LinkedBlockingQueue<>();
 
-  private LoadLogger loadLog;
+  private ILoadLogger loadLog;
 
   private LoadType curType = LoadType.NONE;
 
@@ -204,6 +204,7 @@ public class FileLoader implements IFileLoader {
     }
   }
 
+  @Override
   public void setCurType(LoadType curType) {
     this.curType = curType;
   }

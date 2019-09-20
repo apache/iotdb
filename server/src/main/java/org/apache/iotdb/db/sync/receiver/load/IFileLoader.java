@@ -51,5 +51,10 @@ public interface IFileLoader {
    */
   void handleLoadTask(LoadTask task) throws IOException;
 
+  /**
+   * Set current load type
+   */
+  void setCurType(LoadType curType);
+
   void cleanUp();
 }

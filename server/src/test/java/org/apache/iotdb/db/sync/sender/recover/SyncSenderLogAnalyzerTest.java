@@ -40,6 +40,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
 import org.apache.iotdb.db.sync.sender.conf.SyncSenderConfig;
 import org.apache.iotdb.db.sync.sender.conf.SyncSenderDescriptor;
+import org.apache.iotdb.db.sync.sender.manage.ISyncFileManager;
 import org.apache.iotdb.db.sync.sender.manage.SyncFileManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -52,9 +53,9 @@ import org.slf4j.LoggerFactory;
 public class SyncSenderLogAnalyzerTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncSenderLogAnalyzerTest.class);
-  private SyncSenderLogger senderLogger;
-  private SyncSenderLogAnalyzer senderLogAnalyzer;
-  private SyncFileManager manager = SyncFileManager.getInstance();
+  private ISyncSenderLogger senderLogger;
+  private ISyncSenderLogAnalyzer senderLogAnalyzer;
+  private ISyncFileManager manager = SyncFileManager.getInstance();
   private SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
   private String dataDir;
 

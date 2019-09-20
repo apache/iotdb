@@ -30,6 +30,9 @@ import java.io.IOException;
  */
 public interface ILoadLogger {
 
+  String LOAD_DELETED_FILE_NAME_START = "load deleted files start";
+  String LOAD_TSFILE_START = "load tsfile start";
+
   /**
    * Start to load deleted files.
    */

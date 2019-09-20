@@ -45,6 +45,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.receiver.load.FileLoader;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderTest;
+import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
 import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
@@ -59,9 +60,9 @@ public class SyncReceiverLogAnalyzerTest {
   private static final String SG_NAME = "root.sg";
   private static IoTDB daemon;
   private String dataDir;
-  private FileLoader fileLoader;
-  private SyncReceiverLogAnalyzer logAnalyze;
-  private SyncReceiverLogger receiverLogger;
+  private IFileLoader fileLoader;
+  private ISyncReceiverLogAnalyzer logAnalyze;
+  private ISyncReceiverLogger receiverLogger;
 
   @Before
   public void setUp()

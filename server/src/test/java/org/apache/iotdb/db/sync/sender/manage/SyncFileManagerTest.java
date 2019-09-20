@@ -50,7 +50,7 @@ import org.slf4j.LoggerFactory;
 public class SyncFileManagerTest {
 
   private static final Logger logger = LoggerFactory.getLogger(SyncFileManagerTest.class);
-  private SyncFileManager manager = SyncFileManager.getInstance();
+  private ISyncFileManager manager = SyncFileManager.getInstance();
   private SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
   private String dataDir;
 

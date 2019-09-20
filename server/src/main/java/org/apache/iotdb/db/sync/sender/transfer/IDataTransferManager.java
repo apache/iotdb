@@ -35,6 +35,22 @@ public interface IDataTransferManager {
   void init();
 
   /**
+   * Verify whether the client lock file is locked or not, ensuring that only one client is
+   * running.
+   */
+  void verifySingleton() throws IOException;
+
+  /**
+   * Start monitor thread, which monitor sync status.
+   */
+  void startMonitor();
+
+  /**
+   * Start sync task in a certain time.
+   */
+  void startTimedTask();
+
+  /**
    * Establish a connection to receiver end.
    */
   void establishConnection(String serverIp, int serverPort) throws SyncConnectionException;

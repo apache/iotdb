@@ -50,7 +50,9 @@ import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
 import org.apache.iotdb.db.sync.sender.conf.SyncSenderConfig;
 import org.apache.iotdb.db.sync.sender.conf.SyncSenderDescriptor;
+import org.apache.iotdb.db.sync.sender.manage.ISyncFileManager;
 import org.apache.iotdb.db.sync.sender.manage.SyncFileManager;
+import org.apache.iotdb.db.sync.sender.recover.ISyncSenderLogger;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogger;
 import org.apache.iotdb.db.utils.SyncUtils;
@@ -102,9 +104,9 @@ public class DataTransferManager implements IDataTransferManager {
   /**
    * Record sync progress in log.
    */
-  private SyncSenderLogger syncLog;
+  private ISyncSenderLogger syncLog;
 
-  private SyncFileManager syncFileManager = SyncFileManager.getInstance();
+  private ISyncFileManager syncFileManager = SyncFileManager.getInstance();
 
   private ScheduledExecutorService executorService;
 
@@ -121,17 +123,14 @@ public class DataTransferManager implements IDataTransferManager {
    */
   public static void main(String[] args) throws IOException {
     Thread.currentThread().setName(ThreadName.SYNC_CLIENT.getName());
-    DataTransferManager fileSenderImpl = new DataTransferManager();
+    IDataTransferManager fileSenderImpl = new DataTransferManager();
     fileSenderImpl.verifySingleton();
     fileSenderImpl.startMonitor();
     fileSenderImpl.startTimedTask();
   }
 
-  /**
-   * Verify whether the client lock file is locked or not, ensuring that only one client is
-   * running.
-   */
-  private void verifySingleton() throws IOException {
+  @Override
+  public void verifySingleton() throws IOException {
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     for (String dataDir : dataDirs) {
       config.update(dataDir);
@@ -185,10 +184,8 @@ public class DataTransferManager implements IDataTransferManager {
     }
   }
 
-  /**
-   * Start monitor thread, which monitor sync status.
-   */
-  private void startMonitor() {
+  @Override
+  public void startMonitor() {
     executorService.scheduleWithFixedDelay(() -> {
       if (syncStatus) {
         logger.info("Sync process for receiver {} is in execution!", config.getSyncReceiverName());
@@ -196,10 +193,8 @@ public class DataTransferManager implements IDataTransferManager {
     }, SyncConstant.SYNC_MONITOR_DELAY, SyncConstant.SYNC_MONITOR_PERIOD, TimeUnit.SECONDS);
   }
 
-  /**
-   * Start sync task in a certain time.
-   */
-  private void startTimedTask() {
+  @Override
+  public void startTimedTask() {
     executorService.scheduleWithFixedDelay(() -> {
       try {
         syncAll();
@@ -294,7 +289,7 @@ public class DataTransferManager implements IDataTransferManager {
   /**
    * UUID marks the identity of sender for receiver.
    */
-  public String getOrCreateUUID(String uuidPath) throws IOException {
+  private String getOrCreateUUID(String uuidPath) throws IOException {
     File file = new File(uuidPath);
     String uuid;
     if (!file.getParentFile().exists()) {

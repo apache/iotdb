@@ -25,8 +25,6 @@ import java.io.IOException;
 
 public class LoadLogger implements ILoadLogger {
 
-  public static final String LOAD_DELETED_FILE_NAME_START = "load deleted files start";
-  public static final String LOAD_TSFILE_START = "load tsfile start";
   private BufferedWriter bw;
 
   public LoadLogger(File logFile) throws IOException {

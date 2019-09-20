@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
+import org.apache.hadoop.yarn.webapp.hamlet.Hamlet.I;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.sync.sender.conf.SyncSenderConfig;
 import org.apache.iotdb.db.sync.sender.conf.SyncSenderDescriptor;
+import org.apache.iotdb.db.sync.sender.recover.ISyncSenderLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogAnalyzer;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -50,10 +52,10 @@ import org.slf4j.LoggerFactory;
 public class DataTransferManagerTest {
 
   private static final Logger logger = LoggerFactory.getLogger(DataTransferManagerTest.class);
-  private DataTransferManager manager = DataTransferManager.getInstance();
+  private IDataTransferManager manager = DataTransferManager.getInstance();
   private SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
   private String dataDir;
-  private SyncSenderLogAnalyzer senderLogAnalyzer;
+  private ISyncSenderLogAnalyzer senderLogAnalyzer;
 
   @Before
   public void setUp()
@@ -105,7 +107,7 @@ public class DataTransferManagerTest {
       dataFileMap.putIfAbsent(sgFile.getName(), new HashSet<>());
       for (File tsfile : sgFile.listFiles()) {
         if (!tsfile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
-          manager.makeFileSnapshot(tsfile);
+          ((DataTransferManager)manager).makeFileSnapshot(tsfile);
         }
         dataFileMap.get(sgFile.getName()).add(tsfile.getName());
       }

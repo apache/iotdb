@@ -36,7 +36,7 @@ public class FileLoaderManager {
 
   private static final int WAIT_TIMEOUT = 2000;
 
-  private ConcurrentHashMap<String, FileLoader> fileLoaderMap;
+  private ConcurrentHashMap<String, IFileLoader> fileLoaderMap;
 
   private ExecutorService loadTaskRunnerPool;
 
@@ -47,7 +47,7 @@ public class FileLoaderManager {
     return FileLoaderManagerHolder.INSTANCE;
   }
 
-  public void addFileLoader(String senderName, FileLoader fileLoader){
+  public void addFileLoader(String senderName, IFileLoader fileLoader){
     fileLoaderMap.put(senderName, fileLoader);
   }
 
@@ -55,7 +55,7 @@ public class FileLoaderManager {
     fileLoaderMap.remove(senderName);
   }
 
-  public FileLoader getFileLoader(String senderName) {
+  public IFileLoader getFileLoader(String senderName) {
     return fileLoaderMap.get(senderName);
   }
 

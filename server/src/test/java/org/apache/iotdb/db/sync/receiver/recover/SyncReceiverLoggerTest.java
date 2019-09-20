@@ -39,7 +39,7 @@ import org.junit.Test;
 
 public class SyncReceiverLoggerTest {
 
-  private SyncReceiverLogger receiverLogger;
+  private ISyncReceiverLogger receiverLogger;
   private String dataDir;
 
   @Before

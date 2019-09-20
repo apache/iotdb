@@ -20,6 +20,8 @@ package org.apache.iotdb.db.sync.sender.manage;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * This interface is used to manage deleted files and new closed files that need to be synchronized
@@ -52,4 +54,14 @@ public interface ISyncFileManager {
    * @param dataDir data directory
    */
   void getValidFiles(String dataDir) throws IOException;
+
+  Map<String, Set<File>> getCurrentSealedLocalFilesMap();
+
+  Map<String, Set<File>> getLastLocalFilesMap();
+
+  Map<String, Set<File>> getDeletedFilesMap();
+
+  Map<String, Set<File>> getToBeSyncedFilesMap();
+
+  Set<String> getAllSGs();
 }

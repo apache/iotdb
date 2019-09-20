@@ -30,6 +30,9 @@ import java.io.IOException;
  */
 public interface ISyncSenderLogger {
 
+  String SYNC_DELETED_FILE_NAME_START = "sync deleted file names start";
+  String SYNC_TSFILE_START = "sync tsfile start";
+
   /**
    * Start to sync deleted files name
    * @throws IOException

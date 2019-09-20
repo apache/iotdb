@@ -25,8 +25,6 @@ import java.io.IOException;
 
 public class SyncReceiverLogger implements ISyncReceiverLogger {
 
-  public static final String SYNC_DELETED_FILE_NAME_START = "sync deleted file names start";
-  public static final String SYNC_TSFILE_START = "sync tsfile start";
   private BufferedWriter bw;
 
   public SyncReceiverLogger(File logFile) throws IOException {

@@ -57,7 +57,7 @@ public class FileLoaderTest {
   private static final String SG_NAME = "root.sg";
   private static IoTDB daemon;
   private String dataDir;
-  private FileLoader fileLoader;
+  private IFileLoader fileLoader;
 
   @Before
   public void setUp()
