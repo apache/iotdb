@@ -113,6 +113,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       case DELETE_TIMESERIES:
       case CREATE_TIMESERIES:
       case SET_STORAGE_GROUP:
+      case DELETE_STORAGE_GROUP:
       case METADATA:
         MetadataPlan metadata = (MetadataPlan) plan;
         return operateMetadata(metadata);
@@ -398,6 +399,10 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
           break;
         case SET_STORAGE_GROUP:
           mManager.setStorageLevelToMTree(path.getFullPath());
+          break;
+        case DELETE_STORAGE_GROUP:
+          mManager.deleteStorageLevelToMTree(path.getFullPath());
+          storageEngine.deleteAllDataFilesInOneStorageGroup(path.getFullPath());
           break;
         default:
           throw new ProcessorException("unknown namespace type:" + namespaceType);

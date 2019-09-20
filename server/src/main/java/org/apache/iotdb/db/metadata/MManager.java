@@ -550,6 +550,18 @@ public class MManager {
   }
 
   /**
+   * function for deleting storage level of the given path to mTree.
+   */
+  public boolean deleteStorageLevelToMTree(String path) throws MetadataErrorException {
+    try {
+      mgraph.deleteStorageLevel(path);
+    } catch (PathErrorException e){
+      throw new MetadataErrorException(e);
+    }
+    return true;
+  }
+
+  /**
    * function for checking if the given path is storage level of mTree or not.
    *
    * @apiNote :for cluster

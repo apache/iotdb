@@ -235,6 +235,17 @@ public class Session {
     }
   }
 
+  public synchronized TSStatus deleteStorageGroup(String storageGroupId, long time) throws IoTDBSessionException {
+    TSDeleteStorageGroupReq request = new TSDeleteStorageGroupReq();
+    request.setStorageGroupId(storageGroupId);
+    request.setTimestamp(time);
+    try {
+      return checkAndReturn(client.deleteStorageGroup(request));
+    } catch (TException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
   public synchronized TSStatus createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor) throws IoTDBSessionException {
     TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
     request.setPath(path);

@@ -161,6 +161,14 @@ public class MGraph implements Serializable {
   }
 
   /**
+   * Delete storage level for current Metadata Tree.
+   *
+   * @param path Format: root.node
+   */
+  void deleteStorageLevel(String path) throws PathErrorException {
+    mtree.deleteStorageGroup(path);
+  }
+  /**
    * Check whether the input path is storage level for current Metadata Tree or not.
    *
    * @param path Format: root.node.(node)*
