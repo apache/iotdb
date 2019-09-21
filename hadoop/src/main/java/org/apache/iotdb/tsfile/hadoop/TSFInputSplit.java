@@ -37,8 +37,6 @@ import org.apache.iotdb.tsfile.format.RowGroupBlockMetaData;
  * This is tsfile <code>InputSplit</code>.<br>
  * Each <code>InputSplit</code> will be processed by individual
  * <code>Mapper</code> task.
- *
- * @author liukun
  */
 public class TSFInputSplit extends InputSplit implements Writable {
 

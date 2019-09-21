@@ -34,11 +34,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Before;
 import org.junit.Test;
 
-/**
- *
- * @author kangrong
- *
- */
 public class RecordUtilsTest {
 
   Schema schema;

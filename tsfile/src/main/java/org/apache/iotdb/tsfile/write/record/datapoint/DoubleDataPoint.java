@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
 /**
  * a subclass for Double data type extends DataPoint.
  *
- * @author kangrong
  * @see DataPoint DataPoint
  */
 public class DoubleDataPoint extends DataPoint {

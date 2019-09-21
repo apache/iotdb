@@ -24,8 +24,6 @@ import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
 /**
  * This Exception is used while encoding failed. <br> This Exception extends super class {@link
  * TsFileRuntimeException}
- *
- * @author kangrong
  */
 public class TsFileEncodingException extends TsFileRuntimeException {
 

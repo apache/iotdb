@@ -30,9 +30,6 @@ import java.io.UnsupportedEncodingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @author lta
- */
 public class RocketMQProducer {
 
   private DefaultMQProducer producer;

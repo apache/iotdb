@@ -23,8 +23,6 @@ import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 /**
  * TSFileConfig is a configure class. Every variables is public and has default value.
- *
- * @author kangrong
  */
 public class TSFileConfig {
   // Memory configuration

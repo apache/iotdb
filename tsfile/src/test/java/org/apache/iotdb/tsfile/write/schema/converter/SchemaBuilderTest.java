@@ -32,9 +32,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.SchemaBuilder;
 import org.junit.Test;
 
-/**
- * @author qiaojialin
- */
 public class SchemaBuilderTest {
 
   @Test

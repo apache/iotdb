@@ -57,7 +57,7 @@ public class SessionExample {
     measurements.add("s3");
     for (long time = 0; time < 100; time++) {
       List<String> values = new ArrayList<>();
-      values.add("1");
+      values.add("1a");
       values.add("2");
       values.add("3");
       session.insert(deviceId, time, measurements, values);

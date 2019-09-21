@@ -60,6 +60,7 @@ import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
+import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -335,7 +336,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public boolean insert(InsertPlan insertPlan) {
+  public boolean insert(InsertPlan insertPlan) throws QueryProcessorException {
     writeLock();
     try {
       // init map
@@ -350,7 +351,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) {
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessorException {
     writeLock();
     try {
       // init map
@@ -385,7 +386,7 @@ public class StorageGroupProcessor {
   }
 
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
-      List<Integer> indexes, boolean sequence, Integer[] results) {
+      List<Integer> indexes, boolean sequence, Integer[] results) throws QueryProcessorException {
 
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(sequence);
     if (tsFileProcessor == null) {
@@ -416,7 +417,8 @@ public class StorageGroupProcessor {
     }
   }
 
-  private boolean insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence) {
+  private boolean insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence)
+      throws QueryProcessorException {
     TsFileProcessor tsFileProcessor;
     boolean result;
 
@@ -516,10 +518,12 @@ public class StorageGroupProcessor {
       updateEndTimeMap(workSequenceTsFileProcessor);
       workSequenceTsFileProcessor.asyncClose();
       workSequenceTsFileProcessor = null;
+      logger.info("close a sequence tsfile processor {}", storageGroupName);
     } else {
       closingUnSequenceTsFileProcessor.add(workUnSequenceTsFileProcessor);
       workUnSequenceTsFileProcessor.asyncClose();
       workUnSequenceTsFileProcessor = null;
+      logger.info("close an unsequence tsfile processor {}", storageGroupName);
     }
   }
 

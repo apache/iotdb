@@ -33,8 +33,6 @@ import kafka.utils.VerifiableProperties;
 /**
  * The class is to show how to get data from kafka through multi-threads. The data is sent by class
  * KafkaProducer.
- *
- * @author lta
  */
 public class KafkaConsumer {
 

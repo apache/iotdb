@@ -21,8 +21,6 @@ package org.apache.iotdb.db.exception;
 /**
  * If query metadata constructs schema but passes illegal parameters to EncodingConvertor or
  * DataTypeConvertor,this exception will be threw.
- *
- * @author kangrong
  */
 public class MetadataErrorException extends Exception {
 

@@ -49,8 +49,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * test writing processing correction combining writing process and reading process.
- *
- * @author kangrong
  */
 public class WriteTest {
 

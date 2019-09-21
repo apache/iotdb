@@ -34,8 +34,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * TSFileDescriptor is used to load TSFileConfig and provide configure information.
- *
- * @author kangrong
  */
 public class TSFileDescriptor {
 

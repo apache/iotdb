@@ -46,8 +46,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This is used for performance test, no asserting. User could change {@code ROW_COUNT} for larger data test.
- *
- * @author kangrong
  */
 public class PerfTest {
 
