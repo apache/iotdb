@@ -20,6 +20,6 @@
 -->
 
 ## 0.8.0 (version-0) -> version-1
-format: #PR ID, change
-#389 Genius_pig Delete a current version and add a number version.
+format: #PR ID change
+#409 Genius_pig Delete a current version and add a number version.
 * 
