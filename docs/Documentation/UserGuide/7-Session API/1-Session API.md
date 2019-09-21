@@ -83,9 +83,9 @@ public class SessionExample {
     session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
 
     insert();
-//    insertRowBatch();
-    delete();
-
+    insertRowBatch();
+    deleteData();
+    deleteTimeseries();
     session.close();
   }
 
@@ -95,19 +95,13 @@ public class SessionExample {
     measurements.add("s1");
     measurements.add("s2");
     measurements.add("s3");
-    for (long time = 0; time < 30000; time++) {
+    for (long time = 0; time < 100; time++) {
       List<String> values = new ArrayList<>();
       values.add("1");
       values.add("2");
       values.add("3");
       session.insert(deviceId, time, measurements, values);
     }
-  }
-
-  private static void delete() throws IoTDBSessionException {
-    String path = "root.sg1.d1.s1";
-    long deleteTime = 29999;
-    session.delete(path, deleteTime);
   }
 
   private static void insertRowBatch() throws IoTDBSessionException {
@@ -121,7 +115,7 @@ public class SessionExample {
     long[] timestamps = rowBatch.timestamps;
     Object[] values = rowBatch.values;
 
-    for (long time = 0; time < 30000; time++) {
+    for (long time = 0; time < 100; time++) {
       int row = rowBatch.batchSize++;
       timestamps[row] = time;
       for (int i = 0; i < 3; i++) {
@@ -138,6 +132,20 @@ public class SessionExample {
       session.insertBatch(rowBatch);
       rowBatch.reset();
     }
+  }
+
+  private static void deleteData() throws IoTDBSessionException {
+    String path = "root.sg1.d1.s1";
+    long deleteTime = 99;
+    session.deleteData(path, deleteTime);
+  }
+
+  private static void deleteTimeseries() throws IoTDBSessionException {
+    List<String> paths = new ArrayList<>();
+    paths.add("root.sg1.d1.s1");
+    paths.add("root.sg1.d1.s2");
+    paths.add("root.sg1.d1.s3");
+    session.deleteTimeseries(paths);
   }
 }
 ```

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.session;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -176,9 +177,47 @@ public class Session {
     }
   }
 
-  public synchronized TSStatus delete(String path, long time) throws IoTDBSessionException {
-    TSDeleteReq request = new TSDeleteReq();
-    request.setPath(path);
+  /**
+   * delete a timeseries, including data and schema
+   * @param path timeseries to delete, should be a whole path
+   */
+  public synchronized TSStatus deleteTimeseries(String path) throws IoTDBSessionException {
+    List<String> paths = new ArrayList<>();
+    paths.add(path);
+    return deleteTimeseries(paths);
+  }
+
+  /**
+   * delete a timeseries, including data and schema
+   * @param paths timeseries to delete, should be a whole path
+   */
+  public synchronized TSStatus deleteTimeseries(List<String> paths) throws IoTDBSessionException {
+    try {
+      return checkAndReturn(client.deleteTimeseries(paths));
+    } catch (TException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
+  /**
+   * delete data <= time in one timeseries
+   * @param path data in which time series to delete
+   * @param time data with time stamp less than or equal to time will be deleted
+   */
+  public synchronized TSStatus deleteData(String path, long time) throws IoTDBSessionException {
+    List<String> paths = new ArrayList<>();
+    paths.add(path);
+    return deleteData(paths, time);
+  }
+
+  /**
+   * delete data <= time in multiple timeseries
+   * @param paths data in which time series to delete
+   * @param time data with time stamp less than or equal to time will be deleted
+   */
+  public synchronized TSStatus deleteData(List<String> paths, long time) throws IoTDBSessionException {
+    TSDeleteDataReq request = new TSDeleteDataReq();
+    request.setPaths(paths);
     request.setTimestamp(time);
 
     try {
