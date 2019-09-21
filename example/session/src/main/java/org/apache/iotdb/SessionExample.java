@@ -67,7 +67,7 @@ public class SessionExample {
   private static void delete() throws IoTDBSessionException {
     String path = "root.sg1.d1.s1";
     long deleteTime = 99;
-    session.delete(path, deleteTime);
+    session.deleteData(path, deleteTime);
   }
 
   private static void insertRowBatch() throws IoTDBSessionException {

@@ -128,9 +128,9 @@ public class IoTDBSessionIT {
     String path3 = "root.sg1.d1.s3";
     long deleteTime = 99;
 
-    session.delete(path1, deleteTime);
-    session.delete(path2, deleteTime);
-    session.delete(path3, deleteTime);
+    session.deleteData(path1, deleteTime);
+    session.deleteData(path2, deleteTime);
+    session.deleteData(path3, deleteTime);
   }
 
   public void queryTest() throws ClassNotFoundException, SQLException {

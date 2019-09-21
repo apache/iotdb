@@ -176,7 +176,12 @@ public class Session {
     }
   }
 
-  public synchronized TSStatus delete(String path, long time) throws IoTDBSessionException {
+  /**
+   * @param path data of whose time series to delete
+   * @param time data with time stamp less than or equal to time will be deleted
+   * @return result statue
+   */
+  public synchronized TSStatus deleteData(String path, long time) throws IoTDBSessionException {
     TSDeleteReq request = new TSDeleteReq();
     request.setPath(path);
     request.setTimestamp(time);
