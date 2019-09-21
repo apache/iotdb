@@ -36,6 +36,7 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageEngineFailureException;
+import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -168,7 +169,11 @@ public class StorageEngine implements IService {
     }
 
     // TODO monitor: update statistics
-    return storageGroupProcessor.insert(insertPlan);
+    try {
+      return storageGroupProcessor.insert(insertPlan);
+    } catch (QueryProcessorException e) {
+      throw new StorageEngineException(e.getMessage());
+    }
   }
 
   /**
@@ -187,7 +192,11 @@ public class StorageEngine implements IService {
     }
 
     // TODO monitor: update statistics
-    return storageGroupProcessor.insertBatch(batchInsertPlan);
+    try {
+      return storageGroupProcessor.insertBatch(batchInsertPlan);
+    } catch (QueryProcessorException e) {
+      throw new StorageEngineException(e);
+    }
   }
 
   /**

@@ -234,7 +234,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       return storageEngine.insert(insertPlan);
 
     } catch (PathErrorException | StorageEngineException e) {
-      throw new ProcessorException(e);
+      throw new ProcessorException(e.getMessage());
     }
   }
 
