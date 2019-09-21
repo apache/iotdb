@@ -21,8 +21,6 @@ package org.apache.iotdb.tsfile.encoding.common;
 
 /**
  * This class defines several constants using in encoding algorithm.
- *
- * @author xuyi
  */
 public class EncodingConfig {
 

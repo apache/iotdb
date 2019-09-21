@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  * This class is a decoder for decoding the byte array that encoded by {@code
  * DeltaBinaryEncoder}.DeltaBinaryDecoder just supports integer and long values.<br>.
  *
- * @author kangrong
  * @see DeltaBinaryEncoder
  */
 public abstract class DeltaBinaryDecoder extends Decoder {
