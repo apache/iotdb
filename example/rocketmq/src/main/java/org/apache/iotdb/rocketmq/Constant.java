@@ -20,9 +20,6 @@ package org.apache.iotdb.rocketmq;
 
 import org.apache.iotdb.jdbc.Config;
 
-/**
- * @author lta
- */
 public class Constant {
 
   public static final String TOPIC = "RocketMQ-Test";
