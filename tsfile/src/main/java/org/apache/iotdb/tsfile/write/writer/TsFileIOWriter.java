@@ -59,8 +59,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * TSFileIOWriter is used to construct metadata and write data stored in memory to output stream.
- *
- * @author kangrong
  */
 public class TsFileIOWriter {
 

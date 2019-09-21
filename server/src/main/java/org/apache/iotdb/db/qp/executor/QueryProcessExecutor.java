@@ -155,7 +155,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   @Override
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
       QueryContext context)
-      throws ProcessorException, IOException, PathErrorException, StorageEngineException {
+      throws IOException, PathErrorException, StorageEngineException {
     return queryRouter.fill(fillPaths, queryTime, fillTypes, context);
   }
 

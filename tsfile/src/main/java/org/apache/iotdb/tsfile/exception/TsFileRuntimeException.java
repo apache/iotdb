@@ -21,8 +21,6 @@ package org.apache.iotdb.tsfile.exception;
 /**
  * This Exception is the parent class for all runtime exceptions.<br> This Exception extends super
  * class {@link java.lang.RuntimeException}
- *
- * @author kangrong
  */
 public abstract class TsFileRuntimeException extends RuntimeException {
 

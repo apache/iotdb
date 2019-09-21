@@ -27,8 +27,6 @@ import org.apache.thrift.server.TThreadPoolServer.Args;
 
 /**
  * This class is used to create thread pool which must contain the pool name.
- *
- * @author liukun
  */
 public class IoTDBThreadPoolFactory {
   private IoTDBThreadPoolFactory() {}

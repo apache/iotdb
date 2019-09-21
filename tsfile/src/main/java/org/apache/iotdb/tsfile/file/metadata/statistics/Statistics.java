@@ -38,7 +38,6 @@ import org.slf4j.LoggerFactory;
  * super class.<br>
  *
  * @param <T> data type for Statistics
- * @author kangrong
  * @since 0.0.1
  */
 public abstract class Statistics<T> {

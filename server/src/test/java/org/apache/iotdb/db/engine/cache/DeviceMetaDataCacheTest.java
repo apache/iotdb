@@ -52,7 +52,6 @@ public class DeviceMetaDataCacheTest {
   private String measurementId3 = "s3";
   private String measurementId4 = "s4";
   private String measurementId5 = "s5";
-  private String measurementId100 = "s100";
   private StorageGroupProcessor storageGroupProcessor;
   private String systemDir = "data/info";
 
@@ -82,7 +81,6 @@ public class DeviceMetaDataCacheTest {
     record.addTuple(DataPoint.getDataPoint(TSDataType.FLOAT, measurementId2, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.DOUBLE, measurementId3, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.BOOLEAN, measurementId4, "True"));
-//    record.addTuple(DataPoint.getDataPoint(TSDataType.TEXT, measurementId5, String.valueOf(num)));
     storageGroupProcessor.insert(new InsertPlan(record));
   }
 

@@ -37,7 +37,6 @@ import org.slf4j.LoggerFactory;
  * A implementation of {@code IChunkWriter}. {@code ChunkWriterImpl} consists of a {@code
  * ChunkBuffer}, a {@code PageWriter}, and two {@code Statistics}.
  *
- * @author kangrong
  * @see IChunkWriter IChunkWriter
  */
 public class ChunkWriterImpl implements IChunkWriter {

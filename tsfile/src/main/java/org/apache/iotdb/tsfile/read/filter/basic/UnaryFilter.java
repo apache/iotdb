@@ -25,7 +25,6 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
  * Definition for unary filter operations.
  *
  * @param <T> comparable data type
- * @author CGF
  */
 public abstract class UnaryFilter<T extends Comparable<T>> implements Filter, Serializable {
 
