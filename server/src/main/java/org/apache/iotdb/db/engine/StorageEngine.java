@@ -126,7 +126,7 @@ public class StorageEngine implements IService {
         synchronized (storageGroupName) {
           processor = processorMap.get(storageGroupName);
           if (processor == null) {
-            logger.debug("construct a processor instance, the storage group is {}, Thread is {}",
+            logger.info("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroupName, Thread.currentThread().getId());
             processor = new StorageGroupProcessor(systemDir, storageGroupName);
             processorMap.put(storageGroupName, processor);

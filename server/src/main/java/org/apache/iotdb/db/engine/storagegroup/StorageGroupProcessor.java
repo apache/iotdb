@@ -516,10 +516,12 @@ public class StorageGroupProcessor {
       updateEndTimeMap(workSequenceTsFileProcessor);
       workSequenceTsFileProcessor.asyncClose();
       workSequenceTsFileProcessor = null;
+      logger.info("close a sequence tsfile processor {}", storageGroupName);
     } else {
       closingUnSequenceTsFileProcessor.add(workUnSequenceTsFileProcessor);
       workUnSequenceTsFileProcessor.asyncClose();
       workUnSequenceTsFileProcessor = null;
+      logger.info("close an unsequence tsfile processor {}", storageGroupName);
     }
   }
 
