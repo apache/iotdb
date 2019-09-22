@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -39,6 +38,7 @@ import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
@@ -85,7 +85,7 @@ public class LogReplayer {
    */
   public void replayLogs() throws ProcessorException {
     WriteLogNode logNode = MultiFileLogNodeManager.getInstance().getNode(
-        logNodePrefix + SystemFileFactory.INSTANCE.getFile(insertFilePath).getName());
+        logNodePrefix + TSFileFactory.INSTANCE.getFile(insertFilePath).getName());
 
     ILogReader logReader = logNode.getLogReader();
     try {
