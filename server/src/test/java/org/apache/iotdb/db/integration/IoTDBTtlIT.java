@@ -31,12 +31,12 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
-import org.apache.iotdb.rpc.TSStatusType;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class IoTDBTTLTest {
+public class IoTDBTtlIT {
   private IoTDB daemon;
 
   @Before
@@ -62,12 +62,12 @@ public class IoTDBTTLTest {
       try {
         statement.execute("SET TTL TO root.TTL_SG1 1000");
       } catch (SQLException e) {
-        assertEquals(TSStatusType.NOT_A_STORAGE_GROUP_ERROR.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.NOT_A_STORAGE_GROUP_ERROR.getStatusCode(), e.getErrorCode());
       }
       try {
         statement.execute("UNSET TTL TO root.TTL_SG1");
       } catch (SQLException e) {
-        assertEquals(TSStatusType.NOT_A_STORAGE_GROUP_ERROR.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.NOT_A_STORAGE_GROUP_ERROR.getStatusCode(), e.getErrorCode());
       }
 
       statement.execute("SET STORAGE GROUP TO root.TTL_SG1");
@@ -104,7 +104,7 @@ public class IoTDBTTLTest {
           statement.execute(String.format("INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)",
               now - 50000 + i, i));
         } catch (SQLException e) {
-          assertEquals(TSStatusType.OUT_OF_TTL_ERROR.getStatusCode(), e.getErrorCode());
+          assertEquals(TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode(), e.getErrorCode());
         }
       }
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1")) {
