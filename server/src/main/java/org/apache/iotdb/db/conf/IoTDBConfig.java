@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -376,8 +376,9 @@ public class IoTDBConfig {
       addHomeDir(dirs, i);
     }
 
-    if (TSFileConfig.getTSFileStorageFs().equals(FSType.HDFS)) {
-      String hdfsDir = "hdfs://" + TSFileConfig.getHdfsIp() + ":" + TSFileConfig.getHdfsPort();
+    if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
+      String hdfsDir = "hdfs://" + TSFileDescriptor.getInstance().getConfig().getHdfsIp() + ":"
+          + TSFileDescriptor.getInstance().getConfig().getHdfsPort();
       for (int i = 5; i < dirs.size(); i++) {
         String dir = dirs.get(i);
         dir = hdfsDir + File.separatorChar + dir;

@@ -30,9 +30,6 @@ import org.apache.rocketmq.common.consumer.ConsumeFromWhere;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @author lta
- */
 public class RocketMQConsumer {
 
   private DefaultMQPushConsumer consumer;

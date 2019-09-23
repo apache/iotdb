@@ -483,9 +483,9 @@ public class IoTDBConnection implements Connection {
 
   public void setTimeZone(String zoneId) throws TException, IoTDBSQLException {
     TSSetTimeZoneReq req = new TSSetTimeZoneReq(zoneId);
-    TSRPCResp resp = client.setTimeZone(req);
+    TSStatus resp = client.setTimeZone(req);
     try {
-      RpcUtils.verifySuccess(resp.getStatus());
+      RpcUtils.verifySuccess(resp);
     } catch (IoTDBRPCException e) {
       throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
     }

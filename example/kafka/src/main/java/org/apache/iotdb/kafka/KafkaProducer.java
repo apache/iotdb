@@ -27,8 +27,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The class is to show how to send data to kafka through multi-threads.
- *
- * @author lta
  */
 public class KafkaProducer {
 

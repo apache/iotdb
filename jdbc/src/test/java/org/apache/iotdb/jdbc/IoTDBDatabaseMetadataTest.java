@@ -26,7 +26,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.*;
-import org.apache.iotdb.rpc.TSStatusType;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.junit.Assert;
 import org.junit.Before;
@@ -59,8 +59,8 @@ public class IoTDBDatabaseMetadataTest {
   @Mock
   private TSFetchMetadataResp fetchMetadataResp;
 
-  private TS_StatusType successStatus = new TS_StatusType(TSStatusType.SUCCESS_STATUS.getStatusCode(), "");
-  private TS_Status Status_SUCCESS = new TS_Status(successStatus);
+  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
+  private TSStatus Status_SUCCESS = new TSStatus(successStatus);
 
   private DatabaseMetaData databaseMetaData;
 

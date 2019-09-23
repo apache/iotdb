@@ -24,8 +24,6 @@ import java.io.File;
 /**
  * FileUtils is just used for return file attribute like file size, and contains some measurement conversion among B,
  * KB, MB etc.
- *
- * @author kangrong
  */
 public class FileUtils {
 

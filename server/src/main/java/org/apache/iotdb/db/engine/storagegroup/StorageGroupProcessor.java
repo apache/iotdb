@@ -41,6 +41,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
@@ -61,9 +62,9 @@ import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.OutOfTTLException;
 import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
+import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -72,12 +73,11 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.JobFileManager;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
-import org.apache.iotdb.rpc.TSStatusType;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -312,10 +312,10 @@ public class StorageGroupProcessor {
   private int compareFileName(File o1, File o2) {
     String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split("-");
     String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split("-");
-    if (Long.valueOf(items1[0]) - Long.valueOf(items2[0]) == 0) {
-      return Long.compare(Long.valueOf(items1[1]), Long.valueOf(items2[1]));
+    if (Long.parseLong(items1[0]) - Long.parseLong(items2[0]) == 0) {
+      return Long.compare(Long.parseLong(items1[1]), Long.parseLong(items2[1]));
     } else {
-      return Long.compare(Long.valueOf(items1[0]), Long.valueOf(items2[0]));
+      return Long.compare(Long.parseLong(items1[0]), Long.parseLong(items2[0]));
     }
   }
 
@@ -345,7 +345,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public boolean insert(InsertPlan insertPlan) throws StorageEngineException {
+  public boolean insert(InsertPlan insertPlan) throws QueryProcessorException {
     // reject insertions that are out of ttl
     if (!checkTTL(insertPlan.getTime())) {
       throw new OutOfTTLException(insertPlan.getTime(), System.currentTimeMillis() - dataTTL);
@@ -364,7 +364,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) {
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessorException {
     writeLock();
     try {
       // init map
@@ -376,11 +376,11 @@ public class StorageGroupProcessor {
       List<Integer> unsequenceIndexes = new ArrayList<>();
 
       for (int i = 0; i < batchInsertPlan.getRowCount(); i++) {
-        results[i] = TSStatusType.SUCCESS_STATUS.getStatusCode();
+        results[i] = TSStatusCode.SUCCESS_STATUS.getStatusCode();
         long currTime = batchInsertPlan.getTimes()[i];
         // skip points that do not satisfy TTL
         if (!checkTTL(currTime)) {
-          results[i] = TSStatusType.OUT_OF_TTL_ERROR.getStatusCode();
+          results[i] = TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode();
           continue;
         }
         if (currTime > latestFlushedTimeForEachDevice.get(batchInsertPlan.getDeviceId())) {
@@ -413,12 +413,12 @@ public class StorageGroupProcessor {
   }
 
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
-      List<Integer> indexes, boolean sequence, Integer[] results) {
+      List<Integer> indexes, boolean sequence, Integer[] results) throws QueryProcessorException {
 
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(sequence);
     if (tsFileProcessor == null) {
       for (int index : indexes) {
-        results[index] = TSStatusType.INTERNAL_SERVER_ERROR.getStatusCode();
+        results[index] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
       }
       return;
     }
@@ -444,7 +444,8 @@ public class StorageGroupProcessor {
     }
   }
 
-  private boolean insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence) {
+  private boolean insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence)
+      throws QueryProcessorException {
     TsFileProcessor tsFileProcessor;
     boolean result;
 
@@ -544,10 +545,12 @@ public class StorageGroupProcessor {
       updateEndTimeMap(workSequenceTsFileProcessor);
       workSequenceTsFileProcessor.asyncClose();
       workSequenceTsFileProcessor = null;
+      logger.info("close a sequence tsfile processor {}", storageGroupName);
     } else {
       closingUnSequenceTsFileProcessor.add(workUnSequenceTsFileProcessor);
       workUnSequenceTsFileProcessor.asyncClose();
       workUnSequenceTsFileProcessor = null;
+      logger.info("close an unsequence tsfile processor {}", storageGroupName);
     }
   }
 

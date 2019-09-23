@@ -37,6 +37,7 @@ import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.CachedUnseqResourceMergeReader;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
@@ -170,7 +171,8 @@ public class MergeResource {
    */
   public IChunkWriter getChunkWriter(MeasurementSchema measurementSchema) {
     return chunkWriterCache.computeIfAbsent(measurementSchema,
-        schema -> new ChunkWriterImpl(new ChunkBuffer(schema), TSFileConfig.pageCheckSizeThreshold));
+        schema -> new ChunkWriterImpl(new ChunkBuffer(schema),
+            TSFileDescriptor.getInstance().getConfig().getPageCheckSizeThreshold()));
   }
 
   /**

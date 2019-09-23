@@ -20,6 +20,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -274,9 +275,9 @@ public class IoTDBDescriptor {
       conf.setHdfsPort(properties.getProperty("hdfs_port"));
 
       // At the same time, set TSFileConfig
-      TSFileConfig.setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
-      TSFileConfig.setHdfsIp(properties.getProperty("hdfs_ip"));
-      TSFileConfig.setHdfsPort(properties.getProperty("hdfs_port"));
+      TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
+      TSFileDescriptor.getInstance().getConfig().setHdfsIp(properties.getProperty("hdfs_ip"));
+      TSFileDescriptor.getInstance().getConfig().setHdfsPort(properties.getProperty("hdfs_port"));
 
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);

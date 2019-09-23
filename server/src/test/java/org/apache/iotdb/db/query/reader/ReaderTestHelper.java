@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.reader;
 import java.io.IOException;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
-import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -34,7 +34,7 @@ import org.junit.Before;
 
 public abstract class ReaderTestHelper {
 
-  protected String storageGroup = "storage_group1";
+  private String storageGroup = "storage_group1";
   protected String deviceId = "root.vehicle.d0";
   protected String measurementId = "s0";
   protected StorageGroupProcessor storageGroupProcessor;
@@ -59,9 +59,9 @@ public abstract class ReaderTestHelper {
     EnvironmentUtils.cleanDir(systemDir);
   }
 
-  abstract protected void insertData() throws IOException, StorageEngineException;
+  abstract protected void insertData() throws IOException, QueryProcessorException;
 
-  protected void insertOneRecord(long time, int num) throws StorageEngineException {
+  protected void insertOneRecord(long time, int num) throws QueryProcessorException {
     TSRecord record = new TSRecord(time, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(num)));
     storageGroupProcessor.insert(new InsertPlan(record));

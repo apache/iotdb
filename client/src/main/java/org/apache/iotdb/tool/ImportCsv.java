@@ -54,8 +54,6 @@ import org.apache.thrift.TException;
 
 /**
  * read a CSV formatted data File and insert all the data into IoTDB.
- *
- * @author zhanggr
  */
 public class ImportCsv extends AbstractCsvTool {
   private static final String FILE_ARGS = "f";

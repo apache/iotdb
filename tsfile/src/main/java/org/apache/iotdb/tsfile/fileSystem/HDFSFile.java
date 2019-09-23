@@ -20,13 +20,15 @@
 package org.apache.iotdb.tsfile.fileSystem;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.*;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FilenameFilter;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -173,7 +175,7 @@ public class HDFSFile extends File {
   @Override
   public boolean isDirectory() {
     try {
-      return fs.getFileStatus(hdfsPath).isDirectory();
+      return exists() && fs.getFileStatus(hdfsPath).isDirectory();
     } catch (IOException e) {
       logger.error("Fail to judge whether {} is a directory. ", hdfsPath.toUri().toString(), e);
       return false;
@@ -207,7 +209,7 @@ public class HDFSFile extends File {
 
   @Override
   public int compareTo(File pathname) {
-    if(pathname instanceof HDFSFile) {
+    if (pathname instanceof HDFSFile) {
       return hdfsPath.toUri().toString().compareTo(pathname.getPath());
     } else {
       logger.error("File {} is not HDFS file. ", pathname.getPath());
@@ -218,9 +220,19 @@ public class HDFSFile extends File {
   @Override
   public boolean equals(Object obj) {
     if ((obj != null) && (obj instanceof HDFSFile)) {
-      return compareTo((HDFSFile)obj) == 0;
+      return compareTo((HDFSFile) obj) == 0;
     }
     return false;
+  }
+
+  @Override
+  public boolean renameTo(File dest) {
+    try {
+      return fs.rename(hdfsPath, new Path(dest.getAbsolutePath()));
+    } catch (IOException e) {
+      logger.error("Failed to rename file {} to {}. ", hdfsPath.toString(), dest.getName(), e);
+      return false;
+    }
   }
 
 
@@ -306,11 +318,6 @@ public class HDFSFile extends File {
 
   @Override
   public boolean mkdir() {
-    throw new UnsupportedOperationException("Unsupported operation.");
-  }
-
-  @Override
-  public boolean renameTo(File dest) {
     throw new UnsupportedOperationException("Unsupported operation.");
   }
 

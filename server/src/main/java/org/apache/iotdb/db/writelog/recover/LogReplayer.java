@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -99,7 +100,7 @@ public class LogReplayer {
           replayUpdate((UpdatePlan) plan);
         }
       }
-    } catch (IOException e) {
+    } catch (IOException | QueryProcessorException e) {
       throw new ProcessorException("Cannot replay logs", e);
     } finally {
       logReader.close();
@@ -116,7 +117,7 @@ public class LogReplayer {
     }
   }
 
-  private void replayInsert(InsertPlan insertPlan) {
+  private void replayInsert(InsertPlan insertPlan) throws QueryProcessorException {
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       Long lastEndTime = currentTsFileResource.getEndTimeMap().get(insertPlan.getDeviceId());

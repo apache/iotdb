@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
 /**
  * a subclass for Long data type extends DataPoint.
  *
- * @author kangrong
  * @see DataPoint DataPoint
  */
 public class LongDataPoint extends DataPoint {

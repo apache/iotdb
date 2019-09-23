@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.rocketmq;
 
-/**
- * @author lta
- */
 public class Utils {
 
   private Utils() {

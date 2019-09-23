@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.reader.fileRelated;
 import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -39,7 +39,7 @@ public class UnSealedTsFileReaderTest extends ReaderTestHelper {
     QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context,
         null);
     TsFileResource resource = queryDataSource.getSeqResources().get(0);
-    Assert.assertEquals(false, resource.isClosed());
+    Assert.assertFalse(resource.isClosed());
     UnSealedTsFileIterateReader reader = new UnSealedTsFileIterateReader(resource, null, false);
     long time = 999;
     while (reader.hasNext()) {
@@ -58,7 +58,7 @@ public class UnSealedTsFileReaderTest extends ReaderTestHelper {
     QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context,
         null);
     TsFileResource resource = queryDataSource.getSeqResources().get(0);
-    Assert.assertEquals(false, resource.isClosed());
+    Assert.assertFalse(resource.isClosed());
     UnSealedTsFileReaderByTimestamp reader = new UnSealedTsFileReaderByTimestamp(
         resource);
 
@@ -74,18 +74,18 @@ public class UnSealedTsFileReaderTest extends ReaderTestHelper {
       Assert.assertEquals(time, value);
 
     }
-    Assert.assertEquals(true, reader.hasNext());
+    Assert.assertTrue(reader.hasNext());
 
     for (int time = 3050; time <= 3080; time += 10) {
       Integer value = (Integer) reader.getValueInTimestamp(time);
-      Assert.assertEquals(null, value);
+      Assert.assertNull(value);
     }
-    Assert.assertEquals(false, reader.hasNext());
+    Assert.assertFalse(reader.hasNext());
   }
 
 
   @Override
-  protected void insertData() throws IOException, StorageEngineException {
+  protected void insertData() throws IOException, QueryProcessorException {
     for (int j = 1000; j <= 1009; j++) {
       insertOneRecord(j, j);
     }

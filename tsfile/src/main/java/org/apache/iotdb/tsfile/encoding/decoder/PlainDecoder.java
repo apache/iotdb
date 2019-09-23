@@ -29,9 +29,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @author Zhang Jinrui
- */
 public class PlainDecoder extends Decoder {
 
   private static final Logger logger = LoggerFactory.getLogger(PlainDecoder.class);

@@ -31,8 +31,6 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
  * interval [min,max] of long data type
  *
  * Reference: http://www.java2s.com/Code/Java/Collections-Data-Structure/Anumericalinterval.htm
- *
- * @author ryanm
  */
 public class TimeRange implements Comparable<TimeRange> {
 

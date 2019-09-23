@@ -37,6 +37,8 @@ tsfile-timeseries/src/test/resources/data
 src/main/resources/metadata/mlog.txt
 tsfile-jdbc/src/main/resources/output/queryRes.csv
 
+*.txt
+
 *.jar
 *.gz
 *.tar.gz

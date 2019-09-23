@@ -76,6 +76,18 @@ public class MetadataPlan extends PhysicalPlan {
     setOperatorType(namespaceType);
   }
 
+  /**
+   * delete time series plan
+   * @param namespaceType
+   * @param path
+   */
+  public MetadataPlan(MetadataOperator.NamespaceType namespaceType, List<Path> path) {
+    super(false, Operator.OperatorType.METADATA);
+    this.namespaceType = namespaceType;
+    this.deletePathList = path;
+    setOperatorType(namespaceType);
+  }
+
   public Path getPath() {
     return path;
   }

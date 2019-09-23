@@ -29,8 +29,6 @@ import org.apache.iotdb.tsfile.common.utils.ITsRandomAccessFileReader;
 /**
  * This class is used to wrap the {@link}FSDataInputStream and implement the
  * interface {@link}TSRandomAccessFileReader.
- *
- * @author liukun
  */
 public class HDFSInputStream implements ITsRandomAccessFileReader {
 

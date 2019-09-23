@@ -20,7 +20,7 @@ package org.apache.iotdb.rpc;
 
 import java.lang.reflect.Proxy;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TS_Status;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class RpcUtils {
 
@@ -34,8 +34,8 @@ public class RpcUtils {
    *
    * @param status -status
    */
-  public static void verifySuccess(TS_Status status) throws IoTDBRPCException {
-    if (status.getStatusType().getCode() != TSStatusType.SUCCESS_STATUS.getStatusCode()) {
+  public static void verifySuccess(TSStatus status) throws IoTDBRPCException {
+    if (status.getStatusType().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new IoTDBRPCException(status.getStatusType().getMessage());
     }
   }

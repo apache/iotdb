@@ -26,8 +26,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Statistics for double type.
- *
- * @author kangrong
  */
 public class DoubleStatistics extends Statistics<Double> {
 

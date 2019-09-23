@@ -233,7 +233,7 @@ public class TsFileWriteTool {
    *
    */
   public void create4(String tsfilePath) throws Exception {
-    TSFileDescriptor.getInstance().getConfig().groupSizeInByte = 1024 * 1024;
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(1024 * 1024);
     File f = new File(tsfilePath);
     if (f.exists()) {
       f.delete();

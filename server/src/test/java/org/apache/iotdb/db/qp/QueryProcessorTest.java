@@ -26,7 +26,7 @@ import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -36,7 +36,8 @@ import org.junit.Test;
 
 public class QueryProcessorTest {
 
-  private CompressionType compressionType = CompressionType.valueOf(TSFileConfig.compressor);
+  private CompressionType compressionType = CompressionType.valueOf(
+      TSFileDescriptor.getInstance().getConfig().getCompressor());
   private MManager mManager = MManager.getInstance();
   private QueryProcessor processor = new QueryProcessor(new QueryProcessExecutor());
 

@@ -36,8 +36,6 @@ import org.junit.Test;
 /**
  * Test the {@link org.apache.iotdb.tsfile.hadoop.TSFInputSplit}
  * Assert the readFields function and write function is right
- *
- * @author liukun
  */
 public class TSFInputSplitTest {
 

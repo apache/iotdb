@@ -27,6 +27,7 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -40,7 +41,7 @@ public class PrimitiveMemTableTest {
 
   @Before
   public void setUp() {
-    delta = Math.pow(0.1, TSFileConfig.floatPrecision);
+    delta = Math.pow(0.1, TSFileDescriptor.getInstance().getConfig().getFloatPrecision());
   }
 
   @Test
