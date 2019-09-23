@@ -85,12 +85,12 @@ public class IoTDBStatement implements Statement {
    */
   private SQLWarning warningChain = null;
 
-  protected long stmtId = -1;
+  long stmtId = -1;
 
   /**
    * Constructor of IoTDBStatement.
    */
-  public IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
+  IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
       TS_SessionHandle sessionHandle,
       int fetchSize, ZoneId zoneId) {
     this.connection = connection;
@@ -101,14 +101,14 @@ public class IoTDBStatement implements Statement {
     this.zoneId = zoneId;
   }
 
-  public IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
+  IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
       TS_SessionHandle sessionHandle,
       ZoneId zoneId) {
     this(connection, client, sessionHandle, Config.fetchSize, zoneId);
   }
 
   @Override
-  public boolean isWrapperFor(Class<?> iface) throws SQLException {
+  public boolean isWrapperFor(Class<?> iface) {
     return false;
   }
 
@@ -118,7 +118,7 @@ public class IoTDBStatement implements Statement {
   }
 
   @Override
-  public void addBatch(String sql) throws SQLException {
+  public void addBatch(String sql) {
     if (batchSQLList == null) {
       batchSQLList = new ArrayList<>();
     }
@@ -144,7 +144,7 @@ public class IoTDBStatement implements Statement {
   }
 
   @Override
-  public void clearBatch() throws SQLException {
+  public void clearBatch() {
     if (batchSQLList == null) {
       batchSQLList = new ArrayList<>();
     }
@@ -152,7 +152,7 @@ public class IoTDBStatement implements Statement {
   }
 
   @Override
-  public void clearWarnings() throws SQLException {
+  public void clearWarnings() {
     warningChain = null;
   }
 
@@ -238,11 +238,11 @@ public class IoTDBStatement implements Statement {
         resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, "root", null, null);
         return true;
       } else {
-        String[] cmdSplited = sql.split("\\s+");
-        if (cmdSplited.length != 3) {
+        String[] cmdSplit = sql.split("\\s+");
+        if (cmdSplit.length != 3) {
           throw new SQLException("Error format of \'SHOW TIMESERIES <PATH>\'");
         } else {
-          String path = cmdSplited[2];
+          String path = cmdSplit[2];
           DatabaseMetaData databaseMetaData = connection.getMetaData();
           resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, path, null, null);
           return true;
@@ -253,30 +253,30 @@ public class IoTDBStatement implements Statement {
       resultSet = databaseMetaData.getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null);
       return true;
     } else if (sqlToLowerCase.startsWith(COUNT_TIMESERIES_COMMAND_LOWERCASE)) {
-      String[] cmdSplited = sqlToLowerCase.split("\\s+", 4);
-      if (cmdSplited.length != 3 && !(cmdSplited.length == 4 && cmdSplited[3].startsWith("group by level"))) {
+      String[] cmdSplit = sqlToLowerCase.split("\\s+", 4);
+      if (cmdSplit.length != 3 && !(cmdSplit.length == 4 && cmdSplit[3].startsWith("group by level"))) {
         throw new SQLException(
                 "Error format of \'COUNT TIMESERIES <PATH>\' or \'COUNT TIMESERIES <PATH> GROUP BY LEVEL=<INTEGER>\'");
       }
-      if (cmdSplited.length == 3) {
-        String path = cmdSplited[2];
+      if (cmdSplit.length == 3) {
+        String path = cmdSplit[2];
         DatabaseMetaData databaseMetaData = connection.getMetaData();
         resultSet = databaseMetaData.getColumns(Constant.COUNT_TIMESERIES, path, null, null);
         return true;
       } else {
-        String path = cmdSplited[2];
-        String level = cmdSplited[3].replaceAll(" ", "").substring(13);
+        String path = cmdSplit[2];
+        String level = cmdSplit[3].replaceAll(" ", "").substring(13);
         IoTDBDatabaseMetadata databaseMetadata = (IoTDBDatabaseMetadata) connection.getMetaData();
         resultSet = databaseMetadata.getNodes(Constant.COUNT_NODE_TIMESERIES, path, null, null, level);
         return true;
       }
     } else if (sqlToLowerCase.startsWith(COUNT_NODES_COMMAND_LOWERCASE)) {
-      String[] cmdSplited = sql.split("\\s+", 4);
-      if (cmdSplited.length != 4 && !(cmdSplited[3].startsWith("level"))) {
+      String[] cmdSplit = sql.split("\\s+", 4);
+      if (cmdSplit.length != 4 && !(cmdSplit[3].startsWith("level"))) {
         throw new SQLException("Error format of \'COUNT NODES LEVEL=<INTEGER>\'");
       } else {
-        String path = cmdSplited[2];
-        String level = cmdSplited[3].replaceAll(" ", "").substring(6);
+        String path = cmdSplit[2];
+        String level = cmdSplit[3].replaceAll(" ", "").substring(6);
         IoTDBDatabaseMetadata databaseMetaData = (IoTDBDatabaseMetadata) connection.getMetaData();
         resultSet = databaseMetaData.getNodes(Constant.COUNT_NODES, path, null, null, level);
         return true;
@@ -450,7 +450,7 @@ public class IoTDBStatement implements Statement {
   }
 
   @Override
-  public Connection getConnection() throws SQLException {
+  public Connection getConnection() {
     return connection;
   }
 
@@ -524,7 +524,7 @@ public class IoTDBStatement implements Statement {
   }
 
   @Override
-  public int getQueryTimeout() throws SQLException {
+  public int getQueryTimeout() {
     return this.queryTimeout;
   }
 
@@ -565,7 +565,7 @@ public class IoTDBStatement implements Statement {
   }
 
   @Override
-  public SQLWarning getWarnings() throws SQLException {
+  public SQLWarning getWarnings() {
     return warningChain;
   }
 
@@ -575,7 +575,7 @@ public class IoTDBStatement implements Statement {
   }
 
   @Override
-  public boolean isClosed() throws SQLException {
+  public boolean isClosed() {
     return isClosed;
   }
 
