@@ -33,6 +33,7 @@ import java.util.Set;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.utils.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,11 +67,11 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
 
   @Override
   public Role loadRole(String rolename) throws IOException {
-    File roleProfile = new File(
+    File roleProfile = SystemFileFactory.INSTANCE.getFile(
         roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX);
     if (!roleProfile.exists() || !roleProfile.isFile()) {
       // System may crush before a newer file is written, so search for back-up file.
-      File backProfile = new File(
+      File backProfile = SystemFileFactory.INSTANCE.getFile(
           roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
       if (backProfile.exists() && backProfile.isFile()) {
         roleProfile = backProfile;
@@ -100,7 +101,7 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
 
   @Override
   public void saveRole(Role role) throws IOException {
-    File roleProfile = new File(
+    File roleProfile = SystemFileFactory.INSTANCE.getFile(
         roleDirPath + File.separator + role.getName() + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
     try (BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(roleProfile))) {
       try {
@@ -121,16 +122,16 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
       }
     }
 
-    File oldFile = new File(
+    File oldFile = SystemFileFactory.INSTANCE.getFile(
         roleDirPath + File.separator + role.getName() + IoTDBConstant.PROFILE_SUFFIX);
     IOUtils.replaceFile(roleProfile, oldFile);
   }
 
   @Override
   public boolean deleteRole(String rolename) throws IOException {
-    File roleProfile = new File(
+    File roleProfile = SystemFileFactory.INSTANCE.getFile(
         roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX);
-    File backFile = new File(
+    File backFile = SystemFileFactory.INSTANCE.getFile(
         roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
     if (!roleProfile.exists() && !backFile.exists()) {
       return false;
@@ -144,7 +145,7 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
 
   @Override
   public List<String> listAllRoles() {
-    File roleDir = new File(roleDirPath);
+    File roleDir = SystemFileFactory.INSTANCE.getFile(roleDirPath);
     String[] names = roleDir
         .list((dir, name) -> name.endsWith(IoTDBConstant.PROFILE_SUFFIX) || name
             .endsWith(TEMP_SUFFIX));
@@ -163,9 +164,9 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
 
   @Override
   public void reset() {
-    if (new File(roleDirPath).mkdirs()) {
+    if (SystemFileFactory.INSTANCE.getFile(roleDirPath).mkdirs()) {
       logger.info("role info dir {} is created", roleDirPath);
-    } else if (!new File(roleDirPath).exists()) {
+    } else if (!SystemFileFactory.INSTANCE.getFile(roleDirPath).exists()) {
       logger.error("role info dir {} can not be created", roleDirPath);
     }
   }

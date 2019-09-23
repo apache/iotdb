@@ -21,6 +21,7 @@ package org.apache.iotdb.session;
 import java.util.List;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -32,26 +33,27 @@ import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
+
+import java.time.ZoneId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.ZoneId;
-
 public class Session {
 
+  private static final Logger logger = LoggerFactory.getLogger(Session.class);
   private String host;
   private int port;
   private String username;
   private String password;
   private final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1;
-  public TSIService.Iface client = null;
+  private TSIService.Iface client = null;
   private TS_SessionHandle sessionHandle = null;
   private TSocket transport;
   private boolean isClosed = true;
   private ZoneId zoneId;
 
   public Session(String host, int port) {
-    this(host, port, Config.DEFAULT_USER, Config.DEFALUT_PASSWORD);
+    this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
   }
 
   public Session(String host, String port, String username, String password) {
@@ -65,12 +67,15 @@ public class Session {
     this.password = password;
   }
 
-  public void open() throws IoTDBSessionException {
+  public synchronized void open() throws IoTDBSessionException {
     open(false, 0);
   }
 
-  public void open(boolean enableRPCCompression, int connectionTimeoutInMs)
+  public synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
       throws IoTDBSessionException {
+    if (!isClosed) {
+      return;
+    }
     transport = new TSocket(host, port, connectionTimeoutInMs);
     if (!transport.isOpen()) {
       try {
@@ -94,7 +99,6 @@ public class Session {
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);
 
-      // validate connectiontry {
       RpcUtils.verifySuccess(openResp.getStatus());
 
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
@@ -122,7 +126,7 @@ public class Session {
 
   }
 
-  public void close() throws IoTDBSessionException {
+  public synchronized void close() throws IoTDBSessionException {
     if (isClosed) {
       return;
     }
@@ -139,7 +143,7 @@ public class Session {
     }
   }
 
-  public TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch) throws IoTDBSessionException {
+  public synchronized TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch) throws IoTDBSessionException {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.deviceId = rowBatch.deviceId;
     for (MeasurementSchema measurementSchema: rowBatch.measurements) {
@@ -151,13 +155,13 @@ public class Session {
     request.setSize(rowBatch.batchSize);
 
     try {
-      return client.insertBatch(request);
+      return checkAndReturn(client.insertBatch(request));
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }
   }
 
-  public TSRPCResp insert(String deviceId, long time, List<String> measurements, List<String> values)
+  public synchronized TSStatus insert(String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBSessionException {
     TSInsertReq request = new TSInsertReq();
     request.setDeviceId(deviceId);
@@ -166,24 +170,33 @@ public class Session {
     request.setValues(values);
 
     try {
-      return client.insertRow(request);
+      return checkAndReturn(client.insertRow(request));
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }
   }
 
-  public TSRPCResp setStorageGroup(String storageGroupId) throws IoTDBSessionException {
-    TSSetStorageGroupReq request = new TSSetStorageGroupReq();
-    request.setStorageGroupId(storageGroupId);
+  public synchronized TSStatus delete(String path, long time) throws IoTDBSessionException {
+    TSDeleteReq request = new TSDeleteReq();
+    request.setPath(path);
+    request.setTimestamp(time);
 
     try {
-      return client.setStorageGroup(request);
+      return checkAndReturn(client.deleteData(request));
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }
   }
 
-  public TSRPCResp createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor) throws IoTDBSessionException {
+  public synchronized TSStatus setStorageGroup(String storageGroupId) throws IoTDBSessionException {
+    try {
+      return checkAndReturn(client.setStorageGroup(storageGroupId));
+    } catch (TException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
+  public synchronized TSStatus createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor) throws IoTDBSessionException {
     TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
     request.setPath(path);
     request.setDataType(dataType.ordinal());
@@ -191,13 +204,27 @@ public class Session {
     request.setCompressor(compressor.ordinal());
 
     try {
-      return client.createTimeseries(request);
+      return checkAndReturn(client.createTimeseries(request));
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }
   }
 
-  public String getTimeZone() throws TException, IoTDBRPCException {
+  private TSStatus checkAndReturn(TSStatus resp) {
+    if (resp.statusType.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      logger.error(resp.statusType.getMessage());
+    }
+    return resp;
+  }
+
+  private TSExecuteBatchStatementResp checkAndReturn(TSExecuteBatchStatementResp resp) {
+    if (resp.status.statusType.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      logger.error(resp.status.statusType.getMessage());
+    }
+    return resp;
+  }
+
+  public synchronized String getTimeZone() throws TException, IoTDBRPCException {
     if (zoneId != null) {
       return zoneId.toString();
     }
@@ -207,10 +234,10 @@ public class Session {
     return resp.getTimeZone();
   }
 
-  public void setTimeZone(String zoneId) throws TException, IoTDBRPCException {
+  public synchronized void setTimeZone(String zoneId) throws TException, IoTDBRPCException {
     TSSetTimeZoneReq req = new TSSetTimeZoneReq(zoneId);
-    TSRPCResp resp = client.setTimeZone(req);
-    RpcUtils.verifySuccess(resp.getStatus());
+    TSStatus resp = client.setTimeZone(req);
+    RpcUtils.verifySuccess(resp);
     this.zoneId = ZoneId.of(zoneId);
   }
 

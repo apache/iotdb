@@ -54,6 +54,7 @@
         <module>example</module>
         <module>grafana</module>
         <module>spark-tsfile</module>
+        <module>spark-iotdb-connector</module>
         <!-- <module>hadoop</module> -->
         <module>distribution</module>
     </modules>

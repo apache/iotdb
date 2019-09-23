@@ -39,12 +39,11 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
-import org.apache.iotdb.tool.ImportCsv;
 import org.apache.iotdb.jdbc.IoTDBConnection;
-import org.apache.iotdb.jdbc.IoTDBDatabaseMetadata;
 import org.apache.iotdb.jdbc.IoTDBMetadataResultSet;
 import org.apache.iotdb.jdbc.IoTDBQueryResultSet;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.tool.ImportCsv;
 import org.apache.thrift.TException;
 
 public abstract class AbstractClient {
@@ -194,12 +193,9 @@ public abstract class AbstractClient {
     int colCount = resultSetMetaData.getColumnCount();
 
     boolean isShow = res instanceof IoTDBMetadataResultSet;
-    if (!isShow && resultSetMetaData.getColumnTypeName(0) != null) {
-      printTimestamp = !res.getMetaData().getColumnTypeName(0)
-          .equalsIgnoreCase(NEED_NOT_TO_PRINT_TIMESTAMP);
-    }
+
     if (res instanceof IoTDBQueryResultSet) {
-      printTimestamp = printTimestamp && !((IoTDBQueryResultSet) res).isIgnoreTimeStamp();
+      printTimestamp = !((IoTDBQueryResultSet) res).isIgnoreTimeStamp();
     }
 
     // Output values
@@ -582,7 +578,7 @@ public abstract class AbstractClient {
         + "                                           \n");
   }
 
-  static void echoStarting(){
+  static void echoStarting() {
     println("---------------------");
     println("Starting IoTDB Client");
     println("---------------------");
@@ -597,10 +593,6 @@ public abstract class AbstractClient {
     }
     if (HELP.equals(specialCmd)) {
       showHelp();
-      return OperationResult.CONTINUE_OPER;
-    }
-    if (SHOW_METADATA_COMMAND.equals(specialCmd)) {
-      showMetaData(connection);
       return OperationResult.CONTINUE_OPER;
     }
     if (specialCmd.startsWith(SET_TIMESTAMP_DISPLAY)) {
@@ -661,15 +653,6 @@ public abstract class AbstractClient {
     println(
         String.format("    %s=xxx\t eg. set max lines for cli to ouput, -1 equals to unlimited.",
             SET_MAX_DISPLAY_NUM));
-  }
-
-  private static void showMetaData(IoTDBConnection connection) {
-    try {
-      println(((IoTDBDatabaseMetadata) connection.getMetaData()).getMetadataInJson());
-    } catch (SQLException e) {
-      println("Failed to show timeseries because: " + e.getMessage());
-      handleException(e);
-    }
   }
 
   private static void setTimestampDisplay(String specialCmd, String cmd) {

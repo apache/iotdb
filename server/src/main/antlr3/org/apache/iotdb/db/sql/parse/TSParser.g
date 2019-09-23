@@ -79,6 +79,9 @@ TOK_SOFFSET;
 TOK_LIMIT;
 TOK_FLOAT_COMB;
 
+TOK_GRANT_WATERMARK_EMBEDDING;
+TOK_REVOKE_WATERMARK_EMBEDDING;
+
 /*
   BELOW IS THE METADATA TOKEN
 */
@@ -207,6 +210,8 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
 
         xlateMap.put("CharSetLiteral", "\\'");
         xlateMap.put("KW_LIST", "LIST");
+
+        xlateMap.put("KW_WATERMARK_EMBEDDING", "WATERMARK_EMBEDDING");
     }
 
     public static Collection<String> getKeywords() {
@@ -518,6 +523,8 @@ authorStatement
     | revokeRole
     | grantRoleToUser
     | revokeRoleFromUser
+    | grantWatermarkEmbedding
+    | revokeWatermarkEmbedding
     ;
 
 loadStatement
@@ -545,6 +552,22 @@ createRole
 dropRole
     : KW_DROP KW_ROLE roleName=Identifier
     -> ^(TOK_DROP ^(TOK_ROLE $roleName))
+    ;
+
+rootOrIdentifier
+    :
+    KW_ROOT
+    | Identifier
+    ;
+
+grantWatermarkEmbedding
+    : KW_GRANT KW_WATERMARK_EMBEDDING KW_TO rootOrIdentifier (COMMA rootOrIdentifier)*
+    -> ^(TOK_GRANT_WATERMARK_EMBEDDING rootOrIdentifier+)
+    ;
+
+revokeWatermarkEmbedding
+    : KW_REVOKE KW_WATERMARK_EMBEDDING KW_FROM rootOrIdentifier (COMMA rootOrIdentifier)*
+    -> ^(TOK_REVOKE_WATERMARK_EMBEDDING rootOrIdentifier+)
     ;
 
 grantUser

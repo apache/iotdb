@@ -51,12 +51,12 @@ public class FileGenerator {
       throws IOException, InterruptedException, WriteProcessException {
     ROW_COUNT = rowCount;
     TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
-    oldMaxNumberOfPointsInPage = config.maxNumberOfPointsInPage;
-    config.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
+    oldMaxNumberOfPointsInPage = config.getMaxNumberOfPointsInPage();
+    config.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
 
     prepare();
     write();
-    config.maxNumberOfPointsInPage = oldMaxNumberOfPointsInPage;
+    config.setMaxNumberOfPointsInPage(oldMaxNumberOfPointsInPage);
   }
 
   public static void generateFile()
@@ -168,9 +168,12 @@ public class FileGenerator {
   private static void generateTestData() {
     schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.valueEncoder)));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
-    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
+    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32,
+        TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64,
+        TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64,
+        TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerMeasurement(new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
     schema.registerMeasurement(new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     schema.registerMeasurement(new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));

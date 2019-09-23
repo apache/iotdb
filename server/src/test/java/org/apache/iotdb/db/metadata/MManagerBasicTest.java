@@ -30,6 +30,7 @@ import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -45,7 +46,7 @@ public class MManagerBasicTest {
 
   @Before
   public void setUp() throws Exception {
-    compressionType = CompressionType.valueOf(TSFileConfig.compressor);
+    compressionType = CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
     EnvironmentUtils.envSetUp();
   }
 

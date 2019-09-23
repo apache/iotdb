@@ -144,4 +144,20 @@ public interface IUserManager {
    * @return A list that contains all users'name.
    */
   List<String> listAllUsers();
+
+  /**
+   * Whether data water-mark is enabled for user 'userName'.
+   * @param userName
+   * @return
+   * @throws AuthException if the user does not exist
+   */
+  boolean isUserUseWaterMark(String userName) throws AuthException;
+
+  /**
+   * Enable or disable data water-mark for user 'userName'.
+   * @param userName
+   * @param useWaterMark
+   * @throws AuthException if the user does not exist.
+   */
+  void setUserUseWaterMark(String userName, boolean useWaterMark) throws AuthException;
 }

@@ -31,12 +31,14 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.monitor.IStatistic;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileSizeConstants;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -78,7 +80,7 @@ public class FileSize implements IStatistic {
       Path path = new Path(seriesPath);
       try {
         storageEngine.addTimeSeries(path, TSDataType.valueOf(MonitorConstants.DATA_TYPE_INT64),
-            TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileConfig.compressor),
+            TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
             Collections.emptyMap());
       } catch (StorageEngineException e) {
         logger.error("Register File Size Stats into storageEngine Failed.", e);
@@ -139,7 +141,7 @@ public class FileSize implements IStatistic {
       if (kinds.equals(FileSizeConstants.SYS)) {
         fileSizes.put(kinds, collectSeqFileSize(fileSizes, kinds));
       } else {
-        File file = new File(kinds.getPath());
+        File file = SystemFileFactory.INSTANCE.getFile(kinds.getPath());
         if (file.exists()) {
           try {
             fileSizes.put(kinds, FileUtils.sizeOfDirectory(file));
@@ -162,7 +164,7 @@ public class FileSize implements IStatistic {
       if (sequenceDir.contains("unsequence")) {
         continue;
       }
-      File settledFile = new File(sequenceDir);
+      File settledFile = SystemFileFactory.INSTANCE.getFile(sequenceDir);
       if (settledFile.exists()) {
         try {
           fileSize += FileUtils.sizeOfDirectory(settledFile);

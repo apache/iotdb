@@ -106,7 +106,7 @@
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>DEBUG</level>
+            <level>ERROR</level>
         </filter>
     </appender>
     <!--<logger name="org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl level="debug" />-->

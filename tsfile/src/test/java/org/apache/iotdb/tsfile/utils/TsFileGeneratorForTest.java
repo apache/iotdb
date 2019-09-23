@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -77,22 +78,22 @@ public class TsFileGeneratorForTest {
   }
 
   public static void after() {
-    File file = new File(inputDataFile);
+    File file = TSFileFactory.INSTANCE.getFile(inputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
-    file = new File(outputDataFile);
+    file = TSFileFactory.INSTANCE.getFile(outputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
-    file = new File(errorOutputDataFile);
+    file = TSFileFactory.INSTANCE.getFile(errorOutputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
   }
 
   static private void generateSampleInputDataFile(int minRowCount, int maxRowCount) throws IOException {
-    File file = new File(inputDataFile);
+    File file = TSFileFactory.INSTANCE.getFile(inputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
@@ -145,8 +146,8 @@ public class TsFileGeneratorForTest {
   }
 
   static public void write() throws IOException {
-    File file = new File(outputDataFile);
-    File errorFile = new File(errorOutputDataFile);
+    File file = TSFileFactory.INSTANCE.getFile(outputDataFile);
+    File errorFile = TSFileFactory.INSTANCE.getFile(errorOutputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
@@ -156,12 +157,12 @@ public class TsFileGeneratorForTest {
 
     Schema schema = generateTestSchema();
 
-    TSFileDescriptor.getInstance().getConfig().groupSizeInByte = chunkGroupSize;
-    TSFileDescriptor.getInstance().getConfig().maxNumberOfPointsInPage = pageSize;
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
     innerWriter = new TsFileWriter(file, schema, TSFileDescriptor.getInstance().getConfig());
 
     // write
-    try (Scanner in = new Scanner(new File(inputDataFile))) {
+    try (Scanner in = new Scanner(TSFileFactory.INSTANCE.getFile(inputDataFile))) {
       assert in != null;
       while (in.hasNextLine()) {
         String str = in.nextLine();
@@ -180,15 +181,15 @@ public class TsFileGeneratorForTest {
     JSONObject s1 = new JSONObject();
     s1.put(JsonFormatConstant.MEASUREMENT_UID, "s1");
     s1.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT32.toString());
-    s1.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
+    s1.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.getValueEncoder());
     JSONObject s2 = new JSONObject();
     s2.put(JsonFormatConstant.MEASUREMENT_UID, "s2");
     s2.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-    s2.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
+    s2.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.getValueEncoder());
     JSONObject s3 = new JSONObject();
     s3.put(JsonFormatConstant.MEASUREMENT_UID, "s3");
     s3.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-    s3.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
+    s3.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.getValueEncoder());
     JSONObject s4 = new JSONObject();
     s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");
     s4.put(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());

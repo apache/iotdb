@@ -567,12 +567,7 @@ public class BytesUtils {
    * @return byte array
    */
   public static byte[] stringToBytes(String str) {
-    try {
-      return str.getBytes(TSFileConfig.STRING_ENCODING);
-    } catch (UnsupportedEncodingException e) {
-      LOG.error("catch UnsupportedEncodingException {}", str, e);
-      return null;
-    }
+    return str.getBytes(TSFileConfig.STRING_CHARSET);
   }
 
   /**
@@ -582,12 +577,7 @@ public class BytesUtils {
    * @return string
    */
   public static String bytesToString(byte[] byteStr) {
-    try {
-      return new String(byteStr, TSFileConfig.STRING_ENCODING);
-    } catch (UnsupportedEncodingException e) {
-      LOG.error("catch UnsupportedEncodingException {}", byteStr, e);
-      return null;
-    }
+    return new String(byteStr, TSFileConfig.STRING_CHARSET);
   }
 
   /**

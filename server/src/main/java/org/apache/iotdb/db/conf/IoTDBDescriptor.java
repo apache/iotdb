@@ -18,16 +18,15 @@
  */
 package org.apache.iotdb.db.conf;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.time.ZoneId;
-import java.util.Properties;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.*;
+import java.time.ZoneId;
+import java.util.Properties;
 
 public class IoTDBDescriptor {
 
@@ -262,7 +261,26 @@ public class IoTDBDescriptor {
       if (maxConcurrentClientNum <= 0) {
         maxConcurrentClientNum = 65535;
       }
+
+      conf.setEnableWatermark(Boolean.parseBoolean(properties.getProperty("watermark_module_opened",
+          Boolean.toString(conf.isEnableWatermark()).trim())));
+      conf.setWatermarkSecretKey(
+          properties.getProperty("watermark_secret_key", conf.getWatermarkSecretKey()));
+      conf.setWatermarkBitString(
+          properties.getProperty("watermark_bit_string", conf.getWatermarkBitString()));
+      conf.setWatermarkMethod(
+          properties.getProperty("watermark_method", conf.getWatermarkMethod()));
+
       conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
+
+      conf.setTsFileStorageFs(properties.getProperty("tsfile_storage_fs"));
+      conf.setHdfsIp(properties.getProperty("hdfs_ip"));
+      conf.setHdfsPort(properties.getProperty("hdfs_port"));
+
+      // At the same time, set TSFileConfig
+      TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
+      TSFileDescriptor.getInstance().getConfig().setHdfsIp(properties.getProperty("hdfs_ip"));
+      TSFileDescriptor.getInstance().getConfig().setHdfsPort(properties.getProperty("hdfs_port"));
 
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);
