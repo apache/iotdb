@@ -69,6 +69,7 @@ public interface IChunkGroupWriter {
    *            - TSFileIOWriter
    * @throws IOException
    *             exception in IO
+   * @return current ChunkGroupDataSize
    */
   long flushToFileWriter(TsFileIOWriter tsfileWriter) throws IOException;
 
