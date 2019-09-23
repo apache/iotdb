@@ -69,8 +69,9 @@ public interface IChunkGroupWriter {
    *            - TSFileIOWriter
    * @throws IOException
    *             exception in IO
+   * @return current ChunkGroupDataSize
    */
-  ChunkGroupFooter flushToFileWriter(TsFileIOWriter tsfileWriter) throws IOException;
+  long flushToFileWriter(TsFileIOWriter tsfileWriter) throws IOException;
 
   /**
    * get the max memory occupied at this time.

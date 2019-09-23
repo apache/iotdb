@@ -118,17 +118,16 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public ChunkGroupFooter flushToFileWriter(TsFileIOWriter fileWriter) throws IOException {
+  public long flushToFileWriter(TsFileIOWriter fileWriter) throws IOException {
     LOG.debug("start flush device id:{}", deviceId);
     // make sure all the pages have been compressed into buffers, so that we can get correct
     // groupWriter.getCurrentChunkGroupSize().
     sealAllChunks();
-    ChunkGroupFooter footer = new ChunkGroupFooter(deviceId, getCurrentChunkGroupSize(),
-        getSeriesNumber());
+    long currentChunkGroupSize = getCurrentChunkGroupSize();
     for (IChunkWriter seriesWriter : chunkWriters.values()) {
       seriesWriter.writeToFileWriter(fileWriter);
     }
-    return footer;
+    return currentChunkGroupSize;
   }
 
   @Override
