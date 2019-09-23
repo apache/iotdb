@@ -70,7 +70,7 @@ public interface IChunkGroupWriter {
    * @throws IOException
    *             exception in IO
    */
-  ChunkGroupFooter flushToFileWriter(TsFileIOWriter tsfileWriter) throws IOException;
+  long flushToFileWriter(TsFileIOWriter tsfileWriter) throws IOException;
 
   /**
    * get the max memory occupied at this time.
