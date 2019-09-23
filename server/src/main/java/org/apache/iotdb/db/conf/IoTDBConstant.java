@@ -61,17 +61,10 @@ public class IoTDBConstant {
 
   public static final String SHOW_DYNAMIC_PARAMETERS = "show\\s+dynamic\\s+parameters";
 
-  public static final String ROLE = "Role";
-  public static final String USER = "User";
-  public static final String PRIVILEGE = "Privilege";
+  public static final String ROLE = "role";
+  public static final String USER = "user";
+  public static final String PRIVILEGE = "privilege";
 
-  // JDBC constants
-  public static final String GLOBAL_COLUMN_REQ = "COLUMN";
-  public static final String GLOBAL_DELTA_OBJECT_REQ = "DELTA_OBJECT";
-  public static final String GLOBAL_SHOW_TIMESERIES_REQ = "SHOW_TIMESERIES";
-  public static final String GLOBAL_COUNT_TIMESERIES_REQ = "COUNT_TIMESERIES";
-  public static final String GLOBAL_COUNT_NODE_TIMESERIES_REQ = "COUNT_NODE_TIMESERIES";
-  public static final String GLOBAL_COUNT_NODES_REQ = "COUNT_NODES";
-  public static final String GLOBAL_SHOW_STORAGE_GROUP_REQ = "SHOW_STORAGE_GROUP";
-  public static final String GLOBAL_COLUMNS_REQ = "ALL_COLUMNS";
+  public static final String STORAGE_GROUP = "storage group";
+  public static final String TTL = "ttl";
 }

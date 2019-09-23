@@ -496,6 +496,16 @@ Eg. UNSET TTL TO root.group1
 这个例子展示了如何取消存储组root.group1的TTL，这将使得该存储组接受任意时刻的数据。
 ```
 
+* 显示 TTL
+```
+SHOW ALL TTL
+SHOW TTL ON StorageGroupNames
+Eg.1 SHOW ALL TTL
+这个例子会给出所有存储组的TTL。
+Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
+这个例子会显示指定的三个存储组的TTL。
+```
+
 注意：当你对某个存储组设置TTL的时候，超过TTL范围的数据将会立即不可见。但由于数据文件可能混合包含处在TTL范围内
 与范围外的数据，同时数据文件可能正在接受查询，数据文件的物理删除不会立即进行。如果你在此时取消或者调大TTL，
 一部分之前不可见的数据可能重新可见，而那些已经被物理删除的数据则将永久丢失。因此我们不推荐您修改或是频繁修改TTL，

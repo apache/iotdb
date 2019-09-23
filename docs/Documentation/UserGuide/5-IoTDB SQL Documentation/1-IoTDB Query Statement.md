@@ -527,6 +527,16 @@ Eg. UNSET TTL TO root.group1
 This example means that data of all time will be stored in this group. 
 ```
 
+* Show TTL
+```
+SHOW ALL TTL
+SHOW TTL ON StorageGroupNames
+Eg.1 SHOW ALL TTL
+This example will show TTLs of all storage groups.
+Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
+This example will show TTLs if the specified 3 groups.
+```
+
 Notice: When you set TTL to some storage groups, data out of the TTL will be made invisible
 immediately, but because the data files may contain both out-dated and living data or the data files may
 be being used by queries, the physical removal of data is stale. If you increase or unset TTL

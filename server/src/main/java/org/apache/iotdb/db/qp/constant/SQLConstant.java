@@ -94,6 +94,7 @@ public class SQLConstant {
   public static final int TOK_LIST = 59;
   public static final int TOK_SET = 60;
   public static final int TOK_UNSET = 61;
+  public static final int TOK_SHOW = 62;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
@@ -151,6 +152,7 @@ public class SQLConstant {
     tokenNames.put(TOK_LIST, "TOK_LIST");
     tokenNames.put(TOK_SET, "TOK_SET");
     tokenNames.put(TOK_UNSET, "TOK_UNSET");
+    tokenNames.put(TOK_SHOW, "TOK_SHOW");
   }
 
   static {

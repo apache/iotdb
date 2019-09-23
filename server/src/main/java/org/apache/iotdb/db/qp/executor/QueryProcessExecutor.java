@@ -54,9 +54,9 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
-import org.apache.iotdb.db.qp.physical.sys.TTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.AuthDataSet;
+import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -121,7 +121,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         PropertyPlan property = (PropertyPlan) plan;
         return operateProperty(property);
       case TTL:
-        operateTTL((TTLPlan) plan);
+        operateTTL((SetTTLPlan) plan);
         return true;
       default:
         throw new UnsupportedOperationException(
@@ -129,7 +129,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
   }
 
-  private void operateTTL(TTLPlan plan) throws ProcessorException {
+  private void operateTTL(SetTTLPlan plan) throws ProcessorException {
     try {
       MManager.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
       StorageEngine.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
@@ -479,7 +479,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       throw new ProcessorException(e);
     }
 
-    AuthDataSet dataSet;
+    ListDataSet dataSet;
 
     try {
       switch (authorType) {
@@ -510,13 +510,13 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return dataSet;
   }
 
-  private AuthDataSet executeListRole(IAuthorizer authorizer) {
+  private ListDataSet executeListRole(IAuthorizer authorizer) {
     int index = 0;
     List<Path> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
     headerList.add(new Path(ROLE));
     typeList.add(TSDataType.TEXT);
-    AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+    ListDataSet dataSet = new ListDataSet(headerList, typeList);
     List<String> roleList = authorizer.listAllRoles();
     for (String role : roleList) {
       RowRecord record = new RowRecord(index++);
@@ -528,14 +528,14 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return dataSet;
   }
 
-  private AuthDataSet executeListUser(IAuthorizer authorizer) {
+  private ListDataSet executeListUser(IAuthorizer authorizer) {
     List<String> userList = authorizer.listAllUsers();
     List<Path> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
     headerList.add(new Path(USER));
     typeList.add(TSDataType.TEXT);
     int index = 0;
-    AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+    ListDataSet dataSet = new ListDataSet(headerList, typeList);
     for (String user : userList) {
       RowRecord record = new RowRecord(index++);
       Field field = new Field(TSDataType.TEXT);
@@ -546,7 +546,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return dataSet;
   }
 
-  private AuthDataSet executeListRoleUsers(IAuthorizer authorizer, String roleName)
+  private ListDataSet executeListRoleUsers(IAuthorizer authorizer, String roleName)
       throws AuthException {
     Role role = authorizer.getRole(roleName);
     if (role == null) {
@@ -556,7 +556,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     List<TSDataType> typeList = new ArrayList<>();
     headerList.add(new Path(USER));
     typeList.add(TSDataType.TEXT);
-    AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+    ListDataSet dataSet = new ListDataSet(headerList, typeList);
     List<String> userList = authorizer.listAllUsers();
     int index = 0;
     for (String userN : userList) {
@@ -572,7 +572,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return dataSet;
   }
 
-  private AuthDataSet executeListUserRoles(IAuthorizer authorizer, String userName)
+  private ListDataSet executeListUserRoles(IAuthorizer authorizer, String userName)
       throws AuthException {
     User user = authorizer.getUser(userName);
     if (user != null) {
@@ -580,7 +580,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       List<TSDataType> typeList = new ArrayList<>();
       headerList.add(new Path(ROLE));
       typeList.add(TSDataType.TEXT);
-      AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+      ListDataSet dataSet = new ListDataSet(headerList, typeList);
       int index = 0;
       for (String roleN : user.getRoleList()) {
         RowRecord record = new RowRecord(index++);
@@ -595,7 +595,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
   }
 
-  private AuthDataSet executeListRolePrivileges(IAuthorizer authorizer, String roleName, Path path)
+  private ListDataSet executeListRolePrivileges(IAuthorizer authorizer, String roleName, Path path)
       throws AuthException {
     Role role = authorizer.getRole(roleName);
     if (role != null) {
@@ -603,7 +603,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       List<TSDataType> typeList = new ArrayList<>();
       headerList.add(new Path(PRIVILEGE));
       typeList.add(TSDataType.TEXT);
-      AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+      ListDataSet dataSet = new ListDataSet(headerList, typeList);
       int index = 0;
       for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
         if (path == null || AuthUtils
@@ -621,7 +621,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
   }
 
-  private AuthDataSet executeListUserPrivileges(IAuthorizer authorizer, String userName, Path path)
+  private ListDataSet executeListUserPrivileges(IAuthorizer authorizer, String userName, Path path)
       throws AuthException {
     User user = authorizer.getUser(userName);
     if (user == null) {
@@ -633,7 +633,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     headerList.add(new Path(PRIVILEGE));
     typeList.add(TSDataType.TEXT);
     typeList.add(TSDataType.TEXT);
-    AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+    ListDataSet dataSet = new ListDataSet(headerList, typeList);
     int index = 0;
     for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
       if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {

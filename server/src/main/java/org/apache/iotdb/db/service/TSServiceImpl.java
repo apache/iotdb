@@ -56,6 +56,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
@@ -337,7 +338,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return MManager.getInstance().getMetadataInString();
   }
 
-  protected Metadata getMetadata()
+  private Metadata getMetadata()
       throws PathErrorException {
     return MManager.getInstance().getMetadata();
   }
@@ -346,10 +347,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       throws PathErrorException {
     switch (path.toLowerCase()) {
       // authorization queries
-      case "role":
-      case "user":
-      case "privilege":
+      case ROLE:
+      case USER:
+      case PRIVILEGE:
+      case STORAGE_GROUP:
         return TSDataType.TEXT;
+      case TTL:
+        return TSDataType.INT64;
       default:
         // do nothing
     }
@@ -583,10 +587,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       TSExecuteStatementResp resp;
       List<String> columns = new ArrayList<>();
-      if (!(plan instanceof AuthorPlan)) {
-        resp = executeDataQuery(plan, columns);
-      } else {
+      if (plan instanceof AuthorPlan) {
         resp = executeAuthQuery(plan, columns);
+      } else if(plan instanceof ShowTTLPlan) {
+        resp = executeShowTTL(columns);
+      } else {
+        resp = executeDataQuery(plan, columns);
       }
       resp.setColumns(columns);
       resp.setDataTypeList(queryColumnsType(columns));
@@ -637,22 +643,27 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return columnTypes;
   }
 
+  private TSExecuteStatementResp executeShowTTL(List<String> columns) {
+    TSExecuteStatementResp resp = getTSExecuteStatementResp(getStatus(TSStatusType.SUCCESS_STATUS));
+    resp.setIgnoreTimeStamp(true);
+    columns.add(STORAGE_GROUP);
+    columns.add(TTL);
+
+    return resp;
+  }
+
   private TSExecuteStatementResp executeAuthQuery(PhysicalPlan plan, List<String> columns) {
     TSExecuteStatementResp resp = getTSExecuteStatementResp(getStatus(TSStatusType.SUCCESS_STATUS));
     resp.setIgnoreTimeStamp(true);
     AuthorPlan authorPlan = (AuthorPlan) plan;
     switch (authorPlan.getAuthorType()) {
       case LIST_ROLE:
+      case LIST_USER_ROLES:
         columns.add(ROLE);
         break;
       case LIST_USER:
-        columns.add(USER);
-        break;
       case LIST_ROLE_USERS:
         columns.add(USER);
-        break;
-      case LIST_USER_ROLES:
-        columns.add(ROLE);
         break;
       case LIST_ROLE_PRIVILEGE:
         columns.add(PRIVILEGE);
@@ -1012,7 +1023,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSRPCResp deleteData(TSDeleteReq req) throws TException {
+  public TSRPCResp deleteData(TSDeleteReq req) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSRPCResp(getStatus(TSStatusType.NOT_LOGIN_ERROR));

@@ -51,7 +51,8 @@ import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
-import org.apache.iotdb.db.qp.logical.sys.TTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
@@ -231,6 +232,9 @@ public class LogicalGenerator {
       case TSParser.TOK_UNSET:
         analyzeUnsetTTL(astNode);
         break;
+      case TSParser.TOK_SHOW:
+        analyzeShowTTL(astNode);
+        break;
       default:
         throw new QueryProcessorException("Not supported TSParser type in TTL:" + tokenType);
     }
@@ -240,7 +244,7 @@ public class LogicalGenerator {
     String path = parsePath(astNode.getChild(1)).getFullPath();
     long dataTTL;
     dataTTL = Long.parseLong(astNode.getChild(2).getText());
-    TTLOperator operator = new TTLOperator(SQLConstant.TOK_SET);
+    SetTTLOperator operator = new SetTTLOperator(SQLConstant.TOK_SET);
     initializedOperator = operator;
     operator.setStorageGroup(path);
     operator.setDataTTL(dataTTL);
@@ -248,9 +252,18 @@ public class LogicalGenerator {
 
   private void analyzeUnsetTTL(AstNode astNode) {
     String path = parsePath(astNode.getChild(1)).getFullPath();
-    TTLOperator operator = new TTLOperator(SQLConstant.TOK_UNSET);
+    SetTTLOperator operator = new SetTTLOperator(SQLConstant.TOK_UNSET);
     initializedOperator = operator;
     operator.setStorageGroup(path);
+  }
+
+  private void analyzeShowTTL(AstNode astNode) {
+    List<String> storageGroups = new ArrayList<>();
+    for (int i = 1; i < astNode.getChildCount(); i ++) {
+      Path path = parsePath(astNode.getChild(i));
+      storageGroups.add(path.getFullPath());
+    }
+    initializedOperator = new ShowTTLOperator(storageGroups);
   }
 
   private void analyzeSlimit(AstNode astNode) throws LogicalOperatorException {

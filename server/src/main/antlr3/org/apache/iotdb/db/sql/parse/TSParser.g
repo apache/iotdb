@@ -105,6 +105,7 @@ TOK_LINK;
 TOK_UNLINK;
 TOK_STORAGEGROUP;
 TOK_DESCRIBE;
+TOK_SHOW;
 }
 
 
@@ -909,10 +910,19 @@ constant
     | dateFormat
     ;
 
+/*
+****
+*************
+TTL
+*************
+****
+*/
+
 ttlStatement
     :
     setTTLStatement
     | unsetTTLStatement
+    | showTTLStatement
     ;
 
 setTTLStatement
@@ -925,4 +935,13 @@ unsetTTLStatement
     :
      KW_UNSET KW_TTL KW_TO path=prefixPath
     -> ^(TOK_TTL TOK_UNSET $path)
+    ;
+
+showTTLStatement
+    :
+    KW_SHOW KW_TTL KW_ON prefixPath (COMMA prefixPath)*
+    -> ^(TOK_TTL TOK_SHOW prefixPath+)
+    |
+    KW_SHOW KW_ALL KW_TTL
+    -> ^(TOK_TTL TOK_SHOW)
     ;

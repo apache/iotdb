@@ -129,4 +129,47 @@ public class IoTDBTTLTest {
       }
     }
   }
+
+  @Test
+  public void testShowTTL() throws SQLException {
+    try (IoTDBConnection connection = (IoTDBConnection) DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.group1");
+      statement.execute("SET STORAGE GROUP TO root.group2");
+
+      String result = doQuery(statement, "SHOW ALL TTL",2 );
+      assertEquals("root.group2,9223372036854775807\n"
+          + "root.group1,9223372036854775807\n", result);
+      result = doQuery(statement, "SHOW TTL ON root.group1",2);
+      assertEquals("root.group1,9223372036854775807\n", result);
+
+      statement.execute("SET TTL TO root.group1 10000");
+      result = doQuery(statement, "SHOW ALL TTL",2);
+      assertEquals("root.group2,9223372036854775807\n"
+          + "root.group1,10000\n", result);
+      result = doQuery(statement, "SHOW TTL ON root.group1",2);
+      assertEquals("root.group1,10000\n", result);
+
+      statement.execute("UNSET TTL TO root.group1");
+      result = doQuery(statement, "SHOW ALL TTL",2);
+      assertEquals("root.group2,9223372036854775807\n"
+          + "root.group1,9223372036854775807\n", result);
+      result = doQuery(statement, "SHOW TTL ON root.group1",2);
+      assertEquals("root.group1,9223372036854775807\n", result);
+    }
+  }
+
+  private String doQuery(Statement statement, String query, int columnSize) throws SQLException {
+    ResultSet resultSet = statement.executeQuery(query);
+    StringBuilder ret = new StringBuilder();
+    while (resultSet.next()) {
+      ret.append(resultSet.getString(2));
+      for (int i = 3; i <= columnSize + 1; i++) {
+        ret.append(",").append(resultSet.getString(i));
+      }
+      ret.append("\n");
+    }
+    return ret.toString();
+  }
 }

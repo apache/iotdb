@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -15,51 +15,39 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
 
-package org.apache.iotdb.db.qp.physical.sys;
+package org.apache.iotdb.db.query.dataset;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-public class TTLPlan extends PhysicalPlan {
+public class ListDataSet extends QueryDataSet {
 
-  private String storageGroup;
-  private long dataTTL;
+  private List<RowRecord> records = new ArrayList<>();
+  private int index = 0;
 
-  public TTLPlan(String storageGroup, long dataTTL) {
-    // set TTL
-    super(false, OperatorType.TTL);
-    this.storageGroup = storageGroup;
-    this.dataTTL = dataTTL;
-  }
-
-  public TTLPlan(String storageGroup) {
-    // unset TTL
-    this(storageGroup, Long.MAX_VALUE);
+  public ListDataSet(List<Path> paths,
+      List<TSDataType> dataTypes) {
+    super(paths, dataTypes);
   }
 
   @Override
-  public List<Path> getPaths() {
-    return null;
+  public boolean hasNext() throws IOException {
+    return index < records.size();
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  @Override
+  public RowRecord next() {
+    return records.get(index++);
   }
 
-  public void setStorageGroup(String storageGroup) {
-    this.storageGroup = storageGroup;
-  }
-
-  public long getDataTTL() {
-    return dataTTL;
-  }
-
-  public void setDataTTL(long dataTTL) {
-    this.dataTTL = dataTTL;
+  public void putRecord(RowRecord newRecord) {
+    records.add(newRecord);
   }
 }

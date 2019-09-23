@@ -1250,7 +1250,7 @@ public class MManager {
       sgNode.setDataTTL(dataTTL);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
-        writer.write(String.format("%s,%s,%s", OperatorType.TTL, storageGroup, dataTTL));
+        writer.write(String.format("%s,%s,%s", MetadataOperationType.SET_TTL, storageGroup, dataTTL));
         writer.newLine();
         writer.flush();
       }

@@ -9,6 +9,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -28,16 +29,20 @@ import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.sys.TTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -224,16 +229,47 @@ public class TTLTest {
   }
 
   @Test
-  public void testParseTTL()
+  public void testParseSetTTL()
       throws ArgsErrorException, MetadataErrorException, QueryProcessorException {
     QueryProcessor queryProcessor = new QueryProcessor(new QueryProcessExecutor());
-    TTLPlan plan = (TTLPlan) queryProcessor.parseSQLToPhysicalPlan("SET TTL TO " + sg1 + " 10000");
+    SetTTLPlan plan = (SetTTLPlan) queryProcessor.parseSQLToPhysicalPlan("SET TTL TO " + sg1 + " 10000");
     assertEquals(sg1, plan.getStorageGroup());
     assertEquals(10000, plan.getDataTTL());
 
-    plan = (TTLPlan) queryProcessor.parseSQLToPhysicalPlan("UNSET TTL TO " + sg2);
+    plan = (SetTTLPlan) queryProcessor.parseSQLToPhysicalPlan("UNSET TTL TO " + sg2);
     assertEquals(sg2, plan.getStorageGroup());
     assertEquals(Long.MAX_VALUE, plan.getDataTTL());
   }
 
+  @Test
+  public void testParseShowTTL()
+      throws ArgsErrorException, MetadataErrorException, QueryProcessorException {
+    QueryProcessor queryProcessor = new QueryProcessor(new QueryProcessExecutor());
+    ShowTTLPlan plan = (ShowTTLPlan) queryProcessor.parseSQLToPhysicalPlan("SHOW ALL TTL");
+    assertTrue(plan.getStorageGroups().isEmpty());
+
+    List<String> sgs = new ArrayList<>();
+    sgs.add("root.sg1");
+    sgs.add("root.sg2");
+    sgs.add("root.sg3");
+    plan = (ShowTTLPlan) queryProcessor.parseSQLToPhysicalPlan("SHOW TTL ON root.sg1,root.sg2,root.sg3");
+    assertEquals(sgs, plan.getStorageGroups());
+  }
+
+  @Test
+  public void testShowTTL()
+      throws IOException, PathErrorException, ProcessorException, QueryFilterOptimizationException, StorageEngineException {
+    MManager.getInstance().setTTL(sg1, ttl);
+
+    ShowTTLPlan plan = new ShowTTLPlan(Collections.emptyList());
+    QueryProcessExecutor executor = new QueryProcessExecutor();
+    QueryDataSet queryDataSet = executor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    RowRecord rowRecord = queryDataSet.next();
+    assertEquals(sg2, rowRecord.getFields().get(0).getStringValue());
+    assertEquals(Long.MAX_VALUE, rowRecord.getFields().get(1).getLongV());
+
+    rowRecord = queryDataSet.next();
+    assertEquals(sg1, rowRecord.getFields().get(0).getStringValue());
+    assertEquals(ttl, rowRecord.getFields().get(1).getLongV());
+  }
 }

@@ -18,18 +18,33 @@
  *
  */
 
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import java.util.List;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.read.common.Path;
 
-public class TTLOperator extends RootOperator {
+public class SetTTLPlan extends PhysicalPlan {
 
   private String storageGroup;
   private long dataTTL;
 
-  public TTLOperator(int tokenIntType) {
-    super(tokenIntType);
-    this.operatorType = OperatorType.TTL;
+  public SetTTLPlan(String storageGroup, long dataTTL) {
+    // set TTL
+    super(false, OperatorType.TTL);
+    this.storageGroup = storageGroup;
+    this.dataTTL = dataTTL;
+  }
+
+  public SetTTLPlan(String storageGroup) {
+    // unset TTL
+    this(storageGroup, Long.MAX_VALUE);
+  }
+
+  @Override
+  public List<Path> getPaths() {
+    return null;
   }
 
   public String getStorageGroup() {

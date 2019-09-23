@@ -18,14 +18,20 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.TTL;
+
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -33,17 +39,23 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.executor.IEngineQueryRouter;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecutor {
 
-  protected IEngineQueryRouter queryRouter = new EngineQueryRouter();
+  IEngineQueryRouter queryRouter = new EngineQueryRouter();
 
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
@@ -54,9 +66,42 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof AuthorPlan) {
       return processAuthorQuery((AuthorPlan) queryPlan, context);
+    } else if(queryPlan instanceof ShowTTLPlan) {
+      return processShowTTLQuery((ShowTTLPlan) queryPlan);
     } else {
       throw new ProcessorException(String.format("Unrecognized query plan %s", queryPlan));
     }
+  }
+
+  private QueryDataSet processShowTTLQuery(ShowTTLPlan showTTLPlan) {
+    List<Path> paths = new ArrayList<>();
+    paths.add(new Path(STORAGE_GROUP));
+    paths.add(new Path(TTL));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.TEXT);
+    dataTypes.add(TSDataType.INT64);
+    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+
+    List<String> selectedSgs = showTTLPlan.getStorageGroups();
+
+    List<MNode> storageGroups = MManager.getInstance().getAllStorageGroups();
+    int i = 0;
+    for (MNode mNode : storageGroups) {
+      String sgName = mNode.getFullPath();
+      if (!selectedSgs.isEmpty() && !selectedSgs.contains(sgName)) {
+        continue;
+      }
+      RowRecord rowRecord = new RowRecord(i++);
+      Field sg = new Field(TSDataType.TEXT);
+      Field ttl = new Field(TSDataType.INT64);
+      sg.setBinaryV(new Binary(sgName));
+      ttl.setLongV(mNode.getDataTTL());
+      rowRecord.addField(sg);
+      rowRecord.addField(ttl);
+      listDataSet.putRecord(rowRecord);
+    }
+
+    return listDataSet;
   }
 
   protected abstract QueryDataSet processAuthorQuery(AuthorPlan plan, QueryContext context)
