@@ -26,6 +26,8 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -37,6 +39,7 @@ public class HDFSOutput implements TsFileOutput {
   private FSDataOutputStream fsDataOutputStream;
   private FileSystem fs;
   private Path path;
+  private static final Logger logger = LoggerFactory.getLogger(HDFSOutput.class);
 
   public HDFSOutput(String filePath, boolean overwrite) throws IOException {
     this(filePath, new Configuration(), overwrite);
@@ -44,16 +47,19 @@ public class HDFSOutput implements TsFileOutput {
   }
 
 
-  public HDFSOutput(String filePath, Configuration configuration, boolean overwriter)
+  public HDFSOutput(String filePath, Configuration configuration, boolean overwrite)
       throws IOException {
-    this(new Path(filePath), configuration, overwriter);
+    this(new Path(filePath), configuration, overwrite);
     path = new Path(filePath);
   }
 
-  public HDFSOutput(Path path, Configuration configuration, boolean overwriter)
+  public HDFSOutput(Path path, Configuration configuration, boolean overwrite)
       throws IOException {
     fs = path.getFileSystem(configuration);
-    fsDataOutputStream = fs.create(path, overwriter);
+    configuration.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
+    configuration.set("dfs.client.block.write.replace-datanode-on-failure.policy", "NEVER");
+    configuration.set("dfs.client.block.write.replace-datanode-on-failure.enable", "true");
+    fsDataOutputStream = fs.exists(path) ? fs.append(path) : fs.create(path, overwrite);
     this.path = path;
   }
 
@@ -73,6 +79,7 @@ public class HDFSOutput implements TsFileOutput {
 
   @Override
   public void close() throws IOException {
+    flush();
     fsDataOutputStream.close();
   }
 
@@ -88,6 +95,14 @@ public class HDFSOutput implements TsFileOutput {
 
   @Override
   public void truncate(long position) throws IOException {
-    fs.truncate(path, position);
+    if (fs.exists(path)) {
+      fsDataOutputStream.close();
+    }
+    if (!fs.truncate(path, position)) {
+      logger.error("Failed to truncate file {}. ", path.toUri().toString());
+    }
+    if (fs.exists(path)) {
+      fsDataOutputStream = fs.append(path);
+    }
   }
 }
