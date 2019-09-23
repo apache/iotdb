@@ -62,16 +62,21 @@ public class IoTDBTtlIT {
       try {
         statement.execute("SET TTL TO root.TTL_SG1 1000");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.NOT_A_STORAGE_GROUP_ERROR.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), e.getErrorCode());
       }
       try {
         statement.execute("UNSET TTL TO root.TTL_SG1");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.NOT_A_STORAGE_GROUP_ERROR.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), e.getErrorCode());
       }
 
       statement.execute("SET STORAGE GROUP TO root.TTL_SG1");
       statement.execute("CREATE TIMESERIES root.TTL_SG1.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
+      try {
+        statement.execute("SET TTL TO root.TTL_SG1.s1 1000");
+      } catch (SQLException e) {
+        assertEquals(TSStatusCode.NOT_A_STORAGE_GROUP_ERROR.getStatusCode(), e.getErrorCode());
+      }
 
       long now = System.currentTimeMillis();
       for (int i = 0; i < 100; i ++) {

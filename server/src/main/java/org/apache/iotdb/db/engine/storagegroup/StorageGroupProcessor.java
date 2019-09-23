@@ -348,7 +348,7 @@ public class StorageGroupProcessor {
   public boolean insert(InsertPlan insertPlan) throws QueryProcessorException {
     // reject insertions that are out of ttl
     if (!checkTTL(insertPlan.getTime())) {
-     return false;
+     throw new OutOfTTLException(insertPlan.getTime(), (System.currentTimeMillis() - dataTTL));
     }
     writeLock();
     try {
@@ -591,7 +591,9 @@ public class StorageGroupProcessor {
 
   public synchronized void checkFilesTTL() {
     long timeBound = System.currentTimeMillis() - dataTTL;
-    logger.info("TTL removing files before {}", new Date(timeBound));
+    if (logger.isDebugEnabled()) {
+      logger.debug("TTL removing files before {}", new Date(timeBound));
+    }
     try {
       for (TsFileResource tsFileResource : unSequenceFileList) {
         checkFileTTL(tsFileResource, timeBound, true);
