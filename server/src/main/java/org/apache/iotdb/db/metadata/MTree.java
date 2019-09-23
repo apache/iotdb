@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -199,6 +200,7 @@ public class MTree implements Serializable {
     }
     cur = cur.getChild(nodeNames[i]);
     cur.setStorageLevel(true);
+    cur.setDataTTL(IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
     setDataFileName(path, cur);
   }
 

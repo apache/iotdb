@@ -274,6 +274,9 @@ public class IoTDBDescriptor {
       conf.setHdfsIp(properties.getProperty("hdfs_ip"));
       conf.setHdfsPort(properties.getProperty("hdfs_port"));
 
+      conf.setDefaultTTL(Long.parseLong(properties.getProperty("default_ttl",
+          String.valueOf(conf.getDefaultTTL()))));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
       TSFileDescriptor.getInstance().getConfig().setHdfsIp(properties.getProperty("hdfs_ip"));

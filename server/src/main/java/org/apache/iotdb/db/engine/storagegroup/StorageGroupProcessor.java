@@ -348,7 +348,7 @@ public class StorageGroupProcessor {
   public boolean insert(InsertPlan insertPlan) throws QueryProcessorException {
     // reject insertions that are out of ttl
     if (!checkTTL(insertPlan.getTime())) {
-      throw new OutOfTTLException(insertPlan.getTime(), System.currentTimeMillis() - dataTTL);
+     return false;
     }
     writeLock();
     try {

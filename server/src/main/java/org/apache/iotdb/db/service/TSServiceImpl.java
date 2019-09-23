@@ -52,6 +52,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.exception.ArgsErrorException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
+import org.apache.iotdb.db.exception.NotStorageGroupException;
 import org.apache.iotdb.db.exception.OutOfTTLException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -1218,7 +1219,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.debug("meet error while processing non-query. ", e);
       if (e.getCause() instanceof OutOfTTLException) {
         return getStatus(TSStatusCode.OUT_OF_TTL_ERROR, e.getMessage());
-      } else if (e.getCause() instanceof PathErrorException) {
+      } else if (e.getCause() instanceof NotStorageGroupException) {
         return getStatus(TSStatusCode.NOT_A_STORAGE_GROUP_ERROR, e.getMessage());
       } else {
         return getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());

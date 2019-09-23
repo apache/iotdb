@@ -346,6 +346,11 @@ public class IoTDBConfig {
    */
   private String hdfsPort = "9000";
 
+  /**
+   * defaultTTL for new storage groups, in ms.
+   */
+  private long defaultTTL = Long.MAX_VALUE;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -950,5 +955,13 @@ public class IoTDBConfig {
 
   public void setHdfsPort(String hdfsPort) {
     this.hdfsPort = hdfsPort;
+  }
+
+  public long getDefaultTTL() {
+    return defaultTTL;
+  }
+
+  public void setDefaultTTL(long defaultTTL) {
+    this.defaultTTL = defaultTTL;
   }
 }
