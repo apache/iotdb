@@ -54,7 +54,7 @@ public class IoTDBConnection implements Connection {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
   private final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1;
   public TSIService.Iface client = null;
-  public TS_SessionHandle sessionHandle = null;
+  TS_SessionHandle sessionHandle = null;
   private IoTDBConnectionParams params;
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
@@ -103,7 +103,7 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public void clearWarnings() throws SQLException {
+  public void clearWarnings() {
     warningChain = null;
   }
 
@@ -172,7 +172,7 @@ public class IoTDBConnection implements Connection {
               resultSetConcurrency));
     }
     if (resultSetType == ResultSet.TYPE_SCROLL_SENSITIVE) {
-      throw new SQLException(String.format("Statements with resultset type %d are not supported",
+      throw new SQLException(String.format("Statements with ResultSet type %d are not supported",
           resultSetType));
     }
     return new IoTDBStatement(this, client, sessionHandle, zoneId);
@@ -189,18 +189,18 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public boolean getAutoCommit() throws SQLException {
+  public boolean getAutoCommit() {
     return autoCommit;
   }
 
   @Override
-  public void setAutoCommit(boolean arg0) throws SQLException {
+  public void setAutoCommit(boolean arg0) {
     autoCommit = arg0;
   }
 
   @Override
-  public String getCatalog() throws SQLException {
-    return "no cata log";
+  public String getCatalog() {
+    return "no catalog";
   }
 
   @Override
@@ -224,7 +224,7 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public int getHoldability() throws SQLException {
+  public int getHoldability() {
     // throw new SQLException("Method not supported");
     return 0;
   }
@@ -243,7 +243,7 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public int getNetworkTimeout() throws SQLException {
+  public int getNetworkTimeout() {
     return Config.connectionTimeoutInMs;
   }
 
@@ -258,7 +258,7 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public int getTransactionIsolation() throws SQLException {
+  public int getTransactionIsolation() {
     return Connection.TRANSACTION_NONE;
   }
 
@@ -278,17 +278,17 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public SQLWarning getWarnings() throws SQLException {
+  public SQLWarning getWarnings() {
     return warningChain;
   }
 
   @Override
-  public boolean isClosed() throws SQLException {
+  public boolean isClosed() {
     return isClosed;
   }
 
   @Override
-  public boolean isReadOnly() throws SQLException {
+  public boolean isReadOnly() {
     return false;
   }
 
@@ -364,12 +364,12 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public void rollback() throws SQLException {
+  public void rollback() {
     // do nothing in rollback
   }
 
   @Override
-  public void rollback(Savepoint arg0) throws SQLException {
+  public void rollback(Savepoint arg0) {
     // do nothing in rollback
   }
 
@@ -419,7 +419,7 @@ public class IoTDBConnection implements Connection {
       }
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         throw new TException(String
-            .format("Protocol not supported, Client version is {}, but Server version is {}",
+            .format("Protocol not supported, Client version is %d, but Server version is %d",
                 protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
       }
       setProtocol(openResp.getServerProtocolVersion());
@@ -438,7 +438,7 @@ public class IoTDBConnection implements Connection {
     isClosed = false;
   }
 
-  public boolean reconnect() {
+  boolean reconnect() {
     boolean flag = false;
     for (int i = 1; i <= Config.RETRY_NUM; i++) {
       try {
@@ -487,7 +487,7 @@ public class IoTDBConnection implements Connection {
     try {
       RpcUtils.verifySuccess(resp);
     } catch (IoTDBRPCException e) {
-      throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
+      throw new IoTDBSQLException(e.getMessage(), resp);
     }
     this.zoneId = ZoneId.of(zoneId);
   }
@@ -496,11 +496,7 @@ public class IoTDBConnection implements Connection {
     return client.getProperties();
   }
 
-  public TSProtocolVersion getProtocol() {
-    return protocol;
-  }
-
-  public void setProtocol(TSProtocolVersion protocol) {
+  private void setProtocol(TSProtocolVersion protocol) {
     this.protocol = protocol;
   }
 

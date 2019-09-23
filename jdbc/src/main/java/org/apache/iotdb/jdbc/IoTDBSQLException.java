@@ -20,7 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import java.sql.SQLException;
-import org.apache.iotdb.service.rpc.thrift.TS_Status;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class IoTDBSQLException extends SQLException {
 
@@ -30,7 +30,7 @@ public class IoTDBSQLException extends SQLException {
     super(reason);
   }
 
-  public IoTDBSQLException(String reason, TS_Status status) {
+  public IoTDBSQLException(String reason, TSStatus status) {
     super(reason, status.sqlState, status.statusType.code);
   }
 

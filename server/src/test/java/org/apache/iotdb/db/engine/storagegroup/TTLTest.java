@@ -102,7 +102,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLWrite() throws StorageEngineException {
+  public void testTTLWrite() throws QueryProcessorException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(sg1);
     insertPlan.setTime(System.currentTimeMillis());
@@ -127,7 +127,7 @@ public class TTLTest {
     assertTrue(storageGroupProcessor.insert(insertPlan));
   }
 
-  private void prepareData() throws StorageEngineException {
+  private void prepareData() throws QueryProcessorException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(sg1);
     insertPlan.setTime(System.currentTimeMillis());
@@ -155,7 +155,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLRead() throws IOException, StorageEngineException {
+  public void testTTLRead() throws IOException, QueryProcessorException {
     prepareData();
 
     // files before ttl
@@ -204,7 +204,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLRemoval() throws StorageEngineException {
+  public void testTTLRemoval() throws StorageEngineException, QueryProcessorException {
     prepareData();
 
     storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();

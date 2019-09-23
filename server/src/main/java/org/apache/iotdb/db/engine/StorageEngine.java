@@ -185,7 +185,7 @@ public class StorageEngine implements IService {
    * @param insertPlan physical plan of insertion
    * @return true if and only if this insertion succeeds
    */
-  public boolean insert(InsertPlan insertPlan) throws StorageEngineException {
+  public boolean insert(InsertPlan insertPlan) throws ProcessorException {
 
     StorageGroupProcessor storageGroupProcessor;
     try {
@@ -194,14 +194,14 @@ public class StorageEngine implements IService {
       logger.warn("get StorageGroupProcessor of device {} failed, because {}",
           insertPlan.getDeviceId(),
           e.getMessage(), e);
-      throw new StorageEngineException(e);
+      throw new ProcessorException(e);
     }
 
     // TODO monitor: update statistics
     try {
       return storageGroupProcessor.insert(insertPlan);
     } catch (QueryProcessorException e) {
-      throw new StorageEngineException(e.getMessage());
+      throw new ProcessorException(e);
     }
   }
 

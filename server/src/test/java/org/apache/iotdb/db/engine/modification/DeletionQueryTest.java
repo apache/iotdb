@@ -27,28 +27,26 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class  DeletionQueryTest {
@@ -89,7 +87,7 @@ public class  DeletionQueryTest {
 
   @Test
   public void testDeleteInBufferWriteCache() throws
-      StorageEngineException, IOException {
+      StorageEngineException, IOException, ProcessorException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -121,7 +119,8 @@ public class  DeletionQueryTest {
   }
 
   @Test
-  public void testDeleteInBufferWriteFile() throws StorageEngineException, IOException {
+  public void testDeleteInBufferWriteFile()
+      throws StorageEngineException, IOException, ProcessorException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
@@ -152,7 +151,8 @@ public class  DeletionQueryTest {
   }
 
   @Test
-  public void testDeleteInOverflowCache() throws StorageEngineException, IOException {
+  public void testDeleteInOverflowCache()
+      throws StorageEngineException, IOException, ProcessorException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -187,14 +187,15 @@ public class  DeletionQueryTest {
 
     int count = 0;
     while (dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
+      dataSet.next();
       count++;
     }
     assertEquals(150, count);
   }
 
   @Test
-  public void testDeleteInOverflowFile() throws StorageEngineException, IOException {
+  public void testDeleteInOverflowFile()
+      throws StorageEngineException, IOException, ProcessorException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -237,7 +238,7 @@ public class  DeletionQueryTest {
 
   @Test
   public void testSuccessiveDeletion()
-      throws StorageEngineException, IOException, InterruptedException {
+      throws StorageEngineException, IOException, ProcessorException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
