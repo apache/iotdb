@@ -434,7 +434,7 @@
                         <consoleOutput>true</consoleOutput>
                         <excludes>
                             <!-- Execute files -->
-                            <exclude>**/.so</exclude>
+                            <exclude>**/*.so</exclude>
                             <!-- Git related files -->
                             <exclude>**/.git/**</exclude>
                             <exclude>**/.mvn/**</exclude>

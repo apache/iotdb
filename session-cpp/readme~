@@ -1,7 +1,0 @@
-This module provides a C++ client interface, you need to write your own program by simulating SessionExample.cpp
-    
-Use the following command to generate an executable file:
-    g++ -o executable_file_name cpp_program_file_name -lIOTDBSession_cpp  -lthrift -L. -Wl,-rpath=. 
-e.g.
-    g++ -o Example SessionExample.cpp -lIOTDBSession_cpp  -lthrift -L. -Wl,-rpath=. 
-    
