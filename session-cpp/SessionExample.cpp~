@@ -1,4 +1,4 @@
-#include "Session.h"
+#include "IOTDBSession.h"
 
 using namespace std;
 int main()
