@@ -31,6 +31,7 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
@@ -72,6 +74,10 @@ public class PhysicalGenerator {
         } catch (AuthException e) {
           throw new QueryProcessorException(e);
         }
+      case GRANT_WATERMARK_EMBEDDING:
+      case REVOKE_WATERMARK_EMBEDDING:
+        DataAuthOperator dataAuthOperator = (DataAuthOperator) operator;
+        return new DataAuthPlan(dataAuthOperator.getType(), dataAuthOperator.getUsers());
       case LOADDATA:
         LoadDataOperator loadData = (LoadDataOperator) operator;
         return new LoadDataPlan(loadData.getInputFilePath(), loadData.getMeasureType());

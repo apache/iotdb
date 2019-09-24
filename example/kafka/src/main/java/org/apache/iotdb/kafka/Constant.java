@@ -20,9 +20,6 @@ package org.apache.iotdb.kafka;
 
 import org.apache.iotdb.jdbc.Config;
 
-/**
- * @author lta
- */
 public class Constant {
 
   public static final String TOPIC = "Kafka-Test";

@@ -46,10 +46,7 @@ import org.slf4j.LoggerFactory;
  * </pre>.
 
  * Decode switch or enum values using bitmap, bitmap-encode.{@code <length> <num> <encoded data> }
- * @deprecated This class has been deprecated.
- * @since deprecated since 0.4.0
  */
-@Deprecated
 public class BitmapEncoder extends Encoder {
 
   private static final Logger logger = LoggerFactory.getLogger(BitmapEncoder.class);

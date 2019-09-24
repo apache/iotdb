@@ -18,18 +18,17 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
+import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import java.io.File;
 
 /**
  * FileUtils is just used for return file attribute like file size, and contains some measurement conversion among B,
  * KB, MB etc.
- *
- * @author kangrong
  */
 public class FileUtils {
 
   public static double getLocalFileByte(String filePath, Unit unit) {
-    File f = new File(filePath);
+    File f = TSFileFactory.INSTANCE.getFile(filePath);
     return getLocalFileByte(f, unit);
   }
 

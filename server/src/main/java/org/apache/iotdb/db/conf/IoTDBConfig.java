@@ -23,9 +23,13 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +40,9 @@ public class IoTDBConfig {
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
+
+  /* Names of Watermark methods */
+  public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
 
   private String rpcAddress = "0.0.0.0";
 
@@ -260,6 +267,26 @@ public class IoTDBConfig {
   private boolean chunkBufferPoolEnable = false;
 
   /**
+   * Switch of watermark function
+   */
+  private boolean enableWatermark = false;
+
+  /**
+   * Secret key for watermark
+   */
+  private String watermarkSecretKey = "QWERTYUIOP*&=";
+
+  /**
+   * Bit string of watermark
+   */
+  private String watermarkBitString = "11001010010101";
+
+  /**
+   * Watermark method and parameters
+   */
+  private String watermarkMethod = "GroupBasedLSBMethod(embed_row_cycle=5,embed_lsb_num=5)";
+
+  /**
    * How much memory (in byte) can be used by a single merge task.
    */
   private long mergeMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.2);
@@ -310,6 +337,26 @@ public class IoTDBConfig {
 
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
+  /**
+   * Default system file storage is in local file system (unsupported)
+   */
+  private FSType systemFileStorageFs = FSType.LOCAL;
+
+  /**
+   * Default TSfile storage is in local file system
+   */
+  private FSType tsFileStorageFs = FSType.LOCAL;
+
+  /**
+   * Default HDFS ip is localhost
+   */
+  private String hdfsIp = "localhost";
+
+  /**
+   * Default HDFS port is 9000
+   */
+  private String hdfsPort = "9000";
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -337,16 +384,21 @@ public class IoTDBConfig {
     dirs.add(queryDir);
     dirs.addAll(Arrays.asList(dataDirs));
 
-    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-    for (int i = 0; i < dirs.size(); i++) {
-      String dir = dirs.get(i);
-      if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-        if (!homeDir.endsWith(File.separator)) {
-          dir = homeDir + File.separatorChar + dir;
-        } else {
-          dir = homeDir + dir;
-        }
+    for (int i = 0; i < 4; i++) {
+      addHomeDir(dirs, i);
+    }
+
+    if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
+      String hdfsDir = "hdfs://" + TSFileDescriptor.getInstance().getConfig().getHdfsIp() + ":"
+          + TSFileDescriptor.getInstance().getConfig().getHdfsPort();
+      for (int i = 5; i < dirs.size(); i++) {
+        String dir = dirs.get(i);
+        dir = hdfsDir + File.separatorChar + dir;
         dirs.set(i, dir);
+      }
+    } else {
+      for (int i = 5; i < dirs.size(); i++) {
+        addHomeDir(dirs, i);
       }
     }
     baseDir = dirs.get(0);
@@ -360,6 +412,18 @@ public class IoTDBConfig {
     }
   }
 
+  private void addHomeDir(List<String> dirs, int i) {
+    String dir = dirs.get(i);
+    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
+      if (!homeDir.endsWith(File.separator)) {
+        dir = homeDir + File.separatorChar + dir;
+      } else {
+        dir = homeDir + dir;
+      }
+      dirs.set(i, dir);
+    }
+  }
 
   private void confirmMultiDirStrategy() {
     if (getMultiDirStrategyClassName() == null) {
@@ -765,7 +829,7 @@ public class IoTDBConfig {
   public void setMemtableSizeThreshold(long memtableSizeThreshold) {
     this.memtableSizeThreshold = memtableSizeThreshold;
   }
-  
+
   public MergeFileStrategy getMergeFileStrategy() {
     return mergeFileStrategy;
   }
@@ -821,5 +885,99 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForChumkMetaDataCache(long allocateMemoryForChumkMetaDataCache) {
     this.allocateMemoryForChumkMetaDataCache = allocateMemoryForChumkMetaDataCache;
+  }
+
+  public boolean isEnableWatermark() {
+    return enableWatermark;
+  }
+
+  public void setEnableWatermark(boolean enableWatermark) {
+    this.enableWatermark = enableWatermark;
+  }
+
+  public String getWatermarkSecretKey() {
+    return watermarkSecretKey;
+  }
+
+  public void setWatermarkSecretKey(String watermarkSecretKey) {
+    this.watermarkSecretKey = watermarkSecretKey;
+  }
+
+  public String getWatermarkBitString() {
+    return watermarkBitString;
+  }
+
+  public void setWatermarkBitString(String watermarkBitString) {
+    this.watermarkBitString = watermarkBitString;
+  }
+
+  public void setWatermarkMethod(String watermarkMethod) {
+    this.watermarkMethod = watermarkMethod;
+  }
+
+  public String getWatermarkMethod() {
+    return this.watermarkMethod;
+  }
+
+  public String getWatermarkMethodName() {
+    return watermarkMethod.split("\\(")[0];
+  }
+
+  public int getWatermarkParamMarkRate() {
+    return Integer.parseInt(getWatermarkParamValue("embed_row_cycle", "5"));
+  }
+
+  public int getWatermarkParamMaxRightBit() {
+    return Integer.parseInt(getWatermarkParamValue("embed_lsb_num", "5"));
+  }
+
+  public String getWatermarkParamValue(String key, String defaultValue) {
+    String res = getWatermarkParamValue(key);
+    if (res != null) {
+      return res;
+    }
+    return defaultValue;
+  }
+
+  public String getWatermarkParamValue(String key) {
+    String pattern = key + "=(\\w*)";
+    Pattern r = Pattern.compile(pattern);
+    Matcher m = r.matcher(watermarkMethod);
+    if (m.find() && m.groupCount() > 0) {
+      return m.group(1);
+    }
+    return null;
+  }
+
+  public FSType getSystemFileStorageFs() {
+    return systemFileStorageFs;
+  }
+
+  public void setSystemFileStorageFs(String systemFileStorageFs) {
+    this.systemFileStorageFs = FSType.valueOf(systemFileStorageFs);
+  }
+
+  public FSType getTsFileStorageFs() {
+    return tsFileStorageFs;
+  }
+
+  public void setTsFileStorageFs(String tsFileStorageFs) {
+    this.tsFileStorageFs = FSType.valueOf(tsFileStorageFs);
+  }
+
+  public String getHdfsIp() {
+    return hdfsIp;
+  }
+
+  public void setHdfsIp(String hdfsIp) {
+    this.hdfsIp = hdfsIp;
+  }
+
+  public String getHdfsPort() {
+    return hdfsPort;
+  }
+
+  public void setHdfsPort(String hdfsPort) {
+    this.hdfsPort = hdfsPort;
   }
 }

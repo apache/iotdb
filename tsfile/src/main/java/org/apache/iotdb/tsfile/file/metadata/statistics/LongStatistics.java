@@ -26,8 +26,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Statistics for long type.
- *
- * @author kangrong
  */
 public class LongStatistics extends Statistics<Long> {
 

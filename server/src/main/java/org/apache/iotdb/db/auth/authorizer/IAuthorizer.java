@@ -241,4 +241,20 @@ public interface IAuthorizer {
    * @return A user whose name is username or null if such user does not exist.
    */
   User getUser(String username) throws AuthException;
+
+  /**
+   * Whether data water-mark is enabled for user 'userName'.
+   * @param userName
+   * @return
+   * @throws AuthException if the user does not exist
+   */
+  boolean isUserUseWaterMark(String userName) throws AuthException;
+
+  /**
+   * Enable or disable data water-mark for user 'userName'.
+   * @param userName
+   * @param useWaterMark
+   * @throws AuthException if the user does not exist.
+   */
+  void setUserUseWaterMark(String userName, boolean useWaterMark) throws AuthException;
 }

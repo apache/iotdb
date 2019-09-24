@@ -48,8 +48,6 @@ import org.slf4j.LoggerFactory;
  * <p>
  * This class is used for cleaning test environment in unit test and integration test
  * </p>
- *
- * @author liukun
  */
 public class EnvironmentUtils {
 
@@ -86,8 +84,10 @@ public class EnvironmentUtils {
     // clean wal
     MultiFileLogNodeManager.getInstance().stop();
     // clean cache
-    TsFileMetaDataCache.getInstance().clear();
-    DeviceMetaDataCache.getInstance().clear();
+    if (config.isMetaDataCacheEnable()) {
+      TsFileMetaDataCache.getInstance().clear();
+      DeviceMetaDataCache.getInstance().clear();
+    }
     // close metadata
     MManager.getInstance().clear();
     // delete all directory

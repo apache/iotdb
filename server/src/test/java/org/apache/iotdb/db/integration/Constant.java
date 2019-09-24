@@ -63,8 +63,8 @@ public class Constant {
     return String.format("sum(%s)", path);
   }
 
-  public static String mean(String path) {
-    return String.format("mean(%s)", path);
+  public static String avg(String path) {
+    return String.format("avg(%s)", path);
   }
 
   public static String count(String path) {

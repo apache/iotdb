@@ -20,8 +20,6 @@ package org.apache.iotdb.tsfile.exception.write;
 
 /**
  * This exception is threw while meeting error in writing procession.
- *
- * @author kangrong
  */
 public class WriteProcessException extends Exception {
 

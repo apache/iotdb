@@ -19,17 +19,18 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
@@ -84,7 +86,7 @@ public class LogReplayer {
    */
   public void replayLogs() throws ProcessorException {
     WriteLogNode logNode = MultiFileLogNodeManager.getInstance().getNode(
-        logNodePrefix + new File(insertFilePath).getName());
+        logNodePrefix + TSFileFactory.INSTANCE.getFile(insertFilePath).getName());
 
     ILogReader logReader = logNode.getLogReader();
     try {
@@ -98,7 +100,7 @@ public class LogReplayer {
           replayUpdate((UpdatePlan) plan);
         }
       }
-    } catch (IOException e) {
+    } catch (IOException | QueryProcessorException e) {
       throw new ProcessorException("Cannot replay logs", e);
     } finally {
       logReader.close();
@@ -115,7 +117,7 @@ public class LogReplayer {
     }
   }
 
-  private void replayInsert(InsertPlan insertPlan) {
+  private void replayInsert(InsertPlan insertPlan) throws QueryProcessorException {
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       Long lastEndTime = currentTsFileResource.getEndTimeMap().get(insertPlan.getDeviceId());

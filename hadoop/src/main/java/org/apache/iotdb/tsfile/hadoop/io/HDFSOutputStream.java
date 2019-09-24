@@ -29,8 +29,6 @@ import org.apache.iotdb.tsfile.common.utils.ITsRandomAccessFileWriter;
 /**
  * This class is used to wrap the {@link}FSDataOutputStream and implement the
  * interface {@link}TSRandomAccessFileWriter
- *
- * @author liukun
  */
 public class HDFSOutputStream implements ITsRandomAccessFileWriter {
 

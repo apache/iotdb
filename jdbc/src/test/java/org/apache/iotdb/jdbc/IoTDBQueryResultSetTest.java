@@ -26,14 +26,13 @@ import static org.mockito.Mockito.when;
 
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.iotdb.rpc.TSStatusType;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -108,8 +107,8 @@ public class IoTDBQueryResultSetTest {
   @Mock
   private TSFetchResultsResp fetchResultsResp;
 
-  private TS_StatusType successStatus = new TS_StatusType(TSStatusType.SUCCESS_STATUS.getStatusCode(), "");
-  private TS_Status Status_SUCCESS = new TS_Status(successStatus);
+  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
+  private TSStatus Status_SUCCESS = new TSStatus(successStatus);
   private ZoneId zoneID = ZoneId.systemDefault();
 
   @Before
@@ -130,8 +129,8 @@ public class IoTDBQueryResultSetTest {
     when(client.fetchResults(any(TSFetchResultsReq.class))).thenReturn(fetchResultsResp);
     when(fetchResultsResp.getStatus()).thenReturn(Status_SUCCESS);
 
-    TSRPCResp closeResp = new TSRPCResp();
-    closeResp.setStatus(Status_SUCCESS);
+    TSStatus closeResp = new TSStatus();
+    closeResp = Status_SUCCESS;
     when(client.closeOperation(any(TSCloseOperationReq.class))).thenReturn(closeResp);
   }
 

@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.tsfile.write.schema;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Schema stores the schema of the measurements and devices that exist in this file. All
@@ -36,20 +36,16 @@ public class Schema {
 
   /**
    * the key is the measurementId.
+   * By default, use the LinkedHashMap to store the order of insertion
    */
   private Map<String, MeasurementSchema> measurementSchemaMap;
 
-  /**
-   * the list of measurement schema
-   */
-  private List<MeasurementSchema> measurementSchemaList;
 
   /**
    * init measurementSchemaMap as an empty map and an empty list.
    */
   public Schema() {
-    this.measurementSchemaMap = new HashMap<>();
-    this.measurementSchemaList = new ArrayList<>();
+    this.measurementSchemaMap = new LinkedHashMap<>();
   }
 
   /**
@@ -85,7 +81,7 @@ public class Schema {
    * @param deviceId the name of the device specified to be written in
    */
   public RowBatch createRowBatch(String deviceId) {
-    return new RowBatch(deviceId, measurementSchemaList);
+    return new RowBatch(deviceId, new ArrayList<>(measurementSchemaMap.values()));
   }
 
   /**
@@ -94,7 +90,7 @@ public class Schema {
    * @param maxBatchSize max size of rows in batch
    */
   public RowBatch createRowBatch(String deviceId, int maxBatchSize) {
-    return new RowBatch(deviceId, measurementSchemaList, maxBatchSize);
+    return new RowBatch(deviceId, new ArrayList<>(measurementSchemaMap.values()), maxBatchSize);
   }
 
   /**
@@ -118,9 +114,6 @@ public class Schema {
     return measurementSchemaMap;
   }
 
-  public List<MeasurementSchema> getMeasurementSchemaList() {
-    return measurementSchemaList;
-  }
 
   /**
    * register a measurement schema map.
@@ -128,8 +121,6 @@ public class Schema {
   public void registerMeasurement(MeasurementSchema descriptor) {
     // add to measurementSchemaMap as <measurementID, MeasurementSchema>
     this.measurementSchemaMap.put(descriptor.getMeasurementId(), descriptor);
-    // add to measurementSchemaList
-    this.measurementSchemaList.add(descriptor);
   }
 
   /**
@@ -143,7 +134,7 @@ public class Schema {
    * register all measurements in measurement schema map.
    */
   public void registerMeasurements(List<MeasurementSchema> measurements) {
-    measurements.forEach((md) -> registerMeasurement(md));
+    measurements.forEach(this::registerMeasurement);
   }
 
   /**

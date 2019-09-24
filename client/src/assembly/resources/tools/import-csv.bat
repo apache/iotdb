@@ -37,19 +37,9 @@ set JAVA_OPTS=-ea^
  -DIOTDB_CLI_HOME=%IOTDB_CLI_HOME%
 
 @REM ***** CLASSPATH library setting *****
-@REM Ensure that any user defined CLASSPATH variables are not used on startup
-set CLASSPATH=""
-
-REM For each jar in the IOTDB_CLI_HOME lib directory call append to build the CLASSPATH variable.
-for %%i in ("%IOTDB_CLI_HOME%\lib\*.jar") do call :append "%%i"
-goto okClasspath
-
-:append
-set CLASSPATH=%CLASSPATH%;%1
-goto :eof
+set CLASSPATH=%IOTDB_CLI_HOME%\lib\*
 
 REM -----------------------------------------------------------------------------
-:okClasspath
 
 "%JAVA_HOME%\bin\java" -DIOTDB_CLI_HOME=%IOTDB_CLI_HOME% %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %*
 

@@ -7,7 +7,7 @@
   * "License"); you may not use this file except in compliance
   * with the License.  You may obtain a copy of the License at
   *
-  *     http://www.apache.org/licenses/LICENSE-2.0
+  * http://www.apache.org/licenses/LICENSE-2.0
   *
   * Unless required by applicable law or agreed to in writing,
   * software distributed under the License is distributed on an
@@ -27,7 +27,7 @@ import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
 import org.apache.iotdb.tool.TsFileWriteTool
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType
-import org.apache.iotdb.tsfile.io.HDFSInput
+import org.apache.iotdb.tsfile.fileSystem.HDFSInput
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader
 import org.apache.iotdb.tsfile.read.common.Field
 import org.apache.iotdb.tsfile.utils.Binary
@@ -87,7 +87,7 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
     val tsFileMetaData = reader.readFileMetadata
 
-    val series = Converter.getSeries(tsFileMetaData)
+    val series = WideConverter.getSeries(tsFileMetaData)
 
     Assert.assertEquals(6, series.size())
     Assert.assertEquals("[device_1.sensor_3,INT32]", series.get(0).toString)
@@ -111,7 +111,7 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
 
     val statusSeq: Seq[FileStatus] = Seq(status1, status2)
 
-    val tsfileSchema = Converter.getUnionSeries(statusSeq, conf)
+    val tsfileSchema = WideConverter.getUnionSeries(statusSeq, conf)
 
     Assert.assertEquals(tsfileSchema.size(), 6)
     Assert.assertEquals("[device_1.sensor_3,INT32]", tsfileSchema.get(0).toString)
@@ -136,12 +136,12 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     val stringField = new Field(TSDataType.TEXT)
     stringField.setBinaryV(new Binary("pass"))
 
-    Assert.assertEquals(Converter.toSqlValue(boolField), true)
-    Assert.assertEquals(Converter.toSqlValue(intField), 32)
-    Assert.assertEquals(Converter.toSqlValue(longField), 64l)
-    Assert.assertEquals(Converter.toSqlValue(floatField), 3.14f)
-    Assert.assertEquals(Converter.toSqlValue(doubleField), 0.618d)
-    Assert.assertEquals(Converter.toSqlValue(stringField), "pass")
+    Assert.assertEquals(WideConverter.toSqlValue(boolField), true)
+    Assert.assertEquals(WideConverter.toSqlValue(intField), 32)
+    Assert.assertEquals(WideConverter.toSqlValue(longField), 64l)
+    Assert.assertEquals(WideConverter.toSqlValue(floatField), 3.14f)
+    Assert.assertEquals(WideConverter.toSqlValue(doubleField), 0.618d)
+    Assert.assertEquals(WideConverter.toSqlValue(stringField), "pass")
   }
 
   test("testToSparkSqlSchema") {
@@ -153,7 +153,7 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     fields.add(new Series("device_2.sensor_1", TSDataType.FLOAT))
     fields.add(new Series("device_2.sensor_2", TSDataType.INT32))
 
-    val sqlSchema = Converter.toSqlSchema(fields)
+    val sqlSchema = WideConverter.toSqlSchema(fields)
 
     val expectedFields: util.ArrayList[StructField] = new util.ArrayList[StructField]()
     expectedFields.add(StructField(QueryConstant.RESERVED_TIME, LongType, false))
@@ -179,7 +179,7 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     requiredFields.add(StructField("device_1.sensor_2", IntegerType, true))
     val requiredSchema = StructType(requiredFields)
 
-    val filteredSchema = Converter.prepSchema(requiredSchema, tsFileMetaData)
+    val filteredSchema = WideConverter.prepSchema(requiredSchema, tsFileMetaData)
 
     Assert.assertEquals(3, filteredSchema.size)
     val fields = filteredSchema.fields
@@ -199,7 +199,7 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     requiredFields.add(StructField(QueryConstant.RESERVED_TIME, LongType, false))
     val requiredSchema = StructType(requiredFields)
 
-    val filteredSchema = Converter.prepSchema(requiredSchema, tsFileMetaData)
+    val filteredSchema = WideConverter.prepSchema(requiredSchema, tsFileMetaData)
 
     Assert.assertEquals(6, filteredSchema.size)
     val fields = filteredSchema.fields
@@ -225,7 +225,7 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     val schema = StructType(fields)
 
     val row: InternalRow = new GenericInternalRow(Array(1L, null, 1.2f, 20, 19, 2.3f, 11))
-    val records = Converter.toTsRecord(row, schema)
+    val records = WideConverter.toTsRecord(row, schema)
 
     Assert.assertEquals(2, records.size)
     Assert.assertEquals(1, records(0).time)
@@ -256,7 +256,7 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     val ft4 = LessThan("time", 4L)
     val filters: Seq[Filter] = Seq(ft1, ft2_3, ft4)
 
-    val expression = Converter.toQueryExpression(schema, filters)
+    val expression = WideConverter.toQueryExpression(schema, filters)
 
     Assert.assertEquals(true, expression.hasQueryFilter)
     Assert.assertEquals(2, expression.getSelectedSeries.size())

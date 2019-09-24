@@ -34,8 +34,6 @@ import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 /**
  * ConverterUtils is a utility class. It provide conversion between normal datatype and byte array.
- *
- * @author East
  */
 public class ReadWriteIOUtils {
 

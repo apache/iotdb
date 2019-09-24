@@ -51,7 +51,7 @@ public class ReaderTest {
 
   @Before
   public void before() throws InterruptedException, WriteProcessException, IOException {
-    TSFileDescriptor.getInstance().getConfig().timeEncoder = "TS_2DIFF";
+    TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
     TsFileGeneratorForTest.generateFile(rowCount, 10 * 1024 * 1024, 10000);
     fileReader = new TsFileSequenceReader(FILE_PATH);
     metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader);

@@ -35,8 +35,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Store current pages in this chunk.
- *
- * @author kangrong
  */
 public class ChunkBuffer {
 

@@ -54,6 +54,7 @@
         <module>example</module>
         <module>grafana</module>
         <module>spark-tsfile</module>
+        <module>spark-iotdb-connector</module>
         <!-- <module>hadoop</module> -->
         <module>distribution</module>
     </modules>
@@ -468,7 +469,7 @@
         </pluginManagement>
         <plugins>
             <!--
-              Strange xthings usually happen if you run with a too low Java version.
+              Strange things usually happen if you run with a too low Java version.
               This plugin not only checks the minimum java version of 1.8, but also
               checks all dependencies (and transitive dependencies) for reported CVEs.
             -->
@@ -807,35 +808,6 @@
                     <artifactId>jaxb-runtime</artifactId>
                 </dependency>
             </dependencies>
-            <!--build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-enforcer-plugin</artifactId>
-                        <version>3.0.0-M2</version>
-                        <executions>
-                            <execution>
-                                <id>enforce-ban-duplicate-classes</id>
-                                <goals>
-                                    <goal>enforce</goal>
-                                </goals>
-                                <configuration>
-                                    <rules combine.children="append">
-                                        <banDuplicateClasses>
-                                            <ignoreClasses>
-                                                <ignoreClass>javax.activation.*</ignoreClass>
-                                                <ignoreClass>javax.servlet.*</ignoreClass>
-                                                <ignoreClass>javax.ws.*</ignoreClass>
-                                            </ignoreClasses>
-                                        </banDuplicateClasses>
-                                    </rules>
-                                    <fail>true</fail>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build-->
         </profile>
         <!--
           Self activating profile, that activates itself as soon as a "src/main/thrift" directory is found.

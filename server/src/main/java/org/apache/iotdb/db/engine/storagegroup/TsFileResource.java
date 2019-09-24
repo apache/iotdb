@@ -18,14 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,10 +26,10 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TsFileResource {
@@ -111,8 +104,8 @@ public class TsFileResource {
   }
 
   public void serialize() throws IOException {
-    try (OutputStream outputStream = new BufferedOutputStream(
-        new FileOutputStream(file + RESOURCE_SUFFIX + TEMP_SUFFIX))) {
+    try (OutputStream outputStream = TSFileFactory.INSTANCE.getBufferedOutputStream(
+        file + RESOURCE_SUFFIX + TEMP_SUFFIX)) {
       ReadWriteIOUtils.write(this.startTimeMap.size(), outputStream);
       for (Entry<String, Long> entry : this.startTimeMap.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey(), outputStream);
@@ -124,15 +117,15 @@ public class TsFileResource {
         ReadWriteIOUtils.write(entry.getValue(), outputStream);
       }
     }
-    File src = new File(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
-    File dest = new File(file + RESOURCE_SUFFIX);
+    File src = TSFileFactory.INSTANCE.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
+    File dest = TSFileFactory.INSTANCE.getFile(file + RESOURCE_SUFFIX);
     dest.delete();
-    FileUtils.moveFile(src, dest);
+    TSFileFactory.INSTANCE.moveFile(src, dest);
   }
 
   public void deSerialize() throws IOException {
-    try (InputStream inputStream = new BufferedInputStream(
-        new FileInputStream(file + RESOURCE_SUFFIX))) {
+    try (InputStream inputStream = TSFileFactory.INSTANCE.getBufferedInputStream(
+        file + RESOURCE_SUFFIX)) {
       int size = ReadWriteIOUtils.readInt(inputStream);
       Map<String, Long> startTimes = new HashMap<>();
       for (int i = 0; i < size; i++) {
@@ -167,7 +160,7 @@ public class TsFileResource {
   }
 
   public boolean fileExists() {
-    return new File(file+RESOURCE_SUFFIX).exists();
+    return TSFileFactory.INSTANCE.getFile(file + RESOURCE_SUFFIX).exists();
   }
 
   public void forceUpdateEndTime(String device, long time) {
@@ -242,8 +235,8 @@ public class TsFileResource {
 
   public void remove() {
     file.delete();
-    new File(file.getPath() + RESOURCE_SUFFIX).delete();
-    new File(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
+    TSFileFactory.INSTANCE.getFile(file.getPath() + RESOURCE_SUFFIX).delete();
+    TSFileFactory.INSTANCE.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
   }
 
   @Override

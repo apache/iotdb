@@ -24,8 +24,6 @@ import java.util.List;
 /**
  * this class is used to contact String effectively.It contains a StringBuider and initialize it
  * until {@code toString} is called. Note:it's not thread safety
- *
- * @author kangrong
  */
 public class StringContainer {
 

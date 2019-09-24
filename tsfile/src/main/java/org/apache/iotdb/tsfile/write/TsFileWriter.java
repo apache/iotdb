@@ -22,19 +22,17 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.write.chunk.ChunkGroupWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkGroupWriter;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 import org.slf4j.Logger;
@@ -50,6 +48,8 @@ import org.slf4j.LoggerFactory;
 public class TsFileWriter implements AutoCloseable{
 
   private static final Logger LOG = LoggerFactory.getLogger(TsFileWriter.class);
+  protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+
   /**
    * schema of this TsFile.
    **/
@@ -138,8 +138,9 @@ public class TsFileWriter implements AutoCloseable{
     this.fileWriter = fileWriter;
     this.schema = schema;
     this.schema.registerMeasurements(fileWriter.getKnownSchema());
-    this.pageSize = TSFileConfig.pageSizeInByte;
-    this.chunkGroupSizeThreshold = TSFileConfig.groupSizeInByte;
+    this.pageSize = conf.getPageSizeInByte();
+    this.chunkGroupSizeThreshold = conf.getGroupSizeInByte();
+    config.setTSFileStorageFs(conf.getTSFileStorageFs().name());
     if (this.pageSize >= chunkGroupSizeThreshold) {
       LOG.warn(
           "TsFile's page size {} is greater than chunk group size {}, please enlarge the chunk group"
@@ -300,11 +301,11 @@ public class TsFileWriter implements AutoCloseable{
         String deviceId = entry.getKey();
         IChunkGroupWriter groupWriter = entry.getValue();
         fileWriter.startChunkGroup(deviceId);
-        ChunkGroupFooter chunkGroupFooter = groupWriter.flushToFileWriter(fileWriter);
-        if (fileWriter.getPos() - pos != chunkGroupFooter.getDataSize()) {
+        long dataSize = groupWriter.flushToFileWriter(fileWriter);
+        if (fileWriter.getPos() - pos != dataSize) {
           throw new IOException(String.format(
               "Flushed data size is inconsistent with computation! Estimated: %d, Actual: %d",
-              chunkGroupFooter.getDataSize(), fileWriter.getPos() - pos));
+              dataSize, fileWriter.getPos() - pos));
         }
         fileWriter.endChunkGroup(0);
       }
@@ -333,7 +334,7 @@ public class TsFileWriter implements AutoCloseable{
 
   /**
    * this function is only for Test.
-   * @return
+   * @return TsFileIOWriter
    */
    public TsFileIOWriter getIOWriter() {
     return this.fileWriter;
@@ -341,7 +342,7 @@ public class TsFileWriter implements AutoCloseable{
 
   /**
    * this function is only for Test
-   * @throws IOException
+   * @throws IOException exception in IO
    */
   public void flushForTest() throws IOException {
     flushAllChunkGroups();

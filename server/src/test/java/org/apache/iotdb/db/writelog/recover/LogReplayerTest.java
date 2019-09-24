@@ -43,6 +43,7 @@ import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -53,8 +54,8 @@ public class LogReplayerTest {
   @Test
   public void test() throws IOException, ProcessorException {
     String logNodePrefix = "testLogNode";
-    File tsFile = new File("temp", "test.ts");
-    File modF = new File("test.mod");
+    File tsFile = SystemFileFactory.INSTANCE.getFile("temp", "test.ts");
+    File modF = SystemFileFactory.INSTANCE.getFile("test.mod");
     ModificationFile modFile = new ModificationFile(modF.getPath());
     VersionController versionController = new VersionController() {
       @Override

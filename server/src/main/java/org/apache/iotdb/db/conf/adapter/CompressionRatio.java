@@ -24,6 +24,7 @@ import java.util.Locale;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,7 +68,7 @@ public class CompressionRatio {
   private File directory;
 
   private CompressionRatio() {
-    directory = new File(
+    directory = SystemFileFactory.INSTANCE.getFile(
         FilePathUtils.regularizePath(CONFIG.getSystemDir()) + COMPRESSION_RATIO_DIR);
     restore();
   }
@@ -79,11 +80,11 @@ public class CompressionRatio {
    * @param currentCompressionRatio the compression ratio of the closing file.
    */
   public synchronized void updateRatio(double currentCompressionRatio) throws IOException {
-    File oldFile = new File(directory,
+    File oldFile = SystemFileFactory.INSTANCE.getFile(directory,
         String.format(Locale.ENGLISH, RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcTimes));
     compressionRatioSum += currentCompressionRatio;
     calcTimes++;
-    File newFile = new File(directory,
+    File newFile = SystemFileFactory.INSTANCE.getFile(directory,
         String.format(Locale.ENGLISH, RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcTimes));
     persist(oldFile, newFile);
     if (LOGGER.isInfoEnabled()) {
