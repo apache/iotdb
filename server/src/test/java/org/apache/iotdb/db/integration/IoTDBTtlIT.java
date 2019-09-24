@@ -27,6 +27,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -176,5 +177,22 @@ public class IoTDBTtlIT {
       ret.append("\n");
     }
     return ret.toString();
+  }
+
+  @Test
+  public void testDefaultTTL() throws SQLException {
+    IoTDBDescriptor.getInstance().getConfig().setDefaultTTL(10000);
+    try (IoTDBConnection connection = (IoTDBConnection) DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.group1");
+      statement.execute("SET STORAGE GROUP TO root.group2");
+
+      String result = doQuery(statement, "SHOW ALL TTL",2 );
+      assertEquals("root.group2,10000\n"
+          + "root.group1,10000\n", result);
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setDefaultTTL(Long.MAX_VALUE);
+    }
   }
 }
