@@ -288,7 +288,7 @@ public class SyncServiceImpl implements SyncService.Iface {
         metadataManger.deletePaths(Collections.singletonList(new Path(args[1])));
         break;
       case MetadataOperationType.SET_STORAGE_GROUP_TO_MTREE:
-        metadataManger.setStorageLevelToMTree(args[1]);
+        metadataManger.setStorageGroupToMTree(args[1]);
         break;
       case MetadataOperationType.ADD_A_PTREE:
         metadataManger.addAPTree(args[1]);

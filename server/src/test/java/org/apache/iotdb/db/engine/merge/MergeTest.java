@@ -102,7 +102,7 @@ abstract class MergeTest {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = MERGE_TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    MManager.getInstance().setStorageLevelToMTree(MERGE_TEST_SG);
+    MManager.getInstance().setStorageGroupToMTree(MERGE_TEST_SG);
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         MManager.getInstance().addPathToMTree(

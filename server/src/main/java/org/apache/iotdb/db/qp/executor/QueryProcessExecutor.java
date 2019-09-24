@@ -398,7 +398,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
           }
           break;
         case SET_STORAGE_GROUP:
-          mManager.setStorageLevelToMTree(path.getFullPath());
+          mManager.setStorageGroupToMTree(path.getFullPath());
           break;
         case DELETE_STORAGE_GROUP:
           mManager.deleteStorageGroupFromMTree(path.getFullPath());

@@ -39,8 +39,8 @@ public class MNode implements Serializable {
   private String name;
   // Whether current node is a leaf in the Metadata Tree
   private boolean isLeaf;
-  // Whether current node is Storage Level in the Metadata Tree
-  private boolean isStorageLevel;
+  // Whether current node is Storage group in the Metadata Tree
+  private boolean isStorageGroup;
   // Map for the schema in this storage group
   private Map<String, MeasurementSchema> schemaMap;
   private Map<String, Integer> numSchemaMap;
@@ -59,7 +59,7 @@ public class MNode implements Serializable {
     this.setName(name);
     this.parent = parent;
     this.isLeaf = isLeaf;
-    this.isStorageLevel = false;
+    this.isStorageGroup = false;
     if (!isLeaf) {
       children = new LinkedHashMap<>();
     }
@@ -71,15 +71,15 @@ public class MNode implements Serializable {
     this.schema = new MeasurementSchema(name, dataType, encoding, type);
   }
 
-  public boolean isStorageLevel() {
-    return isStorageLevel;
+  public boolean isStorageGroup() {
+    return isStorageGroup;
   }
 
   /**
-   * function for setting storage level.
+   * function for setting storage group.
    */
-  public void setStorageLevel(boolean b) {
-    this.isStorageLevel = b;
+  public void setStorageGroup(boolean b) {
+    this.isStorageGroup = b;
     if (b) {
       schemaMap = new HashMap<>();
       numSchemaMap = new HashMap<>();

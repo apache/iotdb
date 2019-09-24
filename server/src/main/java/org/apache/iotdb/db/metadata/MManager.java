@@ -209,7 +209,7 @@ public class MManager {
         deletePaths(Collections.singletonList(new Path(args[1])));
         break;
       case MetadataOperationType.SET_STORAGE_GROUP_TO_MTREE:
-        setStorageLevelToMTree(args[1]);
+        setStorageGroupToMTree(args[1]);
         break;
       case MetadataOperationType.DELETE_STORAGE_GROUP_FROM_MTREE:
         deleteStorageGroupFromMTree(args[1]);
@@ -521,15 +521,15 @@ public class MManager {
   }
 
   /**
-   * function for setting storage level of the given path to mTree.
+   * function for setting storage group of the given path to mTree.
    */
-  public void setStorageLevelToMTree(String path) throws MetadataErrorException {
+  public void setStorageGroupToMTree(String path) throws MetadataErrorException {
     lock.writeLock().lock();
     try {
       checkAndGetDataTypeCache.clear();
       mNodeCache.clear();
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
-      mgraph.setStorageLevel(path);
+      mgraph.setStorageGroup(path);
       seriesNumberInStorageGroups.put(path, 0);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
@@ -552,7 +552,7 @@ public class MManager {
   }
 
   /**
-   * function for deleting storage level of the given path from mTree.
+   * function for deleting storage group of the given path from mTree.
    */
   public boolean deleteStorageGroupFromMTree(String path) throws MetadataErrorException {
     lock.writeLock().lock();
@@ -584,14 +584,14 @@ public class MManager {
   }
 
   /**
-   * function for checking if the given path is storage level of mTree or not.
+   * function for checking if the given path is storage group of mTree or not.
    *
    * @apiNote :for cluster
    */
-  boolean checkStorageLevelOfMTree(String path) {
+  boolean checkStorageGroupOfMTree(String path) {
     lock.readLock().lock();
     try {
-      return mgraph.checkStorageLevel(path);
+      return mgraph.checkStorageGroup(path);
     } finally {
       lock.readLock().unlock();
     }
@@ -864,9 +864,9 @@ public class MManager {
   }
 
   /**
-   * Calculate the count of storage-level nodes included in given seriesPath.
+   * Calculate the count of storage-group nodes included in given seriesPath.
    *
-   * @return The total count of storage-level nodes.
+   * @return The total count of storage-group nodes.
    */
   // future feature
   @SuppressWarnings("unused")
@@ -882,7 +882,7 @@ public class MManager {
 
   /**
    * Get the file name for given seriesPath Notice: This method could be called if and only if the
-   * seriesPath includes one node whose {@code isStorageLevel} is true.
+   * seriesPath includes one node whose {@code isStorageGroup} is true.
    *
    * @return A String represented the file name
    */
@@ -1133,7 +1133,7 @@ public class MManager {
   }
 
   /**
-   * Check whether given seriesPath contains a MNode whose {@code MNode.isStorageLevel} is true.
+   * Check whether given seriesPath contains a MNode whose {@code MNode.isStorageGroup} is true.
    */
   public boolean checkFileLevel(List<Path> path) throws PathErrorException {
 
@@ -1205,11 +1205,11 @@ public class MManager {
 
   /**
    * Check whether {@code seriesPath} exists and whether {@code seriesPath} has been set storage
-   * level.
+   * group.
    *
    * @return {@link PathCheckRet}
    */
-  PathCheckRet checkPathStorageLevelAndGetDataType(String path) throws PathErrorException {
+  PathCheckRet checkPathStorageGroupAndGetDataType(String path) throws PathErrorException {
     try {
       return checkAndGetDataTypeCache.get(path);
     } catch (CacheException e) {

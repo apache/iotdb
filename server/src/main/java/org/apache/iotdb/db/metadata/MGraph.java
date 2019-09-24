@@ -152,16 +152,16 @@ public class MGraph implements Serializable {
   }
 
   /**
-   * Set storage level for current Metadata Tree.
+   * Set storage group for current Metadata Tree.
    *
    * @param path Format: root.node.(node)*
    */
-  void setStorageLevel(String path) throws PathErrorException {
+  void setStorageGroup(String path) throws PathErrorException {
     mtree.setStorageGroup(path);
   }
 
   /**
-   * Delete storage level from current Metadata Tree.
+   * Delete storage group from current Metadata Tree.
    *
    * @param path Format: root.node
    */
@@ -169,12 +169,12 @@ public class MGraph implements Serializable {
     mtree.deleteStorageGroup(path);
   }
   /**
-   * Check whether the input path is storage level for current Metadata Tree or not.
+   * Check whether the input path is storage group for current Metadata Tree or not.
    *
    * @param path Format: root.node.(node)*
    * @apiNote :for cluster
    */
-  boolean checkStorageLevel(String path) {
+  boolean checkStorageGroup(String path) {
     return mtree.checkStorageGroup(path);
   }
 
@@ -293,9 +293,9 @@ public class MGraph implements Serializable {
   }
 
   /**
-   * Calculate the count of storage-level nodes included in given seriesPath.
+   * Calculate the count of storage-group nodes included in given seriesPath.
    *
-   * @return The total count of storage-level nodes.
+   * @return The total count of storage-group nodes.
    */
   int getFileCountForOneType(String path) throws PathErrorException {
     return mtree.getFileCountForOneType(path);
@@ -303,7 +303,7 @@ public class MGraph implements Serializable {
 
   /**
    * Get the file name for given seriesPath Notice: This method could be called if and only if the
-   * seriesPath includes one node whose {@code isStorageLevel} is true.
+   * seriesPath includes one node whose {@code isStorageGroup} is true.
    */
   String getStorageGroupNameByPath(String path) throws PathErrorException {
     return mtree.getStorageGroupNameByPath(path);
