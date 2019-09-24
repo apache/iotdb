@@ -299,11 +299,9 @@ service TSIService {
 
 	TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
 
-<<<<<<< HEAD
-  TSStatus deleteTimeseries(1:list<string> path)
-=======
-    TSStatus deleteStorageGroup(1:TSDeleteReq req);
->>>>>>> add simple constants and function framework
+    TSStatus deleteTimeseries(1:list<string> path)
+
+    TSStatus deleteStorageGroup(1:TSDeleteDataReq req);
 
 	TSStatus insertRow(1:TSInsertReq req);
 

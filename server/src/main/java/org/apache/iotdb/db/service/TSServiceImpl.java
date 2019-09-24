@@ -1152,12 +1152,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSStatus deleteStorageGroup(TSDeleteReq req) {
+  public TSStatus deleteStorageGroup(TSDeleteDataReq req) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
-    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.DELETE_STORAGE_GROUP,new Path(req.getPath()));
+    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.DELETE_STORAGE_GROUP,new Path(req.getPaths().get(0)));
     TSStatus status = checkAuthority(plan);
     if (status != null) {
       return new TSStatus(status);

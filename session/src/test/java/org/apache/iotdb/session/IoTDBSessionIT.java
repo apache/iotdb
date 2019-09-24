@@ -79,6 +79,7 @@ public class IoTDBSessionIT {
 
     // Add another storage group to test the deletion of storage group
     session.setStorageGroup("root.sg2");
+    session.createTimeseries("root.sg2.d1.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
 
     deleteStorageGroupTest();
 
@@ -156,7 +157,7 @@ public class IoTDBSessionIT {
   private void query() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     String standard =
-        "Time\n" + "root.sg1.d1.s1\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n" + "root.sg2.d1.s1\n";
+        "Time\n" + "root.sg1.d1.s1\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n";
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
