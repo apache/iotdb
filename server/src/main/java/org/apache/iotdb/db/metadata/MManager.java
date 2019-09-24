@@ -30,7 +30,6 @@ import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -209,11 +208,11 @@ public class MManager {
       case MetadataOperationType.DELETE_PATH_FROM_MTREE:
         deletePaths(Collections.singletonList(new Path(args[1])));
         break;
-      case MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE:
+      case MetadataOperationType.SET_STORAGE_GROUP_TO_MTREE:
         setStorageLevelToMTree(args[1]);
         break;
-      case MetadataOperationType.DELETE_STORAGE_LEVEL_TO_MTREE:
-        deleteStorageLevelToMTree(args[1]);
+      case MetadataOperationType.DELETE_STORAGE_GROUP_FROM_MTREE:
+        deleteStorageGroupFromMTree(args[1]);
         break;
       case MetadataOperationType.ADD_A_PTREE:
         addAPTree(args[1]);
@@ -534,7 +533,7 @@ public class MManager {
       seriesNumberInStorageGroups.put(path, 0);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
-        writer.write(MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE + "," + path);
+        writer.write(MetadataOperationType.SET_STORAGE_GROUP_TO_MTREE + "," + path);
         writer.newLine();
         writer.flush();
       }
@@ -553,19 +552,19 @@ public class MManager {
   }
 
   /**
-   * function for deleting storage level of the given path to mTree.
+   * function for deleting storage level of the given path from mTree.
    */
-  public boolean deleteStorageLevelToMTree(String path) throws MetadataErrorException {
+  public boolean deleteStorageGroupFromMTree(String path) throws MetadataErrorException {
     lock.writeLock().lock();
     try {
       checkAndGetDataTypeCache.clear();
       mNodeCache.clear();
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
-      mgraph.deleteStorageLevel(path);
+      mgraph.deleteStorageGroup(path);
       seriesNumberInStorageGroups.remove(path);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
-        writer.write(MetadataOperationType.DELETE_STORAGE_LEVEL_TO_MTREE + "," + path);
+        writer.write(MetadataOperationType.DELETE_STORAGE_GROUP_FROM_MTREE + "," + path);
         writer.newLine();
         writer.flush();
       }
@@ -573,7 +572,7 @@ public class MManager {
       throw new MetadataErrorException(e);
     } catch (PathErrorException e){
       try {
-        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
+        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
       } catch (ConfigAdjusterException ex){
         throw new MetadataErrorException(ex);
       }

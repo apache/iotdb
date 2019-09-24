@@ -534,7 +534,7 @@ public class StorageGroupProcessor {
     waitForAllCurrentTsFileProcessorsClosed();
     writeLock();
     try {
-      File storageGroupFolder = TSFileFactory.INSTANCE.getFile(systemDir, storageGroupName);
+      File storageGroupFolder = SystemFileFactory.INSTANCE.getFile(systemDir, storageGroupName);
       if (storageGroupFolder.exists()) {
         FileUtils.deleteDirectory(storageGroupFolder);
       }

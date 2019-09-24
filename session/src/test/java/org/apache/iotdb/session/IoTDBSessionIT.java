@@ -204,11 +204,11 @@ public class IoTDBSessionIT {
 
   public void deleteStorageGroupTest() throws ClassNotFoundException, SQLException, IoTDBSessionException {
     try {
-      session.deleteStorageGroup("root.sg1.d1.s1", 99);
+      session.deleteStorageGroup("root.sg1.d1.s1");
     } catch (IoTDBSessionException e) {
       assertEquals("The path root.sg1.d1.s1 is not a deletable storage group", e.getMessage());
     }
-    session.deleteStorageGroup("root.sg1", 99);
+    session.deleteStorageGroup("root.sg1");
     File folder = new File("data/system/storage_groups/root.sg1/");
     assertEquals(folder.exists(), false);
     session.setStorageGroup("root.sg1.d1");

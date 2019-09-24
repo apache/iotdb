@@ -235,14 +235,9 @@ public class Session {
     }
   }
 
-  public synchronized TSStatus deleteStorageGroup(String storageGroupId, long time) throws IoTDBSessionException {
-    TSDeleteDataReq request = new TSDeleteDataReq();
-    List<String> paths = new ArrayList<>();
-    paths.add(storageGroupId);
-    request.setPaths(paths);
-    request.setTimestamp(time);
+  public synchronized TSStatus deleteStorageGroup(String storageGroup) throws IoTDBSessionException {
     try {
-      return checkAndReturn(client.deleteStorageGroup(request));
+      return checkAndReturn(client.deleteStorageGroup(storageGroup));
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }

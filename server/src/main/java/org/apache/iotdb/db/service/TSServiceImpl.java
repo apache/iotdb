@@ -1152,12 +1152,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSStatus deleteStorageGroup(TSDeleteDataReq req) {
+  public TSStatus deleteStorageGroup(String storageGroup) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
-    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.DELETE_STORAGE_GROUP,new Path(req.getPaths().get(0)));
+    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.DELETE_STORAGE_GROUP,new Path(storageGroup));
     TSStatus status = checkAuthority(plan);
     if (status != null) {
       return new TSStatus(status);
@@ -1166,7 +1166,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-    public TSStatus createTimeseries(TSCreateTimeseriesReq req) {
+  public TSStatus createTimeseries(TSCreateTimeseriesReq req) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));

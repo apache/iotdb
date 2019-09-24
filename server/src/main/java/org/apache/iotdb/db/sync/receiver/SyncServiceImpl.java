@@ -287,7 +287,7 @@ public class SyncServiceImpl implements SyncService.Iface {
       case MetadataOperationType.DELETE_PATH_FROM_MTREE:
         metadataManger.deletePaths(Collections.singletonList(new Path(args[1])));
         break;
-      case MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE:
+      case MetadataOperationType.SET_STORAGE_GROUP_TO_MTREE:
         metadataManger.setStorageLevelToMTree(args[1]);
         break;
       case MetadataOperationType.ADD_A_PTREE:
@@ -305,8 +305,8 @@ public class SyncServiceImpl implements SyncService.Iface {
       case MetadataOperationType.UNLINK_MNODE_FROM_PTREE:
         metadataManger.unlinkMNodeFromPTree(args[1], args[2]);
         break;
-      case MetadataOperationType.DELETE_STORAGE_LEVEL_TO_MTREE:
-        metadataManger.deleteStorageLevelToMTree(args[1]);
+      case MetadataOperationType.DELETE_STORAGE_GROUP_FROM_MTREE:
+        metadataManger.deleteStorageGroupFromMTree(args[1]);
       default:
         logger.error("Unrecognizable command {}", cmd);
     }
