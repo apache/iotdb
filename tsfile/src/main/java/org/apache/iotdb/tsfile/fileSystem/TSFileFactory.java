@@ -29,17 +29,9 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.commons.io.FileUtils;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.PathFilter;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,12 +42,17 @@ public enum TSFileFactory {
 
   private static FSType fSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
   private static final Logger logger = LoggerFactory.getLogger(TSFileFactory.class);
-  private FileSystem fs;
-  private Configuration conf = new Configuration();
 
   public File getFile(String pathname) {
     if (fSType.equals(FSType.HDFS)) {
-      return new HDFSFile(pathname);
+      try {
+        Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
+        return (File) clazz.getConstructor(String.class).newInstance(pathname);
+      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+        logger.error(
+            "Failed to get file: {}. Please check your dependency of Hadoop module.", pathname, e);
+        return null;
+      }
     } else {
       return new File(pathname);
     }
@@ -63,7 +60,15 @@ public enum TSFileFactory {
 
   public File getFile(String parent, String child) {
     if (fSType.equals(FSType.HDFS)) {
-      return new HDFSFile(parent, child);
+      try {
+        Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
+        return (File) clazz.getConstructor(String.class, String.class).newInstance(parent, child);
+      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+        logger.error(
+            "Failed to get file: {}" + File.separator
+                + "{}. Please check your dependency of Hadoop module.", parent, child, e);
+        return null;
+      }
     } else {
       return new File(parent, child);
     }
@@ -71,7 +76,16 @@ public enum TSFileFactory {
 
   public File getFile(File parent, String child) {
     if (fSType.equals(FSType.HDFS)) {
-      return new HDFSFile(parent, child);
+      try {
+        Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
+        return (File) clazz.getConstructor(File.class, String.class).newInstance(parent, child);
+      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+        logger.error(
+            "Failed to get file: {}" + File.separator
+                + "{}. Please check your dependency of Hadoop module.", parent.getAbsolutePath(),
+            child, e);
+        return null;
+      }
     } else {
       return new File(parent, child);
     }
@@ -79,7 +93,15 @@ public enum TSFileFactory {
 
   public File getFile(URI uri) {
     if (fSType.equals(FSType.HDFS)) {
-      return new HDFSFile(uri);
+      try {
+        Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
+        return (File) clazz.getConstructor(URI.class).newInstance(uri);
+      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+        logger.error(
+            "Failed to get file: {}. Please check your dependency of Hadoop module.",
+            uri.toString(), e);
+        return null;
+      }
     } else {
       return new File(uri);
     }
@@ -88,9 +110,16 @@ public enum TSFileFactory {
   public BufferedReader getBufferedReader(String filePath) {
     try {
       if (fSType.equals(FSType.HDFS)) {
-        Path path = new Path(filePath);
-        fs = path.getFileSystem(conf);
-        return new BufferedReader(new InputStreamReader(fs.open(path)));
+        try {
+          Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
+          return (BufferedReader) clazz.getMethod("getBufferedReader", String.class)
+              .invoke(clazz.newInstance(), filePath);
+        } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+          logger.error(
+              "Failed to get buffered reader for {}. Please check your dependency of Hadoop module.",
+              filePath, e);
+          return null;
+        }
       } else {
         return new BufferedReader(new FileReader(filePath));
       }
@@ -103,9 +132,16 @@ public enum TSFileFactory {
   public BufferedWriter getBufferedWriter(String filePath, boolean append) {
     try {
       if (fSType.equals(FSType.HDFS)) {
-        Path path = new Path(filePath);
-        fs = path.getFileSystem(conf);
-        return new BufferedWriter(new OutputStreamWriter(fs.create(path)));
+        try {
+          Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
+          return (BufferedWriter) clazz.getMethod("getBufferedWriter", String.class, boolean.class)
+              .invoke(clazz.newInstance(), filePath, append);
+        } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+          logger.error(
+              "Failed to get buffered writer for {}. Please check your dependency of Hadoop module.",
+              filePath, e);
+          return null;
+        }
       } else {
         return new BufferedWriter(new FileWriter(filePath, append));
       }
@@ -118,9 +154,16 @@ public enum TSFileFactory {
   public BufferedInputStream getBufferedInputStream(String filePath) {
     try {
       if (fSType.equals(FSType.HDFS)) {
-        Path path = new Path(filePath);
-        fs = path.getFileSystem(conf);
-        return new BufferedInputStream(fs.open(path));
+        try {
+          Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
+          return (BufferedInputStream) clazz.getMethod("getBufferedInputStream", String.class)
+              .invoke(clazz.newInstance(), filePath);
+        } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+          logger.error(
+              "Failed to get buffered input stream for {}. Please check your dependency of Hadoop module.",
+              filePath, e);
+          return null;
+        }
       } else {
         return new BufferedInputStream(new FileInputStream(filePath));
       }
@@ -133,9 +176,16 @@ public enum TSFileFactory {
   public BufferedOutputStream getBufferedOutputStream(String filePath) {
     try {
       if (fSType.equals(FSType.HDFS)) {
-        Path path = new Path(filePath);
-        fs = path.getFileSystem(conf);
-        return new BufferedOutputStream(fs.create(path));
+        try {
+          Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
+          return (BufferedOutputStream) clazz.getMethod("getBufferedOutputStream", String.class)
+              .invoke(clazz.newInstance(), filePath);
+        } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+          logger.error(
+              "Failed to get buffered output stream for {}. Please check your dependency of Hadoop module.",
+              filePath, e);
+          return null;
+        }
       } else {
         return new BufferedOutputStream(new FileOutputStream(filePath));
       }
@@ -164,9 +214,16 @@ public enum TSFileFactory {
 
   public File[] listFilesBySuffix(String fileFolder, String suffix) {
     if (fSType.equals(FSType.HDFS)) {
-      PathFilter pathFilter = path -> path.toUri().toString().endsWith(suffix);
-      List<HDFSFile> files = listFiles(fileFolder, pathFilter);
-      return files.toArray(new HDFSFile[files.size()]);
+      try {
+        Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
+        return (File[]) clazz.getMethod("listFilesBySuffix", String.class, String.class)
+            .invoke(clazz.newInstance(), fileFolder, suffix);
+      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+        logger.error(
+            "Failed to list files in {} with SUFFIX {}. Please check your dependency of Hadoop module.",
+            fileFolder, suffix, e);
+        return null;
+      }
     } else {
       return new File(fileFolder).listFiles(file -> file.getName().endsWith(suffix));
     }
@@ -174,28 +231,18 @@ public enum TSFileFactory {
 
   public File[] listFilesByPrefix(String fileFolder, String prefix) {
     if (fSType.equals(FSType.HDFS)) {
-      PathFilter pathFilter = path -> path.toUri().toString().startsWith(prefix);
-      List<HDFSFile> files = listFiles(fileFolder, pathFilter);
-      return files.toArray(new HDFSFile[files.size()]);
+      try {
+        Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
+        return (File[]) clazz.getMethod("listFilesByPrefix", String.class, String.class)
+            .invoke(clazz.newInstance(), fileFolder, prefix);
+      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+        logger.error(
+            "Failed to list files in {} with PREFIX {}. Please check your dependency of Hadoop module.",
+            fileFolder, prefix, e);
+        return null;
+      }
     } else {
       return new File(fileFolder).listFiles(file -> file.getName().startsWith(prefix));
     }
-  }
-
-  private List<HDFSFile> listFiles(String fileFolder, PathFilter pathFilter) {
-    List<HDFSFile> files = new ArrayList<>();
-    try {
-      Path path = new Path(fileFolder);
-      fs = path.getFileSystem(conf);
-      for (FileStatus fileStatus: fs.listStatus(path)) {
-        Path filePath = fileStatus.getPath();
-        if (pathFilter.accept(filePath)) {
-          files.add(new HDFSFile(filePath.toUri().toString()));
-        }
-      }
-    } catch (IOException e) {
-      logger.error("Failed to list files in {}. ", fileFolder);
-    }
-    return files;
   }
 }

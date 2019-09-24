@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.tsfile.fileSystem;
 
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Paths;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.file.Paths;
 
 public enum FileInputFactory {
 
@@ -39,12 +38,18 @@ public enum FileInputFactory {
   public TsFileInput getTsFileInput(String filePath) {
     try {
       if (fsType.equals(FSType.HDFS)) {
-        return new HDFSInput(filePath);
+        Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSInput");
+        return (TsFileInput) clazz.getConstructor(String.class).newInstance(filePath);
       } else {
         return new DefaultTsFileInput(Paths.get(filePath));
       }
     } catch (IOException e) {
       logger.error("Failed to get TsFile input of file: {}, ", filePath, e);
+      return null;
+    } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+      logger.error(
+          "Failed to get TsFile input of file: {}. Please check your dependency of Hadoop module.",
+          filePath, e);
       return null;
     }
   }

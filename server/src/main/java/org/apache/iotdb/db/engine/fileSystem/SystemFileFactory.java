@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.fileSystem;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
-import org.apache.iotdb.tsfile.fileSystem.HDFSFile;
 
 import java.io.File;
 import java.net.URI;

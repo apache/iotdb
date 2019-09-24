@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.tsfile.fileSystem;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.write.writer.DefaultTsFileOutput;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.FileOutputStream;
-import java.io.IOException;
 
 public enum FileOutputFactory {
 
@@ -38,12 +38,19 @@ public enum FileOutputFactory {
   public TsFileOutput getTsFileOutput(String filePath, boolean append) {
     try {
       if (fsType.equals(FSType.HDFS)) {
-        return new HDFSOutput(filePath, !append);
+        Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSOutput");
+        return (TsFileOutput) clazz.getConstructor(String.class, boolean.class)
+            .newInstance(filePath, !append);
       } else {
         return new DefaultTsFileOutput(new FileOutputStream(filePath, append));
       }
     } catch (IOException e) {
-      logger.error("Failed to get TsFile Output: ", e);
+      logger.error("Failed to get TsFile output of file: {}, ", filePath, e);
+      return null;
+    } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+      logger.error(
+          "Failed to get TsFile output of file: {}. Please check your dependency of Hadoop module.",
+          filePath, e);
       return null;
     }
   }
