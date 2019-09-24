@@ -591,12 +591,12 @@ public class StorageGroupProcessor {
 
   public synchronized void checkFilesTTL() {
     if (dataTTL == Long.MAX_VALUE) {
-      logger.info("{}: TTL not set, ignore the check", storageGroupName);
+      logger.debug("{}: TTL not set, ignore the check", storageGroupName);
       return;
     }
     long timeBound = System.currentTimeMillis() - dataTTL;
-    if (logger.isInfoEnabled()) {
-      logger.info("{}: TTL removing files before {}", storageGroupName, new Date(timeBound));
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: TTL removing files before {}", storageGroupName, new Date(timeBound));
     }
     try {
       for (TsFileResource tsFileResource : unSequenceFileList) {

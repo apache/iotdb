@@ -159,6 +159,7 @@ public class StorageEngine implements IService {
             logger.info("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroupName, Thread.currentThread().getId());
             processor = new StorageGroupProcessor(systemDir, storageGroupName);
+            processor.setDataTTL(MManager.getInstance().getNodeByPathFromCache(storageGroupName).getDataTTL());
             processorMap.put(storageGroupName, processor);
           }
         }
