@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.utils;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Scanner;
 
@@ -31,6 +32,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -236,4 +238,23 @@ public class TsFileGeneratorForTest {
     return schemaBuilder.build();
   }
 
+
+  /**
+   * Writes a File with one incomplete chunk header
+   * @param file File to write
+   * @throws IOException is thrown when encountering IO issues
+   */
+  public static void writeFileWithOneIncompleteChunkHeader(File file) throws IOException {
+      TsFileWriter writer = new TsFileWriter(file);
+
+      ChunkHeader header = new ChunkHeader("s1", 100, TSDataType.FLOAT, CompressionType.SNAPPY,
+              TSEncoding.PLAIN, 5);
+      ByteBuffer buffer = ByteBuffer.allocate(header.getSerializedSize());
+      header.serializeTo(buffer);
+      buffer.flip();
+      byte[] data = new byte[3];
+      buffer.get(data, 0, 3);
+      writer.getIOWriter().getIOWriterOut().write(data);
+      writer.getIOWriter().close();
+  }
 }

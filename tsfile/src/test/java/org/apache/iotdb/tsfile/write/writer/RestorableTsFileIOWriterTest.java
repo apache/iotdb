@@ -38,7 +38,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.IncompleteFileTestUtil;
+import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
@@ -102,7 +102,7 @@ public class RestorableTsFileIOWriterTest {
   public void testOnlyOneIncompleteChunkHeader() throws Exception {
     File file = TSFileFactory.INSTANCE.getFile(FILE_NAME);
 
-    IncompleteFileTestUtil.writeFileWithOneIncompleteChunkHeader(file);
+    TsFileGeneratorForTest.writeFileWithOneIncompleteChunkHeader(file);
 
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     TsFileWriter writer = new TsFileWriter(rWriter);
