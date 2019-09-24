@@ -527,6 +527,24 @@ public class StorageGroupProcessor {
     }
   }
 
+  /**
+   * delete the storageGroup's own folder in folder data/system/storage_groups
+   */
+  public void deleteFolder(String systemDir) {
+    waitForAllCurrentTsFileProcessorsClosed();
+    writeLock();
+    try {
+      File storageGroupFolder = TSFileFactory.INSTANCE.getFile(systemDir, storageGroupName);
+      if (storageGroupFolder.exists()) {
+        FileUtils.deleteDirectory(storageGroupFolder);
+      }
+    } catch (IOException e) {
+      logger.error("Cannot delete the folder in storage group {}, because", storageGroupName, e);
+    } finally {
+      writeUnlock();
+    }
+  }
+
   public void syncDeleteDataFiles() {
     waitForAllCurrentTsFileProcessorsClosed();
     writeLock();

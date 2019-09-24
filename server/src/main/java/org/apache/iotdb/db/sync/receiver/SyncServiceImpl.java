@@ -305,6 +305,8 @@ public class SyncServiceImpl implements SyncService.Iface {
       case MetadataOperationType.UNLINK_MNODE_FROM_PTREE:
         metadataManger.unlinkMNodeFromPTree(args[1], args[2]);
         break;
+      case MetadataOperationType.DELETE_STORAGE_LEVEL_TO_MTREE:
+        metadataManger.deleteStorageLevelToMTree(args[1]);
       default:
         logger.error("Unrecognizable command {}", cmd);
     }

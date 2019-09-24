@@ -212,6 +212,9 @@ public class MManager {
       case MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE:
         setStorageLevelToMTree(args[1]);
         break;
+      case MetadataOperationType.DELETE_STORAGE_LEVEL_TO_MTREE:
+        deleteStorageLevelToMTree(args[1]);
+        break;
       case MetadataOperationType.ADD_A_PTREE:
         addAPTree(args[1]);
         break;
@@ -553,10 +556,30 @@ public class MManager {
    * function for deleting storage level of the given path to mTree.
    */
   public boolean deleteStorageLevelToMTree(String path) throws MetadataErrorException {
+    lock.writeLock().lock();
     try {
+      checkAndGetDataTypeCache.clear();
+      mNodeCache.clear();
+      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
       mgraph.deleteStorageLevel(path);
-    } catch (PathErrorException e){
+      seriesNumberInStorageGroups.remove(path);
+      if (writeToLog) {
+        BufferedWriter writer = getLogWriter();
+        writer.write(MetadataOperationType.DELETE_STORAGE_LEVEL_TO_MTREE + "," + path);
+        writer.newLine();
+        writer.flush();
+      }
+    } catch (IOException | ConfigAdjusterException e){
       throw new MetadataErrorException(e);
+    } catch (PathErrorException e){
+      try {
+        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
+      } catch (ConfigAdjusterException ex){
+        throw new MetadataErrorException(ex);
+      }
+      throw new MetadataErrorException(e);
+    } finally {
+      lock.writeLock().unlock();
     }
     return true;
   }

@@ -346,4 +346,10 @@ public class StorageEngine implements IService {
     return true;
   }
 
+  public void rmStorageGroupInfo(String storageGroupName) {
+    StorageGroupProcessor processor = processorMap.get(storageGroupName);
+    processor.deleteFolder(systemDir);
+    processorMap.remove(storageGroupName);
+  }
+
 }

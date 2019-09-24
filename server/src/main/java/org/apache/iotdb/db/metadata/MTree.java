@@ -217,11 +217,15 @@ public class MTree implements Serializable {
 
   public void deleteStorageGroup(String path) throws PathErrorException {
     if (!checkStorageGroup(path)) {
-      throw new PathErrorException("The path %s is not a deletable storage group");
+      throw new PathErrorException(String.format("The path %s is not a deletable storage group", path));
     }
-    String[] nodeNames = path.split(DOUB_SEPARATOR);
-    MNode cur = root;
-
+    MNode cur = getNodeByPath(path);
+    cur.getParent().deleteChild(cur.getName());
+    cur = cur.getParent();
+    while (cur != null && !MetadataConstant.ROOT.equals(cur.getName()) && cur.getChildren().size() == 0) {
+      cur.getParent().deleteChild(cur.getName());
+      cur = cur.getParent();
+    }
   }
 
   /**
