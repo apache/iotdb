@@ -93,7 +93,7 @@ public class SyncReceiverLogAnalyzerTest {
   }
 
   @Test
-  public void recover() throws IOException, StorageEngineException {
+  public void recover() throws IOException, StorageEngineException, InterruptedException {
     receiverLogger = new SyncReceiverLogger(
         new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME));
     fileLoader = FileLoader.createFileLoader(getReceiverFolderFile());
@@ -108,11 +108,12 @@ public class SyncReceiverLogAnalyzerTest {
       for (int j = 0; j < 10; j++) {
         allFileList.putIfAbsent(SG_NAME + i, new HashSet<>());
         correctSequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-        String rand = String.valueOf(r.nextInt(10000));
+        String rand = String.valueOf(r.nextInt(10000) + i * j);
         String fileName =
             getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + System
                 .currentTimeMillis() + IoTDBConstant.TSFILE_NAME_SEPARATOR + rand
                 + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0.tsfile";
+        Thread.sleep(1);
         File syncFile = new File(fileName);
         receiverLogger
             .finishSyncTsfile(syncFile);

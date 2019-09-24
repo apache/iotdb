@@ -29,11 +29,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.xerial.snappy.Snappy;
 
-/**
- *
- * @author kangrong
- *
- */
 public class CompressTest {
 
   private final String inputString = "Hello snappy-java! Snappy-java is a JNI-based wrapper of "

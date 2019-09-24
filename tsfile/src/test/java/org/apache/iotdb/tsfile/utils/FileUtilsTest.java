@@ -24,9 +24,6 @@ import org.apache.iotdb.tsfile.constant.TimeseriesTestConstant;
 import org.junit.Assert;
 import org.junit.Test;
 
-/**
- * @author kangrong
- */
 public class FileUtilsTest {
 
   @Test

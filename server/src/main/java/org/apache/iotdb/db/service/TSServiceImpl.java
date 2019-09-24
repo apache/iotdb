@@ -63,6 +63,7 @@ import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
+import org.apache.iotdb.db.qp.logical.sys.MetadataOperator.NamespaceType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -81,7 +82,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSDeleteReq;
+import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
@@ -1067,7 +1068,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSStatus deleteData(TSDeleteReq req) throws TException {
+  public TSStatus deleteData(TSDeleteDataReq req) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
@@ -1075,7 +1076,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     DeletePlan plan = new DeletePlan();
     plan.setDeleteTime(req.getTimestamp());
-    plan.addPath(new Path(req.getPath()));
+    List<Path> paths = new ArrayList<>();
+    for (String path: req.getPaths()) {
+      paths.add(new Path(path));
+    }
+    plan.addPaths(paths);
 
     TSStatus status = checkAuthority(plan);
     if (status != null) {
@@ -1147,7 +1152,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSStatus createTimeseries(TSCreateTimeseriesReq req) throws TException {
+  public TSStatus createTimeseries(TSCreateTimeseriesReq req) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
@@ -1156,6 +1161,24 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         new Path(req.getPath()),
         TSDataType.values()[req.getDataType()], TSEncoding.values()[req.getEncoding()],
         CompressionType.values()[req.compressor]);
+    TSStatus status = checkAuthority(plan);
+    if (status != null) {
+      return new TSStatus(status);
+    }
+    return new TSStatus(executePlan(plan));
+  }
+
+  @Override
+  public TSStatus deleteTimeseries(List<String> paths) {
+    if (!checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
+    }
+    List<Path> pathList = new ArrayList<>();
+    for (String path: paths) {
+      pathList.add(new Path(path));
+    }
+    MetadataPlan plan = new MetadataPlan(NamespaceType.DELETE_PATH, pathList);
     TSStatus status = checkAuthority(plan);
     if (status != null) {
       return new TSStatus(status);

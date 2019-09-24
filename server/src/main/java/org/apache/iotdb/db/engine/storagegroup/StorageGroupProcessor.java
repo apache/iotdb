@@ -63,6 +63,7 @@ import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
+import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -256,8 +257,8 @@ public class StorageGroupProcessor {
       // the process was interrupted before the merged files could be named
       continueFailedRenames(fileFolder, MERGE_SUFFIX);
 
-      Collections
-          .addAll(tsFiles, fileFolder.listFiles(file -> file.getName().endsWith(TSFILE_SUFFIX)));
+      Collections.addAll(tsFiles,
+          TSFileFactory.INSTANCE.listFilesBySuffix(fileFolder.getAbsolutePath(), TSFILE_SUFFIX));
     }
     tsFiles.sort(this::compareFileName);
     List<TsFileResource> ret = new ArrayList<>();
@@ -266,7 +267,7 @@ public class StorageGroupProcessor {
   }
 
   private void continueFailedRenames(File fileFolder, String suffix) {
-    File[] files = fileFolder.listFiles(file -> file.getName().endsWith(suffix));
+    File[] files = TSFileFactory.INSTANCE.listFilesBySuffix(fileFolder.getAbsolutePath(), suffix);
     if (files != null) {
       for (File tempResource : files) {
         File originResource = TSFileFactory.INSTANCE.getFile(tempResource.getPath().replace(suffix, ""));
@@ -341,7 +342,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public boolean insert(InsertPlan insertPlan) {
+  public boolean insert(InsertPlan insertPlan) throws QueryProcessorException {
     writeLock();
     try {
       // init map
@@ -356,7 +357,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) {
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessorException {
     writeLock();
     try {
       // init map
@@ -391,7 +392,7 @@ public class StorageGroupProcessor {
   }
 
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
-      List<Integer> indexes, boolean sequence, Integer[] results) {
+      List<Integer> indexes, boolean sequence, Integer[] results) throws QueryProcessorException {
 
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(sequence);
     if (tsFileProcessor == null) {
@@ -423,7 +424,8 @@ public class StorageGroupProcessor {
     }
   }
 
-  private boolean insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence) {
+  private boolean insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence)
+      throws QueryProcessorException {
     TsFileProcessor tsFileProcessor;
     boolean result;
 
@@ -525,10 +527,12 @@ public class StorageGroupProcessor {
       updateEndTimeMap(workSequenceTsFileProcessor);
       workSequenceTsFileProcessor.asyncClose();
       workSequenceTsFileProcessor = null;
+      logger.info("close a sequence tsfile processor {}", storageGroupName);
     } else {
       closingUnSequenceTsFileProcessor.add(workUnSequenceTsFileProcessor);
       workUnSequenceTsFileProcessor.asyncClose();
       workUnSequenceTsFileProcessor = null;
+      logger.info("close an unsequence tsfile processor {}", storageGroupName);
     }
   }
 
@@ -1125,8 +1129,8 @@ public class StorageGroupProcessor {
     } catch (IOException e) {
       throw new TsFileProcessorException(String.format(
           "File renaming failed when loading .resource file. Origin: %s, Target: %s",
-          new File(tsFile, TsFileResource.RESOURCE_SUFFIX).getAbsolutePath(),
-          new File(targetFile, TsFileResource.RESOURCE_SUFFIX).getAbsolutePath()));
+          new File(tsFile + TsFileResource.RESOURCE_SUFFIX).getAbsolutePath(),
+          new File(targetFile + TsFileResource.RESOURCE_SUFFIX).getAbsolutePath()));
     }
   }
 

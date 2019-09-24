@@ -28,8 +28,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Statistics for string type.
- *
- * @author CGF
  */
 public class BinaryStatistics extends Statistics<Binary> {
 

@@ -26,8 +26,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Statistics for float type.
- *
- * @author kangrong
  */
 public class FloatStatistics extends Statistics<Float> {
 

@@ -246,8 +246,8 @@ struct TSInsertReq {
     4: required i64 timestamp
 }
 
-struct TSDeleteReq {
-    1: required string path
+struct TSDeleteDataReq {
+    1: required list<string> paths
     2: required i64 timestamp
 }
 
@@ -299,9 +299,11 @@ service TSIService {
 
 	TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
 
+  TSStatus deleteTimeseries(1:list<string> path)
+
 	TSStatus insertRow(1:TSInsertReq req);
 
-	TSStatus deleteData(1:TSDeleteReq req);
+	TSStatus deleteData(1:TSDeleteDataReq req);
 
 	i64 requestStatementId();
 }

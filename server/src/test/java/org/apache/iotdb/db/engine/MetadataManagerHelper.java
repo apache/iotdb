@@ -27,10 +27,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-/**
- * @author liukun
- *
- */
 public class MetadataManagerHelper {
 
   private static MManager mmanager = null;

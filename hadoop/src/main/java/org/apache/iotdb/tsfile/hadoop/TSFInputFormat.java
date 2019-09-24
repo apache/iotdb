@@ -43,9 +43,6 @@ import org.apache.iotdb.tsfile.read.FileReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @author liukun
- */
 public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable> {
 
   /**
