@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -126,10 +127,10 @@ public class TsFileReadWriteTest {
 
   @Test
   public void readMeasurementWithRegularEncodingTest() throws IOException, WriteProcessException {
-    TSFileConfig.timeEncoder = "REGULAR";
+    TSFileDescriptor.getInstance().getConfig().setTimeEncoder("REGULAR");
     writeDataByTSRecord(TSDataType.INT64, (i) -> new LongDataPoint("sensor_1", i), TSEncoding.REGULAR);
     readData((i, field, delta) -> assertEquals(i, field.getLongV()));
-    TSFileConfig.timeEncoder = "TS_2DIFF";
+    TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
   }
 
   private void writeDataByTSRecord(TSDataType dataType, DataPointProxy proxy, TSEncoding encodingType)

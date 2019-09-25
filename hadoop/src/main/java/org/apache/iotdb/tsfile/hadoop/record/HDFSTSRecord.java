@@ -99,7 +99,8 @@ public class HDFSTSRecord implements Writable {
   @Override
   public void write(DataOutput out) throws IOException {
     out.writeLong(time);
-    out.writeUTF(deviceId);
+    out.writeInt(deviceId.getBytes(StandardCharsets.UTF_8).length);
+    out.write(deviceId.getBytes(StandardCharsets.UTF_8));
     out.writeInt(dataPointList.size());
     for (DataPoint dataPoint : dataPointList) {
       out.writeShort(dataPoint.getType().serialize());
@@ -134,7 +135,9 @@ public class HDFSTSRecord implements Writable {
   @Override
   public void readFields(DataInput in) throws IOException {
     time = in.readLong();
-    deviceId = in.readUTF();
+    int lenOfDeviceId = in.readInt();
+    byte[] deviceBytes = new byte[lenOfDeviceId];
+    in.readFully(deviceBytes);
     int len = in.readInt();
     List<DataPoint> dataPoints = new ArrayList<>(len);
 

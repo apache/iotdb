@@ -26,8 +26,6 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 /**
  * IChunkWriter provides a list of writing methods for different value types.
- *
- * @author kangrong
  */
 public interface IChunkWriter {
 

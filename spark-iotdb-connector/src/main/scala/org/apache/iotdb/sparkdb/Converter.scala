@@ -18,11 +18,11 @@
   */
 package org.apache.iotdb.sparkdb
 
-import java.sql._
+import java.sql.{Statement, _}
 
+import org.apache.iotdb.jdbc.IoTDBQueryResultSet
 import org.apache.spark.sql.types._
 import org.slf4j.LoggerFactory
-import java.sql.Statement
 
 import scala.collection.mutable.ListBuffer
 
@@ -58,15 +58,12 @@ object Converter {
       val resultSet: ResultSet = sqlStatement.getResultSet
       val resultSetMetaData: ResultSetMetaData = resultSet.getMetaData
 
-      if (resultSetMetaData.getColumnTypeName(0) != null) {
-        val printTimestamp: Boolean = !resultSetMetaData.getColumnTypeName(0).toUpperCase().equals(SQLConstant.NEED_NOT_TO_PRINT_TIMESTAMP)
-        if (printTimestamp) {
-          fields += StructField(SQLConstant.TIMESTAMP_STR, LongType, nullable = false)
-        }
+      val printTimestamp = !resultSet.asInstanceOf[IoTDBQueryResultSet].isIgnoreTimeStamp
+      if (printTimestamp) {
+        fields += StructField(SQLConstant.TIMESTAMP_STR, LongType, nullable = false)
       }
 
       val colCount = resultSetMetaData.getColumnCount
-
       for (i <- 2 to colCount) {
         fields += StructField(resultSetMetaData.getColumnLabel(i), resultSetMetaData.getColumnType(i) match {
           case Types.BOOLEAN => BooleanType

@@ -26,6 +26,7 @@ import java.nio.channels.FileChannel;
 import java.util.zip.CRC32;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
 /**
  * LogWriter writes the binarized logs into a file using FileChannel together with check sums of
@@ -42,7 +43,7 @@ public class LogWriter implements ILogWriter {
   private ByteBuffer checkSumBuffer = ByteBuffer.allocate(8);
 
   public LogWriter(String logFilePath) {
-    logFile = new File(logFilePath);
+    logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
   }
 
   public LogWriter(File logFile) {

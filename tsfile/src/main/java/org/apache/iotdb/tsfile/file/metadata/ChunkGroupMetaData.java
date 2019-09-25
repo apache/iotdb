@@ -21,6 +21,8 @@ package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,6 +35,7 @@ import java.util.List;
  * Metadata of ChunkGroup.
  */
 public class ChunkGroupMetaData {
+  private static final Logger logger = LoggerFactory.getLogger(ChunkGroupMetaData.class);
 
   /**
    * Name of device, this field is not serialized.
@@ -45,7 +48,7 @@ public class ChunkGroupMetaData {
   private int serializedSize;
 
   /**
-   * Byte offset of the corresponding data in the file Notice: include the chunk group header and marker.
+   * Byte offset of the corresponding data in the file Notice: include the chunk group marker.
    * For Hadoop and Spark.
    */
   private long startOffsetOfChunkGroup;
@@ -104,7 +107,7 @@ public class ChunkGroupMetaData {
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     chunkGroupMetaData.serializedSize = Integer.BYTES
-            + chunkGroupMetaData.deviceID.getBytes(TSFileConfig.STRING_ENCODING).length
+            + chunkGroupMetaData.deviceID.getBytes(TSFileConfig.STRING_CHARSET).length
             + Integer.BYTES + Long.BYTES + Long.BYTES + Long.BYTES;
 
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
@@ -135,7 +138,7 @@ public class ChunkGroupMetaData {
 
     int size = ReadWriteIOUtils.readInt(buffer);
 
-    chunkGroupMetaData.serializedSize = Integer.BYTES + chunkGroupMetaData.deviceID.getBytes(TSFileConfig.STRING_ENCODING).length
+    chunkGroupMetaData.serializedSize = Integer.BYTES + chunkGroupMetaData.deviceID.getBytes(TSFileConfig.STRING_CHARSET).length
         + Integer.BYTES + Long.BYTES + Long.BYTES + Long.BYTES;
 
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
@@ -154,8 +157,8 @@ public class ChunkGroupMetaData {
   }
 
   void reCalculateSerializedSize() {
-    serializedSize = Integer.BYTES + deviceID.length() + Integer.BYTES
-        + Long.BYTES + Long.BYTES + Long.BYTES; // size of chunkMetaDataList
+    serializedSize = Integer.BYTES + deviceID.getBytes(TSFileConfig.STRING_CHARSET).length + Integer.BYTES
+          + Long.BYTES + Long.BYTES + Long.BYTES; // size of chunkMetaDataList
     for (ChunkMetaData chunk : chunkMetaDataList) {
       serializedSize += chunk.getSerializedSize();
     }

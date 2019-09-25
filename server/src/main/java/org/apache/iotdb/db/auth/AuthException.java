@@ -20,8 +20,6 @@ package org.apache.iotdb.db.auth;
 
 /**
  * The exception for authority model.
- *
- * @author liukun
  */
 public class AuthException extends Exception {
 

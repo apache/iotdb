@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.fileSystem;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.write.writer.DefaultTsFileOutput;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,12 +33,12 @@ public enum FileOutputFactory {
   INSTANCE;
 
   private static FSType fsType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
-  private static final Logger logger = LoggerFactory.getLogger(TsFileIOWriter.class);
+  private static final Logger logger = LoggerFactory.getLogger(FileOutputFactory.class);
 
   public TsFileOutput getTsFileOutput(String filePath, boolean append) {
     try {
       if (fsType.equals(FSType.HDFS)) {
-        return new HDFSOutput(filePath, append);
+        return new HDFSOutput(filePath, !append);
       } else {
         return new DefaultTsFileOutput(new FileOutputStream(filePath, append));
       }

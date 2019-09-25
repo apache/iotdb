@@ -27,9 +27,6 @@ import kafka.message.MessageAndMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @author lta
- */
 public class KafkaConsumerThread implements Runnable {
 
   private Connection connection = null;

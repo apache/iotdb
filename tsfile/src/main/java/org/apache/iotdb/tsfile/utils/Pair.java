@@ -26,7 +26,6 @@ import java.io.Serializable;
  *
  * @param <L> L type
  * @param <R> R type
- * @author kangrong
  */
 public class Pair<L, R> implements Serializable {
 

@@ -27,6 +27,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 import java.util.Map.Entry;
+
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -174,7 +176,7 @@ public class LogAnalyzer {
 
     status = Status.MERGE_START;
     for (TsFileResource seqFile : resource.getSeqFiles()) {
-      File mergeFile = new File(seqFile.getFile().getPath() + MergeTask.MERGE_SUFFIX);
+      File mergeFile = SystemFileFactory.INSTANCE.getFile(seqFile.getFile().getPath() + MergeTask.MERGE_SUFFIX);
       fileLastPositions.put(mergeFile, 0L);
     }
 
@@ -194,7 +196,7 @@ public class LogAnalyzer {
       } else if (!currLine.contains(STR_END)) {
         // file position
         String[] splits = currLine.split(" ");
-        File file = new File(splits[0]);
+        File file = SystemFileFactory.INSTANCE.getFile(splits[0]);
         Long position = Long.parseLong(splits[1]);
         tempFileLastPositions.put(file, position);
       } else {
@@ -231,7 +233,7 @@ public class LogAnalyzer {
       }
       if (!currLine.contains(STR_END)) {
         String[] splits = currLine.split(" ");
-        currFile = new File(splits[0]);
+        currFile = SystemFileFactory.INSTANCE.getFile(splits[0]);
         Long lastPost = Long.parseLong(splits[1]);
         fileLastPositions.put(currFile, lastPost);
       } else {

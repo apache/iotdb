@@ -22,9 +22,6 @@ import java.util.Random;
 
 /**
  * This class is used for Junit test to get some unified constant.
- *
- * @author kangrong
- *
  */
 public class TimeseriesTestConstant {
 

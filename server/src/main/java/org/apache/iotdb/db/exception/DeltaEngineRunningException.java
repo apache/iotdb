@@ -21,8 +21,6 @@ package org.apache.iotdb.db.exception;
 /**
  * This Exception is the parent class for all delta engine runtime exceptions.<br> This Exception
  * extends super class {@link java.lang.RuntimeException}
- *
- * @author CGF
  */
 public abstract class DeltaEngineRunningException extends RuntimeException {
 

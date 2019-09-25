@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -62,7 +63,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
    */
   public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding) {
     this(measurementId, type, encoding,
-        CompressionType.valueOf(TSFileConfig.compressor),
+        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
         Collections.emptyMap());
   }
 
@@ -188,7 +189,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
       case TEXT:
         // 4 is the length of string in type of Integer.
         // Note that one char corresponding to 3 byte is valid only in 16-bit BMP
-        return TSFileConfig.maxStringLength * TSFileConfig.BYTE_SIZE_PER_CHAR + 4;
+        return TSFileDescriptor.getInstance().getConfig().getMaxStringLength() * TSFileConfig.BYTE_SIZE_PER_CHAR + 4;
       default:
         throw new UnSupportedDataTypeException(type.toString());
     }
@@ -199,8 +200,8 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
    * TODO can I be optimized?
    */
   public Encoder getTimeEncoder() {
-    TSEncoding timeSeriesEncoder = TSEncoding.valueOf(TSFileConfig.timeEncoder);
-    TSDataType timeType = TSDataType.valueOf(TSFileConfig.timeSeriesDataType);
+    TSEncoding timeSeriesEncoder = TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
+    TSDataType timeType = TSDataType.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType());
     return TSEncodingBuilder.getConverter(timeSeriesEncoder).getEncoder(timeType);
   }
 

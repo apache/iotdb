@@ -46,7 +46,7 @@ IF NOT %JAVA_VERSION% == 8 (
 		echo IoTDB only supports jdk8 or jdk11, please check your java version.
 		goto finally
 	)
-) 
+)
 
 if "%OS%" == "Windows_NT" setlocal
 
@@ -79,7 +79,7 @@ set JAVA_OPTS=-ea^
 set CLASSPATH="%IOTDB_HOME%\lib"
 
 @REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
-for %%i in ("%IOTDB_HOME%\lib\*.jar") do call :append "%%i"
+set CLASSPATH=%CLASSPATH%;"%IOTDB_HOME%\lib\*"
 set CLASSPATH=%CLASSPATH%;iotdb.IoTDB
 goto okClasspath
 

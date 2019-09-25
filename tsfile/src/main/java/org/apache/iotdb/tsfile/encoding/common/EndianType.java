@@ -20,8 +20,6 @@ package org.apache.iotdb.tsfile.encoding.common;
 
 /**
  * In current version, we only support BIG_ENDIAN mode.
- *
- * @author xuyi
  */
 public enum EndianType {
   BIG_ENDIAN, LITTLE_ENDIAN

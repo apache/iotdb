@@ -37,8 +37,6 @@ import java.util.Objects;
  * This is tsfile <code>InputSplit</code>.<br>
  * Each <code>InputSplit</code> will be processed by individual
  * <code>Mapper</code> task.
- *
- * @author liukun
  */
 public class TSFInputSplit extends InputSplit implements Writable {
 
@@ -141,7 +139,7 @@ public class TSFInputSplit extends InputSplit implements Writable {
 
     /**
      * Byte offset of the corresponding data in the file
-     * Notice: include the chunk group header and marker.
+     * Notice: include the chunk group marker.
      */
     private long startOffset;
 

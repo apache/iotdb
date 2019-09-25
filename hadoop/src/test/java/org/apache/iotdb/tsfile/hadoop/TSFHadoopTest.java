@@ -78,8 +78,8 @@ public class TSFHadoopTest {
     //
     // deviceid
     //
-    TSFInputFormat.setReadDeltaObjectId(job, true);
-    assertTrue(TSFInputFormat.getReadDeltaObject(job.getConfiguration()));
+    TSFInputFormat.setReadDeviceId(job, true);
+    assertTrue(TSFInputFormat.getReadDeviceId(job.getConfiguration()));
 
     //
     // time
@@ -136,10 +136,10 @@ public class TSFHadoopTest {
       // set input path to the job
       TSFInputFormat.setInputPaths(job, tsfilePath);
       String[] devices = {"device_1"};
-      TSFInputFormat.setReadDeltaObjectIds(job, devices);
+      TSFInputFormat.setReadDeviceIds(job, devices);
       String[] sensors = {"sensor_1", "sensor_2", "sensor_3", "sensor_4", "sensor_5", "sensor_6"};
       TSFInputFormat.setReadMeasurementIds(job, sensors);
-      TSFInputFormat.setReadDeltaObjectId(job, false);
+      TSFInputFormat.setReadDeviceId(job, false);
       TSFInputFormat.setReadTime(job, false);
       List<InputSplit> inputSplits = inputFormat.getSplits(job);
       TsFileSequenceReader reader = new TsFileSequenceReader(new HDFSInput(tsfilePath, job.getConfiguration()));

@@ -29,6 +29,7 @@ import java.util.Set;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -68,7 +69,7 @@ public class MGraph implements Serializable {
       throws PathErrorException {
     TSDataType tsDataType = TSDataType.valueOf(dataType);
     TSEncoding tsEncoding = TSEncoding.valueOf(encoding);
-    CompressionType compressionType = CompressionType.valueOf(TSFileConfig.compressor);
+    CompressionType compressionType = CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
     addPathToMTree(path, tsDataType, tsEncoding, compressionType,
         Collections.emptyMap());
   }

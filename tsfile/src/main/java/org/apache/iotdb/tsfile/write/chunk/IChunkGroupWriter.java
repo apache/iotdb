@@ -32,8 +32,6 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
  * A chunk group in TsFile contains several series. A ChunkGroupWriter should implement
  * write method which takes a timestamp(in TimeValue class) and a list of data points as input.
  * It should also provide flushing method for serializing to local file system or HDFS.
- *
- * @author kangrong
  */
 public interface IChunkGroupWriter {
 
@@ -71,8 +69,9 @@ public interface IChunkGroupWriter {
    *            - TSFileIOWriter
    * @throws IOException
    *             exception in IO
+   * @return current ChunkGroupDataSize
    */
-  ChunkGroupFooter flushToFileWriter(TsFileIOWriter tsfileWriter) throws IOException;
+  long flushToFileWriter(TsFileIOWriter tsfileWriter) throws IOException;
 
   /**
    * get the max memory occupied at this time.

@@ -28,9 +28,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.xerial.snappy.Snappy;
 
-/**
- * @author kangrong
- */
 public class SnappyTest {
 
   private String randomString(int length) {

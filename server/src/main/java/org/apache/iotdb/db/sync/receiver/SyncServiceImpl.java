@@ -61,7 +61,6 @@ import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.db.engine.fileSystem.FileFactory;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -145,7 +144,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     fileNodeStartTime.set(new HashMap<>());
     fileNodeEndTime.set(new HashMap<>());
     try {
-      FileUtils.deleteDirectory(FileFactory.INSTANCE.getFile(syncDataPath));
+      FileUtils.deleteDirectory(new File(syncDataPath));
     } catch (IOException e) {
       logger.error("cannot delete directory {} ", syncFolderPath);
       return false;
@@ -153,7 +152,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     for (String bufferWritePath : bufferWritePaths) {
       bufferWritePath = FilePathUtils.regularizePath(bufferWritePath);
       String backupPath = bufferWritePath + SYNC_SERVER + File.separator;
-      File backupDirectory = FileFactory.INSTANCE.getFile(backupPath, this.uuid.get());
+      File backupDirectory = new File(backupPath, this.uuid.get());
       if (backupDirectory.exists() && backupDirectory.list().length != 0) {
         try {
           FileUtils.deleteDirectory(backupDirectory);
@@ -202,7 +201,7 @@ public class SyncServiceImpl implements SyncService.Iface {
       /** sync metadata, include storage group and timeseries **/
       return Boolean.toString(loadMetadata());
     } else if (status == SyncDataStatus.PROCESSING_STATUS) {
-      File file = FileFactory.INSTANCE.getFile(schemaFromSenderPath.get());
+      File file = new File(schemaFromSenderPath.get());
       if (!file.getParentFile().exists()) {
         try {
           file.getParentFile().mkdirs();
@@ -229,7 +228,7 @@ public class SyncServiceImpl implements SyncService.Iface {
         }
         md5OfReceiver = (new BigInteger(1, md.digest())).toString(16);
         if (!md5.equals(md5OfReceiver)) {
-          FileUtils.forceDelete(FileFactory.INSTANCE.getFile(schemaFromSenderPath.get()));
+          FileUtils.forceDelete(new File(schemaFromSenderPath.get()));
         }
       } catch (Exception e) {
         logger.error("Receiver cannot generate md5 {}", schemaFromSenderPath.get(), e);
@@ -242,7 +241,7 @@ public class SyncServiceImpl implements SyncService.Iface {
    * Load metadata from sender
    */
   private boolean loadMetadata() {
-    if (FileFactory.INSTANCE.getFile(schemaFromSenderPath.get()).exists()) {
+    if (new File(schemaFromSenderPath.get()).exists()) {
       try (BufferedReader br = new BufferedReader(
           new java.io.FileReader(schemaFromSenderPath.get()))) {
         String metadataOperation;
@@ -327,7 +326,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     syncDataPath = FilePathUtils.regularizePath(syncDataPath);
     filePath = syncDataPath + filePath;
     if (status == SyncDataStatus.PROCESSING_STATUS) { // there are still data stream to add
-      File file = FileFactory.INSTANCE.getFile(filePath);
+      File file = new File(filePath);
       if (!file.getParentFile().exists()) {
         try {
           file.getParentFile().mkdirs();
@@ -359,7 +358,7 @@ public class SyncServiceImpl implements SyncService.Iface {
 
           logger.info(String.format("Receiver has received %d files from sender", fileNum.get()));
         } else {
-          FileUtils.forceDelete(FileFactory.INSTANCE.getFile(filePath));
+          FileUtils.forceDelete(new File(filePath));
         }
       } catch (Exception e) {
         logger.error("Receiver cannot generate md5 {}", filePath, e);
@@ -385,7 +384,7 @@ public class SyncServiceImpl implements SyncService.Iface {
    * Get all tsfiles' info which are sent from sender, it is preparing for merging these data
    */
   public void getFileNodeInfo() throws IOException {
-    File dataFileRoot = FileFactory.INSTANCE.getFile(syncDataPath);
+    File dataFileRoot = new File(syncDataPath);
     File[] files = dataFileRoot.listFiles();
     int processedNum = 0;
     for (File storageGroupPB : files) {
@@ -465,7 +464,7 @@ public class SyncServiceImpl implements SyncService.Iface {
         String header = syncDataPath;
         String relativePath = path.substring(header.length());
         TsFileResource fileNode = new TsFileResource(
-            FileFactory.INSTANCE.getFile(DirectoryManager.getInstance().getNextFolderIndexForSequenceFile() +
+            new File(DirectoryManager.getInstance().getNextFolderIndexForSequenceFile() +
                 File.separator + relativePath), startTimeMap, endTimeMap
         );
         // call interface of load external file
@@ -714,7 +713,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     fileNodeEndTime.remove();
     schemaFromSenderPath.remove();
     try {
-      FileUtils.deleteDirectory(FileFactory.INSTANCE.getFile(syncFolderPath));
+      FileUtils.deleteDirectory(new File(syncFolderPath));
     } catch (IOException e) {
       logger.error("can not delete directory {}", syncFolderPath, e);
     }

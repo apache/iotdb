@@ -81,9 +81,9 @@ public class TSFMRReadExample {
      * special configuration for reading tsfile with TSFInputFormat
      */
     TSFInputFormat.setReadTime(job, true); // configure reading time enable
-    TSFInputFormat.setReadDeltaObjectId(job, true); // configure reading deltaObjectId enable
+    TSFInputFormat.setReadDeviceId(job, true); // configure reading deltaObjectId enable
     String[] deltaObjectIds = {"device_1"};// configure reading which deltaObjectIds
-    TSFInputFormat.setReadDeltaObjectIds(job, deltaObjectIds);
+    TSFInputFormat.setReadDeviceIds(job, deltaObjectIds);
     String[] measurementIds = {"sensor_1", "sensor_2", "sensor_3"};// configure reading which measurementIds
     TSFInputFormat.setReadMeasurementIds(job, measurementIds);
     boolean isSuccess = false;

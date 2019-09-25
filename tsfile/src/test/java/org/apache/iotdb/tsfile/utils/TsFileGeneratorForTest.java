@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.utils;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Scanner;
 
@@ -31,6 +32,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -157,8 +159,8 @@ public class TsFileGeneratorForTest {
 
     Schema schema = generateTestSchema();
 
-    TSFileDescriptor.getInstance().getConfig().groupSizeInByte = chunkGroupSize;
-    TSFileDescriptor.getInstance().getConfig().maxNumberOfPointsInPage = pageSize;
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
     innerWriter = new TsFileWriter(file, schema, TSFileDescriptor.getInstance().getConfig());
 
     // write
@@ -181,15 +183,15 @@ public class TsFileGeneratorForTest {
     JSONObject s1 = new JSONObject();
     s1.put(JsonFormatConstant.MEASUREMENT_UID, "s1");
     s1.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT32.toString());
-    s1.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
+    s1.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.getValueEncoder());
     JSONObject s2 = new JSONObject();
     s2.put(JsonFormatConstant.MEASUREMENT_UID, "s2");
     s2.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-    s2.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
+    s2.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.getValueEncoder());
     JSONObject s3 = new JSONObject();
     s3.put(JsonFormatConstant.MEASUREMENT_UID, "s3");
     s3.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-    s3.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
+    s3.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.getValueEncoder());
     JSONObject s4 = new JSONObject();
     s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");
     s4.put(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());
@@ -236,4 +238,23 @@ public class TsFileGeneratorForTest {
     return schemaBuilder.build();
   }
 
+
+  /**
+   * Writes a File with one incomplete chunk header
+   * @param file File to write
+   * @throws IOException is thrown when encountering IO issues
+   */
+  public static void writeFileWithOneIncompleteChunkHeader(File file) throws IOException {
+      TsFileWriter writer = new TsFileWriter(file);
+
+      ChunkHeader header = new ChunkHeader("s1", 100, TSDataType.FLOAT, CompressionType.SNAPPY,
+              TSEncoding.PLAIN, 5);
+      ByteBuffer buffer = ByteBuffer.allocate(header.getSerializedSize());
+      header.serializeTo(buffer);
+      buffer.flip();
+      byte[] data = new byte[3];
+      buffer.get(data, 0, 3);
+      writer.getIOWriter().getIOWriterOut().write(data);
+      writer.getIOWriter().close();
+  }
 }

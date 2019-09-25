@@ -82,7 +82,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
       reader = new TsFileSequenceReader(new HDFSInput(path, configuration));
 
       // Get the read columns and filter information
-      List<String> deltaObjectIds = TSFInputFormat.getReadDeltaObjectIds(configuration);
+      List<String> deltaObjectIds = TSFInputFormat.getReadDeviceIds(configuration);
       if (deltaObjectIds == null) {
         deltaObjectIds = initDeviceIdList(chunkGroupInfoList);
       }
@@ -94,7 +94,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
       logger.info("deltaObjectIds:" + deltaObjectIds);
       logger.info("Sensors:" + measurementIds);
 
-      isReadDeviceId = TSFInputFormat.getReadDeltaObject(configuration);
+      isReadDeviceId = TSFInputFormat.getReadDeviceId(configuration);
       isReadTime = TSFInputFormat.getReadTime(configuration);
       if (isReadDeviceId) {
         arraySize++;
@@ -168,12 +168,11 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
     LongWritable time = new LongWritable(timestamp);
     int index = 0;
 
-    if (isReadTime && isReadDeviceId) { // Both time and deviceId need to be written into value
+
+    if (isReadTime) { // time needs to be written into value
       mapWritable.put(new Text("timestamp"), time);
-      mapWritable.put(new Text("device_id"), deviceIdText);
-    } else if (isReadTime) { // Only Time needs to be written into value
-      mapWritable.put(new Text("timestamp"), time);
-    } else if (isReadDeviceId) { // Only deviceId need to be written into value
+    }
+    if (isReadDeviceId) { // deviceId need to be written into value
       mapWritable.put(new Text("device_id"), deviceIdText);
     }
 
@@ -230,8 +229,8 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
 
   @Override
   public void close() throws IOException {
-    dataSetList.forEach(queryDataSet -> queryDataSet = null);
-    deviceIdList.forEach(deviceId -> deviceId = null);
+    dataSetList = null;
+    deviceIdList = null;
     reader.close();
   }
 
