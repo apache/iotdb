@@ -231,7 +231,7 @@ public class IoTDBDatabaseMetadataTest {
    */
   @SuppressWarnings("resource")
   @Test
-  public void device() throws Exception {
+  public void deviceUnderColumn() throws Exception {
     List<String> columnList = new ArrayList<>();
     columnList.add("root.vehicle.d0");
 
@@ -240,7 +240,41 @@ public class IoTDBDatabaseMetadataTest {
     String standard = "column,\n" + "root.vehicle.d0,\n";
     try {
       ResultSet resultSet = databaseMetaData
-          .getColumns(Constant.CATALOG_DEVICE, "vehicle", null, null);
+          .getColumns(Constant.CATALOG_COLUMN, "vehicle", null, null);
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      int colCount = resultSetMetaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      for (int i = 1; i < colCount + 1; i++) {
+        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
+      }
+      resultStr.append("\n");
+      while (resultSet.next()) {
+        for (int i = 1; i <= colCount; i++) {
+          resultStr.append(resultSet.getString(i)).append(",");
+        }
+        resultStr.append("\n");
+      }
+      Assert.assertEquals(resultStr.toString(), standard);
+    } catch (SQLException e) {
+      System.out.println(e);
+    }
+  }
+
+  /**
+   * get all devices
+   */
+  @SuppressWarnings("resource")
+  @Test
+  public void device() throws Exception {
+    Set<String> devicesSet = new HashSet<>();
+    devicesSet.add("root.vehicle.d0");
+
+    when(fetchMetadataResp.getShowDevices()).thenReturn(devicesSet);
+
+    String standard = "Device,\n" + "root.vehicle.d0,\n";
+    try {
+      ResultSet resultSet = databaseMetaData
+          .getColumns(Constant.CATALOG_DEVICES, null, null, null);
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();

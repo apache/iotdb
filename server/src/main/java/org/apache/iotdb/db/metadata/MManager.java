@@ -762,6 +762,21 @@ public class MManager {
   }
 
   /**
+   * Get the full devices info.
+   *
+   * @return A HashSet instance which stores all devices info
+   */
+  public Set<String> getAllDevices() throws PathErrorException {
+
+    lock.readLock().lock();
+    try {
+      return mgraph.getAllDevices();
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
    * Get all nodes from the given level
    *
    * @return A List instance which stores all node at given level

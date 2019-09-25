@@ -311,15 +311,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setMetadataInJson(metadataInJson);
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
-        case "DELTA_OBEJECT":
-          Metadata metadata = getMetadata();
-          String column = req.getColumnPath();
-          Map<String, List<String>> deviceMap = metadata.getDeviceMap();
-          if (deviceMap == null || !deviceMap.containsKey(column)) {
-            resp.setColumnsList(new ArrayList<>());
-          } else {
-            resp.setColumnsList(deviceMap.get(column));
-          }
+        case "SHOW_DEVICES":
+          Set<String> devices = getAllDevices();
+          resp.setShowDevices(devices);
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
         case "COLUMN":
@@ -370,6 +364,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private Set<String> getAllStorageGroups() throws PathErrorException {
     return MManager.getInstance().getAllStorageGroup();
+  }
+
+  private Set<String> getAllDevices() throws PathErrorException {
+    return MManager.getInstance().getAllDevices();
   }
 
   private List<List<String>> getTimeSeriesForPath(String path)

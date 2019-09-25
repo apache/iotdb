@@ -195,7 +195,8 @@ struct TSFetchMetadataResp{
 		3: optional list<string> ColumnsList
 		4: optional string dataType
 		5: optional list<list<string>> showTimeseriesList
-		7: optional set<string> showStorageGroups
+		6: optional set<string> showStorageGroups
+		7: optional set<string> showDevices
 		8: optional list<string> nodesList
 		9: optional map<string, string> nodeTimeseriesNum
 }

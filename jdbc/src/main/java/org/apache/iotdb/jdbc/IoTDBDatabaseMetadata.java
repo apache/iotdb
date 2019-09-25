@@ -21,6 +21,7 @@ package org.apache.iotdb.jdbc;
 import java.sql.*;
 import java.util.List;
 import java.util.Set;
+import org.apache.iotdb.jdbc.IoTDBMetadataResultSet.MetadataType;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
@@ -85,12 +86,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           } catch (IoTDBRPCException e) {
             throw new IoTDBSQLException(e.getMessage());
           }
-          return new IoTDBMetadataResultSet(resp.getColumnsList(), IoTDBMetadataResultSet.MetadataType.COLUMN);
+          return new IoTDBMetadataResultSet(resp.getColumnsList(), MetadataType.COLUMN);
         } catch (TException e) {
           throw new TException("Conncetion error when fetching column metadata", e);
         }
-      case Constant.CATALOG_DEVICE:
-        req = new TSFetchMetadataReq(Constant.GLOBAL_DELTA_OBJECT_REQ);
+      case Constant.CATALOG_DEVICES:
+        req = new TSFetchMetadataReq(Constant.GLOBAL_SHOW_DEVICES_REQ);
         req.setColumnPath(schemaPattern);
         try {
           TSFetchMetadataResp resp = client.fetchMetadata(req);
@@ -99,9 +100,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           } catch (IoTDBRPCException e) {
             throw new IoTDBSQLException(e.getMessage());
           }
-          return new IoTDBMetadataResultSet(resp.getColumnsList(), IoTDBMetadataResultSet.MetadataType.COLUMN);
+          return new IoTDBMetadataResultSet(resp.getShowDevices(), MetadataType.DEVICES);
         } catch (TException e) {
-          throw new TException("Conncetion error when fetching delta object metadata", e);
+          throw new TException("Conncetion error when fetching device metadata", e);
         }
       case Constant.CATALOG_STORAGE_GROUP:
         req = new TSFetchMetadataReq(Constant.GLOBAL_SHOW_STORAGE_GROUP_REQ);
@@ -113,7 +114,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             throw new IoTDBSQLException(e.getMessage());
           }
           Set<String> showStorageGroup = resp.getShowStorageGroups();
-          return new IoTDBMetadataResultSet(showStorageGroup, IoTDBMetadataResultSet.MetadataType.STORAGE_GROUP);
+          return new IoTDBMetadataResultSet(showStorageGroup, MetadataType.STORAGE_GROUP);
         } catch (TException e) {
           throw new TException("Conncetion error when fetching storage group metadata", e);
         }
@@ -128,7 +129,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             throw new IoTDBSQLException(e.getMessage());
           }
           List<List<String>> showTimeseriesList = resp.getShowTimeseriesList();
-          return new IoTDBMetadataResultSet(showTimeseriesList, IoTDBMetadataResultSet.MetadataType.TIMESERIES);
+          return new IoTDBMetadataResultSet(showTimeseriesList, MetadataType.TIMESERIES);
         } catch (TException e) {
           throw new TException("Conncetion error when fetching timeseries metadata", e);
         }
@@ -142,7 +143,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           } catch (IoTDBRPCException e) {
             throw new IoTDBSQLException(e.getMessage());
           }
-          return new IoTDBMetadataResultSet(resp.getColumnsList().size(), IoTDBMetadataResultSet.MetadataType.COUNT_TIMESERIES);
+          return new IoTDBMetadataResultSet(resp.getColumnsList().size(), MetadataType.COUNT_TIMESERIES);
         } catch (TException e) {
           throw new TException("Connection error when fetching timeseries metadata", e);
         }

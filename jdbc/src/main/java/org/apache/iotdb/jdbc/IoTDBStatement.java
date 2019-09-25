@@ -49,6 +49,7 @@ public class IoTDBStatement implements Statement {
 
   private static final String SHOW_TIMESERIES_COMMAND_LOWERCASE = "show timeseries";
   private static final String SHOW_STORAGE_GROUP_COMMAND_LOWERCASE = "show storage group";
+  private static final String SHOW_DEVICES_COMMAND_LOWERCASE = "show devices";
   private static final String COUNT_TIMESERIES_COMMAND_LOWERCASE = "count timeseries";
   private static final String COUNT_NODES_COMMAND_LOWERCASE = "count nodes";
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
@@ -251,6 +252,10 @@ public class IoTDBStatement implements Statement {
     } else if (sqlToLowerCase.equals(SHOW_STORAGE_GROUP_COMMAND_LOWERCASE)) {
       DatabaseMetaData databaseMetaData = connection.getMetaData();
       resultSet = databaseMetaData.getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null);
+      return true;
+    } else if (sqlToLowerCase.equals(SHOW_DEVICES_COMMAND_LOWERCASE)) {
+      DatabaseMetaData databaseMetaData = connection.getMetaData();
+      resultSet = databaseMetaData.getColumns(Constant.CATALOG_DEVICES, null, null, null);
       return true;
     } else if (sqlToLowerCase.startsWith(COUNT_TIMESERIES_COMMAND_LOWERCASE)) {
       String[] cmdSplited = sqlToLowerCase.split("\\s+", 4);

@@ -18,14 +18,18 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import java.io.Serializable;
-import java.util.*;
-
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -758,6 +762,15 @@ public class MTree implements Serializable {
     for (MNode childNode : node.getChildren().values()) {
       findStorageGroup(childNode, path + "." + childNode.toString(), res);
     }
+  }
+
+  /**
+   * Get all devices in current Metadata Tree.
+   *
+   * @return a list contains all distinct storage groups
+   */
+  HashSet<String> getAllDevices() {
+    return new HashSet<>(getNodesList("3"));
   }
 
   /**

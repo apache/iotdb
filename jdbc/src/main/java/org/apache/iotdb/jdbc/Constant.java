@@ -28,7 +28,7 @@ public class Constant {
 
   public static final String GLOBAL_COLUMN_REQ = "COLUMN";
 
-  public static final String GLOBAL_DELTA_OBJECT_REQ = "DELTA_OBEJECT";
+  public static final String GLOBAL_SHOW_DEVICES_REQ = "SHOW_DEVICES";
 
   public static final String GLOBAL_SHOW_TIMESERIES_REQ = "SHOW_TIMESERIES";
 
@@ -46,7 +46,7 @@ public class Constant {
   public static final String CATALOG_COLUMN = "col";
   public static final String CATALOG_TIMESERIES = "ts";
   public static final String CATALOG_STORAGE_GROUP = "sg";
-  public static final String CATALOG_DEVICE = "delta";
+  public static final String CATALOG_DEVICES = "devices";
   public static final String COUNT_TIMESERIES = "cntts";
   public static final String COUNT_NODE_TIMESERIES = "cnttsbg";
   public static final String COUNT_NODES = "cntnode";
