@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.tsfile.hadoop;
 
-/**
- * @author liukun
- */
 public class TSFHadoopException extends Exception {
 
 

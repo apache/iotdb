@@ -24,8 +24,6 @@ import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
 /**
  * This Exception is used while decoding failed. <br> This Exception extends super class {@link
  * TsFileRuntimeException}
- *
- * @author kangrong
  */
 public class TsFileDecodingException extends TsFileRuntimeException {
 

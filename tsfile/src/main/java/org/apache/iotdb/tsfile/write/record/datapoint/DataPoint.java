@@ -31,8 +31,6 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
  * This is a abstract class representing a data point. DataPoint consists of a measurement id and a
  * data type. subclass of DataPoint need override method {@code write(long time, IChunkWriter
  * writer)} .Every subclass has its data type and overrides a setting method for its data type.
- *
- * @author kangrong
  */
 public abstract class DataPoint {
 

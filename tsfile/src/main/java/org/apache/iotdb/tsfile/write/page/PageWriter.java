@@ -30,8 +30,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 /**
  * This function is used to write time-value into a page. It consists of a time encoder, a value encoder and respective
  * OutputStream.
- *
- * @author kangrong
  */
 public class PageWriter {
 

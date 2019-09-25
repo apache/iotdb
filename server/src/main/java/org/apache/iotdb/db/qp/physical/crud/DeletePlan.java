@@ -71,6 +71,10 @@ public class DeletePlan extends PhysicalPlan {
     this.paths.add(path);
   }
 
+  public void addPaths(List<Path> paths) {
+    this.paths.addAll(paths);
+  }
+
   @Override
   public List<Path> getPaths() {
     return paths;

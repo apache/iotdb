@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -51,7 +52,6 @@ public class DeviceMetaDataCacheTest {
   private String measurementId3 = "s3";
   private String measurementId4 = "s4";
   private String measurementId5 = "s5";
-  private String measurementId100 = "s100";
   private StorageGroupProcessor storageGroupProcessor;
   private String systemDir = "data/info";
 
@@ -74,18 +74,17 @@ public class DeviceMetaDataCacheTest {
     EnvironmentUtils.cleanDir(systemDir);
   }
 
-  private void insertOneRecord(long time, int num) {
+  private void insertOneRecord(long time, int num) throws QueryProcessorException {
     TSRecord record = new TSRecord(time, deviceId0);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId0, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT64, measurementId1, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.FLOAT, measurementId2, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.DOUBLE, measurementId3, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.BOOLEAN, measurementId4, "True"));
-//    record.addTuple(DataPoint.getDataPoint(TSDataType.TEXT, measurementId5, String.valueOf(num)));
     storageGroupProcessor.insert(new InsertPlan(record));
   }
 
-  protected void insertData() throws IOException {
+  protected void insertData() throws IOException, QueryProcessorException {
     for (int j = 1; j <= 100; j++) {
       insertOneRecord(j, j);
     }

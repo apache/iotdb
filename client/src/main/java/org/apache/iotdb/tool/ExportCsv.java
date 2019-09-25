@@ -50,7 +50,6 @@ import org.apache.thrift.TException;
 /**
  * Export CSV file.
  *
- * @author aru cheng
  * @version 1.0.0 20170719
  */
 public class ExportCsv extends AbstractCsvTool {

@@ -37,8 +37,6 @@ import org.slf4j.LoggerFactory;
  * If there is, create a bitmap for this block to denote the position of missing points. Next, store
  * the data info (the data size, the minimum delta value and the first data point of this block) and the
  * bitmap with its info into the result byte array output stream.</p>
- *
- * @author tsunghantsai
  */
 public abstract class RegularDataEncoder extends Encoder {
 

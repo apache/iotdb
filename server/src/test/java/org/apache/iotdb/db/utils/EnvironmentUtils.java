@@ -48,9 +48,6 @@ import org.slf4j.LoggerFactory;
  * <p>
  * This class is used for cleaning test environment in unit test and integration test
  * </p>
- *
- * @author liukun
- *
  */
 public class EnvironmentUtils {
 

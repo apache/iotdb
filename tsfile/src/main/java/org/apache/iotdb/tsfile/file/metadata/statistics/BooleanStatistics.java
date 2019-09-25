@@ -26,8 +26,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Boolean Statistics.
- *
- * @author CGF
  */
 public class BooleanStatistics extends Statistics<Boolean> {
 

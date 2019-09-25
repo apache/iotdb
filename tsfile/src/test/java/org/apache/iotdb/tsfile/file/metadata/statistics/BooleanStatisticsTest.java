@@ -24,9 +24,6 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-/**
- * @author CGF
- */
 public class BooleanStatisticsTest {
 
   private static final double maxError = 0.0001d;

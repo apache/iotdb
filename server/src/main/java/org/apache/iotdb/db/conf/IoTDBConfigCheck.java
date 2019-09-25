@@ -81,7 +81,7 @@ public class IoTDBConfigCheck {
     // get existed properties from system_properties.txt
     File inputFile = SystemFileFactory.INSTANCE.getFile(filepath + File.separator + PROPERTIES_FILE_NAME);
     try (FileInputStream inputStream = new FileInputStream(inputFile.toString())) {
-      properties.load(new InputStreamReader(inputStream, TSFileConfig.STRING_ENCODING));
+      properties.load(new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET));
       if (!properties.getProperty("timestamp_precision").equals(TIMESTAMP_PRECISION)) {
         logger.error("Wrong timestamp precision, please set as: " + properties
             .getProperty("timestamp_precision") + " !");

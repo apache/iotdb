@@ -26,8 +26,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Statistics for int type.
- *
- * @author kangrong
  */
 public class IntegerStatistics extends Statistics<Integer> {
 

@@ -26,15 +26,12 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 /**
  * Override compareTo() and equals() function to Binary class. This class is used to accept Java
  * String type
- *
- * @author xuyi
  */
 public class Binary implements Comparable<Binary>, Serializable {
 
   private static final long serialVersionUID = 6394197743397020735L;
 
   private byte[] values;
-  private String textEncodingType = TSFileConfig.STRING_ENCODING;
 
   /**
    * if the bytes v is modified, the modification is visible to this binary.
@@ -44,7 +41,7 @@ public class Binary implements Comparable<Binary>, Serializable {
   }
 
   public Binary(String s) {
-    this.values = (s == null) ? null : s.getBytes(Charset.forName(this.textEncodingType));
+    this.values = (s == null) ? null : s.getBytes(TSFileConfig.STRING_CHARSET);
   }
 
   public static Binary valueOf(String value) {
@@ -105,16 +102,13 @@ public class Binary implements Comparable<Binary>, Serializable {
   }
 
   public String getStringValue() {
-    return new String(this.values, Charset.forName(this.textEncodingType));
+    return new String(this.values, TSFileConfig.STRING_CHARSET);
   }
 
   public String getTextEncodingType() {
-    return textEncodingType;
+    return TSFileConfig.STRING_ENCODING;
   }
 
-  public void setTextEncodingType(String textEncodingType) {
-    this.textEncodingType = textEncodingType;
-  }
 
   @Override
   public String toString() {

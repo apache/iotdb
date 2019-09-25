@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.session;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusType;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -161,7 +162,7 @@ public class Session {
     }
   }
 
-  public synchronized TSRPCResp insert(String deviceId, long time, List<String> measurements, List<String> values)
+  public synchronized TSStatus insert(String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBSessionException {
     TSInsertReq request = new TSInsertReq();
     request.setDeviceId(deviceId);
@@ -176,9 +177,47 @@ public class Session {
     }
   }
 
-  public synchronized TSRPCResp delete(String path, long time) throws IoTDBSessionException {
-    TSDeleteReq request = new TSDeleteReq();
-    request.setPath(path);
+  /**
+   * delete a timeseries, including data and schema
+   * @param path timeseries to delete, should be a whole path
+   */
+  public synchronized TSStatus deleteTimeseries(String path) throws IoTDBSessionException {
+    List<String> paths = new ArrayList<>();
+    paths.add(path);
+    return deleteTimeseries(paths);
+  }
+
+  /**
+   * delete a timeseries, including data and schema
+   * @param paths timeseries to delete, should be a whole path
+   */
+  public synchronized TSStatus deleteTimeseries(List<String> paths) throws IoTDBSessionException {
+    try {
+      return checkAndReturn(client.deleteTimeseries(paths));
+    } catch (TException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
+  /**
+   * delete data <= time in one timeseries
+   * @param path data in which time series to delete
+   * @param time data with time stamp less than or equal to time will be deleted
+   */
+  public synchronized TSStatus deleteData(String path, long time) throws IoTDBSessionException {
+    List<String> paths = new ArrayList<>();
+    paths.add(path);
+    return deleteData(paths, time);
+  }
+
+  /**
+   * delete data <= time in multiple timeseries
+   * @param paths data in which time series to delete
+   * @param time data with time stamp less than or equal to time will be deleted
+   */
+  public synchronized TSStatus deleteData(List<String> paths, long time) throws IoTDBSessionException {
+    TSDeleteDataReq request = new TSDeleteDataReq();
+    request.setPaths(paths);
     request.setTimestamp(time);
 
     try {
@@ -188,7 +227,7 @@ public class Session {
     }
   }
 
-  public synchronized TSRPCResp setStorageGroup(String storageGroupId) throws IoTDBSessionException {
+  public synchronized TSStatus setStorageGroup(String storageGroupId) throws IoTDBSessionException {
     try {
       return checkAndReturn(client.setStorageGroup(storageGroupId));
     } catch (TException e) {
@@ -196,7 +235,7 @@ public class Session {
     }
   }
 
-  public synchronized TSRPCResp createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor) throws IoTDBSessionException {
+  public synchronized TSStatus createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor) throws IoTDBSessionException {
     TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
     request.setPath(path);
     request.setDataType(dataType.ordinal());
@@ -210,15 +249,15 @@ public class Session {
     }
   }
 
-  private TSRPCResp checkAndReturn(TSRPCResp resp) {
-    if (resp.status.statusType.getCode() != TSStatusType.SUCCESS_STATUS.getStatusCode()) {
-      logger.error(resp.status.statusType.getMessage());
+  private TSStatus checkAndReturn(TSStatus resp) {
+    if (resp.statusType.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      logger.error(resp.statusType.getMessage());
     }
     return resp;
   }
 
   private TSExecuteBatchStatementResp checkAndReturn(TSExecuteBatchStatementResp resp) {
-    if (resp.status.statusType.getCode() != TSStatusType.SUCCESS_STATUS.getStatusCode()) {
+    if (resp.status.statusType.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       logger.error(resp.status.statusType.getMessage());
     }
     return resp;
@@ -236,8 +275,8 @@ public class Session {
 
   public synchronized void setTimeZone(String zoneId) throws TException, IoTDBRPCException {
     TSSetTimeZoneReq req = new TSSetTimeZoneReq(zoneId);
-    TSRPCResp resp = client.setTimeZone(req);
-    RpcUtils.verifySuccess(resp.getStatus());
+    TSStatus resp = client.setTimeZone(req);
+    RpcUtils.verifySuccess(resp);
     this.zoneId = ZoneId.of(zoneId);
   }
 

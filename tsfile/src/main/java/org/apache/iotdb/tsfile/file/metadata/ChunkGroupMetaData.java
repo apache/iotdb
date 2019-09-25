@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import java.io.UnsupportedEncodingException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -28,11 +29,14 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Metadata of ChunkGroup.
  */
 public class ChunkGroupMetaData {
+  private static final Logger logger = LoggerFactory.getLogger(ChunkGroupMetaData.class);
 
   /**
    * Name of device, this field is not serialized.
@@ -104,7 +108,7 @@ public class ChunkGroupMetaData {
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     chunkGroupMetaData.serializedSize = Integer.BYTES
-            + chunkGroupMetaData.deviceID.getBytes(TSFileConfig.STRING_ENCODING).length
+            + chunkGroupMetaData.deviceID.getBytes(TSFileConfig.STRING_CHARSET).length
             + Integer.BYTES + Long.BYTES + Long.BYTES + Long.BYTES;
 
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
@@ -135,7 +139,7 @@ public class ChunkGroupMetaData {
 
     int size = ReadWriteIOUtils.readInt(buffer);
 
-    chunkGroupMetaData.serializedSize = Integer.BYTES + chunkGroupMetaData.deviceID.getBytes(TSFileConfig.STRING_ENCODING).length
+    chunkGroupMetaData.serializedSize = Integer.BYTES + chunkGroupMetaData.deviceID.getBytes(TSFileConfig.STRING_CHARSET).length
         + Integer.BYTES + Long.BYTES + Long.BYTES + Long.BYTES;
 
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
@@ -154,8 +158,8 @@ public class ChunkGroupMetaData {
   }
 
   void reCalculateSerializedSize() {
-    serializedSize = Integer.BYTES + deviceID.length() + Integer.BYTES
-        + Long.BYTES + Long.BYTES + Long.BYTES; // size of chunkMetaDataList
+    serializedSize = Integer.BYTES + deviceID.getBytes(TSFileConfig.STRING_CHARSET).length + Integer.BYTES
+          + Long.BYTES + Long.BYTES + Long.BYTES; // size of chunkMetaDataList
     for (ChunkMetaData chunk : chunkMetaDataList) {
       serializedSize += chunk.getSerializedSize();
     }

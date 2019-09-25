@@ -27,14 +27,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusType;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSDataValue;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
-import org.apache.iotdb.service.rpc.thrift.TS_Status;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.TSStatusType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -73,15 +72,15 @@ public class UtilsTest {
   @Test
   public void testVerifySuccess() {
     try {
-      TS_StatusType successStatus = new TS_StatusType(TSStatusType.SUCCESS_STATUS.getStatusCode(), "");
-      RpcUtils.verifySuccess(new TS_Status(successStatus));
+      TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
+      RpcUtils.verifySuccess(new TSStatus(successStatus));
     } catch (Exception e) {
       fail();
     }
 
     try {
-      TS_StatusType errorStatus = new TS_StatusType(TSStatusType.INTERNAL_SERVER_ERROR.getStatusCode(), "");
-      RpcUtils.verifySuccess(new TS_Status(errorStatus));
+      TSStatusType errorStatus = new TSStatusType(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), "");
+      RpcUtils.verifySuccess(new TSStatus(errorStatus));
     } catch (Exception e) {
       return;
     }

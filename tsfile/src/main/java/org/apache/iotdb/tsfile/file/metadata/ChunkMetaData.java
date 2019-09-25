@@ -146,13 +146,7 @@ public class ChunkMetaData {
             TSDataType.getSerializedSize() + // TSDataType
             (valuesStatistics == null ? TsDigest.getNullDigestSize()
                     : valuesStatistics.getSerializedSize()));
-    try {
-      serializedSize += measurementUid.getBytes(TSFileConfig.STRING_ENCODING).length;  // measurementUid
-    } catch (UnsupportedEncodingException e) {
-      // use the system default encoding
-      serializedSize += measurementUid.getBytes().length;  // measurementUid
-      LOG.error("{} encoding is not supported", TSFileConfig.STRING_ENCODING);
-    }
+    serializedSize += measurementUid.getBytes(TSFileConfig.STRING_CHARSET).length;  // measurementUid
     return serializedSize;
   }
 

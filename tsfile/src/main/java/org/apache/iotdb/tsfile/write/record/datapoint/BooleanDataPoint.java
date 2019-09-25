@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
 /**
  * a subclass for Boolean data type extends DataPoint.
  *
- * @author kangrong
  * @see DataPoint DataPoint
  */
 public class BooleanDataPoint extends DataPoint {
