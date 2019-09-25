@@ -236,10 +236,16 @@ public class Session {
   }
 
   public synchronized TSStatus deleteStorageGroup(String storageGroup) throws IoTDBSessionException {
+    List<String> groups = new ArrayList<>();
+    groups.add(storageGroup);
+    return deleteStorageGroups(groups);
+  }
+
+  public synchronized TSStatus deleteStorageGroups(List<String> storageGroup) throws IoTDBSessionException {
     try {
-      return checkAndReturn(client.deleteStorageGroup(storageGroup));
+        return checkAndReturn(client.deleteStorageGroups(storageGroup));
     } catch (TException e) {
-      throw new IoTDBSessionException(e);
+        throw new IoTDBSessionException(e);
     }
   }
 

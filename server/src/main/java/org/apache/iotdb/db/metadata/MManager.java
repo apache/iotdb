@@ -212,7 +212,11 @@ public class MManager {
         setStorageGroupToMTree(args[1]);
         break;
       case MetadataOperationType.DELETE_STORAGE_GROUP_FROM_MTREE:
-        deleteStorageGroupFromMTree(args[1]);
+        List<Path> storageGroups = new ArrayList<>();
+        for (int l = 1; l < args.length; l++){
+          storageGroups.add(new Path(args[l]));
+        }
+        deleteStorageGroupsFromMTree(storageGroups);
         break;
       case MetadataOperationType.ADD_A_PTREE:
         addAPTree(args[1]);
@@ -552,30 +556,41 @@ public class MManager {
   }
 
   /**
-   * function for deleting storage group of the given path from mTree.
+   * function for deleting storage groups of the given path from mTree.
+   * the log format is like "delete_storage_group,sg1,sg2,sg3"
    */
-  public boolean deleteStorageGroupFromMTree(String path) throws MetadataErrorException {
+  public boolean deleteStorageGroupsFromMTree(List<Path> deletePathList) throws MetadataErrorException {
+    List<String> pathList = new ArrayList<>();
+    String jointPath = "";
+    for (Path storagePath : deletePathList) {
+      pathList.add(storagePath.getFullPath());
+      jointPath = jointPath + "," + storagePath.getFullPath();
+    }
     lock.writeLock().lock();
     try {
-      checkAndGetDataTypeCache.clear();
-      mNodeCache.clear();
-      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
-      mgraph.deleteStorageGroup(path);
-      seriesNumberInStorageGroups.remove(path);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
-        writer.write(MetadataOperationType.DELETE_STORAGE_GROUP_FROM_MTREE + "," + path);
+        writer.write(MetadataOperationType.DELETE_STORAGE_GROUP_FROM_MTREE + jointPath);
         writer.newLine();
         writer.flush();
       }
-    } catch (IOException | ConfigAdjusterException e){
-      throw new MetadataErrorException(e);
-    } catch (PathErrorException e){
-      try {
-        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
-      } catch (ConfigAdjusterException ex){
-        throw new MetadataErrorException(ex);
+      for (String delStorageGroup : pathList) {
+        try {
+          checkAndGetDataTypeCache.clear();
+          mNodeCache.clear();
+          IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
+          mgraph.deleteStorageGroup(delStorageGroup);
+          seriesNumberInStorageGroups.remove(delStorageGroup);
+        } catch (PathErrorException e){
+          try {
+            IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
+          } catch (ConfigAdjusterException ex){
+            throw new MetadataErrorException(ex);
+          }
+          throw new MetadataErrorException(e);
+        }
       }
+    } catch (IOException | ConfigAdjusterException e){
       throw new MetadataErrorException(e);
     } finally {
       lock.writeLock().unlock();

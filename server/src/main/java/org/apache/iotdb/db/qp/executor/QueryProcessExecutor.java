@@ -401,8 +401,10 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
           mManager.setStorageGroupToMTree(path.getFullPath());
           break;
         case DELETE_STORAGE_GROUP:
-          mManager.deleteStorageGroupFromMTree(path.getFullPath());
-          storageEngine.deleteStorageGroup(path.getFullPath());
+          mManager.deleteStorageGroupsFromMTree(deletePathList);
+          for (Path storageGroupPath : deletePathList) {
+            storageEngine.deleteStorageGroup(storageGroupPath.getFullPath());
+          }
           break;
         default:
           throw new ProcessorException("unknown namespace type:" + namespaceType);

@@ -306,7 +306,11 @@ public class SyncServiceImpl implements SyncService.Iface {
         metadataManger.unlinkMNodeFromPTree(args[1], args[2]);
         break;
       case MetadataOperationType.DELETE_STORAGE_GROUP_FROM_MTREE:
-        metadataManger.deleteStorageGroupFromMTree(args[1]);
+        List<Path> storageGroups = new ArrayList<>();
+        for (int l = 1; l < args.length; l++){
+          storageGroups.add(new Path(args[l]));
+        }
+        metadataManger.deleteStorageGroupsFromMTree(storageGroups);
       default:
         logger.error("Unrecognizable command {}", cmd);
     }

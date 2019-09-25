@@ -233,6 +233,10 @@ public class IoTDBSessionIT {
         resultStr.append("\n");
       }
       Assert.assertEquals(resultStr.toString(), standard);
+      List<String> storageGroups = new ArrayList<>();
+      storageGroups.add("root.sg1.d1");
+      storageGroups.add("root.sg2");
+      session.deleteStorageGroups(storageGroups);
     }
   }
 }

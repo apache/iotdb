@@ -301,7 +301,7 @@ service TSIService {
 
     TSStatus deleteTimeseries(1:list<string> path)
 
-    TSStatus deleteStorageGroup(1:string storageGroup);
+    TSStatus deleteStorageGroups(1:list<string> storageGroup);
 
 	TSStatus insertRow(1:TSInsertReq req);
 
