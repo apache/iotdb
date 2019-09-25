@@ -68,7 +68,7 @@ For Linux and Mac OS X users:
 ```
 * Assume that there are 20 storage groups, 10w timeseries and maximum timeseries number among storage groups is 50000:
 ```
-  Shell >$IOTDB_HOME/bin/memory-tool.sh calmem -sg 20 -ts 100000 -tsm -50000
+  Shell >$IOTDB_HOME/bin/memory-tool.sh calmem -sg 20 -ts 100000 -mts -50000
 ```
 
 For Windows users:
@@ -78,6 +78,6 @@ For Windows users:
 ```
 * Assume that there are 20 storage groups, 10w timeseries and maximum timeseries number among storage groups is 50000:
 ```
-  Shell >$IOTDB_HOME\bin\memory-tool.bat calmem -sg 20 -ts 100000 -tsm -50000
+  Shell >$IOTDB_HOME\bin\memory-tool.bat calmem -sg 20 -ts 100000 -mts -50000
 ```
 

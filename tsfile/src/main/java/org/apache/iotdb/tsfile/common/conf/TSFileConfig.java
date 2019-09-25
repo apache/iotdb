@@ -299,7 +299,7 @@ public class TSFileConfig {
 
 
   public FSType getTSFileStorageFs() {
-    return this.TSFileStorageFs;
+      return this.TSFileStorageFs;
   }
 
   public void setTSFileStorageFs(String TSFileStorageFs) {
