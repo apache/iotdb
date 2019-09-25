@@ -57,6 +57,7 @@
         <module>hadoop</module>
         <module>spark-iotdb-connector</module>
         <module>distribution</module>
+        <module>hive-connector</module>
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -65,6 +66,7 @@
         <maven.assembly.version>2.5.5</maven.assembly.version>
         <scala.version>2.11.12</scala.version>
         <hadoop.version>2.7.3</hadoop.version>
+        <hive.version>2.3.6</hive.version>
         <junit.version>4.12</junit.version>
         <slf4j.version>1.7.12</slf4j.version>
         <logback.version>1.1.11</logback.version>
@@ -250,6 +252,16 @@
                 <groupId>org.apache.hadoop</groupId>
                 <artifactId>hadoop-client</artifactId>
                 <version>${hadoop.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.hive</groupId>
+                <artifactId>hive-serde</artifactId>
+                <version>${hive.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.hive</groupId>
+                <artifactId>hive-exec</artifactId>
+                <version>${hive.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.spark</groupId>
