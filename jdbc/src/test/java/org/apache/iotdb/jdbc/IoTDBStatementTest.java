@@ -107,7 +107,7 @@ public class IoTDBStatementTest {
             + "root.vehicle.d0.s0,root.vehicle,INT32,RLE,\n"
             + "root.vehicle.d0.s1,root.vehicle,INT64,RLE,\n"
             + "root.vehicle.d0.s2,root.vehicle,FLOAT,RLE,\n";
-    when(fetchMetadataResp.getShowTimeseriesList()).thenReturn(tslist);
+    when(fetchMetadataResp.getTimeseriesList()).thenReturn(tslist);
     boolean res = stmt.execute("show timeseries");
     assertTrue(res);
     try (ResultSet resultSet = stmt.getResultSet()) {
@@ -127,6 +127,7 @@ public class IoTDBStatementTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -163,7 +164,7 @@ public class IoTDBStatementTest {
         + "root.vehicle.d0.s0,root.vehicle,INT32,RLE,\n"
         + "root.vehicle.d0.s1,root.vehicle,INT64,RLE,\n"
         + "root.vehicle.d0.s2,root.vehicle,FLOAT,RLE,\n";
-    when(fetchMetadataResp.getShowTimeseriesList()).thenReturn(tslist);
+    when(fetchMetadataResp.getTimeseriesList()).thenReturn(tslist);
     boolean res = stmt.execute("show timeseries root.vehicle.d0");
     assertTrue(res);
     try (ResultSet resultSet = stmt.getResultSet()) {
@@ -192,7 +193,7 @@ public class IoTDBStatementTest {
     IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
     Set<String> sgSet = new HashSet<>();
     sgSet.add("root.vehicle");
-    when(fetchMetadataResp.getShowStorageGroups()).thenReturn(sgSet);
+    when(fetchMetadataResp.getStorageGroups()).thenReturn(sgSet);
     String standard = "Storage Group,\nroot.vehicle,\n";
     boolean res = stmt.execute("show storage group");
     assertTrue(res);
@@ -213,6 +214,7 @@ public class IoTDBStatementTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 

@@ -244,11 +244,11 @@ public class MGraph implements Serializable {
     return new Metadata(deviceIdMap);
   }
 
-  HashSet<String> getAllStorageGroup() {
+  Set<String> getAllStorageGroup() {
     return mtree.getAllStorageGroup();
   }
 
-  HashSet<String> getAllDevices() {
+  Set<String> getAllDevices() {
     return mtree.getAllDevices();
   }
 

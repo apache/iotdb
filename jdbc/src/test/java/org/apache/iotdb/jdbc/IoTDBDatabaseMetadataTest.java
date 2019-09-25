@@ -108,6 +108,7 @@ public class IoTDBDatabaseMetadataTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -143,6 +144,7 @@ public class IoTDBDatabaseMetadataTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -181,6 +183,7 @@ public class IoTDBDatabaseMetadataTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -223,6 +226,7 @@ public class IoTDBDatabaseMetadataTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -257,6 +261,7 @@ public class IoTDBDatabaseMetadataTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -291,6 +296,7 @@ public class IoTDBDatabaseMetadataTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -350,6 +356,7 @@ public class IoTDBDatabaseMetadataTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -386,6 +393,7 @@ public class IoTDBDatabaseMetadataTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -418,6 +426,7 @@ public class IoTDBDatabaseMetadataTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
 
   }

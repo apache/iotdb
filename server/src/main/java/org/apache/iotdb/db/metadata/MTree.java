@@ -745,7 +745,7 @@ public class MTree implements Serializable {
    *
    * @return a list contains all distinct storage groups
    */
-  HashSet<String> getAllStorageGroup() {
+  Set<String> getAllStorageGroup() {
     HashSet<String> res = new HashSet<>();
     MNode rootNode;
     if ((rootNode = getRoot()) != null) {
@@ -769,7 +769,7 @@ public class MTree implements Serializable {
    *
    * @return a list contains all distinct devices
    */
-  HashSet<String> getAllDevices() {
+  Set<String> getAllDevices() {
     return new HashSet<>(getNodesList(3));
   }
 
