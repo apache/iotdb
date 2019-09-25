@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -41,18 +42,15 @@ public class BatchInsertPlan extends PhysicalPlan {
 
   private Object[] columns;
   private ByteBuffer valueBuffer;
-
+  private Set<Integer> index;
   private int rowCount = 0;
-
   // cached values
   private Long maxTime = null;
   private Long minTime = null;
   private List<Path> paths;
-
   public BatchInsertPlan() {
     super(false, OperatorType.BATCHINSERT);
   }
-
   public BatchInsertPlan(String deviceId, List<String> measurements) {
     super(false, OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
@@ -66,6 +64,13 @@ public class BatchInsertPlan extends PhysicalPlan {
     setDataTypes(dataTypes);
   }
 
+  public Set<Integer> getIndex() {
+    return index;
+  }
+
+  public void setIndex(Set<Integer> index) {
+    this.index = index;
+  }
 
   @Override
   public List<Path> getPaths() {
@@ -92,15 +97,15 @@ public class BatchInsertPlan extends PhysicalPlan {
       putString(buffer, m);
     }
 
-    for (TSDataType dataType: dataTypes) {
+    for (TSDataType dataType : dataTypes) {
       buffer.putShort(dataType.serialize());
     }
 
-    buffer.putInt(times.length);
+    buffer.putInt(index.size());
 
     if (timeBuffer == null) {
-      for (long time: times) {
-        buffer.putLong(time);
+      for(int loc : index){
+        buffer.putLong(times[loc]);
       }
     } else {
       buffer.put(timeBuffer.array());
@@ -113,39 +118,39 @@ public class BatchInsertPlan extends PhysicalPlan {
         switch (dataType) {
           case INT32:
             int[] intValues = (int[]) columns[i];
-            for (int index = 0; index < rowCount; index++) {
-              buffer.putInt(intValues[index]);
+            for(int loc : index){
+              buffer.putInt(intValues[loc]);
             }
             break;
           case INT64:
             long[] longValues = (long[]) columns[i];
-            for (int index = 0; index < rowCount; index++) {
-              buffer.putLong(longValues[index]);
+            for(int loc : index){
+              buffer.putLong(longValues[loc]);
             }
             break;
           case FLOAT:
             float[] floatValues = (float[]) columns[i];
-            for (int index = 0; index < rowCount; index++) {
-              buffer.putFloat(floatValues[index]);
+            for(int loc : index){
+              buffer.putFloat(floatValues[loc]);
             }
             break;
           case DOUBLE:
             double[] doubleValues = (double[]) columns[i];
-            for (int index = 0; index < rowCount; index++) {
-              buffer.putDouble(doubleValues[index]);
+            for(int loc : index){
+              buffer.putDouble(doubleValues[loc]);
             }
             break;
           case BOOLEAN:
             boolean[] boolValues = (boolean[]) columns[i];
-            for (int index = 0; index < rowCount; index++) {
-              buffer.put(BytesUtils.boolToByte(boolValues[index]));
+            for(int loc : index){
+              buffer.put(BytesUtils.boolToByte(boolValues[loc]));
             }
             break;
           case TEXT:
             Binary[] binaryValues = (Binary[]) columns[i];
-            for (int index = 0; index < rowCount; index++) {
-              buffer.putInt(binaryValues[index].getLength());
-              buffer.put(binaryValues[index].getValues());
+            for(int loc : index){
+              buffer.putInt(binaryValues[loc].getLength());
+              buffer.put(binaryValues[loc].getValues());
             }
             break;
           default:
@@ -185,10 +190,11 @@ public class BatchInsertPlan extends PhysicalPlan {
     }
 
     int rows = buffer.getInt();
+    rowCount = rows;
     this.times = new long[rows];
-    QueryDataSetUtils.readTimesFromBuffer(buffer, rows);
+    times = QueryDataSetUtils.readTimesFromBuffer(buffer, rows);
 
-    QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, measurementSize, rows);
+    columns = QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, measurementSize, rows);
   }
 
 
@@ -228,12 +234,16 @@ public class BatchInsertPlan extends PhysicalPlan {
     return columns;
   }
 
+  public void setColumns(Object[] columns) {
+    this.columns = columns;
+  }
+
   public long getMinTime() {
     if (minTime != null) {
       return minTime;
     }
     minTime = Long.MAX_VALUE;
-    for (Long time: times) {
+    for (Long time : times) {
       if (time < minTime) {
         minTime = time;
       }
@@ -246,7 +256,7 @@ public class BatchInsertPlan extends PhysicalPlan {
       return maxTime;
     }
     long maxTime = Long.MIN_VALUE;
-    for (Long time: times) {
+    for (Long time : times) {
       if (time > maxTime) {
         maxTime = time;
       }
@@ -268,9 +278,5 @@ public class BatchInsertPlan extends PhysicalPlan {
 
   public void setRowCount(int size) {
     this.rowCount = size;
-  }
-
-  public void setColumns(Object[] columns) {
-    this.columns = columns;
   }
 }
