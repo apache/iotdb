@@ -781,7 +781,7 @@ public class MManager {
    *
    * @return A List instance which stores all node at given level
    */
-  public List<String> getNodesList(String nodeLevel) {
+  public List<String> getNodesList(int nodeLevel) {
 
     lock.readLock().lock();
     try {

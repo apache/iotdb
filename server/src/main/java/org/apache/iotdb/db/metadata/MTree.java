@@ -767,10 +767,10 @@ public class MTree implements Serializable {
   /**
    * Get all devices in current Metadata Tree.
    *
-   * @return a list contains all distinct storage groups
+   * @return a list contains all distinct devices
    */
   HashSet<String> getAllDevices() {
-    return new HashSet<>(getNodesList("3"));
+    return new HashSet<>(getNodesList(3));
   }
 
   /**
@@ -778,12 +778,11 @@ public class MTree implements Serializable {
    *
    * @return a list contains all nodes at the given level
    */
-  List<String> getNodesList(String nodeLevel) {
+  List<String> getNodesList(int nodeLevel) {
     List<String> res = new ArrayList<>();
-    int level = Integer.parseInt(nodeLevel);
     MNode rootNode;
     if ((rootNode = getRoot()) != null) {
-      findNodes(rootNode, "root", res, level);
+      findNodes(rootNode, "root", res, nodeLevel);
     }
     return res;
   }

@@ -252,7 +252,7 @@ public class MGraph implements Serializable {
     return mtree.getAllDevices();
   }
 
-  List<String> getNodesList(String nodeLevel) {
+  List<String> getNodesList(int nodeLevel) {
     return mtree.getNodesList(nodeLevel);
   }
 

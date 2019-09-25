@@ -297,13 +297,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       switch (req.getType()) {
         case "SHOW_TIMESERIES":
           String path = req.getColumnPath();
-          List<List<String>> showTimeseriesList = getTimeSeriesForPath(path);
-          resp.setShowTimeseriesList(showTimeseriesList);
+          List<List<String>> timeseriesList = getTimeSeriesForPath(path);
+          resp.setTimeseriesList(timeseriesList);
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
         case "SHOW_STORAGE_GROUP":
           Set<String> storageGroups = getAllStorageGroups();
-          resp.setShowStorageGroups(storageGroups);
+          resp.setStorageGroups(storageGroups);
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
         case "METADATA_IN_JSON":
@@ -313,7 +313,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           break;
         case "SHOW_DEVICES":
           Set<String> devices = getAllDevices();
-          resp.setShowDevices(devices);
+          resp.setDevices(devices);
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
         case "COLUMN":
@@ -358,7 +358,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return nodeColumnsNum;
   }
 
-  private List<String> getNodesList(String level) throws PathErrorException {
+  private List<String> getNodesList(int level) throws PathErrorException {
     return MManager.getInstance().getNodesList(level);
   }
 

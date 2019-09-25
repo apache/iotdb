@@ -37,4 +37,4 @@
 
 * Change item in enum **TSProtocolVersion** from ~~TSFILE_SERVICE_PROTOCOL_V1~~ to IOTDB_SERVICE_PROTOCOL_V1.
 
-* Add `6: optional set<string> showStorageGroups` in struct **TSFetchMetadataResp**.
+* Add **storageGroups** in struct **TSFetchMetadataResp**. Rename ~~ColumnsList~~ to **columnsList**, ~~showTimeseriesList~~ to **timeseriesList**, ~~showStorageGroups~~ to **storageGroups**.

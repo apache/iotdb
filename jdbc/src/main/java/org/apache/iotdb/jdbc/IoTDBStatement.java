@@ -270,7 +270,7 @@ public class IoTDBStatement implements Statement {
         return true;
       } else {
         String path = cmdSplited[2];
-        String level = cmdSplited[3].replaceAll(" ", "").substring(13);
+        int level = Integer.parseInt(cmdSplited[3].replaceAll(" ", "").substring(13));
         IoTDBDatabaseMetadata databaseMetadata = (IoTDBDatabaseMetadata) connection.getMetaData();
         resultSet = databaseMetadata.getNodes(Constant.COUNT_NODE_TIMESERIES, path, null, null, level);
         return true;
@@ -281,7 +281,7 @@ public class IoTDBStatement implements Statement {
         throw new SQLException("Error format of \'COUNT NODES LEVEL=<INTEGER>\'");
       } else {
         String path = cmdSplited[2];
-        String level = cmdSplited[3].replaceAll(" ", "").substring(6);
+        int level = Integer.parseInt(cmdSplited[3].replaceAll(" ", "").substring(6));
         IoTDBDatabaseMetadata databaseMetaData = (IoTDBDatabaseMetadata) connection.getMetaData();
         resultSet = databaseMetaData.getNodes(Constant.COUNT_NODES, path, null, null, level);
         return true;

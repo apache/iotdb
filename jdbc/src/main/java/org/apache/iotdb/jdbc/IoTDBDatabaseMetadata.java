@@ -100,7 +100,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           } catch (IoTDBRPCException e) {
             throw new IoTDBSQLException(e.getMessage());
           }
-          return new IoTDBMetadataResultSet(resp.getShowDevices(), MetadataType.DEVICES);
+          return new IoTDBMetadataResultSet(resp.getDevices(), MetadataType.DEVICES);
         } catch (TException e) {
           throw new TException("Conncetion error when fetching device metadata", e);
         }
@@ -113,7 +113,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           } catch (IoTDBRPCException e) {
             throw new IoTDBSQLException(e.getMessage());
           }
-          Set<String> showStorageGroup = resp.getShowStorageGroups();
+          Set<String> showStorageGroup = resp.getStorageGroups();
           return new IoTDBMetadataResultSet(showStorageGroup, MetadataType.STORAGE_GROUP);
         } catch (TException e) {
           throw new TException("Conncetion error when fetching storage group metadata", e);
@@ -128,7 +128,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           } catch (IoTDBRPCException e) {
             throw new IoTDBSQLException(e.getMessage());
           }
-          List<List<String>> showTimeseriesList = resp.getShowTimeseriesList();
+          List<List<String>> showTimeseriesList = resp.getTimeseriesList();
           return new IoTDBMetadataResultSet(showTimeseriesList, MetadataType.TIMESERIES);
         } catch (TException e) {
           throw new TException("Conncetion error when fetching timeseries metadata", e);
@@ -154,7 +154,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   public ResultSet getNodes(String catalog, String schemaPattern, String columnPattern,
-      String devicePattern, String nodeLevel) throws SQLException {
+      String devicePattern, int nodeLevel) throws SQLException {
     try {
       return getNodesFunc(catalog, nodeLevel);
     } catch (TException e) {
@@ -179,7 +179,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     }
   }
 
-  private ResultSet getNodesFunc(String catalog, String nodeLevel) throws TException, SQLException {
+  private ResultSet getNodesFunc(String catalog, int nodeLevel) throws TException, SQLException {
     TSFetchMetadataReq req;
     switch (catalog) {
       case Constant.COUNT_NODES:

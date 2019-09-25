@@ -163,7 +163,7 @@ public class IoTDBDatabaseMetadataTest {
     String standard = "count,\n" + "4,\n";
     try {
       IoTDBDatabaseMetadata metadata = (IoTDBDatabaseMetadata) databaseMetaData;
-      String level = "3";
+      int level = 3;
       ResultSet resultSet = metadata.getNodes(Constant.COUNT_NODES, "root", null, null, level);
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
@@ -205,7 +205,7 @@ public class IoTDBDatabaseMetadataTest {
             + "root.vehicle.d4,2,\n";
     try {
       IoTDBDatabaseMetadata metadata = (IoTDBDatabaseMetadata) databaseMetaData;
-      String level = "3";
+      int level = 3;
       ResultSet resultSet = metadata.getNodes(Constant.COUNT_NODE_TIMESERIES, "root", null, null, level);
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
@@ -269,7 +269,7 @@ public class IoTDBDatabaseMetadataTest {
     Set<String> devicesSet = new HashSet<>();
     devicesSet.add("root.vehicle.d0");
 
-    when(fetchMetadataResp.getShowDevices()).thenReturn(devicesSet);
+    when(fetchMetadataResp.getDevices()).thenReturn(devicesSet);
 
     String standard = "Device,\n" + "root.vehicle.d0,\n";
     try {
@@ -326,7 +326,7 @@ public class IoTDBDatabaseMetadataTest {
       }
     });
 
-    when(fetchMetadataResp.getShowTimeseriesList()).thenReturn(tslist);
+    when(fetchMetadataResp.getTimeseriesList()).thenReturn(tslist);
 
     String standard = "Timeseries,Storage Group,DataType,Encoding,\n"
         + "root.vehicle.d0.s0,root.vehicle,INT32,RLE,\n"
@@ -369,7 +369,7 @@ public class IoTDBDatabaseMetadataTest {
       }
     });
 
-    when(fetchMetadataResp.getShowTimeseriesList()).thenReturn(tslist);
+    when(fetchMetadataResp.getTimeseriesList()).thenReturn(tslist);
 
     String standard = "DataType,\n" + "INT32,\n";
     try (ResultSet resultSet = databaseMetaData
@@ -397,7 +397,7 @@ public class IoTDBDatabaseMetadataTest {
   public void ShowStorageGroup() throws Exception {
     Set<String> sgSet = new HashSet<>();
     sgSet.add("root.vehicle");
-    when(fetchMetadataResp.getShowStorageGroups()).thenReturn(sgSet);
+    when(fetchMetadataResp.getStorageGroups()).thenReturn(sgSet);
 
     String standard = "Storage Group,\n" + "root.vehicle,\n";
     try (ResultSet resultSet = databaseMetaData
@@ -419,6 +419,7 @@ public class IoTDBDatabaseMetadataTest {
     } catch (SQLException e) {
       System.out.println(e);
     }
+
   }
 
   /**
