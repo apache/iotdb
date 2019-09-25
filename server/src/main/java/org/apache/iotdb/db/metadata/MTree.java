@@ -25,6 +25,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -179,11 +180,11 @@ public class MTree implements Serializable {
   /**
    * make sure check seriesPath before setting storage group.
    */
-  public void setStorageGroup(String path) throws PathErrorException {
+  public void setStorageGroup(String path) throws StorageGroupException {
     String[] nodeNames = path.split(DOUB_SEPARATOR);
     MNode cur = root;
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
-      throw new PathErrorException(
+      throw new StorageGroupException(
           String.format("The storage group can't be set to the %s node", path));
     }
     int i = 1;
@@ -195,7 +196,7 @@ public class MTree implements Serializable {
       } else if (temp.isStorageLevel()) {
         // before set storage group should check the seriesPath exist or not
         // throw exception
-        throw new PathErrorException(
+        throw new StorageGroupException(
             String.format("The prefix of %s has been set to the storage group.", path));
       }
       cur = cur.getChild(nodeNames[i]);
@@ -205,7 +206,7 @@ public class MTree implements Serializable {
     if (temp == null) {
       cur.addChild(nodeNames[i], new MNode(nodeNames[i], cur, false));
     } else {
-      throw new PathErrorException(
+      throw new StorageGroupException(
           String.format("The seriesPath of %s already exist, it can't be set to the storage group",
               path));
     }
@@ -213,6 +214,29 @@ public class MTree implements Serializable {
     cur.setStorageLevel(true);
     setDataFileName(path, cur);
   }
+
+//  public MNode setStorageGroupByAutoLevel(String path, int level) throws PathErrorException {
+//    String[] nodeNames = path.split(DOUB_SEPARATOR);
+//    MNode cur = getRoot();
+//    String storageGroupName = getRoot().getName();
+//    if (nodeNames.length < level || !nodeNames[0].equals(storageGroupName)) {
+//      throw new PathErrorException(
+//          String.format("The storage group can't be set to the %s node", path));
+//    }
+//    int i = 1;
+//    while (i < level) {
+//      cur = cur.getChild(nodeNames[i]);
+//      storageGroupName += "." + nodeNames[i];
+//      i++;
+//    }
+//    cur.setStorageLevel(true);
+//    setDataFileName(storageGroupName, cur);
+//    while (i < nodeNames.length) {
+//      cur = cur.getChild(nodeNames[i]);
+//      i++;
+//    }
+//    return cur;
+//  }
 
   /**
    * Check whether the input path is storage group or not
@@ -242,9 +266,9 @@ public class MTree implements Serializable {
   /**
    * Check whether set file seriesPath for this node or not. If not, throw an exception
    */
-  private void checkStorageGroup(MNode node) throws PathErrorException {
+  private void checkStorageGroup(MNode node) throws StorageGroupException {
     if (node.getDataFileName() != null) {
-      throw new PathErrorException(
+      throw new StorageGroupException(
           String.format("The storage group %s has been set", node.getDataFileName()));
     }
     if (node.getChildren() == null) {
@@ -439,10 +463,53 @@ public class MTree implements Serializable {
     return cur;
   }
 
+//  /**
+//   * function for getting node by path with file level check.
+//   */
+//  MNode getNodeByPathWithFileLevelCheck(String path) throws PathErrorException {
+//    boolean fileLevelChecked = false;
+//    String[] nodes = path.split(DOUB_SEPARATOR);
+//    if (nodes.length < 2 || !nodes[0].equals(getRoot().getName())) {
+//      throw new PathErrorException(String.format(SERIES_NOT_CORRECT, path));
+//    }
+//
+//    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+//    MNode cur = getRoot();
+//    int indexOfNodeToBeCreated = 0;
+//    for (int i = 1; i < nodes.length; i++) {
+//      if (!cur.hasChild(nodes[i])) {
+//        if (!conf.isAutoCreateSchemaEnable()) {
+//          throw new PathErrorException(
+//              String.format(NO_CHILD_ERROR,cur.getName(),nodes[i]));
+//        }
+//        indexOfNodeToBeCreated = i;
+//        break;
+//      }
+//      cur = cur.getChild(nodes[i]);
+//      if (cur.isStorageLevel()) {
+//        fileLevelChecked = true;
+//      }
+//    }
+//    if (conf.isAutoCreateSchemaEnable() && indexOfNodeToBeCreated != 0) {
+//      for (int i = indexOfNodeToBeCreated; i < nodes.length; i++) {
+//        MNode node = new MNode(nodes[i], cur, false);
+//        cur.addChild(nodes[i], node);
+//        cur = node;
+//      }
+//    }
+//    if (!fileLevelChecked) {
+//      if (!conf.isAutoCreateSchemaEnable()) {
+//        throw new PathErrorException("FileLevel is not set for current seriesPath:" + path);
+//      }
+//      cur = setStorageGroupByAutoLevel(path, conf.getAutoStorageGroupLevel());
+//    }
+//    return cur;
+//  }
+
   /**
    * function for getting node by path with file level check.
    */
-  MNode getNodeByPathWithFileLevelCheck(String path) throws PathErrorException {
+  MNode getNodeByPathWithFileLevelCheck(String path) throws PathErrorException, StorageGroupException {
     boolean fileLevelChecked = false;
     String[] nodes = path.split(DOUB_SEPARATOR);
     if (nodes.length < 2 || !nodes[0].equals(getRoot().getName())) {
@@ -452,8 +519,10 @@ public class MTree implements Serializable {
     MNode cur = getRoot();
     for (int i = 1; i < nodes.length; i++) {
       if (!cur.hasChild(nodes[i])) {
-        throw new PathErrorException(
-            String.format(NO_CHILD_ERROR,cur.getName(),nodes[i]));
+        if (!fileLevelChecked) {
+          throw new StorageGroupException("Storage group is not set for current seriesPath:" + path);
+        }
+        throw new PathErrorException(String.format(NO_CHILD_ERROR, cur.getName(), nodes[i]));
       }
       cur = cur.getChild(nodes[i]);
       if (cur.isStorageLevel()) {
@@ -461,7 +530,7 @@ public class MTree implements Serializable {
       }
     }
     if (!fileLevelChecked) {
-      throw new PathErrorException("FileLevel is not set for current seriesPath:" + path);
+      throw new StorageGroupException("Storage group is not set for current seriesPath:" + path);
     }
     return cur;
   }
@@ -522,15 +591,13 @@ public class MTree implements Serializable {
    *
    * @return String storage group seriesPath
    */
-  String getStorageGroupNameByPath(String path) throws PathErrorException {
+  String getStorageGroupNameByPath(String path) throws StorageGroupException {
 
     String[] nodes = path.split(DOUB_SEPARATOR);
     MNode cur = getRoot();
     for (int i = 1; i < nodes.length; i++) {
       if (cur == null) {
-        throw new PathErrorException(
-            String.format(NOT_SERIES_PATH,
-                path));
+        throw new StorageGroupException(String.format(NOT_SERIES_PATH, path));
       } else if (cur.isStorageLevel()) {
         return cur.getDataFileName();
       } else {
@@ -540,8 +607,7 @@ public class MTree implements Serializable {
     if (cur.isStorageLevel()) {
       return cur.getDataFileName();
     }
-    throw new PathErrorException(
-        String.format(NOT_SERIES_PATH, path));
+    throw new StorageGroupException(String.format(NOT_SERIES_PATH, path));
   }
 
   /**
@@ -591,15 +657,13 @@ public class MTree implements Serializable {
   /**
    * function for getting file name by path.
    */
-  String getStorageGroupNameByPath(MNode node, String path) throws PathErrorException {
+  String getStorageGroupNameByPath(MNode node, String path) throws StorageGroupException {
 
     String[] nodes = path.split(DOUB_SEPARATOR);
     MNode cur = node.getChild(nodes[0]);
     for (int i = 1; i < nodes.length; i++) {
       if (cur == null) {
-        throw new PathErrorException(
-            String.format(NOT_SERIES_PATH,
-                path));
+        throw new StorageGroupException(String.format(NOT_SERIES_PATH, path));
       } else if (cur.isStorageLevel()) {
         return cur.getDataFileName();
       } else {
@@ -609,8 +673,7 @@ public class MTree implements Serializable {
     if (cur.isStorageLevel()) {
       return cur.getDataFileName();
     }
-    throw new PathErrorException(
-        String.format(NOT_SERIES_PATH, path));
+    throw new StorageGroupException(String.format(NOT_SERIES_PATH, path));
   }
 
   /**
@@ -633,6 +696,29 @@ public class MTree implements Serializable {
       }
     }
     return false;
+  }
+
+  boolean checkDeviceId(String deviceId) throws StorageGroupException, PathErrorException {
+    String[] nodes = deviceId.split(DOUB_SEPARATOR);
+    MNode cur = getRoot();
+    if (nodes.length <= 1 || !nodes[0].equals(getRoot().getName())) {
+      throw new PathErrorException(String.format(SERIES_NOT_CORRECT, deviceId));
+    }
+    boolean isStorageLevel = false;
+    for (int i = 1; i < nodes.length; i++) {
+      cur = cur.getChild(nodes[i]);
+      if (cur == null) {
+        if (!isStorageLevel) {
+          throw new StorageGroupException(
+                  String.format("The device doesn't belong to any storage group.", deviceId));
+        } else {
+          throw new PathErrorException(String.format(SERIES_NOT_CORRECT, deviceId));
+        }
+      } else if (cur.isStorageLevel()) {
+        isStorageLevel = true;
+      }
+    }
+    return true;
   }
 
   /**

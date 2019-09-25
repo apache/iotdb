@@ -26,6 +26,7 @@ import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -73,7 +74,7 @@ public class MManagerImproveTest {
   }
 
   @Test
-  public void analyseTimeCost() throws PathErrorException, ProcessorException {
+  public void analyseTimeCost() throws PathErrorException, ProcessorException, StorageGroupException {
     mManager = MManager.getInstance();
 
     long startTime, endTime;
@@ -131,7 +132,7 @@ public class MManagerImproveTest {
   }
 
   public void doOriginTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, ProcessorException {
+      throws PathErrorException, StorageGroupException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       assertEquals(true, mManager.pathExist(path));
@@ -144,7 +145,7 @@ public class MManagerImproveTest {
   }
 
   public void doPathLoopOnceTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, ProcessorException {
+      throws PathErrorException, StorageGroupException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       List<Path> paths = new ArrayList<>();
@@ -156,13 +157,13 @@ public class MManagerImproveTest {
   }
 
   public void doDealdeviceIdOnceTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, ProcessorException {
+      throws PathErrorException, StorageGroupException {
     boolean isFileLevelChecked;
     List<Path> tempList = new ArrayList<>();
     tempList.add(new Path(deviceId));
     try {
       isFileLevelChecked = mManager.checkFileLevel(tempList);
-    } catch (PathErrorException e) {
+    } catch (StorageGroupException e) {
       isFileLevelChecked = false;
     }
     MNode node = mManager.getNodeByPath(deviceId);
@@ -181,7 +182,7 @@ public class MManagerImproveTest {
   }
 
   public void doRemoveListTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, ProcessorException {
+      throws PathErrorException, StorageGroupException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       assertEquals(true, mManager.pathExist(path));
@@ -192,11 +193,11 @@ public class MManagerImproveTest {
   }
 
   public void doAllImproveTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, ProcessorException {
+      throws PathErrorException, StorageGroupException {
     boolean isFileLevelChecked;
     try {
       isFileLevelChecked = mManager.checkFileLevel(deviceId);
-    } catch (PathErrorException e) {
+    } catch (StorageGroupException e) {
       isFileLevelChecked = false;
     }
     MNode node = mManager.getNodeByPathWithCheck(deviceId);
@@ -212,7 +213,7 @@ public class MManagerImproveTest {
   }
 
   public void doCacheTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, ProcessorException {
+      throws PathErrorException {
     MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
     for (int i = 0; i < measurementList.size(); i++) {
       assertEquals(true, node.hasChild(measurementList.get(i)));
@@ -224,7 +225,7 @@ public class MManagerImproveTest {
   }
 
   @Test
-  public void improveTest() throws PathErrorException, ProcessorException {
+  public void improveTest() throws PathErrorException, StorageGroupException {
     mManager = MManager.getInstance();
 
     long startTime, endTime;

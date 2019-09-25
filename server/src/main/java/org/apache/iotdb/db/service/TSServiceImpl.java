@@ -691,7 +691,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     // check file level set
     try {
       checkFileLevelSet(paths);
-    } catch (PathErrorException e) {
+    } catch (StorageGroupException e) {
       logger.error("meet error while checking file level.", e);
       return getTSExecuteStatementResp(getStatus(TSStatusType.CHECK_FILE_LEVEL_ERROR, e.getMessage()));
     }
@@ -729,7 +729,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  private void checkFileLevelSet(List<Path> paths) throws PathErrorException {
+  private void checkFileLevelSet(List<Path> paths) throws StorageGroupException {
     MManager.getInstance().checkFileLevel(paths);
   }
 

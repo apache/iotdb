@@ -33,11 +33,10 @@ import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -182,7 +181,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       value = checkValue(dataType, value);
       storageEngine.update(deviceId, measurementId, startTime, endTime, dataType, value);
       return true;
-    } catch (PathErrorException e) {
+    } catch (PathErrorException | StorageGroupException e) {
       throw new ProcessorException(e);
     }
   }
@@ -199,7 +198,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       mManager.getStorageGroupNameByPath(path.getFullPath());
       storageEngine.delete(deviceId, measurementId, timestamp);
       return true;
-    } catch (PathErrorException | StorageEngineException e) {
+    } catch (StorageEngineException | StorageGroupException e) {
       throw new ProcessorException(e);
     }
   }
@@ -210,15 +209,41 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
-      MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
+      MNode node;
+      IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
       String[] values = insertPlan.getValues();
       TSDataType[] dataTypes = new TSDataType[measurementList.length];
 
+      try {
+        mManager.checkDeviceId(deviceId);
+      } catch (StorageGroupException e1) {
+        if (!conf.isAutoCreateSchemaEnable()) {
+          throw new ProcessorException(e1);
+        } else {
+          try {
+            mManager.setStorageLevelToMTree(deviceId, conf.getAutoStorageGroupLevel());
+            addPathListToMTree(deviceId, measurementList, values);
+          } catch (MetadataErrorException | IOException | StorageGroupException e2) {
+            throw new ProcessorException(e2);
+          }
+        }
+      } catch (PathErrorException e2) {
+        if (!conf.isAutoCreateSchemaEnable()) {
+          throw new ProcessorException(e2);
+        } else {
+          addPathListToMTree(deviceId, measurementList, values);
+        }
+      }
+
+      node = mManager.getNodeByDeviceIdFromCache(deviceId);
       for (int i = 0; i < measurementList.length; i++) {
         if (!node.hasChild(measurementList[i])) {
-          throw new ProcessorException(
-              String.format("Current deviceId[%s] does not contain measurement:%s",
-                  deviceId, measurementList[i]));
+          if (!conf.isAutoCreateSchemaEnable()) {
+            throw new ProcessorException(
+                String.format("Current deviceId[%s] does not contain measurement:%s",
+                    deviceId, measurementList[i]));
+          }
+          addPathToMTree(deviceId, measurementList[i], values[i]);
         }
         MNode measurementNode = node.getChild(measurementList[i]);
         if (!measurementNode.isLeaf()) {
@@ -233,7 +258,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       insertPlan.setDataTypes(dataTypes);
       return storageEngine.insert(insertPlan);
 
-    } catch (PathErrorException | StorageEngineException e) {
+    } catch (PathErrorException | StorageEngineException | IOException | StorageGroupException e) {
       throw new ProcessorException(e);
     }
   }
@@ -244,6 +269,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       String[] measurementList = batchInsertPlan.getMeasurements();
       String deviceId = batchInsertPlan.getDeviceId();
       MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
+//      IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
       for (String s : measurementList) {
         if (!node.hasChild(s)) {
@@ -402,7 +428,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         default:
           throw new ProcessorException("unknown namespace type:" + namespaceType);
       }
-    } catch (StorageEngineException | MetadataErrorException e) {
+    } catch (StorageEngineException | MetadataErrorException | PathErrorException e) {
       throw new ProcessorException(e);
     }
     return true;
@@ -653,5 +679,79 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       }
     }
     return dataSet;
+  }
+
+  private void addPathListToMTree(String deviceId, String[] measurementList, String[] values)
+          throws PathErrorException, IOException, StorageGroupException {
+    for (int i = 0; i < measurementList.length; i++) {
+      addPathToMTree(deviceId, measurementList[i], values[i]);
+    }
+  }
+
+  private void addPathToMTree(String deviceId, String measurementId, String value)
+          throws PathErrorException, IOException, StorageGroupException {
+    TSDataType predictedDataType = getPredictedDataType(value);
+    String defaultEncoding = getDefaultEncoding(predictedDataType);
+    mManager.addPathToMTree(deviceId + "." + measurementId, predictedDataType.toString(), defaultEncoding);
+  }
+
+  private TSDataType getPredictedDataType(Object value) {
+    if (value instanceof Boolean) {
+      return TSDataType.BOOLEAN;
+    } else if (value instanceof Number || (value instanceof String && isNumber((String) value))) {
+      String v = (String) value;
+      if (!v.contains(".")) {
+        return TSDataType.INT64;
+      } else {
+        return TSDataType.DOUBLE;
+      }
+    } else {
+      return TSDataType.TEXT;
+    }
+  }
+
+  private boolean isNumber(String s) {
+    if (s.isEmpty()) {
+      return false;
+    }
+    int start = 0;
+    char firstChar = s.charAt(0);
+    if (firstChar == '+' || firstChar == '-' || firstChar == '.') {
+      start = 1;
+      if (s.length() == 1) {
+        return false;
+      }
+    }
+    int pointCount = 0;
+    for (int i = start; i < s.length(); i++) {
+      char c = s.charAt(i);
+      if (pointCount > 1) {
+        return false;
+      }
+      if (c == '.') {
+        pointCount++;
+      }
+      if (!Character.isDigit(c) && c != '.') {
+        return false;
+      }
+    }
+    if (s.charAt(s.length() - 1) == '.') {
+      return false;
+    }
+    return true;
+  }
+
+  private String getDefaultEncoding(TSDataType dataType) {
+    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    switch (dataType) {
+      case BOOLEAN:
+        return conf.getAutoBooleanEncoding();
+      case INT64:
+        return conf.getAutoLongEncoding();
+      case DOUBLE:
+        return conf.getAutoDoubleEncoding();
+      default:
+        return conf.getAutoStringEncoding();
+    }
   }
 }

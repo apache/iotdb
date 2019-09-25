@@ -20,6 +20,9 @@ package org.apache.iotdb.db.utils;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.tsfile.common.cache.Cache;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 

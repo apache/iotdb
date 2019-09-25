@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.sync.test.RandomNum;
@@ -62,7 +63,8 @@ public class FileNodeManagerBenchmark {
     }
   }
 
-  private static void prepare() throws MetadataErrorException, PathErrorException, IOException {
+  private static void prepare()
+          throws MetadataErrorException, PathErrorException, IOException, StorageGroupException {
     MManager manager = MManager.getInstance();
     manager.setStorageLevelToMTree(prefix);
     for (String device : devices) {
@@ -79,7 +81,7 @@ public class FileNodeManagerBenchmark {
 
   public static void main(String[] args)
       throws InterruptedException, IOException, MetadataErrorException,
-      PathErrorException, StorageEngineException {
+      PathErrorException, StorageEngineException, StorageGroupException {
     tearDown();
     prepare();
     long startTime = System.currentTimeMillis();

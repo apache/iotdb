@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -112,7 +113,7 @@ public class PerformanceTest {
 
   @Test
   public void recoverTest()
-      throws IOException, PathErrorException{
+      throws IOException, PathErrorException, StorageGroupException {
     // this test insert 1000000 * 3 logs , recover from them and report elapsed time
     if (skip) {
       return;

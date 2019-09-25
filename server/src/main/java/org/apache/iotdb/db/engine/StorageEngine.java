@@ -31,11 +31,7 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageEngineFailureException;
+import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -134,7 +130,7 @@ public class StorageEngine implements IService {
         }
       }
       return processor;
-    } catch (PathErrorException | ProcessorException e) {
+    } catch (ProcessorException | StorageGroupException e) {
       logger.error("Fail to get StorageGroupProcessor {}", storageGroupName, e);
       throw new StorageEngineException(e);
     }
