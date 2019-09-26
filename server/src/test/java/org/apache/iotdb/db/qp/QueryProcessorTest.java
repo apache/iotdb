@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -48,8 +48,8 @@ public class QueryProcessorTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    mManager.setStorageLevelToMTree("root.vehicle");
-    mManager.setStorageLevelToMTree("root.vehicle1");
+    mManager.setStorageGroupToMTree("root.vehicle");
+    mManager.setStorageGroupToMTree("root.vehicle1");
     mManager.addPathToMTree("root.vehicle.device1.sensor1", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());

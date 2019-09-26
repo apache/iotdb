@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -201,6 +201,8 @@ public class MetadataPlan extends PhysicalPlan {
       case DELETE_PATH:
         setOperatorType(Operator.OperatorType.DELETE_TIMESERIES);
         break;
+      case DELETE_STORAGE_GROUP:
+        setOperatorType(Operator.OperatorType.DELETE_STORAGE_GROUP);
       default:
         break;
     }

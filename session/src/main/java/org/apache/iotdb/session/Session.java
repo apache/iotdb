@@ -260,8 +260,22 @@ public class Session {
     }
   }
 
-  public synchronized TSStatus createTimeseries(String path, TSDataType dataType,
-      TSEncoding encoding, CompressionType compressor) throws IoTDBSessionException {
+
+  public synchronized TSStatus deleteStorageGroup(String storageGroup) throws IoTDBSessionException {
+    List<String> groups = new ArrayList<>();
+    groups.add(storageGroup);
+    return deleteStorageGroups(groups);
+  }
+
+  public synchronized TSStatus deleteStorageGroups(List<String> storageGroup) throws IoTDBSessionException {
+    try {
+        return checkAndReturn(client.deleteStorageGroups(storageGroup));
+    } catch (TException e) {
+        throw new IoTDBSessionException(e);
+    }
+  }
+
+  public synchronized TSStatus createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor) throws IoTDBSessionException {
     TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
     request.setPath(path);
     request.setDataType(dataType.ordinal());

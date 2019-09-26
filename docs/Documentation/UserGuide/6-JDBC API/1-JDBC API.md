@@ -31,12 +31,16 @@
 ## How to package only jdbc project
 
 In root directory:
-> mvn clean package -pl jdbc -am -Dmaven.test.skip=true
+```
+mvn clean package -pl jdbc -am -Dmaven.test.skip=true
+```
 
 ## How to install in local maven repository
 
 In root directory:
-> mvn clean install -pl jdbc -am -Dmaven.test.skip=true
+```
+mvn clean install -pl jdbc -am -Dmaven.test.skip=true
+```
 
 ## Using IoTDB JDBC with Maven
 
@@ -98,6 +102,9 @@ public class JDBCExample {
     }
     //Show time series
     statement.execute("SHOW TIMESERIES root.demo");
+    outputResult(statement.getResultSet());
+    //Show devices
+    statement.execute("SHOW DEVICES");
     outputResult(statement.getResultSet());
     //Count time series
     statement.execute("COUNT TIMESERIES root");
