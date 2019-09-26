@@ -81,9 +81,9 @@ public class SyncReceiverLogAnalyzerTest {
     MManager mmanager = MManager.getInstance();
     mmanager.init();
     mmanager.clear();
-    mmanager.setStorageLevelToMTree("root.sg0");
-    mmanager.setStorageLevelToMTree("root.sg1");
-    mmanager.setStorageLevelToMTree("root.sg2");
+    mmanager.setStorageGroupToMTree("root.sg0");
+    mmanager.setStorageGroupToMTree("root.sg1");
+    mmanager.setStorageGroupToMTree("root.sg2");
   }
 
   @After

@@ -347,6 +347,11 @@ public class StorageEngine implements IService {
     return true;
   }
 
+  public void deleteStorageGroup(String storageGroupName) {
+    deleteAllDataFilesInOneStorageGroup(storageGroupName);
+    StorageGroupProcessor processor = processorMap.remove(storageGroupName);
+    processor.deleteFolder(systemDir);
+  }
 
   public void loadNewTsFile(TsFileResource newTsFileResource)
       throws TsFileProcessorException, StorageEngineException {
