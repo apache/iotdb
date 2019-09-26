@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -51,95 +51,55 @@ In root directory:
 ```
 
 
-## Examples with Session
+## Examples with Session interfaces
 
-This chapter provides an example of how to open an IoTDB session, execute a batch insertion.
+Here we show the commonly used interfaces and their parameters in the Session:
 
-Requires that you include the packages containing the Client classes needed for database programming.
+### Run the Session
 
-```Java
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.session.IoTDBSessionException;
-import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.record.RowBatch;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.Schema;
+* Initialize Session
+  	Session(String host, int port)
+  	Session(String host, String port, String username, String password)
+  	Session(String host, int port, String username, String password)
 
-public class SessionExample {
+* Open Session
+  ​	Session.open()
 
-  private static Session session;
+* Close Session
+  ​	Session.close()
 
-  public static void main(String[] args) throws IoTDBSessionException {
-    session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open();
+### Operate the Session
 
-    session.setStorageGroup("root.sg1");
-    session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
-    session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
-    session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+* Set a storage group
 
-    insert();
-//    insertRowBatch();
-    delete();
+  ​	TSStatus setStorageGroup(String storageGroupId)
 
-    session.close();
-  }
+* Delete one or several storage groups
 
-  private static void insert() throws IoTDBSessionException {
-    String deviceId = "root.sg1.d1";
-    List<String> measurements = new ArrayList<>();
-    measurements.add("s1");
-    measurements.add("s2");
-    measurements.add("s3");
-    for (long time = 0; time < 30000; time++) {
-      List<String> values = new ArrayList<>();
-      values.add("1");
-      values.add("2");
-      values.add("3");
-      session.insert(deviceId, time, measurements, values);
-    }
-  }
+  ​	TSStatus deleteStorageGroup(String storageGroup)
+  	TSStatus deleteStorageGroups(List<String> storageGroups)
 
-  private static void delete() throws IoTDBSessionException {
-    String path = "root.sg1.d1.s1";
-    long deleteTime = 29999;
-    session.delete(path, deleteTime);
-  }
+* Create a timeseries under a existing storage group
+  ​	TSStatus createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
 
-  private static void insertRowBatch() throws IoTDBSessionException {
-    Schema schema = new Schema();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+* Delete one or several timeseries
+  ​	TSStatus deleteTimeseries(String path)
+  	TSStatus deleteTimeseries(List<String> paths)
 
-    RowBatch rowBatch = schema.createRowBatch("root.sg1.d1", 100);
+* Delete one or several timeseries before a certain timestamp
+  ​	TSStatus deleteData(String path, long time)
+  	TSStatus deleteData(List<String> paths, long time)
 
-    long[] timestamps = rowBatch.timestamps;
-    Object[] values = rowBatch.values;
+* Insert data in existing timeseries
 
-    for (long time = 0; time < 30000; time++) {
-      int row = rowBatch.batchSize++;
-      timestamps[row] = time;
-      for (int i = 0; i < 3; i++) {
-        long[] sensor = (long[]) values[i];
-        sensor[row] = i;
-      }
-      if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
-        session.insertBatch(rowBatch);
-        rowBatch.reset();
-      }
-    }
+  ​	TSStatus insert(String deviceId, long time, List<String> measurements, List<String> values)
 
-    if (rowBatch.batchSize != 0) {
-      session.insertBatch(rowBatch);
-      rowBatch.reset();
-    }
-  }
-}
-```
+* Batch insertion of timeseries
 
-> The code is in example/session/src/main/java/org/apache/iotdb/session/SessionExample.java
+  ​	TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch)
+
+### Sample code
+
+To get more information of the following interfaces, please view session/src/main/java/org/apache/iotdb/session/Session.java
+
+The sample code of using these interfaces is in example/session/src/main/java/org/apache/iotdb/SessionExample.java，which provides an example of how to open an IoTDB session, execute a batch insertion.

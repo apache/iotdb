@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -47,9 +47,6 @@ import org.apache.iotdb.tsfile.read.support.RowRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @author liukun
- */
 public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
 
   private static final Logger logger = LoggerFactory.getLogger(TSFRecordReader.class);

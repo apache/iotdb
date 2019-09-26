@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -77,7 +78,7 @@ public class SeqResourceReaderTest extends ReaderTestHelper {
   }
 
   @Override
-  protected void insertData() throws IOException {
+  protected void insertData() throws IOException, QueryProcessorException {
     for (int j = 1000; j <= 1009; j++) {
       insertOneRecord(j, j);
       storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();

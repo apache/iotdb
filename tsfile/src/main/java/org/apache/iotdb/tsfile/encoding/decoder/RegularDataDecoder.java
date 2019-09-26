@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  * This class is a decoder for decoding the byte array that encoded by {@code
  * RegularDataEncoder}. RegularDataDecoder only supports integer and long values.<br>.
  *
- * @author tsunghantsai
  * @see RegularDataEncoder
  */
 public abstract class RegularDataDecoder extends Decoder {

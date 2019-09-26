@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -30,8 +30,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 /**
  * This function is used to write time-value into a page. It consists of a time encoder, a value encoder and respective
  * OutputStream.
- *
- * @author kangrong
  */
 public class PageWriter {
 

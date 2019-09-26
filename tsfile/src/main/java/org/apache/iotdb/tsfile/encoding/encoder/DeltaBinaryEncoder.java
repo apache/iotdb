@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -39,8 +39,6 @@ import org.slf4j.LoggerFactory;
  * all two_diff values are positive. Then it statistics the longest bit length {@code m} it takes
  * for each two_diff value, which means the bit length that maximum two_diff value takes. Only the
  * low m bits are saved into result byte array for all two_diff values. </p>
- *
- * @author kangrong
  */
 public abstract class DeltaBinaryEncoder extends Encoder {
 

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -36,8 +36,6 @@ import org.junit.Test;
 /**
  * Test the {@link org.apache.iotdb.tsfile.hadoop.TSFInputSplit}
  * Assert the readFields function and write function is right
- *
- * @author liukun
  */
 public class TSFInputSplitTest {
 

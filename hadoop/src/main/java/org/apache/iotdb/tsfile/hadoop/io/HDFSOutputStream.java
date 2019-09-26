@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -29,8 +29,6 @@ import org.apache.iotdb.tsfile.common.utils.ITsRandomAccessFileWriter;
 /**
  * This class is used to wrap the {@link}FSDataOutputStream and implement the
  * interface {@link}TSRandomAccessFileWriter
- *
- * @author liukun
  */
 public class HDFSOutputStream implements ITsRandomAccessFileWriter {
 

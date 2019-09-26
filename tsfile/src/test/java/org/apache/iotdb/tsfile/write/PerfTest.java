@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -46,8 +46,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This is used for performance test, no asserting. User could change {@code ROW_COUNT} for larger data test.
- *
- * @author kangrong
  */
 public class PerfTest {
 

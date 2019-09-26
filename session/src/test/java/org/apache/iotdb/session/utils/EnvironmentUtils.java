@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -91,7 +91,7 @@ public class EnvironmentUtils {
     }
     // close metadata
     MManager.getInstance().clear();
-    // delete all directory
+    // deleteData all directory
     cleanAllDir();
 
     config.setMaxMemtableNumber(oldMaxMemTableNumber);
@@ -101,22 +101,22 @@ public class EnvironmentUtils {
   }
 
   public static void cleanAllDir() throws IOException {
-    // delete sequential files
+    // deleteData sequential files
     for (String path : directoryManager.getAllSequenceFileFolders()) {
       cleanDir(path);
     }
-    // delete unsequence files
+    // deleteData unsequence files
     for (String path : directoryManager.getAllUnSequenceFileFolders()) {
       cleanDir(path);
     }
-    // delete system info
+    // deleteData system info
     cleanDir(config.getSystemDir());
-    // delete wal
+    // deleteData wal
     cleanDir(config.getWalFolder());
-    // delete index
+    // deleteData index
     cleanDir(config.getIndexFileDir());
     cleanDir(config.getBaseDir());
-    // delete data files
+    // deleteData data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
     }

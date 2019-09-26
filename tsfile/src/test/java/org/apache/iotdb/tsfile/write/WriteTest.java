@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -49,8 +49,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * test writing processing correction combining writing process and reading process.
- *
- * @author kangrong
  */
 public class WriteTest {
 

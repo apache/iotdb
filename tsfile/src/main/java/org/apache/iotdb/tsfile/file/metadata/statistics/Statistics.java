@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -38,8 +38,6 @@ import org.slf4j.LoggerFactory;
  * super class.<br>
  *
  * @param <T> data type for Statistics
- * @author kangrong
- * @since 0.0.1
  */
 public abstract class Statistics<T> {
 

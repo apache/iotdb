@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -37,8 +37,6 @@ import org.apache.iotdb.tsfile.format.RowGroupBlockMetaData;
  * This is tsfile <code>InputSplit</code>.<br>
  * Each <code>InputSplit</code> will be processed by individual
  * <code>Mapper</code> task.
- *
- * @author liukun
  */
 public class TSFInputSplit extends InputSplit implements Writable {
 

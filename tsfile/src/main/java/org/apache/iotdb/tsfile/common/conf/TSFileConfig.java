@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -23,8 +23,6 @@ import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 /**
  * TSFileConfig is a configure class. Every variables is public and has default value.
- *
- * @author kangrong
  */
 public class TSFileConfig {
   // Memory configuration

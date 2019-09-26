@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -37,7 +37,6 @@ import org.slf4j.LoggerFactory;
  * A implementation of {@code IChunkWriter}. {@code ChunkWriterImpl} consists of a {@code
  * ChunkBuffer}, a {@code PageWriter}, and two {@code Statistics}.
  *
- * @author kangrong
  * @see IChunkWriter IChunkWriter
  */
 public class ChunkWriterImpl implements IChunkWriter {

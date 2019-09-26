@@ -28,8 +28,6 @@ import org.slf4j.LoggerFactory;
  * Each flush task allocates new {@linkplain ChunkBuffer} which might be very large and lead to
  * high-cost GC. In new design, we try to reuse ChunkBuffer objects by ChunkBufferPool, referring to
  * {@linkplain MemTablePool}.
- *
- * @author kangrong
  */
 public class ChunkBufferPool {
 

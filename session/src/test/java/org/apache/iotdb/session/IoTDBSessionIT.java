@@ -21,6 +21,9 @@ package org.apache.iotdb.session;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.io.File;
+
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.session.utils.EnvironmentUtils;
@@ -34,6 +37,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class IoTDBSessionIT {
 
@@ -61,23 +66,33 @@ public class IoTDBSessionIT {
 
     session.setStorageGroup("root.sg1");
 
-    createTimeseriesTest();
-    insertTest();
+    createTimeseries();
+    insert();
 //    insertRowBatchTest();
-    deleteTest();
+    deleteData();
 
-    queryTest();
+    query();
+
+    deleteTimeseries();
+
+    query2();
+
+    // Add another storage group to test the deletion of storage group
+    session.setStorageGroup("root.sg2");
+    session.createTimeseries("root.sg2.d1.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+
+    deleteStorageGroupTest();
 
     session.close();
   }
 
-  public void createTimeseriesTest() throws IoTDBSessionException {
+  private void createTimeseries() throws IoTDBSessionException {
     session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
   }
 
-  public void insertTest() throws IoTDBSessionException {
+  private void insert() throws IoTDBSessionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -92,7 +107,7 @@ public class IoTDBSessionIT {
     }
   }
 
-  private void insertRowBatchTest() throws IoTDBSessionException {
+  private void insertRowBatch() throws IoTDBSessionException {
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
@@ -122,18 +137,24 @@ public class IoTDBSessionIT {
     }
   }
 
-  public void deleteTest() throws IoTDBSessionException {
+  private void deleteData() throws IoTDBSessionException {
     String path1 = "root.sg1.d1.s1";
     String path2 = "root.sg1.d1.s2";
     String path3 = "root.sg1.d1.s3";
     long deleteTime = 99;
 
-    session.delete(path1, deleteTime);
-    session.delete(path2, deleteTime);
-    session.delete(path3, deleteTime);
+    List<String> paths = new ArrayList<>();
+    paths.add(path1);
+    paths.add(path2);
+    paths.add(path3);
+    session.deleteData(paths, deleteTime);
   }
 
-  public void queryTest() throws ClassNotFoundException, SQLException {
+  private void deleteTimeseries() throws IoTDBSessionException {
+    session.deleteTimeseries("root.sg1.d1.s1");
+  }
+
+  private void query() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     String standard =
         "Time\n" + "root.sg1.d1.s1\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n";
@@ -154,6 +175,68 @@ public class IoTDBSessionIT {
           resultStr.append("\n");
         }
       Assert.assertEquals(resultStr.toString(), standard);
+    }
+  }
+
+  private void query2() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    String standard =
+        "Time\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n";
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery("select * from root");
+      final ResultSetMetaData metaData = resultSet.getMetaData();
+      final int colCount = metaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      for (int i = 0; i < colCount; i++) {
+        resultStr.append(metaData.getColumnLabel(i + 1) + "\n");
+      }
+      while (resultSet.next()) {
+        for (int i = 1; i <= colCount; i++) {
+          resultStr.append(resultSet.getString(i)).append(",");
+        }
+        resultStr.append("\n");
+      }
+      Assert.assertEquals(resultStr.toString(), standard);
+    }
+  }
+
+  public void deleteStorageGroupTest() throws ClassNotFoundException, SQLException, IoTDBSessionException {
+    try {
+      session.deleteStorageGroup("root.sg1.d1.s1");
+    } catch (IoTDBSessionException e) {
+      assertEquals("The path root.sg1.d1.s1 is not a deletable storage group", e.getMessage());
+    }
+    session.deleteStorageGroup("root.sg1");
+    File folder = new File("data/system/storage_groups/root.sg1/");
+    assertEquals(folder.exists(), false);
+    session.setStorageGroup("root.sg1.d1");
+    session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    // using the query result as the QueryTest to verify the deletion and the new insertion
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    String standard = "Time\n" + "root.sg1.d1.s1\n" + "root.sg2.d1.s1\n";
+    try (Connection connection = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery("select * from root");
+      final ResultSetMetaData metaData = resultSet.getMetaData();
+      final int colCount = metaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      for (int i = 0; i < colCount; i++) {
+        resultStr.append(metaData.getColumnLabel(i + 1) + "\n");
+      }
+      while (resultSet.next()) {
+        for (int i = 1; i <= colCount; i++) {
+          resultStr.append(resultSet.getString(i)).append(",");
+        }
+        resultStr.append("\n");
+      }
+      Assert.assertEquals(resultStr.toString(), standard);
+      List<String> storageGroups = new ArrayList<>();
+      storageGroups.add("root.sg1.d1");
+      storageGroups.add("root.sg2");
+      session.deleteStorageGroups(storageGroups);
     }
   }
 }

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -43,9 +43,6 @@ import org.apache.iotdb.tsfile.read.FileReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @author liukun
- */
 public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable> {
 
   /**
