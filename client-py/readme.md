@@ -18,5 +18,4 @@ you can add it to your `PYTHONPATH` so that you would be able to use the library
 
 ## Example
 We provided an example of how to use the thrift library to connect to IoTDB in `src\client_example.py`, please read it 
-carefully before you write your own code. The rpc interfaces are still limited in current version, for full functionality,
-please use our Java client and its JDBC. 
+carefully before you write your own code.

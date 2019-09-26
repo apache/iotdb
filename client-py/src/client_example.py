@@ -114,6 +114,11 @@ if __name__ == '__main__':
     status = resp.status
     print(status.statusType)
 
+    # execute deletion (or other statements)
+    resp = client.executeStatement(TSExecuteStatementReq(handle, "DELETE FROM root.group1 where time < 2"))
+    status = resp.status
+    print(status.statusType)
+
     # query the data
     stmt = "SELECT * FROM root.group1"
     fetchSize = 2
