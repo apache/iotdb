@@ -16,15 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.hadoop;
+package org.apache.iotdb.hive;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.*;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.JobConfigurable;
+import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapreduce.InputSplit;
-import org.apache.hadoop.mapreduce.RecordReader;
-import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.HDFSInput;
+import org.apache.iotdb.tsfile.hadoop.TSFInputFormat;
+import org.apache.iotdb.tsfile.hadoop.TSFInputSplit;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -45,9 +47,9 @@ import static java.util.stream.Collectors.toList;
 /**
  * @author Yuan Tian
  */
-public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
+public class TSFHiveRecordReader implements RecordReader<NullWritable, MapWritable>, JobConfigurable {
 
-  private static final Logger logger = LoggerFactory.getLogger(TSFRecordReader.class);
+  private static final Logger logger = LoggerFactory.getLogger(TSFHiveRecordReader.class);
 
   /**
    * all
@@ -64,29 +66,67 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
    */
   private  int currentIndex = 0;
   private long timestamp = 0;
-  private boolean isReadDeviceId = false;
-  private boolean isReadTime = false;
+  private boolean isReadDeviceId;
+  private boolean isReadTime;
   private int arraySize = 0;
   private TsFileSequenceReader reader;
   private List<String> measurementIds;
-
+  private JobConf jobConf;
 
   @Override
-  public void initialize(InputSplit split, TaskAttemptContext context)
-      throws IOException {
+  public boolean next(NullWritable key, MapWritable value) throws IOException {
+    while (currentIndex < dataSetList.size()) {
+      if (!dataSetList.get(currentIndex).hasNext()) {
+        currentIndex++;
+      }
+      else {
+        RowRecord rowRecord = dataSetList.get(currentIndex).next();
+        fields = rowRecord.getFields();
+        timestamp = rowRecord.getTimestamp();
+
+        try {
+          value.putAll(getCurrentValue());
+        } catch (InterruptedException e) {
+          throw new IOException(e.getMessage());
+        }
+
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Override
+  public NullWritable createKey() {
+    return  NullWritable.get();
+  }
+
+  @Override
+  public MapWritable createValue() {
+    return new MapWritable();
+  }
+
+  @Override
+  public long getPos() throws IOException {
+    // can't know
+    return 0;
+  }
+
+
+  public TSFHiveRecordReader(InputSplit split, JobConf job)
+          throws IOException {
     if (split instanceof TSFInputSplit) {
       TSFInputSplit tsfInputSplit = (TSFInputSplit) split;
       org.apache.hadoop.fs.Path path = tsfInputSplit.getPath();
       List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList = tsfInputSplit.getChunkGroupInfoList();
-      Configuration configuration = context.getConfiguration();
-      reader = new TsFileSequenceReader(new HDFSInput(path, configuration));
+      reader = new TsFileSequenceReader(new HDFSInput(path, job));
 
       // Get the read columns and filter information
-      List<String> deltaObjectIds = TSFInputFormat.getReadDeltaObjectIds(configuration);
+      List<String> deltaObjectIds = TSFInputFormat.getReadDeltaObjectIds(job);
       if (deltaObjectIds == null) {
         deltaObjectIds = initDeviceIdList(chunkGroupInfoList);
       }
-      List<String> measurementIds = TSFInputFormat.getReadMeasurementIds(configuration);
+      List<String> measurementIds = TSFInputFormat.getReadMeasurementIds(job);
       if (measurementIds == null) {
         measurementIds = initSensorIdList(chunkGroupInfoList);
       }
@@ -94,8 +134,8 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
       logger.info("deltaObjectIds:" + deltaObjectIds);
       logger.info("Sensors:" + measurementIds);
 
-      isReadDeviceId = TSFInputFormat.getReadDeltaObject(configuration);
-      isReadTime = TSFInputFormat.getReadTime(configuration);
+      isReadDeviceId = TSFInputFormat.getReadDeltaObject(job);
+      isReadTime = TSFInputFormat.getReadTime(job);
       if (isReadDeviceId) {
         arraySize++;
       }
@@ -120,9 +160,9 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
 
     } else {
       logger.error("The InputSplit class is not {}, the class is {}", TSFInputSplit.class.getName(),
-          split.getClass().getName());
+              split.getClass().getName());
       throw new InternalError(String.format("The InputSplit class is not %s, the class is %s",
-          TSFInputSplit.class.getName(), split.getClass().getName()));
+              TSFInputSplit.class.getName(), split.getClass().getName()));
     }
   }
 
@@ -140,29 +180,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
             .collect(toList());
   }
 
-  @Override
-  public boolean nextKeyValue() throws IOException, InterruptedException {
-    while (currentIndex < dataSetList.size()) {
-      if (!dataSetList.get(currentIndex).hasNext()) {
-        currentIndex++;
-      }
-      else {
-        RowRecord rowRecord = dataSetList.get(currentIndex).next();
-        fields = rowRecord.getFields();
-        timestamp = rowRecord.getTimestamp();
-        return true;
-      }
-    }
-    return false;
-  }
-
-  @Override
-  public NullWritable getCurrentKey() throws IOException, InterruptedException {
-    return NullWritable.get();
-  }
-
-  @Override
-  public MapWritable getCurrentValue() throws IOException, InterruptedException {
+  private MapWritable getCurrentValue() throws InterruptedException {
     MapWritable mapWritable = new MapWritable();
     Text deviceIdText = new Text(deviceIdList.get(currentIndex));
     LongWritable time = new LongWritable(timestamp);
@@ -221,14 +239,19 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
   }
 
   @Override
-  public float getProgress() throws IOException, InterruptedException {
+  public float getProgress() {
     return 0;
   }
 
   @Override
   public void close() throws IOException {
-    dataSetList.forEach(queryDataSet -> queryDataSet = null);
-    deviceIdList.forEach(deviceId -> deviceId = null);
+    dataSetList = null;
+    deviceIdList = null;
     reader.close();
+  }
+
+  @Override
+  public void configure(JobConf job) {
+    this.jobConf = job;
   }
 }

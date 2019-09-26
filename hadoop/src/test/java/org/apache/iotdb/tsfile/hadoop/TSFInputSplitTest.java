@@ -76,13 +76,8 @@ public class TSFInputSplitTest {
       // assert
       assertEquals(wInputSplit.getPath(), rInputSplit.getPath());
       assertThat(wInputSplit.getChunkGroupInfoList(), is(rInputSplit.getChunkGroupInfoList()));
-      try {
-        assertEquals(wInputSplit.getLength(), rInputSplit.getLength());
-        assertArrayEquals(wInputSplit.getLocations(), rInputSplit.getLocations());
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      assertEquals(wInputSplit.getLength(), rInputSplit.getLength());
+      assertArrayEquals(wInputSplit.getLocations(), rInputSplit.getLocations());
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());

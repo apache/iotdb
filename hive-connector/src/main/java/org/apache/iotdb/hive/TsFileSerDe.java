@@ -33,6 +33,8 @@ import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
 import org.apache.hadoop.io.Writable;
 import org.apache.iotdb.tsfile.hadoop.record.HDFSTSRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -41,6 +43,9 @@ import java.util.*;
  * @author Yuan Tian
  */
 public class TsFileSerDe extends AbstractSerDe {
+
+  private static final Logger logger = LoggerFactory.getLogger(TsFileSerDe.class);
+
 
   public static final String TABLE_NAME = "name";
 
@@ -59,7 +64,8 @@ public class TsFileSerDe extends AbstractSerDe {
             .getProperty(serdeConstants.COLUMN_NAME_DELIMITER) : String.valueOf(SerDeUtils.COMMA);
 
     // in our implementation, tableName should be set same as device_id
-    tableName = tbl.getProperty(TABLE_NAME);
+
+    tableName = tbl.getProperty(TABLE_NAME).split("\\.")[1];
 
     if (columnNameProperty == null || columnNameProperty.isEmpty()
     || columnTypeProperty == null || columnTypeProperty.isEmpty()) {

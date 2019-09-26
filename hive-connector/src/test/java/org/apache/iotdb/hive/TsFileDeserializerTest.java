@@ -113,5 +113,6 @@ public class TsFileDeserializerTest {
     } catch (TsFileSerDeException e) {
       fail("Don't expect a TsFileSerDeException to be Thrown!");
     }
+
   }
 }

@@ -40,7 +40,7 @@ import java.util.Objects;
  *
  * @author liukun
  */
-public class TSFInputSplit extends InputSplit implements Writable {
+public class TSFInputSplit extends InputSplit implements Writable, org.apache.hadoop.mapred.InputSplit {
 
   private Path path;
 
@@ -76,12 +76,12 @@ public class TSFInputSplit extends InputSplit implements Writable {
   }
 
   @Override
-  public long getLength() throws IOException, InterruptedException {
+  public long getLength() throws IOException {
     return this.length;
   }
 
   @Override
-  public String[] getLocations() throws IOException, InterruptedException {
+  public String[] getLocations() throws IOException {
     return this.hosts;
   }
 
