@@ -19,6 +19,17 @@
 
 -->
 
+# Apache IoTDB (incubating) 0.8.1
+
+This is a bug-fix version of 0.8.0
+
+- [IOTDB-172] bug in updating startTime and endTime in TsFileResource
+- Abnormal publishing of sequence and unsequence data folders in DirectoryManager
+- fix a bug in TimeRange's intersects function
+- [IOTDB-202] fix tsfile example data type
+- [IOTDB-195] Bug about 'serializedSize' in ChunkGroupMetaData.java (for Chinese string)
+- [IOTDB-242] fix mvn integration-test failed because the files in the target folder changes
+
 # Apache IoTDB (incubating) 0.8.0
 
 This is the first official release of Apache IoTDB after joining the Incubator.
