@@ -346,9 +346,6 @@ public class Session {
 
     RpcUtils.verifySuccess(execResp.getStatus());
     operationHandle = execResp.getOperationHandle();
-
-    List<RowRecord> res = new ArrayList<>();
-
     return new SessionDataSet(sql, queryId.incrementAndGet(), client, operationHandle);
   }
 
