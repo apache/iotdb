@@ -18,14 +18,18 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import java.io.Serializable;
-import java.util.*;
-
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -741,7 +745,7 @@ public class MTree implements Serializable {
    *
    * @return a list contains all distinct storage groups
    */
-  HashSet<String> getAllStorageGroup() {
+  Set<String> getAllStorageGroup() {
     HashSet<String> res = new HashSet<>();
     MNode rootNode;
     if ((rootNode = getRoot()) != null) {
@@ -761,16 +765,24 @@ public class MTree implements Serializable {
   }
 
   /**
+   * Get all devices in current Metadata Tree.
+   *
+   * @return a list contains all distinct devices
+   */
+  Set<String> getAllDevices() {
+    return new HashSet<>(getNodesList(3));
+  }
+
+  /**
    * Get all nodes at the given level in current Metadata Tree.
    *
    * @return a list contains all nodes at the given level
    */
-  List<String> getNodesList(String nodeLevel) {
+  List<String> getNodesList(int nodeLevel) {
     List<String> res = new ArrayList<>();
-    int level = Integer.parseInt(nodeLevel);
     MNode rootNode;
     if ((rootNode = getRoot()) != null) {
-      findNodes(rootNode, "root", res, level);
+      findNodes(rootNode, "root", res, nodeLevel);
     }
     return res;
   }

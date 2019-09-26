@@ -36,3 +36,5 @@
 * Add method **TSStatus deleteTimeseries(1:TSDeleteReq req)** for deleting timeseries.
 
 * Change item in enum **TSProtocolVersion** from ~~TSFILE_SERVICE_PROTOCOL_V1~~ to IOTDB_SERVICE_PROTOCOL_V1.
+
+* Add **storageGroups** in struct **TSFetchMetadataResp**. Rename ~~ColumnsList~~ to **columnsList**, ~~showTimeseriesList~~ to **timeseriesList**, ~~showStorageGroups~~ to **storageGroups**.
