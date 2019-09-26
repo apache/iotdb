@@ -131,6 +131,7 @@ public class QueryProcessor {
       case AUTHOR:
       case METADATA:
       case SET_STORAGE_GROUP:
+      case DELETE_STORAGE_GROUP:
       case CREATE_TIMESERIES:
       case DELETE_TIMESERIES:
       case PROPERTY:

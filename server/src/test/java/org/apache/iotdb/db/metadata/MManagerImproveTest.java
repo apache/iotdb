@@ -46,7 +46,7 @@ public class MManagerImproveTest {
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     mManager = MManager.getInstance();
-    mManager.setStorageLevelToMTree("root.t1.v2");
+    mManager.setStorageGroupToMTree("root.t1.v2");
 
     for (int j = 0; j < DEVICE_NUM; j++) {
       for (int i = 0; i < TIMESERIES_NUM; i++) {

@@ -208,9 +208,6 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
         * PrimitiveArrayPool.ARRAY_SIZE * Long.BYTES * 2;
   }
 
-  /**
-   * TODO: Currently IoTDB only supports to add a storage group.
-   */
   @Override
   public void addOrDeleteStorageGroup(int diff) throws ConfigAdjusterException {
     totalStorageGroup += diff;
