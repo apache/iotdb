@@ -228,7 +228,8 @@ public class TsFileSequenceReader implements AutoCloseable {
     versionNumberBytes.flip();
     String versionNumberString = new String(versionNumberBytes.array());
     if(!versionNumberString.equals(TSFileConfig.VERSION_NUMBER)) {
-      throw new NotCompatibleException("TsFile isn't compatible.");
+      throw new NotCompatibleException("TsFile isn't compatible. " + TSFileConfig.MAGIC_STRING +
+          TSFileConfig.VERSION_NUMBER + " is expected.");
     }
     return versionNumberString;
   }
