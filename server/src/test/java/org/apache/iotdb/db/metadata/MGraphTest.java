@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -45,26 +45,26 @@ public class MGraphTest {
     MGraph root2 = new MGraph("root");
     MGraph root3 = new MGraph("root");
     try {
-      root.setStorageLevel("root.a.d0");
+      root.setStorageGroup("root.a.d0");
       root.addPathToMTree("root.a.d0.s0", "INT32", "RLE");
       root.addPathToMTree("root.a.d0.s1", "INT32", "RLE");
 
-      root.setStorageLevel("root.a.d1");
+      root.setStorageGroup("root.a.d1");
       root.addPathToMTree("root.a.d1.s0", "INT32", "RLE");
       root.addPathToMTree("root.a.d1.s1", "INT32", "RLE");
 
-      root.setStorageLevel("root.a.b.d0");
+      root.setStorageGroup("root.a.b.d0");
       root.addPathToMTree("root.a.b.d0.s0", "INT32", "RLE");
 
-      root1.setStorageLevel("root.a.d0");
+      root1.setStorageGroup("root.a.d0");
       root1.addPathToMTree("root.a.d0.s0", "INT32", "RLE");
       root1.addPathToMTree("root.a.d0.s1", "INT32", "RLE");
 
-      root2.setStorageLevel("root.a.d1");
+      root2.setStorageGroup("root.a.d1");
       root2.addPathToMTree("root.a.d1.s0", "INT32", "RLE");
       root2.addPathToMTree("root.a.d1.s1", "INT32", "RLE");
 
-      root3.setStorageLevel("root.a.b.d0");
+      root3.setStorageGroup("root.a.b.d0");
       root3.addPathToMTree("root.a.b.d0.s0", "INT32", "RLE");
 
       String[] metadatas = new String[3];

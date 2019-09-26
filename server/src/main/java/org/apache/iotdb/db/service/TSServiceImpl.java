@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -1142,6 +1142,24 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.SET_STORAGE_GROUP, new Path(storageGroup));
+    TSStatus status = checkAuthority(plan);
+    if (status != null) {
+      return new TSStatus(status);
+    }
+    return new TSStatus(executePlan(plan));
+  }
+
+  @Override
+  public TSStatus deleteStorageGroups(List<String> storageGroups) {
+    if (!checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
+    }
+    List<Path> storageGroupList = new ArrayList<>();
+    for (String storageGroup: storageGroups) {
+      storageGroupList.add(new Path(storageGroup));
+    }
+    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.DELETE_STORAGE_GROUP, storageGroupList);
     TSStatus status = checkAuthority(plan);
     if (status != null) {
       return new TSStatus(status);
