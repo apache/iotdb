@@ -368,9 +368,4 @@ public class Session {
 
     RpcUtils.verifySuccess(execResp.getStatus());
   }
-
-  // the next record rule without constraints
-
-
-
 }
