@@ -108,9 +108,15 @@ if __name__ == '__main__':
     # insert multiple rows, this interface is more efficient
     values = bytearray()
     times = bytearray()
+    deviceId = "root.group1"
+    measurements = ["s1", "s2", "s3"]
+    dataSize = 3
+    dataTypes = [TSDataType['INT64'], TSDataType['INT64'], TSDataType['INT64']]
+    # the first 3 belong to 's1', the mid 3 belong to 's2', the last 3 belong to 's3'
     values.extend(struct.pack('>qqqqqqqqq', 2, 3, 4, 22, 33, 44, 222, 333, 444))
     times.extend(struct.pack('>qqq', 2, 3, 4))
-    resp = client.insertBatch(TSBatchInsertionReq("root.group1", ["s1", "s2", "s3"], values, times, [2, 2, 2], 3))
+    resp = client.insertBatch(TSBatchInsertionReq(deviceId, measurements, values, times,
+                                                  dataTypes, dataSize))
     status = resp.status
     print(status.statusType)
 
