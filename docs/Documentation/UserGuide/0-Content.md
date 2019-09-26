@@ -59,3 +59,4 @@
 # Chapter 9: System Tools
 * 1-Sync
 * 2-Memory Estimation Tool
+* 3-JMX Tool

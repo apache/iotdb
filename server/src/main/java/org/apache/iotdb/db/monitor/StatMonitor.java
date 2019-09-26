@@ -87,10 +87,10 @@ public class StatMonitor implements IService {
       try {
         String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
         if (!mmanager.pathExist(prefix)) {
-          mmanager.setStorageLevelToMTree(prefix);
+          mmanager.setStorageGroupToMTree(prefix);
         }
       } catch (MetadataErrorException e) {
-        logger.error("MManager cannot set storage level to MTree.", e);
+        logger.error("MManager cannot set storage group to MTree.", e);
       }
     }
   }
@@ -144,10 +144,10 @@ public class StatMonitor implements IService {
     String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
     try {
       if (!mManager.pathExist(prefix)) {
-        mManager.setStorageLevelToMTree(prefix);
+        mManager.setStorageGroupToMTree(prefix);
       }
     } catch (Exception e) {
-      logger.error("MManager cannot set storage level to MTree.", e);
+      logger.error("MManager cannot set storage group to MTree.", e);
     }
   }
 

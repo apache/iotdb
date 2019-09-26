@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -46,34 +46,34 @@ public class MetadataTest {
     MManager manager = MManager.getInstance();
 
     try {
-      manager.setStorageLevelToMTree("root.t.d1");
+      manager.setStorageGroupToMTree("root.t.d1");
       manager.addPathToMTree("root.t.d1.s0", "INT32", "RLE");
       manager.addPathToMTree("root.t.d1.s1", "DOUBLE", "RLE");
-      manager.setStorageLevelToMTree("root.t.d2");
+      manager.setStorageGroupToMTree("root.t.d2");
       manager.addPathToMTree("root.t.d2.s1", "DOUBLE", "RLE");
       Metadata metadata1 = manager.getMetadata();
 
       manager.clear();
 
-      manager.setStorageLevelToMTree("root.t.d3");
+      manager.setStorageGroupToMTree("root.t.d3");
       manager.addPathToMTree("root.t.d3.s1", "DOUBLE", "RLE");
       manager.addPathToMTree("root.t.d3.s2", "TEXT", "RLE");
-      manager.setStorageLevelToMTree("root.t1.d1");
+      manager.setStorageGroupToMTree("root.t1.d1");
       manager.addPathToMTree("root.t1.d1.s1", "DOUBLE", "RLE");
       manager.addPathToMTree("root.t1.d1.s2", "TEXT", "RLE");
       Metadata metadata2 = manager.getMetadata();
 
       manager.clear();
 
-      manager.setStorageLevelToMTree("root.t.d1");
+      manager.setStorageGroupToMTree("root.t.d1");
       manager.addPathToMTree("root.t.d1.s0", "INT32", "RLE");
       manager.addPathToMTree("root.t.d1.s1", "DOUBLE", "RLE");
-      manager.setStorageLevelToMTree("root.t.d2");
+      manager.setStorageGroupToMTree("root.t.d2");
       manager.addPathToMTree("root.t.d2.s1", "DOUBLE", "RLE");
-      manager.setStorageLevelToMTree("root.t.d3");
+      manager.setStorageGroupToMTree("root.t.d3");
       manager.addPathToMTree("root.t.d3.s1", "DOUBLE", "RLE");
       manager.addPathToMTree("root.t.d3.s2", "TEXT", "RLE");
-      manager.setStorageLevelToMTree("root.t1.d1");
+      manager.setStorageGroupToMTree("root.t1.d1");
       manager.addPathToMTree("root.t1.d1.s1", "DOUBLE", "RLE");
       manager.addPathToMTree("root.t1.d1.s2", "TEXT", "RLE");
       Metadata metadata = manager.getMetadata();

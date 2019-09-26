@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -108,6 +108,7 @@ public class IoTDBDatabaseMetadataTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -143,6 +144,7 @@ public class IoTDBDatabaseMetadataTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -163,7 +165,7 @@ public class IoTDBDatabaseMetadataTest {
     String standard = "count,\n" + "4,\n";
     try {
       IoTDBDatabaseMetadata metadata = (IoTDBDatabaseMetadata) databaseMetaData;
-      String level = "3";
+      int level = 3;
       ResultSet resultSet = metadata.getNodes(Constant.COUNT_NODES, "root", null, null, level);
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
@@ -181,6 +183,7 @@ public class IoTDBDatabaseMetadataTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -205,7 +208,7 @@ public class IoTDBDatabaseMetadataTest {
             + "root.vehicle.d4,2,\n";
     try {
       IoTDBDatabaseMetadata metadata = (IoTDBDatabaseMetadata) databaseMetaData;
-      String level = "3";
+      int level = 3;
       ResultSet resultSet = metadata.getNodes(Constant.COUNT_NODE_TIMESERIES, "root", null, null, level);
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
@@ -223,6 +226,7 @@ public class IoTDBDatabaseMetadataTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -231,7 +235,7 @@ public class IoTDBDatabaseMetadataTest {
    */
   @SuppressWarnings("resource")
   @Test
-  public void device() throws Exception {
+  public void deviceUnderColumn() throws Exception {
     List<String> columnList = new ArrayList<>();
     columnList.add("root.vehicle.d0");
 
@@ -240,7 +244,7 @@ public class IoTDBDatabaseMetadataTest {
     String standard = "column,\n" + "root.vehicle.d0,\n";
     try {
       ResultSet resultSet = databaseMetaData
-          .getColumns(Constant.CATALOG_DEVICE, "vehicle", null, null);
+          .getColumns(Constant.CATALOG_COLUMN, "vehicle", null, null);
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
@@ -257,6 +261,42 @@ public class IoTDBDatabaseMetadataTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  /**
+   * get all devices
+   */
+  @SuppressWarnings("resource")
+  @Test
+  public void device() throws Exception {
+    Set<String> devicesSet = new HashSet<>();
+    devicesSet.add("root.vehicle.d0");
+
+    when(fetchMetadataResp.getDevices()).thenReturn(devicesSet);
+
+    String standard = "Device,\n" + "root.vehicle.d0,\n";
+    try {
+      ResultSet resultSet = databaseMetaData
+          .getColumns(Constant.CATALOG_DEVICES, null, null, null);
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      int colCount = resultSetMetaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      for (int i = 1; i < colCount + 1; i++) {
+        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
+      }
+      resultStr.append("\n");
+      while (resultSet.next()) {
+        for (int i = 1; i <= colCount; i++) {
+          resultStr.append(resultSet.getString(i)).append(",");
+        }
+        resultStr.append("\n");
+      }
+      Assert.assertEquals(resultStr.toString(), standard);
+    } catch (SQLException e) {
+      System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -292,7 +332,7 @@ public class IoTDBDatabaseMetadataTest {
       }
     });
 
-    when(fetchMetadataResp.getShowTimeseriesList()).thenReturn(tslist);
+    when(fetchMetadataResp.getTimeseriesList()).thenReturn(tslist);
 
     String standard = "Timeseries,Storage Group,DataType,Encoding,\n"
         + "root.vehicle.d0.s0,root.vehicle,INT32,RLE,\n"
@@ -316,6 +356,7 @@ public class IoTDBDatabaseMetadataTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -335,7 +376,7 @@ public class IoTDBDatabaseMetadataTest {
       }
     });
 
-    when(fetchMetadataResp.getShowTimeseriesList()).thenReturn(tslist);
+    when(fetchMetadataResp.getTimeseriesList()).thenReturn(tslist);
 
     String standard = "DataType,\n" + "INT32,\n";
     try (ResultSet resultSet = databaseMetaData
@@ -352,6 +393,7 @@ public class IoTDBDatabaseMetadataTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -363,7 +405,7 @@ public class IoTDBDatabaseMetadataTest {
   public void ShowStorageGroup() throws Exception {
     Set<String> sgSet = new HashSet<>();
     sgSet.add("root.vehicle");
-    when(fetchMetadataResp.getShowStorageGroups()).thenReturn(sgSet);
+    when(fetchMetadataResp.getStorageGroups()).thenReturn(sgSet);
 
     String standard = "Storage Group,\n" + "root.vehicle,\n";
     try (ResultSet resultSet = databaseMetaData
@@ -384,7 +426,9 @@ public class IoTDBDatabaseMetadataTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
+
   }
 
   /**
