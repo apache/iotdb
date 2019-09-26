@@ -32,7 +32,6 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -555,18 +554,6 @@ public class MManager {
       throw new MetadataErrorException(e);
     } finally {
       lock.writeLock().unlock();
-    }
-  }
-
-  /**
-   * function for setting storage level of the given path to mTree
-   * when creating schema automatically is enable.
-   */
-  public void setStorageLevelToMTree(String path, int level) throws MetadataErrorException {
-    try {
-      setStorageLevelToMTree(getStorageGroupNameByAutoLevel(path, level));
-    } catch (PathErrorException e) {
-      throw new MetadataErrorException(e);
     }
   }
 
@@ -1178,6 +1165,9 @@ public class MManager {
     }
   }
 
+  /**
+   * function for checking deviceId
+   */
   public boolean checkDeviceId(String deviceId) throws StorageGroupException, PathErrorException {
     lock.readLock().lock();
     try {
@@ -1202,7 +1192,8 @@ public class MManager {
   /**
    * function for getting storage group name when creating schema automatically is enable
    */
-  String getStorageGroupNameByAutoLevel(String fullPath, int level) throws PathErrorException {
+  public String getStorageGroupNameByAutoLevel(String fullPath, int level)
+      throws PathErrorException {
     String[] nodeNames = fullPath.trim().split(DOUB_SEPARATOR);
     String storageGroupName = nodeNames[0];
     if (nodeNames.length < level || !storageGroupName.equals(ROOT_NAME)) {

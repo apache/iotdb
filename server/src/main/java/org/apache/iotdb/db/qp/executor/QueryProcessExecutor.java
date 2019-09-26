@@ -57,6 +57,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AuthDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -198,7 +199,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       mManager.getStorageGroupNameByPath(path.getFullPath());
       storageEngine.delete(deviceId, measurementId, timestamp);
       return true;
-    } catch (StorageEngineException | StorageGroupException e) {
+    } catch (StorageGroupException | StorageEngineException e) {
       throw new ProcessorException(e);
     }
   }
@@ -209,10 +210,9 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
-      MNode node;
-      IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
       String[] values = insertPlan.getValues();
       TSDataType[] dataTypes = new TSDataType[measurementList.length];
+      IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
       try {
         mManager.checkDeviceId(deviceId);
@@ -221,9 +221,11 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
           throw new ProcessorException(e1);
         } else {
           try {
-            mManager.setStorageLevelToMTree(deviceId, conf.getAutoStorageGroupLevel());
+            // set storage group by auto level
+            setStorageGroupToMTreeByAutoLevel(deviceId);
+            // create timeserires
             addPathListToMTree(deviceId, measurementList, values);
-          } catch (MetadataErrorException | IOException | StorageGroupException e2) {
+          } catch (ProcessorException | PathErrorException e2) {
             throw new ProcessorException(e2);
           }
         }
@@ -235,7 +237,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         }
       }
 
-      node = mManager.getNodeByDeviceIdFromCache(deviceId);
+      MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
       for (int i = 0; i < measurementList.length; i++) {
         if (!node.hasChild(measurementList[i])) {
           if (!conf.isAutoCreateSchemaEnable()) {
@@ -258,7 +260,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       insertPlan.setDataTypes(dataTypes);
       return storageEngine.insert(insertPlan);
 
-    } catch (PathErrorException | StorageEngineException | IOException | StorageGroupException e) {
+    } catch (PathErrorException | StorageEngineException e) {
       throw new ProcessorException(e.getMessage());
     }
   }
@@ -268,19 +270,47 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       String[] measurementList = batchInsertPlan.getMeasurements();
       String deviceId = batchInsertPlan.getDeviceId();
-      MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
-//      IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+      Object[] values = collectFirstElements(batchInsertPlan.getColumns());
+      IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
-      for (String s : measurementList) {
-        if (!node.hasChild(s)) {
-          throw new ProcessorException(
-              String.format("Current deviceId[%s] does not contain measurement:%s",
-                  deviceId, s));
+      try {
+        mManager.checkDeviceId(deviceId);
+      } catch (StorageGroupException e1) {
+        if (!conf.isAutoCreateSchemaEnable()) {
+          throw new ProcessorException(e1);
+        } else {
+          try {
+            // set storage group by auto level
+            setStorageGroupToMTreeByAutoLevel(deviceId);
+            // create timeserires
+            addPathListToMTree(deviceId, measurementList, values);
+          } catch (ProcessorException | PathErrorException e2) {
+            throw new ProcessorException(e2);
+          }
         }
-        MNode measurementNode = node.getChild(s);
+      } catch (PathErrorException e2) {
+        if (!conf.isAutoCreateSchemaEnable()) {
+          throw new ProcessorException(e2);
+        } else {
+          addPathListToMTree(deviceId, measurementList, values);
+        }
+      }
+
+      MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
+      for (int i = 0; i < measurementList.length; i++) {
+        if (!node.hasChild(measurementList[i])) {
+          if (!conf.isAutoCreateSchemaEnable()) {
+            throw new ProcessorException(
+                String.format("Current deviceId[%s] does not contain measurement:%s",
+                    deviceId, measurementList[i]));
+          }
+          addPathToMTree(deviceId, measurementList[i], values[i]);
+        }
+        MNode measurementNode = node.getChild(measurementList[i]);
         if (!measurementNode.isLeaf()) {
           throw new ProcessorException(
-              String.format("Current Path is not leaf node. %s.%s", deviceId, s));
+              String.format("Current Path is not leaf node. %s.%s",
+                  deviceId, measurementList[i]));
         }
       }
       return storageEngine.insertBatch(batchInsertPlan);
@@ -681,20 +711,39 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return dataSet;
   }
 
-  private void addPathListToMTree(String deviceId, String[] measurementList, String[] values)
-          throws PathErrorException, IOException, StorageGroupException {
+  /**
+   * Set storage group when creating schema automatically is enable
+   */
+  private void setStorageGroupToMTreeByAutoLevel(String deviceId) throws ProcessorException, PathErrorException {
+    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    MetadataPlan metadataPlan = new MetadataPlan(
+        MetadataOperator.NamespaceType.SET_STORAGE_GROUP,
+        new Path(mManager.getStorageGroupNameByAutoLevel(deviceId, conf.getAutoStorageGroupLevel())));
+    operateMetadata(metadataPlan);
+  }
+
+  private void addPathListToMTree(String deviceId, String[] measurementList, Object[] values)
+          throws ProcessorException {
     for (int i = 0; i < measurementList.length; i++) {
       addPathToMTree(deviceId, measurementList[i], values[i]);
     }
   }
 
-  private void addPathToMTree(String deviceId, String measurementId, String value)
-          throws PathErrorException, IOException, StorageGroupException {
+  private void addPathToMTree(String deviceId, String measurementId, Object value)
+          throws ProcessorException {
     TSDataType predictedDataType = getPredictedDataType(value);
-    String defaultEncoding = getDefaultEncoding(predictedDataType);
-    mManager.addPathToMTree(deviceId + "." + measurementId, predictedDataType.toString(), defaultEncoding);
+    TSEncoding defaultEncoding = getDefaultEncoding(predictedDataType);
+    MetadataPlan metadataPlan = new MetadataPlan(
+        MetadataOperator.NamespaceType.ADD_PATH,
+        new Path(deviceId + "." + measurementId),
+        predictedDataType, defaultEncoding,
+        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()));
+    operateMetadata(metadataPlan);
   }
 
+  /**
+   * Get predicted DataType of the given value
+   */
   private TSDataType getPredictedDataType(Object value) {
     if (value instanceof Boolean) {
       return TSDataType.BOOLEAN;
@@ -741,17 +790,31 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return true;
   }
 
-  private String getDefaultEncoding(TSDataType dataType) {
+  /**
+   * Get default encoding by dataType
+   */
+  private TSEncoding getDefaultEncoding(TSDataType dataType) {
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
     switch (dataType) {
       case BOOLEAN:
-        return conf.getAutoBooleanEncoding();
+        return TSEncoding.valueOf(conf.getAutoBooleanEncoding());
       case INT64:
-        return conf.getAutoLongEncoding();
+        return TSEncoding.valueOf(conf.getAutoLongEncoding());
       case DOUBLE:
-        return conf.getAutoDoubleEncoding();
+        return TSEncoding.valueOf(conf.getAutoDoubleEncoding());
       default:
-        return conf.getAutoStringEncoding();
+        return TSEncoding.valueOf(conf.getAutoStringEncoding());
     }
+  }
+
+  /**
+   * Collect the first element of columns of an array of arrays
+   */
+  private Object[] collectFirstElements(Object[] values) {
+    Object[] firstElements = new Object[values.length];
+    for (int i = 0; i < values.length; i++) {
+      firstElements[i] = ((Object[]) values[i])[0];
+    }
+    return firstElements;
   }
 }

@@ -131,7 +131,7 @@ public class StorageEngine implements IService {
         }
       }
       return processor;
-    } catch (ProcessorException | StorageGroupException e) {
+    } catch (StorageGroupException | ProcessorException e) {
       logger.error("Fail to get StorageGroupProcessor {}", storageGroupName, e);
       throw new StorageEngineException(e);
     }

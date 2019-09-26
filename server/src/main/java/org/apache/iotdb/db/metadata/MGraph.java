@@ -29,7 +29,6 @@ import java.util.Set;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.StorageGroupException;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -310,6 +309,9 @@ public class MGraph implements Serializable {
     return mtree.checkFileNameByPath(path);
   }
 
+  /**
+   * Check whether the given deviceId exists in the MTree
+   */
   boolean checkDeviceId(String deviceId) throws StorageGroupException, PathErrorException {
     return mtree.checkDeviceId(deviceId);
   }

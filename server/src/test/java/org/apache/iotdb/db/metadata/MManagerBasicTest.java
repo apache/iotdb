@@ -27,13 +27,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -78,7 +76,7 @@ public class MManagerBasicTest {
       manager.setStorageLevelToMTree("root.laptop");
     } catch (MetadataErrorException e) {
       Assert.assertEquals(
-          "org.apache.iotdb.db.exception.PathErrorException: The seriesPath of"
+          "org.apache.iotdb.db.exception.StorageGroupException: The seriesPath of"
               + " root.laptop already exist, it can't be set to the storage group",
           e.getMessage());
     }
