@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 public abstract class AbstractScript {
 
@@ -54,18 +55,14 @@ public abstract class AbstractScript {
     if(!userDir.exists()) {
       throw new RuntimeException("user.dir " + userDir.getAbsolutePath() + " doesn't exist.");
     }
-    File targetDir = new File(userDir, "target");
-    File[] files = targetDir.listFiles(new FileFilter() {
-      @Override
-      public boolean accept(File pathname) {
-        return pathname.isDirectory() && pathname.getName().startsWith("iotdb-client-");
-      }
-    });
-    if(files.length != 1) {
-      throw new RuntimeException(
-              "Exactly one directory starting with 'iotdb-client-' should have been found, but was " + files.length);
+    File target = new File(userDir, "target/classes/META-INF/maven/org.apache.iotdb/iotdb-client/pom.properties");
+    Properties properties = new Properties();
+    try {
+      properties.load(new FileReader(target));
+    } catch (IOException e) {
+      return "target/iotdb-client-";
     }
-    return files[0].getAbsolutePath();
+    return new File(userDir, String.format("target/%s-%s", properties.getProperty("artifactId"), properties.getProperty("version"))).getAbsolutePath();
   }
 
   protected abstract void testOnWindows() throws IOException;
