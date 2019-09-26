@@ -118,7 +118,7 @@ public class IoTDBDescriptor {
       }
 
       conf.setMetricsPort(Integer.parseInt(properties.getProperty("metrics_port",
-    	  Integer.toString(conf.getMetricsPort()))));
+          Integer.toString(conf.getMetricsPort()))));
       
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
 

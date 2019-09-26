@@ -530,9 +530,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
-	long startTime = System.currentTimeMillis();
-	TSExecuteStatementResp resp;
-	SqlArgument sqlArgument;
+    long startTime = System.currentTimeMillis();
+    TSExecuteStatementResp resp;
+    SqlArgument sqlArgument;
     try {
       if (!checkLogin()) {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
@@ -575,15 +575,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       PhysicalPlan physicalPlan;
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
-      	resp = executeQueryStatement(statement, physicalPlan);
-      	long endTime = System.currentTimeMillis();
-      	sqlArgument = new SqlArgument(resp,physicalPlan,statement,startTime,endTime);
-      	sqlArgumentsList.add(sqlArgument);
-      	if(sqlArgumentsList.size()>200) {
-  			for (int i = 0; i < 50; i++) {
-  				sqlArgumentsList.remove(0);
-  			}
-      	}
+        resp = executeQueryStatement(statement, physicalPlan);
+        long endTime = System.currentTimeMillis();
+        sqlArgument = new SqlArgument(resp,physicalPlan,statement,startTime,endTime);
+        sqlArgumentsList.add(sqlArgument);
+        if (sqlArgumentsList.size() > 200) {
+          for (int i = 0; i < 50; i++) {
+            sqlArgumentsList.remove(0);
+          }
+        }
         return resp;
       } else {
         return executeUpdateStatement(physicalPlan);

@@ -439,11 +439,11 @@ public class IoTDBConfig {
   }
 
   public int getMetricsPort() {
-	return metricsPort;
+    return metricsPort;
   }
 
   public void setMetricsPort(int metricsPort) {
-	this.metricsPort = metricsPort;
+    this.metricsPort = metricsPort;
   }
   
   public String getRpcAddress() {
