@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -233,7 +233,7 @@ public class TsFileWriteTool {
    *
    */
   public void create4(String tsfilePath) throws Exception {
-    TSFileDescriptor.getInstance().getConfig().groupSizeInByte = 1024 * 1024;
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(1024 * 1024);
     File f = new File(tsfilePath);
     if (f.exists()) {
       f.delete();

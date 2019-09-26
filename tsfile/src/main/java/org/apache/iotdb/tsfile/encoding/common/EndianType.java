@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,8 +20,6 @@ package org.apache.iotdb.tsfile.encoding.common;
 
 /**
  * In current version, we only support BIG_ENDIAN mode.
- *
- * @author xuyi
  */
 public enum EndianType {
   BIG_ENDIAN, LITTLE_ENDIAN

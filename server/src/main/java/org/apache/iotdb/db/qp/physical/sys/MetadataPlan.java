@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -73,6 +73,18 @@ public class MetadataPlan extends PhysicalPlan {
     super(false, Operator.OperatorType.METADATA);
     this.namespaceType = namespaceType;
     this.path = path;
+    setOperatorType(namespaceType);
+  }
+
+  /**
+   * delete time series plan
+   * @param namespaceType
+   * @param path
+   */
+  public MetadataPlan(MetadataOperator.NamespaceType namespaceType, List<Path> path) {
+    super(false, Operator.OperatorType.METADATA);
+    this.namespaceType = namespaceType;
+    this.deletePathList = path;
     setOperatorType(namespaceType);
   }
 
@@ -189,6 +201,8 @@ public class MetadataPlan extends PhysicalPlan {
       case DELETE_PATH:
         setOperatorType(Operator.OperatorType.DELETE_TIMESERIES);
         break;
+      case DELETE_STORAGE_GROUP:
+        setOperatorType(Operator.OperatorType.DELETE_STORAGE_GROUP);
       default:
         break;
     }

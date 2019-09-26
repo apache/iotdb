@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -27,8 +27,6 @@ import org.apache.thrift.server.TThreadPoolServer.Args;
 
 /**
  * This class is used to create thread pool which must contain the pool name.
- *
- * @author liukun
  */
 public class IoTDBThreadPoolFactory {
   private IoTDBThreadPoolFactory() {}

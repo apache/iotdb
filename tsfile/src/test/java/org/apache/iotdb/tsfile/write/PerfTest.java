@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -46,8 +46,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This is used for performance test, no asserting. User could change {@code ROW_COUNT} for larger data test.
- *
- * @author kangrong
  */
 public class PerfTest {
 
@@ -153,9 +151,12 @@ public class PerfTest {
   private static Schema generateTestData() {
     Schema schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
-    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
+    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64,
+        TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64,
+        TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64,
+        TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerMeasurement(new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
     JSONObject s4 = new JSONObject();
     s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");

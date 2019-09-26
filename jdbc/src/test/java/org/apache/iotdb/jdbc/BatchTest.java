@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -30,7 +30,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.iotdb.rpc.TSStatusType;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
 import org.junit.After;
@@ -47,10 +47,10 @@ public class BatchTest {
   private TSIService.Iface client;
   @Mock
   private TS_SessionHandle sessHandle;
-  private TS_StatusType successStatus = new TS_StatusType(TSStatusType.SUCCESS_STATUS.getStatusCode(), "");
-  private TS_StatusType errorStatus = new TS_StatusType(TSStatusType.INTERNAL_SERVER_ERROR.getStatusCode(), "");
-  private TS_Status Status_SUCCESS = new TS_Status(successStatus);
-  private TS_Status Status_ERROR = new TS_Status(errorStatus);
+  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
+  private TSStatusType errorStatus = new TSStatusType(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), "");
+  private TSStatus Status_SUCCESS = new TSStatus(successStatus);
+  private TSStatus Status_ERROR = new TSStatus(errorStatus);
   private TSExecuteBatchStatementResp resp;
   private ZoneId zoneID = ZoneId.systemDefault();
 

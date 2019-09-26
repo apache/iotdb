@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -32,7 +32,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.iotdb.rpc.TSStatusType;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
 import org.apache.thrift.TException;
@@ -57,8 +57,8 @@ public class IoTDBStatementTest {
   @Mock
   private TSFetchMetadataResp fetchMetadataResp;
 
-  private TS_StatusType successStatus = new TS_StatusType(TSStatusType.SUCCESS_STATUS.getStatusCode(), "");
-  private TS_Status Status_SUCCESS = new TS_Status(successStatus);
+  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
+  private TSStatus Status_SUCCESS = new TSStatus(successStatus);
   private ZoneId zoneID = ZoneId.systemDefault();
 
   @Before
@@ -107,7 +107,7 @@ public class IoTDBStatementTest {
             + "root.vehicle.d0.s0,root.vehicle,INT32,RLE,\n"
             + "root.vehicle.d0.s1,root.vehicle,INT64,RLE,\n"
             + "root.vehicle.d0.s2,root.vehicle,FLOAT,RLE,\n";
-    when(fetchMetadataResp.getShowTimeseriesList()).thenReturn(tslist);
+    when(fetchMetadataResp.getTimeseriesList()).thenReturn(tslist);
     boolean res = stmt.execute("show timeseries");
     assertTrue(res);
     try (ResultSet resultSet = stmt.getResultSet()) {
@@ -127,6 +127,7 @@ public class IoTDBStatementTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 
@@ -163,7 +164,7 @@ public class IoTDBStatementTest {
         + "root.vehicle.d0.s0,root.vehicle,INT32,RLE,\n"
         + "root.vehicle.d0.s1,root.vehicle,INT64,RLE,\n"
         + "root.vehicle.d0.s2,root.vehicle,FLOAT,RLE,\n";
-    when(fetchMetadataResp.getShowTimeseriesList()).thenReturn(tslist);
+    when(fetchMetadataResp.getTimeseriesList()).thenReturn(tslist);
     boolean res = stmt.execute("show timeseries root.vehicle.d0");
     assertTrue(res);
     try (ResultSet resultSet = stmt.getResultSet()) {
@@ -192,7 +193,7 @@ public class IoTDBStatementTest {
     IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
     Set<String> sgSet = new HashSet<>();
     sgSet.add("root.vehicle");
-    when(fetchMetadataResp.getShowStorageGroups()).thenReturn(sgSet);
+    when(fetchMetadataResp.getStorageGroups()).thenReturn(sgSet);
     String standard = "Storage Group,\nroot.vehicle,\n";
     boolean res = stmt.execute("show storage group");
     assertTrue(res);
@@ -213,6 +214,7 @@ public class IoTDBStatementTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 

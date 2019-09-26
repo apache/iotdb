@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -32,6 +32,7 @@ import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,8 +60,8 @@ public class IoTDBLogFileSizeTest {
     if (skip) {
       return;
     }
-    groupSize = TSFileConfig.groupSizeInByte;
-    TSFileConfig.groupSizeInByte = 8 * 1024 * 1024;
+    groupSize = TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte( 8 * 1024 * 1024);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(8 * 1024 * 1024);
     EnvironmentUtils.closeStatMonitor();
     daemon = IoTDB.getInstance();
@@ -74,7 +75,7 @@ public class IoTDBLogFileSizeTest {
     if (skip) {
       return;
     }
-    TSFileConfig.groupSizeInByte = groupSize;
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(groupSize);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSize);
     executeSQL(tearDownSqls);
     daemon.stop();

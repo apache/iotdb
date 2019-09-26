@@ -21,14 +21,20 @@
 
 ## 0.8.0 (version-0) -> version-1
 
-* Add Struct **TS_StatusType**, including code and message. Instead of using ~~TS_StatusCode~~, ~~errorCode~~ and ~~errorMessage~~, TS_Status use **TS_StatusType** to show specific success or error status, code and message.
+* Add Struct **TSStatusType**, including code and message. Instead of using ~~TS_StatusCode~~, ~~errorCode~~ and ~~errorMessage~~.
 
-* Use struct **TSRPCResp** to replace all structs with only one field `1: required TS_Status status`, including: ~~TSCloseSessionResp~~ closeSession, ~~TSCancelOperationResp~~ cancelOperation, ~~TSCloseOperationResp~~ closeOperation, ~~TSSetTimeZoneResp~~ setTimeZone.
+* Rename ~~TS_Status~~ to **TSStatus**, which use **TSStatusType** to show specific success or error status, code and message.
 
-* Add **TSBatchInsertionReq**, **TSCreateTimeseriesReq** and **TSSetStorageGroupReq**.
+* Use struct **TSStatus** to replace all structs with only one field `1: required TS_Status status`, including: ~~TSCloseSessionResp~~ closeSession, ~~TSCancelOperationResp~~ cancelOperation, ~~TSCloseOperationResp~~ closeOperation, ~~TSSetTimeZoneResp~~ setTimeZone.
+
+* Add **TSBatchInsertionReq**, **TSCreateTimeseriesReq**, **TSSetStorageGroupReq** and **TSDeleteReq**.
 
 * Change method name ~~TSExecuteStatementResp executeInsertion(1:TSInsertionReq req)~~ to **TSExecuteStatementResp insert(1:TSInsertionReq req)**, and add method **TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req)** for batch inserting interface.
 
-* Add method **TSRPCResp setStorageGroup(1:TSSetStorageGroupReq req)** and **TSRPCResp createTimeseries(1:TSCreateTimeseriesReq req)** for creating matadata interface.
+* Add method **TSStatus setStorageGroup(1:TSSetStorageGroupReq req)** and **TSStatus createTimeseries(1:TSCreateTimeseriesReq req)** for creating metadata interface.
+
+* Add method **TSStatus deleteTimeseries(1:TSDeleteReq req)** for deleting timeseries.
 
 * Change item in enum **TSProtocolVersion** from ~~TSFILE_SERVICE_PROTOCOL_V1~~ to IOTDB_SERVICE_PROTOCOL_V1.
+
+* Add **storageGroups** in struct **TSFetchMetadataResp**. Rename ~~ColumnsList~~ to **columnsList**, ~~showTimeseriesList~~ to **timeseriesList**, ~~showStorageGroups~~ to **storageGroups**.

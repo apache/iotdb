@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -50,7 +50,6 @@ import org.apache.thrift.TException;
 /**
  * Export CSV file.
  *
- * @author aru cheng
  * @version 1.0.0 20170719
  */
 public class ExportCsv extends AbstractCsvTool {

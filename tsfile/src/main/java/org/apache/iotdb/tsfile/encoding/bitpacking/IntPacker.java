@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -36,7 +36,6 @@ package org.apache.iotdb.tsfile.encoding.bitpacking;
  * +-----------------------+ +-----------------------+ +-----------------------+
  * +-----+ +-----+ +---------+ +-----+ +-----+ +---------+ +-----+ +-----+ 5 4 7 3 0 1 3 2
  *
- * @author Zhang Jinrui
  */
 public class IntPacker {
 

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -29,11 +29,12 @@ import io.airlift.airline.ParseCommandUnrecognizedException;
 import io.airlift.airline.ParseOptionConversionException;
 import io.airlift.airline.ParseOptionMissingException;
 import io.airlift.airline.ParseOptionMissingValueException;
-import java.io.File;
+
 import java.io.IOException;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
 public class MemEstTool {
 
@@ -69,7 +70,7 @@ public class MemEstTool {
       err(Throwables.getRootCause(e));
       status = 2;
     }
-    FileUtils.deleteDirectory(new File(IoTDBDescriptor.getInstance().getConfig().getBaseDir()));
+    FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(IoTDBDescriptor.getInstance().getConfig().getBaseDir()));
     System.exit(status);
   }
 

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -26,6 +26,7 @@ import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
@@ -80,20 +81,28 @@ public abstract class AbstractMemTable implements IMemTable {
 
 
   @Override
-  public void insert(InsertPlan insertPlan) {
-    for (int i = 0; i < insertPlan.getValues().length; i++) {
-      write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
-          insertPlan.getDataTypes()[i], insertPlan.getTime(), insertPlan.getValues()[i]);
+  public void insert(InsertPlan insertPlan) throws QueryProcessorException {
+    try {
+      for (int i = 0; i < insertPlan.getValues().length; i++) {
+        write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
+            insertPlan.getDataTypes()[i], insertPlan.getTime(), insertPlan.getValues()[i]);
+      }
+      long recordSizeInByte = MemUtils.getRecordSize(insertPlan);
+      memSize += recordSizeInByte;
+    } catch (RuntimeException e) {
+      throw new QueryProcessorException(e);
     }
-    long recordSizeInByte = MemUtils.getRecordSize(insertPlan);
-    memSize += recordSizeInByte;
   }
 
   @Override
-  public void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes) {
-    write(batchInsertPlan, indexes);
-    long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan);
-    memSize += recordSizeInByte;
+  public void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes) throws QueryProcessorException{
+    try {
+      write(batchInsertPlan, indexes);
+      long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan);
+      memSize += recordSizeInByte;
+    } catch (RuntimeException e) {
+      throw new QueryProcessorException(e);
+    }
   }
 
 

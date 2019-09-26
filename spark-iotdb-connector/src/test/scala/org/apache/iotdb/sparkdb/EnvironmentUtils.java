@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -54,9 +54,6 @@ import org.slf4j.LoggerFactory;
  * <p>
  * This class is used for cleaning test environment in unit test and integration test
  * </p>
- *
- * @author liukun
- *
  */
 public class EnvironmentUtils {
   private static String[] creationSqls = new String[]{

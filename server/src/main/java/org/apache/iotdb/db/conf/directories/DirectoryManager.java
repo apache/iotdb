@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -117,7 +117,7 @@ public class DirectoryManager {
   }
 
   public List<String> getAllSequenceFileFolders() {
-    return sequenceFileFolders;
+    return new ArrayList<>(sequenceFileFolders);
   }
 
   private static class DirectoriesHolder {
@@ -150,7 +150,7 @@ public class DirectoryManager {
   }
 
   public List<String> getAllUnSequenceFileFolders() {
-    return unsequenceFileFolders;
+    return new ArrayList<>(unsequenceFileFolders);
   }
 
   // only used by test

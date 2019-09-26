@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -44,9 +44,9 @@ public class MManagerAdvancedTest {
     EnvironmentUtils.envSetUp();
     mmanager = MManager.getInstance();
 
-    mmanager.setStorageLevelToMTree("root.vehicle.d0");
-    mmanager.setStorageLevelToMTree("root.vehicle.d1");
-    mmanager.setStorageLevelToMTree("root.vehicle.d2");
+    mmanager.setStorageGroupToMTree("root.vehicle.d0");
+    mmanager.setStorageGroupToMTree("root.vehicle.d1");
+    mmanager.setStorageGroupToMTree("root.vehicle.d2");
 
     mmanager.addPathToMTree("root.vehicle.d0.s0", "INT32", "RLE");
     mmanager.addPathToMTree("root.vehicle.d0.s1", "INT64", "RLE");
@@ -105,14 +105,14 @@ public class MManagerAdvancedTest {
     mmanager.addPathToMTree("root.vehicle.d2.s3", "TEXT", "PLAIN");
 
     Assert.assertEquals(TSDataType.INT32,
-        mmanager.checkPathStorageLevelAndGetDataType("root.vehicle.d0.s0").getDataType());
+        mmanager.checkPathStorageGroupAndGetDataType("root.vehicle.d0.s0").getDataType());
     Assert.assertEquals(TSDataType.INT64,
-        mmanager.checkPathStorageLevelAndGetDataType("root.vehicle.d0.s1").getDataType());
+        mmanager.checkPathStorageGroupAndGetDataType("root.vehicle.d0.s1").getDataType());
 
     Assert.assertEquals(false,
-        mmanager.checkPathStorageLevelAndGetDataType("root.vehicle.d0.s100").isSuccessfully());
+        mmanager.checkPathStorageGroupAndGetDataType("root.vehicle.d0.s100").isSuccessfully());
     Assert.assertEquals(null,
-        mmanager.checkPathStorageLevelAndGetDataType("root.vehicle.d0.s100").getDataType());
+        mmanager.checkPathStorageGroupAndGetDataType("root.vehicle.d0.s100").getDataType());
 
     MNode node = mmanager.getNodeByDeviceIdFromCache("root.vehicle.d0");
     Assert.assertEquals(TSDataType.INT32, node.getChild("s0").getSchema().getType());

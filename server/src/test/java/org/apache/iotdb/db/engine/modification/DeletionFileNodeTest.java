@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -43,7 +43,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -53,7 +53,6 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class DeletionFileNodeTest {
@@ -75,13 +74,13 @@ public class DeletionFileNodeTest {
       PathErrorException, IOException, StorageEngineException, StartupException {
     EnvironmentUtils.envSetUp();
 
-    MManager.getInstance().setStorageLevelToMTree(processorName);
+    MManager.getInstance().setStorageGroupToMTree(processorName);
     for (int i = 0; i < 10; i++) {
       MManager.getInstance().addPathToMTree(processorName + "." + measurements[i], dataType,
           encoding);
       StorageEngine.getInstance()
           .addTimeSeries(new Path(processorName, measurements[i]), TSDataType.valueOf(dataType),
-              TSEncoding.valueOf(encoding), CompressionType.valueOf(TSFileConfig.compressor),
+              TSEncoding.valueOf(encoding), CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
               Collections.emptyMap());
     }
   }

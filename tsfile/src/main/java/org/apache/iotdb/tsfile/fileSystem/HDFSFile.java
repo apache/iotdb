@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,24 +19,27 @@
 
 package org.apache.iotdb.tsfile.fileSystem;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.*;
-import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.*;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FilenameFilter;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.List;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HDFSFile extends File {
 
   private Path hdfsPath;
   private FileSystem fs;
-  private static final Logger logger = LoggerFactory.getLogger(TsFileWriter.class);
+  private static final Logger logger = LoggerFactory.getLogger(HDFSFile.class);
 
 
   public HDFSFile(String pathname) {
@@ -47,13 +50,13 @@ public class HDFSFile extends File {
 
   public HDFSFile(String parent, String child) {
     super(parent, child);
-    hdfsPath = new Path(parent + child);
+    hdfsPath = new Path(parent + File.separator + child);
     setConfAndGetFS();
   }
 
   public HDFSFile(File parent, String child) {
     super(parent, child);
-    hdfsPath = new Path(parent.getAbsolutePath() + child);
+    hdfsPath = new Path(parent.getAbsolutePath() + File.separator + child);
     setConfAndGetFS();
   }
 
@@ -66,6 +69,8 @@ public class HDFSFile extends File {
   private void setConfAndGetFS() {
     Configuration conf = new Configuration();
     conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
+    conf.set("dfs.client.block.write.replace-datanode-on-failure.policy", "NEVER");
+    conf.set("dfs.client.block.write.replace-datanode-on-failure.enable", "true");
     try {
       fs = hdfsPath.getFileSystem(conf);
     } catch (IOException e) {
@@ -105,33 +110,11 @@ public class HDFSFile extends File {
 
   @Override
   public File[] listFiles() {
-    ArrayList<HDFSFile> files = new ArrayList<>();
+    List<HDFSFile> files = new ArrayList<>();
     try {
-      RemoteIterator<LocatedFileStatus> iterator = fs.listFiles(hdfsPath, true);
-      while (iterator.hasNext()) {
-        LocatedFileStatus fileStatus = iterator.next();
-        Path fullPath = fileStatus.getPath();
-        files.add(new HDFSFile(fullPath.toUri()));
-      }
-      return files.toArray(new HDFSFile[files.size()]);
-    } catch (IOException e) {
-      logger.error("Fail to list files in {}. ", hdfsPath.toUri().toString(), e);
-      return null;
-    }
-  }
-
-  @Override
-  public File[] listFiles(FileFilter filter) {
-    ArrayList<HDFSFile> files = new ArrayList<>();
-    try {
-      PathFilter pathFilter = new GlobFilter(filter.toString()); // TODO test this filter in the future
-      RemoteIterator<LocatedFileStatus> iterator = fs.listFiles(hdfsPath, true);
-      while (iterator.hasNext()) {
-        LocatedFileStatus fileStatus = iterator.next();
-        Path fullPath = fileStatus.getPath();
-        if (pathFilter.accept(fullPath)) {
-          files.add(new HDFSFile(fullPath.toUri()));
-        }
+      for (FileStatus fileStatus : fs.listStatus(hdfsPath)) {
+        Path filePath = fileStatus.getPath();
+        files.add(new HDFSFile(filePath.toUri().toString()));
       }
       return files.toArray(new HDFSFile[files.size()]);
     } catch (IOException e) {
@@ -163,6 +146,9 @@ public class HDFSFile extends File {
   @Override
   public boolean mkdirs() {
     try {
+      if (exists()) {
+        return false;
+      }
       return fs.mkdirs(hdfsPath);
     } catch (IOException e) {
       logger.error("Fail to create directory {}. ", hdfsPath.toUri().toString(), e);
@@ -173,7 +159,7 @@ public class HDFSFile extends File {
   @Override
   public boolean isDirectory() {
     try {
-      return fs.getFileStatus(hdfsPath).isDirectory();
+      return exists() && fs.getFileStatus(hdfsPath).isDirectory();
     } catch (IOException e) {
       logger.error("Fail to judge whether {} is a directory. ", hdfsPath.toUri().toString(), e);
       return false;
@@ -207,7 +193,7 @@ public class HDFSFile extends File {
 
   @Override
   public int compareTo(File pathname) {
-    if(pathname instanceof HDFSFile) {
+    if (pathname instanceof HDFSFile) {
       return hdfsPath.toUri().toString().compareTo(pathname.getPath());
     } else {
       logger.error("File {} is not HDFS file. ", pathname.getPath());
@@ -218,9 +204,19 @@ public class HDFSFile extends File {
   @Override
   public boolean equals(Object obj) {
     if ((obj != null) && (obj instanceof HDFSFile)) {
-      return compareTo((HDFSFile)obj) == 0;
+      return compareTo((HDFSFile) obj) == 0;
     }
     return false;
+  }
+
+  @Override
+  public boolean renameTo(File dest) {
+    try {
+      return fs.rename(hdfsPath, new Path(dest.getAbsolutePath()));
+    } catch (IOException e) {
+      logger.error("Failed to rename file {} to {}. ", hdfsPath.toString(), dest.getName(), e);
+      return false;
+    }
   }
 
 
@@ -231,6 +227,11 @@ public class HDFSFile extends File {
 
   @Override
   public boolean isAbsolute() {
+    throw new UnsupportedOperationException("Unsupported operation.");
+  }
+
+  @Override
+  public File[] listFiles(FileFilter filter) {
     throw new UnsupportedOperationException("Unsupported operation.");
   }
 
@@ -306,11 +307,6 @@ public class HDFSFile extends File {
 
   @Override
   public boolean mkdir() {
-    throw new UnsupportedOperationException("Unsupported operation.");
-  }
-
-  @Override
-  public boolean renameTo(File dest) {
     throw new UnsupportedOperationException("Unsupported operation.");
   }
 

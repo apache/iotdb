@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,8 +76,8 @@ public class SimpleFileVersionController implements VersionController {
   }
 
   private void persist() throws IOException {
-    File oldFile = new File(directoryPath, FILE_PREFIX + prevVersion);
-    File newFile = new File(directoryPath, FILE_PREFIX + currVersion);
+    File oldFile = SystemFileFactory.INSTANCE.getFile(directoryPath, FILE_PREFIX + prevVersion);
+    File newFile = SystemFileFactory.INSTANCE.getFile(directoryPath, FILE_PREFIX + currVersion);
     FileUtils.moveFile(oldFile, newFile);
     logger.info("Version file updated, previous: {}, current: {}",
         oldFile.getAbsolutePath(), newFile.getAbsolutePath());
@@ -84,7 +85,7 @@ public class SimpleFileVersionController implements VersionController {
   }
 
   private void restore() throws IOException {
-    File directory = new File(directoryPath);
+    File directory = SystemFileFactory.INSTANCE.getFile(directoryPath);
     File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(FILE_PREFIX));
     File versionFile;
     if (versionFiles != null && versionFiles.length > 0) {
@@ -105,7 +106,7 @@ public class SimpleFileVersionController implements VersionController {
         }
       }
     } else {
-      versionFile = new File(directory, FILE_PREFIX + "0");
+      versionFile = SystemFileFactory.INSTANCE.getFile(directory, FILE_PREFIX + "0");
       prevVersion = 0;
       new FileOutputStream(versionFile).close();
     }

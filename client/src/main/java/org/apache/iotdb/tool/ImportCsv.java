@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -54,8 +54,6 @@ import org.apache.thrift.TException;
 
 /**
  * read a CSV formatted data File and insert all the data into IoTDB.
- *
- * @author zhanggr
  */
 public class ImportCsv extends AbstractCsvTool {
   private static final String FILE_ARGS = "f";

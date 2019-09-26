@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -29,6 +29,7 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType.TsDouble;
 import org.apache.iotdb.db.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -42,7 +43,7 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
   private List<TimeValuePair> sortedTimeValuePairList;
 
   Map<String, String> props;
-  private int floatPrecision = TSFileConfig.floatPrecision;
+  private int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
 
   /**
    * init by TSDataType and TimeValuePairSorter.

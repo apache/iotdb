@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -25,7 +25,7 @@ import static org.mockito.Mockito.when;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.iotdb.rpc.TSStatusType;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
 import org.junit.After;
@@ -40,8 +40,8 @@ public class IoTDBConnectionTest {
   private TSIService.Iface client;
 
   private IoTDBConnection connection = new IoTDBConnection();
-  private TS_StatusType successStatus = new TS_StatusType(TSStatusType.SUCCESS_STATUS.getStatusCode(), "");
-  private TS_Status Status_SUCCESS = new TS_Status(successStatus);
+  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
+  private TSStatus Status_SUCCESS = new TSStatus(successStatus);
 
   @Before
   public void setUp() throws Exception {
@@ -56,7 +56,7 @@ public class IoTDBConnectionTest {
   public void testSetTimeZone() throws TException, IoTDBSQLException {
     String timeZone = "Asia/Shanghai";
     when(client.setTimeZone(any(TSSetTimeZoneReq.class)))
-        .thenReturn(new TSRPCResp(Status_SUCCESS));
+        .thenReturn(new TSStatus(Status_SUCCESS));
     connection.client = client;
     connection.setTimeZone(timeZone);
     assertEquals(connection.getTimeZone(), timeZone);
