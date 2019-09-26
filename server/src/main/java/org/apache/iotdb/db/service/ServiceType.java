@@ -35,6 +35,7 @@ public enum ServiceType {
   PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE","PERFORMANCE_STATISTIC_SERVICE"),
   MANAGE_DYNAMIC_PARAMETERS_SERVICE("Manage Dynamic Parameters", "Manage Dynamic Parameters"),
   TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
+  CACHE_HIT_RATE_DISPLAY_SERVICE("CACHE_HIT_RATE_DISPLAY_SERVICE","Cache Hit Rate"),
 
   FLUSH_SERVICE("Flush ServerService",
       generateJmxName("org.apache.iotdb.db.engine.pool", "Flush Manager"));

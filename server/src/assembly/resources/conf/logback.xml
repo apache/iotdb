@@ -19,7 +19,7 @@
     under the License.
 
 -->
-<configuration>
+<configuration scan="true" scanPeriod="100 seconds">
     <jmxConfigurator/>
     <!-- prevent logback from outputting its own status at the start of every log -->
     <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
