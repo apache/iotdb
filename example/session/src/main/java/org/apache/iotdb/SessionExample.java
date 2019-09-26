@@ -18,22 +18,27 @@
  */
 package org.apache.iotdb;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.session.IoTDBSessionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.thrift.TException;
 
 public class SessionExample {
 
   private static Session session;
 
-  public static void main(String[] args) throws IoTDBSessionException {
+  public static void main(String[] args)
+      throws IoTDBSessionException, TException, IoTDBRPCException, SQLException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -44,6 +49,8 @@ public class SessionExample {
 
     insert();
     insertRowBatch();
+    nonQuery();
+    query();
     deleteData();
     deleteTimeseries();
     session.close();
@@ -106,5 +113,18 @@ public class SessionExample {
     paths.add("root.sg1.d1.s2");
     paths.add("root.sg1.d1.s3");
     session.deleteTimeseries(paths);
+  }
+
+  private static void query() throws TException, IoTDBRPCException, SQLException {
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+    while (dataSet.hasNext()){
+      System.out.println(dataSet.next());
+    }
+
+    dataSet.closeOperationHandle();
+  }
+
+  private static void nonQuery() throws TException, IoTDBRPCException, SQLException {
+    session.executeNonQueryStatement("insert into root.sg1.d1(timestamp,s0) values(200, 1);");
   }
 }
