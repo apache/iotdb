@@ -55,7 +55,7 @@ public abstract class AbstractScript {
     if(!userDir.exists()) {
       throw new RuntimeException("user.dir " + userDir.getAbsolutePath() + " doesn't exist.");
     }
-    File target = new File(userDir, "target/classes/META-INF/maven/org.apache.iotdb/iotdb-client/pom.properties");
+    File target = new File(userDir, "target/maven-archiver/pom.properties");
     Properties properties = new Properties();
     try {
       properties.load(new FileReader(target));
