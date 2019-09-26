@@ -166,14 +166,11 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
     MapWritable mapWritable = new MapWritable();
     Text deviceIdText = new Text(deviceIdList.get(currentIndex));
     LongWritable time = new LongWritable(timestamp);
-    int index = 0;
 
-    if (isReadTime && isReadDeviceId) { // Both time and deviceId need to be written into value
-      mapWritable.put(new Text("timestamp"), time);
-      mapWritable.put(new Text("device_id"), deviceIdText);
-    } else if (isReadTime) { // Only Time needs to be written into value
-      mapWritable.put(new Text("timestamp"), time);
-    } else if (isReadDeviceId) { // Only deviceId need to be written into value
+    if (isReadTime) { // Only Time needs to be written into value
+      mapWritable.put(new Text("time_stamp"), time);
+    }
+    if (isReadDeviceId) { // Only deviceId need to be written into value
       mapWritable.put(new Text("device_id"), deviceIdText);
     }
 

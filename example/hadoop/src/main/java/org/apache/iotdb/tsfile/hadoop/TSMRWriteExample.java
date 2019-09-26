@@ -137,7 +137,7 @@ public class TSMRWriteExample {
                 throws IOException, InterruptedException {
 
             Text deltaObjectId = (Text) value.get(new Text("device_id"));
-            long timestamp = ((LongWritable)value.get(new Text("timestamp"))).get();
+            long timestamp = ((LongWritable)value.get(new Text("time_stamp"))).get();
             if (timestamp % 100000 == 0) {
                 context.write(deltaObjectId, new MapWritable(value));
             }

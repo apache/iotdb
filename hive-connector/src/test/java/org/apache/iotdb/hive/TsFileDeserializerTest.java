@@ -44,7 +44,7 @@ public class TsFileDeserializerTest {
   @Before
   public void setUp() {
     tsFileDeserializer = new TsFileDeserializer();
-    columnNames = Arrays.asList("timestamp", "sensor_1");
+    columnNames = Arrays.asList("time_stamp", "sensor_1");
     columnTypes = new ArrayList<>();
     PrimitiveTypeInfo typeInfo1 = new PrimitiveTypeInfo();
     typeInfo1.setTypeName("bigint");
@@ -76,7 +76,7 @@ public class TsFileDeserializerTest {
 
     MapWritable worryWritable2 = new MapWritable();
     worryWritable2.put(new Text("device_id"), new Text("device_2"));
-    worryWritable2.put(new Text("timestamp"), new LongWritable(1L));
+    worryWritable2.put(new Text("time_stamp"), new LongWritable(1L));
     worryWritable2.put(new Text("sensor_1"), new LongWritable(1L));
     try {
       assertNull(tsFileDeserializer.deserialize(columnNames, columnTypes, worryWritable2, "device_1"));
@@ -86,7 +86,7 @@ public class TsFileDeserializerTest {
 
     MapWritable worryWritable3 = new MapWritable();
     worryWritable3.put(new Text("device_id"), new Text("device_1"));
-    worryWritable3.put(new Text("timestamp"), new LongWritable(1L));
+    worryWritable3.put(new Text("time_stamp"), new LongWritable(1L));
     worryWritable3.put(new Text("sensor_1"), new IntWritable(1));
     try {
       tsFileDeserializer.deserialize(columnNames, columnTypes, worryWritable3, "device_1");
@@ -101,7 +101,7 @@ public class TsFileDeserializerTest {
 
     MapWritable writable = new MapWritable();
     writable.put(new Text("device_id"), new Text("device_1"));
-    writable.put(new Text("timestamp"), new LongWritable(1L));
+    writable.put(new Text("time_stamp"), new LongWritable(1L));
     writable.put(new Text("sensor_1"), new LongWritable(1000000L));
     try {
       Object result = tsFileDeserializer.deserialize(columnNames, columnTypes, writable, "device_1");
