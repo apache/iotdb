@@ -107,7 +107,7 @@ public class EnvScriptIT {
     if(!userDir.exists()) {
       throw new RuntimeException("user.dir " + userDir.getAbsolutePath() + " doesn't exist.");
     }
-    File target = new File(userDir, "target/maven-archiver/iotdb-server/pom.properties");
+    File target = new File(userDir, "target/maven-archiver/pom.properties");
     Properties properties = new Properties();
     assertTrue(target.exists());
     try {
