@@ -86,3 +86,4 @@ tsfile/src/test/resources/*.ts
 
 ### Apache release ###
 local-snapshots-dir/
+venv/

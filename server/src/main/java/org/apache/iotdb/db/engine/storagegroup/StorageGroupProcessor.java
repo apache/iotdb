@@ -72,6 +72,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.JobFileManager;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -85,6 +86,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 /**
  * For sequence data, a StorageGroupProcessor has some TsFileProcessors, in which there is only one
@@ -598,15 +600,15 @@ public class StorageGroupProcessor {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: TTL removing files before {}", storageGroupName, new Date(timeBound));
     }
-    try {
-      for (TsFileResource tsFileResource : unSequenceFileList) {
-        checkFileTTL(tsFileResource, timeBound, true);
-      }
-      for (TsFileResource tsFileResource : sequenceFileList) {
-        checkFileTTL(tsFileResource, timeBound, false);
-      }
-    } catch (ConcurrentModificationException e) {
-      // ignore
+    // copy to avoid concurrent modification of deletion
+    List<TsFileResource> seqFiles = new ArrayList<>(sequenceFileList);
+    List<TsFileResource> unseqFiles = new ArrayList<>(unSequenceFileList);
+
+    for (TsFileResource tsFileResource : seqFiles) {
+      checkFileTTL(tsFileResource, timeBound, true);
+    }
+    for (TsFileResource tsFileResource : unseqFiles) {
+      checkFileTTL(tsFileResource, timeBound, false);
     }
   }
 
@@ -1082,5 +1084,15 @@ public class StorageGroupProcessor {
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
     checkFilesTTL();
+  }
+
+  @TestOnly
+  public List<TsFileResource> getSequenceFileList() {
+    return sequenceFileList;
+  }
+
+  @TestOnly
+  public List<TsFileResource> getUnSequenceFileList() {
+    return unSequenceFileList;
   }
 }

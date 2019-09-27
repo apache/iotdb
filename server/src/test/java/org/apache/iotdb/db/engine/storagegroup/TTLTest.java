@@ -272,4 +272,17 @@ public class TTLTest {
     assertEquals(sg1, rowRecord.getFields().get(0).getStringValue());
     assertEquals(ttl, rowRecord.getFields().get(1).getLongV());
   }
+
+  @Test
+  public void testTTLCleanFile() throws QueryProcessorException {
+    prepareData();
+    storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
+
+    assertEquals(4, storageGroupProcessor.getSequenceFileList().size());
+    assertEquals(4, storageGroupProcessor.getUnSequenceFileList().size());
+
+    storageGroupProcessor.setDataTTL(0);
+    assertEquals(0, storageGroupProcessor.getSequenceFileList().size());
+    assertEquals(0, storageGroupProcessor.getUnSequenceFileList().size());
+  }
 }
