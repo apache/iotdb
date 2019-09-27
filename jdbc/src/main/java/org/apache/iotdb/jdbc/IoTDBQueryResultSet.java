@@ -123,9 +123,9 @@ public class IoTDBQueryResultSet implements ResultSet {
     int index = 2;
     for (String name : columnName) {
       columnInfoList.add(name);
-
-      // TODO now is a quick fix of bug IOTDB-224 but not good
-      columnInfoMap.put(name, index++);
+      if (!columnInfoMap.containsKey(name)) {
+        columnInfoMap.put(name, index++);
+      }
     }
 
     this.columnTypeList = columnTypeList;

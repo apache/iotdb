@@ -57,7 +57,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
   private QueryContext context;
   private IExpression expression;
 
-  private List<String> sensorColumns;
+  private List<String> deduplicatedSensorColumns;
   private TreeMap<String, List<Path>> pathsGroupByDevice;
   private TreeMap<String, List<String>> aggregationsGroupByDevice;
 
@@ -74,20 +74,28 @@ public class DeviceIterateDataSet extends QueryDataSet {
   private Iterator<String> deviceIterator;
   private String currentDevice;
   private QueryDataSet currentDataSet;
-  private int[] sensorColumnsMapRowRecord;
-
-  private boolean hasAggregateions = false;
+  private int[] curColumnsMap;
 
   public DeviceIterateDataSet(QueryPlan queryPlan, QueryContext context,
       IEngineQueryRouter queryRouter) {
     this.queryRouter = queryRouter;
     this.context = context;
-    this.sensorColumns = queryPlan.getSensorColumns();
     this.pathsGroupByDevice = queryPlan.getPathsGroupByDevice();
+
+    // get deduplicated sensor columns
+    // Note that the deduplication strategy must be consistent with that of IoTDBQueryResultSet.
+    List<String> sensorColumns = queryPlan.getSensorColumns();
+    deduplicatedSensorColumns = new ArrayList<>();
+    HashSet<String> tmpColumnSet = new HashSet<>();
+    for (String column : sensorColumns) {
+      if (!tmpColumnSet.contains(column)) {
+        deduplicatedSensorColumns.add(column);
+        tmpColumnSet.add(column);
+      }
+    }
 
     if (queryPlan instanceof GroupByPlan) {
       dataSetType = DataSetType.GROUPBY;
-      hasAggregateions = true;
       // assign parameters
       this.expression = queryPlan.getExpression();
       this.aggregationsGroupByDevice = ((GroupByPlan) queryPlan).getAggregationsGroupByDevice();
@@ -97,27 +105,24 @@ public class DeviceIterateDataSet extends QueryDataSet {
 
     } else if (queryPlan instanceof AggregationPlan) {
       dataSetType = DataSetType.AGGREGATE;
-      hasAggregateions = true;
       // assign parameters
       this.aggregationsGroupByDevice = ((AggregationPlan) queryPlan).getAggregationsGroupByDevice();
       this.expression = queryPlan.getExpression();
 
     } else if (queryPlan instanceof FillQueryPlan) {
       dataSetType = DataSetType.FILL;
-      hasAggregateions = false;
       // assign parameters
       this.queryTime = ((FillQueryPlan) queryPlan).getQueryTime();
       this.fillType = ((FillQueryPlan) queryPlan).getFillType();
     } else {
       dataSetType = DataSetType.QUERY;
-      hasAggregateions = false;
       // assign parameters
       this.expression = queryPlan.getExpression();
     }
 
     this.curDataSetInitialized = false;
     this.deviceIterator = pathsGroupByDevice.keySet().iterator();
-    this.sensorColumnsMapRowRecord = new int[sensorColumns.size()];
+    this.curColumnsMap = new int[deduplicatedSensorColumns.size()];
   }
 
   public boolean hasNext() throws IOException {
@@ -126,15 +131,15 @@ public class DeviceIterateDataSet extends QueryDataSet {
     } else {
       curDataSetInitialized = false;
     }
-    for (int i = 0; i < sensorColumns.size(); i++) {
-      sensorColumnsMapRowRecord[i] = -1;
+    for (int i = 0; i < deduplicatedSensorColumns.size(); i++) {
+      curColumnsMap[i] = -1;
     }
 
     while (deviceIterator.hasNext()) {
       currentDevice = deviceIterator.next();
       List<Path> paths = pathsGroupByDevice.get(currentDevice);
       List<String> aggregations = null;
-      if (hasAggregateions) {
+      if (aggregationsGroupByDevice != null) {
         aggregations = aggregationsGroupByDevice.get(currentDevice);
       }
 
@@ -143,7 +148,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
       Set<String> columnSet = new HashSet<>();
       for (int i = 0; i < paths.size(); i++) {
         String sensor = paths.get(i).getMeasurement();
-        if (hasAggregateions) {
+        if (aggregations != null) {
           columnSet.add(aggregations.get(i) + "(" + sensor + ")");
         } else {
           columnSet.add(sensor);
@@ -152,21 +157,21 @@ public class DeviceIterateDataSet extends QueryDataSet {
       int index = -1;
       for (String path : columnSet) {
         boolean isAddToExecutePaths = false;
-        for (int i = 0; i < sensorColumns.size(); i++) {
-          String column = sensorColumns.get(i);
+        for (int i = 0; i < deduplicatedSensorColumns.size(); i++) {
+          String column = deduplicatedSensorColumns.get(i);
           if (path.equals(column)) {
             if (!isAddToExecutePaths) {
               executeColumns.add(path);
               index++;
               isAddToExecutePaths = true;
             }
-            sensorColumnsMapRowRecord[i] = index;
+            curColumnsMap[i] = index;
           }
         }
       }
       List<Path> executePaths = new ArrayList<>();
       for (String column : executeColumns) {
-        if (hasAggregateions) {
+        if (aggregations != null) {
           executePaths.add(new Path(currentDevice,
               column.substring(column.indexOf("(") + 1, column.indexOf(")"))));
         } else {
@@ -217,8 +222,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
     rowRecord.addField(deviceField);
 
     List<Field> sensorfields = rawRowRecord.getFields();
-    for (int i = 0; i < sensorColumnsMapRowRecord.length; i++) {
-      int mapPos = sensorColumnsMapRowRecord[i];
+    for (int mapPos : curColumnsMap) {
       if (mapPos == -1) {
         rowRecord.addField(new Field(null));
       } else {
