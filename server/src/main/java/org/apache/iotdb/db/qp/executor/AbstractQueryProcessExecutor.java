@@ -21,10 +21,10 @@ package org.apache.iotdb.db.qp.executor;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -34,6 +34,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.DeviceIterateDataSet;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.executor.IEngineQueryRouter;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -64,6 +65,10 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
 
   private QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
       throws StorageEngineException, QueryFilterOptimizationException, PathErrorException, ProcessorException, IOException {
+    if (queryPlan.isGroupByDevice()) {
+      return new DeviceIterateDataSet(queryPlan, context, queryRouter);
+    }
+
     if (queryPlan instanceof GroupByPlan) {
       GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
       return groupBy(groupByPlan.getPaths(), groupByPlan.getAggregations(),
@@ -81,8 +86,10 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       return fill(queryPlan.getPaths(), fillQueryPlan.getQueryTime(),
           fillQueryPlan.getFillType(), context);
     }
-    QueryExpression queryExpression = QueryExpression.create().setSelectSeries(queryPlan.getPaths())
-            .setExpression(queryPlan.getExpression());
+
+    QueryExpression queryExpression = QueryExpression.create()
+        .setSelectSeries(queryPlan.getPaths())
+        .setExpression(queryPlan.getExpression());
     return queryRouter.query(queryExpression, context);
   }
 
@@ -102,7 +109,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       for (String onePath : existingPaths) {
         if (!mManager.pathExist(onePath)) {
           throw new ProcessorException(
-              String.format("TimeSeries %s does not exist and its data cannot be deleted", onePath));
+              String
+                  .format("TimeSeries %s does not exist and its data cannot be deleted", onePath));
         }
       }
       for (String path : existingPaths) {

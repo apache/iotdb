@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.qp.strategy;
 
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.TreeMap;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
@@ -231,7 +234,6 @@ public class PhysicalGenerator {
 
   private PhysicalPlan transformQuery(QueryOperator queryOperator)
       throws QueryProcessorException {
-
     QueryPlan queryPlan;
 
     if (queryOperator.isGroupBy()) {
@@ -239,7 +241,8 @@ public class PhysicalGenerator {
       ((GroupByPlan) queryPlan).setUnit(queryOperator.getUnit());
       ((GroupByPlan) queryPlan).setOrigin(queryOperator.getOrigin());
       ((GroupByPlan) queryPlan).setIntervals(queryOperator.getIntervals());
-      ((GroupByPlan) queryPlan).setAggregations(queryOperator.getSelectOperator().getAggregations());
+      ((GroupByPlan) queryPlan)
+          .setAggregations(queryOperator.getSelectOperator().getAggregations());
     } else if (queryOperator.isFill()) {
       queryPlan = new FillQueryPlan();
       FilterOperator timeFilter = queryOperator.getFilterOperator();
@@ -257,9 +260,74 @@ public class PhysicalGenerator {
       queryPlan = new QueryPlan();
     }
 
-    // set selected paths
     List<Path> paths = queryOperator.getSelectedPaths();
     queryPlan.setPaths(paths);
+    queryPlan.checkPaths(executor);
+
+    if (queryOperator.isGroupByDevice()) {
+      queryPlan.setGroupByDevice(true);
+      // group paths and aggregations by devices
+      List<String> aggregations = queryOperator.getSelectOperator().getAggregations();
+      TreeMap<String, List<Path>> pathsGroupByDevice = new TreeMap<>();
+      TreeMap<String, List<String>> aggregationsGroupByDevice = new TreeMap<>();
+      TreeMap<String, List<String>> sensorColumnsGroupByDevice = new TreeMap<>();
+      for (int i = 0; i < paths.size(); i++) {
+        Path path = paths.get(i);
+        String device = path.getDevice();
+        if (!pathsGroupByDevice.containsKey(device)) {
+          pathsGroupByDevice.put(device, new ArrayList<>());
+          aggregationsGroupByDevice.put(device, new ArrayList<>());
+          sensorColumnsGroupByDevice.put(device, new ArrayList<>());
+        }
+        pathsGroupByDevice.get(device).add(path);
+        if (aggregations != null && !aggregations.isEmpty()) {
+          aggregationsGroupByDevice.get(device).add(aggregations.get(i));
+          sensorColumnsGroupByDevice.get(device)
+              .add(aggregations.get(i) + "(" + paths.get(i).getMeasurement() + ")");
+        } else {
+          sensorColumnsGroupByDevice.get(device).add(paths.get(i).getMeasurement());
+        }
+      }
+
+      // get final sensorColumns
+      Iterator<String> devices = sensorColumnsGroupByDevice.keySet().iterator();
+      List<String> sensorColumn1 = sensorColumnsGroupByDevice.get(devices.next());
+      while (devices.hasNext()) {
+        List<String> sensorColumn2 = sensorColumnsGroupByDevice.get(devices.next());
+        sensorColumn1 = unionWithReplica(sensorColumn1, sensorColumn2);
+      }
+
+      // slimit trim
+      if (queryOperator.hasSlimit()) {
+        int seriesSlimit = queryOperator.getSeriesLimit();
+        int seriesOffset = queryOperator.getSeriesOffset();
+        // trim sensorColumns
+        sensorColumn1 = slimitTrimStr(sensorColumn1, seriesSlimit, seriesOffset);
+
+        // trim pathsGroupByDevice and aggregationsGroupByDevice
+        // Note that this trims with false positives but it also helps.
+        devices = sensorColumnsGroupByDevice.keySet().iterator();
+        while (devices.hasNext()) {
+          String device = devices.next();
+          if (aggregations != null && !aggregations.isEmpty()) {
+            aggregationsGroupByDevice
+                .put(device, slimitTrimStr(aggregationsGroupByDevice.get(device),
+                    seriesSlimit, seriesOffset));
+          }
+          pathsGroupByDevice.put(device, slimitTrimPath(pathsGroupByDevice.get(device),
+              seriesSlimit, seriesOffset));
+        }
+      }
+
+      // assigns to queryPlan
+      queryPlan.setSensorColumns(sensorColumn1);
+      queryPlan.setPathsGroupByDevice(pathsGroupByDevice);
+      if (aggregations != null && !aggregations.isEmpty()) {
+        ((AggregationPlan) queryPlan).setAggregationsGroupByDevice(aggregationsGroupByDevice);
+        ((AggregationPlan) queryPlan).setAggregations(null);
+      }
+      // NOTE DO NOT queryPlan setPaths(null) here because paths are still used in executeDataQuery.
+    }
 
     // transform filter operator to expression
     FilterOperator filterOperator = queryOperator.getFilterOperator();
@@ -269,7 +337,6 @@ public class PhysicalGenerator {
       queryPlan.setExpression(expression);
     }
 
-    queryPlan.checkPaths(executor);
     return queryPlan;
   }
 
@@ -338,4 +405,61 @@ public class PhysicalGenerator {
   // return filterOperator.getChildren();
   // }
 
+
+  /**
+   * For example, list1=[s0,s0,s1], list2=[s0,s0,s0,s2], then union with replica is
+   * [s0,s0,s1,s0,s2]
+   */
+  private List<String> unionWithReplica(List<String> list1, List<String> list2) {
+    Iterator<String> iterator1 = list1.iterator();
+    for (String s1 : list1) {
+      Iterator<String> iterator2 = list2.iterator();
+      while (iterator2.hasNext()) {
+        String s2 = iterator2.next();
+        if (s2.equals(s1)) {
+          iterator2.remove();
+          break;
+        }
+      }
+    }
+    List<String> res = new ArrayList<>();
+    res.addAll(list1);
+    res.addAll(list2);
+    return res;
+  }
+
+  private List<String> slimitTrimStr(List<String> columnList, int seriesLimit, int seriesOffset)
+      throws QueryProcessorException {
+    int size = columnList.size();
+
+    // check parameter range
+    if (seriesOffset >= size) {
+      throw new QueryProcessorException("SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.");
+    }
+    int endPosition = seriesOffset + seriesLimit;
+    if (endPosition > size) {
+      endPosition = size;
+    }
+
+    // trim seriesPath list
+    return new ArrayList<>(columnList.subList(seriesOffset, endPosition));
+  }
+
+  private List<Path> slimitTrimPath(List<Path> pathsList, int seriesLimit, int seriesOffset)
+      throws QueryProcessorException {
+    int size = pathsList.size();
+
+    // check parameter range
+    if (seriesOffset >= size) {
+      throw new QueryProcessorException("SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.");
+    }
+    int endPosition = seriesOffset + seriesLimit;
+    if (endPosition > size) {
+      endPosition = size;
+    }
+
+    // trim seriesPath list
+    return new ArrayList<>(pathsList.subList(seriesOffset, endPosition));
+  }
 }
+

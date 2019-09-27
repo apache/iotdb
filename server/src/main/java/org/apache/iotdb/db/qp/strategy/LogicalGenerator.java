@@ -57,7 +57,6 @@ import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.db.sql.parse.AstNode;
 import org.apache.iotdb.db.sql.parse.Node;
 import org.apache.iotdb.db.sql.parse.TSParser;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -210,6 +209,9 @@ public class LogicalGenerator {
         return;
       case TSParser.TOK_SOFFSET:
         analyzeSoffset(astNode);
+        return;
+      case TSParser.TOK_GROUPBY_DEVICE:
+        ((QueryOperator) initializedOperator).setGroupByDevice(true);
         return;
       default:
         throw new QueryProcessorException("Not supported TSParser type" + tokenIntType);

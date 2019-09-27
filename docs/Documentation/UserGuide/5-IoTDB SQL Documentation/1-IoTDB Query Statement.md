@@ -227,20 +227,40 @@ Expression: [NOT|!]?<TimeExpr> | [NOT|!]?<SensorExpr>
 TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
 SensorExpr : (<Timeseries>|<Path>) PrecedenceEqualOperator <PointValue>
 LIMITClause : <N> [OFFSETClause]?
-N : NonNegativeInteger
+N : PositiveInteger
 OFFSETClause : OFFSET <OFFSETValue>
 OFFSETValue : NonNegativeInteger
 SLIMITClause : <SN> [SOFFSETClause]?
-SN : NonNegativeInteger
+SN : PositiveInteger
 SOFFSETClause : SOFFSET <SOFFSETValue>
 SOFFSETValue : NonNegativeInteger
 NonNegativeInteger:= ('+')? Digit+
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00 LIMIT 3 OFFSET 2
 Eg. IoTDB > SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY(5m, 1509465660000, [1509465720000, 1509466380000]) LIMIT 3
 Note: The order of <LIMITClause> and <SLIMITClause> does not affect the grammatical correctness.
-Note: <SLIMITClause> can only effect in Prefixpath and StarPath.
 Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
 ```
+
+* Group By Device Statement
+```
+GroupbyDeviceClause : GROUP BY DEVICE
+
+Note: 
+- Both uppercase and lowercase are ok.
+- GroupbyDeviceClause can only be used in the end of a query statement.
+
+Eg: 
+- select * from root.vehicle group by device
+- select s0,s0,s1 from root.vehicle.* group by device
+- select s0,s1 from root.vehicle.* limit 10 offset 1 group by device
+- select * from root.vehicle slimit 10 soffset 2 group by device
+- select * from root.vehicle where time>10 group by device
+- select * from root.vehicle where root.vehicle.d0.s0>0 group by device
+- select count(*) from root.vehicle group by device
+- select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) group by device
+- select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) group by device
+```
+
 
 ### Database Management Statement
 

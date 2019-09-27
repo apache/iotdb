@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import org.apache.iotdb.db.exception.MetadataErrorException;
@@ -86,9 +85,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
     concatSelect(prefixPaths, select); // concat select paths
 
-    if (operator instanceof QueryOperator && ((QueryOperator) operator).hasSlimit()) {
-      checkSlimitUsageConstraint(select, initialSuffixPaths, prefixPaths);
-
+    if (operator instanceof QueryOperator && ((QueryOperator) operator).hasSlimit()
+        && !((QueryOperator) operator).isGroupByDevice()) {
       // Make 'SLIMIT&SOFFSET' take effect by trimming the suffixList
       // and aggregations of the selectOperator
       int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
@@ -160,61 +158,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
 
     removeStarsInPath(allPaths, afterConcatAggregations, selectOperator);
-  }
-
-  private boolean isWithStar(List<Path> suffixPaths, List<Path> prefixPaths, List<Path> fakePaths) {
-    boolean isWithStar = false;
-    for (Iterator<Path> iterSuffix = suffixPaths.iterator();
-        iterSuffix.hasNext() && !isWithStar; ) {
-      // NOTE the traversal order should keep consistent with that of the `transformedPaths`
-      Path suffixPath = iterSuffix.next();
-      if (suffixPath.getFullPath().contains("*")) {
-        isWithStar = true; // the case of 3)seriesPath with stars
-        break;
-      }
-      for (Iterator<Path> iterPrefix = prefixPaths.iterator(); iterPrefix.hasNext(); ) {
-        Path fakePath = new Path(iterPrefix.next() + "." + suffixPath);
-        if (fakePath.getFullPath().contains("*")) {
-          isWithStar = true; // the case of 3)seriesPath with stars
-        } else {
-          fakePaths.add(fakePath);
-        }
-      }
-    }
-    return isWithStar;
-  }
-
-  /**
-   * Check whether SLIMIT is wrongly used with complete paths and throw an exception if it is.
-   * Considering a query seriesPath, there are three types: 1)complete seriesPath, 2)prefix
-   * seriesPath, 3)seriesPath with stars. And SLIMIT is designed to be used with 2) or 3). In
-   * another word, SLIMIT is not allowed to be used with 1).
-   */
-  private void checkSlimitUsageConstraint(SelectOperator selectOperator,
-      List<Path> initialSuffixPaths,
-      List<Path> prefixPaths) throws LogicalOptimizeException {
-    List<Path> transformedPaths = selectOperator.getSuffixPaths();
-
-    List<Path> fakePaths = new ArrayList<>();
-    boolean isWithStar = isWithStar(initialSuffixPaths, prefixPaths, fakePaths);
-    if (!isWithStar) {
-      int sz = fakePaths.size();
-      if (sz == transformedPaths.size()) {
-        int i = 0;
-        for (; i < sz; i++) {
-          if (!fakePaths.get(i).getFullPath().equals(transformedPaths.get(i).getFullPath())) {
-            break; // the case of 2)prefix seriesPath
-          }
-        }
-
-        if (i
-            >= sz) { // the case of 1)complete seriesPath, i.e.,
-          // SLIMIT is wrongly used with complete paths
-          throw new LogicalOptimizeException(
-              "Wrong use of SLIMIT: SLIMIT is not allowed to be used with complete paths.");
-        }
-      }
-    }
   }
 
   /**

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import java.util.List;
+import java.util.TreeMap;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -30,6 +31,11 @@ public class QueryPlan extends PhysicalPlan {
 
   private List<Path> paths = null;
   private IExpression expression = null;
+
+  private boolean isGroupByDevice = false;
+  private TreeMap<String, List<Path>> pathsGroupByDevice;
+  private List<String> sensorColumns;
+  private boolean hasSlimit = false;
 
   public QueryPlan() {
     super(true);
@@ -66,5 +72,33 @@ public class QueryPlan extends PhysicalPlan {
 
   public void setPaths(List<Path> paths) {
     this.paths = paths;
+  }
+
+  public boolean isGroupByDevice() {
+    return isGroupByDevice;
+  }
+
+  public void setGroupByDevice(boolean groupByDevice) {
+    isGroupByDevice = groupByDevice;
+  }
+
+  public boolean hasSlimit() {
+    return hasSlimit;
+  }
+
+  public void setPathsGroupByDevice(TreeMap<String, List<Path>> pathsGroupByDevice) {
+    this.pathsGroupByDevice = pathsGroupByDevice;
+  }
+
+  public TreeMap<String, List<Path>> getPathsGroupByDevice() {
+    return pathsGroupByDevice;
+  }
+
+  public void setSensorColumns(List<String> sensorColumns) {
+    this.sensorColumns = sensorColumns;
+  }
+
+  public List<String> getSensorColumns() {
+    return sensorColumns;
   }
 }
