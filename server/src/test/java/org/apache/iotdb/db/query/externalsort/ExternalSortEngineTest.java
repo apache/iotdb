@@ -164,8 +164,8 @@ public class ExternalSortEngineTest {
       Assert.assertEquals(tv1.getTimestamp(), tv2.getTimestamp());
       Assert.assertEquals(tv1.getValue(), tv2.getValue());
     }
-    Assert.assertEquals(false, reader2.hasNext());
-    Assert.assertEquals(false, reader1.hasNext());
+    Assert.assertFalse(reader2.hasNext());
+    Assert.assertFalse(reader1.hasNext());
   }
 
   private List<IPointReader> genSimple() {

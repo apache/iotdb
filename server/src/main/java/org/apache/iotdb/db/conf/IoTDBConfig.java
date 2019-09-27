@@ -212,6 +212,11 @@ public class IoTDBConfig {
   private int mManagerCacheSize = 400000;
 
   /**
+   * Is external sort enable.
+   */
+  private boolean enableExternalSort = true;
+
+  /**
    * The threshold of items in external sort. If the number of chunks participating in sorting
    * exceeds this threshold, external sorting is enabled, otherwise memory sorting is used.
    */
@@ -303,8 +308,7 @@ public class IoTDBConfig {
 
   /**
    * If one merge file selection runs for more than this time, it will be ended and its current
-   * selection will be used as final selection. Unit: millis.
-   * When < 0, it means time is unbounded.
+   * selection will be used as final selection. Unit: millis. When < 0, it means time is unbounded.
    */
   private long mergeFileSelectionTimeBudget = 30 * 1000;
 
@@ -772,6 +776,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForRead(long allocateMemoryForRead) {
     this.allocateMemoryForRead = allocateMemoryForRead;
+  }
+
+  public boolean isEnableExternalSort() {
+    return enableExternalSort;
+  }
+
+  public void setEnableExternalSort(boolean enableExternalSort) {
+    this.enableExternalSort = enableExternalSort;
   }
 
   public int getExternalSortThreshold() {

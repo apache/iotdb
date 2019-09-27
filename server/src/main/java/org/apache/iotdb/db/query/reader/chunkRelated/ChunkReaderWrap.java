@@ -91,6 +91,14 @@ public class ChunkReaderWrap {
     }
   }
 
+  public String getMeasurementUid() {
+    if (chunkMetaData != null) {
+      return chunkMetaData.getMeasurementUid();
+    } else {
+      return null;
+    }
+  }
+
   enum ChunkReaderType {
     DISK_CHUNK, MEM_CHUNK
   }

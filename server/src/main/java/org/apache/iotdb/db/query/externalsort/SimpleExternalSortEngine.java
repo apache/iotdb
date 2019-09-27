@@ -30,6 +30,8 @@
  import org.apache.iotdb.db.query.reader.IPointReader;
  import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
  import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
 
 
  public class SimpleExternalSortEngine implements ExternalSortJobEngine {
@@ -38,11 +40,14 @@
 
    private String queryDir;
    private int minExternalSortSourceCount;
+   private boolean enableExternalSort;
+   private static final Logger logger = LoggerFactory.getLogger(SimpleExternalSortEngine.class);
 
    private SimpleExternalSortEngine() {
      queryDir = IoTDBDescriptor.getInstance().getConfig().getQueryDir() + File.separator;
      minExternalSortSourceCount = IoTDBDescriptor.getInstance().getConfig()
          .getExternalSortThreshold();
+     enableExternalSort = IoTDBDescriptor.getInstance().getConfig().isEnableExternalSort();
      scheduler = ExternalSortJobScheduler.getInstance();
 
      // create queryDir
@@ -58,8 +63,12 @@
    public List<IPointReader> executeForIPointReader(long queryId,
        List<ChunkReaderWrap> chunkReaderWraps)
        throws IOException {
-     if (chunkReaderWraps.size() < minExternalSortSourceCount) {
+     if (!enableExternalSort || chunkReaderWraps.size() < minExternalSortSourceCount) {
        return generateIPointReader(chunkReaderWraps, 0, chunkReaderWraps.size());
+     }
+     if (logger.isInfoEnabled()) {
+       logger.info("query {} measurement {} uses external sort.", queryId,
+           chunkReaderWraps.get(0).getMeasurementUid());
      }
      ExternalSortJob job = createJob(queryId, chunkReaderWraps);
      return job.executeForIPointReader();
@@ -68,8 +77,12 @@
    @Override
    public List<IReaderByTimestamp> executeForByTimestampReader(long queryId,
        List<ChunkReaderWrap> chunkReaderWraps) throws IOException {
-     if (chunkReaderWraps.size() < minExternalSortSourceCount) {
+     if (!enableExternalSort || chunkReaderWraps.size() < minExternalSortSourceCount) {
        return generateIReaderByTimestamp(chunkReaderWraps, 0, chunkReaderWraps.size());
+     }
+     if (logger.isInfoEnabled()) {
+       logger.info("query {} measurement {} uses external sort.", queryId,
+           chunkReaderWraps.get(0).getMeasurementUid());
      }
      ExternalSortJob job = createJob(queryId, chunkReaderWraps);
      return convert(job.executeForIPointReader());

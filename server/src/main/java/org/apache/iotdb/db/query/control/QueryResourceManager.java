@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.control;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -33,11 +34,10 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 
 /**
  * <p>
- * QueryResourceManager manages resource (file streams) used by each query job, and assign Ids to the jobs.
- * During the life cycle of a query, the following methods must be called in strict order:
- * 1. assignJobId - get an Id for the new job.
- * 2. getQueryDataSource - open files for the job or reuse existing readers.
- * 3. endQueryForGivenJob - release the resource used by this job.
+ * QueryResourceManager manages resource (file streams) used by each query job, and assign Ids to
+ * the jobs. During the life cycle of a query, the following methods must be called in strict order:
+ * 1. assignJobId - get an Id for the new job. 2. getQueryDataSource - open files for the job or
+ * reuse existing readers. 3. endQueryForGivenJob - release the resource used by this job.
  * </p>
  */
 public class QueryResourceManager {
@@ -49,7 +49,7 @@ public class QueryResourceManager {
    *
    * Key: query job id. Value: temporary file list used for external sorting.
    */
-  private ConcurrentHashMap<Long, List<IExternalSortFileDeserializer>> externalSortFileMap;
+  private Map<Long, List<IExternalSortFileDeserializer>> externalSortFileMap;
 
   private QueryResourceManager() {
     filePathsManager = new JobFileManager();

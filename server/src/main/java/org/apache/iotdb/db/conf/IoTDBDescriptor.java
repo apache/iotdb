@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -224,6 +223,8 @@ public class IoTDBDescriptor {
       conf.setZoneID(ZoneId.of(tmpTimeZone.trim()));
       logger.info("Time zone has been set to {}", conf.getZoneID());
 
+      conf.setEnableExternalSort(Boolean.parseBoolean(properties
+          .getProperty("enable_external_sort", Boolean.toString(conf.isEnableExternalSort()))));
       conf.setExternalSortThreshold(Integer.parseInt(properties
           .getProperty("external_sort_threshold",
               Integer.toString(conf.getExternalSortThreshold()))));

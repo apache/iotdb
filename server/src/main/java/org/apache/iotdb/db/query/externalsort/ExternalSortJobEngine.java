@@ -49,7 +49,7 @@ public interface ExternalSortJobEngine {
       chunkReaderWraps) throws IOException;
 
   /**
-   * Create an external sort job which contains many parts.
+   * Create an external sort job which merges many chunks.
    */
   ExternalSortJob createJob(long queryId, List<ChunkReaderWrap> timeValuePairReaderList)
       throws IOException;
