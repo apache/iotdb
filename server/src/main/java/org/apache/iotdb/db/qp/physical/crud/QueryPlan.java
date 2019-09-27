@@ -35,7 +35,6 @@ public class QueryPlan extends PhysicalPlan {
   private boolean isGroupByDevice = false;
   private TreeMap<String, List<Path>> pathsGroupByDevice;
   private List<String> sensorColumns;
-  private boolean hasSlimit = false;
 
   public QueryPlan() {
     super(true);
@@ -80,10 +79,6 @@ public class QueryPlan extends PhysicalPlan {
 
   public void setGroupByDevice(boolean groupByDevice) {
     isGroupByDevice = groupByDevice;
-  }
-
-  public boolean hasSlimit() {
-    return hasSlimit;
   }
 
   public void setPathsGroupByDevice(TreeMap<String, List<Path>> pathsGroupByDevice) {

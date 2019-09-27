@@ -349,6 +349,62 @@ public class IoTDBGroupbyDeviceIT {
   }
 
   @Test
+  public void selectNotRegularTest() throws ClassNotFoundException, SQLException {
+    String[] retArray = new String[]{
+        "1,root.vehicle.d0,1101,null,null,",
+        "2,root.vehicle.d0,40000,2.22,null,",
+        "3,root.vehicle.d0,null,3.33,null,",
+        "4,root.vehicle.d0,null,4.44,null,",
+        "50,root.vehicle.d0,50000,null,null,",
+        "100,root.vehicle.d0,199,null,null,",
+        "101,root.vehicle.d0,199,null,null,",
+        "102,root.vehicle.d0,180,10.0,null,",
+        "103,root.vehicle.d0,199,null,null,",
+        "104,root.vehicle.d0,190,null,null,",
+        "105,root.vehicle.d0,199,11.11,null,",
+        "1000,root.vehicle.d0,55555,1000.11,null,",
+        "946684800000,root.vehicle.d0,100,null,null,",
+        "1,root.vehicle.d1,null,null,999,",
+        "1000,root.vehicle.d1,null,null,888,"
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select d0.s1,d0.s2,d1.s0 from root.vehicle group by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        System.out.println(header.toString());
+        Assert.assertEquals("Time,Device,s1,s2,s0,", header.toString());
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          System.out.println(builder.toString());
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        System.out.println("cnt:" + cnt);
+        Assert.assertEquals(15, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void aggregateTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
         "0,root.vehicle.d0,11,11,6,6,1,",

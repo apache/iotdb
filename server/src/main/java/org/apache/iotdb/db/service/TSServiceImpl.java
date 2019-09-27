@@ -759,6 +759,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       List<String> sensorColumns = ((QueryPlan) plan).getSensorColumns();
       respColumns.add(SQLConstant.GROUPBY_DEVICE_COLUMN_NAME);
       respColumns.addAll(sensorColumns);
+      resp.setColumns(respColumns);
 
       String oneOfDevices = ((QueryPlan) plan).getPathsGroupByDevice().keySet().iterator().next();
       for (String sensorColumn : sensorColumns) {
@@ -766,6 +767,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             + oneOfDevices + TsFileConstant.PATH_SEPARATOR
             + sensorColumn.substring(sensorColumn.indexOf("(") + 1));
       }
+
+      List<String> columnsType = new ArrayList<>();
+      columnsType.add(TSDataType.TEXT.toString());
+      columnsType.addAll(queryColumnsType(columns));
+      resp.setDataTypeList(columnsType);
+
     } else {
       // Restore column header of aggregate to func(column_name), only
       // support single aggregate function for now
@@ -791,15 +798,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         default:
           throw new TException("unsupported query type: " + plan.getOperatorType());
       }
-    }
 
-    if (((QueryPlan) plan).isGroupByDevice()) {
-      resp.setColumns(respColumns);
-      List<String> columnsType = new ArrayList<>();
-      columnsType.add(TSDataType.TEXT.toString());
-      columnsType.addAll(queryColumnsType(columns));
-      resp.setDataTypeList(columnsType);
-    } else {
       resp.setColumns(columns);
       resp.setDataTypeList(queryColumnsType(columns));
     }
