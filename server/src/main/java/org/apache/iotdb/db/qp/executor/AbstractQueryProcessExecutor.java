@@ -19,12 +19,14 @@
 package org.apache.iotdb.db.qp.executor;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -63,29 +65,84 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       throws ProcessorException;
 
   private QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
-      throws StorageEngineException, QueryFilterOptimizationException, PathErrorException, ProcessorException, IOException {
+      throws StorageEngineException, QueryFilterOptimizationException, PathErrorException,
+      ProcessorException, IOException {
+    // deduplicate executed paths
+    List<Path> deduplicatedPaths = new ArrayList<>();
+
     if (queryPlan instanceof GroupByPlan) {
       GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
-      return groupBy(groupByPlan.getPaths(), groupByPlan.getAggregations(),
-          groupByPlan.getExpression(), groupByPlan.getUnit(), groupByPlan.getOrigin(),
-          groupByPlan.getIntervals(), context);
+      List<String> deduplicatedAggregations = new ArrayList<>();
+      deduplicate(groupByPlan.getPaths(), groupByPlan.getAggregations(), deduplicatedPaths,
+          deduplicatedAggregations);
+      return groupBy(deduplicatedPaths, deduplicatedAggregations, groupByPlan.getExpression(),
+          groupByPlan.getUnit(),
+          groupByPlan.getOrigin(), groupByPlan.getIntervals(), context);
     }
 
     if (queryPlan instanceof AggregationPlan) {
-      return aggregate(queryPlan.getPaths(), queryPlan.getAggregations(),
-          queryPlan.getExpression(), context);
+      List<String> deduplicatedAggregations = new ArrayList<>();
+      deduplicate(queryPlan.getPaths(), queryPlan.getAggregations(), deduplicatedPaths,
+          deduplicatedAggregations);
+      return aggregate(deduplicatedPaths, deduplicatedAggregations, queryPlan.getExpression(),
+          context);
     }
 
     if (queryPlan instanceof FillQueryPlan) {
       FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
-      return fill(queryPlan.getPaths(), fillQueryPlan.getQueryTime(),
-          fillQueryPlan.getFillType(), context);
+      deduplicate(queryPlan.getPaths(), deduplicatedPaths);
+      return fill(deduplicatedPaths, fillQueryPlan.getQueryTime(), fillQueryPlan.getFillType(),
+          context);
     }
-    QueryExpression queryExpression = QueryExpression.create().setSelectSeries(queryPlan.getPaths())
-            .setExpression(queryPlan.getExpression());
+
+    deduplicate(queryPlan.getPaths(), deduplicatedPaths);
+    QueryExpression queryExpression = QueryExpression.create().setSelectSeries(deduplicatedPaths)
+        .setExpression(queryPlan.getExpression());
     return queryRouter.query(queryExpression, context);
   }
 
+  /**
+   * Note that the deduplication strategy must be consistent with that of IoTDBQueryResultSet.
+   */
+  private void deduplicate(List<Path> paths, List<String> aggregations,
+      List<Path> deduplicatedPaths,
+      List<String> deduplicatedAggregations) throws ProcessorException {
+    if (paths == null || aggregations == null || deduplicatedPaths == null
+        || deduplicatedAggregations == null) {
+      throw new ProcessorException("Parameters should not be null.");
+    }
+    if (paths.size() != aggregations.size()) {
+      throw new ProcessorException(
+          "The size of the path list does not equal that of the aggregation list.");
+    }
+    HashSet<String> columnSet = new HashSet<>();
+    for (int i = 0; i < paths.size(); i++) {
+      String column = aggregations.get(i) + "(" + paths.get(i).toString() + ")";
+      if (!columnSet.contains(column)) {
+        deduplicatedPaths.add(paths.get(i));
+        deduplicatedAggregations.add(aggregations.get(i));
+        columnSet.add(column);
+      }
+    }
+  }
+
+  /**
+   * Note that the deduplication strategy must be consistent with that of IoTDBQueryResultSet.
+   */
+  private void deduplicate(List<Path> paths, List<Path> deduplicatedPaths)
+      throws ProcessorException {
+    if (paths == null || deduplicatedPaths == null) {
+      throw new ProcessorException("Parameters should not be null.");
+    }
+    HashSet<String> columnSet = new HashSet<>();
+    for (Path path : paths) {
+      String column = path.toString();
+      if (!columnSet.contains(column)) {
+        deduplicatedPaths.add(path);
+        columnSet.add(column);
+      }
+    }
+  }
 
   @Override
   public boolean delete(DeletePlan deletePlan) throws ProcessorException {
