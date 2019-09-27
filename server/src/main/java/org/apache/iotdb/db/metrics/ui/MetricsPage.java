@@ -66,8 +66,15 @@ public class MetricsPage {
     html = html.replace("{server}", mr.getGauges().get("iot-metrics.host").getValue() + ":"
         + mr.getGauges().get("iot-metrics.port").getValue());
     
-    html = html.replace("{cpu}", mr.getGauges().get("iot-metrics.cores").getValue() + " Total, "
-        + mr.getGauges().get("iot-metrics.cpu_ratio").getValue() + "% CPU Ratio");
+    int cpuRatio = (int)mr.getGauges().get("iot-metrics.cpu_ratio").getValue();
+    String os = System.getProperty("os.name");
+    if(cpuRatio != 500) {
+      html = html.replace("{cpu}", mr.getGauges().get("iot-metrics.cores").getValue() + " Total, "
+          + cpuRatio + "% CPU Ratio");
+    } else {
+      html = html.replace("{cpu}", mr.getGauges().get("iot-metrics.cores").getValue() + " Total  "
+          + "<font color=\"red\">can't get the cpu ratio,because this OS:["+os+"] is not support</font>");
+    }
     
     html = html.replace("{jvm_mem}",mr.getGauges().get("iot-metrics.max_memory").getValue() + "  "
         + mr.getGauges().get("iot-metrics.total_memory").getValue() + "  "
@@ -85,7 +92,7 @@ public class MetricsPage {
 
   public StringBuilder sqlRow() {
     StringBuilder table = new StringBuilder();
-    SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss:SSS");
     SqlArgument sqlArgument;
     TSExecuteStatementResp resp;
     String errMsg;

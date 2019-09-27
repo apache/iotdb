@@ -161,7 +161,8 @@ public class ServerArgument {
     } else if (osName.indexOf("linux") >= 0) {
       cpuRatio = getCpuRateForLinux();
     } else {
-      logger.warn("Can't get the cpu ratio,because this OS is not support");
+      cpuRatio = 500;
+      logger.warn("Can't get the cpu ratio,because this OS:{} is not support",osName);
     }
     return cpuRatio;
   }
