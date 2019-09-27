@@ -117,6 +117,7 @@ public class SessionExample {
 
   private static void query() throws TException, IoTDBRPCException, SQLException {
     SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+    dataSet.setBatchSize(1024); // default is 512
     while (dataSet.hasNext()){
       System.out.println(dataSet.next());
     }

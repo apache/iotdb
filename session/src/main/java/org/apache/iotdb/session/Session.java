@@ -203,6 +203,7 @@ public class Session {
 
   /**
    * delete a timeseries, including data and schema
+   *
    * @param path timeseries to delete, should be a whole path
    */
   public synchronized TSStatus deleteTimeseries(String path) throws IoTDBSessionException {
@@ -213,6 +214,7 @@ public class Session {
 
   /**
    * delete a timeseries, including data and schema
+   *
    * @param paths timeseries to delete, should be a whole path
    */
   public synchronized TSStatus deleteTimeseries(List<String> paths) throws IoTDBSessionException {
@@ -225,6 +227,7 @@ public class Session {
 
   /**
    * delete data <= time in one timeseries
+   *
    * @param path data in which time series to delete
    * @param time data with time stamp less than or equal to time will be deleted
    */
@@ -236,6 +239,7 @@ public class Session {
 
   /**
    * delete data <= time in multiple timeseries
+   *
    * @param paths data in which time series to delete
    * @param time data with time stamp less than or equal to time will be deleted
    */
@@ -261,21 +265,24 @@ public class Session {
   }
 
 
-  public synchronized TSStatus deleteStorageGroup(String storageGroup) throws IoTDBSessionException {
+  public synchronized TSStatus deleteStorageGroup(String storageGroup)
+      throws IoTDBSessionException {
     List<String> groups = new ArrayList<>();
     groups.add(storageGroup);
     return deleteStorageGroups(groups);
   }
 
-  public synchronized TSStatus deleteStorageGroups(List<String> storageGroup) throws IoTDBSessionException {
+  public synchronized TSStatus deleteStorageGroups(List<String> storageGroup)
+      throws IoTDBSessionException {
     try {
-        return checkAndReturn(client.deleteStorageGroups(storageGroup));
+      return checkAndReturn(client.deleteStorageGroups(storageGroup));
     } catch (TException e) {
-        throw new IoTDBSessionException(e);
+      throw new IoTDBSessionException(e);
     }
   }
 
-  public synchronized TSStatus createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor) throws IoTDBSessionException {
+  public synchronized TSStatus createTimeseries(String path, TSDataType dataType,
+      TSEncoding encoding, CompressionType compressor) throws IoTDBSessionException {
     TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
     request.setPath(path);
     request.setDataType(dataType.ordinal());
@@ -322,15 +329,18 @@ public class Session {
 
   /**
    * check whether this sql is for query
+   *
    * @param sql sql
    * @return whether this sql is for query
    */
   private boolean checkIsQuery(String sql) {
-    return sql.trim().toLowerCase().startsWith("select");
+    sql = sql.trim().toLowerCase();
+    return sql.startsWith("select") || sql.startsWith("show") || sql.startsWith("list");
   }
 
   /**
    * execure query sql
+   *
    * @param sql query statement
    * @return result set
    */
@@ -351,6 +361,7 @@ public class Session {
 
   /**
    * execute non query statement
+   *
    * @param sql non query statement
    */
   public void executeNonQueryStatement(String sql) throws TException, IoTDBRPCException {
