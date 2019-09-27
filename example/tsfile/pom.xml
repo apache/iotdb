@@ -28,13 +28,12 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>tsfile-example</artifactId>
-    <version>0.9.0-SNAPSHOT</version>
     <name>tsfile-example</name>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>tsfile</artifactId>
-            <version>0.9.0-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 </project>

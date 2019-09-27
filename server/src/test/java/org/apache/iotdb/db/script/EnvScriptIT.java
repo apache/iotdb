@@ -19,10 +19,12 @@
 package org.apache.iotdb.db.script;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -105,18 +107,15 @@ public class EnvScriptIT {
     if(!userDir.exists()) {
       throw new RuntimeException("user.dir " + userDir.getAbsolutePath() + " doesn't exist.");
     }
-    File targetDir = new File(userDir, "target");
-    File[] files = targetDir.listFiles(new FileFilter() {
-      @Override
-      public boolean accept(File pathname) {
-        return pathname.isDirectory() && pathname.getName().startsWith("iotdb-server-");
-      }
-    });
-    if(files.length != 1) {
-      throw new RuntimeException(
-              "Exactly one directory starting with 'iotdb-server-' should have been found, but was " + files.length);
+    File target = new File(userDir, "target/maven-archiver/pom.properties");
+    Properties properties = new Properties();
+    assertTrue(target.exists());
+    try {
+      properties.load(new FileReader(target));
+    } catch (IOException e) {
+      return "target/iotdb-server-";
     }
-    return files[0].getAbsolutePath();
+    return new File(userDir, String.format("target/%s-%s", properties.getProperty("artifactId"), properties.getProperty("version"))).getAbsolutePath();
   }
 
 }
