@@ -40,7 +40,7 @@
    private int minExternalSortSourceCount;
 
    private SimpleExternalSortEngine() {
-     queryDir = IoTDBDescriptor.getInstance().getConfig().getQueryDir();
+     queryDir = IoTDBDescriptor.getInstance().getConfig().getQueryDir() + File.separator;
      minExternalSortSourceCount = IoTDBDescriptor.getInstance().getConfig()
          .getExternalSortThreshold();
      scheduler = ExternalSortJobScheduler.getInstance();
