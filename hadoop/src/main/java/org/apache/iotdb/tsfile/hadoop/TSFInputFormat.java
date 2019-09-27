@@ -41,7 +41,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * @author liukun
+ * @author Yuan Tian
  */
 public class TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
 
@@ -85,7 +85,7 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
    * @param value the deltaObjectIds will be read
    * @throws TSFHadoopException
    */
-  public static void setReadDeltaObjectIds(Job job, String[] value) throws TSFHadoopException {
+  public static void setReadDeviceIds(Job job, String[] value) throws TSFHadoopException {
     if (value == null || value.length < 1) {
       throw new TSFHadoopException("The devices selected is null or empty");
     } else {
@@ -103,15 +103,16 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
    * Get the deltaObjectIds which want to be read
    *
    * @param configuration
-   * @return Set of deltaObject, if configuration has been set the deltaObjectIds.
-   * 		   null, if configuration has not been set the deltaObjectIds.
+   * @return List of device, if configuration has been set the deviceIds.
+   * 		   null, if configuration has not been set the deviceIds.
    */
-  public static List<String> getReadDeltaObjectIds(Configuration configuration) {
-    String deltaObjectIds = configuration.get(READ_DELTAOBJECTS);
-    if (deltaObjectIds == null || deltaObjectIds.length() < 1) {
+  public static List<String> getReadDeviceIds(Configuration configuration) {
+    String deviceIds = configuration.get(READ_DELTAOBJECTS);
+    if (deviceIds == null || deviceIds.length() < 1) {
       return null;
     } else {
-      return Arrays.stream(deltaObjectIds.split(SPERATOR)).collect(Collectors.toList());
+
+      return Arrays.stream(deviceIds.split(SPERATOR)).collect(Collectors.toList());
     }
   }
 
@@ -156,7 +157,7 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
    * @param job
    * @param value
    */
-  public static void setReadDeltaObjectId(Job job, boolean value) {
+  public static void setReadDeviceId(Job job, boolean value) {
     job.getConfiguration().setBoolean(READ_DELTAOBJECT_ENABLE, value);
   }
 
@@ -164,7 +165,7 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
    * @param configuration
    * @return
    */
-  public static boolean getReadDeltaObject(Configuration configuration) {
+  public static boolean getReadDeviceId(Configuration configuration) {
     return configuration.getBoolean(READ_DELTAOBJECT_ENABLE, true);
   }
 
@@ -349,7 +350,7 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
         return i;
       }
     }
-    logger.warn(String.format("Can't find the block. The middle is:%d. the last block is", middle),
+    logger.warn("Can't find the block. The middle is {}. the last block is {}", middle,
         blockLocations[blockLocations.length - 1].getOffset()
             + blockLocations[blockLocations.length - 1].getLength());
     return -1;

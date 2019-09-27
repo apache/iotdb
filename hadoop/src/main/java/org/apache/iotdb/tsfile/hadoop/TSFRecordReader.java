@@ -82,19 +82,21 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
       reader = new TsFileSequenceReader(new HDFSInput(path, configuration));
 
       // Get the read columns and filter information
-      List<String> deltaObjectIds = TSFInputFormat.getReadDeltaObjectIds(configuration);
-      if (deltaObjectIds == null) {
-        deltaObjectIds = initDeviceIdList(chunkGroupInfoList);
+
+      List<String> deviceIds = TSFInputFormat.getReadDeviceIds(configuration);
+      if (deviceIds == null) {
+        deviceIds = initDeviceIdList(chunkGroupInfoList);
       }
       List<String> measurementIds = TSFInputFormat.getReadMeasurementIds(configuration);
       if (measurementIds == null) {
         measurementIds = initSensorIdList(chunkGroupInfoList);
       }
       this.measurementIds = measurementIds;
-      logger.info("deltaObjectIds:" + deltaObjectIds);
+      logger.info("deviceIds:" + deviceIds);
       logger.info("Sensors:" + measurementIds);
 
-      isReadDeviceId = TSFInputFormat.getReadDeltaObject(configuration);
+
+      isReadDeviceId = TSFInputFormat.getReadDeviceId(configuration);
       isReadTime = TSFInputFormat.getReadTime(configuration);
       if (isReadDeviceId) {
         arraySize++;
@@ -106,7 +108,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
       ReadOnlyTsFile queryEngine = new ReadOnlyTsFile(reader);
       for (TSFInputSplit.ChunkGroupInfo chunkGroupInfo : chunkGroupInfoList) {
         String deviceId = chunkGroupInfo.getDeviceId();
-        if (deltaObjectIds.contains(deviceId)) {
+        if (deviceIds.contains(deviceId)) {
           List<Path> paths = measurementIds.stream()
                   .map(measurementId -> new Path(deviceId + TsFileConstant.PATH_SEPARATOR + measurementId))
                   .collect(toList());
@@ -167,10 +169,10 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
     Text deviceIdText = new Text(deviceIdList.get(currentIndex));
     LongWritable time = new LongWritable(timestamp);
 
-    if (isReadTime) { // Only Time needs to be written into value
-      mapWritable.put(new Text("time_stamp"), time);
+    if (isReadTime) { // time needs to be written into value
+      mapWritable.put(new Text("timestamp"), time);
     }
-    if (isReadDeviceId) { // Only deviceId need to be written into value
+    if (isReadDeviceId) { // deviceId need to be written into value
       mapWritable.put(new Text("device_id"), deviceIdText);
     }
 
@@ -227,8 +229,8 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
 
   @Override
   public void close() throws IOException {
-    dataSetList.forEach(queryDataSet -> queryDataSet = null);
-    deviceIdList.forEach(deviceId -> deviceId = null);
+    dataSetList = null;
+    deviceIdList = null;
     reader.close();
   }
 }

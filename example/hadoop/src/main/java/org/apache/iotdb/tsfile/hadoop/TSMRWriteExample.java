@@ -48,6 +48,11 @@ public class TSMRWriteExample {
     public static void main(String[] args)
             throws IOException, ClassNotFoundException, TSFHadoopException, URISyntaxException {
 
+        if (args.length != 3) {
+            System.out.println("Please give hdfs url, input path, output path");
+            return;
+        }
+
         Schema schema = new Schema();
         // the number of values to include in the row record
         int sensorNum = 3;
@@ -63,10 +68,6 @@ public class TSMRWriteExample {
         }
         TSFOutputFormat.setSchema(schema);
 
-        if (args.length != 3) {
-            System.out.println("Please give hdfs url, input path, output path");
-            return;
-        }
         String HDFSURL = args[0];
         Path inputPath = new Path(args[1]);
         Path outputPath = new Path(args[2]);
@@ -109,9 +110,9 @@ public class TSMRWriteExample {
          * special configuration for reading tsfile with TSFInputFormat
          */
         TSFInputFormat.setReadTime(job, true); // configure reading time enable
-        TSFInputFormat.setReadDeltaObjectId(job, true); // configure reading deltaObjectId enable
-        String[] deltaObjectIds = {"device_1"};// configure reading which deltaObjectIds
-        TSFInputFormat.setReadDeltaObjectIds(job, deltaObjectIds);
+        TSFInputFormat.setReadDeviceId(job, true); // configure reading deltaObjectId enable
+        String[] deviceIds = {"device_1"};// configure reading which deviceIds
+        TSFInputFormat.setReadDeviceIds(job, deviceIds);
         String[] measurementIds = {"sensor_1", "sensor_2", "sensor_3"};// configure reading which measurementIds
         TSFInputFormat.setReadMeasurementIds(job, measurementIds);
         boolean isSuccess = false;
@@ -145,7 +146,7 @@ public class TSMRWriteExample {
     }
 
     /**
-     * This reducer only save the even value.
+     * This reducer calculate the average value.
      */
     public static class TSReducer extends Reducer<Text, MapWritable, NullWritable, HDFSTSRecord> {
         private static final Logger logger = LoggerFactory.getLogger(TSReducer.class);

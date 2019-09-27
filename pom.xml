@@ -59,7 +59,7 @@
         <module>distribution</module>
         <module>hive-connector</module>
     </modules>
-    <!-- Properties Management -->
+<!-- Properties Management -->
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
@@ -406,6 +406,17 @@
     <build>
         <pluginManagement>
             <plugins>
+                <!-- using `mvn -N versions:update-child-modules` can update the version
+                of child modules to what their parent claims -->
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>versions-maven-plugin</artifactId>
+                    <version>2.3</version>
+                    <configuration>
+                        <generateBackupPoms>false</generateBackupPoms>
+                    </configuration>
+                </plugin>
+
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-javadoc-plugin</artifactId>

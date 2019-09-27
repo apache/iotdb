@@ -139,7 +139,7 @@ public class TSFInputSplit extends InputSplit implements Writable, org.apache.ha
 
     /**
      * Byte offset of the corresponding data in the file
-     * Notice: include the chunk group header and marker.
+     * Notice: include the chunk group marker.
      */
     private long startOffset;
 

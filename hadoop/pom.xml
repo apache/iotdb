@@ -30,6 +30,7 @@
     <artifactId>hadoop-tsfile</artifactId>
     <packaging>jar</packaging>
     <name>IoTDB Hadoop-TsFile</name>
+
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>

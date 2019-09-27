@@ -51,7 +51,7 @@ public class ChunkBuffer {
 
   private long totalValueCount;
   private long maxTimestamp;
-  private long minTimestamp = -1;
+  private long minTimestamp = Long.MIN_VALUE;
   private ByteBuffer compressedData;// DirectByteBuffer
 
   /**
@@ -89,11 +89,11 @@ public class ChunkBuffer {
     numOfPages++;
 
     // 1. update time statistics
-    if (this.minTimestamp == -1) {
+    if (this.minTimestamp == Long.MIN_VALUE) {
       this.minTimestamp = minTimestamp;
     }
-    if (this.minTimestamp == -1) {
-      throw new PageException("minTimestamp of this page is -1, no valid data point in this page");
+    if (this.minTimestamp == Long.MIN_VALUE) {
+      throw new PageException("No valid data point in this page");
     }
     this.maxTimestamp = maxTimestamp;
     int uncompressedSize = data.remaining();
@@ -120,8 +120,7 @@ public class ChunkBuffer {
     // write the page header to IOWriter
     try {
       PageHeader header = new PageHeader(uncompressedSize, compressedSize, valueCount, statistics,
-          maxTimestamp,
-          minTimestamp);
+          maxTimestamp, minTimestamp);
       headerSize = header.getSerializedSize();
       LOG.debug("start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
       header.serializeTo(pageBuffer);
@@ -158,7 +157,7 @@ public class ChunkBuffer {
 
   private void resetTimeStamp() {
     if (totalValueCount == 0) {
-      minTimestamp = -1;
+      minTimestamp = Long.MIN_VALUE;
     }
   }
 
@@ -172,7 +171,7 @@ public class ChunkBuffer {
    */
   public long writeAllPagesOfSeriesToTsFile(TsFileIOWriter writer, Statistics<?> statistics)
       throws IOException {
-    if (minTimestamp == -1) {
+    if (minTimestamp == Long.MIN_VALUE) {
       LOG.error("Write page error, {}, minTime:{}, maxTime:{}", schema, minTimestamp, maxTimestamp);
     }
 
@@ -204,7 +203,7 @@ public class ChunkBuffer {
    * reset exist data in page for next stage.
    */
   public void reset() {
-    minTimestamp = -1;
+    minTimestamp = Long.MIN_VALUE;
     pageBuffer.reset();
     totalValueCount = 0;
   }
