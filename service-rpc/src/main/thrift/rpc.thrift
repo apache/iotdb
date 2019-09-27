@@ -177,12 +177,13 @@ struct TSFetchMetadataResp{
 		1: required TSStatus status
 		2: optional string metadataInJson
 		3: optional list<string> columnsList
-		4: optional string dataType
-		5: optional list<list<string>> timeseriesList
-		6: optional set<string> storageGroups
-		7: optional set<string> devices
-		8: optional list<string> nodesList
-		9: optional map<string, string> nodeTimeseriesNum
+		4: optional i32 timeseriesNum
+		5: optional string dataType
+		6: optional list<list<string>> timeseriesList
+		7: optional set<string> storageGroups
+		8: optional set<string> devices
+		9: optional list<string> nodesList
+		10: optional map<string, string> nodeTimeseriesNum
 }
 
 struct TSFetchMetadataReq{
