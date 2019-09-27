@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -27,6 +27,7 @@ import java.util.Comparator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 
 /**
  * this tool can analyze the tsfile.resource files from a folder.
@@ -40,7 +41,7 @@ public class TsFileResourcePrinter {
       folder = args[0];
     }
     File folderFile = SystemFileFactory.INSTANCE.getFile(folder);
-    File[] files = folderFile.listFiles(file -> file.getName().endsWith(".tsfile.resource"));
+    File[] files = TSFileFactory.INSTANCE.listFilesBySuffix(folderFile.getAbsolutePath(), ".tsfile.resource");
     Arrays.sort(files, Comparator.comparingLong(x -> Long.valueOf(x.getName().split("-")[0])));
 
     for (File file : files) {

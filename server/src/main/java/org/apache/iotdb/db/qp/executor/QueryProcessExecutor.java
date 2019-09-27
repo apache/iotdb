@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -114,6 +114,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       case DELETE_TIMESERIES:
       case CREATE_TIMESERIES:
       case SET_STORAGE_GROUP:
+      case DELETE_STORAGE_GROUP:
       case METADATA:
         MetadataPlan metadata = (MetadataPlan) plan;
         return operateMetadata(metadata);
@@ -410,7 +411,13 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
           }
           break;
         case SET_STORAGE_GROUP:
-          mManager.setStorageLevelToMTree(path.getFullPath());
+          mManager.setStorageGroupToMTree(path.getFullPath());
+          break;
+        case DELETE_STORAGE_GROUP:
+          mManager.deleteStorageGroupsFromMTree(deletePathList);
+          for (Path storageGroupPath : deletePathList) {
+            storageEngine.deleteStorageGroup(storageGroupPath.getFullPath());
+          }
           break;
         default:
           throw new ProcessorException("unknown namespace type:" + namespaceType);

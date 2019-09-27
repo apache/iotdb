@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -69,8 +69,9 @@ public interface IChunkGroupWriter {
    *            - TSFileIOWriter
    * @throws IOException
    *             exception in IO
+   * @return current ChunkGroupDataSize
    */
-  ChunkGroupFooter flushToFileWriter(TsFileIOWriter tsfileWriter) throws IOException;
+  long flushToFileWriter(TsFileIOWriter tsfileWriter) throws IOException;
 
   /**
    * get the max memory occupied at this time.

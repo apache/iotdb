@@ -366,4 +366,10 @@ public class StorageEngine implements IService {
     StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroup);
     storageGroupProcessor.setDataTTL(dataTTL);
   }
+
+  public void deleteStorageGroup(String storageGroupName) {
+    deleteAllDataFilesInOneStorageGroup(storageGroupName);
+    StorageGroupProcessor processor = processorMap.remove(storageGroupName);
+    processor.deleteFolder(systemDir);
+  }
 }

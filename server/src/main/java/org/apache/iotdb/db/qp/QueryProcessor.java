@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -131,6 +131,7 @@ public class QueryProcessor {
       case AUTHOR:
       case METADATA:
       case SET_STORAGE_GROUP:
+      case DELETE_STORAGE_GROUP:
       case CREATE_TIMESERIES:
       case DELETE_TIMESERIES:
       case PROPERTY:

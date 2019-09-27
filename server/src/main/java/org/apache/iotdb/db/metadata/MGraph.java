@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -24,9 +24,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -150,21 +150,29 @@ public class MGraph implements Serializable {
   }
 
   /**
-   * Set storage level for current Metadata Tree.
+   * Set storage group for current Metadata Tree.
    *
    * @param path Format: root.node.(node)*
    */
-  void setStorageLevel(String path) throws PathErrorException {
+  void setStorageGroup(String path) throws PathErrorException {
     mtree.setStorageGroup(path);
   }
 
   /**
-   * Check whether the input path is storage level for current Metadata Tree or not.
+   * Delete storage group from current Metadata Tree.
+   *
+   * @param path Format: root.node
+   */
+  void deleteStorageGroup(String path) throws PathErrorException {
+    mtree.deleteStorageGroup(path);
+  }
+  /**
+   * Check whether the input path is storage group for current Metadata Tree or not.
    *
    * @param path Format: root.node.(node)*
    * @apiNote :for cluster
    */
-  boolean checkStorageLevel(String path) {
+  boolean checkStorageGroup(String path) {
     return mtree.checkStorageGroup(path);
   }
 
@@ -246,11 +254,15 @@ public class MGraph implements Serializable {
     return new Metadata(deviceIdMap);
   }
 
-  List<String> getAllStorageGroup() {
-    return mtree.getAllStorageGroup();
+  List<String> getAllStorageGroupList() {
+    return mtree.getAllStorageGroupList();
   }
 
-  List<String> getNodesList(String nodeLevel) {
+  Set<String> getAllDevices() {
+    return mtree.getAllDevices();
+  }
+
+  List<String> getNodesList(int nodeLevel) {
     return mtree.getNodesList(nodeLevel);
   }
 
@@ -287,9 +299,9 @@ public class MGraph implements Serializable {
   }
 
   /**
-   * Calculate the count of storage-level nodes included in given seriesPath.
+   * Calculate the count of storage-group nodes included in given seriesPath.
    *
-   * @return The total count of storage-level nodes.
+   * @return The total count of storage-group nodes.
    */
   int getFileCountForOneType(String path) throws PathErrorException {
     return mtree.getFileCountForOneType(path);
@@ -297,7 +309,7 @@ public class MGraph implements Serializable {
 
   /**
    * Get the file name for given seriesPath Notice: This method could be called if and only if the
-   * seriesPath includes one node whose {@code isStorageLevel} is true.
+   * seriesPath includes one node whose {@code isStorageGroup} is true.
    */
   String getStorageGroupNameByPath(String path) throws PathErrorException {
     return mtree.getStorageGroupNameByPath(path);
@@ -338,15 +350,6 @@ public class MGraph implements Serializable {
   }
 
   /**
-   * Extract the deviceId from given seriesPath.
-   *
-   * @return String represents the deviceId
-   */
-  public String getDeviceTypeByPath(String path) throws PathErrorException {
-    return mtree.getDeviceTypeByPath(path);
-  }
-
-  /**
    * Get MeasurementSchema for given seriesPath. Notice: Path must be a complete Path from root to leaf
    * node.
    */
@@ -378,8 +381,8 @@ public class MGraph implements Serializable {
   /**
    * combine multiple metadata in string format
    */
-  static String combineMetadataInStrings(String[] metadatas) {
-    return MTree.combineMetadataInStrings(metadatas);
+  static String combineMetadataInStrings(String[] metadataArray) {
+    return MTree.combineMetadataInStrings(metadataArray);
   }
 
   /**
@@ -387,7 +390,7 @@ public class MGraph implements Serializable {
    */
   Map<String, Integer> countSeriesNumberInEachStorageGroup() throws PathErrorException {
     Map<String, Integer> res = new HashMap<>();
-    List<String> storageGroups = this.getAllStorageGroup();
+    List<String> storageGroups = this.getAllStorageGroupList();
     for (String sg : storageGroups) {
       MNode node = mtree.getNode(sg);
       res.put(sg, node.getLeafCount());

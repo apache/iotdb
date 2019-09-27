@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -49,6 +49,7 @@ public class IoTDBStatement implements Statement {
 
   private static final String SHOW_TIMESERIES_COMMAND_LOWERCASE = "show timeseries";
   private static final String SHOW_STORAGE_GROUP_COMMAND_LOWERCASE = "show storage group";
+  private static final String SHOW_DEVICES_COMMAND_LOWERCASE = "show devices";
   private static final String COUNT_TIMESERIES_COMMAND_LOWERCASE = "count timeseries";
   private static final String COUNT_NODES_COMMAND_LOWERCASE = "count nodes";
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
@@ -252,6 +253,10 @@ public class IoTDBStatement implements Statement {
       DatabaseMetaData databaseMetaData = connection.getMetaData();
       resultSet = databaseMetaData.getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null);
       return true;
+    } else if (sqlToLowerCase.equals(SHOW_DEVICES_COMMAND_LOWERCASE)) {
+      DatabaseMetaData databaseMetaData = connection.getMetaData();
+      resultSet = databaseMetaData.getColumns(Constant.CATALOG_DEVICES, null, null, null);
+      return true;
     } else if (sqlToLowerCase.startsWith(COUNT_TIMESERIES_COMMAND_LOWERCASE)) {
       String[] cmdSplit = sqlToLowerCase.split("\\s+", 4);
       if (cmdSplit.length != 3 && !(cmdSplit.length == 4 && cmdSplit[3].startsWith("group by level"))) {
@@ -264,8 +269,9 @@ public class IoTDBStatement implements Statement {
         resultSet = databaseMetaData.getColumns(Constant.COUNT_TIMESERIES, path, null, null);
         return true;
       } else {
+
         String path = cmdSplit[2];
-        String level = cmdSplit[3].replaceAll(" ", "").substring(13);
+        int level = Integer.parseInt(cmdSplit[3].replaceAll(" ", "").substring(13));
         IoTDBDatabaseMetadata databaseMetadata = (IoTDBDatabaseMetadata) connection.getMetaData();
         resultSet = databaseMetadata.getNodes(Constant.COUNT_NODE_TIMESERIES, path, null, null, level);
         return true;
@@ -276,7 +282,7 @@ public class IoTDBStatement implements Statement {
         throw new SQLException("Error format of \'COUNT NODES LEVEL=<INTEGER>\'");
       } else {
         String path = cmdSplit[2];
-        String level = cmdSplit[3].replaceAll(" ", "").substring(6);
+        int level = Integer.parseInt(cmdSplit[3].replaceAll(" ", "").substring(6));
         IoTDBDatabaseMetadata databaseMetaData = (IoTDBDatabaseMetadata) connection.getMetaData();
         resultSet = databaseMetaData.getNodes(Constant.COUNT_NODES, path, null, null, level);
         return true;

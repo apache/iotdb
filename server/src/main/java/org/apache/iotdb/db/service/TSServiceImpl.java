@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -32,8 +32,10 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
@@ -299,13 +301,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       switch (req.getType()) {
         case "SHOW_TIMESERIES":
           String path = req.getColumnPath();
-          List<List<String>> showTimeseriesList = getTimeSeriesForPath(path);
-          resp.setShowTimeseriesList(showTimeseriesList);
+          List<List<String>> timeseriesList = getTimeSeriesForPath(path);
+          resp.setTimeseriesList(timeseriesList);
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
         case "SHOW_STORAGE_GROUP":
-          List<String> storageGroups = getAllStorageGroups();
-          resp.setShowStorageGroups(storageGroups);
+          Set<String> storageGroups = new HashSet<>(getAllStorageGroups());
+          resp.setStorageGroups(storageGroups);
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
         case "METADATA_IN_JSON":
@@ -313,15 +315,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setMetadataInJson(metadataInJson);
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
-        case "DELTA_OBJECT":
-          Metadata metadata = getMetadata();
-          String column = req.getColumnPath();
-          Map<String, List<String>> deviceMap = metadata.getDeviceMap();
-          if (deviceMap == null || !deviceMap.containsKey(column)) {
-            resp.setColumnsList(new ArrayList<>());
-          } else {
-            resp.setColumnsList(deviceMap.get(column));
-          }
+        case "SHOW_DEVICES":
+          Set<String> devices = getAllDevices();
+          resp.setDevices(devices);
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
         case "COLUMN":
@@ -366,12 +362,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return nodeColumnsNum;
   }
 
-  private List<String> getNodesList(String level) {
+  private List<String> getNodesList(int level) {
     return MManager.getInstance().getNodesList(level);
   }
 
   private List<String> getAllStorageGroups() {
     return MManager.getInstance().getAllStorageGroupNames();
+  }
+
+  private Set<String> getAllDevices() {
+    return MManager.getInstance().getAllDevices();
   }
 
   private List<List<String>> getTimeSeriesForPath(String path)
@@ -381,11 +381,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private String getMetadataInString() {
     return MManager.getInstance().getMetadataInString();
-  }
-
-  private Metadata getMetadata()
-      throws PathErrorException {
-    return MManager.getInstance().getMetadata();
   }
 
   protected TSDataType getSeriesType(String path)
@@ -1148,6 +1143,24 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.SET_STORAGE_GROUP, new Path(storageGroup));
+    TSStatus status = checkAuthority(plan);
+    if (status != null) {
+      return new TSStatus(status);
+    }
+    return new TSStatus(executePlan(plan));
+  }
+
+  @Override
+  public TSStatus deleteStorageGroups(List<String> storageGroups) {
+    if (!checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
+    }
+    List<Path> storageGroupList = new ArrayList<>();
+    for (String storageGroup: storageGroups) {
+      storageGroupList.add(new Path(storageGroup));
+    }
+    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.DELETE_STORAGE_GROUP, storageGroupList);
     TSStatus status = checkAuthority(plan);
     if (status != null) {
       return new TSStatus(status);

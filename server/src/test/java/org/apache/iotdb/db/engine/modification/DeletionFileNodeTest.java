@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -74,7 +74,7 @@ public class DeletionFileNodeTest {
       PathErrorException, IOException, StorageEngineException, StartupException {
     EnvironmentUtils.envSetUp();
 
-    MManager.getInstance().setStorageLevelToMTree(processorName);
+    MManager.getInstance().setStorageGroupToMTree(processorName);
     for (int i = 0; i < 10; i++) {
       MManager.getInstance().addPathToMTree(processorName + "." + measurements[i], dataType,
           encoding);

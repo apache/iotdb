@@ -70,8 +70,8 @@ public class TTLTest {
   }
 
   private void createSchemas() throws MetadataErrorException, ProcessorException {
-    MManager.getInstance().setStorageLevelToMTree(sg1);
-    MManager.getInstance().setStorageLevelToMTree(sg2);
+    MManager.getInstance().setStorageGroupToMTree(sg1);
+    MManager.getInstance().setStorageGroupToMTree(sg2);
     storageGroupProcessor = new StorageGroupProcessor(IoTDBDescriptor.getInstance().getConfig()
         .getSystemDir(), sg1);
     MManager.getInstance().addPathToMTree(g1s1, TSDataType.INT64, TSEncoding.PLAIN,

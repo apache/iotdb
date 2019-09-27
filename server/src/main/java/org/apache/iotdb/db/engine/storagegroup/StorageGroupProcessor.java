@@ -264,8 +264,8 @@ public class StorageGroupProcessor {
       // the process was interrupted before the merged files could be named
       continueFailedRenames(fileFolder, MERGE_SUFFIX);
 
-      Collections
-          .addAll(tsFiles, fileFolder.listFiles(file -> file.getName().endsWith(TSFILE_SUFFIX)));
+      Collections.addAll(tsFiles,
+          TSFileFactory.INSTANCE.listFilesBySuffix(fileFolder.getAbsolutePath(), TSFILE_SUFFIX));
     }
     tsFiles.sort(this::compareFileName);
     List<TsFileResource> ret = new ArrayList<>();
@@ -274,7 +274,7 @@ public class StorageGroupProcessor {
   }
 
   private void continueFailedRenames(File fileFolder, String suffix) {
-    File[] files = fileFolder.listFiles(file -> file.getName().endsWith(suffix));
+    File[] files = TSFileFactory.INSTANCE.listFilesBySuffix(fileFolder.getAbsolutePath(), suffix);
     if (files != null) {
       for (File tempResource : files) {
         File originResource = TSFileFactory.INSTANCE.getFile(tempResource.getPath().replace(suffix, ""));
@@ -553,6 +553,24 @@ public class StorageGroupProcessor {
       workUnSequenceTsFileProcessor.asyncClose();
       workUnSequenceTsFileProcessor = null;
       logger.info("close an unsequence tsfile processor {}", storageGroupName);
+    }
+  }
+
+  /**
+   * delete the storageGroup's own folder in folder data/system/storage_groups
+   */
+  public void deleteFolder(String systemDir) {
+    waitForAllCurrentTsFileProcessorsClosed();
+    writeLock();
+    try {
+      File storageGroupFolder = SystemFileFactory.INSTANCE.getFile(systemDir, storageGroupName);
+      if (storageGroupFolder.exists()) {
+        FileUtils.deleteDirectory(storageGroupFolder);
+      }
+    } catch (IOException e) {
+      logger.error("Cannot delete the folder in storage group {}, because", storageGroupName, e);
+    } finally {
+      writeUnlock();
     }
   }
 

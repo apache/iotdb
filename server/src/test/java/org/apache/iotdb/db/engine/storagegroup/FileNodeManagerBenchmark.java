@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -65,7 +65,7 @@ public class FileNodeManagerBenchmark {
 
   private static void prepare() throws MetadataErrorException, PathErrorException, IOException {
     MManager manager = MManager.getInstance();
-    manager.setStorageLevelToMTree(prefix);
+    manager.setStorageGroupToMTree(prefix);
     for (String device : devices) {
       for (String measurement : measurements) {
         manager.addPathToMTree(device + "." + measurement, TSDataType.INT64.toString(),

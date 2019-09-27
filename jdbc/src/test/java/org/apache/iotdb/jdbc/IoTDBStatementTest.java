@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -31,11 +31,13 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
-import org.apache.thrift.TException;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TSStatusType;
+import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -76,10 +78,10 @@ public class IoTDBStatementTest {
 
   @SuppressWarnings({"resource", "serial"})
   @Test
-  public void testExecuteSQL1() throws SQLException, TException {
+  public void testExecuteSQL1() throws SQLException {
     IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
-    List<List<String>> tslist = new ArrayList<>();
-    tslist.add(new ArrayList<String>(4) {
+    List<List<String>> tsList = new ArrayList<>();
+    tsList.add(new ArrayList<String>(4) {
       {
         add("root.vehicle.d0.s0");
         add("root.vehicle");
@@ -87,7 +89,7 @@ public class IoTDBStatementTest {
         add("RLE");
       }
     });
-    tslist.add(new ArrayList<String>(4) {
+    tsList.add(new ArrayList<String>(4) {
       {
         add("root.vehicle.d0.s1");
         add("root.vehicle");
@@ -95,7 +97,7 @@ public class IoTDBStatementTest {
         add("RLE");
       }
     });
-    tslist.add(new ArrayList<String>(4) {
+    tsList.add(new ArrayList<String>(4) {
       {
         add("root.vehicle.d0.s2");
         add("root.vehicle");
@@ -107,7 +109,7 @@ public class IoTDBStatementTest {
             + "root.vehicle.d0.s0,root.vehicle,INT32,RLE,\n"
             + "root.vehicle.d0.s1,root.vehicle,INT64,RLE,\n"
             + "root.vehicle.d0.s2,root.vehicle,FLOAT,RLE,\n";
-    when(fetchMetadataResp.getShowTimeseriesList()).thenReturn(tslist);
+    when(fetchMetadataResp.getTimeseriesList()).thenReturn(tsList);
     boolean res = stmt.execute("show timeseries");
     assertTrue(res);
     try (ResultSet resultSet = stmt.getResultSet()) {
@@ -126,16 +128,17 @@ public class IoTDBStatementTest {
       }
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
-      System.out.println(e);
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
     }
   }
 
   @SuppressWarnings({"resource", "serial"})
   @Test
-  public void testExecuteSQL2() throws SQLException, TException {
+  public void testExecuteSQL2() throws SQLException {
     IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
-    List<List<String>> tslist = new ArrayList<>();
-    tslist.add(new ArrayList<String>(4) {
+    List<List<String>> tsList = new ArrayList<>();
+    tsList.add(new ArrayList<String>(4) {
       {
         add("root.vehicle.d0.s0");
         add("root.vehicle");
@@ -143,7 +146,7 @@ public class IoTDBStatementTest {
         add("RLE");
       }
     });
-    tslist.add(new ArrayList<String>(4) {
+    tsList.add(new ArrayList<String>(4) {
       {
         add("root.vehicle.d0.s1");
         add("root.vehicle");
@@ -151,7 +154,7 @@ public class IoTDBStatementTest {
         add("RLE");
       }
     });
-    tslist.add(new ArrayList<String>(4) {
+    tsList.add(new ArrayList<String>(4) {
       {
         add("root.vehicle.d0.s2");
         add("root.vehicle");
@@ -163,7 +166,7 @@ public class IoTDBStatementTest {
         + "root.vehicle.d0.s0,root.vehicle,INT32,RLE,\n"
         + "root.vehicle.d0.s1,root.vehicle,INT64,RLE,\n"
         + "root.vehicle.d0.s2,root.vehicle,FLOAT,RLE,\n";
-    when(fetchMetadataResp.getShowTimeseriesList()).thenReturn(tslist);
+    when(fetchMetadataResp.getTimeseriesList()).thenReturn(tsList);
     boolean res = stmt.execute("show timeseries root.vehicle.d0");
     assertTrue(res);
     try (ResultSet resultSet = stmt.getResultSet()) {
@@ -182,17 +185,17 @@ public class IoTDBStatementTest {
       }
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
-      System.out.println(e);
+      e.printStackTrace();
     }
   }
 
   @SuppressWarnings({"resource"})
   @Test
-  public void testExecuteSQL3() throws SQLException, TException {
+  public void testExecuteSQL3() throws SQLException {
     IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
-    List<String> sgSet = new ArrayList<>();
+    Set<String> sgSet = new HashSet<>();
     sgSet.add("root.vehicle");
-    when(fetchMetadataResp.getShowStorageGroups()).thenReturn(sgSet);
+    when(fetchMetadataResp.getStorageGroups()).thenReturn(sgSet);
     String standard = "Storage Group,\nroot.vehicle,\n";
     boolean res = stmt.execute("show storage group");
     assertTrue(res);
@@ -212,7 +215,8 @@ public class IoTDBStatementTest {
       }
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
-      System.out.println(e);
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
     }
   }
 

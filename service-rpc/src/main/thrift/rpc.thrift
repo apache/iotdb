@@ -192,10 +192,11 @@ struct TSFetchResultsResp{
 struct TSFetchMetadataResp{
 		1: required TSStatus status
 		2: optional string metadataInJson
-		3: optional list<string> ColumnsList
+		3: optional list<string> columnsList
 		4: optional string dataType
-		5: optional list<list<string>> showTimeseriesList
-		7: optional list<string> showStorageGroups
+		5: optional list<list<string>> timeseriesList
+		6: optional set<string> storageGroups
+		7: optional set<string> devices
 		8: optional list<string> nodesList
 		9: optional map<string, string> nodeTimeseriesNum
 }
@@ -203,7 +204,7 @@ struct TSFetchMetadataResp{
 struct TSFetchMetadataReq{
 		1: required string type
 		2: optional string columnPath
-		3: optional string nodeLevel
+		3: optional i32 nodeLevel
 }
 
 struct TSColumnSchema{
@@ -299,7 +300,9 @@ service TSIService {
 
 	TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
 
-  TSStatus deleteTimeseries(1:list<string> path)
+    TSStatus deleteTimeseries(1:list<string> path)
+
+    TSStatus deleteStorageGroups(1:list<string> storageGroup);
 
 	TSStatus insertRow(1:TSInsertReq req);
 
