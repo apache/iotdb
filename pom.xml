@@ -56,7 +56,7 @@
         <module>spark-tsfile</module>
         <module>spark-iotdb-connector</module>
         <!-- <module>hadoop</module> -->
-    <!-- <module>distribution</module> -->
+        <module>distribution</module>
     </modules>
 <!-- Properties Management -->
     <properties>
