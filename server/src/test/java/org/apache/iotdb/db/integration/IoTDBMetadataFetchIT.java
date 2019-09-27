@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -230,10 +230,10 @@ public class IoTDBMetadataFetchIT {
    * get all delta objects under a given column
    */
   private void device() throws SQLException {
-    String standard = "column,\n" + "root.ln.wf01.wt01,\n";
+    String standard = "Device,\n" + "root.ln.wf01,\n";
 
 
-    try (ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_DEVICE, "ln", null,
+    try (ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_DEVICES, null, null,
         null)) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();

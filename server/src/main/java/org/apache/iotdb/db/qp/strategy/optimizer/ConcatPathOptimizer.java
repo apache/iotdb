@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -342,6 +342,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     for (int i = 0; i < paths.size(); i++) {
       try {
         List<String> actualPaths = executor.getAllPaths(paths.get(i).getFullPath());
+        if(actualPaths.isEmpty()){
+          throw new LogicalOptimizeException("Path: \"" + paths.get(i) + "\" not corresponding any known time series");
+        }
         for (String actualPath : actualPaths) {
           retPaths.add(new Path(actualPath));
           if (afterConcatAggregations != null && !afterConcatAggregations.isEmpty()) {
@@ -351,9 +354,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       } catch (MetadataErrorException e) {
         throw new LogicalOptimizeException("error when remove star: ", e);
       }
-    }
-    if (retPaths.isEmpty()) {
-      throw new LogicalOptimizeException("do not select any existing series");
     }
     selectOperator.setSuffixPathList(retPaths);
     selectOperator.setAggregations(newAggregations);
