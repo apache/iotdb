@@ -87,13 +87,13 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-server</artifactId>
-            <version>0.8.1-SNAPSHOT</version>
+            <version>${project.version}</version>
             <type>zip</type>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-client</artifactId>
-            <version>0.8.1-SNAPSHOT</version>
+            <version>${project.version}</version>
             <type>zip</type>
         </dependency>
     </dependencies>
