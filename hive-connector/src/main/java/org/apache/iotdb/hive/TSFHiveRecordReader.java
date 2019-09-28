@@ -122,19 +122,19 @@ public class TSFHiveRecordReader implements RecordReader<NullWritable, MapWritab
       reader = new TsFileSequenceReader(new HDFSInput(path, job));
 
       // Get the read columns and filter information
-      List<String> deltaObjectIds = TSFInputFormat.getReadDeltaObjectIds(job);
-      if (deltaObjectIds == null) {
-        deltaObjectIds = initDeviceIdList(chunkGroupInfoList);
+      List<String> deviceIds = TSFInputFormat.getReadDeviceIds(job);
+      if (deviceIds == null) {
+        deviceIds = initDeviceIdList(chunkGroupInfoList);
       }
       List<String> measurementIds = TSFInputFormat.getReadMeasurementIds(job);
       if (measurementIds == null) {
         measurementIds = initSensorIdList(chunkGroupInfoList);
       }
       this.measurementIds = measurementIds;
-      logger.info("deltaObjectIds:" + deltaObjectIds);
+      logger.info("deviceIds:" + deviceIds);
       logger.info("Sensors:" + measurementIds);
 
-      isReadDeviceId = TSFInputFormat.getReadDeltaObject(job);
+      isReadDeviceId = TSFInputFormat.getReadDeviceId(job);
       isReadTime = TSFInputFormat.getReadTime(job);
       if (isReadDeviceId) {
         arraySize++;
@@ -146,7 +146,7 @@ public class TSFHiveRecordReader implements RecordReader<NullWritable, MapWritab
       ReadOnlyTsFile queryEngine = new ReadOnlyTsFile(reader);
       for (TSFInputSplit.ChunkGroupInfo chunkGroupInfo : chunkGroupInfoList) {
         String deviceId = chunkGroupInfo.getDeviceId();
-        if (deltaObjectIds.contains(deviceId)) {
+        if (deviceIds.contains(deviceId)) {
           List<Path> paths = measurementIds.stream()
                   .map(measurementId -> new Path(deviceId + TsFileConstant.PATH_SEPARATOR + measurementId))
                   .collect(toList());
