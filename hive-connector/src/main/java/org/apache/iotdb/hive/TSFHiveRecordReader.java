@@ -44,9 +44,6 @@ import java.util.List;
 
 import static java.util.stream.Collectors.toList;
 
-/**
- * @author Yuan Tian
- */
 public class TSFHiveRecordReader implements RecordReader<NullWritable, MapWritable>, JobConfigurable {
 
   private static final Logger logger = LoggerFactory.getLogger(TSFHiveRecordReader.class);

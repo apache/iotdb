@@ -37,7 +37,6 @@ import java.util.Properties;
 /**
  * The function implement is same as {@link org.apache.iotdb.tsfile.hadoop.TSFOutputFormat}
  * and is customized for Hive
- * @author Yuan Tian
  */
 public class TSFHiveOutputFormat extends TSFOutputFormat implements HiveOutputFormat<NullWritable, HDFSTSRecord> {
 

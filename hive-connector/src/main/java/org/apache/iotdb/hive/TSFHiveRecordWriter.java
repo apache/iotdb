@@ -36,7 +36,6 @@ import java.io.IOException;
 /**
  * The function implement is same as {@link org.apache.iotdb.tsfile.hadoop.TSFRecordWriter}
  * and is customized for Hive
- * @author Yuan Tian
  */
 public class TSFHiveRecordWriter implements FileSinkOperator.RecordWriter {
 

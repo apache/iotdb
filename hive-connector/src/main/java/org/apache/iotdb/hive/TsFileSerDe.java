@@ -39,9 +39,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.util.*;
 
-/**
- * @author Yuan Tian
- */
 public class TsFileSerDe extends AbstractSerDe {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileSerDe.class);

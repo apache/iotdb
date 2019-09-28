@@ -42,7 +42,6 @@ import java.util.stream.Collectors;
 /**
  * The class implement is same as {@link org.apache.iotdb.tsfile.hadoop.TSFInputFormat}
  * and is customized for Hive to implements JobConfigurable interface.
- * @author Yuan Tian
  */
 public class TSFHiveInputFormat extends FileInputFormat<NullWritable, MapWritable> implements JobConfigurable {
 

@@ -20,9 +20,6 @@ package org.apache.iotdb.hive;
 
 import org.apache.hadoop.hive.serde2.SerDeException;
 
-/**
- * @author Yuan Tian
- */
 public class TsFileSerDeException extends SerDeException {
 
   public TsFileSerDeException() {

@@ -31,9 +31,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * @author Yuan Tian
- */
 public class TsFileDeserializer {
   private static final Logger LOG = LoggerFactory.getLogger(TsFileDeserializer.class);
 
