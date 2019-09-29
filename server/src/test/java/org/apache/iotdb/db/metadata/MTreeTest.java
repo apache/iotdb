@@ -25,8 +25,8 @@ import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -122,7 +122,7 @@ public class MTreeTest {
     }
 
     try {
-      HashMap<String, ArrayList<String>> result = root.getAllPath("root.a.*.s0");
+      Map<String, List<String>> result = root.getAllPath("root.a.*.s0");
       assertEquals(2, result.size());
       assertTrue(result.containsKey("root.a.d1"));
       assertEquals("root.a.d1.s0", result.get("root.a.d1").get(0));

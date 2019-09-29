@@ -22,7 +22,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.MetadataErrorException;
@@ -83,7 +82,7 @@ public class MManagerAdvancedTest {
       }
       // test filename by seriesPath
       assertEquals("root.vehicle.d0", mmanager.getStorageGroupNameByPath("root.vehicle.d0.s1"));
-      Map<String, ArrayList<String>> map = mmanager
+      Map<String, List<String>> map = mmanager
           .getAllPathGroupByStorageGroup("root.vehicle.d1.*");
       assertEquals(1, map.keySet().size());
       assertEquals(6, map.get("root.vehicle.d1").size());
@@ -98,7 +97,7 @@ public class MManagerAdvancedTest {
   }
 
   @Test
-  public void testCache() throws PathErrorException, IOException, MetadataErrorException {
+  public void testCache() throws PathErrorException, IOException {
     mmanager.addPathToMTree("root.vehicle.d2.s0", "DOUBLE", "RLE");
     mmanager.addPathToMTree("root.vehicle.d2.s1", "BOOLEAN", "PLAIN");
     mmanager.addPathToMTree("root.vehicle.d2.s2.g0", "TEXT", "PLAIN");
@@ -109,19 +108,19 @@ public class MManagerAdvancedTest {
     Assert.assertEquals(TSDataType.INT64,
         mmanager.checkPathStorageGroupAndGetDataType("root.vehicle.d0.s1").getDataType());
 
-    Assert.assertEquals(false,
+    Assert.assertFalse(
         mmanager.checkPathStorageGroupAndGetDataType("root.vehicle.d0.s100").isSuccessfully());
-    Assert.assertEquals(null,
+    Assert.assertNull(
         mmanager.checkPathStorageGroupAndGetDataType("root.vehicle.d0.s100").getDataType());
 
     MNode node = mmanager.getNodeByPathFromCache("root.vehicle.d0");
     Assert.assertEquals(TSDataType.INT32, node.getChild("s0").getSchema().getType());
 
     try {
-      MNode node1 = mmanager.getNodeByPathFromCache("root.vehicle.d100");
+      mmanager.getNodeByPathFromCache("root.vehicle.d100");
       fail();
     } catch (PathErrorException e) {
-
+      // ignore
     }
   }
 
