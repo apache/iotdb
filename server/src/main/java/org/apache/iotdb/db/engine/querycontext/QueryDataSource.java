@@ -65,7 +65,7 @@ public class QueryDataSource {
 
   /**
    *
-   * @return an updated time filter considering TTL
+   * @return an updated time filter concerning TTL
    */
   public Filter updateTimeFilter(Filter timeFilter) {
     if (dataTTL != Long.MAX_VALUE) {

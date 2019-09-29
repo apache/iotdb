@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.control;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -35,10 +36,10 @@ public class JobFileManager {
   /**
    * Map<jobId, Set<filePaths>>
    */
-  private ConcurrentHashMap<Long, Set<TsFileResource>> sealedFilePathsMap;
-  private ConcurrentHashMap<Long, Set<TsFileResource>> unsealedFilePathsMap;
+  private Map<Long, Set<TsFileResource>> sealedFilePathsMap;
+  private Map<Long, Set<TsFileResource>> unsealedFilePathsMap;
 
-  public JobFileManager() {
+  JobFileManager() {
     sealedFilePathsMap = new ConcurrentHashMap<>();
     unsealedFilePathsMap = new ConcurrentHashMap<>();
   }
@@ -47,7 +48,7 @@ public class JobFileManager {
    * Set job id for current request thread. When a query request is created firstly,
    * this method must be invoked.
    */
-  public void addJobId(long jobId) {
+  void addJobId(long jobId) {
     sealedFilePathsMap.computeIfAbsent(jobId, x -> new HashSet<>());
     unsealedFilePathsMap.computeIfAbsent(jobId, x -> new HashSet<>());
   }
@@ -73,8 +74,7 @@ public class JobFileManager {
       addFilePathToMap(jobId, tsFileResource, isClosed);
       // this file may be deleted just before we lock it
       if (tsFileResource.isDeleted()) {
-        ConcurrentHashMap<Long, Set<TsFileResource>> pathMap = !isClosed ?
-            unsealedFilePathsMap : sealedFilePathsMap;
+        Map<Long, Set<TsFileResource>> pathMap = !isClosed ? unsealedFilePathsMap : sealedFilePathsMap;
         pathMap.get(jobId).remove(tsFileResource);
         FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, isClosed);
         resources.remove(tsFileResource);
@@ -110,7 +110,7 @@ public class JobFileManager {
    * must not return null.
    */
   void addFilePathToMap(long jobId, TsFileResource tsFile, boolean isClosed) {
-    ConcurrentHashMap<Long, Set<TsFileResource>> pathMap = !tsFile.isClosed() ? unsealedFilePathsMap :
+    Map<Long, Set<TsFileResource>> pathMap = isClosed ? unsealedFilePathsMap :
         sealedFilePathsMap;
     //TODO this is not an atomic operation, is there concurrent problem?
     if (!pathMap.get(jobId).contains(tsFile)) {

@@ -183,7 +183,7 @@ public class StorageGroupProcessor {
   private static final int MAX_CACHE_SENSORS = 5000;
 
   /**
-   * when the data in a storage group are older than dataTTL, it is considered invalid and will
+   * when the data in a storage group is older than dataTTL, it is considered invalid and will
    * be eventually removed.
    */
   private long dataTTL = Long.MAX_VALUE;
@@ -377,15 +377,16 @@ public class StorageGroupProcessor {
       List<Integer> sequenceIndexes = new ArrayList<>();
       List<Integer> unsequenceIndexes = new ArrayList<>();
 
+      long lastFlushTime = latestFlushedTimeForEachDevice.get(batchInsertPlan.getDeviceId());
       for (int i = 0; i < batchInsertPlan.getRowCount(); i++) {
-        results[i] = TSStatusCode.SUCCESS_STATUS.getStatusCode();
         long currTime = batchInsertPlan.getTimes()[i];
         // skip points that do not satisfy TTL
         if (!checkTTL(currTime)) {
           results[i] = TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode();
           continue;
         }
-        if (currTime > latestFlushedTimeForEachDevice.get(batchInsertPlan.getDeviceId())) {
+        results[i] = TSStatusCode.SUCCESS_STATUS.getStatusCode();
+        if (currTime > lastFlushTime) {
           sequenceIndexes.add(i);
         } else {
           unsequenceIndexes.add(i);
@@ -609,6 +610,9 @@ public class StorageGroupProcessor {
     }
   }
 
+  /**
+   * Iterate each TsFile and try to lock and remove those out of TTL.
+   */
   public synchronized void checkFilesTTL() {
     if (dataTTL == Long.MAX_VALUE) {
       logger.debug("{}: TTL not set, ignore the check", storageGroupName);

@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
 public class IoTDBConfig {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
-  public static final String CONFIG_NAME = "iotdb-engine.properties";
+  static final String CONFIG_NAME = "iotdb-engine.properties";
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
@@ -347,7 +347,9 @@ public class IoTDBConfig {
   private String hdfsPort = "9000";
 
   /**
-   * defaultTTL for new storage groups, in ms.
+   * default TTL for storage groups that are not set TTL by statements, in ms
+   * Notice: if this property is changed, previous created storage group which are not set TTL will
+   * also be affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
 

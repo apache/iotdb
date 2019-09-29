@@ -588,8 +588,8 @@ public class MTree implements Serializable {
    *
    * @return A HashMap whose Keys are separated by the storage file name.
    */
-  HashMap<String, ArrayList<String>> getAllPath(String pathReg) throws PathErrorException {
-    HashMap<String, ArrayList<String>> paths = new HashMap<>();
+  HashMap<String, List<String>> getAllPath(String pathReg) throws PathErrorException {
+    HashMap<String, List<String>> paths = new HashMap<>();
     String[] nodes = pathReg.split(PATH_SEPARATOR);
     if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
       throw new PathErrorException(String.format(SERIES_NOT_CORRECT, pathReg));
@@ -650,10 +650,10 @@ public class MTree implements Serializable {
   /**
    * function for getting all paths in list.
    */
-  ArrayList<String> getAllPathInList(String path) throws PathErrorException {
-    ArrayList<String> res = new ArrayList<>();
-    HashMap<String, ArrayList<String>> mapRet = getAllPath(path);
-    for (ArrayList<String> value : mapRet.values()) {
+  List<String> getAllPathInList(String path) throws PathErrorException {
+    List<String> res = new ArrayList<>();
+    HashMap<String, List<String>> mapRet = getAllPath(path);
+    for (List<String> value : mapRet.values()) {
       res.addAll(value);
     }
     return res;
@@ -864,7 +864,7 @@ public class MTree implements Serializable {
   }
 
   private void findPath(MNode node, String[] nodes, int idx, String parent,
-      HashMap<String, ArrayList<String>> paths) {
+      HashMap<String, List<String>> paths) {
     if (node.isLeaf()) {
       if (nodes.length <= idx) {
         String fileName = node.getDataFileName();
@@ -927,12 +927,12 @@ public class MTree implements Serializable {
     }
   }
 
-  private void putAPath(HashMap<String, ArrayList<String>> paths, String fileName,
+  private void putAPath(HashMap<String, List<String>> paths, String fileName,
       String nodePath) {
     if (paths.containsKey(fileName)) {
       paths.get(fileName).add(nodePath);
     } else {
-      ArrayList<String> pathList = new ArrayList<>();
+      List<String> pathList = new ArrayList<>();
       pathList.add(nodePath);
       paths.put(fileName, pathList);
     }

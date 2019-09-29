@@ -947,9 +947,9 @@ public class MManager {
   }
 
   /**
-   * Get the full storage group info.
+   * Get the names of all storage groups.
    *
-   * @return A list which stores all storage group info
+   * @return A list which stores all storage group names.
    */
   public List<String> getAllStorageGroupNames() {
 
@@ -993,7 +993,7 @@ public class MManager {
   /**
    * return a HashMap contains all the paths separated by storage group name.
    */
-  Map<String, ArrayList<String>> getAllPathGroupByStorageGroup(String path)
+  Map<String, List<String>> getAllPathGroupByStorageGroup(String path)
       throws MetadataErrorException {
     lock.readLock().lock();
     try {
@@ -1013,9 +1013,9 @@ public class MManager {
 
     lock.readLock().lock();
     try {
-      ArrayList<String> res = new ArrayList<>();
-      Map<String, ArrayList<String>> pathsGroupBySG = getAllPathGroupByStorageGroup(path);
-      for (ArrayList<String> ps : pathsGroupBySG.values()) {
+      List<String> res = new ArrayList<>();
+      Map<String, List<String>> pathsGroupBySG = getAllPathGroupByStorageGroup(path);
+      for (List<String> ps : pathsGroupBySG.values()) {
         res.addAll(ps);
       }
       return res;

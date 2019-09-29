@@ -38,6 +38,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class IoTDBTtlIT {
+
   private IoTDB daemon;
 
   @Before
@@ -80,11 +81,11 @@ public class IoTDBTtlIT {
       }
 
       long now = System.currentTimeMillis();
-      for (int i = 0; i < 100; i ++) {
+      for (int i = 0; i < 100; i++) {
         statement.execute(String.format("INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)",
             now - 100 + i, i));
       }
-      for (int i = 0; i < 100; i ++) {
+      for (int i = 0; i < 100; i++) {
         statement.execute(String.format("INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)",
             now - 100000 + i, i));
       }
@@ -105,13 +106,17 @@ public class IoTDBTtlIT {
         }
         assertEquals(100, cnt);
       }
-      for (int i = 0; i < 100; i ++) {
+      for (int i = 0; i < 100; i++) {
+        boolean caught = false;
         try {
           statement.execute(String.format("INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)",
               now - 50000 + i, i));
         } catch (SQLException e) {
-          assertEquals(TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode(), e.getErrorCode());
+          if (TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode() == e.getErrorCode()) {
+            caught = true;
+          }
         }
+        assertTrue(caught);
       }
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1")) {
         int cnt = 0;
@@ -122,7 +127,7 @@ public class IoTDBTtlIT {
       }
 
       statement.execute("UNSET TTL TO root.TTL_SG1");
-      for (int i = 0; i < 100; i ++) {
+      for (int i = 0; i < 100; i++) {
         statement.execute(String.format("INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)",
             now - 30000 + i, i));
       }
@@ -144,37 +149,39 @@ public class IoTDBTtlIT {
       statement.execute("SET STORAGE GROUP TO root.group1");
       statement.execute("SET STORAGE GROUP TO root.group2");
 
-      String result = doQuery(statement, "SHOW ALL TTL",2 );
+      String result = doQuery(statement, "SHOW ALL TTL", 2);
       assertEquals("root.group2,9223372036854775807\n"
           + "root.group1,9223372036854775807\n", result);
-      result = doQuery(statement, "SHOW TTL ON root.group1",2);
+      result = doQuery(statement, "SHOW TTL ON root.group1", 2);
       assertEquals("root.group1,9223372036854775807\n", result);
 
       statement.execute("SET TTL TO root.group1 10000");
-      result = doQuery(statement, "SHOW ALL TTL",2);
+      result = doQuery(statement, "SHOW ALL TTL", 2);
       assertEquals("root.group2,9223372036854775807\n"
           + "root.group1,10000\n", result);
-      result = doQuery(statement, "SHOW TTL ON root.group1",2);
+      result = doQuery(statement, "SHOW TTL ON root.group1", 2);
       assertEquals("root.group1,10000\n", result);
 
       statement.execute("UNSET TTL TO root.group1");
-      result = doQuery(statement, "SHOW ALL TTL",2);
+      result = doQuery(statement, "SHOW ALL TTL", 2);
       assertEquals("root.group2,9223372036854775807\n"
           + "root.group1,9223372036854775807\n", result);
-      result = doQuery(statement, "SHOW TTL ON root.group1",2);
+      result = doQuery(statement, "SHOW TTL ON root.group1", 2);
       assertEquals("root.group1,9223372036854775807\n", result);
     }
   }
 
   private String doQuery(Statement statement, String query, int columnSize) throws SQLException {
-    ResultSet resultSet = statement.executeQuery(query);
-    StringBuilder ret = new StringBuilder();
-    while (resultSet.next()) {
-      ret.append(resultSet.getString(2));
-      for (int i = 3; i <= columnSize + 1; i++) {
-        ret.append(",").append(resultSet.getString(i));
+    StringBuilder ret;
+    try (ResultSet resultSet = statement.executeQuery(query)) {
+      ret = new StringBuilder();
+      while (resultSet.next()) {
+        ret.append(resultSet.getString(2));
+        for (int i = 3; i <= columnSize + 1; i++) {
+          ret.append(",").append(resultSet.getString(i));
+        }
+        ret.append("\n");
       }
-      ret.append("\n");
     }
     return ret.toString();
   }
@@ -188,7 +195,7 @@ public class IoTDBTtlIT {
       statement.execute("SET STORAGE GROUP TO root.group1");
       statement.execute("SET STORAGE GROUP TO root.group2");
 
-      String result = doQuery(statement, "SHOW ALL TTL",2 );
+      String result = doQuery(statement, "SHOW ALL TTL", 2);
       assertEquals("root.group2,10000\n"
           + "root.group1,10000\n", result);
     } finally {

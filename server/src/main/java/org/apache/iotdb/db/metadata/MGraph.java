@@ -184,7 +184,7 @@ public class MGraph implements Serializable {
    *
    * @return A HashMap whose Keys are separated by the storage file name.
    */
-  HashMap<String, ArrayList<String>> getAllPathGroupByStorageGroup(String path)
+  HashMap<String, List<String>> getAllPathGroupByStorageGroup(String path)
       throws PathErrorException {
     String rootName = path.trim().split(DOUB_SEPARATOR)[0];
     if (mtree.getRoot().getName().equals(rootName)) {

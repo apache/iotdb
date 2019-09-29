@@ -56,9 +56,9 @@ public class MNode implements Serializable {
   private String fullPath;
 
   /**
-   * when the data in a storage group are older than dataTTL, it is considered invalid and will
+   * when the data in a storage group is older than dataTTL, it is considered invalid and will
    * be eventually removed.
-   * only at storage group will this be set.
+   * only set at storage group level.
    */
   private long dataTTL = Long.MAX_VALUE;
 
