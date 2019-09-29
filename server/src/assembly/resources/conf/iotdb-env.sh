@@ -117,10 +117,6 @@ else
   IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/gc.log"
 fi
 
-if [ "$MAJOR_VERSION" -ne "8" ] && [ "$MAJOR_VERSION" -ne "11" ] ; then
-  echo "IoTDB only supports jdk8 or jdk11, please check your java version."
-  exit 1;
-fi
 
 
 calculate_heap_sizes
