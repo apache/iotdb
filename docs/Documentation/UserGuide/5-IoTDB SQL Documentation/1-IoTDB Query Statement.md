@@ -504,11 +504,12 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 
 ### TTL
 IoTDB supports storage-level TTL settings, which means it is able to delete old data
-automatically and periodically. The beneficial of using TTL is that hopefully you can control the 
-total disk space usage to prevent the machine from running out of disk. Moreover, the query
-performance may downgrade as the total number of files goes up. Timely removing such files also
-helps to keep at a high query performance level. The TTL operations in IoTDB are supported by the
-following two statements:
+automatically and periodically. The benefit of using TTL is that hopefully you can control the 
+total disk space usage and prevent the machine from running out of disks. Moreover, the query
+performance may downgrade as the total number of files goes up and the memory usage also increase
+as there are more files. Timely removing such files helps to keep at a high query performance
+level and reduce memory usage. The TTL operations in IoTDB are supported by the following three
+statements:
 
 * Set TTL
 ```
@@ -524,7 +525,7 @@ out of TTL will be rejected.
 ```
 UNSET TTL TO StorageGroupName
 Eg. UNSET TTL TO root.group1
-This example means that data of all time will be stored in this group. 
+This example means that data of all time will be accepted in this group. 
 ```
 
 * Show TTL
@@ -534,12 +535,14 @@ SHOW TTL ON StorageGroupNames
 Eg.1 SHOW ALL TTL
 This example will show TTLs of all storage groups.
 Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
-This example will show TTLs if the specified 3 groups.
+This example will show TTLs of the specified 3 groups.
 ```
 
 Notice: When you set TTL to some storage groups, data out of the TTL will be made invisible
 immediately, but because the data files may contain both out-dated and living data or the data files may
 be being used by queries, the physical removal of data is stale. If you increase or unset TTL
 just after setting it previously, some previously invisible data may be seen again, but the
-physically removed one is lost forever. So we recommend that you do not change the TTL once it is
-set or do not reset it frequently, unless you are determined to suffer this unpredictability. 
+physically removed one is lost forever. In other word, different from delete statement, the
+atomicity of data deletion is not guaranteed for efficiency concerns. So we recommend that you do
+not change the TTL once it is set or at least do not reset it frequently, unless you are determined 
+to suffer the unpredictability. 
