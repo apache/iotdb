@@ -49,13 +49,13 @@ There are several ways to identify the version of IoTDB that you are using:
   | |   .--.|_/ | | \_|  | | `. \ | |_) |  
   | | / .'`\ \  | |      | |  | | |  __'.  
  _| |_| \__. | _| |_    _| |_.' /_| |__) | 
-|_____|'.__.' |_____|  |______.'|_______/  version 0.8.0
+|_____|'.__.' |_____|  |______.'|_______/  version 0.8.1
 ```
 
 * Check pom.xml file:
 
 ```
-<version>0.8.0</version>
+<version>0.8.1</version>
 ```
 
 * Use JDBC API:

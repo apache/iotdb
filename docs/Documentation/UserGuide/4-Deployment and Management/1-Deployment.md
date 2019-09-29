@@ -32,12 +32,16 @@ IoTDB provides you two installation methods, you can refer to the following sugg
 
 To install and use IoTDB, you need to have:
 
-1. Java >= 1.8 (Please make sure the environment path has been set)
-2. Maven >= 3.0 (If you want to compile and install IoTDB from source code)
-3. TsFile >= 0.8.0 (TsFile Github page: [https://github.com/thulab/tsfile](https://github.com/thulab/tsfile))
-4. IoTDB-JDBC >= 0.8.0 (IoTDB-JDBC Github page: [https://github.com/thulab/iotdb-jdbc](https://github.com/thulab/iotdb-jdbc))
+1. Java >= 1.8 (1.8, 11, and 13 are verified. Please make sure the environment path has been set.)
 
-TODO: TsFile and IoTDB-JDBC dependencies will be removed after the project reconstruct.
+    * To use IoTDB, JRE should be installed. To compile IoTDB, JDK should be installed.
+
+2. Maven >= 3.1 (If you want to compile and install IoTDB from source code)
+
+    * While Maven is not mandatory to be installed standalone, you can use the provided Maven wrapper, `./mvnw.sh` on Linux/OS X or `.\mvnw.cmd` on Windows, to facilitate development.
+
+3. Set the max open files num as 65535 to avoid "too many open files" problem.
+
 
 ### Installation from  binary files
 
@@ -157,4 +161,4 @@ $IOTDB_HOME/
 
 ### Installation by Docker (Dockerfile)
 
-You can build and run a IoTDB docker image by following the guide of [Deployment by Docker](/#/Documents/0.8.0/chap4/sec7)
+You can build and run a IoTDB docker image by following the guide of [Deployment by Docker](/#/Documents/0.8.1/chap4/sec7)

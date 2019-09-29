@@ -24,16 +24,16 @@
 ## 数据接入
 ### 历史数据导入
 
-0.8.0版本中暂不支持此功能。
+0.8.1版本中暂不支持此功能。
 
 ### 实时数据接入
 
-IoTDB为用户提供多种插入实时数据的方式，例如在[Cli/Shell工具](/#/Tools/Cli)中直接输入插入数据的[INSERT语句](/#/Documents/0.8.0/chap5/sec1)，或使用Java API（标准[Java JDBC](/#/Documents/0.8.0/chap6/sec1)接口）单条或批量执行插入数据的[INSERT语句](/#/Documents/0.8.0/chap5/sec1)。
+IoTDB为用户提供多种插入实时数据的方式，例如在[Cli/Shell工具](/#/Tools/Cli)中直接输入插入数据的[INSERT语句](/#/Documents/0.8.1/chap5/sec1)，或使用Java API（标准[Java JDBC](/#/Documents/0.8.1/chap6/sec1)接口）单条或批量执行插入数据的[INSERT语句](/#/Documents/0.8.1/chap5/sec1)。
 
-本节主要为您介绍实时数据接入的[INSERT语句](/#/Documents/0.8.0/chap5/sec1)在场景中的实际使用示例，有关INSERT SQL语句的详细语法请参见本文[INSERT语句](/#/Documents/0.8.0/chap5/sec1)节。
+本节主要为您介绍实时数据接入的[INSERT语句](/#/Documents/0.8.1/chap5/sec1)在场景中的实际使用示例，有关INSERT SQL语句的详细语法请参见本文[INSERT语句](/#/Documents/0.8.1/chap5/sec1)节。
 
 #### 使用INSERT语句
-使用[INSERT语句](/#/Documents/0.8.0/chap5/sec1)可以向指定的已经创建的一条或多条时间序列中插入数据。对于每一条数据，均由一个时间戳类型的[时间戳](/#/Documents/0.8.0/chap2/sec1)和一个[数值类型](/#/Documents/0.8.0/chap2/sec2)的传感器采集值组成。
+使用[INSERT语句](/#/Documents/0.8.1/chap5/sec1)可以向指定的已经创建的一条或多条时间序列中插入数据。对于每一条数据，均由一个时间戳类型的[时间戳](/#/Documents/0.8.1/chap2/sec1)和一个[数值类型](/#/Documents/0.8.1/chap2/sec2)的传感器采集值组成。
 
 在本节的场景实例下，以其中的两个时间序列`root.ln.wf02.wt02.status`和`root.ln.wf02.wt02.hardware`为例 ，它们的数据类型分别为BOOLEAN和TEXT。
 

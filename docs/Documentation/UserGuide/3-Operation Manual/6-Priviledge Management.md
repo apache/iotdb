@@ -24,7 +24,7 @@
 ## Priviledge Management
 IoTDB provides users with priviledge management operations, so as to ensure data security.
 
-We will show you basic user priviledge management operations through the following specific examples. Detailed SQL syntax and usage details can be found in [Chapter 5: SQL Documentation](/#/Documents/0.8.0/chap5/sec1). At the same time, in the JAVA programming environment, you can use the [Java JDBC](/#/Documents/0.8.0/chap6/sec1) to execute priviledge management statements in a single or batch mode. 
+We will show you basic user priviledge management operations through the following specific examples. Detailed SQL syntax and usage details can be found in [Chapter 5: SQL Documentation](/#/Documents/0.8.1/chap5/sec1). At the same time, in the JAVA programming environment, you can use the [Java JDBC](/#/Documents/0.8.1/chap6/sec1) to execute priviledge management statements in a single or batch mode. 
 
 ### Basic Concepts
 #### User
@@ -40,7 +40,7 @@ A role is a set of priviledges and has a unique role name as an identifier. A us
 There is a default user in IoTDB after the initial installation: root, and the default password is root. This user is an administrator user, who cannot be deleted and has all the priviledges. Neither can new priviledges be granted to the root user nor can priviledges owned by the root user be deleted.
 
 ### Priviledge Management Operation Examples
-According to the [sample data](/#/Documents/0.8.0/chap3/sec1), the sample data of IoTDB may belong to different power generation groups such as ln, sgcc, etc. Different power generation groups do not want others to obtain their own database data, so we need to have data priviledge isolated at the group layer.
+According to the [sample data](/#/Documents/0.8.1/chap3/sec1), the sample data of IoTDB may belong to different power generation groups such as ln, sgcc, etc. Different power generation groups do not want others to obtain their own database data, so we need to have data priviledge isolated at the group layer.
 
 #### Create User
 

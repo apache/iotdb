@@ -23,11 +23,11 @@
 
 ## 数据模型选用与创建
 
-在向IoTDB导入数据之前，首先要根据[样例数据](/#/Documents/0.8.0/chap3/sec1)选择合适的数据存储模型，然后使用[SET STORAGE GROUP](/#/Documents/0.8.0/chap5/sec1)语句和[CREATE TIMESERIES](/#/Documents/0.8.0/chap5/sec1)语句设置存储组，并创建时间序列。
+在向IoTDB导入数据之前，首先要根据[样例数据](/#/Documents/0.8.1/chap3/sec1)选择合适的数据存储模型，然后使用[SET STORAGE GROUP](/#/Documents/0.8.1/chap5/sec1)语句和[CREATE TIMESERIES](/#/Documents/0.8.1/chap5/sec1)语句设置存储组，并创建时间序列。
 
 ### 选用存储模型
 
-根据本文描述的[数据](/#/Documents/0.8.0/chap3/sec1)属性层级，按照属性涵盖范围以及它们之间的从属关系，我们可将其表示为如下图3.1的属性层级组织结构，其层级关系为：集团层-电场层-设备层-传感器层。其中ROOT为根节点，传感器层的每一个节点称为叶子节点。在使用IoTDB的过程中，您可以直接将由ROOT节点到每一个叶子节点路径上的属性用“.”连接，将其作为一个IoTDB的时间序列的名称。图3.1中最左侧的路径可以生成一个名为`ROOT.ln.wf01.wt01.status`的时间序列。
+根据本文描述的[数据](/#/Documents/0.8.1/chap3/sec1)属性层级，按照属性涵盖范围以及它们之间的从属关系，我们可将其表示为如下图3.1的属性层级组织结构，其层级关系为：集团层-电场层-设备层-传感器层。其中ROOT为根节点，传感器层的每一个节点称为叶子节点。在使用IoTDB的过程中，您可以直接将由ROOT节点到每一个叶子节点路径上的属性用“.”连接，将其作为一个IoTDB的时间序列的名称。图3.1中最左侧的路径可以生成一个名为`ROOT.ln.wf01.wt01.status`的时间序列。
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577327-7aa50780-1ef4-11e9-9d75-cadabb62444e.jpg">
 
@@ -55,7 +55,7 @@ Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.excepti
 
 ### 查看存储组
 
-在存储组创建后，我们可以使用[SHOW STORAGE GROUP](/#/Documents/0.8.0/chap5/sec1)语句来查看所有的存储组，SQL语句如下所示：
+在存储组创建后，我们可以使用[SHOW STORAGE GROUP](/#/Documents/0.8.1/chap5/sec1)语句来查看所有的存储组，SQL语句如下所示：
 
 ```
 IoTDB> show storage group
@@ -83,7 +83,7 @@ IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODIN
 error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
-详细的数据类型与编码方式的对应列表请参见[编码方式](/#/Documents/0.8.0/chap2/sec3)。
+详细的数据类型与编码方式的对应列表请参见[编码方式](/#/Documents/0.8.1/chap2/sec3)。
 
 ### 查看时间序列
 
@@ -107,8 +107,8 @@ IoTDB> show timeseries root.ln
 
 ### 注意事项
 
-0.8.0版本对用户操作的数据规模进行一些限制：
+0.8.1版本对用户操作的数据规模进行一些限制：
 
-限制1：假设运行时IoTDB分配到的JVM内存大小为p，用户自定义的每次将内存中的数据写入到磁盘时的大小（[group_size_in_byte](/#/Documents/0.8.0/chap4/sec2)）为q。存储组的数量不能超过p/q。
+限制1：假设运行时IoTDB分配到的JVM内存大小为p，用户自定义的每次将内存中的数据写入到磁盘时的大小（[group_size_in_byte](/#/Documents/0.8.1/chap4/sec2)）为q。存储组的数量不能超过p/q。
 
 限制2：时间序列的数量不超过运行时IoTDB分配到的JVM内存与20KB的比值。

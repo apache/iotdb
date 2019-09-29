@@ -78,7 +78,7 @@ This is the first official release of Apache IoTDB after joining the Incubator.
 
 ## Incompatible changes
 
-If you use the previous unofficial version 0.7.0. It is incompatible with 0.8.0.
+If you use the previous unofficial version 0.7.0. It is incompatible with 0.8.*.
 
 
 ## Miscellaneous changes

@@ -24,16 +24,16 @@
 ## Data Import
 ### Import Historical Data
 
-This feature is not supported in version 0.8.0.
+This feature is not supported in version 0.8.1.
 
 ### Import Real-time Data
 
-IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](/#/Documents/0.8.0/chap5/sec1) in [Cli/Shell tools](/#/Tools/Cli), or using [Java JDBC](/#/Documents/0.8.0/chap6/sec1) to perform single or batch execution of [INSERT SQL statement](/#/Documents/0.8.0/chap5/sec1).
+IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](/#/Documents/0.8.1/chap5/sec1) in [Cli/Shell tools](/#/Tools/Cli), or using [Java JDBC](/#/Documents/0.8.1/chap6/sec1) to perform single or batch execution of [INSERT SQL statement](/#/Documents/0.8.1/chap5/sec1).
 
-This section mainly introduces the use of [INSERT SQL statement](/#/Documents/0.8.0/chap5/sec1) for real-time data import in the scenario. See Section 5.1 for a detailed syntax of [INSERT SQL statement](/#/Documents/0.8.0/chap5/sec1).
+This section mainly introduces the use of [INSERT SQL statement](/#/Documents/0.8.1/chap5/sec1) for real-time data import in the scenario. See Section 5.1 for a detailed syntax of [INSERT SQL statement](/#/Documents/0.8.1/chap5/sec1).
 
 #### Use of INSERT Statements
-The [INSERT SQL statement](/#/Documents/0.8.0/chap5/sec1) statement can be used to insert data into one or more specified timeseries that have been created. For each point of data inserted, it consists of a [timestamp](/#/Documents/0.8.0/chap2/sec1) and a sensor acquisition value of a numerical type (see [Data Type](/#/Documents/0.8.0/chap2/sec2)).
+The [INSERT SQL statement](/#/Documents/0.8.1/chap5/sec1) statement can be used to insert data into one or more specified timeseries that have been created. For each point of data inserted, it consists of a [timestamp](/#/Documents/0.8.1/chap2/sec1) and a sensor acquisition value of a numerical type (see [Data Type](/#/Documents/0.8.1/chap2/sec2)).
 
 In the scenario of this section, take two timeseries `root.ln.wf02.wt02.status` and `root.ln.wf02.wt02.hardware` as an example, and their data types are BOOLEAN and TEXT, respectively.
 
