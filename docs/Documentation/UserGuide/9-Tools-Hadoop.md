@@ -45,7 +45,7 @@ With this connector, you can
 
 ## System Requirements
 
-|Hadoop Version | Java Version | TsFile |
+|Hadoop Version | Java Version | TsFile Version|
 |-------------  | ------------ |------------ |
 | `2.7.3`       | `1.8`        | `0.8.0-SNAPSHOT`|
 
