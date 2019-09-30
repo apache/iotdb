@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
@@ -127,7 +128,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
-  public static List<SqlArgument> sqlArgumentsList = new ArrayList<>();
+  private static final int MAX_SIZE = 200;
+  private static final int DELETE_SIZE = 50;
+  public static Vector<SqlArgument> sqlArgumentsList = new Vector<>();
 
   protected QueryProcessor processor;
   // Record the username for every rpc connection. Username.get() is null if
@@ -578,8 +581,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         long endTime = System.currentTimeMillis();
         sqlArgument = new SqlArgument(resp,physicalPlan,statement,startTime,endTime);
         sqlArgumentsList.add(sqlArgument);
-        if (sqlArgumentsList.size() > 200) {
-          for (int i = 0; i < 50; i++) {
+        if (sqlArgumentsList.size() > MAX_SIZE) {
+          for (int i = 0; i < DELETE_SIZE; i++) {
             sqlArgumentsList.remove(0);
           }
         }
