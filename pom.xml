@@ -54,8 +54,8 @@
         <module>example</module>
         <module>grafana</module>
         <module>spark-tsfile</module>
+        <module>hadoop</module>
         <module>spark-iotdb-connector</module>
-        <!-- <module>hadoop</module> -->
         <module>distribution</module>
     </modules>
 <!-- Properties Management -->
@@ -716,6 +716,7 @@
                     <instrumentation>
                         <ignoreTrivial>true</ignoreTrivial>
                     </instrumentation>
+                    <check/>
                 </configuration>
                 <executions>
                     <execution>

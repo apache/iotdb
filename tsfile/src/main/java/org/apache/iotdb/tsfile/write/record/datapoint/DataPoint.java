@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.tsfile.write.record.datapoint;
 
-import java.io.IOException;
-import java.math.BigDecimal;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+
+import java.io.IOException;
+import java.math.BigDecimal;
 
 /**
  * This is a abstract class representing a data point. DataPoint consists of a measurement id and a

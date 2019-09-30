@@ -127,6 +127,11 @@ public class IoTDBConfig {
   private String schemaDir = "data/system/schema";
 
   /**
+   * Query directory, stores temporary files of query
+   */
+  private String queryDir = "data/query";
+
+  /**
    * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
    */
   private String[] dataDirs = {"data/data"};
@@ -210,6 +215,17 @@ public class IoTDBConfig {
    * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
    */
   private int mManagerCacheSize = 400000;
+
+  /**
+   * Is external sort enable.
+   */
+  private boolean enableExternalSort = true;
+
+  /**
+   * The threshold of items in external sort. If the number of chunks participating in sorting
+   * exceeds this threshold, external sorting is enabled, otherwise memory sorting is used.
+   */
+  private int externalSortThreshold = 60;
 
   /**
    * Is this IoTDB instance a receiver of sync or not.
@@ -297,8 +313,7 @@ public class IoTDBConfig {
 
   /**
    * If one merge file selection runs for more than this time, it will be ended and its current
-   * selection will be used as final selection. Unit: millis.
-   * When < 0, it means time is unbounded.
+   * selection will be used as final selection. Unit: millis. When < 0, it means time is unbounded.
    */
   private long mergeFileSelectionTimeBudget = 30 * 1000;
 
@@ -375,6 +390,7 @@ public class IoTDBConfig {
     dirs.add(schemaDir);
     dirs.add(walFolder);
     dirs.add(indexFileDir);
+    dirs.add(queryDir);
     dirs.addAll(Arrays.asList(dataDirs));
 
     for (int i = 0; i < 4; i++) {
@@ -399,8 +415,9 @@ public class IoTDBConfig {
     schemaDir = dirs.get(2);
     walFolder = dirs.get(3);
     indexFileDir = dirs.get(4);
+    queryDir = dirs.get(5);
     for (int i = 0; i < dataDirs.length; i++) {
-      dataDirs[i] = dirs.get(i + 5);
+      dataDirs[i] = dirs.get(i + 6);
     }
   }
 
@@ -508,6 +525,14 @@ public class IoTDBConfig {
 
   void setSchemaDir(String schemaDir) {
     this.schemaDir = schemaDir;
+  }
+
+  public String getQueryDir() {
+    return queryDir;
+  }
+
+  public void setQueryDir(String queryDir) {
+    this.queryDir = queryDir;
   }
 
   public String getWalFolder() {
@@ -764,6 +789,22 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForRead(long allocateMemoryForRead) {
     this.allocateMemoryForRead = allocateMemoryForRead;
+  }
+
+  public boolean isEnableExternalSort() {
+    return enableExternalSort;
+  }
+
+  public void setEnableExternalSort(boolean enableExternalSort) {
+    this.enableExternalSort = enableExternalSort;
+  }
+
+  public int getExternalSortThreshold() {
+    return externalSortThreshold;
+  }
+
+  public void setExternalSortThreshold(int externalSortThreshold) {
+    this.externalSortThreshold = externalSortThreshold;
   }
 
   public boolean isEnablePerformanceStat() {
