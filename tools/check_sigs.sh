@@ -54,7 +54,7 @@ function checkFile() {
        echo "${FILE} SHA OK";
     fi
 
-    gpg --verify "${FILE}.asc"
+    gpg --verify "${FILE}.asc" "${FILE}"
 
 }
 

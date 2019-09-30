@@ -28,7 +28,7 @@ BUNDLE_DIR=${IOTDB_ROOT_DIR}/target/checkout/target
 IOTDB_ASF_GIT_URL=https://git-wip-us.apache.org/repos/asf/incubator-iotdb.git
 IOTDB_ASF_DIST_URL=https://www.apache.org/dist/incubator/iotdb
 IOTDB_ASF_DIST_DYN_URL=https://www.apache.org/dyn/closer.cgi/iotdb
-IOTDB_ASF_SVN_RELEASE_URL=https://dist.apache.org/repos/dist/release/iotdb
+IOTDB_ASF_SVN_RELEASE_URL=https://dist.apache.org/repos/dist/release/incubator/iotdb
 IOTDB_ASF_SVN_RC_URL=https://dist.apache.org/repos/dist/dev/incubator/iotdb
 
 USAGE=
@@ -66,13 +66,13 @@ function noExtraArgs() { # usage: noExtraArgs "$@"
   [ $# = 0 ] || usage "extra arguments"
 }
 
-function getAbsPath() { # $1: rel-or-abs-path 
+function getAbsPath() { # $1: rel-or-abs-path
     echo "$(cd "$(dirname "$1")"; pwd)/$(basename "$1")"
 }
 
 function confirm () {  # [$1: question]
   while true; do
-    # call with a prompt string or use a default                                                                                                                                                   
+    # call with a prompt string or use a default
     /bin/echo -n "${1:-Are you sure?}"
     read -r -p " [y/n] " response
     case $response in
@@ -99,7 +99,7 @@ function checkUsingMgmtCloneWarn() { # no args; warns if iotdb root isn't a mgmt
     return 1
   else
     return 0
-  fi 
+  fi
 }
 
 function checkBundleDir() { # no args  returns true/false (0/1)
@@ -112,9 +112,9 @@ function checkBundleDir() { # no args  returns true/false (0/1)
 
 function checkVerNum() {  #  $1: X.Y.Z  returns true/false (0/1)
   if [ `echo $1 | grep -o -E '^\d+\.\d+\.\d+$'` ]; then
-    return 0
-  else
     return 1
+  else
+    return 0
   fi
 }
 
@@ -124,9 +124,9 @@ function checkVerNumDie() { #  $1: X.Y.Z  dies if not ok
 
 function checkRcNum() {  # $1: rc-num   returns true/false (0/1)
   if [ `echo $1 | grep -o -E '^\d+$'` ] && [ $1 != 0 ]; then
-    return 0
-  else
     return 1
+  else
+    return 0
   fi
 }
 
