@@ -133,9 +133,11 @@ cd ${ABS_BASE_DIR}
 echo
 echo "If the following bundle gpg signature checks fail, you may need to"
 echo "import the project's list of signing keys to your keyring"
-echo "    $ gpg ${DST_BASE_DIR}/KEYS            # show the included keys"
-echo "    $ gpg --import ${DST_BASE_DIR}/KEYS"
+echo "    $ gpg ${BUILDTOOLS_DIR}/${DST_BASE_DIR}/KEYS            # show the included keys"
+echo "    $ gpg --import ${BUILDTOOLS_DIR}/${DST_BASE_DIR}/KEYS"
+gpg ${BUILDTOOLS_DIR}/${DST_BASE_DIR}/KEYS
+gpg --import ${BUILDTOOLS_DIR}/${DST_BASE_DIR}/KEYS
 
 echo
 echo "Verifying the source bundle signatures..."
-(set -x; $BUILDTOOLS_DIR/check_sigs.sh ${DST_VER_DIR})
+(set -x; bash $BUILDTOOLS_DIR/check_sigs.sh ${BUILDTOOLS_DIR}/${DST_BASE_DIR}/${DST_VER_DIR})
