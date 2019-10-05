@@ -942,16 +942,16 @@ public class SQLParserTest {
     // template for test case
     ArrayList<String> ans = new ArrayList<>(
         Arrays.asList("TOK_QUERY", "TOK_SELECT",
-            "TOK_PATH", "device_1", "sensor_1",
-            "TOK_PATH", "device_2", "sensor_2",
-            "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle",
+            "TOK_PATH", "sensor_1",
+            "TOK_PATH", "sensor_2",
+            "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle", "device_1",
             "TOK_WHERE", "and",
             "not", "<", "TOK_PATH", "TOK_ROOT", "laptop", "device_1", "sensor_1", "2000",
             ">", "TOK_PATH", "TOK_ROOT", "laptop", "device_2", "sensor_2", "1000",
             "TOK_GROUPBY_DEVICE"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator.generateAST(
-        "SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle WHERE "
+        "SELECT sensor_1,sensor_2 FROM root.vehicle.device_1 WHERE "
             + "not(root.laptop.device_1.sensor_1 < 2000) and root.laptop.device_2.sensor_2 > 1000 "
             + "group by device");
     astTree = ParseUtils.findRootNonNullToken(astTree);
@@ -1550,9 +1550,9 @@ public class SQLParserTest {
   public void limitGroupByDevice() throws ParseException {
     // template for test case
     ArrayList<String> ans = new ArrayList<>(
-        Arrays.asList("TOK_QUERY", "TOK_SELECT", "TOK_PATH", "device_1",
-            "sensor_1", "TOK_PATH", "device_2", "sensor_2", "TOK_FROM", "TOK_PATH", "TOK_ROOT",
-            "vehicle",
+        Arrays.asList("TOK_QUERY", "TOK_SELECT",
+            "TOK_PATH", "sensor_1", "TOK_PATH", "sensor_2",
+            "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle", "*",
             "TOK_WHERE", "and", "not", "<", "TOK_PATH", "TOK_ROOT", "laptop", "device_1",
             "sensor_1", "2000", ">",
             "TOK_PATH", "TOK_ROOT", "laptop", "device_2", "sensor_2", "1000",
@@ -1561,7 +1561,7 @@ public class SQLParserTest {
             "TOK_GROUPBY_DEVICE"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator.generateAST(
-        "SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle WHERE not(root.laptop.device_1.sensor_1 < 2000) "
+        "SELECT sensor_1,sensor_2 FROM root.vehicle.* WHERE not(root.laptop.device_1.sensor_1 < 2000) "
             + "and root.laptop.device_2.sensor_2 > 1000 LIMIT 0 SLIMIT 10 group by device");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);

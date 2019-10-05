@@ -120,7 +120,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       throw new ProcessorException(
           "The size of the path list does not equal that of the aggregation list.");
     }
-    HashSet<String> columnSet = new HashSet<>();
+    Set<String> columnSet = new HashSet<>();
     for (int i = 0; i < paths.size(); i++) {
       String column = aggregations.get(i) + "(" + paths.get(i).toString() + ")";
       if (!columnSet.contains(column)) {
@@ -139,7 +139,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     if (paths == null || deduplicatedPaths == null) {
       throw new ProcessorException("Parameters should not be null.");
     }
-    HashSet<String> columnSet = new HashSet<>();
+    Set<String> columnSet = new HashSet<>();
     for (Path path : paths) {
       String column = path.toString();
       if (!columnSet.contains(column)) {

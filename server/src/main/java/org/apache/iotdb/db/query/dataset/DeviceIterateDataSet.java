@@ -25,7 +25,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -57,9 +56,8 @@ public class DeviceIterateDataSet extends QueryDataSet {
   private QueryContext context;
   private IExpression expression;
 
-  private List<String> deduplicatedSensorColumns;
-  private TreeMap<String, List<Path>> pathsGroupByDevice;
-  private TreeMap<String, List<String>> aggregationsGroupByDevice;
+  private List<String> deduplicatedMeasurementColumns;
+  private Map<String, Set<String>> measurementColumnsGroupByDevice;
 
   // group-by-time parameters
   private long unit;
@@ -74,23 +72,23 @@ public class DeviceIterateDataSet extends QueryDataSet {
   private Iterator<String> deviceIterator;
   private String currentDevice;
   private QueryDataSet currentDataSet;
-  private int[] curColumnsMap;
+  private int[] currentColumnMapRelation;
 
   public DeviceIterateDataSet(QueryPlan queryPlan, QueryContext context,
       IEngineQueryRouter queryRouter) {
     this.queryRouter = queryRouter;
     this.context = context;
-    this.pathsGroupByDevice = queryPlan.getPathsGroupByDevice();
+    this.measurementColumnsGroupByDevice = queryPlan.getMeasurementColumnsGroupByDevice();
 
-    // get deduplicated sensor columns
+    // get deduplicated measurement columns
     // Note that the deduplication strategy must be consistent with that of IoTDBQueryResultSet.
-    List<String> sensorColumns = queryPlan.getSensorColumns();
-    deduplicatedSensorColumns = new ArrayList<>();
-    HashSet<String> tmpColumnSet = new HashSet<>();
-    for (String column : sensorColumns) {
+    List<String> measurementColumns = queryPlan.getMeasurementColumnList();
+    deduplicatedMeasurementColumns = new ArrayList<>();
+    Set<String> tmpColumnSet = new HashSet<>();
+    for (String column : measurementColumns) {
       if (!tmpColumnSet.contains(column)) {
-        deduplicatedSensorColumns.add(column);
         tmpColumnSet.add(column);
+        deduplicatedMeasurementColumns.add(column);
       }
     }
 
@@ -98,7 +96,6 @@ public class DeviceIterateDataSet extends QueryDataSet {
       dataSetType = DataSetType.GROUPBY;
       // assign parameters
       this.expression = queryPlan.getExpression();
-      this.aggregationsGroupByDevice = ((GroupByPlan) queryPlan).getAggregationsGroupByDevice();
       this.unit = ((GroupByPlan) queryPlan).getUnit();
       this.origin = ((GroupByPlan) queryPlan).getOrigin();
       this.intervals = ((GroupByPlan) queryPlan).getIntervals();
@@ -106,7 +103,6 @@ public class DeviceIterateDataSet extends QueryDataSet {
     } else if (queryPlan instanceof AggregationPlan) {
       dataSetType = DataSetType.AGGREGATE;
       // assign parameters
-      this.aggregationsGroupByDevice = ((AggregationPlan) queryPlan).getAggregationsGroupByDevice();
       this.expression = queryPlan.getExpression();
 
     } else if (queryPlan instanceof FillQueryPlan) {
@@ -121,8 +117,8 @@ public class DeviceIterateDataSet extends QueryDataSet {
     }
 
     this.curDataSetInitialized = false;
-    this.deviceIterator = pathsGroupByDevice.keySet().iterator();
-    this.curColumnsMap = new int[deduplicatedSensorColumns.size()];
+    this.deviceIterator = measurementColumnsGroupByDevice.keySet().iterator();
+    this.currentColumnMapRelation = new int[deduplicatedMeasurementColumns.size()];
   }
 
   public boolean hasNext() throws IOException {
@@ -131,49 +127,40 @@ public class DeviceIterateDataSet extends QueryDataSet {
     } else {
       curDataSetInitialized = false;
     }
-    for (int i = 0; i < deduplicatedSensorColumns.size(); i++) {
-      curColumnsMap[i] = -1;
+    for (int i = 0; i < deduplicatedMeasurementColumns.size(); i++) {
+      currentColumnMapRelation[i] = -1;
     }
 
     while (deviceIterator.hasNext()) {
       currentDevice = deviceIterator.next();
-      List<Path> paths = pathsGroupByDevice.get(currentDevice);
-      List<String> aggregations = null;
-      if (aggregationsGroupByDevice != null) {
-        aggregations = aggregationsGroupByDevice.get(currentDevice);
-      }
+      Set<String> measurementColumnsOfGivenDevice = measurementColumnsGroupByDevice
+          .get(currentDevice);
 
-      // get actual executed paths based on sensorColumns and get map relation
+      // get columns to execute for the current device and the column map relation
+      // e.g. root.sg.d0's measurementColumnsOfGivenDevice is {s2,s3}, and
+      // deduplicatedMeasurementColumns is {s1,s2,s3,s4,s5},
+      // then the final executeColumns is [s2,s3], currentColumnMapRelation is [-1,0,1,-1,-1].
       List<String> executeColumns = new ArrayList<>();
-      Set<String> columnSet = new HashSet<>();
-      for (int i = 0; i < paths.size(); i++) {
-        String sensor = paths.get(i).getMeasurement();
-        if (aggregations != null) {
-          columnSet.add(aggregations.get(i) + "(" + sensor + ")");
-        } else {
-          columnSet.add(sensor);
-        }
-      }
-      int index = -1;
-      for (String path : columnSet) {
-        boolean isAddToExecutePaths = false;
-        for (int i = 0; i < deduplicatedSensorColumns.size(); i++) {
-          String column = deduplicatedSensorColumns.get(i);
-          if (path.equals(column)) {
-            if (!isAddToExecutePaths) {
-              executeColumns.add(path);
-              index++;
-              isAddToExecutePaths = true;
-            }
-            curColumnsMap[i] = index;
+      int indexInExecuteColumns = -1;
+      for (String column : measurementColumnsOfGivenDevice) {
+        for (int i = 0; i < deduplicatedMeasurementColumns.size(); i++) {
+          String columnToExecute = deduplicatedMeasurementColumns.get(i);
+          if (columnToExecute.equals(column)) {
+            executeColumns.add(column);
+            indexInExecuteColumns++;
+            currentColumnMapRelation[i] = indexInExecuteColumns;
+            break;
           }
         }
       }
+      // extract paths and aggregations if exist from executeColumns
       List<Path> executePaths = new ArrayList<>();
+      List<String> executeAggregations = new ArrayList<>();
       for (String column : executeColumns) {
-        if (aggregations != null) {
+        if (dataSetType == DataSetType.GROUPBY || dataSetType == DataSetType.AGGREGATE) {
           executePaths.add(new Path(currentDevice,
               column.substring(column.indexOf("(") + 1, column.indexOf(")"))));
+          executeAggregations.add(column.substring(0, column.indexOf("(")));
         } else {
           executePaths.add(new Path(currentDevice, column));
         }
@@ -183,10 +170,12 @@ public class DeviceIterateDataSet extends QueryDataSet {
         switch (dataSetType) {
           case GROUPBY:
             currentDataSet = queryRouter
-                .groupBy(executePaths, aggregations, expression, unit, origin, intervals, context);
+                .groupBy(executePaths, executeAggregations, expression, unit, origin, intervals,
+                    context);
             break;
           case AGGREGATE:
-            currentDataSet = queryRouter.aggregate(executePaths, aggregations, expression, context);
+            currentDataSet = queryRouter
+                .aggregate(executePaths, executeAggregations, expression, context);
             break;
           case FILL:
             currentDataSet = queryRouter.fill(executePaths, queryTime, fillType, context);
@@ -213,20 +202,20 @@ public class DeviceIterateDataSet extends QueryDataSet {
   }
 
   public RowRecord next() throws IOException {
-    RowRecord rawRowRecord = currentDataSet.next();
+    RowRecord originRowRecord = currentDataSet.next();
 
-    RowRecord rowRecord = new RowRecord(rawRowRecord.getTimestamp());
+    RowRecord rowRecord = new RowRecord(originRowRecord.getTimestamp());
 
     Field deviceField = new Field(TSDataType.TEXT);
     deviceField.setBinaryV(new Binary(currentDevice));
     rowRecord.addField(deviceField);
 
-    List<Field> sensorfields = rawRowRecord.getFields();
-    for (int mapPos : curColumnsMap) {
+    List<Field> measurementfields = originRowRecord.getFields();
+    for (int mapPos : currentColumnMapRelation) {
       if (mapPos == -1) {
         rowRecord.addField(new Field(null));
       } else {
-        rowRecord.addField(sensorfields.get(mapPos));
+        rowRecord.addField(measurementfields.get(mapPos));
       }
     }
     return rowRecord;

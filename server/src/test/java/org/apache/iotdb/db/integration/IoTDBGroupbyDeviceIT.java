@@ -24,8 +24,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -39,7 +39,8 @@ public class IoTDBGroupbyDeviceIT {
   private static IoTDB daemon;
   private static String[] sqls = new String[]{
 
-      "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
+      "SET STORAGE GROUP TO root.vehicle",
+      "SET STORAGE GROUP TO root.other",
 
       "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
       "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
@@ -48,6 +49,8 @@ public class IoTDBGroupbyDeviceIT {
       "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
 
       "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+
+      "CREATE TIMESERIES root.other.d1.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",
 
       "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
       "insert into root.vehicle.d0(timestamp,s0) values(2,198)",
@@ -95,7 +98,9 @@ public class IoTDBGroupbyDeviceIT {
       "insert into root.vehicle.d0(timestamp,s3) values(2000-01-01T08:00:00+08:00, 'good')",
 
       "insert into root.vehicle.d0(timestamp,s4) values(100, false)",
-      "insert into root.vehicle.d0(timestamp,s4) values(100, true)",};
+      "insert into root.vehicle.d0(timestamp,s4) values(100, true)",
+
+      "insert into root.other.d1(timestamp,s0) values(2, 3.14)",};
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -114,7 +119,7 @@ public class IoTDBGroupbyDeviceIT {
     EnvironmentUtils.cleanEnv();
   }
 
-  private static void insertData() throws ClassNotFoundException, SQLException {
+  private static void insertData() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -129,7 +134,7 @@ public class IoTDBGroupbyDeviceIT {
   }
 
   @Test
-  public void selectTest() throws ClassNotFoundException, SQLException {
+  public void selectTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
         "1,root.vehicle.d0,101,1101,null,null,null,",
         "2,root.vehicle.d0,10000,40000,2.22,null,null,",
@@ -166,8 +171,14 @@ public class IoTDBGroupbyDeviceIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        System.out.println(header.toString());
         Assert.assertEquals("Time,Device,s0,s1,s2,s3,s4,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(5));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(6));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(7));
 
         int cnt = 0;
         while (resultSet.next()) {
@@ -175,11 +186,9 @@ public class IoTDBGroupbyDeviceIT {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          System.out.println(builder.toString());
           Assert.assertEquals(retArray[cnt], builder.toString());
           cnt++;
         }
-        System.out.println("cnt:" + cnt);
         Assert.assertEquals(19, cnt);
       }
     } catch (Exception e) {
@@ -189,7 +198,7 @@ public class IoTDBGroupbyDeviceIT {
   }
 
   @Test
-  public void selectWithDuplicatedPathsTest() throws ClassNotFoundException, SQLException {
+  public void selectWithDuplicatedPathsTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
         "1,root.vehicle.d0,101,101,1101,",
         "2,root.vehicle.d0,10000,10000,40000,",
@@ -212,7 +221,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select s0,s0,s1 from root.vehicle.* group by device");
+          "select s0,s0,s1 from root.vehicle.d0, root.vehicle.d1 group by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -221,8 +230,12 @@ public class IoTDBGroupbyDeviceIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        System.out.println(header.toString());
         Assert.assertEquals("Time,Device,s0,s0,s1,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(4));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(5));
 
         int cnt = 0;
         while (resultSet.next()) {
@@ -230,11 +243,9 @@ public class IoTDBGroupbyDeviceIT {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          System.out.println(builder.toString());
           Assert.assertEquals(retArray[cnt], builder.toString());
           cnt++;
         }
-        System.out.println("cnt:" + cnt);
         Assert.assertEquals(14, cnt);
       }
     } catch (Exception e) {
@@ -244,7 +255,7 @@ public class IoTDBGroupbyDeviceIT {
   }
 
   @Test
-  public void selectLimitTest() throws ClassNotFoundException, SQLException {
+  public void selectLimitTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
         "2,root.vehicle.d0,10000,10000,40000,",
         "50,root.vehicle.d0,10000,10000,50000,",
@@ -272,8 +283,12 @@ public class IoTDBGroupbyDeviceIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        System.out.println(header.toString());
         Assert.assertEquals("Time,Device,s0,s0,s1,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(4));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(5));
 
         int cnt = 0;
         while (resultSet.next()) {
@@ -281,11 +296,9 @@ public class IoTDBGroupbyDeviceIT {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          System.out.println(builder.toString());
           Assert.assertEquals(retArray[cnt], builder.toString());
           cnt++;
         }
-        System.out.println("cnt:" + cnt);
         Assert.assertEquals(10, cnt);
       }
     } catch (Exception e) {
@@ -295,7 +308,64 @@ public class IoTDBGroupbyDeviceIT {
   }
 
   @Test
-  public void selectWithValueFilterTest() throws ClassNotFoundException, SQLException {
+  public void selectSlimitTest() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "1,root.vehicle.d0,101,1101,",
+        "2,root.vehicle.d0,10000,40000,",
+        "50,root.vehicle.d0,10000,50000,",
+        "100,root.vehicle.d0,99,199,",
+        "101,root.vehicle.d0,99,199,",
+        "102,root.vehicle.d0,80,180,",
+        "103,root.vehicle.d0,99,199,",
+        "104,root.vehicle.d0,90,190,",
+        "105,root.vehicle.d0,99,199,",
+        "106,root.vehicle.d0,99,null,",
+        "1000,root.vehicle.d0,22222,55555,",
+        "946684800000,root.vehicle.d0,null,100,",
+        "1,root.vehicle.d1,999,null,",
+        "1000,root.vehicle.d1,888,null,"
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select s0,s0,s1 from root.vehicle.* slimit 2 soffset 1 group by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("Time,Device,s0,s1,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(14, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+
+  @Test
+  public void selectWithValueFilterTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
         "1,root.vehicle.d0,101,1101,null,null,null,",
         "2,root.vehicle.d0,10000,40000,2.22,null,null,",
@@ -317,7 +387,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select * from root.vehicle where root.vehicle.d0.s0>0 group by device");
+          "select * from root.vehicle where root.vehicle.d0.s0 > 0 group by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -326,8 +396,14 @@ public class IoTDBGroupbyDeviceIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        System.out.println(header.toString());
         Assert.assertEquals("Time,Device,s0,s1,s2,s3,s4,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(5));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(6));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(7));
 
         int cnt = 0;
         while (resultSet.next()) {
@@ -335,11 +411,9 @@ public class IoTDBGroupbyDeviceIT {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          System.out.println(builder.toString());
           Assert.assertEquals(retArray[cnt], builder.toString());
           cnt++;
         }
-        System.out.println("cnt:" + cnt);
         Assert.assertEquals(13, cnt);
       }
     } catch (Exception e) {
@@ -349,66 +423,10 @@ public class IoTDBGroupbyDeviceIT {
   }
 
   @Test
-  public void selectNotRegularTest() throws ClassNotFoundException, SQLException {
+  public void aggregateTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
-        "1,root.vehicle.d0,1101,null,null,",
-        "2,root.vehicle.d0,40000,2.22,null,",
-        "3,root.vehicle.d0,null,3.33,null,",
-        "4,root.vehicle.d0,null,4.44,null,",
-        "50,root.vehicle.d0,50000,null,null,",
-        "100,root.vehicle.d0,199,null,null,",
-        "101,root.vehicle.d0,199,null,null,",
-        "102,root.vehicle.d0,180,10.0,null,",
-        "103,root.vehicle.d0,199,null,null,",
-        "104,root.vehicle.d0,190,null,null,",
-        "105,root.vehicle.d0,199,11.11,null,",
-        "1000,root.vehicle.d0,55555,1000.11,null,",
-        "946684800000,root.vehicle.d0,100,null,null,",
-        "1,root.vehicle.d1,null,null,999,",
-        "1000,root.vehicle.d1,null,null,888,"
-    };
-
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute(
-          "select d0.s1,d0.s2,d1.s0 from root.vehicle group by device");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        System.out.println(header.toString());
-        Assert.assertEquals("Time,Device,s1,s2,s0,", header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          System.out.println(builder.toString());
-          Assert.assertEquals(retArray[cnt], builder.toString());
-          cnt++;
-        }
-        System.out.println("cnt:" + cnt);
-        Assert.assertEquals(15, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void aggregateTest() throws ClassNotFoundException, SQLException {
-    String[] retArray = new String[]{
-        "0,root.vehicle.d0,11,11,6,6,1,",
         "0,root.vehicle.d1,2,null,null,null,null,",
+        "0,root.vehicle.d0,11,11,6,6,1,"
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -416,7 +434,8 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select count(*) from root.vehicle group by device");
+          "select count(s0),count(s1),count(s2),count(s3),count(s4) "
+              + "from root.vehicle.d1,root.vehicle.d0 group by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -425,9 +444,15 @@ public class IoTDBGroupbyDeviceIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        System.out.println(header.toString());
         Assert.assertEquals("Time,Device,count(s0),count(s1),count(s2),count(s3),count(s4),",
             header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(5));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(6));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(7));
 
         int cnt = 0;
         while (resultSet.next()) {
@@ -435,11 +460,9 @@ public class IoTDBGroupbyDeviceIT {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          System.out.println(builder.toString());
           Assert.assertEquals(retArray[cnt], builder.toString());
           cnt++;
         }
-        System.out.println("cnt:" + cnt);
         Assert.assertEquals(2, cnt);
       }
     } catch (Exception e) {
@@ -449,7 +472,7 @@ public class IoTDBGroupbyDeviceIT {
   }
 
   @Test
-  public void groupbyTimeTest() throws ClassNotFoundException, SQLException {
+  public void groupbyTimeTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
         "2,root.vehicle.d0,1,1,3,0,0,",
         "20,root.vehicle.d0,0,0,0,0,0,",
@@ -473,9 +496,15 @@ public class IoTDBGroupbyDeviceIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        System.out.println(header.toString());
         Assert.assertEquals("Time,Device,count(s0),count(s1),count(s2),count(s3),count(s4),",
             header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(5));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(6));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(7));
 
         int cnt = 0;
         while (resultSet.next()) {
@@ -483,11 +512,9 @@ public class IoTDBGroupbyDeviceIT {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          System.out.println(builder.toString());
           Assert.assertEquals(retArray[cnt], builder.toString());
           cnt++;
         }
-        System.out.println("cnt:" + cnt);
         Assert.assertEquals(6, cnt);
       }
     } catch (Exception e) {
@@ -517,8 +544,14 @@ public class IoTDBGroupbyDeviceIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        System.out.println(header.toString());
         Assert.assertEquals("Time,Device,s0,s1,s2,s3,s4,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(5));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(6));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(7));
 
         int cnt = 0;
         while (resultSet.next()) {
@@ -526,11 +559,9 @@ public class IoTDBGroupbyDeviceIT {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          System.out.println(builder.toString());
           Assert.assertEquals(retArray[cnt], builder.toString());
           cnt++;
         }
-        System.out.println("cnt:" + cnt);
         Assert.assertEquals(2, cnt);
       }
     } catch (Exception e) {
@@ -538,4 +569,162 @@ public class IoTDBGroupbyDeviceIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void errorCaseTest1() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select d0.s1, d0.s2, d1.s0 from root.vehicle group by device");
+      fail("No exception thrown.");
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains(
+          "The paths of the SELECT clause can only be single level. In other words, "
+              + "the paths of the SELECT clause can only be measurements or STAR, without DOT."));
+    }
+  }
+
+  @Test
+  public void errorCaseTest2() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select s0 from root.nonexistent.noneixtsent group by device");
+      fail("No exception thrown.");
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains("do not select any existing series"));
+    }
+  }
+
+  @Test
+  public void errorCaseTest3() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select s0 from root.*.* group by device");
+      fail("No exception thrown.");
+    } catch (Exception e) {
+      // root.vehicle.d0.s0 INT32
+      // root.vehicle.d1.s0 INT32
+      // root.other.d1.s0 FLOAT
+      Assert.assertTrue(e.getMessage().contains(
+          "The data types of the same measurement column should be the same across devices in "
+              + "GROUP_BY_DEVICE sql."));
+    }
+  }
+
+  @Test
+  public void unusualCaseTest1() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "0,root.other.d1,1,",
+        "0,root.vehicle.d0,11,",
+        "0,root.vehicle.d1,2,"
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      // root.vehicle.d0.s0 INT32
+      // root.vehicle.d1.s0 INT32
+      // root.other.d1.s0 FLOAT
+      // but
+      // count(root.vehicle.d0.s0) INT64
+      // count(root.vehicle.d1.s0) INT64
+      // count(root.other.d1.s0) INT64
+      boolean hasResultSet = statement.execute(
+          "select count(s0) from root.*.* group by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("Time,Device,count(s0),",
+            header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(3));
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(3, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void unusualCaseTest2() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "1,root.vehicle.d0,101,101,1101,101,1101,null,null,null,",
+        "2,root.vehicle.d0,10000,10000,40000,10000,40000,2.22,null,null,",
+        "3,root.vehicle.d0,null,null,null,null,null,3.33,null,null,",
+        "4,root.vehicle.d0,null,null,null,null,null,4.44,null,null,",
+        "1,root.vehicle.d1,999,999,null,999,null,null,null,null,"
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      // duplicated devices and nonexistent devices
+      boolean hasResultSet = statement.execute(
+          "select s0,s0,s1,* from root.vehicle.*, root.vehicle.d0, root.vehicle.d1, "
+              + "root.nonexistent.* where time < 20 group by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("Time,Device,s0,s0,s1,s0,s1,s2,s3,s4,",
+            header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(4));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(5));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(6));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(7));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(8));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(9));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(10));
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(5, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
 }

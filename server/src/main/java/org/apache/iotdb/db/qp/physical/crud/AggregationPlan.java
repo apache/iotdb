@@ -20,13 +20,11 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.TreeMap;
 import org.apache.iotdb.db.qp.logical.Operator;
 
 public class AggregationPlan extends QueryPlan {
 
   private List<String> aggregations = new ArrayList<>();
-  private TreeMap<String, List<String>> aggregationsGroupByDevice;
 
   public AggregationPlan() {
     super();
@@ -40,14 +38,5 @@ public class AggregationPlan extends QueryPlan {
 
   public void setAggregations(List<String> aggregations) {
     this.aggregations = aggregations;
-  }
-
-  public void setAggregationsGroupByDevice(
-      TreeMap<String, List<String>> aggregationsGroupByDevice) {
-    this.aggregationsGroupByDevice = aggregationsGroupByDevice;
-  }
-
-  public TreeMap<String, List<String>> getAggregationsGroupByDevice() {
-    return aggregationsGroupByDevice;
   }
 }

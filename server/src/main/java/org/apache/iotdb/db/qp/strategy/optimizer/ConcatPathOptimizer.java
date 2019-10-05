@@ -44,6 +44,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
   private static final Logger LOG = LoggerFactory.getLogger(ConcatPathOptimizer.class);
   private static final String WARNING_NO_SUFFIX_PATHS = "given SFWOperator doesn't have suffix paths, cannot concat seriesPath";
+  private static final String WARNING_NO_PREFIX_PATHS = "given SFWOperator doesn't have prefix paths, cannot concat seriesPath";
 
   private IQueryProcessExecutor executor;
 
@@ -61,12 +62,12 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     FromOperator from = sfwOperator.getFromOperator();
     List<Path> prefixPaths;
     if (from == null) {
-      LOG.warn("given SFWOperator doesn't have prefix paths, cannot concat seriesPath");
+      LOG.warn(WARNING_NO_PREFIX_PATHS);
       return operator;
     } else {
       prefixPaths = from.getPrefixPaths();
       if (prefixPaths.isEmpty()) {
-        LOG.warn("given SFWOperator doesn't have prefix paths, cannot concat seriesPath");
+        LOG.warn(WARNING_NO_PREFIX_PATHS);
         return operator;
       }
     }
@@ -83,15 +84,31 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       }
     }
 
-    concatSelect(prefixPaths, select); // concat select paths
+    checkAggrOfSelectOperator(select);
 
-    if (operator instanceof QueryOperator && ((QueryOperator) operator).hasSlimit()
-        && !((QueryOperator) operator).isGroupByDevice()) {
-      // Make 'SLIMIT&SOFFSET' take effect by trimming the suffixList
-      // and aggregations of the selectOperator
-      int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
-      int seriesOffset = ((QueryOperator) operator).getSeriesOffset();
-      slimitTrim(select, seriesLimit, seriesOffset);
+    if (operator instanceof QueryOperator) {
+      if (!((QueryOperator) operator).isGroupByDevice()) {
+        concatSelect(prefixPaths, select); // concat and remove star
+
+        if (((QueryOperator) operator).hasSlimit()) {
+          int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
+          int seriesOffset = ((QueryOperator) operator).getSeriesOffset();
+          slimitTrim(select, seriesLimit, seriesOffset);
+        }
+
+      } else {
+        for (Path path : initialSuffixPaths) {
+          String device = path.getDevice();
+          if (!device.isEmpty()) {
+            throw new LogicalOptimizeException(
+                "The paths of the SELECT clause can only be single level. In other words, "
+                    + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
+                    + " For more details please refer to the SQL document.");
+          }
+        }
+        // GROUP_BY_DEVICE leaves the 1) concat, 2) remove star, 3) slimit tasks to the next phase,
+        // i.e., PhysicalGenerator.transformQuery
+      }
     }
 
     // concat filter
@@ -139,7 +156,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   private void concatSelect(List<Path> fromPaths, SelectOperator selectOperator)
       throws LogicalOptimizeException {
     List<Path> suffixPaths = judgeSelectOperator(selectOperator);
-    checkAggrOfSelectOperator(selectOperator);
 
     List<Path> allPaths = new ArrayList<>();
     List<String> originAggregations = selectOperator.getAggregations();

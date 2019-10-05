@@ -20,12 +20,19 @@
 package org.apache.iotdb.db.qp.strategy;
 
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.TreeMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
+import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
@@ -50,6 +57,8 @@ import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
+import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
@@ -260,74 +269,121 @@ public class PhysicalGenerator {
       queryPlan = new QueryPlan();
     }
 
-    List<Path> paths = queryOperator.getSelectedPaths();
-    queryPlan.setPaths(paths);
-    queryPlan.checkPaths(executor);
+    if (!queryOperator.isGroupByDevice()) {
+      List<Path> paths = queryOperator.getSelectedPaths();
+      queryPlan.setPaths(paths);
 
-    if (queryOperator.isGroupByDevice()) {
-      queryPlan.setGroupByDevice(true);
-      // group paths and aggregations by devices
-      List<String> aggregations = queryOperator.getSelectOperator().getAggregations();
-      TreeMap<String, List<Path>> pathsGroupByDevice = new TreeMap<>();
-      TreeMap<String, List<String>> aggregationsGroupByDevice = new TreeMap<>();
-      TreeMap<String, List<String>> sensorColumnsGroupByDevice = new TreeMap<>();
-      for (int i = 0; i < paths.size(); i++) {
-        Path path = paths.get(i);
-        String device = path.getDevice();
-        if (!pathsGroupByDevice.containsKey(device)) {
-          pathsGroupByDevice.put(device, new ArrayList<>());
-          aggregationsGroupByDevice.put(device, new ArrayList<>());
-          sensorColumnsGroupByDevice.put(device, new ArrayList<>());
+    } else {
+      // below is the core realization of GROUP_BY_DEVICE sql
+      List<Path> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
+      List<Path> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();
+      List<String> originAggregations = queryOperator.getSelectOperator().getAggregations();
+
+      List<String> measurementColumnList = new ArrayList<>();
+      Map<String, Set<String>> measurementColumnsGroupByDevice = new LinkedHashMap<>();
+      Map<String, TSDataType> dataTypeConsistencyChecker = new HashMap<>();
+      Set<Path> allSelectPaths = new HashSet<>();
+
+      for (int i = 0; i < suffixPaths.size(); i++) { // per suffix
+        Path suffixPath = suffixPaths.get(i);
+        Set<String> deviceSetOfGivenSuffix = new HashSet<>();
+        Set<String> measurementSetOfGivenSuffix = new TreeSet<>();
+        for (Path prefixPath : prefixPaths) { // per prefix
+          if (!prefixPath.startWith(SQLConstant.ROOT)) {
+            throw new QueryProcessorException("illegal from clause : " + prefixPath.getFullPath());
+          }
+          Path fullPath = Path.addPrefixPath(suffixPath, prefixPath);
+          Set<String> tmpDeviceSet = new HashSet<>();
+          try {
+            List<String> actualPaths = executor.getAllPaths(fullPath.getFullPath());
+            for (String pathStr : actualPaths) {
+              Path path = new Path(pathStr);
+              String device = path.getDevice();
+              // update tmpDeviceSet for a full path
+              tmpDeviceSet.add(device);
+
+              // ignore the duplicate prefix device for a given suffix path
+              // e.g. select s0 from root.vehicle.d0, root.vehicle.d0 group by device,
+              // for the given suffix path "s0", the second prefix device "root.vehicle.d0" is
+              // duplicated and should be neglected.
+              if (deviceSetOfGivenSuffix.contains(device)) {
+                continue;
+              }
+
+              // get pathForDataType and measurementColumn
+              String measurement = path.getMeasurement();
+              String pathForDataType;
+              String measurementColumn;
+              if (originAggregations != null && !originAggregations.isEmpty()) {
+                pathForDataType = originAggregations.get(i) + "(" + path.getFullPath() + ")";
+                measurementColumn = originAggregations.get(i) + "(" + measurement + ")";
+              } else {
+                pathForDataType = path.getFullPath();
+                measurementColumn = measurement;
+              }
+              // check the consistency of data types
+              // a example of inconsistency: select s0 from root.sg1.d1, root.sg2.d3 group by device,
+              // while root.sg1.d1.s0 is INT32 and root.sg2.d3.s0 is FLOAT.
+              TSDataType dataType = TSServiceImpl.getSeriesType(pathForDataType);
+              if (dataTypeConsistencyChecker.containsKey(measurementColumn)) {
+                if (!dataType.equals(dataTypeConsistencyChecker.get(measurementColumn))) {
+                  throw new QueryProcessorException(
+                      "The data types of the same measurement column should be the same across "
+                          + "devices in GROUP_BY_DEVICE sql. For more details please refer to the "
+                          + "SQL document.");
+                }
+              } else {
+                dataTypeConsistencyChecker.put(measurementColumn, dataType);
+              }
+              // update measurementSetOfGivenSuffix
+              measurementSetOfGivenSuffix.add(measurementColumn);
+
+              // update measurementColumnsGroupByDevice
+              if (!measurementColumnsGroupByDevice.containsKey(device)) {
+                measurementColumnsGroupByDevice.put(device, new HashSet<>());
+              }
+              measurementColumnsGroupByDevice.get(device).add(measurementColumn);
+
+              // update allSelectedPaths
+              allSelectPaths.add(path);
+            }
+            // update deviceSetOfGivenSuffix
+            deviceSetOfGivenSuffix.addAll(tmpDeviceSet);
+
+          } catch (MetadataErrorException e) {
+            throw new LogicalOptimizeException("error when remove star: ", e);
+          }
         }
-        pathsGroupByDevice.get(device).add(path);
-        if (aggregations != null && !aggregations.isEmpty()) {
-          aggregationsGroupByDevice.get(device).add(aggregations.get(i));
-          sensorColumnsGroupByDevice.get(device)
-              .add(aggregations.get(i) + "(" + paths.get(i).getMeasurement() + ")");
-        } else {
-          sensorColumnsGroupByDevice.get(device).add(paths.get(i).getMeasurement());
-        }
+        // update measurementColumnList
+        // Note that in the loop of a suffix path, set is used.
+        // And across the loops of suffix paths, list is used.
+        // e.g. select *,s1 from root.sg.d0, root.sg.d1
+        // for suffix *, measurementSetOfGivenSuffix = {s1,s2,s3}
+        // for suffix s1, measurementSetOfGivenSuffix = {s1}
+        // therefore the final measurementColumnList is [s1,s2,s3,s1].
+        measurementColumnList.addAll(measurementSetOfGivenSuffix);
       }
 
-      // get final sensorColumns
-      Iterator<String> devices = sensorColumnsGroupByDevice.keySet().iterator();
-      List<String> sensorColumn1 = sensorColumnsGroupByDevice.get(devices.next());
-      while (devices.hasNext()) {
-        List<String> sensorColumn2 = sensorColumnsGroupByDevice.get(devices.next());
-        sensorColumn1 = unionWithReplica(sensorColumn1, sensorColumn2);
+      if (measurementColumnList.isEmpty()) {
+        throw new QueryProcessorException("do not select any existing series");
       }
 
-      // slimit trim
+      // slimit trim on the measurementColumnList
       if (queryOperator.hasSlimit()) {
         int seriesSlimit = queryOperator.getSeriesLimit();
         int seriesOffset = queryOperator.getSeriesOffset();
-        // trim sensorColumns
-        sensorColumn1 = slimitTrimStr(sensorColumn1, seriesSlimit, seriesOffset);
-
-        // trim pathsGroupByDevice and aggregationsGroupByDevice
-        // Note that this trims with false positives but it also helps.
-        devices = sensorColumnsGroupByDevice.keySet().iterator();
-        while (devices.hasNext()) {
-          String device = devices.next();
-          if (aggregations != null && !aggregations.isEmpty()) {
-            aggregationsGroupByDevice
-                .put(device, slimitTrimStr(aggregationsGroupByDevice.get(device),
-                    seriesSlimit, seriesOffset));
-          }
-          pathsGroupByDevice.put(device, slimitTrimPath(pathsGroupByDevice.get(device),
-              seriesSlimit, seriesOffset));
-        }
+        measurementColumnList = slimitTrimColumn(measurementColumnList, seriesSlimit, seriesOffset);
       }
 
       // assigns to queryPlan
-      queryPlan.setSensorColumns(sensorColumn1);
-      queryPlan.setPathsGroupByDevice(pathsGroupByDevice);
-      if (aggregations != null && !aggregations.isEmpty()) {
-        ((AggregationPlan) queryPlan).setAggregationsGroupByDevice(aggregationsGroupByDevice);
-        ((AggregationPlan) queryPlan).setAggregations(null);
-      }
-      // NOTE DO NOT queryPlan setPaths(null) here because paths are still used in executeDataQuery.
+      queryPlan.setGroupByDevice(true);
+      queryPlan.setMeasurementColumnList(measurementColumnList);
+      queryPlan.setMeasurementColumnsGroupByDevice(measurementColumnsGroupByDevice);
+      queryPlan.setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
+      queryPlan.setPaths(new ArrayList<>(allSelectPaths));
     }
+
+    queryPlan.checkPaths(executor);
 
     // transform filter operator to expression
     FilterOperator filterOperator = queryOperator.getFilterOperator();
@@ -405,30 +461,7 @@ public class PhysicalGenerator {
   // return filterOperator.getChildren();
   // }
 
-
-  /**
-   * For example, list1=[s0,s0,s1], list2=[s0,s0,s0,s2], then union with replica is
-   * [s0,s0,s1,s0,s2]
-   */
-  private List<String> unionWithReplica(List<String> list1, List<String> list2) {
-    Iterator<String> iterator1 = list1.iterator();
-    for (String s1 : list1) {
-      Iterator<String> iterator2 = list2.iterator();
-      while (iterator2.hasNext()) {
-        String s2 = iterator2.next();
-        if (s2.equals(s1)) {
-          iterator2.remove();
-          break;
-        }
-      }
-    }
-    List<String> res = new ArrayList<>();
-    res.addAll(list1);
-    res.addAll(list2);
-    return res;
-  }
-
-  private List<String> slimitTrimStr(List<String> columnList, int seriesLimit, int seriesOffset)
+  private List<String> slimitTrimColumn(List<String> columnList, int seriesLimit, int seriesOffset)
       throws QueryProcessorException {
     int size = columnList.size();
 
@@ -445,21 +478,5 @@ public class PhysicalGenerator {
     return new ArrayList<>(columnList.subList(seriesOffset, endPosition));
   }
 
-  private List<Path> slimitTrimPath(List<Path> pathsList, int seriesLimit, int seriesOffset)
-      throws QueryProcessorException {
-    int size = pathsList.size();
-
-    // check parameter range
-    if (seriesOffset >= size) {
-      throw new QueryProcessorException("SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.");
-    }
-    int endPosition = seriesOffset + seriesLimit;
-    if (endPosition > size) {
-      endPosition = size;
-    }
-
-    // trim seriesPath list
-    return new ArrayList<>(pathsList.subList(seriesOffset, endPosition));
-  }
 }
 

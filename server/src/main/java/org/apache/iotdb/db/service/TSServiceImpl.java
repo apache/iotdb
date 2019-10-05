@@ -108,7 +108,6 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSStatusType;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -387,7 +386,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return MManager.getInstance().getMetadata();
   }
 
-  protected TSDataType getSeriesType(String path)
+  public static TSDataType getSeriesType(String path)
       throws PathErrorException {
     switch (path.toLowerCase()) {
       // authorization queries
@@ -756,21 +755,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSExecuteStatementResp resp = getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS));
 
     if (((QueryPlan) plan).isGroupByDevice()) {
-      List<String> sensorColumns = ((QueryPlan) plan).getSensorColumns();
+      List<String> measurementColumns = ((QueryPlan) plan).getMeasurementColumnList();
       respColumns.add(SQLConstant.GROUPBY_DEVICE_COLUMN_NAME);
-      respColumns.addAll(sensorColumns);
+      respColumns.addAll(measurementColumns);
       resp.setColumns(respColumns);
-
-      String oneOfDevices = ((QueryPlan) plan).getPathsGroupByDevice().keySet().iterator().next();
-      for (String sensorColumn : sensorColumns) {
-        columns.add(sensorColumn.substring(0, sensorColumn.indexOf("(") + 1)
-            + oneOfDevices + TsFileConstant.PATH_SEPARATOR
-            + sensorColumn.substring(sensorColumn.indexOf("(") + 1));
-      }
 
       List<String> columnsType = new ArrayList<>();
       columnsType.add(TSDataType.TEXT.toString());
-      columnsType.addAll(queryColumnsType(columns));
+      Map<String, TSDataType> checker = ((QueryPlan) plan).getDataTypeConsistencyChecker();
+      for (String column : measurementColumns) {
+        columnsType.add(checker.get(column).toString());
+      }
       resp.setDataTypeList(columnsType);
 
     } else {
