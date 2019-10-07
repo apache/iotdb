@@ -1,0 +1,14 @@
+Introduction:
+    This module provide an example of how to connect to IoTDB with c++. You need to write your own program by simulating src/SessionExample.cpp
+
+Requirement:
+    Using this module requires you to install thrift(0.11.0 or later). Below is the official tutorial of installation:
+        http://thrift.apache.org/docs/install/
+        
+Compile:
+    You need to mimic src/SessionExample.cpp to write a program to use the interface you need. After you've written it, run compile.sh to generate the executable.
+    Use the following command to generate an executable file:
+    ./compile.sh executable_file_name cpp_program_file_name
+e.g.
+    ./compile.sh Example src/SessionExample.cpp
+
