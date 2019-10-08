@@ -27,10 +27,9 @@
         <version>0.9.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <groupId>org.apache.iotdb.tsfile</groupId>
-    <artifactId>hadoop</artifactId>
+    <artifactId>hadoop-tsfile</artifactId>
     <packaging>jar</packaging>
-    <name>tsfile-hadoop</name>
+    <name>IoTDB Hadoop-TsFile</name>
     <url>http://maven.apache.org</url>
     <dependencies>
         <dependency>

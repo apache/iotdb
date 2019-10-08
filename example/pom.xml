@@ -39,6 +39,7 @@
         <module>session</module>
         <module>tsfile</module>
         <module>jdbc</module>
+        <module>hadoop</module>
     </modules>
     <build>
         <pluginManagement>
