@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
-public interface CacheHitRateMonitorMXBean {
+public interface CacheHitRatioMonitorMXBean {
 
-  double getChunkMetaDataHitRate();
+  double getChunkMetaDataHitRatio();
 
-  double getTsfileMetaDataHitRate();
+  double getTsfileMetaDataHitRatio();
 }

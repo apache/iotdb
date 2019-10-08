@@ -26,7 +26,7 @@ import org.apache.iotdb.db.conf.adapter.ManageDynamicParameters;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.cache.CacheHitRateMonitor;
+import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.exception.StartupException;
@@ -102,7 +102,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(TVListAllocator.getInstance());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(MergeManager.getINSTANCE());
-    registerManager.register(CacheHitRateMonitor.getInstance());
+    registerManager.register(CacheHitRatioMonitor.getInstance());
 
     JMXService.registerMBean(getInstance(), mbeanName);
 

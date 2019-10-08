@@ -26,21 +26,18 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class CacheHitRateMonitor implements CacheHitRateMonitorMXBean, IService {
+public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IService {
 
-  double chunkMetaDataHitRate;
-  double tsfileMetaDataHitRate;
+  double chunkMetaDataHitRatio;
+  double tsfileMetaDataHitRatio;
 
-  private static Logger logger = LoggerFactory.getLogger(CacheHitRateMonitor.class);
-  static final CacheHitRateMonitor instance = AsyncCacheHitRateHolder.DISPLAYER;
-  private final String mbeanName = String
-      .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
-          getID().getJmxName());
+  private static Logger logger = LoggerFactory.getLogger(CacheHitRatioMonitor.class);
+  static final CacheHitRatioMonitor instance = AsyncCacheHitRatioHolder.DISPLAYER;
 
   @Override
   public void start() throws StartupException {
     try {
-      JMXService.registerMBean(instance, mbeanName);
+      JMXService.registerMBean(instance, ServiceType.CACHE_HIT_RATIO_DISPLAY_SERVICE.getJmxName());
     } catch (Exception e) {
       String errorMessage = String
           .format("Failed to start %s because of %s", this.getID().getName(),
@@ -51,36 +48,36 @@ public class CacheHitRateMonitor implements CacheHitRateMonitorMXBean, IService 
 
   @Override
   public void stop() {
-    JMXService.deregisterMBean(mbeanName);
+    JMXService.deregisterMBean(ServiceType.CACHE_HIT_RATIO_DISPLAY_SERVICE.getJmxName());
     logger.info("{}: stop {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
   }
 
   @Override
   public ServiceType getID() {
-    return ServiceType.CACHE_HIT_RATE_DISPLAY_SERVICE;
+    return ServiceType.CACHE_HIT_RATIO_DISPLAY_SERVICE;
   }
 
   @Override
-  public double getChunkMetaDataHitRate() {
-    chunkMetaDataHitRate = DeviceMetaDataCache.getInstance().calculateChunkMetaDataHitRate();
-    return chunkMetaDataHitRate;
+  public double getChunkMetaDataHitRatio() {
+    chunkMetaDataHitRatio = DeviceMetaDataCache.getInstance().calculateChunkMetaDataHitRatio();
+    return chunkMetaDataHitRatio;
   }
 
   @Override
-  public double getTsfileMetaDataHitRate() {
-    tsfileMetaDataHitRate = TsFileMetaDataCache.getInstance().calculateTsfileMetaDataHitRate();
-    return tsfileMetaDataHitRate;
+  public double getTsfileMetaDataHitRatio() {
+    tsfileMetaDataHitRatio = TsFileMetaDataCache.getInstance().calculateTsfileMetaDataHitRatio();
+    return tsfileMetaDataHitRatio;
   }
 
-  public static CacheHitRateMonitor getInstance() {
+  public static CacheHitRatioMonitor getInstance() {
     return instance;
   }
 
-  private static class AsyncCacheHitRateHolder {
+  private static class AsyncCacheHitRatioHolder {
 
-    private static final CacheHitRateMonitor DISPLAYER = new CacheHitRateMonitor();
+    private static final CacheHitRatioMonitor DISPLAYER = new CacheHitRatioMonitor();
 
-    private AsyncCacheHitRateHolder() {
+    private AsyncCacheHitRatioHolder() {
     }
   }
 }

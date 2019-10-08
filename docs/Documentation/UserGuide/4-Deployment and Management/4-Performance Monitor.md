@@ -79,7 +79,7 @@ Add timing code in the monitoring stop area:
 	Measurement.INSTANCE.addOperationLatency(Operation, t0);
 	
 
-## Cache Hit Rate Statistics
+## Cache Hit Ratio Statistics
 ### Overview
 
 To improve query performance, IOTDB caches ChunkMetaData and TsFileMetaData. Users can view the cache hit rate through debug level log and MXBean, and adjust the memory occupied by the cache according to the cache hit rate and system memory. The method of using MXBean to view cache hit ratio is as follows:

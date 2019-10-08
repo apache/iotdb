@@ -162,7 +162,7 @@ public class DeviceMetaDataCache {
     }
   }
 
-  public double calculateChunkMetaDataHitRate() {
+  public double calculateChunkMetaDataHitRatio() {
     if (cacheRequestNum.get() != 0) {
       return cacheHitNum.get() * 1.0 / cacheRequestNum.get();
     } else {

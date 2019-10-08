@@ -136,7 +136,7 @@ public class TsFileMetaDataCache {
     }
   }
 
-  public double calculateTsfileMetaDataHitRate() {
+  public double calculateTsfileMetaDataHitRatio() {
     if (cacheRequestNum.get() != 0) {
       return cacheHitNum.get() * 1.0 / cacheRequestNum.get();
     } else {
