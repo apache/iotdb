@@ -293,10 +293,23 @@ public class TSFileConfig {
    */
   private String hdfsPort = "9000";
 
+  /**
+   * The default size of bloom filter
+   */
+  public int bloomFilterSize = 128;
+
+
   public TSFileConfig() {
 
   }
 
+  public int getBloomFilterSize() {
+    return bloomFilterSize;
+  }
+
+  public void setBloomFilterSize(int bloomFilterSize) {
+    this.bloomFilterSize = bloomFilterSize;
+  }
 
   public FSType getTSFileStorageFs() {
     return this.TSFileStorageFs;

@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,6 +29,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.BloomFilter;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * TSFileMetaData collects all metadata info and saves in its data structure.
@@ -60,6 +63,13 @@ public class TsFileMetaData {
   // invalid means a chunk has been rewritten by merge and the chunk's data is in
   // another new chunk
   private int invalidChunkNum;
+
+  // bloom filter
+  private BloomFilter bloomFilter;
+
+  public BloomFilter getBloomFilter() {
+    return bloomFilter;
+  }
 
   public TsFileMetaData() {
     //do nothing
@@ -119,6 +129,14 @@ public class TsFileMetaData {
     }
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(inputStream);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(inputStream);
+    // read bloom filter
+    size = ReadWriteIOUtils.readIntAllowEmpty(inputStream);
+    if(size != -1){
+      size = ReadWriteIOUtils.readInt(inputStream);
+      byte[] bytes = ReadWriteIOUtils.readBytes(inputStream, size);
+      int filterSize = ReadWriteIOUtils.readInt(inputStream);
+      fileMetaData.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize);
+    }
 
     return fileMetaData;
   }
@@ -164,6 +182,13 @@ public class TsFileMetaData {
     }
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
+    // read bloom filter
+    if(buffer.hasRemaining()){
+      size = ReadWriteIOUtils.readInt(buffer);
+      byte[] bytes = ReadWriteIOUtils.readBytes(buffer, size);
+      int filterSize = ReadWriteIOUtils.readInt(buffer);
+      fileMetaData.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize);
+    }
 
     return fileMetaData;
   }
@@ -269,8 +294,58 @@ public class TsFileMetaData {
     byteLen += ReadWriteIOUtils.write(totalChunkNum, outputStream);
     byteLen += ReadWriteIOUtils.write(invalidChunkNum, outputStream);
 
+
     return byteLen;
   }
+
+  /**
+   * use the given outputStream to serialize bloom filter.
+   *
+   * @param outputStream -output stream to determine byte length
+   * @return -byte length
+   */
+  public int serializeBloomFilter(OutputStream outputStream, List<ChunkGroupMetaData> chunkGroupMetaDataList)
+      throws IOException {
+    int byteLen = 0;
+    BloomFilter filter = buildBloomFilter(chunkGroupMetaDataList);
+
+    byte[] bytes = filter.serialize();
+    byteLen += ReadWriteIOUtils.write(ByteBuffer.wrap(bytes), outputStream);
+    byteLen += ReadWriteIOUtils.write(filter.getSize(), outputStream);
+    return byteLen;
+  }
+
+  /**
+   * get all path in this tsfile
+   *
+   * @return all path in set
+   */
+  private List<String> getAllPath(List<ChunkGroupMetaData> chunkGroupMetaDataList) {
+    List<String> res = new ArrayList<>();
+    for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
+      String deviceId = chunkGroupMetaData.getDeviceID();
+      for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+        res.add(deviceId + PATH_SEPARATOR + chunkMetaData.getMeasurementUid());
+      }
+    }
+
+    return res;
+  }
+
+  /**
+   * build bloom filter
+   * @return bloom filter
+   */
+  private BloomFilter buildBloomFilter(List<ChunkGroupMetaData> chunkGroupMetaDataList) {
+    BloomFilter bloomFilter = BloomFilter
+        .getEmptyBloomFilter(TSFileDescriptor.getInstance().getConfig().bloomFilterSize);
+    for(String path : getAllPath(chunkGroupMetaDataList)){
+      bloomFilter.add(path);
+    }
+    //System.out.println(Arrays.toString(bloomFilter.serialize()));
+    return bloomFilter;
+  }
+
 
   /**
    * use the given buffer to serialize.

@@ -61,6 +61,18 @@ public class ReadWriteIOUtils {
   }
 
   /**
+   * read bytes array in given size
+   * @param buffer buffer
+   * @param size size
+   * @return bytes array
+   */
+  public static byte[] readBytes(ByteBuffer buffer, int size){
+    byte[] res = new byte[size];
+    buffer.get(res);
+    return res;
+  }
+
+  /**
    * write if the object not equals null. Eg, object eauals null, then write false.
    */
   public static int writeIsNull(Object object, OutputStream outputStream) throws IOException {
@@ -390,6 +402,19 @@ public class ReadWriteIOUtils {
     byte[] bytes = new byte[DOUBLE_LEN];
     byteBuffer.get(bytes);
     return BytesUtils.bytesToDouble(bytes);
+  }
+
+  /**
+   * read a int var from inputStream. The inputStream may reach the end
+   * @return if inputStream reach the end, return -1
+   */
+  public static int readIntAllowEmpty(InputStream inputStream) throws IOException {
+    byte[] bytes = new byte[INT_LEN];
+    int readLen = inputStream.read(bytes);
+    if (readLen != INT_LEN) {
+      return -1;
+    }
+    return BytesUtils.bytesToInt(bytes);
   }
 
   /**

@@ -41,9 +41,13 @@ import org.apache.iotdb.tsfile.read.reader.series.EmptyFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
+import org.apache.iotdb.tsfile.utils.BloomFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TsFileExecutor implements QueryExecutor {
 
+  private static final Logger LOG = LoggerFactory.getLogger(TsFileExecutor.class);
   private IMetadataQuerier metadataQuerier;
   private IChunkLoader chunkLoader;
 
@@ -54,6 +58,22 @@ public class TsFileExecutor implements QueryExecutor {
 
   @Override
   public QueryDataSet execute(QueryExpression queryExpression) throws IOException {
+    // bloom filter
+    BloomFilter bloomFilter = metadataQuerier.getWholeFileMetadata().getBloomFilter();
+    List<Path> filteredSeriesPath = new ArrayList<>();
+    for (Path path : queryExpression.getSelectedSeries()) {
+      if (bloomFilter.contains(path.getFullPath())) {
+        filteredSeriesPath.add(path);
+      }
+    }
+    if (filteredSeriesPath.isEmpty()) {
+      // return an empty QueryDataSet
+      LOG.warn("This tsfile not contains all paths which specified in selected series, return empty dataset");
+      return new DataSetWithoutTimeGenerator(Collections.emptyList(), Collections.emptyList(),
+          Collections.emptyList());
+    }
+    queryExpression.setSelectSeries(filteredSeriesPath);
+    //
     metadataQuerier.loadChunkMetaDatas(queryExpression.getSelectedSeries());
     if (queryExpression.hasQueryFilter()) {
       try {
