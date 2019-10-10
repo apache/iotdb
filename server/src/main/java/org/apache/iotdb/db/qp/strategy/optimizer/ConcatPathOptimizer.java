@@ -320,6 +320,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       for (Path path : paths) {
         List<String> all;
         all = executor.getAllPaths(path.getFullPath());
+        if(all.isEmpty()){
+          throw new LogicalOptimizeException("Path: \"" + path + "\" not corresponding any known time series");
+        }
         for (String subPath : all) {
           if (!pathMap.containsKey(subPath)) {
             pathMap.put(subPath, 1);

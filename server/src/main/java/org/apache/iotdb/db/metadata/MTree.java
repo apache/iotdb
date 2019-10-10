@@ -512,8 +512,7 @@ public class MTree implements Serializable {
     MNode cur = getRoot();
     for (int i = 1; i < nodes.length; i++) {
       if (!cur.hasChild(nodes[i])) {
-        throw new PathErrorException(
-            String.format(NO_CHILD_ERROR,cur.getName(),nodes[i]));
+        throw new PathErrorException("Path: \"" + path + "\" not corresponding any known time series");
       }
       cur = cur.getChild(nodes[i]);
     }
