@@ -42,13 +42,24 @@ public enum TSFileFactory {
 
   private static FSType fSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
   private static final Logger logger = LoggerFactory.getLogger(TSFileFactory.class);
+  private static Class<?> clazz;
+
+  static {
+    if (fSType.equals(FSType.HDFS)) {
+      try {
+        clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
+      } catch (ClassNotFoundException e) {
+        logger.error(
+            "Failed to get Hadoop file system. Please check your dependency of Hadoop module.", e);
+      }
+    }
+  }
 
   public File getFile(String pathname) {
     if (fSType.equals(FSType.HDFS)) {
       try {
-        Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
         return (File) clazz.getConstructor(String.class).newInstance(pathname);
-      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
         logger.error(
             "Failed to get file: {}. Please check your dependency of Hadoop module.", pathname, e);
         return null;
@@ -61,9 +72,8 @@ public enum TSFileFactory {
   public File getFile(String parent, String child) {
     if (fSType.equals(FSType.HDFS)) {
       try {
-        Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
         return (File) clazz.getConstructor(String.class, String.class).newInstance(parent, child);
-      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
         logger.error(
             "Failed to get file: {}" + File.separator
                 + "{}. Please check your dependency of Hadoop module.", parent, child, e);
@@ -77,9 +87,8 @@ public enum TSFileFactory {
   public File getFile(File parent, String child) {
     if (fSType.equals(FSType.HDFS)) {
       try {
-        Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
         return (File) clazz.getConstructor(File.class, String.class).newInstance(parent, child);
-      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
         logger.error(
             "Failed to get file: {}" + File.separator
                 + "{}. Please check your dependency of Hadoop module.", parent.getAbsolutePath(),
@@ -94,9 +103,8 @@ public enum TSFileFactory {
   public File getFile(URI uri) {
     if (fSType.equals(FSType.HDFS)) {
       try {
-        Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
         return (File) clazz.getConstructor(URI.class).newInstance(uri);
-      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
         logger.error(
             "Failed to get file: {}. Please check your dependency of Hadoop module.",
             uri.toString(), e);
@@ -111,10 +119,9 @@ public enum TSFileFactory {
     try {
       if (fSType.equals(FSType.HDFS)) {
         try {
-          Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
           return (BufferedReader) clazz.getMethod("getBufferedReader", String.class)
               .invoke(clazz.newInstance(), filePath);
-        } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+        } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
           logger.error(
               "Failed to get buffered reader for {}. Please check your dependency of Hadoop module.",
               filePath, e);
@@ -133,10 +140,9 @@ public enum TSFileFactory {
     try {
       if (fSType.equals(FSType.HDFS)) {
         try {
-          Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
           return (BufferedWriter) clazz.getMethod("getBufferedWriter", String.class, boolean.class)
               .invoke(clazz.newInstance(), filePath, append);
-        } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+        } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
           logger.error(
               "Failed to get buffered writer for {}. Please check your dependency of Hadoop module.",
               filePath, e);
@@ -155,10 +161,9 @@ public enum TSFileFactory {
     try {
       if (fSType.equals(FSType.HDFS)) {
         try {
-          Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
           return (BufferedInputStream) clazz.getMethod("getBufferedInputStream", String.class)
               .invoke(clazz.newInstance(), filePath);
-        } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+        } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
           logger.error(
               "Failed to get buffered input stream for {}. Please check your dependency of Hadoop module.",
               filePath, e);
@@ -177,10 +182,9 @@ public enum TSFileFactory {
     try {
       if (fSType.equals(FSType.HDFS)) {
         try {
-          Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
           return (BufferedOutputStream) clazz.getMethod("getBufferedOutputStream", String.class)
               .invoke(clazz.newInstance(), filePath);
-        } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+        } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
           logger.error(
               "Failed to get buffered output stream for {}. Please check your dependency of Hadoop module.",
               filePath, e);
@@ -215,10 +219,9 @@ public enum TSFileFactory {
   public File[] listFilesBySuffix(String fileFolder, String suffix) {
     if (fSType.equals(FSType.HDFS)) {
       try {
-        Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
         return (File[]) clazz.getMethod("listFilesBySuffix", String.class, String.class)
             .invoke(clazz.newInstance(), fileFolder, suffix);
-      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
         logger.error(
             "Failed to list files in {} with SUFFIX {}. Please check your dependency of Hadoop module.",
             fileFolder, suffix, e);
@@ -232,10 +235,9 @@ public enum TSFileFactory {
   public File[] listFilesByPrefix(String fileFolder, String prefix) {
     if (fSType.equals(FSType.HDFS)) {
       try {
-        Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
         return (File[]) clazz.getMethod("listFilesByPrefix", String.class, String.class)
             .invoke(clazz.newInstance(), fileFolder, prefix);
-      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
         logger.error(
             "Failed to list files in {} with PREFIX {}. Please check your dependency of Hadoop module.",
             fileFolder, prefix, e);

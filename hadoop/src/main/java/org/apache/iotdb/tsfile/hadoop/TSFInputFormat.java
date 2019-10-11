@@ -27,8 +27,8 @@ import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.iotdb.fileSystem.HDFSInput;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
-import org.apache.iotdb.tsfile.fileSystem.HDFSInput;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +43,8 @@ import java.util.stream.Collectors;
 /**
  * @author Yuan Tian
  */
-public class TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
+public class
+TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
 
   /**
    * key to configure whether reading time enable

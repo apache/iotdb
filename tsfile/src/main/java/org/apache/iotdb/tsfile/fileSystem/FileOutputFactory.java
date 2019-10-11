@@ -34,11 +34,12 @@ public enum FileOutputFactory {
 
   private static FSType fsType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
   private static final Logger logger = LoggerFactory.getLogger(FileOutputFactory.class);
+  private static Class<?> clazz;
 
   public TsFileOutput getTsFileOutput(String filePath, boolean append) {
     try {
       if (fsType.equals(FSType.HDFS)) {
-        Class<?> clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSOutput");
+        clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSOutput");
         return (TsFileOutput) clazz.getConstructor(String.class, boolean.class)
             .newInstance(filePath, !append);
       } else {
