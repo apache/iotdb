@@ -118,6 +118,9 @@ public class LogicalGenerator {
           case TqlParser.TOK_LABEL:
             analyzePropertyDeleteLabel(astNode);
             break;
+          case TqlParser.TOK_STORAGEGROUP:
+            analyzeMetaDataDeleteFileLevel(astNode);
+            break;
           default:
             analyzeDelete(astNode);
             break;
@@ -419,6 +422,18 @@ public class LogicalGenerator {
             MetadataOperator.NamespaceType.SET_STORAGE_GROUP);
     Path path = parsePath(astNode.getChild(0).getChild(0));
     metadataOperator.setPath(path);
+    initializedOperator = metadataOperator;
+  }
+
+  private void analyzeMetaDataDeleteFileLevel(AstNode astNode){
+    List<Path> deletePaths = new ArrayList<>();
+    for (int i = 0; i < astNode.getChild(0).getChildCount(); i++) {
+      deletePaths.add(parsePath(astNode.getChild(0).getChild(i)));
+    }
+    MetadataOperator metadataOperator = new MetadataOperator(
+            SQLConstant.TOK_METADATA_DELETE_FILE_LEVEL,
+            MetadataOperator.NamespaceType.DELETE_STORAGE_GROUP);
+    metadataOperator.setDeletePathList(deletePaths);
     initializedOperator = metadataOperator;
   }
 

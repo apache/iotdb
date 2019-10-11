@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.constant;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.omg.CORBA.PUBLIC_MEMBER;
 
 /**
  * this class contains several constants used in SQL.
@@ -92,6 +93,7 @@ public class SQLConstant {
   public static final int TOK_PROPERTY_LINK = 57;
   public static final int TOK_PROPERTY_UNLINK = 58;
   public static final int TOK_LIST = 59;
+  public static final int TOK_METADATA_DELETE_FILE_LEVEL = 60;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
@@ -140,6 +142,7 @@ public class SQLConstant {
     tokenNames.put(TOK_METADATA_CREATE, "TOK_METADATA_CREATE");
     tokenNames.put(TOK_METADATA_DELETE, "TOK_METADATA_DELETE");
     tokenNames.put(TOK_METADATA_SET_FILE_LEVEL, "TOK_METADATA_SET_FILE_LEVEL");
+    tokenNames.put(TOK_METADATA_DELETE_FILE_LEVEL, "TOK_METADATA_DELETE_FILE_LEVEL");
     tokenNames.put(TOK_PROPERTY_CREATE, "TOK_PROPERTY_CREATE");
     tokenNames.put(TOK_PROPERTY_ADD_LABEL, "TOK_PROPERTY_ADD_LABEL");
     tokenNames.put(TOK_PROPERTY_DELETE_LABEL, "TOK_PROPERTY_DELETE_LABEL");

@@ -349,7 +349,9 @@ public class StorageEngine implements IService {
   public void deleteStorageGroup(String storageGroupName) {
     deleteAllDataFilesInOneStorageGroup(storageGroupName);
     StorageGroupProcessor processor = processorMap.remove(storageGroupName);
-    processor.deleteFolder(systemDir);
+    if(processor != null) {
+      processor.deleteFolder(systemDir);
+    }
   }
 
 }

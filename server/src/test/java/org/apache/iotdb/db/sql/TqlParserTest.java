@@ -1799,6 +1799,22 @@ public class TqlParserTest {
     }
   }
 
+  @Test
+  public void deleteStorageGroup() throws ParseException {
+    ArrayList<String> ans = new ArrayList<>(
+            Arrays.asList("TOK_DELETE", "TOK_STORAGEGROUP", "TOK_PATH", "TOK_ROOT", "a", "b", "c", "TOK_FUNCTION",
+                    "kvindex"));
+    ArrayList<String> rec = new ArrayList<>();
+    AstNode astTree = ParseGenerator.generateAST("delete storage group root.a.b.c");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(ans.get(i), rec.get(i));
+      i++;
+    }
+  }
 
   @Test
   public void grantWatermarkEmbedding() throws ParseException {

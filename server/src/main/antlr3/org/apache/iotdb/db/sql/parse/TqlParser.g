@@ -561,7 +561,8 @@ setStorageGroup
     ;
 
 deleteStorageGroup
-    : K_DELETE K_STORAGE K_GROUP prefixPath
+    : K_DELETE K_STORAGE K_GROUP prefixPath (COMMA prefixPath)*
+    -> ^(TOK_DELETE ^(TOK_STORAGEGROUP prefixPath+))
     ;
 
 createProperty

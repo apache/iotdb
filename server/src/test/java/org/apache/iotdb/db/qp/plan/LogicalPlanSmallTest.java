@@ -197,4 +197,21 @@ public class LogicalPlanSmallTest {
     // expected to throw LogicalOperatorException: LIMIT <N>: N must be a positive integer and can not be zero.
   }
 
+  @Test
+  public void testDeleteStorageGroup()
+          throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+    String sqlStr = "delete storage group root.vehicle.d1";
+    AstNode astTree;
+    try {
+      astTree = ParseGenerator.generateAST(sqlStr); // parse string to ASTTree
+    } catch (ParseException e) {
+      // e.printStackTrace();
+      throw new IllegalASTFormatException(
+              "parsing error,statement: " + sqlStr + " .message:" + e.getMessage());
+    }
+    AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
+    RootOperator operator = generator.getLogicalPlan(astNode);
+    // expected to throw LogicalOperatorException: LIMIT <N>: N must be a positive integer and can not be zero.
+  }
+
 }
