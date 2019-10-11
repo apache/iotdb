@@ -346,7 +346,6 @@ public class IoTDBMultiSeriesIT {
       fail("not throw exception when select unknown time series");
     } catch (SQLException e) {
       assertEquals("Execute statement error: Path: \"root.vehicle.d0.s10\" doesn't corresponding to any known time series", e.getMessage());
-      e.printStackTrace();
     }
   }
 
@@ -361,7 +360,6 @@ public class IoTDBMultiSeriesIT {
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
       assertEquals("Execute statement error: Path: \"root.vehicle.d0.s10\" doesn't corresponding to any known time series", e.getMessage());
-      e.printStackTrace();
     }
   }
 }
