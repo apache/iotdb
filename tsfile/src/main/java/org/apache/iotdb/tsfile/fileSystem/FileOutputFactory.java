@@ -39,7 +39,7 @@ public enum FileOutputFactory {
   public TsFileOutput getTsFileOutput(String filePath, boolean append) {
     try {
       if (fsType.equals(FSType.HDFS)) {
-        clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSOutput");
+        clazz = Class.forName("org.apache.iotdb.tsfile.fileSystem.HDFSOutput");
         return (TsFileOutput) clazz.getConstructor(String.class, boolean.class)
             .newInstance(filePath, !append);
       } else {

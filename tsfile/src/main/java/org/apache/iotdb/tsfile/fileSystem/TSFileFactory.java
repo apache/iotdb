@@ -47,7 +47,7 @@ public enum TSFileFactory {
   static {
     if (fSType.equals(FSType.HDFS)) {
       try {
-        clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSFile");
+        clazz = Class.forName("org.apache.iotdb.tsfile.fileSystem.HDFSFile");
       } catch (ClassNotFoundException e) {
         logger.error(
             "Failed to get Hadoop file system. Please check your dependency of Hadoop module.", e);

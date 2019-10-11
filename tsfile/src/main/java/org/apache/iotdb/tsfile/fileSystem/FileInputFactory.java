@@ -39,7 +39,7 @@ public enum FileInputFactory {
   public TsFileInput getTsFileInput(String filePath) {
     try {
       if (fsType.equals(FSType.HDFS)) {
-        clazz = Class.forName("org.apache.iotdb.fileSystem.HDFSInput");
+        clazz = Class.forName("org.apache.iotdb.tsfile.fileSystem.HDFSInput");
         return (TsFileInput) clazz.getConstructor(String.class).newInstance(filePath);
       } else {
         return new DefaultTsFileInput(Paths.get(filePath));

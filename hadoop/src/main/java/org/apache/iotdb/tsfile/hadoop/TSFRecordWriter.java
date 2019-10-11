@@ -24,6 +24,7 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
 import org.apache.iotdb.fileSystem.HDFSOutput;
+import org.apache.iotdb.tsfile.fileSystem.HDFSOutput;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.HDFSOutput;
 import org.apache.iotdb.tsfile.hadoop.record.HDFSTSRecord;

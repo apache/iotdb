@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.fileSystem;
+package org.apache.iotdb.tsfile.fileSystem;
 
 import java.io.IOException;
 import java.io.InputStream;

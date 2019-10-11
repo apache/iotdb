@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.fileSystem;
+package org.apache.iotdb.tsfile.fileSystem;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
