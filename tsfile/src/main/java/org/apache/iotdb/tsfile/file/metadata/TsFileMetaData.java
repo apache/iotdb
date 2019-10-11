@@ -130,10 +130,8 @@ public class TsFileMetaData {
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(inputStream);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(inputStream);
     // read bloom filter
-    size = ReadWriteIOUtils.readIntAllowEmpty(inputStream);
-    if(size != -1){
-      size = ReadWriteIOUtils.readInt(inputStream);
-      byte[] bytes = ReadWriteIOUtils.readBytes(inputStream, size);
+    if(ReadWriteIOUtils.checkIfMagicString(inputStream)){
+      byte[] bytes = ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream);
       int filterSize = ReadWriteIOUtils.readInt(inputStream);
       fileMetaData.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize);
     }
@@ -183,9 +181,8 @@ public class TsFileMetaData {
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
     // read bloom filter
-    if(buffer.hasRemaining()){
-      size = ReadWriteIOUtils.readInt(buffer);
-      byte[] bytes = ReadWriteIOUtils.readBytes(buffer, size);
+    if(ReadWriteIOUtils.checkIfMagicString(buffer)){
+      byte[] bytes = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer).array();
       int filterSize = ReadWriteIOUtils.readInt(buffer);
       fileMetaData.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize);
     }

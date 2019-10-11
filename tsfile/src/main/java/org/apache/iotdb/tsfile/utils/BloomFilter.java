@@ -27,7 +27,7 @@ public class BloomFilter {
   private BitSet bits;
   private HashFunction[] func = new HashFunction[seeds.length];
 
-  // do not try to initialize the filter by constraction
+  // do not try to initialize the filter by construction method
   private BloomFilter(byte[] bytes, int size) {
     this.size = size;
     for (int i = 0; i < seeds.length; i++) {
