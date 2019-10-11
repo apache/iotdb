@@ -108,6 +108,7 @@ http://thrift.apache.org/docs/install/
 ## Example
 下面是一段使用生成的Thrift库连接IoTDB的示例代码，请在编写您自己的代码之前仔细地阅读。
 ```python
+
 import sys, struct
 sys.path.append("../target")
 
@@ -180,12 +181,10 @@ if __name__ == '__main__':
         print('Inconsistent protocol, server version: %d, client version: %d'
               % (resp.serverProtocolVersion, clientProtocol))
         exit()
-      
+    handle = resp.sessionHandle
+
     # This is necessary for resource control
     stmtId = client.requestStatementId()
-
-    # These two fields do not matter
-    handle = TS_SessionHandle(TSHandleIdentifier(b'uuid', b'secret'))
 
     # create a storage group
     status = client.setStorageGroup("root.group1")

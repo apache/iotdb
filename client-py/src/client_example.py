@@ -88,12 +88,10 @@ if __name__ == '__main__':
         print('Inconsistent protocol, server version: %d, client version: %d'
               % (resp.serverProtocolVersion, clientProtocol))
         exit()
+    handle = resp.sessionHandle
 
     # This is necessary for resource control
     stmtId = client.requestStatementId()
-
-    # These two fields do not matter
-    handle = TS_SessionHandle(TSHandleIdentifier(b'uuid', b'secret'))
 
     # create a storage group
     status = client.setStorageGroup("root.group1")
