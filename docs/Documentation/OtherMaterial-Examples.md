@@ -119,9 +119,11 @@ sys.path.append("../target")
 from thrift.protocol import TBinaryProtocol
 from thrift.transport import TSocket, TTransport
 
-from rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertionReq, TSBatchInsertionReq, TSExecuteStatementReq,\
-    TS_SessionHandle, TSHandleIdentifier, TSOpenSessionReq, TSQueryDataSet, TSFetchResultsReq, TSCloseOperationReq,\
-    TSCloseSessionReq
+from rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertionReq, \
+    TSBatchInsertionReq, TSExecuteStatementReq, \
+    TS_SessionHandle, TSHandleIdentifier, TSOpenSessionReq, TSQueryDataSet, \
+    TSFetchResultsReq, TSCloseOperationReq, \
+    TSCloseSessionReq, TSProtocolVersion
 
 TSDataType = {
     'BOOLEAN' : 0,
@@ -175,8 +177,15 @@ if __name__ == '__main__':
     transport.open()
 
     # Authentication
-    client.openSession(TSOpenSessionReq(username=username, password=password))
-
+    clientProtocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1
+    resp = client.openSession(TSOpenSessionReq(client_protocol=clientProtocol,
+                                               username=username,
+                                               password=password))
+    if resp.serverProtocolVersion != clientProtocol:
+        print('Inconsistent protocol, server version: %d, client version: %d'
+              % (resp.serverProtocolVersion, clientProtocol))
+        exit()
+      
     # This is necessary for resource control
     stmtId = client.requestStatementId()
 
@@ -244,5 +253,7 @@ if __name__ == '__main__':
 
     # and do not forget to close the session before exiting
     client.closeSession(TSCloseSessionReq(handle))
+
+
 
 ```
