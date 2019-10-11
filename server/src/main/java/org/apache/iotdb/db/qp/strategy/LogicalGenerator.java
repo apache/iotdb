@@ -384,7 +384,7 @@ public class LogicalGenerator {
     int offset = 2;
     if (paramNode.getChildren().size() > offset
         && paramNode.getChild(offset).getToken().getText().equals("TOK_COMPRESSOR")) {
-      compressor = paramNode.getChild(offset).getChild(0).getText().toUpperCase();
+      compressor = cascadeChildrenText(paramNode.getChild(offset).getChild(0)).toUpperCase();
       offset++;
     } else {
       compressor = TSFileDescriptor.getInstance().getConfig().getCompressor().toUpperCase();
