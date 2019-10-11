@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,13 +20,7 @@
 package org.apache.iotdb.db.query.reader.universal;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -34,9 +28,9 @@ public class PriorityMergeReaderTest2 {
 
   @Test
   public void test() throws IOException {
-    FakedPrioritySeriesReader reader1 = new FakedPrioritySeriesReader(100, 80, 5, 11);
-    FakedPrioritySeriesReader reader2 = new FakedPrioritySeriesReader(150, 60, 6, 19);
-    FakedPrioritySeriesReader reader3 = new FakedPrioritySeriesReader(180, 50, 7, 31);
+    FakedSeriesReader reader1 = new FakedSeriesReader(100, 80, 5, 11);
+    FakedSeriesReader reader2 = new FakedSeriesReader(150, 60, 6, 19);
+    FakedSeriesReader reader3 = new FakedSeriesReader(180, 50, 7, 31);
 
     PriorityMergeReader priorityMergeReader = new PriorityMergeReader();
     priorityMergeReader.addReaderWithPriority(reader1, 3);
@@ -60,43 +54,5 @@ public class PriorityMergeReaderTest2 {
       cnt++;
     }
     Assert.assertEquals(162, cnt);
-  }
-
-  public static class FakedPrioritySeriesReader implements IPointReader {
-
-    private Iterator<TimeValuePair> iterator;
-
-    FakedPrioritySeriesReader(long startTime, int size, int interval, int modValue) {
-      long time = startTime;
-      List<TimeValuePair> list = new ArrayList<>();
-      for (int i = 0; i < size; i++) {
-        list.add(
-            new TimeValuePair(time,
-                TsPrimitiveType.getByType(TSDataType.INT64, time % modValue)));
-        // System.out.println(time + "," + time % modValue);
-        time += interval;
-      }
-      iterator = list.iterator();
-    }
-
-    @Override
-    public boolean hasNext() {
-      return iterator.hasNext();
-    }
-
-    @Override
-    public TimeValuePair next() {
-      return iterator.next();
-    }
-
-    @Override
-    public TimeValuePair current() throws IOException {
-      throw new IOException("current() in FakedPrioritySeriesReader is an empty method.");
-    }
-
-
-    @Override
-    public void close() {
-    }
   }
 }

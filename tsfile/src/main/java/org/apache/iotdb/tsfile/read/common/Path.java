@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import java.io.Serializable;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.StringContainer;
+
+import java.io.Serializable;
 
 /**
  * This class define an Object named Path to represent a series in IoTDB. AndExpression in batch read, this definition

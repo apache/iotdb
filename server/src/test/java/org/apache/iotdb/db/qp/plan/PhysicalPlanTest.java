@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -88,6 +88,16 @@ public class PhysicalPlanTest {
   public void testMetadata()
       throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=INT32,encoding=RLE";
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    MetadataPlan plan = (MetadataPlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(String.format("seriesPath: root.vehicle.d1.s2%n" + "resultDataType: INT32%n" +
+        "encoding: RLE%nnamespace type: ADD_PATH%n" + "args: "), plan.toString());
+  }
+
+  @Test
+  public void testMetadata2()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+    String metadata = "create timeseries root.vehicle.d1.s2 with datatype=int32,encoding=rle";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     MetadataPlan plan = (MetadataPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(String.format("seriesPath: root.vehicle.d1.s2%n" + "resultDataType: INT32%n" +

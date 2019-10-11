@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -21,27 +21,26 @@ package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
-import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
+import org.apache.iotdb.db.query.externalsort.ExternalSortJobEngine;
+import org.apache.iotdb.db.query.externalsort.SimpleExternalSortEngine;
+import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
 
 /**
  * To read a list of unsequence TsFiles, this class extends {@link PriorityMergeReader} to
@@ -56,12 +55,14 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
 public class UnseqResourceMergeReader extends PriorityMergeReader {
 
   private Path seriesPath;
+  private long queryId;
 
   public UnseqResourceMergeReader(Path seriesPath, List<TsFileResource> unseqResources,
       QueryContext context, Filter filter) throws IOException {
     this.seriesPath = seriesPath;
+    this.queryId = context.getJobId();
 
-    int priorityValue = 1;
+    List<ChunkReaderWrap> readerWrapList = new ArrayList<>();
     for (TsFileResource tsFileResource : unseqResources) {
 
       // prepare metaDataList
@@ -89,7 +90,6 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
 
       ChunkLoaderImpl chunkLoader = null;
       if (!metaDataList.isEmpty()) {
-        // create and add ChunkReader with priority
         TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
             .get(tsFileResource, tsFileResource.isClosed());
         chunkLoader = new ChunkLoaderImpl(tsFileReader);
@@ -112,19 +112,22 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
             continue;
           }
         }
-
-        Chunk chunk = chunkLoader.getChunk(chunkMetaData);
-        ChunkReader chunkReader = filter != null ? new ChunkReaderWithFilter(chunk, filter)
-            : new ChunkReaderWithoutFilter(chunk);
-
-        addReaderWithPriority(new DiskChunkReader(chunkReader), priorityValue++);
+        // create and add DiskChunkReader
+        readerWrapList.add(new ChunkReaderWrap(chunkMetaData, chunkLoader, filter));
       }
 
       if (!tsFileResource.isClosed()) {
-        // create and add MemChunkReader with priority
-        addReaderWithPriority(
-            new MemChunkReader(tsFileResource.getReadOnlyMemChunk(), filter), priorityValue++);
+        // create and add MemChunkReader
+        readerWrapList.add(new ChunkReaderWrap(tsFileResource.getReadOnlyMemChunk(), filter));
       }
+    }
+
+    ExternalSortJobEngine externalSortJobEngine = SimpleExternalSortEngine.getInstance();
+    List<IPointReader> readerList = externalSortJobEngine
+        .executeForIPointReader(queryId, readerWrapList);
+    int priorityValue = 1;
+    for (IPointReader chunkReader : readerList) {
+      addReaderWithPriority(chunkReader, priorityValue++);
     }
   }
 

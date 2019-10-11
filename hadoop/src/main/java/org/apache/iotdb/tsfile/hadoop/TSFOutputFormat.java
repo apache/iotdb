@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,58 +18,43 @@
  */
 package org.apache.iotdb.tsfile.hadoop;
 
-import java.io.IOException;
-
-import com.alibaba.fastjson.JSONObject;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.iotdb.tsfile.hadoop.record.HDFSTSRecord;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TSFOutputFormat extends FileOutputFormat<NullWritable, TSRow> {
+import java.io.IOException;
+import java.util.Objects;
 
-  public static final String FILE_SCHEMA = "tsfile.schema";
+/**
+ * @author Yuan Tian
+ */
+public class TSFOutputFormat extends FileOutputFormat<NullWritable, HDFSTSRecord> {
+
   private static final Logger logger = LoggerFactory.getLogger(TSFOutputFormat.class);
-  private static final String extension = "tsfile";
+  private static final String extension = "";
+  private static Schema schema;
 
-  public static void setWriterSchema(Job job, JSONObject schema) {
-
-    logger.info("Set the write schema - {}", schema.toString());
-
-    job.getConfiguration().set(FILE_SCHEMA, schema.toString());
+  public static Schema getSchema() {
+    return schema;
   }
 
-  public static void setWriterSchema(Job job, String schema) {
-
-    logger.info("Set the write schema - {}", schema);
-
-    job.getConfiguration().set(FILE_SCHEMA, schema);
-  }
-
-  public static JSONObject getWriterSchema(JobContext jobContext) throws InterruptedException {
-
-    String schema = jobContext.getConfiguration().get(FILE_SCHEMA);
-    if (schema == null || schema == "") {
-      throw new InterruptedException("The tsfile schema is null or empty");
-    }
-    JSONObject jsonSchema = new JSONObject(schema);
-
-    return jsonSchema;
+  public static void setSchema(Schema schema) {
+    TSFOutputFormat.schema = schema;
   }
 
   @Override
-  public RecordWriter<NullWritable, TSRow> getRecordWriter(TaskAttemptContext job)
-      throws IOException, InterruptedException {
+  public RecordWriter<NullWritable, HDFSTSRecord> getRecordWriter(TaskAttemptContext job)
+      throws IOException {
 
     Path outputPath = getDefaultWorkFile(job, extension);
     logger.info("The task attempt id is {}, the output path is {}", job.getTaskAttemptID(),
         outputPath);
-    JSONObject schema = getWriterSchema(job);
-    return new TSFRecordWriter(outputPath, schema);
+    return new TSFRecordWriter(job, outputPath, Objects.requireNonNull(schema));
   }
 }

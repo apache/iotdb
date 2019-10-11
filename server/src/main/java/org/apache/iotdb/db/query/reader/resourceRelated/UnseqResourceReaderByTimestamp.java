@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,22 +19,23 @@
 package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReaderByTimestamp;
+import org.apache.iotdb.db.query.externalsort.ExternalSortJobEngine;
+import org.apache.iotdb.db.query.externalsort.SimpleExternalSortEngine;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReaderByTimestamp;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 
 /**
  * To read a list of unsequence TsFiles by timestamp, this class extends {@link
@@ -47,10 +48,12 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
  */
 public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimestamp {
 
+  private long queryId;
+
   public UnseqResourceReaderByTimestamp(Path seriesPath,
       List<TsFileResource> unseqResources, QueryContext context) throws IOException {
-    int priorityValue = 1;
-
+    this.queryId = context.getJobId();
+    List<ChunkReaderWrap> chunkReaderWrapList = new ArrayList<>();
     for (TsFileResource tsFileResource : unseqResources) {
 
       // prepare metaDataList
@@ -75,26 +78,24 @@ public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimesta
         chunkLoader = new ChunkLoaderImpl(tsFileReader);
       }
       for (ChunkMetaData chunkMetaData : metaDataList) {
-
-        Chunk chunk = chunkLoader.getChunk(chunkMetaData);
-        ChunkReaderByTimestamp chunkReader = new ChunkReaderByTimestamp(chunk);
-
-        addReaderWithPriority(new DiskChunkReaderByTimestamp(chunkReader),
-            priorityValue);
-
-        priorityValue++;
+        chunkReaderWrapList.add(new ChunkReaderWrap(chunkMetaData, chunkLoader, null));
       }
 
       if (!tsFileResource.isClosed()) {
-        // create and add MemChunkReader with priority
-        addReaderWithPriority(
-            new MemChunkReaderByTimestamp(tsFileResource.getReadOnlyMemChunk()), priorityValue++);
+        // create and add MemChunkReader
+        chunkReaderWrapList.add(new ChunkReaderWrap(tsFileResource.getReadOnlyMemChunk(), null));
       }
     }
 
-    // TODO add external sort when needed
-
     // TODO future work: create reader when getValueInTimestamp so that resources
     //  whose start and end time do not satisfy can be skipped.
+
+    ExternalSortJobEngine externalSortJobEngine = SimpleExternalSortEngine.getInstance();
+    List<IReaderByTimestamp> readerList = externalSortJobEngine
+        .executeForByTimestampReader(queryId, chunkReaderWrapList);
+    int priorityValue = 1;
+    for (IReaderByTimestamp chunkReader : readerList) {
+      addReaderWithPriority(chunkReader, priorityValue++);
+    }
   }
 }

@@ -19,8 +19,15 @@
 package org.apache.iotdb.session;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.service.rpc.thrift.TSDataValue;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
@@ -87,4 +94,67 @@ public class SessionUtils {
     return valueBuffer;
   }
 
+
+
+  /**
+   * convert row records.
+   *
+   * @param tsQueryDataSet -query data set
+   * @return -list of row record
+   */
+  static List<RowRecord> convertRowRecords(TSQueryDataSet tsQueryDataSet) {
+    List<RowRecord> records = new ArrayList<>();
+    for (TSRowRecord ts : tsQueryDataSet.getRecords()) {
+      RowRecord r = new RowRecord(ts.getTimestamp());
+      int l = ts.getValuesSize();
+      for (int i = 0; i < l; i++) {
+        TSDataValue value = ts.getValues().get(i);
+        if (value.is_empty) {
+          Field field = new Field(null);
+          field.setNull();
+          r.getFields().add(field);
+        } else {
+          TSDataType dataType = TSDataType.valueOf(value.getType());
+          Field field = new Field(dataType);
+          addFieldAccordingToDataType(field, dataType, value);
+          r.getFields().add(field);
+        }
+      }
+      records.add(r);
+    }
+    return records;
+  }
+
+  /**
+   *
+   * @param field -the field need to add new data
+   * @param dataType, -the data type of the new data
+   * @param value, -the value of the new data
+   */
+  private static void addFieldAccordingToDataType(Field field, TSDataType dataType, TSDataValue value){
+    switch (dataType) {
+      case BOOLEAN:
+        field.setBoolV(value.isBool_val());
+        break;
+      case INT32:
+        field.setIntV(value.getInt_val());
+        break;
+      case INT64:
+        field.setLongV(value.getLong_val());
+        break;
+      case FLOAT:
+        field.setFloatV((float) value.getFloat_val());
+        break;
+      case DOUBLE:
+        field.setDoubleV(value.getDouble_val());
+        break;
+      case TEXT:
+        field.setBinaryV(new Binary(value.getBinary_val()));
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("data type %s is not supported when convert data at client",
+                dataType));
+    }
+  }
 }
