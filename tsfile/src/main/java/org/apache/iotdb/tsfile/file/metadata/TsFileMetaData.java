@@ -130,10 +130,11 @@ public class TsFileMetaData {
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(inputStream);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(inputStream);
     // read bloom filter
-    if(ReadWriteIOUtils.checkIfMagicString(inputStream)){
+    if(!ReadWriteIOUtils.checkIfMagicString(inputStream)){
       byte[] bytes = ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream);
       int filterSize = ReadWriteIOUtils.readInt(inputStream);
-      fileMetaData.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize);
+      int hashFunctionSize = ReadWriteIOUtils.readInt(inputStream);
+      fileMetaData.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize, hashFunctionSize);
     }
 
     return fileMetaData;
@@ -181,10 +182,11 @@ public class TsFileMetaData {
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
     // read bloom filter
-    if(ReadWriteIOUtils.checkIfMagicString(buffer)){
+    if(buffer.hasRemaining()){
       byte[] bytes = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer).array();
       int filterSize = ReadWriteIOUtils.readInt(buffer);
-      fileMetaData.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize);
+      int hashFunctionSize = ReadWriteIOUtils.readInt(buffer);
+      fileMetaData.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize, hashFunctionSize);
     }
 
     return fileMetaData;
@@ -309,6 +311,7 @@ public class TsFileMetaData {
     byte[] bytes = filter.serialize();
     byteLen += ReadWriteIOUtils.write(ByteBuffer.wrap(bytes), outputStream);
     byteLen += ReadWriteIOUtils.write(filter.getSize(), outputStream);
+    byteLen += ReadWriteIOUtils.write(filter.getHashFunctionSize(), outputStream);
     return byteLen;
   }
 
@@ -335,7 +338,7 @@ public class TsFileMetaData {
    */
   private BloomFilter buildBloomFilter(List<ChunkGroupMetaData> chunkGroupMetaDataList) {
     BloomFilter bloomFilter = BloomFilter
-        .getEmptyBloomFilter(TSFileDescriptor.getInstance().getConfig().bloomFilterSize);
+        .getEmptyBloomFilter(TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(), chunkGroupMetaDataList.size());
     for(String path : getAllPath(chunkGroupMetaDataList)){
       bloomFilter.add(path);
     }

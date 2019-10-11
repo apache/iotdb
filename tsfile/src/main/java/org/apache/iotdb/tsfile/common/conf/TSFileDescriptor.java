@@ -122,9 +122,9 @@ public class TSFileDescriptor {
       conf.setMaxStringLength(Integer
           .parseInt(properties.getProperty("max_string_length",
               Integer.toString(conf.getMaxStringLength()))));
-      conf.setBloomFilterSize(Integer
-          .parseInt(properties.getProperty("bloom_filter_size",
-              Integer.toString(conf.getBloomFilterSize()))));
+      conf.setBloomFilterErrorRate(Double
+          .parseDouble(properties.getProperty("bloom_filter_error_rate",
+              Double.toString(conf.getBloomFilterErrorRate()))));
       conf.setFloatPrecision(Integer
           .parseInt(properties
               .getProperty("float_precision", Integer.toString(conf.getFloatPrecision()))));

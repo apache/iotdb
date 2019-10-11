@@ -22,23 +22,30 @@ import java.util.BitSet;
 
 public class BloomFilter {
 
-  private static final int[] seeds = new int[]{5, 7, 11, 13, 31, 37, 61};
-  private int size = 256;
+  private static final int MINIMAL_SIZE = 256;
+  private static final int MAXIMAL_HASH_FUNCTION_SIZE = 8;
+  private static final int[] seeds = new int[]{5, 7, 11, 19, 31, 37, 43, 59};
+  private int size;
+  private int hashFunctionSize;
   private BitSet bits;
-  private HashFunction[] func = new HashFunction[seeds.length];
+  private HashFunction[] func;
 
   // do not try to initialize the filter by construction method
-  private BloomFilter(byte[] bytes, int size) {
+  private BloomFilter(byte[] bytes, int size, int hashFunctionSize) {
     this.size = size;
-    for (int i = 0; i < seeds.length; i++) {
+    this.hashFunctionSize = hashFunctionSize;
+    func = new HashFunction[hashFunctionSize];
+    for (int i = 0; i < hashFunctionSize; i++) {
       func[i] = new HashFunction(size, seeds[i]);
     }
     bits = BitSet.valueOf(bytes);
   }
 
-  private BloomFilter(int size) {
+  private BloomFilter(int size, int hashFunctionSize) {
     this.size = size;
-    for (int i = 0; i < seeds.length; i++) {
+    this.hashFunctionSize = hashFunctionSize;
+    func = new HashFunction[hashFunctionSize];
+    for (int i = 0; i < hashFunctionSize; i++) {
       func[i] = new HashFunction(size, seeds[i]);
     }
     bits = new BitSet(size);
@@ -47,11 +54,19 @@ public class BloomFilter {
   /**
    * get empty bloom filter
    *
-   * @param size size of the filter
+   * @param errorPercent the tolerant percent of error of the bloom filter
+   * @param numOfString the number of string want to store in the bloom filter
    * @return empty bloom
    */
-  public static BloomFilter getEmptyBloomFilter(int size) {
-    return new BloomFilter(size);
+  public static BloomFilter getEmptyBloomFilter(double errorPercent, int numOfString) {
+    errorPercent = Math.max(errorPercent, 0.01);
+    errorPercent = Math.min(errorPercent, 0.1);
+
+    double ln2 = Math.log(2);
+    int size = (int) (-numOfString * Math.log(errorPercent) / ln2 / ln2) + 1;
+    int hashFunctionSize = (int) (-Math.log(errorPercent) / ln2) + 1;
+    return new BloomFilter(Math.max(MINIMAL_SIZE, size),
+        Math.min(MAXIMAL_HASH_FUNCTION_SIZE, hashFunctionSize));
   }
 
   /**
@@ -60,8 +75,12 @@ public class BloomFilter {
    * @param bytes bytes of bits
    * @return bloom filter
    */
-  public static BloomFilter buildBloomFilter(byte[] bytes, int size) {
-    return new BloomFilter(bytes, size);
+  public static BloomFilter buildBloomFilter(byte[] bytes, int size, int hashFunctionSize) {
+    return new BloomFilter(bytes, size, Math.min(MAXIMAL_HASH_FUNCTION_SIZE, hashFunctionSize));
+  }
+
+  public int getHashFunctionSize() {
+    return hashFunctionSize;
   }
 
   public int getSize() {
@@ -73,9 +92,8 @@ public class BloomFilter {
   }
 
   public void add(String value) {
-    int hash = value.hashCode();
     for (HashFunction f : func) {
-      bits.set(f.hash(hash), true);
+      bits.set(f.hash(value), true);
     }
   }
 
@@ -85,9 +103,8 @@ public class BloomFilter {
     }
     boolean ret = true;
     int index = 0;
-    int hash = value.hashCode();
-    while(ret && index < seeds.length){
-      ret = bits.get(func[index++].hash(hash));
+    while (ret && index < hashFunctionSize) {
+      ret = bits.get(func[index++].hash(value));
     }
 
     return ret;
@@ -102,13 +119,18 @@ public class BloomFilter {
     private int cap;
     private int seed;
 
-    private HashFunction(int cap, int seed) {
+    HashFunction(int cap, int seed) {
       this.cap = cap;
       this.seed = seed;
     }
 
-    public int hash(int h) {
-      return (cap - 1) & (h * seed);
+    public int hash(String value) {
+      int result = 0;
+      int len = value.length();
+      for (int i = 0; i < len; i++) {
+        result = seed * result + value.charAt(i);
+      }
+      return (cap - 1) & result;
     }
   }
 }

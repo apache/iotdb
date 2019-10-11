@@ -31,7 +31,7 @@ public class BloomFilterTest {
     String value1 = "device1.s1";
     String value2 = "device1.s2";
     String value3 = "device1.s3";
-    BloomFilter filter = BloomFilter.getEmptyBloomFilter(1024);
+    BloomFilter filter = BloomFilter.getEmptyBloomFilter(0.05, 3);
     filter.add(value1);
     filter.add(value2);
     filter.add(value3);
@@ -53,12 +53,12 @@ public class BloomFilterTest {
     String value1 = "device1.s1";
     String value2 = "device1.s2";
     String value3 = "device1.s3";
-    BloomFilter filter = BloomFilter.getEmptyBloomFilter(1024);
+    BloomFilter filter = BloomFilter.getEmptyBloomFilter(0.05, 3);
     filter.add(value1);
     filter.add(value2);
     filter.add(value3);
 
-    BloomFilter filter1 = BloomFilter.buildBloomFilter(filter.serialize(), 1024);
+    BloomFilter filter1 = BloomFilter.buildBloomFilter(filter.serialize(), filter.getSize(), filter.getHashFunctionSize());
     assertTrue(filter1.contains(value1));
     assertTrue(filter1.contains(value2));
     assertTrue(filter1.contains(value3));

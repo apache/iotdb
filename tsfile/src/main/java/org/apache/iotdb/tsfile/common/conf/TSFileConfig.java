@@ -294,22 +294,23 @@ public class TSFileConfig {
   private String hdfsPort = "9000";
 
   /**
-   * The default size of bloom filter
+   * The acceptable error rate of bloom filter
    */
-  public int bloomFilterSize = 128;
+  private double bloomFilterErrorRate = 0.05;
 
 
   public TSFileConfig() {
 
   }
 
-  public int getBloomFilterSize() {
-    return bloomFilterSize;
+  public double getBloomFilterErrorRate() {
+    return bloomFilterErrorRate;
   }
 
-  public void setBloomFilterSize(int bloomFilterSize) {
-    this.bloomFilterSize = bloomFilterSize;
+  public void setBloomFilterErrorRate(double bloomFilterErrorRate) {
+    this.bloomFilterErrorRate = bloomFilterErrorRate;
   }
+
 
   public FSType getTSFileStorageFs() {
     return this.TSFileStorageFs;
