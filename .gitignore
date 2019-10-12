@@ -51,6 +51,9 @@ grafana/target/
 !grafana/.mvn/wrapper/maven-wrapper.jar
 grafana/.mvn/
 
+#skip the maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.jar
+
 grafana/logs/
 *.log
 
@@ -79,7 +82,6 @@ grafana/data/
 
 grafana/data/test.csv
 **/lib/
-*.jar
 /target/
 *.tsfile
 tsfile/src/test/resources/*.ts
