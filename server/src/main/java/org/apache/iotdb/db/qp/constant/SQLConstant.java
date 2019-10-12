@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.qp.constant;
 
+import org.apache.iotdb.tsfile.read.common.Path;
+
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.omg.CORBA.PUBLIC_MEMBER;
 
 /**
  * this class contains several constants used in SQL.
