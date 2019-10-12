@@ -64,9 +64,4 @@
             <outputDirectory>docs</outputDirectory>
         </fileSet>
     </fileSets>
-    <excludes>
-        <!-- exclude the mvn wrapper in the source artifact -->
-        <exclude>mvnw*</exclude>
-        <exclude>.mvn/**</exclude>
-    </excludes>
 </assembly>
