@@ -165,9 +165,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       // selectPath cannot start with ROOT, which is guaranteed by TSParser
       Path selectPath = suffixPaths.get(i);
       for (Path fromPath : fromPaths) {
-        if (!fromPath.startWith(SQLConstant.ROOT)) {
-          throw new LogicalOptimizeException("illegal from clause : " + fromPath.getFullPath());
-        }
         allPaths.add(Path.addPrefixPath(selectPath, fromPath));
         extendListSafely(originAggregations, i, afterConcatAggregations);
       }

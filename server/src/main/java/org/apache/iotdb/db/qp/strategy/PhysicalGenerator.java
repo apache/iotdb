@@ -289,9 +289,6 @@ public class PhysicalGenerator {
         Set<String> deviceSetOfGivenSuffix = new HashSet<>();
         Set<String> measurementSetOfGivenSuffix = new TreeSet<>();
         for (Path prefixPath : prefixPaths) { // per prefix
-          if (!prefixPath.startWith(SQLConstant.ROOT)) {
-            throw new QueryProcessorException("illegal from clause : " + prefixPath.getFullPath());
-          }
           Path fullPath = Path.addPrefixPath(suffixPath, prefixPath);
           Set<String> tmpDeviceSet = new HashSet<>();
           try {
@@ -351,7 +348,9 @@ public class PhysicalGenerator {
             deviceSetOfGivenSuffix.addAll(tmpDeviceSet);
 
           } catch (MetadataErrorException e) {
-            throw new LogicalOptimizeException("error when remove star: ", e);
+            throw new LogicalOptimizeException(
+                String.format("error when getting all paths of a full path: %s",
+                    fullPath.getFullPath()), e);
           }
         }
         // update measurementColumnList
