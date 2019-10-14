@@ -671,7 +671,7 @@ public class MTree implements Serializable {
       if (cur == null) {
         if (!isStorageLevel) {
           throw new StorageGroupException(
-                  String.format("The device doesn't belong to any storage group.", deviceId));
+                  String.format("The device %s doesn't belong to any storage group.", deviceId));
         } else {
           throw new PathErrorException(String.format(SERIES_NOT_CORRECT, deviceId));
         }

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -278,32 +279,32 @@ public class IoTDBConfig {
   /**
    * Switch of creating schema automatically
    */
-  private boolean autoCreateSchemaEnable = false;
+  private boolean enableAutoCreateSchema = true;
 
   /**
-   * Storage group level when creating schema automatically is enable
+   * Storage group level when creating schema automatically is enabled
    */
-  private int autoStorageGroupLevel = 2;
+  private int defaultStorageGroupLevel = 2;
 
   /**
-   * Boolean encoding when creating schema automatically is enable
+   * Boolean encoding when creating schema automatically is enabled
    */
-  private String autoBooleanEncoding = "RLE";
+  private TSEncoding defaultBooleanEncoding = TSEncoding.RLE;
 
   /**
-   * Long encoding when creating schema automatically is enable
+   * Long encoding when creating schema automatically is enabled
    */
-  private String autoLongEncoding = "RLE";
+  private TSEncoding defaultLongEncoding = TSEncoding.RLE;
 
   /**
-   * Double encoding when creating schema automatically is enable
+   * Double encoding when creating schema automatically is enabled
    */
-  private String autoDoubleEncoding = "GORILLA";
+  private TSEncoding defaultDoubleEncoding = TSEncoding.GORILLA;
 
   /**
-   * String encoding when creating schema automatically is enable
+   * String encoding when creating schema automatically is enabled
    */
-  private String autoStringEncoding = "PLAIN";
+  private TSEncoding defaultStringEncoding = TSEncoding.PLAIN;
 
   /**
    * How much memory (in byte) can be used by a single merge task.
@@ -950,52 +951,68 @@ public class IoTDBConfig {
     return null;
   }
 
-  public boolean isAutoCreateSchemaEnable() {
-    return autoCreateSchemaEnable;
+  public boolean isAutoCreateSchemaEnabled() {
+    return enableAutoCreateSchema;
   }
 
-  public void setAutoCreateSchemaEnable(boolean autoCreateSchemaEnable) {
-    this.autoCreateSchemaEnable = autoCreateSchemaEnable;
+  public void setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
+    this.enableAutoCreateSchema = enableAutoCreateSchema;
   }
 
-  public int getAutoStorageGroupLevel() {
-    return autoStorageGroupLevel;
+  public int getDefaultStorageGroupLevel() {
+    return defaultStorageGroupLevel;
   }
 
-  public void setAutoStorageGroupLevel(int autoStorageGroupLevel) {
-    this.autoStorageGroupLevel = autoStorageGroupLevel;
+  public void setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+    this.defaultStorageGroupLevel = defaultStorageGroupLevel;
   }
 
-  public String getAutoBooleanEncoding() {
-    return autoBooleanEncoding;
+  public TSEncoding getDefaultBooleanEncoding() {
+    return defaultBooleanEncoding;
   }
 
-  public void setAutoBooleanEncoding(String autoBooleanEncoding) {
-    this.autoBooleanEncoding = autoBooleanEncoding;
+  public void setDefaultBooleanEncoding(TSEncoding defaultBooleanEncoding) {
+    this.defaultBooleanEncoding = defaultBooleanEncoding;
   }
 
-  public String getAutoLongEncoding() {
-    return autoLongEncoding;
+  public void setDefaultBooleanEncoding(String defaultBooleanEncoding) {
+    this.defaultBooleanEncoding = TSEncoding.valueOf(defaultBooleanEncoding);
   }
 
-  public void setAutoLongEncoding(String autoLongEncoding) {
-    this.autoLongEncoding = autoLongEncoding;
+  public TSEncoding getDefaultLongEncoding() {
+    return defaultLongEncoding;
   }
 
-  public String getAutoDoubleEncoding() {
-    return autoDoubleEncoding;
+  public void setDefaultLongEncoding(TSEncoding defaultLongEncoding) {
+    this.defaultLongEncoding = defaultLongEncoding;
   }
 
-  public void setAutoDoubleEncoding(String autoDoubleEncoding) {
-    this.autoDoubleEncoding = autoDoubleEncoding;
+  public void setDefaultLongEncoding(String defaultLongEncoding) {
+    this.defaultLongEncoding = TSEncoding.valueOf(defaultLongEncoding);
   }
 
-  public String getAutoStringEncoding() {
-    return autoStringEncoding;
+  public TSEncoding getDefaultDoubleEncoding() {
+    return defaultDoubleEncoding;
   }
 
-  public void setAutoStringEncoding(String autoStringEncoding) {
-    this.autoStringEncoding = autoStringEncoding;
+  public void setDefaultDoubleEncoding(TSEncoding defaultDoubleEncoding) {
+    this.defaultDoubleEncoding = defaultDoubleEncoding;
+  }
+
+  public void setDefaultDoubleEncoding(String defaultDoubleEncoding) {
+    this.defaultDoubleEncoding = TSEncoding.valueOf(defaultDoubleEncoding);
+  }
+
+  public TSEncoding getDefaultStringEncoding() {
+    return defaultStringEncoding;
+  }
+
+  public void setDefaultStringEncoding(TSEncoding defaultStringEncoding) {
+    this.defaultStringEncoding = defaultStringEncoding;
+  }
+
+  public void setDefaultStringEncoding(String defaultStringEncoding) {
+    this.defaultStringEncoding = TSEncoding.valueOf(defaultStringEncoding);
   }
 
   public FSType getSystemFileStorageFs() {

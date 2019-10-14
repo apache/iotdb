@@ -366,23 +366,34 @@ public class MManagerBasicTest {
 
   @Test
   public void testGetStorageGroupNameByAutoLevel() {
+
     MManager manager = MManager.getInstance();
-    int level = IoTDBDescriptor.getInstance().getConfig().getAutoStorageGroupLevel();
+    int level = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
+    boolean caughtException;
+
     try {
-      Assert.assertEquals("root.laptop", manager.getStorageGroupNameByAutoLevel("root.laptop.d1.s1", level));
+      assertEquals("root.laptop", manager.getStorageGroupNameByAutoLevel("root.laptop.d1.s1", level));
     } catch(PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
+
+    caughtException = false;
     try {
       manager.getStorageGroupNameByAutoLevel("root1.laptop.d1.s1", level);
     } catch(PathErrorException e) {
-      Assert.assertEquals("Timeseries root1.laptop.d1.s1 is not right.", e.getMessage());
+      caughtException = true;
+      assertEquals("Timeseries root1.laptop.d1.s1 is not right.", e.getMessage());
     }
+    assertTrue(caughtException);
+
+    caughtException = false;
     try {
       manager.getStorageGroupNameByAutoLevel("root", level);
     } catch(PathErrorException e) {
-      Assert.assertEquals("Timeseries root is not right.", e.getMessage());
+      caughtException = true;
+      assertEquals("Timeseries root is not right.", e.getMessage());
     }
+    assertTrue(caughtException);
   }
 }
