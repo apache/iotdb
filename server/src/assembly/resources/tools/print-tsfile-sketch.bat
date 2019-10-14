@@ -17,9 +17,10 @@
 @REM under the License.
 @REM
 
+
 @echo off
 echo ````````````````````````
-echo Starting Printing the TsFileResources
+echo Starting Printing the TsFile Sketch
 echo ````````````````````````
 
 if "%OS%" == "Windows_NT" setlocal
@@ -28,7 +29,7 @@ pushd %~dp0..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%CD%
 popd
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.tools.TsFileResourcePrinter
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.tools.TsFileSketchTool
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------

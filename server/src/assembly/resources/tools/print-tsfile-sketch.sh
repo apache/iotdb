@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -18,17 +18,13 @@
 # under the License.
 #
 
-
 echo ---------------------
-echo Starting Printing the TsFileResources
+echo Starting Printing the TsFile Sketch
 echo ---------------------
 
 if [ -z "${IOTDB_HOME}" ]; then
-  export IOTDB_HOME="`dirname "$0"`/.."
+  export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
 fi
-
-IOTDB_CONF=${IOTDB_HOME}/conf
-
 
 if [ -n "$JAVA_HOME" ]; then
     for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
@@ -41,19 +37,12 @@ else
     JAVA=java
 fi
 
-if [ -z $JAVA ] ; then
-    echo Unable to find java executable. Check JAVA_HOME and PATH environment variables.  > /dev/stderr
-    exit 1;
-fi
-
 CLASSPATH=""
 for f in ${IOTDB_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 
-MAIN_CLASS=org.apache.iotdb.db.tools.TsFileResourcePrinter
+MAIN_CLASS=org.apache.iotdb.db.tools.TsFileSketchTool
 
-# Start up the service
 "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
-
 exit $?

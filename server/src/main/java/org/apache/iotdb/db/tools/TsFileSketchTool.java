@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile;
+
+package org.apache.iotdb.db.tools;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -50,6 +51,8 @@ public class TsFileSketchTool {
       filename = args[0];
       outFile = args[1];
     }
+    System.out.println("TsFile path:" + filename);
+    System.out.println("Sketch save path:" + outFile);
     PrintWriter pw = new PrintWriter(new FileWriter(outFile));
     long length = TSFileFactory.INSTANCE.getFile(filename).length();
     printlnBoth(pw,
