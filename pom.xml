@@ -39,9 +39,9 @@
         </license>
     </licenses>
     <scm>
-        <connection>scm:git:https://github.com/apache/incubator-iotdb.git</connection>
-        <developerConnection>scm:git:https://github.com/apache/incubator-iotdb.git</developerConnection>
-        <url>https://github.com/apache/incubator-iotdb</url>
+        <connection>scm:git:ssh://git@github.com/apache/incubator-iotdb.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/apache/incubator-iotdb.git</developerConnection>
+        <url>ssh://git@github.com:apache/incubator-iotdb.git</url>
         <tag>rel/0.8</tag>
     </scm>
     <modules>
