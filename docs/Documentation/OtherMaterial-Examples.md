@@ -236,6 +236,8 @@ if __name__ == '__main__':
     # this is also for resource control, make sure different queries will not use the same id at the same time
     queryId = 1
     resp = client.executeQueryStatement(TSExecuteStatementReq(handle, stmt))
+    # headers
+    print(resp.columns)
     stmtHandle = resp.operationHandle
     status = resp.status
     print(status.statusType)
