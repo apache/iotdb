@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
@@ -148,6 +147,8 @@ public class IoTDBDescriptor {
 
       conf.setSchemaDir(FilePathUtils.regularizePath(conf.getSystemDir()) + "schema");
 
+      conf.setQueryDir(FilePathUtils.regularizePath(conf.getBaseDir()) + "query");
+
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));
 
@@ -223,6 +224,11 @@ public class IoTDBDescriptor {
       conf.setZoneID(ZoneId.of(tmpTimeZone.trim()));
       logger.info("Time zone has been set to {}", conf.getZoneID());
 
+      conf.setEnableExternalSort(Boolean.parseBoolean(properties
+          .getProperty("enable_external_sort", Boolean.toString(conf.isEnableExternalSort()))));
+      conf.setExternalSortThreshold(Integer.parseInt(properties
+          .getProperty("external_sort_threshold",
+              Integer.toString(conf.getExternalSortThreshold()))));
       conf.setMergeMemoryBudget(Long.parseLong(properties.getProperty("merge_memory_budget",
           Long.toString(conf.getMergeMemoryBudget()))));
       conf.setMergeThreadNum(Integer.parseInt(properties.getProperty("merge_thread_num",

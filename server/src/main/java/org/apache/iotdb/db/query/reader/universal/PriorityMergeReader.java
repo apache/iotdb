@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.reader.universal;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.PriorityQueue;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -33,6 +34,15 @@ public class PriorityMergeReader implements IPointReader {
         o2.timeValuePair.getTimestamp());
     return timeCompare != 0 ? timeCompare : Integer.compare(o2.priority, o1.priority);
   });
+
+  public PriorityMergeReader() {
+  }
+
+  public PriorityMergeReader(List<IPointReader> prioritySeriesReaders, int startPriority) throws IOException {
+    for (IPointReader reader : prioritySeriesReaders) {
+      addReaderWithPriority(reader, startPriority++);
+    }
+  }
 
   public void addReaderWithPriority(IPointReader reader, int priority) throws IOException {
     if (reader.hasNext()) {
@@ -118,9 +128,9 @@ public class PriorityMergeReader implements IPointReader {
       return timeValuePair.getTimestamp();
     }
 
-   TimeValuePair currPair() {
+    TimeValuePair currPair() {
       return timeValuePair;
-   }
+    }
 
     boolean hasNext() throws IOException {
       return reader.hasNext();
