@@ -26,6 +26,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +39,12 @@ public class HDFSFactory implements FSFactory {
   private static Constructor constructorWithParentStringAndChild;
   private static Constructor constructorWithParentFileAndChild;
   private static Constructor constructorWithUri;
+  private static Method getBufferedReader;
+  private static Method getBufferedWriter;
+  private static Method getBufferedInputStream;
+  private static Method getBufferedOutputStream;
+  private static Method listFilesBySuffix;
+  private static Method listFilesByPrefix;
 
   static {
     try {
@@ -46,6 +53,12 @@ public class HDFSFactory implements FSFactory {
       constructorWithParentStringAndChild = clazz.getConstructor(String.class, String.class);
       constructorWithParentFileAndChild = clazz.getConstructor(File.class, String.class);
       constructorWithUri = clazz.getConstructor(URI.class);
+      getBufferedReader = clazz.getMethod("getBufferedReader", String.class, boolean.class);
+      getBufferedWriter = clazz.getMethod("getBufferedWriter", String.class, boolean.class);
+      getBufferedInputStream = clazz.getMethod("getBufferedInputStream", String.class);
+      getBufferedOutputStream = clazz.getMethod("getBufferedOutputStream", String.class);
+      listFilesBySuffix = clazz.getMethod("listFilesBySuffix", String.class);
+      listFilesByPrefix = clazz.getMethod("listFilesByPrefix", String.class);
     } catch (ClassNotFoundException | NoSuchMethodException e) {
       logger.error(
           "Failed to get Hadoop file system. Please check your dependency of Hadoop module.", e);
@@ -98,9 +111,8 @@ public class HDFSFactory implements FSFactory {
 
   public BufferedReader getBufferedReader(String filePath) {
     try {
-      return (BufferedReader) clazz.getMethod("getBufferedReader", String.class)
-          .invoke(clazz.newInstance(), filePath);
-    } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
+      return (BufferedReader) getBufferedReader.invoke(clazz.newInstance(), filePath);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(
           "Failed to get buffered reader for {}. Please check your dependency of Hadoop module.",
           filePath, e);
@@ -110,9 +122,8 @@ public class HDFSFactory implements FSFactory {
 
   public BufferedWriter getBufferedWriter(String filePath, boolean append) {
     try {
-      return (BufferedWriter) clazz.getMethod("getBufferedWriter", String.class, boolean.class)
-          .invoke(clazz.newInstance(), filePath, append);
-    } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
+      return (BufferedWriter) getBufferedWriter.invoke(clazz.newInstance(), filePath, append);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(
           "Failed to get buffered writer for {}. Please check your dependency of Hadoop module.",
           filePath, e);
@@ -122,9 +133,8 @@ public class HDFSFactory implements FSFactory {
 
   public BufferedInputStream getBufferedInputStream(String filePath) {
     try {
-      return (BufferedInputStream) clazz.getMethod("getBufferedInputStream", String.class)
-          .invoke(clazz.newInstance(), filePath);
-    } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
+      return (BufferedInputStream) getBufferedInputStream.invoke(clazz.newInstance(), filePath);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(
           "Failed to get buffered input stream for {}. Please check your dependency of Hadoop module.",
           filePath, e);
@@ -134,9 +144,8 @@ public class HDFSFactory implements FSFactory {
 
   public BufferedOutputStream getBufferedOutputStream(String filePath) {
     try {
-      return (BufferedOutputStream) clazz.getMethod("getBufferedOutputStream", String.class)
-          .invoke(clazz.newInstance(), filePath);
-    } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
+      return (BufferedOutputStream) getBufferedOutputStream.invoke(clazz.newInstance(), filePath);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(
           "Failed to get buffered output stream for {}. Please check your dependency of Hadoop module.",
           filePath, e);
@@ -154,9 +163,8 @@ public class HDFSFactory implements FSFactory {
 
   public File[] listFilesBySuffix(String fileFolder, String suffix) {
     try {
-      return (File[]) clazz.getMethod("listFilesBySuffix", String.class, String.class)
-          .invoke(clazz.newInstance(), fileFolder, suffix);
-    } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
+      return (File[]) listFilesBySuffix.invoke(clazz.newInstance(), fileFolder, suffix);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(
           "Failed to list files in {} with SUFFIX {}. Please check your dependency of Hadoop module.",
           fileFolder, suffix, e);
@@ -166,9 +174,8 @@ public class HDFSFactory implements FSFactory {
 
   public File[] listFilesByPrefix(String fileFolder, String prefix) {
     try {
-      return (File[]) clazz.getMethod("listFilesByPrefix", String.class, String.class)
-          .invoke(clazz.newInstance(), fileFolder, prefix);
-    } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
+      return (File[]) listFilesByPrefix.invoke(clazz.newInstance(), fileFolder, prefix);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(
           "Failed to list files in {} with PREFIX {}. Please check your dependency of Hadoop module.",
           fileFolder, prefix, e);
