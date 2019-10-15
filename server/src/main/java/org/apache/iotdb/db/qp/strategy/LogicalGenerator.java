@@ -819,14 +819,6 @@ public class LogicalGenerator {
     return timeInterval;
   }
 
-//  private void print(AstNode node, AstNode parent, int level) {
-//    if(parent == null) System.out.println("["+level+++"]\t"+ "root\t" + node.getText());
-//    else System.out.println("["+level+++"]\t"+ parent.getText()+"\t" + node.getText());
-//    for(Object o : node.getChildren()){
-//      print((AstNode) o, node, level);
-//    }
-//  }
-
   private Pair<Path, String> parseLeafNode(AstNode node) throws LogicalOperatorException {
     if (node.getChildCount() != 2) {
       throw new LogicalOperatorException(
@@ -848,16 +840,6 @@ public class LogicalGenerator {
     }else{
       seriesValue = cascadeChildrenText(rightKey);
     }
-//    if (rightKey.getType() == TqlParser.TOK_PATH) {
-//      seriesValue = parsePath(rightKey).getFullPath();
-//    } else if (rightKey.getType() == TqlParser.TOK_DATETIME) {
-//      if (!seriesPath.equals(SQLConstant.RESERVED_TIME)) {
-//        throw new LogicalOperatorException("Date can only be used to time");
-//      }
-//      seriesValue = parseTokenTime(rightKey);
-//    } else {
-//      seriesValue = cascadeChildrenText(rightKey);
-//    }
     return new Pair<>(seriesPath, seriesValue);
   }
 
