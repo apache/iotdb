@@ -35,7 +35,8 @@ import org.apache.iotdb.tsfile.file.metadata.TsDigest;
 import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -54,7 +55,7 @@ public class TsFileSketchTool {
     System.out.println("TsFile path:" + filename);
     System.out.println("Sketch save path:" + outFile);
     PrintWriter pw = new PrintWriter(new FileWriter(outFile));
-    long length = TSFileFactory.INSTANCE.getFile(filename).length();
+    long length = FSFactoryProducer.getFSFactory().getFile(filename).length();
     printlnBoth(pw,
         "-------------------------------- TsFile Sketch --------------------------------");
     printlnBoth(pw, "file path: " + filename);

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -36,7 +35,8 @@ import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
@@ -49,7 +49,7 @@ public class TsFileSequenceRead {
       filename = args[0];
     }
     TsFileSequenceReader reader = new TsFileSequenceReader(filename);
-    System.out.println("file length: " + TSFileFactory.INSTANCE.getFile(filename).length());
+    System.out.println("file length: " + FSFactoryProducer.getFSFactory().getFile(filename).length());
     System.out.println("file magic head: " + reader.readHeadMagic());
     System.out.println("file magic tail: " + reader.readTailMagic());
     System.out.println("Level 1 metadata position: " + reader.getFileMetadataPos());
