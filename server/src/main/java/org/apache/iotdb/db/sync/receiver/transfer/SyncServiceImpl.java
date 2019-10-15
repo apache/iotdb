@@ -149,9 +149,10 @@ public class SyncServiceImpl implements SyncService.Iface {
   @Override
   public ResultStatus syncDeletedFileName(String fileName) throws TException {
     try {
-      syncLog.get().finishSyncDeletedFileName(new File(fileName));
-      FileLoaderManager.getInstance().getFileLoader(senderName.get())
-          .addDeletedFileName(new File(fileName));
+      syncLog.get().finishSyncDeletedFileName(
+          new File(getSyncDataPath(), currentSG.get() + File.separatorChar + fileName));
+      FileLoaderManager.getInstance().getFileLoader(senderName.get()).addDeletedFileName(
+          new File(getSyncDataPath(), currentSG.get() + File.separatorChar + fileName));
     } catch (IOException e) {
       logger.error("Can not sync deleted file", e);
       return getErrorResult(
