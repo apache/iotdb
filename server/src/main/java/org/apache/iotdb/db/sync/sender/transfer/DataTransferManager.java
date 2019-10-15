@@ -26,6 +26,8 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.math.BigInteger;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileLock;
 import java.nio.file.FileSystems;
@@ -33,6 +35,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -274,7 +277,7 @@ public class DataTransferManager implements IDataTransferManager {
   @Override
   public void confirmIdentity() throws SyncConnectionException {
     try {
-      ResultStatus status = serviceClient.check(InetAddress.getLocalHost().getHostAddress(),
+      ResultStatus status = serviceClient.check(getLocalHost(),
           getOrCreateUUID(config.getUuidPath()));
       if (!status.success) {
         throw new SyncConnectionException(
@@ -284,6 +287,21 @@ public class DataTransferManager implements IDataTransferManager {
       logger.error("Cannot confirm identity with the receiver.");
       throw new SyncConnectionException(e);
     }
+  }
+
+  private String getLocalHost() throws SocketException {
+    Enumeration enumeration = NetworkInterface.getNetworkInterfaces();
+    while(enumeration.hasMoreElements()){
+      NetworkInterface networkInterface=(NetworkInterface) enumeration.nextElement();
+      Enumeration ee = networkInterface.getInetAddresses();
+      while(ee.hasMoreElements()) {
+        InetAddress address= (InetAddress) ee.nextElement();
+        if (!address.isLoopbackAddress() && !address.isLinkLocalAddress() && address.isSiteLocalAddress()){
+          return address.getHostAddress();
+        }
+      }
+    }
+    throw new SocketException("Can not get local host ip address.");
   }
 
   /**
