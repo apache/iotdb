@@ -170,7 +170,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
     LongWritable time = new LongWritable(timestamp);
 
     if (isReadTime) { // time needs to be written into value
-      mapWritable.put(new Text("timestamp"), time);
+      mapWritable.put(new Text("time_stamp"), time);
     }
     if (isReadDeviceId) { // deviceId need to be written into value
       mapWritable.put(new Text("device_id"), deviceIdText);
