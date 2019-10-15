@@ -20,18 +20,49 @@
 package org.apache.iotdb.tsfile.fileSystem;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.fileSystem.fileInputFactory.FileInputFactory;
+import org.apache.iotdb.tsfile.fileSystem.fileInputFactory.HDFSInputFactory;
+import org.apache.iotdb.tsfile.fileSystem.fileInputFactory.LocalFSInputFactory;
+import org.apache.iotdb.tsfile.fileSystem.fileOutputFactory.FileOutputFactory;
+import org.apache.iotdb.tsfile.fileSystem.fileOutputFactory.HDFSOutputFactory;
+import org.apache.iotdb.tsfile.fileSystem.fileOutputFactory.LocalFSOutputFactory;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.HDFSFactory;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.LocalFSFactory;
 
 public class FSFactoryProducer {
 
   private static FSType fSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
   private static HDFSFactory hdfsFactory = new HDFSFactory();
   private static LocalFSFactory localFSFactory = new LocalFSFactory();
+  private static HDFSInputFactory hdfsInputFactory = new HDFSInputFactory();
+  private static LocalFSInputFactory localFSInputFactory = new LocalFSInputFactory();
+  private static HDFSOutputFactory hdfsOutputFactory = new HDFSOutputFactory();
+  private static LocalFSOutputFactory localFSOutputFactory = new LocalFSOutputFactory();
+
 
   public static FSFactory getFSFactory() {
     if (fSType.equals(FSType.HDFS)) {
       return hdfsFactory;
     } else {
       return localFSFactory;
+    }
+  }
+
+
+  public static FileInputFactory getFileInputFactory() {
+    if (fSType.equals(FSType.HDFS)) {
+      return hdfsInputFactory;
+    } else {
+      return localFSInputFactory;
+    }
+  }
+
+  public static FileOutputFactory getFileOutputFactory() {
+    if (fSType.equals(FSType.HDFS)) {
+      return hdfsOutputFactory;
+    } else {
+      return localFSOutputFactory;
     }
   }
 }
