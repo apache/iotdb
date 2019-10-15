@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -32,14 +32,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This class is used for recording statistic information of each measurement in a delta file.While
+ * This class is used for recording statistic information of each measurement in a delta file. While
  * writing processing, the processor records the digest information. Statistics includes maximum,
  * minimum and null value count up to version 0.0.1.<br> Each data type extends this Statistic as
  * super class.<br>
  *
  * @param <T> data type for Statistics
- * @author kangrong
- * @since 0.0.1
  */
 public abstract class Statistics<T> {
 
@@ -105,29 +103,29 @@ public abstract class Statistics<T> {
 
   public abstract T getFirst();
 
-  public abstract double getSum();
-
   public abstract T getLast();
 
-  public abstract byte[] getMaxBytes();
+  public abstract double getSum();
 
   public abstract byte[] getMinBytes();
 
-  public abstract byte[] getFirstBytes();
+  public abstract byte[] getMaxBytes();
 
-  public abstract byte[] getSumBytes();
+  public abstract byte[] getFirstBytes();
 
   public abstract byte[] getLastBytes();
 
-  public abstract ByteBuffer getMaxBytebuffer();
+  public abstract byte[] getSumBytes();
 
   public abstract ByteBuffer getMinBytebuffer();
 
+  public abstract ByteBuffer getMaxBytebuffer();
+
   public abstract ByteBuffer getFirstBytebuffer();
 
-  public abstract ByteBuffer getSumBytebuffer();
-
   public abstract ByteBuffer getLastBytebuffer();
+
+  public abstract ByteBuffer getSumBytebuffer();
 
   /**
    * merge parameter to this statistic. Including
@@ -204,6 +202,34 @@ public abstract class Statistics<T> {
     throw new UnsupportedOperationException();
   }
 
+  public void updateStats(boolean[] values) {
+    throw new UnsupportedOperationException();
+  }
+
+  public void updateStats(int[] values) {
+    throw new UnsupportedOperationException();
+  }
+
+  public void updateStats(long[] values) {
+    throw new UnsupportedOperationException();
+  }
+
+  public void updateStats(float[] values) {
+    throw new UnsupportedOperationException();
+  }
+
+  public void updateStats(double[] values) {
+    throw new UnsupportedOperationException();
+  }
+
+  public void updateStats(BigDecimal[] values) {
+    throw new UnsupportedOperationException();
+  }
+
+  public void updateStats(Binary[] values) {
+    throw new UnsupportedOperationException();
+  }
+
   public void reset() {
   }
 
@@ -234,7 +260,7 @@ public abstract class Statistics<T> {
     } else if (sizeOfDatum() != -1) {
       return sizeOfDatum() * 4 + 8;
     } else {
-      return 4 * Integer.BYTES + getMaxBytes().length + getMinBytes().length
+      return 4 * Integer.BYTES + getMinBytes().length + getMaxBytes().length
           + getFirstBytes().length
           + getLastBytes().length + getSumBytes().length;
     }

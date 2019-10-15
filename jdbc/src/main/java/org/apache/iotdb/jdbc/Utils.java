@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -26,8 +26,6 @@ import java.util.regex.Pattern;
 import org.apache.iotdb.service.rpc.thrift.TSDataValue;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
-import org.apache.iotdb.service.rpc.thrift.TS_Status;
-import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -40,17 +38,10 @@ import org.apache.iotdb.tsfile.utils.Binary;
 public class Utils {
 
   /**
-   * Private constructor of Utils Class.
-   */
-  private  Utils(){
-    throw new IllegalAccessError("Utility class");
-  }
-
-  /**
    * Parse JDBC connection URL The only supported format of the URL is:
    * jdbc:iotdb://localhost:6667/.
    */
-  public static IoTDBConnectionParams parseUrl(String url, Properties info)
+  static IoTDBConnectionParams parseUrl(String url, Properties info)
       throws IoTDBURLException {
     IoTDBConnectionParams params = new IoTDBConnectionParams(url);
     if (url.trim().equalsIgnoreCase(Config.IOTDB_URL_PREFIX)) {
@@ -80,23 +71,12 @@ public class Utils {
   }
 
   /**
-   * verify success.
-   *
-   * @param status -status
-   */
-  public static void verifySuccess(TS_Status status) throws IoTDBSQLException {
-    if (status.getStatusCode() != TS_StatusCode.SUCCESS_STATUS) {
-      throw new IoTDBSQLException(status.errorMessage);
-    }
-  }
-
-  /**
    * convert row records.
    *
    * @param tsQueryDataSet -query data set
    * @return -list of row record
    */
-  public static List<RowRecord> convertRowRecords(TSQueryDataSet tsQueryDataSet) {
+  static List<RowRecord> convertRowRecords(TSQueryDataSet tsQueryDataSet) {
     List<RowRecord> records = new ArrayList<>();
     for (TSRowRecord ts : tsQueryDataSet.getRecords()) {
       RowRecord r = new RowRecord(ts.getTimestamp());
@@ -151,4 +131,5 @@ public class Utils {
                         dataType));
     }
   }
+
 }

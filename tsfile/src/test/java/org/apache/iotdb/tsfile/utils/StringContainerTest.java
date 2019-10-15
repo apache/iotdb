@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -25,11 +25,6 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-/**
- *
- * @author kangrong
- *
- */
 public class StringContainerTest {
 
   @Test

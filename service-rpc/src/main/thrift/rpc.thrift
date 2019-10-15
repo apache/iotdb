@@ -18,28 +18,17 @@
  */
 namespace java org.apache.iotdb.service.rpc.thrift
 
-
-// The return status code contained in each response.
-enum TS_StatusCode {
-  SUCCESS_STATUS,
-  SUCCESS_WITH_INFO_STATUS,
-  STILL_EXECUTING_STATUS,
-  ERROR_STATUS,
-  INVALID_HANDLE_STATUS
+// The return status code and message in each response.
+struct TSStatusType {
+  1: required i32 code
+  2: required string message
 }
 
 // The return status of a remote request
-struct TS_Status {
-  1: required TS_StatusCode statusCode
-
-  // If status is SUCCESS_WITH_INFO, info_msgs may be populated with
-  // additional diagnostic information.
+struct TSStatus {
+  1: required TSStatusType statusType
   2: optional list<string> infoMessages
-
-  // If status is ERROR, then the following fields may be set
-  3: optional string sqlState  // as defined in the ISO/IEF CLI specification
-  4: optional i32 errorCode    // internal error code
-  5: optional string errorMessage
+  3: optional string sqlState  // as defined in the ISO/IEF CLIENT specification
 }
 
 struct TSHandleIdentifier {
@@ -68,16 +57,18 @@ struct TSOperationHandle {
 }
 
 struct TSExecuteStatementResp {
-	1: required TS_Status status
+	1: required TSStatus status
 	2: optional TSOperationHandle operationHandle
   // Column names in select statement of SQL
 	3: optional list<string> columns
 	4: optional string operationType
 	5: optional bool ignoreTimeStamp
+  // Data type list of columns in select statement of SQL
+  6: optional list<string> dataTypeList
 }
 
 enum TSProtocolVersion {
-  TSFILE_SERVICE_PROTOCOL_V1,
+  IOTDB_SERVICE_PROTOCOL_V1,
 }
 
 // Client-side handle to persistent session information on the server-side.
@@ -88,10 +79,10 @@ struct TS_SessionHandle {
 
 
 struct TSOpenSessionResp {
-  1: required TS_Status status
+  1: required TSStatus status
 
   // The protocol version that the server is using.
-  2: required TSProtocolVersion serverProtocolVersion = TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1
+  2: required TSProtocolVersion serverProtocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1
 
   // Session Handle
   3: optional TS_SessionHandle sessionHandle
@@ -103,18 +94,14 @@ struct TSOpenSessionResp {
 // OpenSession()
 // Open a session (connection) on the server against which operations may be executed.
 struct TSOpenSessionReq {
-  1: required TSProtocolVersion client_protocol = TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1
+  1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1
   2: optional string username
   3: optional string password
   4: optional map<string, string> configuration
 }
 
-struct TSCloseSessionResp {
-  1: required TS_Status status
-}
-
 // CloseSession()
-// Closes the specified session and frees any resources currently allocated to that session. 
+// Closes the specified session and frees any resources currently allocated to that session.
 // Any open operations in that session will be canceled.
 struct TSCloseSessionReq {
   1: required TS_SessionHandle sessionHandle
@@ -135,8 +122,8 @@ struct TSExecuteStatementReq {
 
 
 struct TSExecuteBatchStatementResp{
-	1: required TS_Status status
-  // For each value in result, Statement.SUCCESS_NO_INFO represents success, Statement.EXECUTE_FAILED represents fail otherwise.  
+	1: required TSStatus status
+  // For each value in result, Statement.SUCCESS_NO_INFO represents success, Statement.EXECUTE_FAILED represents fail otherwise.
 	2: optional list<i32> result
 }
 
@@ -154,10 +141,6 @@ struct TSGetOperationStatusReq {
   1: required TSOperationHandle operationHandle
 }
 
-struct TSGetOperationStatusResp {
-  1: required TS_Status status
-}
-
 // CancelOperation()
 //
 // Cancels processing on the specified operation handle and frees any resources which were allocated.
@@ -166,20 +149,11 @@ struct TSCancelOperationReq {
   1: required TSOperationHandle operationHandle
 }
 
-struct TSCancelOperationResp {
-  1: required TS_Status status
-}
-
-
 // CloseOperation()
 struct TSCloseOperationReq {
   1: required TSOperationHandle operationHandle
   2: required i64 queryId
   3: optional i64 stmtId
-}
-
-struct TSCloseOperationResp {
-  1: required TS_Status status
 }
 
 struct TSDataValue{
@@ -190,7 +164,7 @@ struct TSDataValue{
   5: optional double float_val
   6: optional double double_val
   7: optional binary binary_val
-  8: optional string type;
+  8: optional string type
 }
 
 struct TSRowRecord{
@@ -210,23 +184,27 @@ struct TSFetchResultsReq{
 }
 
 struct TSFetchResultsResp{
-	1: required TS_Status status
+	1: required TSStatus status
 	2: required bool hasResultSet
 	3: optional TSQueryDataSet queryDataSet
 }
 
 struct TSFetchMetadataResp{
-		1: required TS_Status status
+		1: required TSStatus status
 		2: optional string metadataInJson
-		3: optional list<string> ColumnsList
+		3: optional list<string> columnsList
 		4: optional string dataType
-		5: optional list<list<string>> showTimeseriesList
-		7: optional set<string> showStorageGroups
+		5: optional list<list<string>> timeseriesList
+		6: optional set<string> storageGroups
+		7: optional set<string> devices
+		8: optional list<string> nodesList
+		9: optional map<string, string> nodeTimeseriesNum
 }
 
 struct TSFetchMetadataReq{
 		1: required string type
 		2: optional string columnPath
+		3: optional i32 nodeLevel
 }
 
 struct TSColumnSchema{
@@ -237,16 +215,12 @@ struct TSColumnSchema{
 }
 
 struct TSGetTimeZoneResp {
-    1: required TS_Status status
+    1: required TSStatus status
     2: required string timeZone
 }
 
 struct TSSetTimeZoneReq {
     1: required string timeZone
-}
-
-struct TSSetTimeZoneResp {
-    1: required TS_Status status
 }
 
 struct TSInsertionReq {
@@ -257,15 +231,44 @@ struct TSInsertionReq {
     5: required i64 stmtId
 }
 
+struct TSBatchInsertionReq {
+    1: required string deviceId
+    2: required list<string> measurements
+    3: required binary values
+    4: required binary timestamps
+    5: required list<i32> types
+    6: required i32 size
+}
+
+struct TSInsertReq {
+    1: required string deviceId
+    2: required list<string> measurements
+    3: required list<string> values
+    4: required i64 timestamp
+}
+
+struct TSDeleteDataReq {
+    1: required list<string> paths
+    2: required i64 timestamp
+}
+
+struct TSCreateTimeseriesReq {
+  1: required string path
+  2: required i32 dataType
+  3: required i32 encoding
+  4: required i32 compressor
+}
+
 struct ServerProperties {
 	1: required string version;
 	2: required list<string> supportedTimeAggregationOperations;
+	3: required string timestampPrecision;
 }
 
 service TSIService {
 	TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
-	TSCloseSessionResp closeSession(1:TSCloseSessionReq req);
+	TSStatus closeSession(1:TSCloseSessionReq req);
 
 	TSExecuteStatementResp executeStatement(1:TSExecuteStatementReq req);
 
@@ -279,17 +282,31 @@ service TSIService {
 
 	TSFetchMetadataResp fetchMetadata(1:TSFetchMetadataReq req)
 
-	TSCancelOperationResp cancelOperation(1:TSCancelOperationReq req);
+	TSStatus cancelOperation(1:TSCancelOperationReq req);
 
-	TSCloseOperationResp closeOperation(1:TSCloseOperationReq req);
+	TSStatus closeOperation(1:TSCloseOperationReq req);
 
 	TSGetTimeZoneResp getTimeZone();
 
-	TSSetTimeZoneResp setTimeZone(1:TSSetTimeZoneReq req);
-	
+	TSStatus setTimeZone(1:TSSetTimeZoneReq req);
+
 	ServerProperties getProperties();
 
-	TSExecuteStatementResp executeInsertion(1:TSInsertionReq req);
+	TSExecuteStatementResp insert(1:TSInsertionReq req);
+
+	TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
+
+	TSStatus setStorageGroup(1:string storageGroup);
+
+	TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
+
+    TSStatus deleteTimeseries(1:list<string> path)
+
+    TSStatus deleteStorageGroups(1:list<string> storageGroup);
+
+	TSStatus insertRow(1:TSInsertReq req);
+
+	TSStatus deleteData(1:TSDeleteDataReq req);
 
 	i64 requestStatementId();
-	}
+}

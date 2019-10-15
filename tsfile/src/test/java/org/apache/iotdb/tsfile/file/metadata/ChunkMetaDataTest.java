@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -52,8 +52,17 @@ public class ChunkMetaDataTest {
   }
 
   @Test
-  public void testWriteIntoFile() throws IOException {
+  public void testWriteIntoFile() {
     ChunkMetaData metaData = TestHelper.createSimpleTimeSeriesChunkMetaData();
+    serialized(metaData);
+    ChunkMetaData readMetaData = deSerialized();
+    Utils.isTimeSeriesChunkMetadataEqual(metaData, readMetaData);
+    serialized(readMetaData);
+  }
+
+  @Test
+  public void testWriteIntoFile2() throws IOException {
+    ChunkMetaData metaData = TestHelper.createNotCompleteSimpleTimeSeriesChunkMetaData();
     serialized(metaData);
     ChunkMetaData readMetaData = deSerialized();
     Utils.isTimeSeriesChunkMetadataEqual(metaData, readMetaData);

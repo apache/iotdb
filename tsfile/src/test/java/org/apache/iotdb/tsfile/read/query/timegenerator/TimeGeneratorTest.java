@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -23,7 +23,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -45,11 +45,11 @@ public class TimeGeneratorTest {
   private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
   private TsFileSequenceReader fileReader;
   private MetadataQuerierByFileImpl metadataQuerierByFile;
-  private ChunkLoader chunkLoader;
+  private IChunkLoader chunkLoader;
 
   @Before
   public void before() throws InterruptedException, WriteProcessException, IOException {
-    TSFileDescriptor.getInstance().getConfig().timeEncoder = "TS_2DIFF";
+    TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
     TsFileGeneratorForTest.generateFile(1000, 10 * 1024 * 1024, 10000);
     fileReader = new TsFileSequenceReader(FILE_PATH);
     metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader);

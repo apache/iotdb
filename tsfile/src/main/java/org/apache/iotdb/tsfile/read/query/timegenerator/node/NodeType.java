@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,8 +20,6 @@ package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 /**
  * Type of the node.
- *
- * @author Jinrui Zhang
  */
 public enum NodeType {
   AND, OR, LEAF

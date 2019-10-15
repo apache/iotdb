@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -31,8 +31,6 @@ import org.slf4j.LoggerFactory;
  * integer, long, float, boolean, double and string. <br> It also provide other usable function as
  * follow:<br> reading function which receives InputStream. <br> concat function to join a list of
  * byte array to one.<br> get and set one bit in a byte array.
- *
- * @author kangrong
  */
 public class BytesUtils {
 
@@ -366,6 +364,18 @@ public class BytesUtils {
     return b;
   }
 
+  public static byte boolToByte(boolean x) {
+    if (x) {
+      return 1;
+    } else {
+      return 0;
+    }
+  }
+
+  public static boolean byteToBool(byte b) {
+    return b == 1;
+  }
+
   /**
    * boolean convert to byte array, then write four bytes to parameter desc start from
    * index:offset.
@@ -557,12 +567,7 @@ public class BytesUtils {
    * @return byte array
    */
   public static byte[] stringToBytes(String str) {
-    try {
-      return str.getBytes(TSFileConfig.STRING_ENCODING);
-    } catch (UnsupportedEncodingException e) {
-      LOG.error("catch UnsupportedEncodingException {}", str, e);
-      return null;
-    }
+    return str.getBytes(TSFileConfig.STRING_CHARSET);
   }
 
   /**
@@ -572,12 +577,7 @@ public class BytesUtils {
    * @return string
    */
   public static String bytesToString(byte[] byteStr) {
-    try {
-      return new String(byteStr, TSFileConfig.STRING_ENCODING);
-    } catch (UnsupportedEncodingException e) {
-      LOG.error("catch UnsupportedEncodingException {}", byteStr, e);
-      return null;
-    }
+    return new String(byteStr, TSFileConfig.STRING_CHARSET);
   }
 
   /**

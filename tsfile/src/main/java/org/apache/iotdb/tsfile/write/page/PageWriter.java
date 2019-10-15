@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -30,8 +30,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 /**
  * This function is used to write time-value into a page. It consists of a time encoder, a value encoder and respective
  * OutputStream.
- *
- * @author kangrong
  */
 public class PageWriter {
 
@@ -119,6 +117,76 @@ public class PageWriter {
   public void write(long time, Binary value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
+  }
+
+  /**
+   * write time series into encoder
+   */
+  public void write(long[] timestamps, boolean[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      timeEncoder.encode(timestamps[i], timeOut);
+      valueEncoder.encode(values[i], valueOut);
+    }
+  }
+
+  /**
+   * write time series into encoder
+   */
+  public void write(long[] timestamps, int[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      timeEncoder.encode(timestamps[i], timeOut);
+      valueEncoder.encode(values[i], valueOut);
+    }
+  }
+
+  /**
+   * write time series into encoder
+   */
+  public void write(long[] timestamps, long[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      timeEncoder.encode(timestamps[i], timeOut);
+      valueEncoder.encode(values[i], valueOut);
+    }
+  }
+
+  /**
+   * write time series into encoder
+   */
+  public void write(long[] timestamps, float[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      timeEncoder.encode(timestamps[i], timeOut);
+      valueEncoder.encode(values[i], valueOut);
+    }
+  }
+
+  /**
+   * write time series into encoder
+   */
+  public void write(long[] timestamps, double[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      timeEncoder.encode(timestamps[i], timeOut);
+      valueEncoder.encode(values[i], valueOut);
+    }
+  }
+
+  /**
+   * write time series into encoder
+   */
+  public void write(long[] timestamps, BigDecimal[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      timeEncoder.encode(timestamps[i], timeOut);
+      valueEncoder.encode(values[i], valueOut);
+    }
+  }
+
+  /**
+   * write time series into encoder
+   */
+  public void write(long[] timestamps, Binary[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      timeEncoder.encode(timestamps[i], timeOut);
+      valueEncoder.encode(values[i], valueOut);
+    }
   }
 
   /**

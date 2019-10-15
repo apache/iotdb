@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,8 +20,10 @@ package org.apache.iotdb.tsfile.write.chunk;
 
 import java.io.IOException;
 import java.util.List;
+
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
+import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -30,8 +32,6 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
  * A chunk group in TsFile contains several series. A ChunkGroupWriter should implement
  * write method which takes a timestamp(in TimeValue class) and a list of data points as input.
  * It should also provide flushing method for serializing to local file system or HDFS.
- *
- * @author kangrong
  */
 public interface IChunkGroupWriter {
 
@@ -50,6 +50,18 @@ public interface IChunkGroupWriter {
   void write(long time, List<DataPoint> data) throws WriteProcessException, IOException;
 
   /**
+   * receive a row batch, write it to timeseries writers
+   *
+   * @param rowBatch
+   *                - row batch to input
+   * @throws WriteProcessException
+   *                  exception in write process
+   * @throws IOException
+   *                  exception in IO
+   */
+  void write(RowBatch rowBatch) throws WriteProcessException, IOException;
+
+  /**
    * flushing method for serializing to local file system or HDFS.
    * Implemented by ChunkWriterImpl.writeToFileWriter().
    *
@@ -57,8 +69,9 @@ public interface IChunkGroupWriter {
    *            - TSFileIOWriter
    * @throws IOException
    *             exception in IO
+   * @return current ChunkGroupDataSize
    */
-  ChunkGroupFooter flushToFileWriter(TsFileIOWriter tsfileWriter) throws IOException;
+  long flushToFileWriter(TsFileIOWriter tsfileWriter) throws IOException;
 
   /**
    * get the max memory occupied at this time.
@@ -77,7 +90,7 @@ public interface IChunkGroupWriter {
    * @param pageSize
    *            the specified page size
    */
-  void addSeriesWriter(MeasurementSchema measurementSchema, int pageSize);
+  void tryToAddSeriesWriter(MeasurementSchema measurementSchema, int pageSize);
 
   /** get the serialized size of current chunkGroup header + all chunks.
    *        Notice, the value does not include any un-sealed page in the chunks.

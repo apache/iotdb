@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,6 +19,7 @@
 package org.apache.iotdb.jdbc;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
 
@@ -30,12 +31,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
+
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
-import org.apache.iotdb.service.rpc.thrift.TS_Status;
-import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
@@ -58,7 +57,8 @@ public class IoTDBStatementTest {
   @Mock
   private TSFetchMetadataResp fetchMetadataResp;
 
-  private TS_Status Status_SUCCESS = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
+  private TSStatus Status_SUCCESS = new TSStatus(successStatus);
   private ZoneId zoneID = ZoneId.systemDefault();
 
   @Before
@@ -74,11 +74,61 @@ public class IoTDBStatementTest {
   public void tearDown() throws Exception {
   }
 
-  @SuppressWarnings("resource")
-  @Test(expected = SQLException.class)
-  public void testExecuteSQL1() throws SQLException {
+  @SuppressWarnings({"resource", "serial"})
+  @Test
+  public void testExecuteSQL1() throws SQLException, TException {
     IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
-    stmt.execute("show timeseries");
+    List<List<String>> tslist = new ArrayList<>();
+    tslist.add(new ArrayList<String>(4) {
+      {
+        add("root.vehicle.d0.s0");
+        add("root.vehicle");
+        add("INT32");
+        add("RLE");
+      }
+    });
+    tslist.add(new ArrayList<String>(4) {
+      {
+        add("root.vehicle.d0.s1");
+        add("root.vehicle");
+        add("INT64");
+        add("RLE");
+      }
+    });
+    tslist.add(new ArrayList<String>(4) {
+      {
+        add("root.vehicle.d0.s2");
+        add("root.vehicle");
+        add("FLOAT");
+        add("RLE");
+      }
+    });
+    String standard = "Timeseries,Storage Group,DataType,Encoding,\n"
+            + "root.vehicle.d0.s0,root.vehicle,INT32,RLE,\n"
+            + "root.vehicle.d0.s1,root.vehicle,INT64,RLE,\n"
+            + "root.vehicle.d0.s2,root.vehicle,FLOAT,RLE,\n";
+    when(fetchMetadataResp.getTimeseriesList()).thenReturn(tslist);
+    boolean res = stmt.execute("show timeseries");
+    assertTrue(res);
+    try (ResultSet resultSet = stmt.getResultSet()) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      int colCount = resultSetMetaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      for (int i = 1; i < colCount + 1; i++) {
+        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
+      }
+      resultStr.append("\n");
+      while (resultSet.next()) {
+        for (int i = 1; i <= colCount; i++) {
+          resultStr.append(resultSet.getString(i)).append(",");
+        }
+        resultStr.append("\n");
+      }
+      Assert.assertEquals(resultStr.toString(), standard);
+    } catch (SQLException e) {
+      System.out.println(e);
+      Assert.fail(e.getMessage());
+    }
   }
 
   @SuppressWarnings({"resource", "serial"})
@@ -114,11 +164,10 @@ public class IoTDBStatementTest {
         + "root.vehicle.d0.s0,root.vehicle,INT32,RLE,\n"
         + "root.vehicle.d0.s1,root.vehicle,INT64,RLE,\n"
         + "root.vehicle.d0.s2,root.vehicle,FLOAT,RLE,\n";
-    when(fetchMetadataResp.getShowTimeseriesList()).thenReturn(tslist);
-    boolean res = stmt.execute("show timeseries root");
-    assertEquals(res, true);
-    try {
-      ResultSet resultSet = stmt.getResultSet();
+    when(fetchMetadataResp.getTimeseriesList()).thenReturn(tslist);
+    boolean res = stmt.execute("show timeseries root.vehicle.d0");
+    assertTrue(res);
+    try (ResultSet resultSet = stmt.getResultSet()) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
@@ -144,12 +193,11 @@ public class IoTDBStatementTest {
     IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
     Set<String> sgSet = new HashSet<>();
     sgSet.add("root.vehicle");
-    when(fetchMetadataResp.getShowStorageGroups()).thenReturn(sgSet);
+    when(fetchMetadataResp.getStorageGroups()).thenReturn(sgSet);
     String standard = "Storage Group,\nroot.vehicle,\n";
     boolean res = stmt.execute("show storage group");
-    assertEquals(res, true);
-    try {
-      ResultSet resultSet = stmt.getResultSet();
+    assertTrue(res);
+    try (ResultSet resultSet = stmt.getResultSet()) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
@@ -166,6 +214,7 @@ public class IoTDBStatementTest {
       Assert.assertEquals(resultStr.toString(), standard);
     } catch (SQLException e) {
       System.out.println(e);
+      Assert.fail(e.getMessage());
     }
   }
 

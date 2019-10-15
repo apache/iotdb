@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -26,11 +26,14 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSDataValue;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
-import org.apache.iotdb.service.rpc.thrift.TS_Status;
-import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
+import org.apache.iotdb.service.rpc.thrift.TSStatusType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -69,13 +72,15 @@ public class UtilsTest {
   @Test
   public void testVerifySuccess() {
     try {
-      Utils.verifySuccess(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
+      TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
+      RpcUtils.verifySuccess(new TSStatus(successStatus));
     } catch (Exception e) {
       fail();
     }
 
     try {
-      Utils.verifySuccess(new TS_Status(TS_StatusCode.ERROR_STATUS));
+      TSStatusType errorStatus = new TSStatusType(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), "");
+      RpcUtils.verifySuccess(new TSStatus(errorStatus));
     } catch (Exception e) {
       return;
     }
@@ -114,23 +119,18 @@ public class UtilsTest {
         } else {
           if (i == 0) {
             value.setBool_val((boolean) item[3 * i + 3]);
-            value.setType(((TSDataType) item[3 * i + 2]).toString());
           } else if (i == 1) {
             value.setInt_val((int) item[3 * i + 3]);
-            value.setType(((TSDataType) item[3 * i + 2]).toString());
           } else if (i == 2) {
             value.setLong_val((long) item[3 * i + 3]);
-            value.setType(((TSDataType) item[3 * i + 2]).toString());
           } else if (i == 3) {
             value.setFloat_val((float) item[3 * i + 3]);
-            value.setType(((TSDataType) item[3 * i + 2]).toString());
           } else if (i == 4) {
             value.setDouble_val((double) item[3 * i + 3]);
-            value.setType(((TSDataType) item[3 * i + 2]).toString());
           } else {
             value.setBinary_val(ByteBuffer.wrap(((String) item[3 * i + 3]).getBytes()));
-            value.setType(((TSDataType) item[3 * i + 2]).toString());
           }
+          value.setType(item[3 * i + 2].toString());
         }
         values.add(value);
       }

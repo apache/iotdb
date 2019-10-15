@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -26,7 +26,6 @@ import java.io.Serializable;
  *
  * @param <L> L type
  * @param <R> R type
- * @author kangrong
  */
 public class Pair<L, R> implements Serializable {
 

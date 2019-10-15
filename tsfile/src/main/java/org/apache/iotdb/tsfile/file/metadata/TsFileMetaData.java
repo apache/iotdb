@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,15 +19,18 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * TSFileMetaData collects all metadata info and saves in its data structure.
@@ -51,6 +54,12 @@ public class TsFileMetaData {
    * [App Version](build [App Build Hash]). e.g. impala version 1.0 (build SHA-1_hash_code)
    */
   private String createdBy;
+
+  // fields below are IoTDB extensions and they does not affect TsFile's stand-alone functionality
+  private int totalChunkNum;
+  // invalid means a chunk has been rewritten by merge and the chunk's data is in
+  // another new chunk
+  private int invalidChunkNum;
 
   public TsFileMetaData() {
     //do nothing
@@ -108,6 +117,8 @@ public class TsFileMetaData {
     if (ReadWriteIOUtils.readIsNull(inputStream)) {
       fileMetaData.createdBy = ReadWriteIOUtils.readString(inputStream);
     }
+    fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(inputStream);
+    fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(inputStream);
 
     return fileMetaData;
   }
@@ -151,6 +162,8 @@ public class TsFileMetaData {
     if (ReadWriteIOUtils.readIsNull(buffer)) {
       fileMetaData.createdBy = ReadWriteIOUtils.readString(buffer);
     }
+    fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
+    fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
 
     return fileMetaData;
   }
@@ -253,6 +266,9 @@ public class TsFileMetaData {
       byteLen += ReadWriteIOUtils.write(createdBy, outputStream);
     }
 
+    byteLen += ReadWriteIOUtils.write(totalChunkNum, outputStream);
+    byteLen += ReadWriteIOUtils.write(invalidChunkNum, outputStream);
+
     return byteLen;
   }
 
@@ -284,7 +300,29 @@ public class TsFileMetaData {
       byteLen += ReadWriteIOUtils.write(createdBy, buffer);
     }
 
+    byteLen += ReadWriteIOUtils.write(totalChunkNum, buffer);
+    byteLen += ReadWriteIOUtils.write(invalidChunkNum, buffer);
+
     return byteLen;
   }
 
+  public int getTotalChunkNum() {
+    return totalChunkNum;
+  }
+
+  public void setTotalChunkNum(int totalChunkNum) {
+    this.totalChunkNum = totalChunkNum;
+  }
+
+  public int getInvalidChunkNum() {
+    return invalidChunkNum;
+  }
+
+  public void setInvalidChunkNum(int invalidChunkNum) {
+    this.invalidChunkNum = invalidChunkNum;
+  }
+
+  public List<MeasurementSchema> getMeasurementSchemaList() {
+    return new ArrayList<MeasurementSchema>(measurementSchema.values());
+  }
 }

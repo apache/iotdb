@@ -35,7 +35,7 @@ matrix:
         - java -version
         - mvn -version
         - mvn -B apache-rat:check
-        - mvn -B clean package -pl iotdb,grafana,iotdb-cli,example,:kafka-example,:rocketmq-example -am integration-test
+        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
     - os: osx
       osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
       name: osx-oraclejdk8
@@ -53,48 +53,73 @@ matrix:
         - java -version
         - mvn -version
         - mvn -B apache-rat:check
-        - mvn -B clean package -pl iotdb,grafana,iotdb-cli,example,:kafka-example,:rocketmq-example -am integration-test
+        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
     - os: osx
       osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
       name: osx-openjdk8
       addons:
         homebrew:
           taps:
-           #- homebrew/cask-versions
-           - AdoptOpenJDK/openjdk
+            #- homebrew/cask-versions
+            - AdoptOpenJDK/openjdk
           update: true
           casks: adoptopenjdk-openjdk8
-#    - os: windows
-#      language: c
-#      name: win-oraclejdk11
-#      install:
-#        - choco install jdk11 -params 'installdir=c:\\java11'
-#        - export PATH=$PATH:"/c/java11/bin"
-#        - export JAVA_HOME="/c/java11"
-#        - wget -q https://www-eu.apache.org/dist/maven/maven-3/3.6.1/binaries/apache-maven-3.6.1-bin.zip
-#        - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.1-bin.zip -o/c/mvn361
-#        - export "MAVEN_HOME=/c/mvn361/apache-maven-3.6.1"
-#        - export "M2_HOME=/c/mvn361/apache-maven-3.6.1"
-#        - export "PATH=$MAVEN_HOME/bin:$PATH"
-#      script:
-#        - java -version
-#        - mvn -version
-#        - mvn -B clean package -pl iotdb,grafana,iotdb-cli,example,:kafka-example,:rocketmq-example -am integration-test
-          
+          #    - os: windows
+          #      language: c
+          #      name: win-oraclejdk11
+          #      install:
+          #        - choco install jdk11 -params 'installdir=c:\\java11'
+          #        - export PATH=$PATH:"/c/java11/bin"
+          #        - export JAVA_HOME="/c/java11"
+          #        - wget -q https://www-eu.apache.org/dist/maven/maven-3/3.6.2/binaries/apache-maven-3.6.2-bin.zip
+          #        - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.2-bin.zip -o/c/mvn362
+          #        - export "MAVEN_HOME=/c/mvn362/apache-maven-3.6.2"
+          #        - export "M2_HOME=/c/mvn362/apache-maven-3.6.2"
+          #        - export "PATH=$MAVEN_HOME/bin:$PATH"
+          #      script:
+          #        - java -version
+          #        - mvn -version
+          #        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
+
     - os: windows
       language: c
       name: win-oraclejdk8
       before_install:
         - choco install jdk8 -params 'installdir=c:\\jdk8'
-        - wget https://www-eu.apache.org/dist/maven/maven-3/3.6.1/binaries/apache-maven-3.6.1-bin.zip
-        - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.1-bin.zip -o/c/mvn361
+        - wget --no-check-certificate https://www-eu.apache.org/dist/maven/maven-3/3.6.2/binaries/apache-maven-3.6.2-bin.zip
+        - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.2-bin.zip -o/c/mvn362
+        - mkdir C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.exe -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.dll -o C:\windows\system32
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.cmd -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.exp -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.lib -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.pdb -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.dll -o C:\windows\system32
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.cmd -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.exp -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.lib -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.pdb -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs_static.lib -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/libwinutils.lib -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/mapred -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/mapred.cmd -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/rcc -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.pdb -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -o C:\hadoop\bin
+
       before_script:
         - export "JAVA_HOME=/c/jdk8"
         - export "PATH=/c/jdk8/bin:$PATH"
         - export "PATH=/c/jdk8/jre/bin:$PATH"
-        - export "MAVEN_HOME=/c/mvn361/apache-maven-3.6.1"
-        - export "M2_HOME=/c/mvn361/apache-maven-3.6.1"
-        - export "PATH=/c/mvn361/apache-maven-3.6.1/bin:$PATH"
+        - export "MAVEN_HOME=/c/mvn362/apache-maven-3.6.2"
+        - export "M2_HOME=/c/mvn362/apache-maven-3.6.2"
+        - export "PATH=/c/mvn362/apache-maven-3.6.2/bin:$PATH"
+        - export "HADOOP_HOME=/c/hadoop"
+        - export "PATH=/c/hadoop/bin:$PATH"
       script:
         - java -version
         - mvn -version
@@ -112,7 +137,7 @@ matrix:
         - export PATH=$JAVA_HOME/bin:$PATH
       script:
         - java -version
-        - mvn -B clean package -pl iotdb,grafana,iotdb-cli,example,:kafka-example,:rocketmq-example -am integration-test
+        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
     - os: linux
       name: linux-openjdk8
       dist: trusty
@@ -129,7 +154,7 @@ matrix:
 #        - java -version
 #        - mvn -version
 #        - mvn -B apache-rat:check
-#        - mvn -B clean package -pl iotdb,grafana,iotdb-cli,example,:kafka-example,:rocketmq-example -am integration-test
+#        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
 
 cache:
   directories:
@@ -150,4 +175,3 @@ script:
   - ./mvnw.sh -B -ntp clean integration-test
 
 after_success:
-

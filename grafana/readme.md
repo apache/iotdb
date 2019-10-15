@@ -21,7 +21,7 @@
 
 # IoTDB-Grafana
 
-* [中文](https://github.com/thulab/iotdb/blob/master/grafana/readme_zh.md)
+* [中文](https://github.com/apache/incubator-iotdb/blob/master/grafana/readme_zh.md)
 
 This project provides a connector which reads data from iotdb and sends to grafana(https://grafana.com/). Before you use this tool, make sure grafana and iotdb are correctly installed and started.
 
@@ -39,7 +39,7 @@ After downloading this plugin, you can use the grafana-cli tool to install Simpl
 
 Alternatively, you can manually download the .zip file and unpack it into your grafana plugins directory.
 
-* `{grafana-install-directory}/data/plugin/` (Windows)
+* `{grafana-install-directory}\data\plugin\` (Windows)
 * `/var/lib/grafana/plugins` (Linux)
 
 ### Start Grafana
@@ -47,17 +47,17 @@ Grafana will auto start after installing, or you can run `sudo service grafana-s
 
 ## IoTDB installation
 
-See https://github.com/thulab/iotdb
+See https://github.com/apache/incubator-iotdb
 
 ## IoTDB-Grafana installation
 
 ```shell
-git clone https://github.com/thulab/iotdb.git
+git clone https://github.com/apache/incubator-iotdb.git
 mvn clean package -pl grafana -am -Dmaven.test.skip=true
 cd grafana
 ```
 
-Copy `application.properties` from `conf/` directory to `target` directory.(Or just make sure that `application.properties` and `iotdb-grafana-{version}-SNAPSHOT.war` are in the same directory.)
+Copy `application.properties` from `conf/` directory to `target` directory.(Or just make sure that `application.properties` and `iotdb-grafana-{version}.war` are in the same directory.)
 
 Edit `application.properties`
 ```
@@ -73,13 +73,13 @@ server.port = 8888
 
 ```shell
 cd grafana/target/
-java -jar iotdb-grafana-{version}-SNAPSHOT.war
+java -jar iotdb-grafana-{version}.war
 ```
 
 If you see the following output, iotdb-grafana connector is successfully activated.
 
 ```shell
-$ java -jar iotdb-grafana-{version}-SNAPSHOT.war
+$ java -jar iotdb-grafana-{version}.war
 
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \

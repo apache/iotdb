@@ -32,19 +32,19 @@ Grafana下载地址：https://grafana.com/grafana/download
 插件下载地址：https://github.com/grafana/simple-json-datasource
 
 下载并解压，将文件放到Grafana的目录中：
-`data/plugin/`（Windows）或`/var/lib/grafana/plugins` (Linux)
+`data\plugin\`（Windows）或`/var/lib/grafana/plugins` (Linux)
 
 # 启动Grafana
 启动 Grafana
 
 # IoTDB安装
-参考：https://github.com/thulab/iotdb
+参考：https://github.com/apache/incubator-iotdb
 
 # 后端数据源连接器安装
 下载源代码
 
 ```shell
-git clone https://github.com/thulab/iotdb.git
+git clone https://github.com/apache/incubator-iotdb.git
 mvn clean package -pl grafana -am -Dmaven.test.skip=true
 cd grafana
 ```
@@ -69,7 +69,7 @@ server.port = 8888
 运行后端数据源连接器，在控制台输入
 
 ```shell
-$ java -jar iotdb-grafana-{version}-SNAPSHOT.war
+$ java -jar iotdb-grafana-{version}.war
 
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \

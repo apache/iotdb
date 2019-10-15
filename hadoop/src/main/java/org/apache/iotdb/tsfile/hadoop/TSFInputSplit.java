@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,57 +18,45 @@
  */
 package org.apache.iotdb.tsfile.hadoop;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Arrays;
-import java.util.List;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.InputSplit;
-import org.apache.iotdb.tsfile.file.metadata.RowGroupMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsRowGroupBlockMetaData;
-import org.apache.iotdb.tsfile.file.utils.ReadWriteThriftFormatUtils;
-import org.apache.iotdb.tsfile.format.RowGroupBlockMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * This is tsfile <code>InputSplit</code>.<br>
  * Each <code>InputSplit</code> will be processed by individual
  * <code>Mapper</code> task.
- *
- * @author liukun
  */
 public class TSFInputSplit extends InputSplit implements Writable {
 
   private Path path;
-  private int numOfDeviceRowGroup;
-  private List<RowGroupMetaData> deviceRowGroupMetaDataList;
-  private long start;
-  private long length;
+
   private String[] hosts;
+
+  private long length;
+
+  private List<ChunkGroupInfo> chunkGroupInfoList;
 
   public TSFInputSplit() {
 
   }
 
-  /**
-   * @param path
-   * @param deviceRowGroupMetaDataList
-   * @param start
-   * @param length
-   * @param hosts
-   */
-  public TSFInputSplit(Path path, List<RowGroupMetaData> deviceRowGroupMetaDataList, long start,
-      long length,
-      String[] hosts) {
+  public TSFInputSplit(Path path, String[] hosts, long length, List<ChunkGroupInfo> chunkGroupInfoList) {
     this.path = path;
-    this.deviceRowGroupMetaDataList = deviceRowGroupMetaDataList;
-    this.numOfDeviceRowGroup = deviceRowGroupMetaDataList.size();
-    this.start = start;
-    this.length = length;
     this.hosts = hosts;
+    this.length = length;
+    this.chunkGroupInfoList = chunkGroupInfoList;
   }
 
   /**
@@ -79,56 +67,10 @@ public class TSFInputSplit extends InputSplit implements Writable {
   }
 
   /**
-   * @param path
-   *            the path to set
+   * @param path the path to set
    */
   public void setPath(Path path) {
     this.path = path;
-  }
-
-  /**
-   * @return the numOfDeviceRowGroup
-   */
-  public int getNumOfDeviceRowGroup() {
-    return numOfDeviceRowGroup;
-  }
-
-  /**
-   * @param numOfDeviceRowGroup
-   *            the numOfDeviceRowGroup to set
-   */
-  public void setNumOfDeviceRowGroup(int numOfDeviceRowGroup) {
-    this.numOfDeviceRowGroup = numOfDeviceRowGroup;
-  }
-
-  /**
-   * @return the deviceRowGroupMetaDataList
-   */
-  public List<RowGroupMetaData> getDeviceRowGroupMetaDataList() {
-    return deviceRowGroupMetaDataList;
-  }
-
-  /**
-   * @param deviceRowGroupMetaDataList
-   *            the deviceRowGroupMetaDataList to set
-   */
-  public void setDeviceRowGroupMetaDataList(List<RowGroupMetaData> deviceRowGroupMetaDataList) {
-    this.deviceRowGroupMetaDataList = deviceRowGroupMetaDataList;
-  }
-
-  /**
-   * @return the start
-   */
-  public long getStart() {
-    return start;
-  }
-
-  /**
-   * @param start
-   *            the start to set
-   */
-  public void setStart(long start) {
-    this.start = start;
   }
 
   @Override
@@ -141,47 +83,203 @@ public class TSFInputSplit extends InputSplit implements Writable {
     return this.hosts;
   }
 
+  public List<ChunkGroupInfo> getChunkGroupInfoList() {
+    return chunkGroupInfoList;
+  }
+
+  public void setChunkGroupInfoList(List<ChunkGroupInfo> chunkGroupInfoList) {
+    this.chunkGroupInfoList = chunkGroupInfoList;
+  }
+
   @Override
   public void write(DataOutput out) throws IOException {
     out.writeUTF(path.toString());
-    out.writeLong(start);
     out.writeLong(length);
     out.writeInt(hosts.length);
-    for (int i = 0; i < hosts.length; i++) {
-      String string = hosts[i];
+    for (String string : hosts) {
       out.writeUTF(string);
     }
-    out.writeInt(numOfDeviceRowGroup);
-    RowGroupBlockMetaData rowGroupBlockMetaData = new TsRowGroupBlockMetaData(
-        deviceRowGroupMetaDataList)
-        .convertToThrift();
-    ReadWriteThriftFormatUtils
-        .writeRowGroupBlockMetadata(rowGroupBlockMetaData, (OutputStream) out);
+    out.writeInt(chunkGroupInfoList.size());
+    ChunkGroupInfo.convertToThrift(chunkGroupInfoList, out);
   }
 
   @Override
   public void readFields(DataInput in) throws IOException {
     path = new Path(in.readUTF());
-    this.start = in.readLong();
-    this.length = in.readLong();
+    length = in.readLong();
     int len = in.readInt();
-    this.hosts = new String[len];
+    hosts = new String[len];
     for (int i = 0; i < len; i++) {
       hosts[i] = in.readUTF();
     }
-    this.numOfDeviceRowGroup = in.readInt();
-    TsRowGroupBlockMetaData tsRowGroupBlockMetaData = new TsRowGroupBlockMetaData();
-    tsRowGroupBlockMetaData
-        .convertToTSF(ReadWriteThriftFormatUtils.readRowGroupBlockMetaData((InputStream) in));
-    deviceRowGroupMetaDataList = tsRowGroupBlockMetaData.getRowGroups();
+    int numOfChunkGroupInfo = in.readInt();
+    chunkGroupInfoList = ChunkGroupInfo.readFromThrift(numOfChunkGroupInfo, in);
   }
 
   @Override
   public String toString() {
-    return "TSFInputSplit [path=" + path + ", numOfDeviceGroup=" + numOfDeviceRowGroup
-        + ", deviceRowGroupMetaDataList=" + deviceRowGroupMetaDataList + ", start=" + start
-        + ", length="
-        + length + ", hosts=" + Arrays.toString(hosts) + "]";
+    return "TSFInputSplit [path=" + path + ", chunkGroupInfoList=" + chunkGroupInfoList
+        + ", length=" + length + ", hosts=" + Arrays.toString(hosts) + "]";
+  }
+
+
+  /**
+   * Used to store the key info in chunkGroupMetadata
+   */
+  public static class ChunkGroupInfo {
+    /**
+     * Name of device.
+     */
+    private String deviceId;
+
+    /**
+     * Name Of all the sensors in the device.
+     */
+    private String[] measurementIds;
+
+    /**
+     * Byte offset of the corresponding data in the file
+     * Notice: include the chunk group marker.
+     */
+    private long startOffset;
+
+    /**
+     * End Byte position of the whole chunk group in the file
+     * Notice: position after the chunk group footer.
+     */
+    private long endOffset;
+
+    public ChunkGroupInfo() {
+    }
+
+
+    public ChunkGroupInfo(String deviceId, String[] measurementIds, long startOffset, long endOffset) {
+      this.deviceId = deviceId;
+      this.measurementIds = measurementIds;
+      this.startOffset = startOffset;
+      this.endOffset = endOffset;
+    }
+
+    public ChunkGroupInfo(ChunkGroupMetaData chunkGroupMetaData) {
+      this.deviceId = chunkGroupMetaData.getDeviceID();
+      this.measurementIds = chunkGroupMetaData.getChunkMetaDataList().stream()
+              .map(ChunkMetaData::getMeasurementUid)
+              .distinct()
+              .toArray(String[]::new);
+
+      this.startOffset = chunkGroupMetaData.getStartOffsetOfChunkGroup();
+      this.endOffset = chunkGroupMetaData.getEndOffsetOfChunkGroup();
+    }
+
+    public String getDeviceId() {
+      return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+      this.deviceId = deviceId;
+    }
+
+    public String[] getMeasurementIds() {
+      return measurementIds;
+    }
+
+    public void setMeasurementIds(String[] measurementIds) {
+      this.measurementIds = measurementIds;
+    }
+
+    public long getStartOffset() {
+      return startOffset;
+    }
+
+    public void setStartOffset(long startOffset) {
+      this.startOffset = startOffset;
+    }
+
+    public long getEndOffset() {
+      return endOffset;
+    }
+
+    public void setEndOffset(long endOffset) {
+      this.endOffset = endOffset;
+    }
+
+    @Override
+    public String toString() {
+      return "ChunkGroupInfo{" +
+              "deviceId='" + deviceId + '\'' +
+              ", measurementIds=" + Arrays.toString(measurementIds) +
+              ", startOffset=" + startOffset +
+              ", endOffset=" + endOffset +
+              '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      ChunkGroupInfo that = (ChunkGroupInfo) o;
+      return startOffset == that.startOffset &&
+              endOffset == that.endOffset &&
+              deviceId.equals(that.deviceId) &&
+              Arrays.equals(measurementIds, that.measurementIds);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = Objects.hash(deviceId, startOffset, endOffset);
+      result = 31 * result + Arrays.hashCode(measurementIds);
+      return result;
+    }
+
+    /**
+     *
+     * @param chunkGroupInfoList List of ChunkGroupInfo need to be written into DataOutput
+     * @param out DataOutput
+     * @throws IOException
+     */
+    static void convertToThrift(List<ChunkGroupInfo> chunkGroupInfoList, DataOutput out) throws IOException {
+      for (ChunkGroupInfo chunkGroupInfo : chunkGroupInfoList) {
+        out.writeInt(chunkGroupInfo.deviceId.getBytes(StandardCharsets.UTF_8).length);
+        out.write(chunkGroupInfo.deviceId.getBytes(StandardCharsets.UTF_8));
+        out.writeInt(chunkGroupInfo.measurementIds.length);
+        for (String measurementId : chunkGroupInfo.measurementIds) {
+          out.writeInt(measurementId.getBytes(StandardCharsets.UTF_8).length);
+          out.write(measurementId.getBytes(StandardCharsets.UTF_8));
+        }
+        out.writeLong(chunkGroupInfo.startOffset);
+        out.writeLong(chunkGroupInfo.endOffset);
+      }
+    }
+
+    /**
+     * Read the specific number of ChunkGroupInfo from DataInput
+     * @param num number of ChunkGroupInfo that need to be read
+     * @param in DataInput
+     * @return The List of ChunkGroupInfo read from DataInput
+     * @throws IOException
+     */
+    static List<ChunkGroupInfo> readFromThrift(int num, DataInput in) throws IOException {
+      List<ChunkGroupInfo> chunkGroupInfoList = new ArrayList<>();
+      for (int i = 0; i < num; i++) {
+        int lenOfDeviceId = in.readInt();
+        byte[] b = new byte[lenOfDeviceId];
+        in.readFully(b);
+        String deviceId = new String(b, StandardCharsets.UTF_8);
+        int numOfMeasurement = in.readInt();
+        String[] measurementIds = new String[numOfMeasurement];
+        for (int j = 0; j < numOfMeasurement; j++) {
+          int lenOfMeasurementId = in.readInt();
+          byte[] c = new byte[lenOfMeasurementId];
+          in.readFully(c);
+          measurementIds[j] = new String(c, StandardCharsets.UTF_8);
+        }
+        long startOffset = in.readLong();
+        long endOffset = in.readLong();
+        chunkGroupInfoList.add(new ChunkGroupInfo(deviceId, measurementIds, startOffset, endOffset));
+      }
+      return chunkGroupInfoList;
+    }
+
   }
 
 }

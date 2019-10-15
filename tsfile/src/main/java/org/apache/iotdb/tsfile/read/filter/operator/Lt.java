@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -41,6 +41,9 @@ public class Lt<T extends Comparable<T>> extends UnaryFilter<T> {
     if (filterType == FilterType.TIME_FILTER) {
       return ((Long) value) > digest.getMinTime();
     } else {
+      if (digest.isMinValueNull()) {
+        return true;
+      }
       return value.compareTo(digest.getMinValue()) > 0;
     }
   }

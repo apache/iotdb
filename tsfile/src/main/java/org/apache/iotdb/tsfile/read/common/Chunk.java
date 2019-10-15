@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -28,11 +28,15 @@ public class Chunk {
 
   private ChunkHeader chunkHeader;
   private ByteBuffer chunkData;
-  private long deletedAt = -1;
+  /**
+   * All data with timestamp <= deletedAt are considered deleted.
+   */
+  private long deletedAt;
 
-  public Chunk(ChunkHeader header, ByteBuffer buffer) {
+  public Chunk(ChunkHeader header, ByteBuffer buffer, long deletedAt) {
     this.chunkHeader = header;
     this.chunkData = buffer;
+    this.deletedAt = deletedAt;
   }
 
   public ChunkHeader getHeader() {

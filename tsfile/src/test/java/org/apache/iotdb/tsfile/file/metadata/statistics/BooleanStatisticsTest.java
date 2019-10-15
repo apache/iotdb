@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,12 +19,11 @@
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-/**
- * @author CGF
- */
 public class BooleanStatisticsTest {
 
   private static final double maxError = 0.0001d;
@@ -33,14 +32,14 @@ public class BooleanStatisticsTest {
   public void testUpdate() {
     Statistics<Boolean> booleanStatistics = new BooleanStatistics();
     booleanStatistics.updateStats(true);
-    assertEquals(false, booleanStatistics.isEmpty());
+    assertFalse(booleanStatistics.isEmpty());
     booleanStatistics.updateStats(false);
-    assertEquals(false, booleanStatistics.isEmpty());
-    assertEquals(true, (boolean) booleanStatistics.getMax());
-    assertEquals(false, (boolean) booleanStatistics.getMin());
-    assertEquals(0, (double) booleanStatistics.getSum(), maxError);
-    assertEquals(true, (boolean) booleanStatistics.getFirst());
-    assertEquals(false, (boolean) booleanStatistics.getLast());
+    assertFalse(booleanStatistics.isEmpty());
+    assertTrue(booleanStatistics.getMax());
+    assertFalse(booleanStatistics.getMin());
+    assertEquals(0, booleanStatistics.getSum(), maxError);
+    assertTrue(booleanStatistics.getFirst());
+    assertFalse(booleanStatistics.getLast());
   }
 
   @Test
@@ -55,18 +54,18 @@ public class BooleanStatisticsTest {
 
     Statistics<Boolean> booleanStats3 = new BooleanStatistics();
     booleanStats3.mergeStatistics(booleanStats1);
-    assertEquals(false, booleanStats3.isEmpty());
-    assertEquals(false, (boolean) booleanStats3.getMax());
-    assertEquals(false, (boolean) booleanStats3.getMin());
-    assertEquals(0, (double) booleanStats3.getSum(), maxError);
-    assertEquals(false, (boolean) booleanStats3.getFirst());
-    assertEquals(false, (boolean) booleanStats3.getLast());
+    assertFalse(booleanStats3.isEmpty());
+    assertFalse(booleanStats3.getMax());
+    assertFalse(booleanStats3.getMin());
+    assertEquals(0,booleanStats3.getSum(), maxError);
+    assertFalse(booleanStats3.getFirst());
+    assertFalse(booleanStats3.getLast());
 
     booleanStats3.mergeStatistics(booleanStats2);
-    assertEquals(true, (boolean) booleanStats3.getMax());
-    assertEquals(false, (boolean) booleanStats3.getMin());
-    assertEquals(0, (double) booleanStats3.getSum(), maxError);
-    assertEquals(false, (boolean) booleanStats3.getFirst());
-    assertEquals(true, (boolean) booleanStats3.getLast());
+    assertTrue(booleanStats3.getMax());
+    assertFalse(booleanStats3.getMin());
+    assertEquals(0, booleanStats3.getSum(), maxError);
+    assertFalse(booleanStats3.getFirst());
+    assertTrue(booleanStats3.getLast());
   }
 }

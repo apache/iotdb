@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -97,22 +97,22 @@ public abstract class TSEncodingBuilder {
    */
   public static class PLAIN extends TSEncodingBuilder {
 
-    private int maxStringLength = TSFileConfig.maxStringLength;
+    private int maxStringLength = TSFileDescriptor.getInstance().getConfig().getMaxStringLength();
 
     @Override
     public Encoder getEncoder(TSDataType type) {
-      return new PlainEncoder(EndianType.LITTLE_ENDIAN, type, maxStringLength);
+      return new PlainEncoder(EndianType.BIG_ENDIAN, type, maxStringLength);
     }
 
     @Override
     public void initFromProps(Map<String, String> props) {
       // set max error from initialized map or default value if not set
       if (props == null || !props.containsKey(Encoder.MAX_STRING_LENGTH)) {
-        maxStringLength = TSFileConfig.maxStringLength;
+        maxStringLength = TSFileDescriptor.getInstance().getConfig().getMaxStringLength();
       } else {
         maxStringLength = Integer.valueOf(props.get(Encoder.MAX_STRING_LENGTH));
         if (maxStringLength < 0) {
-          maxStringLength = TSFileConfig.maxStringLength;
+          maxStringLength = TSFileDescriptor.getInstance().getConfig().getMaxStringLength();
           logger.warn(
               "cannot set max string length to negative value, replaced with default value:{}",
               maxStringLength);
@@ -126,16 +126,16 @@ public abstract class TSEncodingBuilder {
    */
   public static class RLE extends TSEncodingBuilder {
 
-    private int maxPointNumber = TSFileConfig.floatPrecision;
+    private int maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
 
     @Override
     public Encoder getEncoder(TSDataType type) {
       switch (type) {
         case INT32:
         case BOOLEAN:
-          return new IntRleEncoder(EndianType.LITTLE_ENDIAN);
+          return new IntRleEncoder(EndianType.BIG_ENDIAN);
         case INT64:
-          return new LongRleEncoder(EndianType.LITTLE_ENDIAN);
+          return new LongRleEncoder(EndianType.BIG_ENDIAN);
         case FLOAT:
         case DOUBLE:
           return new FloatEncoder(TSEncoding.RLE, type, maxPointNumber);
@@ -152,11 +152,11 @@ public abstract class TSEncodingBuilder {
     public void initFromProps(Map<String, String> props) {
       // set max error from initialized map or default value if not set
       if (props == null || !props.containsKey(Encoder.MAX_POINT_NUMBER)) {
-        maxPointNumber = TSFileConfig.floatPrecision;
+        maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
       } else {
         maxPointNumber = Integer.valueOf(props.get(Encoder.MAX_POINT_NUMBER));
         if (maxPointNumber < 0) {
-          maxPointNumber = TSFileConfig.floatPrecision;
+          maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
           logger
               .warn("cannot set max point number to negative value, replaced with default value:{}",
                   maxPointNumber);
@@ -200,11 +200,11 @@ public abstract class TSEncodingBuilder {
     public void initFromProps(Map<String, String> props) {
       // set max error from initialized map or default value if not set
       if (props == null || !props.containsKey(Encoder.MAX_POINT_NUMBER)) {
-        maxPointNumber = TSFileConfig.floatPrecision;
+        maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
       } else {
         maxPointNumber = Integer.valueOf(props.get(Encoder.MAX_POINT_NUMBER));
         if (maxPointNumber < 0) {
-          maxPointNumber = TSFileConfig.floatPrecision;
+          maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
           logger
               .warn("cannot set max point number to negative value, replaced with default value:{}",
                   maxPointNumber);

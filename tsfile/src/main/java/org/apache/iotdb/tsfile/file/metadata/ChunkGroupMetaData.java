@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,19 +19,23 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Metadata of ChunkGroup.
  */
 public class ChunkGroupMetaData {
+  private static final Logger logger = LoggerFactory.getLogger(ChunkGroupMetaData.class);
 
   /**
    * Name of device, this field is not serialized.
@@ -44,7 +48,7 @@ public class ChunkGroupMetaData {
   private int serializedSize;
 
   /**
-   * Byte offset of the corresponding data in the file Notice: include the chunk group header and marker.
+   * Byte offset of the corresponding data in the file Notice: include the chunk group marker.
    * For Hadoop and Spark.
    */
   private long startOffsetOfChunkGroup;
@@ -71,7 +75,7 @@ public class ChunkGroupMetaData {
    *
    * @param deviceID name of device
    * @param chunkMetaDataList all time series chunks in this chunk group. Can not be Null. notice:
-   * after constructing a ChunkGroupMetadata instance. Donot use list.add() to modify
+   * after constructing a ChunkGroupMetadata instance. Don't use list.add() to modify
    * `chunkMetaDataList`. Instead, use addTimeSeriesChunkMetaData() to make sure getSerializedSize()
    * is correct.
    * @param startOffsetOfChunkGroup the start Byte position in file of this chunk group.
@@ -102,8 +106,9 @@ public class ChunkGroupMetaData {
     chunkGroupMetaData.version = ReadWriteIOUtils.readLong(inputStream);
 
     int size = ReadWriteIOUtils.readInt(inputStream);
-    chunkGroupMetaData.serializedSize = Integer.BYTES + chunkGroupMetaData.deviceID.length()
-        + Integer.BYTES + Long.BYTES + Long.BYTES + Long.BYTES;
+    chunkGroupMetaData.serializedSize = Integer.BYTES
+            + chunkGroupMetaData.deviceID.getBytes(TSFileConfig.STRING_CHARSET).length
+            + Integer.BYTES + Long.BYTES + Long.BYTES + Long.BYTES;
 
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
 
@@ -123,7 +128,7 @@ public class ChunkGroupMetaData {
    * @param buffer ByteBuffer
    * @return ChunkGroupMetaData object
    */
-  public static ChunkGroupMetaData deserializeFrom(ByteBuffer buffer) {
+  public static ChunkGroupMetaData deserializeFrom(ByteBuffer buffer) throws IOException {
     ChunkGroupMetaData chunkGroupMetaData = new ChunkGroupMetaData();
 
     chunkGroupMetaData.deviceID = ReadWriteIOUtils.readString(buffer);
@@ -133,7 +138,7 @@ public class ChunkGroupMetaData {
 
     int size = ReadWriteIOUtils.readInt(buffer);
 
-    chunkGroupMetaData.serializedSize = Integer.BYTES + chunkGroupMetaData.deviceID.length()
+    chunkGroupMetaData.serializedSize = Integer.BYTES + chunkGroupMetaData.deviceID.getBytes(TSFileConfig.STRING_CHARSET).length
         + Integer.BYTES + Long.BYTES + Long.BYTES + Long.BYTES;
 
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
@@ -152,8 +157,8 @@ public class ChunkGroupMetaData {
   }
 
   void reCalculateSerializedSize() {
-    serializedSize = Integer.BYTES + deviceID.length() + Integer.BYTES
-        + Long.BYTES + Long.BYTES + Long.BYTES; // size of chunkMetaDataList
+    serializedSize = Integer.BYTES + deviceID.getBytes(TSFileConfig.STRING_CHARSET).length + Integer.BYTES
+          + Long.BYTES + Long.BYTES + Long.BYTES; // size of chunkMetaDataList
     for (ChunkMetaData chunk : chunkMetaDataList) {
       serializedSize += chunk.getSerializedSize();
     }
@@ -173,7 +178,7 @@ public class ChunkGroupMetaData {
   }
 
   public List<ChunkMetaData> getChunkMetaDataList() {
-    return chunkMetaDataList == null ? null : Collections.unmodifiableList(chunkMetaDataList);
+    return chunkMetaDataList;
   }
 
   @Override

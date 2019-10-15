@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  * This class is a decoder for decoding the byte array that encoded by {@code
  * DeltaBinaryEncoder}.DeltaBinaryDecoder just supports integer and long values.<br>.
  *
- * @author kangrong
  * @see DeltaBinaryEncoder
  */
 public abstract class DeltaBinaryDecoder extends Decoder {
@@ -228,6 +227,7 @@ public abstract class DeltaBinaryDecoder extends Decoder {
 
     @Override
     public long readLong(ByteBuffer buffer) {
+
       return readT(buffer);
     }
 

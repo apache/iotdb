@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -34,8 +34,6 @@ import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 /**
  * ConverterUtils is a utility class. It provide conversion between normal datatype and byte array.
- *
- * @author East
  */
 public class ReadWriteIOUtils {
 
@@ -229,8 +227,8 @@ public class ReadWriteIOUtils {
    */
   public static int write(String s, OutputStream outputStream) throws IOException {
     int len = 0;
-    len += write(s.length(), outputStream);
     byte[] bytes = s.getBytes();
+    len += write(bytes.length, outputStream);
     outputStream.write(bytes);
     len += bytes.length;
     return len;
@@ -243,8 +241,8 @@ public class ReadWriteIOUtils {
    */
   public static int write(String s, ByteBuffer buffer) {
     int len = 0;
-    len += write(s.length(), buffer);
     byte[] bytes = s.getBytes();
+    len += write(bytes.length, buffer);
     buffer.put(bytes);
     len += bytes.length;
     return len;

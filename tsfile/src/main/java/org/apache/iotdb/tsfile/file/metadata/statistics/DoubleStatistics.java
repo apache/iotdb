@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -26,21 +26,19 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Statistics for double type.
- *
- * @author kangrong
  */
 public class DoubleStatistics extends Statistics<Double> {
 
-  private double max;
   private double min;
+  private double max;
   private double first;
-  private double sum;
   private double last;
+  private double sum;
 
   @Override
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    max = BytesUtils.bytesToDouble(maxBytes);
     min = BytesUtils.bytesToDouble(minBytes);
+    max = BytesUtils.bytesToDouble(maxBytes);
   }
 
   @Override
@@ -53,8 +51,20 @@ public class DoubleStatistics extends Statistics<Double> {
     }
   }
 
-  private void updateStats(double minValue, double maxValue, double firstValue, double sumValue,
-      double lastValue) {
+  @Override
+  public void updateStats(double[] values) {
+    for (double value : values) {
+      if (this.isEmpty) {
+        initializeStats(value, value, value, value, value);
+        isEmpty = false;
+      } else {
+        updateStats(value, value, value, value, value);
+      }
+    }
+  }
+
+  private void updateStats(double minValue, double maxValue, double firstValue, double lastValue,
+      double sumValue) {
     if (minValue < min) {
       min = minValue;
     }
@@ -66,13 +76,13 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  public Double getMax() {
-    return max;
+  public Double getMin() {
+    return min;
   }
 
   @Override
-  public Double getMin() {
-    return min;
+  public Double getMax() {
+    return max;
   }
 
   @Override
@@ -81,13 +91,13 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  public double getSum() {
-    return sum;
+  public Double getLast() {
+    return last;
   }
 
   @Override
-  public Double getLast() {
-    return last;
+  public double getSum() {
+    return sum;
   }
 
   @Override
@@ -95,13 +105,11 @@ public class DoubleStatistics extends Statistics<Double> {
     DoubleStatistics doubleStats = (DoubleStatistics) stats;
     if (this.isEmpty) {
       initializeStats(doubleStats.getMin(), doubleStats.getMax(), doubleStats.getFirst(),
-          doubleStats.getSum(),
-          doubleStats.getLast());
+          doubleStats.getLast(), doubleStats.getSum());
       isEmpty = false;
     } else {
       updateStats(doubleStats.getMin(), doubleStats.getMax(), doubleStats.getFirst(),
-          doubleStats.getSum(),
-          doubleStats.getLast());
+          doubleStats.getLast(), doubleStats.getSum());
     }
 
   }
@@ -112,20 +120,15 @@ public class DoubleStatistics extends Statistics<Double> {
    * @param min min value
    * @param max max value
    * @param first the first value
-   * @param sum sum value
    * @param last the last value
+   * @param sum sum value
    */
-  public void initializeStats(double min, double max, double first, double sum, double last) {
+  private void initializeStats(double min, double max, double first, double last, double sum) {
     this.min = min;
     this.max = max;
     this.first = first;
-    this.sum = sum;
     this.last = last;
-  }
-
-  @Override
-  public byte[] getMaxBytes() {
-    return BytesUtils.doubleToBytes(max);
+    this.sum = sum;
   }
 
   @Override
@@ -134,13 +137,13 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  public byte[] getFirstBytes() {
-    return BytesUtils.doubleToBytes(first);
+  public byte[] getMaxBytes() {
+    return BytesUtils.doubleToBytes(max);
   }
 
   @Override
-  public byte[] getSumBytes() {
-    return BytesUtils.doubleToBytes(sum);
+  public byte[] getFirstBytes() {
+    return BytesUtils.doubleToBytes(first);
   }
 
   @Override
@@ -149,8 +152,8 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  public ByteBuffer getMaxBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(max);
+  public byte[] getSumBytes() {
+    return BytesUtils.doubleToBytes(sum);
   }
 
   @Override
@@ -159,18 +162,23 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
+  public ByteBuffer getMaxBytebuffer() {
+    return ReadWriteIOUtils.getByteBuffer(max);
+  }
+
+  @Override
   public ByteBuffer getFirstBytebuffer() {
     return ReadWriteIOUtils.getByteBuffer(first);
   }
 
   @Override
-  public ByteBuffer getSumBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(sum);
+  public ByteBuffer getLastBytebuffer() {
+    return ReadWriteIOUtils.getByteBuffer(last);
   }
 
   @Override
-  public ByteBuffer getLastBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(last);
+  public ByteBuffer getSumBytebuffer() {
+    return ReadWriteIOUtils.getByteBuffer(sum);
   }
 
   @Override
@@ -180,7 +188,7 @@ public class DoubleStatistics extends Statistics<Double> {
 
   @Override
   public String toString() {
-    return "[max:" + max + ",min:" + min + ",first:" + first + ",sum:" + sum + ",last:" + last
+    return "[min:" + min + ",max:" + max + ",first:" + first + ",last:" + last + ",sum:" + sum
         + "]";
   }
 

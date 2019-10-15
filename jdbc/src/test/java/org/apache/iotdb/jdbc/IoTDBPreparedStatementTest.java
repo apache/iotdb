@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -26,14 +26,10 @@ import static org.mockito.Mockito.when;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.ZoneId;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSGetOperationStatusResp;
+
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
-import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
-import org.apache.iotdb.service.rpc.thrift.TS_Status;
-import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -45,7 +41,7 @@ public class IoTDBPreparedStatementTest {
   @Mock
   TSExecuteStatementResp execStatementResp;
   @Mock
-  TSGetOperationStatusResp getOperationStatusResp;
+  TSStatus getOperationStatusResp;
   private ZoneId zoneId = ZoneId.systemDefault();
   @Mock
   private IoTDBConnection connection;
@@ -53,7 +49,8 @@ public class IoTDBPreparedStatementTest {
   private Iface client;
   @Mock
   private TS_SessionHandle sessHandle;
-  private TS_Status Status_SUCCESS = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
+  private TSStatus Status_SUCCESS = new TSStatus(successStatus);
 
   @Mock
   private TSOperationHandle tOperationHandle;
@@ -64,7 +61,6 @@ public class IoTDBPreparedStatementTest {
     when(execStatementResp.getStatus()).thenReturn(Status_SUCCESS);
     when(execStatementResp.getOperationHandle()).thenReturn(tOperationHandle);
 
-    when(getOperationStatusResp.getStatus()).thenReturn(Status_SUCCESS);
     when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
   }
 

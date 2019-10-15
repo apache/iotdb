@@ -21,4 +21,4 @@
 
 # 常见问题
 
-Comming Soon.
+Coming Soon.

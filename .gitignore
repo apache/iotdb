@@ -1,16 +1,9 @@
-iotdb/data/*
-iotdb/derby.log
-iotdb/iotdb/data/*
-iotdb/iotdb/derby.log
-iotdb/*.pid
-iotdb/iotdb/data/*
-iotdb/iotdb/gc.log*
-iotdb/iotdb/logs/*
-iotdb/iotdb/lib/*
-iotdb/unsequence/
-iotdb/testunsequence
+**/*.pid
+**/gc.log*
+**/logs/*
+**/lib/**
+**/data/**
 
-tsfile/src/test/resources/perTestInputData
 # Eclipse IDE files
 **/.classpath
 **/.project
@@ -34,10 +27,8 @@ derby-tsfile-db
 
 # build generated
 **/target/
-**/build/
 
 # intermediately generated locally
-**/logs/
 
 tsfile-timeseries/src/main/resources/logback.out.out.xml
 tsfile-timeseries/src/main/resources/logback.out.xml
@@ -46,11 +37,12 @@ tsfile-timeseries/src/test/resources/data
 src/main/resources/metadata/mlog.txt
 tsfile-jdbc/src/main/resources/output/queryRes.csv
 
+*.txt
+
 *.jar
 *.gz
 *.tar.gz
 *.tar
-/data/
 #src/test/resources/logback.xml
 
 
@@ -73,7 +65,6 @@ grafana/logs/
 
 ### NetBeans ###
 **/nbproject/private/
-**/build/
 **/nbbuild/
 **/dist/
 **/nbdist/
@@ -95,3 +86,4 @@ tsfile/src/test/resources/*.ts
 
 ### Apache release ###
 local-snapshots-dir/
+venv/

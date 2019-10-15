@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -97,6 +97,7 @@ public class BatchData implements Serializable {
     init(type, recordTime, hasEmptyTime);
   }
 
+  // FIXME: this means hasCurrent actually
   public boolean hasNext() {
     return curIdx < timeLength;
   }
