@@ -1039,7 +1039,7 @@ public class StorageGroupProcessor {
           subsequentIndex = i;
           break;
         }
-        if (preCnt != 0 && subsequenceCnt == 0) {
+        if (preCnt != 0) {
           preIndex = i;
         }
       }
