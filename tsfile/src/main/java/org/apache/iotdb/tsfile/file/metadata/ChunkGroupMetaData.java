@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import java.io.UnsupportedEncodingException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,8 +30,6 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Metadata of ChunkGroup.
@@ -49,7 +48,7 @@ public class ChunkGroupMetaData {
   private int serializedSize;
 
   /**
-   * Byte offset of the corresponding data in the file Notice: include the chunk group header and marker.
+   * Byte offset of the corresponding data in the file Notice: include the chunk group marker.
    * For Hadoop and Spark.
    */
   private long startOffsetOfChunkGroup;
