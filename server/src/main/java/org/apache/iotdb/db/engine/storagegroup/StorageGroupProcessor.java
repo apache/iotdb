@@ -1110,7 +1110,7 @@ public class StorageGroupProcessor {
     long currentTsFileTime = Long
         .parseLong(tsfileName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0]);
     long preTime;
-    if (preIndex == 0) {
+    if (preIndex == -1) {
       preTime = 0L;
     } else {
       String preName = sequenceFileList.get(preIndex).getFile().getName();
