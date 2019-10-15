@@ -204,9 +204,8 @@ public class LogicalPlanSmallTest {
     String sqlStr = "delete storage group root.vehicle.d1";
     AstNode astTree;
     try {
-      astTree = ParseGenerator.generateAST(sqlStr); // parse string to ASTTree
+      astTree = ParseGenerator.generateAST(sqlStr);
     } catch (ParseException e) {
-      // e.printStackTrace();
       throw new IllegalASTFormatException(
               "parsing error,statement: " + sqlStr + " .message:" + e.getMessage());
     }
@@ -216,7 +215,6 @@ public class LogicalPlanSmallTest {
     Assert.assertEquals(MetadataOperator.class,operator.getClass());
     Path path = new Path("root.vehicle.d1");
     Assert.assertEquals(path, ((MetadataOperator)operator).getDeletePathList().get(0));
-    // expected to throw LogicalOperatorException: LIMIT <N>: N must be a positive integer and can not be zero.
   }
 
 }
