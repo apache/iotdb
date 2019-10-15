@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
+import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
@@ -211,6 +212,10 @@ public class LogicalPlanSmallTest {
     }
     AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
     RootOperator operator = generator.getLogicalPlan(astNode);
+
+    Assert.assertEquals(MetadataOperator.class,operator.getClass());
+    Path path = new Path("root.vehicle.d1");
+    Assert.assertEquals(path, ((MetadataOperator)operator).getDeletePathList().get(0));
     // expected to throw LogicalOperatorException: LIMIT <N>: N must be a positive integer and can not be zero.
   }
 
