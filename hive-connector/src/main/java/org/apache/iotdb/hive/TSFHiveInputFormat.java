@@ -58,7 +58,7 @@ public class TSFHiveInputFormat extends FileInputFormat<NullWritable, MapWritabl
 
   @Override
   public RecordReader<NullWritable, MapWritable> getRecordReader(InputSplit split, JobConf job, Reporter reporter) throws IOException {
-    return new TSFHiveRecordReader((TSFInputSplit)split, job);
+    return new TSFHiveRecordReader(split, job);
   }
 
   @Override
