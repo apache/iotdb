@@ -237,10 +237,6 @@ K_OF
     : O F
     ;
 
-K_QUIT
-    : Q U I T
-    ;
-
 K_ALTER
     : A L T E R
     ;

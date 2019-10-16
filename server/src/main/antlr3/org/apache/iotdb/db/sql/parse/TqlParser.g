@@ -75,7 +75,6 @@ tokens{
     TOK_ALL;
     TOK_USER;
     TOK_ROLE;
-    TOK_QUIT;
     TOK_PASSWORD;
     TOK_ALTER;
     TOK_ALTER_PSWD;
@@ -292,7 +291,6 @@ ddlStatement
     | dropIndex
     | mergeStatement
     | listStatement
-    | quitStatement
     ;
 
 administrationStatement
@@ -639,11 +637,6 @@ listStatement
     | K_LIST K_ROLE K_PRIVILEGES roleName = ID -> ^(TOK_LIST TOK_PRIVILEGES TOK_ALL ^(TOK_ROLE $roleName))
     | K_LIST K_ALL K_ROLE K_OF K_USER username = ID -> ^(TOK_LIST TOK_ROLE TOK_ALL ^(TOK_USER $username))
     | K_LIST K_ALL K_USER K_OF K_ROLE roleName = ID -> ^(TOK_LIST TOK_USER TOK_ALL ^(TOK_ROLE $roleName))
-    ;
-
-quitStatement
-    : K_QUIT
-    -> ^(TOK_QUIT)
     ;
 
 createUser
