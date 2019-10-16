@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.hadoop;
+package org.apache.iotdb.hadoop.tsfile;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DataInputBuffer;
@@ -32,7 +32,7 @@ import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.*;
 
 /**
- * Test the {@link org.apache.iotdb.tsfile.hadoop.TSFInputSplit}
+ * Test the {@link TSFInputSplit}
  * Assert the readFields function and write function is right
  *
  * @author Yuan Tian
