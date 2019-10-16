@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.fileSystem.fileOutputFactory;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 import org.slf4j.Logger;
@@ -27,14 +28,21 @@ import org.slf4j.LoggerFactory;
 public class HDFSOutputFactory implements FileOutputFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(HDFSOutputFactory.class);
-  private static Class<?> clazz;
+  private static Constructor constructor;
+
+  static {
+    try {
+      Class<?> clazz = Class.forName("org.apache.iotdb.tsfile.fileSystem.HDFSOutput");
+      constructor = clazz.getConstructor(String.class, boolean.class);
+    } catch (ClassNotFoundException | NoSuchMethodException e) {
+      e.printStackTrace();
+    }
+  }
 
   public TsFileOutput getTsFileOutput(String filePath, boolean append) {
     try {
-      clazz = Class.forName("org.apache.iotdb.tsfile.fileSystem.HDFSOutput");
-      return (TsFileOutput) clazz.getConstructor(String.class, boolean.class)
-          .newInstance(filePath, !append);
-    } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+      return (TsFileOutput) constructor.newInstance(filePath, !append);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(
           "Failed to get TsFile output of file: {}. Please check your dependency of Hadoop module.",
           filePath, e);

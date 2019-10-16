@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.fileSystem.fileInputFactory;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.slf4j.Logger;
@@ -27,13 +28,21 @@ import org.slf4j.LoggerFactory;
 public class HDFSInputFactory implements FileInputFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(HDFSInputFactory.class);
-  private static Class<?> clazz;
+  private static Constructor constructor;
+
+  static {
+    try {
+      Class<?> clazz = Class.forName("org.apache.iotdb.tsfile.fileSystem.HDFSInput");
+      constructor = clazz.getConstructor(String.class);
+    } catch (ClassNotFoundException | NoSuchMethodException e) {
+      e.printStackTrace();
+    }
+  }
 
   public TsFileInput getTsFileInput(String filePath) {
     try {
-      clazz = Class.forName("org.apache.iotdb.tsfile.fileSystem.HDFSInput");
-      return (TsFileInput) clazz.getConstructor(String.class).newInstance(filePath);
-    } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+      return (TsFileInput) constructor.newInstance(filePath);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(
           "Failed to get TsFile input of file: {}. Please check your dependency of Hadoop module.",
           filePath, e);
