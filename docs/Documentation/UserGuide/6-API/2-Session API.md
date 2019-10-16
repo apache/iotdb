@@ -20,7 +20,7 @@
 -->
 
 # Chapter6: API
-
+# Session API
 ## Usage
 
 ### Dependencies

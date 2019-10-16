@@ -20,6 +20,7 @@
 -->
 
 # Chapter6: API
+# JDBC API
 
 ## Usage
 

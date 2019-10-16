@@ -19,7 +19,9 @@
 
 -->
 # Chapter6: API
-# introduction
+
+# Python API
+# Introduction
 This is an example of how to connect to IoTDB with python, using the thrift rpc interfaces. Things will be a bit different
 on Linux or Windows, we will introduce how to operate on the two systems separately.
 

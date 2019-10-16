@@ -47,14 +47,12 @@
 * 4-Data Management
 # Chapter 6: API
 * 1-JDBC API
-* 3-Session API
+* 2-Session API
 * 3-Python API
-# Chapter 7:
-# Chapter 8: TsFile
-* 1-Installation
-* 2-Usage
-* 3-Hierarchy
-# Chapter 9: System Tools
+* 4-Get TsFile library
+# Chapter 7: System Design
+* 1-Hierarchy
+# Chapter 8: System Tools
 * 1-Sync Tool
 * 2-Memory Estimation Tool
 * 3-JMX Tool
