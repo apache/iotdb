@@ -45,7 +45,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * @author Yuan Tian
  */
-public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
+public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> implements IReaderSet {
 
   private static final Logger logger = LoggerFactory.getLogger(TSFRecordReader.class);
 
@@ -66,7 +66,6 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
   private long timestamp = 0;
   private boolean isReadDeviceId = false;
   private boolean isReadTime = false;
-  private int arraySize = 0;
   private TsFileSequenceReader reader;
   private List<String> measurementIds;
 
@@ -75,12 +74,21 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
   public void initialize(InputSplit split, TaskAttemptContext context)
       throws IOException {
     if (split instanceof TSFInputSplit) {
-      TSFInputSplit tsfInputSplit = (TSFInputSplit) split;
-      org.apache.hadoop.fs.Path path = tsfInputSplit.getPath();
-      List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList = tsfInputSplit.getChunkGroupInfoList();
-      Configuration configuration = context.getConfiguration();
-      reader = new TsFileSequenceReader(new HDFSInput(path, configuration));
+      initialize((TSFInputSplit) split, context.getConfiguration(), this, dataSetList, deviceIdList);
+    }
+    else {
+      logger.error("The InputSplit class is not {}, the class is {}", TSFInputSplit.class.getName(),
+              split.getClass().getName());
+      throw new InternalError(String.format("The InputSplit class is not %s, the class is %s",
+              TSFInputSplit.class.getName(), split.getClass().getName()));
+    }
+  }
 
+  public static void initialize(TSFInputSplit split, Configuration configuration, IReaderSet readerSet, List<QueryDataSet> dataSetList, List<String> deviceIdList) throws IOException  {
+      org.apache.hadoop.fs.Path path = split.getPath();
+      List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList = split.getChunkGroupInfoList();
+      TsFileSequenceReader reader = new TsFileSequenceReader(new HDFSInput(path, configuration));
+      readerSet.setReader(reader);
       // Get the read columns and filter information
 
       List<String> deviceIds = TSFInputFormat.getReadDeviceIds(configuration);
@@ -91,20 +99,14 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
       if (measurementIds == null) {
         measurementIds = initSensorIdList(chunkGroupInfoList);
       }
-      this.measurementIds = measurementIds;
+      readerSet.setMeasurementIds(measurementIds);
       logger.info("deviceIds:" + deviceIds);
       logger.info("Sensors:" + measurementIds);
 
 
-      isReadDeviceId = TSFInputFormat.getReadDeviceId(configuration);
-      isReadTime = TSFInputFormat.getReadTime(configuration);
-      if (isReadDeviceId) {
-        arraySize++;
-      }
-      if (isReadTime) {
-        arraySize++;
-      }
-      arraySize += measurementIds.size();
+      readerSet.setReadDeviceId(TSFInputFormat.getReadDeviceId(configuration));
+      readerSet.setReadTime(TSFInputFormat.getReadTime(configuration));
+
       ReadOnlyTsFile queryEngine = new ReadOnlyTsFile(reader);
       for (TSFInputSplit.ChunkGroupInfo chunkGroupInfo : chunkGroupInfoList) {
         String deviceId = chunkGroupInfo.getDeviceId();
@@ -119,23 +121,16 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
           deviceIdList.add(deviceId);
         }
       }
-
-    } else {
-      logger.error("The InputSplit class is not {}, the class is {}", TSFInputSplit.class.getName(),
-          split.getClass().getName());
-      throw new InternalError(String.format("The InputSplit class is not %s, the class is %s",
-          TSFInputSplit.class.getName(), split.getClass().getName()));
-    }
   }
 
-  private List<String> initDeviceIdList(List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList) {
+  private static List<String> initDeviceIdList(List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList) {
     return chunkGroupInfoList.stream()
             .map(TSFInputSplit.ChunkGroupInfo::getDeviceId)
             .distinct()
             .collect(toList());
   }
 
-  private List<String> initSensorIdList(List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList) {
+  private static List<String> initSensorIdList(List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList) {
     return chunkGroupInfoList.stream()
             .flatMap(chunkGroupMetaData -> Arrays.stream(chunkGroupMetaData.getMeasurementIds()))
             .distinct()
@@ -164,7 +159,14 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
   }
 
   @Override
-  public MapWritable getCurrentValue() throws IOException, InterruptedException {
+  public MapWritable getCurrentValue() throws InterruptedException {
+    return getCurrentValue(deviceIdList, currentIndex, timestamp, isReadTime, isReadDeviceId, fields, measurementIds);
+  }
+
+  public static MapWritable getCurrentValue(List<String> deviceIdList, int currentIndex,
+                                            long timestamp, boolean isReadTime,
+                                            boolean isReadDeviceId, List<Field> fields,
+                                            List<String> measurementIds)  throws InterruptedException {
     MapWritable mapWritable = new MapWritable();
     Text deviceIdText = new Text(deviceIdList.get(currentIndex));
     LongWritable time = new LongWritable(timestamp);
@@ -176,7 +178,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
       mapWritable.put(new Text("device_id"), deviceIdText);
     }
 
-    readFieldsValue(mapWritable);
+    readFieldsValue(mapWritable, fields, measurementIds);
 
     return mapWritable;
   }
@@ -186,7 +188,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
    * @param mapWritable where to write
    * @throws InterruptedException
    */
-  private void readFieldsValue(MapWritable mapWritable) throws InterruptedException {
+  public static void readFieldsValue(MapWritable mapWritable, List<Field> fields, List<String> measurementIds) throws InterruptedException {
     int index = 0;
     for (Field field : fields) {
       if (field.isNull()) {
@@ -232,5 +234,25 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> {
     dataSetList = null;
     deviceIdList = null;
     reader.close();
+  }
+
+  @Override
+  public void setReader(TsFileSequenceReader reader) {
+    this.reader = reader;
+  }
+
+  @Override
+  public void setMeasurementIds(List<String> measurementIds) {
+    this.measurementIds = measurementIds;
+  }
+
+  @Override
+  public void setReadDeviceId(boolean isReadDeviceId) {
+    this.isReadDeviceId = isReadDeviceId;
+  }
+
+  @Override
+  public void setReadTime(boolean isReadTime) {
+    this.isReadTime = isReadTime;
   }
 }
