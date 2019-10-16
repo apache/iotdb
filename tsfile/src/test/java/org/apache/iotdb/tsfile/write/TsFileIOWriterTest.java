@@ -85,6 +85,7 @@ public class TsFileIOWriterTest {
     Assert.assertEquals(TSFileConfig.MAGIC_STRING, reader.readTailMagic());
 
     // chunk header
+    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length);
     Assert.assertEquals(MetaMarker.CHUNK_HEADER, reader.readMarker());
     ChunkHeader header = reader.readChunkHeader();
     Assert.assertEquals(TimeSeriesMetadataTest.measurementUID, header.getMeasurementID());

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -61,6 +62,7 @@ public class TsFileSequenceReaderTest {
   @Test
   public void testReadTsFileSequently() throws IOException {
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
+    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length);
     TsFileMetaData metaData = reader.readFileMetadata();
     List<Pair<Long, Long>> offsetList = new ArrayList<>();
     long startOffset = reader.position();

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -70,8 +70,8 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the file to get the
-   * file metadata size.Then the reader will skip the first TSFileConfig.MAGIC_STRING.length() +
-   * TSFileConfig.NUMBER_VERSION.length() bytes of the file for preparing reading real data.
+   * file metadata size.Then the reader will skip the first TSFileConfig.MAGIC_STRING.getBytes().length +
+   * TSFileConfig.NUMBER_VERSION.getBytes().length bytes of the file for preparing reading real data.
    *
    * @param file the data file
    * @throws IOException If some I/O error occurs
@@ -110,8 +110,8 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the file to get the
-   * file metadata size.Then the reader will skip the first TSFileConfig.MAGIC_STRING.length() +
-   * TSFileConfig.NUMBER_VERSION.length() bytes of the file for preparing reading real data.
+   * file metadata size.Then the reader will skip the first TSFileConfig.MAGIC_STRING.getBytes().length +
+   * TSFileConfig.NUMBER_VERSION.getBytes().length bytes of the file for preparing reading real data.
    *
    * @param input given input
    */
@@ -156,14 +156,12 @@ public class TsFileSequenceReader implements AutoCloseable {
   public void loadMetadataSize() throws IOException {
     ByteBuffer metadataSize = ByteBuffer.allocate(Integer.BYTES);
     tsFileInput.read(metadataSize,
-        tsFileInput.size() - TSFileConfig.MAGIC_STRING.length() - Integer.BYTES);
+        tsFileInput.size() - TSFileConfig.MAGIC_STRING.getBytes().length - Integer.BYTES);
     metadataSize.flip();
     // read file metadata size and position
     fileMetadataSize = ReadWriteIOUtils.readInt(metadataSize);
     fileMetadataPos =
-        tsFileInput.size() - TSFileConfig.MAGIC_STRING.length() - Integer.BYTES - fileMetadataSize;
-    // skip the magic header and version number
-    tsFileInput.position(TSFileConfig.MAGIC_STRING.length() + TSFileConfig.VERSION_NUMBER.length());
+        tsFileInput.size() - TSFileConfig.MAGIC_STRING.getBytes().length - Integer.BYTES - fileMetadataSize;
   }
 
   public long getFileMetadataPos() {
@@ -180,8 +178,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   public String readTailMagic() throws IOException {
     long totalSize = tsFileInput.size();
 
-    ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.length());
-    tsFileInput.read(magicStringBytes, totalSize - TSFileConfig.MAGIC_STRING.length());
+    ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.getBytes().length);
+    tsFileInput.read(magicStringBytes, totalSize - TSFileConfig.MAGIC_STRING.getBytes().length);
     magicStringBytes.flip();
     return new String(magicStringBytes.array());
   }
@@ -190,7 +188,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * whether the file is a complete TsFile: only if the head magic and tail magic string exists.
    */
   public boolean isComplete() throws IOException {
-    return tsFileInput.size() >= TSFileConfig.MAGIC_STRING.length() * 2 + TSFileConfig.VERSION_NUMBER.length() &&
+    return tsFileInput.size() >= TSFileConfig.MAGIC_STRING.getBytes().length * 2 + TSFileConfig.VERSION_NUMBER.getBytes().length &&
         readTailMagic().equals(readHeadMagic());
   }
 
@@ -208,7 +206,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * to the end of the magic head string.
    */
   public String readHeadMagic(boolean movePosition) throws IOException {
-    ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.length());
+    ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.getBytes().length);
     if (movePosition) {
       tsFileInput.position(0);
       tsFileInput.read(magicStringBytes);
@@ -223,8 +221,8 @@ public class TsFileSequenceReader implements AutoCloseable {
    * this function reads version number and checks compatibility of TsFile.
    */
   public String readVersionNumber() throws IOException, NotCompatibleException {
-    ByteBuffer versionNumberBytes = ByteBuffer.allocate(TSFileConfig.VERSION_NUMBER.length());
-    tsFileInput.read(versionNumberBytes, TSFileConfig.MAGIC_STRING.length());
+    ByteBuffer versionNumberBytes = ByteBuffer.allocate(TSFileConfig.VERSION_NUMBER.getBytes().length);
+    tsFileInput.read(versionNumberBytes, TSFileConfig.MAGIC_STRING.getBytes().length);
     versionNumberBytes.flip();
     String versionNumberString = new String(versionNumberBytes.array());
     if(!versionNumberString.equals(TSFileConfig.VERSION_NUMBER)) {
@@ -256,7 +254,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       return data.get();
     } else {
       //no real data
-      return TSFileConfig.MAGIC_STRING.length() + TSFileConfig.VERSION_NUMBER.length();
+      return TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length;
     }
   }
 
@@ -540,16 +538,16 @@ public class TsFileSequenceReader implements AutoCloseable {
     long endOffsetOfChunkGroup;
     long versionOfChunkGroup = 0;
 
-    if (fileSize < TSFileConfig.MAGIC_STRING.length() + TSFileConfig.VERSION_NUMBER.length()) {
+    if (fileSize < TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
     String magic = readHeadMagic(true);
-    tsFileInput.position(TSFileConfig.MAGIC_STRING.length() + TSFileConfig.VERSION_NUMBER.length());
+    tsFileInput.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length);
     if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
 
-    if (fileSize == TSFileConfig.MAGIC_STRING.length() + TSFileConfig.VERSION_NUMBER.length()) {
+    if (fileSize == TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length) {
       return TsFileCheckStatus.ONLY_MAGIC_HEAD;
     } else if (readTailMagic().equals(magic)) {
       loadMetadataSize();
