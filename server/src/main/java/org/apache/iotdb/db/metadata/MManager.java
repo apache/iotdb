@@ -23,6 +23,7 @@ import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -51,7 +52,6 @@ import org.slf4j.LoggerFactory;
 public class MManager {
 
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
-  private static final String PATH_SEPARATOR = ".";
   private static final String DOUB_SEPARATOR = "\\.";
   private static final String ROOT_NAME = MetadataConstant.ROOT;
   private static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
@@ -1281,7 +1281,7 @@ public class MManager {
       throw new PathErrorException(String.format("Timeseries %s is not right.", fullPath));
     }
     for (int i = 1; i < level; i++) {
-      storageGroupName +=  PATH_SEPARATOR + nodeNames[i];
+      storageGroupName +=  IoTDBConstant.PATH_SEPARATOR + nodeNames[i];
     }
     return storageGroupName;
   }

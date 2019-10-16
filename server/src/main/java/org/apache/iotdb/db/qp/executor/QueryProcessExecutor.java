@@ -32,6 +32,7 @@ import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.*;
@@ -174,7 +175,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     String deviceId = path.getDevice();
     String measurementId = path.getMeasurement();
     try {
-      String fullPath = deviceId + "." + measurementId;
+      String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
       if (!mManager.pathExist(fullPath)) {
         throw new ProcessorException(String.format("Time series %s does not exist.", fullPath));
       }
@@ -753,7 +754,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
   private void addPathToMTree(String deviceId, String measurementId, Object value)
       throws PathErrorException, MetadataErrorException, StorageEngineException {
-    String fullPath = deviceId + "." + measurementId;
+    String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
     TSDataType predictedDataType = TypeInferenceUtils.getPredictedDataType(value);
     TSEncoding defaultEncoding = getDefaultEncoding(predictedDataType);
     CompressionType defaultCompressor =
