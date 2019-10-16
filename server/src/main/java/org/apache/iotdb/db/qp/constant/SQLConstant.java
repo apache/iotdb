@@ -92,6 +92,8 @@ public class SQLConstant {
   public static final int TOK_PROPERTY_LINK = 57;
   public static final int TOK_PROPERTY_UNLINK = 58;
   public static final int TOK_LIST = 59;
+  public static final int TOK_DURATION = 60;
+  public static final int TOK_DATE_EXPR = 61;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();

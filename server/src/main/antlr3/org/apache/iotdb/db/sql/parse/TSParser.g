@@ -82,6 +82,9 @@ TOK_FLOAT_COMB;
 TOK_GRANT_WATERMARK_EMBEDDING;
 TOK_REVOKE_WATERMARK_EMBEDDING;
 
+TOK_DATE_EXPR;
+TOK_DURATION;
+
 /*
   BELOW IS THE METADATA TOKEN
 */
@@ -367,13 +370,22 @@ execStatement
 
 
 dateFormat
-    : datetime=DATETIME -> ^(TOK_DATETIME $datetime)
+    : duration=Duration -> ^(TOK_DURATION $duration)
+    | datetime=DATETIME -> ^(TOK_DATETIME $datetime)
     | func=Identifier LPAREN RPAREN -> ^(TOK_DATETIME $func)
     ;
 
 dateFormatWithNumber
     : dateFormat -> dateFormat
     | integer -> integer
+    ;
+
+dateExpression
+    : dateExpr=dateSubExpression -> ^(TOK_DATE_EXPR $dateExpr)
+    ;
+
+dateSubExpression
+    : dateFormatWithNumber ((PLUS^ | MINUS^) dateFormatWithNumber)*
     ;
 
 
@@ -772,8 +784,8 @@ whereClause
 
 groupbyClause
     :
-    KW_GROUP KW_BY LPAREN value=integer unit=Identifier (COMMA timeOrigin=dateFormatWithNumber)? COMMA timeInterval (COMMA timeInterval)* RPAREN
-    -> ^(TOK_GROUPBY ^(TOK_TIMEUNIT $value $unit) ^(TOK_TIMEORIGIN $timeOrigin)? ^(TOK_TIMEINTERVAL timeInterval+))
+    KW_GROUP KW_BY LPAREN Duration (COMMA timeOrigin=dateFormatWithNumber)? COMMA timeInterval (COMMA timeInterval)* RPAREN
+    -> ^(TOK_GROUPBY ^(TOK_TIMEUNIT Duration) ^(TOK_TIMEORIGIN $timeOrigin)? ^(TOK_TIMEINTERVAL timeInterval+))
     ;
 
 fillClause
@@ -812,14 +824,12 @@ typeClause
 
 interTypeClause
     :
-    KW_LINEAR (COMMA value1=integer unit1=Identifier COMMA value2=integer unit2=Identifier)?
-    -> ^(TOK_LINEAR (^(TOK_TIMEUNIT $value1 $unit1) ^(TOK_TIMEUNIT $value2 $unit2))?)
+    KW_LINEAR (COMMA Duration COMMA Duration)?
+    -> ^(TOK_LINEAR (^(TOK_TIMEUNIT Duration) ^(TOK_TIMEUNIT Duration))?)
     |
-    KW_PREVIOUS (COMMA value1=integer unit1=Identifier)?
-    -> ^(TOK_PREVIOUS ^(TOK_TIMEUNIT $value1 $unit1)?)
+    KW_PREVIOUS (COMMA Duration)?
+    -> ^(TOK_PREVIOUS ^(TOK_TIMEUNIT Duration)?)
     ;
-
-
 
 timeInterval
     :
@@ -876,7 +886,6 @@ nullCondition
     | KW_NOT KW_NULL -> ^(TOK_ISNOTNULL)
     ;
 
-
 atomExpressionWithNumberPath
     :
     (KW_NULL) => KW_NULL -> TOK_NULL
@@ -901,5 +910,5 @@ atomExpression
 constant
     : number
     | StringLiteral
-    | dateFormat
+    | dateExpression
     ;

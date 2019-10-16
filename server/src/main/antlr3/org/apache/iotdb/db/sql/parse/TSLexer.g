@@ -25,7 +25,6 @@ package org.apache.iotdb.db.sql.parse;
 }
 
 
-
 KW_PRIVILEGES : 'PRIVILEGES';
 KW_TIMESERIES : 'TIMESERIES';
 KW_TIME : 'TIME';
@@ -218,4 +217,9 @@ Identifier
 WS
     :
     (' '|'\r'|'\t'|'\n') { $channel=HIDDEN; }
+    ;
+
+Duration
+    :
+    (Digit+ ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS'))+
     ;

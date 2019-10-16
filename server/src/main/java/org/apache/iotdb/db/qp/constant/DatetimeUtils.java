@@ -475,6 +475,66 @@ public class DatetimeUtils {
     return getInstantWithPrecision(str, timestampPrecision);
   }
 
+  /**
+   * convert duration string to millisecond, microsecond or nanosecond.
+   */
+  public static long convertDurationStrToLong(long value, String unit, String timestampPrecision) {
+
+    long res = value;
+    switch (unit) {
+      case "y":
+        res *= 365 * 86400_000;
+        break;
+      case "mo":
+        res *= 30 * 86400_000;
+        break;
+      case "w":
+        res *= 7 * 86400_000;
+        break;
+      case "d":
+        res *= 86400_000;
+        break;
+      case "h":
+        res *= 3600_000;
+        break;
+      case "m":
+        res *= 60_000;
+        break;
+      case "s":
+        res *= 1_000;
+        break;
+      default:
+        break;
+    }
+
+    if (timestampPrecision.equals("us")) {
+      if (unit.equals("ns")) {
+        return value / 1000;
+      } else if (unit.equals("us")) {
+        return value;
+      } else {
+        return res * 1000;
+      }
+    } else if (timestampPrecision.equals("ns")) {
+      if (unit.equals("ns")) {
+        return value;
+      } else if (unit.equals("us")) {
+        return value * 1000;
+      } else {
+        return res * 1000_000;
+      }
+    } else {
+      if (unit.equals("ns")) {
+        return value / 1000_0000;
+      } else if (unit.equals("us")) {
+        return value / 1000;
+      } else {
+        return res;
+      }
+    }
+
+  }
+
   public static ZoneOffset toZoneOffset(ZoneId zoneId) {
     return zoneId.getRules().getOffset(Instant.now());
   }

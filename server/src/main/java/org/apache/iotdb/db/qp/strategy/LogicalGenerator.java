@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.antlr.runtime.Token;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ArgsErrorException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
@@ -807,24 +808,9 @@ public class LogicalGenerator {
   }
 
   private long parseTimeUnit(AstNode node) throws LogicalOperatorException {
-    long timeInterval = Long.parseLong(node.getChild(0).getText());
+    long timeInterval = parseTokenDuration(node);
     if (timeInterval <= 0) {
       throw new LogicalOperatorException("Interval must more than 0.");
-    }
-    String granu = node.getChild(1).getText();
-    switch (granu) {
-      case "w":
-        timeInterval *= 7;
-      case "d":
-        timeInterval *= 24;
-      case "h":
-        timeInterval *= 60;
-      case "m":
-        timeInterval *= 60;
-      case "s":
-        timeInterval *= 1000;
-      default:
-        break;
     }
     return timeInterval;
   }
@@ -848,17 +834,59 @@ public class LogicalGenerator {
       if (!seriesPath.equals(SQLConstant.RESERVED_TIME)) {
         throw new LogicalOperatorException("Date can only be used to time");
       }
-      seriesValue = parseTokenTime(rightKey);
+      seriesValue = parseTokenTime(rightKey) + "";
     } else if (rightKey.getType() == TSParser.TOK_FLOAT_COMB) {
       seriesValue = parseTokens(rightKey);
+    } else if (rightKey.getType() == TSParser.TOK_DATE_EXPR) {
+      seriesValue = parseTokenDataExpresssion(rightKey.getChild(0)) + "";
     } else {
       seriesValue = rightKey.getText();
     }
     return new Pair<>(seriesPath, seriesValue);
   }
 
-  private String parseTokenTime(AstNode astNode) throws LogicalOperatorException {
-    return parseTimeFormat(parseTokens(astNode)) + "";
+  private Long parseTokenDataExpresssion(AstNode astNode) throws LogicalOperatorException {
+    if (astNode.getType() == TSParser.PLUS) {
+      return parseTokenDataExpresssion(astNode.getChild(0)) + parseTokenDataExpresssion(
+          astNode.getChild(1));
+    } else if (astNode.getType() == TSParser.MINUS) {
+      return parseTokenDataExpresssion(astNode.getChild(0)) - parseTokenDataExpresssion(
+          astNode.getChild(1));
+    } else {
+      return parseTokenTime(astNode);
+    }
+  }
+
+  private Long parseTokenTime(AstNode astNode) throws LogicalOperatorException {
+    if (astNode.getType() == TSParser.TOK_DURATION) {
+      return parseTokenDuration(astNode);
+    }
+    return parseTimeFormat(parseTokens(astNode));
+  }
+
+  private Long parseTokenDuration(AstNode astNode) throws LogicalOperatorException {
+    String durationStr = parseTokens(astNode);
+    String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+
+    long total = 0;
+    long tmp = 0;
+    for (int i = 0; i < durationStr.length(); i++) {
+      char ch = durationStr.charAt(i);
+      if (Character.isDigit(ch)) {
+        tmp *= 10;
+        tmp += (ch - '0');
+      } else {
+        String unit = durationStr.charAt(i) + "";
+        if (i + 1 < durationStr.length() && !Character.isDigit(durationStr.charAt(i + 1))) {
+          i++;
+          unit += durationStr.charAt(i);
+        }
+        total += DatetimeUtils
+            .convertDurationStrToLong(tmp, unit.toLowerCase(), timestampPrecision);
+        tmp = 0;
+      }
+    }
+    return total;
   }
 
   private String parseTokens(AstNode astNode) throws LogicalOperatorException {
