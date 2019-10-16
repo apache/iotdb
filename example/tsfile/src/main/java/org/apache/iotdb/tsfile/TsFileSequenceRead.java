@@ -44,7 +44,7 @@ import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 public class TsFileSequenceRead {
 
   public static void main(String[] args) throws IOException {
-    String filename = "test.tsfile";
+    String filename = "/Users/tianyu/2019秋季学期/incubator-iotdb/data/data/sequence/root.group_8/1571213405617-101.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
@@ -54,7 +54,7 @@ public class TsFileSequenceRead {
     System.out.println("file magic tail: " + reader.readTailMagic());
     System.out.println("Level 1 metadata position: " + reader.getFileMetadataPos());
     System.out.println("Level 1 metadata size: " + reader.getFileMetadataSize());
-    TsFileMetaData metaData = reader.readFileMetadata();
+//    TsFileMetaData metaData = reader.readFileMetadata();
     // Sequential reading of one ChunkGroup now follows this order:
     // first SeriesChunks (headers and data) in one ChunkGroup, then the CHUNK_GROUP_FOOTER
     // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the marker) ahead and
@@ -106,23 +106,23 @@ public class TsFileSequenceRead {
       }
     }
     System.out.println("[Metadata]");
-    List<TsDeviceMetadataIndex> deviceMetadataIndexList = metaData.getDeviceMap().values().stream()
-        .sorted((x, y) -> (int) (x.getOffset() - y.getOffset())).collect(Collectors.toList());
-    for (TsDeviceMetadataIndex index : deviceMetadataIndexList) {
-      TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
-      List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
-      for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
-        System.out.println(String
-            .format("\t[Device]File Offset: %d, Device %s, Number of Chunk Groups %d",
-                index.getOffset(), chunkGroupMetaData.getDeviceID(),
-                chunkGroupMetaDataList.size()));
-
-        for (ChunkMetaData chunkMetadata : chunkGroupMetaData.getChunkMetaDataList()) {
-          System.out.println("\t\tMeasurement:" + chunkMetadata.getMeasurementUid());
-          System.out.println("\t\tFile offset:" + chunkMetadata.getOffsetOfChunkHeader());
-        }
-      }
-    }
+//    List<TsDeviceMetadataIndex> deviceMetadataIndexList = metaData.getDeviceMap().values().stream()
+//        .sorted((x, y) -> (int) (x.getOffset() - y.getOffset())).collect(Collectors.toList());
+//    for (TsDeviceMetadataIndex index : deviceMetadataIndexList) {
+//      TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
+//      List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
+//      for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
+//        System.out.println(String
+//            .format("\t[Device]File Offset: %d, Device %s, Number of Chunk Groups %d",
+//                index.getOffset(), chunkGroupMetaData.getDeviceID(),
+//                chunkGroupMetaDataList.size()));
+//
+//        for (ChunkMetaData chunkMetadata : chunkGroupMetaData.getChunkMetaDataList()) {
+//          System.out.println("\t\tMeasurement:" + chunkMetadata.getMeasurementUid());
+//          System.out.println("\t\tFile offset:" + chunkMetadata.getOffsetOfChunkHeader());
+//        }
+//      }
+//    }
     reader.close();
   }
 }

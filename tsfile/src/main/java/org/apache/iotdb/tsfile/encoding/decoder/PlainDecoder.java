@@ -22,6 +22,7 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -59,26 +60,31 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public int readInt(ByteBuffer buffer) {
+//    buffer.order(ByteOrder.LITTLE_ENDIAN);
     return buffer.getInt();
   }
 
   @Override
   public long readLong(ByteBuffer buffer) {
+//    buffer.order(ByteOrder.LITTLE_ENDIAN);
     return buffer.getLong();
   }
 
   @Override
   public float readFloat(ByteBuffer buffer) {
+//    buffer.order(ByteOrder.LITTLE_ENDIAN);
     return buffer.getFloat();
   }
 
   @Override
   public double readDouble(ByteBuffer buffer) {
+//    buffer.order(ByteOrder.LITTLE_ENDIAN);
     return buffer.getDouble();
   }
 
   @Override
   public Binary readBinary(ByteBuffer buffer) {
+//    buffer.order(ByteOrder.LITTLE_ENDIAN);
     int length = readInt(buffer);
     byte[] buf = new byte[length];
     buffer.get(buf, 0, buf.length);
