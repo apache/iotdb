@@ -35,7 +35,10 @@ public class HDFSInputFactory implements FileInputFactory {
       Class<?> clazz = Class.forName("org.apache.iotdb.tsfile.fileSystem.HDFSInput");
       constructor = clazz.getConstructor(String.class);
     } catch (ClassNotFoundException | NoSuchMethodException e) {
-      e.printStackTrace();
+      logger.error(
+          "Failed to get HDFSInput in Hadoop file system. Please check your dependency of Hadoop module.",
+          e);
+      throw new RuntimeException();
     }
   }
 
