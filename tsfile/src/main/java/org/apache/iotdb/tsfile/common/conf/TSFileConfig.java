@@ -51,7 +51,7 @@ public class TSFileConfig {
   public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
   public static final String CONFIG_FILE_NAME = "tsfile-format.properties";
   public static final String MAGIC_STRING = "TsFile";
-  public static final String VERSION_NUMBER = "000000";
+  public static final String VERSION_NUMBER = "000001";
 
   /**
    * The default grow size of class BatchData.
