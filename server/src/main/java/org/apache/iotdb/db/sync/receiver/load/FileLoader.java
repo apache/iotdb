@@ -222,7 +222,7 @@ public class FileLoader implements IFileLoader {
     @Override
     public String toString() {
       return "LoadTask{" +
-          "file=" + file +
+          "file=" + file.getAbsolutePath() +
           ", type=" + type +
           '}';
     }

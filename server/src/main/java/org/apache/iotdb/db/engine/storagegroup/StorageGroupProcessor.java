@@ -1017,7 +1017,7 @@ public class StorageGroupProcessor {
         if (i == sequenceFileList.size() - 1 && sequenceFileList.get(i).getEndTimeMap().isEmpty()) {
           continue;
         }
-        int preCnt = 0, subsequenceCnt = 0;
+        boolean hasPre = false, hasSubsequence = false;
         for (String device : newTsFileResource.getStartTimeMap().keySet()) {
           if (sequenceFileList.get(i).getStartTimeMap().containsKey(device)) {
             long startTime1 = sequenceFileList.get(i).getStartTimeMap().get(device);
@@ -1025,24 +1025,24 @@ public class StorageGroupProcessor {
             long startTime2 = newTsFileResource.getStartTimeMap().get(device);
             long endTime2 = newTsFileResource.getEndTimeMap().get(device);
             if (startTime1 > endTime2) {
-              subsequenceCnt++;
+              hasSubsequence = true;
             } else if (startTime2 > endTime1) {
-              preCnt++;
+              hasPre = true;
             } else {
               isOverlap = true;
               break outer;
             }
           }
         }
-        if (preCnt != 0 && subsequenceCnt != 0) {
+        if (hasPre && hasSubsequence) {
           isOverlap = true;
           break;
         }
-        if (preCnt == 0 && subsequenceCnt != 0) {
+        if (!hasPre && hasSubsequence) {
           subsequentIndex = i;
           break;
         }
-        if (preCnt != 0) {
+        if (hasPre) {
           preIndex = i;
         }
       }
