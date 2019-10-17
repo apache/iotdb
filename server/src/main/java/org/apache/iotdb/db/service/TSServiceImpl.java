@@ -30,6 +30,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -758,15 +759,34 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       List<String> measurementColumns = ((QueryPlan) plan).getMeasurementColumnList();
       respColumns.add(SQLConstant.GROUPBY_DEVICE_COLUMN_NAME);
       respColumns.addAll(measurementColumns);
-      resp.setColumns(respColumns);
+      resp.setColumns(respColumns); // note this is without deduplication
 
-      List<String> columnsType = new ArrayList<>();
-      columnsType.add(TSDataType.TEXT.toString());
       Map<String, TSDataType> checker = ((QueryPlan) plan).getDataTypeConsistencyChecker();
+      List<String> columnsTypeStr = new ArrayList<>();
+      columnsTypeStr.add(TSDataType.TEXT.toString()); // the DEVICE column of GROUP_BY_DEVICE result
+      List<TSDataType> deduplicatedcolumnsType = new ArrayList<>();
+      deduplicatedcolumnsType.add(TSDataType.TEXT); // the DEVICE column of GROUP_BY_DEVICE result
+      List<String> deduplicatedMeasurementColumns = new ArrayList<>();
+      Set<String> tmpColumnSet = new HashSet<>();
       for (String column : measurementColumns) {
-        columnsType.add(checker.get(column).toString());
+        TSDataType dataType = checker.get(column);
+        columnsTypeStr.add(dataType.toString());
+
+        if (!tmpColumnSet.contains(column)) {
+          // Note that the deduplication strategy must be consistent with that of IoTDBQueryResultSet.
+          tmpColumnSet.add(column);
+          deduplicatedMeasurementColumns.add(column);
+          deduplicatedcolumnsType.add(dataType);
+        }
       }
-      resp.setDataTypeList(columnsType);
+
+      resp.setDataTypeList(columnsTypeStr); // note this is without deduplication
+
+      ((QueryPlan) plan).setMeasurementColumnList(deduplicatedMeasurementColumns);
+      ((QueryPlan) plan).setDataTypes(deduplicatedcolumnsType);
+      // To avoid confusion, set null since they are useless henceforth.
+      ((QueryPlan) plan).setPaths(null);
+      ((QueryPlan) plan).setDataTypeConsistencyChecker(null);
 
     } else {
       // Restore column header of aggregate to func(column_name), only

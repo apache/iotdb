@@ -41,10 +41,6 @@ public abstract class QueryDataSet {
     this.paths = paths;
   }
 
-  public QueryDataSet() {
-
-  }
-
   /**
    * This method is used for batch query.
    */

@@ -20,7 +20,6 @@ package org.apache.iotdb.db.query.dataset;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -76,24 +75,17 @@ public class DeviceIterateDataSet extends QueryDataSet {
 
   public DeviceIterateDataSet(QueryPlan queryPlan, QueryContext context,
       IEngineQueryRouter queryRouter) {
+    super(null, queryPlan.getDataTypes());
+
+    // get deduplicated measurement columns (already deduplicated in TSServiceImpl.executeDataQuery)
+    this.deduplicatedMeasurementColumns = queryPlan.getMeasurementColumnList();
+
     this.queryRouter = queryRouter;
     this.context = context;
     this.measurementColumnsGroupByDevice = queryPlan.getMeasurementColumnsGroupByDevice();
 
-    // get deduplicated measurement columns
-    // Note that the deduplication strategy must be consistent with that of IoTDBQueryResultSet.
-    List<String> measurementColumns = queryPlan.getMeasurementColumnList();
-    deduplicatedMeasurementColumns = new ArrayList<>();
-    Set<String> tmpColumnSet = new HashSet<>();
-    for (String column : measurementColumns) {
-      if (!tmpColumnSet.contains(column)) {
-        tmpColumnSet.add(column);
-        deduplicatedMeasurementColumns.add(column);
-      }
-    }
-
     if (queryPlan instanceof GroupByPlan) {
-      dataSetType = DataSetType.GROUPBY;
+      this.dataSetType = DataSetType.GROUPBY;
       // assign parameters
       this.expression = queryPlan.getExpression();
       this.unit = ((GroupByPlan) queryPlan).getUnit();
@@ -101,17 +93,17 @@ public class DeviceIterateDataSet extends QueryDataSet {
       this.intervals = ((GroupByPlan) queryPlan).getIntervals();
 
     } else if (queryPlan instanceof AggregationPlan) {
-      dataSetType = DataSetType.AGGREGATE;
+      this.dataSetType = DataSetType.AGGREGATE;
       // assign parameters
       this.expression = queryPlan.getExpression();
 
     } else if (queryPlan instanceof FillQueryPlan) {
-      dataSetType = DataSetType.FILL;
+      this.dataSetType = DataSetType.FILL;
       // assign parameters
       this.queryTime = ((FillQueryPlan) queryPlan).getQueryTime();
       this.fillType = ((FillQueryPlan) queryPlan).getFillType();
     } else {
-      dataSetType = DataSetType.QUERY;
+      this.dataSetType = DataSetType.QUERY;
       // assign parameters
       this.expression = queryPlan.getExpression();
     }

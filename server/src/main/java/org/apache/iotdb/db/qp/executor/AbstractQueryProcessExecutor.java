@@ -72,7 +72,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       return new DeviceIterateDataSet(queryPlan, context, queryRouter);
     }
 
-    // deduplicate executed paths
+    // deduplicate executed paths and aggregations if exist
     List<Path> deduplicatedPaths = new ArrayList<>();
 
     if (queryPlan instanceof GroupByPlan) {

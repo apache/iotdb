@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 public class QueryPlan extends PhysicalPlan {
 
   private List<Path> paths = null;
+  private List<TSDataType> dataTypes = null;
   private IExpression expression = null;
 
   private boolean isGroupByDevice = false; // for group by device sql
@@ -74,6 +75,14 @@ public class QueryPlan extends PhysicalPlan {
 
   public void setPaths(List<Path> paths) {
     this.paths = paths;
+  }
+
+  public List<TSDataType> getDataTypes() {
+    return dataTypes;
+  }
+
+  public void setDataTypes(List<TSDataType> dataTypes) {
+    this.dataTypes = dataTypes;
   }
 
   public boolean isGroupByDevice() {
