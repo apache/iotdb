@@ -33,6 +33,7 @@
 * 1-Deployment
 * 2-Configuration
 * 3-Build and use IoTDB by Dockerfile
+* 4-TsFile library Intallation
 # Chapter 4: Operation Manual
 * 1-Cli Shell Tool
 * 2-Data Model Selection
@@ -40,6 +41,8 @@
 * 4-Data Query
 * 5-Data Maintenance
 * 6-Priviledge Management
+* 7-IoTDB Query Language
+* 8-TsFile Usage
 # Chapter 5: Management
 * 1-System Monitor
 * 2-Performance Monitor
@@ -49,7 +52,6 @@
 * 1-JDBC API
 * 2-Session API
 * 3-Python API
-* 4-Get TsFile library
 # Chapter 7: System Design
 * 1-Hierarchy
 # Chapter 8: System Tools

@@ -21,7 +21,7 @@
 
 # 第4章 IoTDB操作指南
 
-## Sample Data
+## 样例数据
 
 我们为您提供一份简化的[样例数据](https://github.com/apache/incubator-iotdb/blob/master/docs/Documentation/OtherMaterial-Sample%20Data.txt)。
 

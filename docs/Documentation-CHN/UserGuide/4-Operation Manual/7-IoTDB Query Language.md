@@ -21,7 +21,7 @@
 
 # 第4章 IoTDB操作指南
 
-## IoTDB查询语句
+## IoTDB查询语言
 
 
 ### Schema语句

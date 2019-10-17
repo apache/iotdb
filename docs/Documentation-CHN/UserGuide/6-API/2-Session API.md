@@ -19,9 +19,9 @@
 
 -->
 
-# 第7章: Session API
+# 第6章: API
 
-# 使用方式
+# Session API
 
 ## 依赖
 

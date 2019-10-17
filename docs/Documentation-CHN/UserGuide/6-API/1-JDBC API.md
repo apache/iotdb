@@ -19,7 +19,7 @@
 
 -->
 
-# 第6章: JDBC API
+# 第6章: API
 
 ## JDBC API
 Coming soon.
