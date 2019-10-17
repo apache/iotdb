@@ -19,8 +19,11 @@
 package org.apache.iotdb.session;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
@@ -43,13 +46,24 @@ public class SessionDataSet {
   private TSIService.Iface client = null;
   private TSOperationHandle operationHandle;
   private int batchSize = 512;
+  private List<String> columnTypeDeduplicatedList; // deduplicated according to columnName
 
-  public SessionDataSet(String sql, long queryId, TSIService.Iface client,
-      TSOperationHandle operationHandle) {
+  public SessionDataSet(String sql, List<String> columnName, List<String> columnTypeList,
+      long queryId, TSIService.Iface client, TSOperationHandle operationHandle) {
     this.sql = sql;
     this.queryId = queryId;
     this.client = client;
     this.operationHandle = operationHandle;
+
+    Set<String> columnSet = new HashSet<>(); // for deduplication
+    this.columnTypeDeduplicatedList = new ArrayList<>();
+    for (int i = 0; i < columnName.size(); i++) {
+      String name = columnName.get(i);
+      if (!columnSet.contains(name)) {
+        columnSet.add(name);
+        columnTypeDeduplicatedList.add(columnTypeList.get(i));
+      }
+    }
   }
 
   public int getBatchSize() {
@@ -88,7 +102,8 @@ public class SessionDataSet {
           return false;
         } else {
           TSQueryDataSet tsQueryDataSet = resp.getQueryDataSet();
-          List<RowRecord> records = SessionUtils.convertRowRecords(tsQueryDataSet);
+          List<RowRecord> records = SessionUtils
+              .convertRowRecords(tsQueryDataSet, columnTypeDeduplicatedList);
           recordItr = records.iterator();
         }
       } catch (TException e) {

@@ -72,9 +72,10 @@ public class IoTDBQueryResultSet implements ResultSet {
   private boolean isClosed = false;
   private TSIService.Iface client = null;
   private TSOperationHandle operationHandle = null;
-  private List<String> columnInfoList;
-  private List<String> columnTypeList;
-  private Map<String, Integer> columnInfoMap;
+  private List<String> columnInfoList; // no deduplication
+  private List<String> columnTypeList; // no deduplication
+  private Map<String, Integer> columnInfoMap; // used because the server returns deduplicated columns
+  private List<String> columnTypeDeduplicatedList; // deduplicated in accordance with columnNames
   private RowRecord record;
   private Iterator<RowRecord> recordItr;
   private int rowsFetched = 0;
@@ -116,19 +117,22 @@ public class IoTDBQueryResultSet implements ResultSet {
     this.maxRows = statement.getMaxRows();
     this.fetchSize = statement.getFetchSize();
 
+    this.columnTypeList = columnTypeList;
     this.columnInfoList = new ArrayList<>();
     this.columnInfoList.add(TIMESTAMP_STR);
     this.columnInfoMap = new HashMap<>();
     this.columnInfoMap.put(TIMESTAMP_STR, 1);
+    this.columnTypeDeduplicatedList = new ArrayList<>();
     int index = 2;
-    for (String name : columnName) {
+    for (int i = 0; i < columnName.size(); i++) {
+      String name = columnName.get(i);
       columnInfoList.add(name);
       if (!columnInfoMap.containsKey(name)) {
         columnInfoMap.put(name, index++);
+        columnTypeDeduplicatedList.add(columnTypeList.get(i));
       }
     }
 
-    this.columnTypeList = columnTypeList;
     this.ignoreTimeStamp = ignoreTimeStamp;
     this.client = client;
     this.operationHandle = operationHandle;
@@ -716,7 +720,8 @@ public class IoTDBQueryResultSet implements ResultSet {
           emptyResultSet = true;
         } else {
           TSQueryDataSet tsQueryDataSet = resp.getQueryDataSet();
-          List<RowRecord> records = Utils.convertRowRecords(tsQueryDataSet);
+          List<RowRecord> records = Utils
+              .convertRowRecords(tsQueryDataSet, columnTypeDeduplicatedList);
           recordItr = records.iterator();
         }
       } catch (TException e) {

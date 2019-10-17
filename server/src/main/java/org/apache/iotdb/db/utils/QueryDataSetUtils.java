@@ -18,14 +18,13 @@
  */
 package org.apache.iotdb.db.utils;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
-import org.apache.iotdb.service.rpc.thrift.TSDataValue;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -39,7 +38,8 @@ import org.apache.iotdb.tsfile.utils.BytesUtils;
  */
 public class QueryDataSetUtils {
 
-  private QueryDataSetUtils(){}
+  private QueryDataSetUtils() {
+  }
 
   /**
    * convert query data set by fetch size.
@@ -55,66 +55,86 @@ public class QueryDataSetUtils {
 
   public static TSQueryDataSet convertQueryDataSetByFetchSize(QueryDataSet queryDataSet,
       int fetchSize, WatermarkEncoder watermarkEncoder) throws IOException {
+    List<TSDataType> dataTypes = queryDataSet.getDataTypes();
+    int columnNum = dataTypes.size();
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
-    tsQueryDataSet.setRecords(new ArrayList<>());
+    int columnNumWithTime = columnNum + 1;
+    DataOutputStream[] dataOutputStreams = new DataOutputStream[columnNumWithTime];
+    ByteArrayOutputStream[] byteArrayOutputStreams = new ByteArrayOutputStream[columnNumWithTime];
+    for (int i = 0; i < columnNumWithTime; i++) {
+      byteArrayOutputStreams[i] = new ByteArrayOutputStream();
+      dataOutputStreams[i] = new DataOutputStream(byteArrayOutputStreams[i]);
+    }
+
+    int rowCount = 0;
+    int valueOccupation = 0;
     for (int i = 0; i < fetchSize; i++) {
       if (queryDataSet.hasNext()) {
+        rowCount++;
         RowRecord rowRecord = queryDataSet.next();
         if (watermarkEncoder != null) {
           rowRecord = watermarkEncoder.encodeRecord(rowRecord);
         }
-        tsQueryDataSet.getRecords().add(convertToTSRecord(rowRecord));
+        // use columnOutput to write byte array
+        dataOutputStreams[0].writeLong(rowRecord.getTimestamp());
+        List<Field> fields = rowRecord.getFields();
+        for (int k = 0; k < fields.size(); k++) {
+          Field field = fields.get(k);
+          DataOutputStream dataOutputStream = dataOutputStreams[k + 1]; // DO NOT FORGET +1
+          if (field.getDataType() == null) {
+            dataOutputStream.writeBoolean(true); // is_empty true
+          } else {
+            dataOutputStream.writeBoolean(false); // is_empty false
+            TSDataType type = field.getDataType();
+            switch (type) {
+              case INT32:
+                dataOutputStream.writeInt(field.getIntV());
+                valueOccupation += 4;
+                break;
+              case INT64:
+                dataOutputStream.writeLong(field.getLongV());
+                valueOccupation += 8;
+                break;
+              case FLOAT:
+                dataOutputStream.writeFloat(field.getFloatV());
+                valueOccupation += 4;
+                break;
+              case DOUBLE:
+                dataOutputStream.writeDouble(field.getDoubleV());
+                valueOccupation += 8;
+                break;
+              case BOOLEAN:
+                dataOutputStream.writeBoolean(field.getBoolV());
+                valueOccupation += 1;
+                break;
+              case TEXT:
+                dataOutputStream.writeInt(field.getBinaryV().getLength());
+                dataOutputStream.write(field.getBinaryV().getValues());
+                valueOccupation = valueOccupation + 4 + field.getBinaryV().getLength();
+                break;
+              default:
+                throw new UnSupportedDataTypeException(
+                    String.format("Data type %s is not supported.", type));
+            }
+          }
+        }
       } else {
         break;
       }
     }
-    return tsQueryDataSet;
-  }
 
-  /**
-   * convert to tsRecord.
-   *
-   * @param rowRecord -row record
-   */
-  private static TSRowRecord convertToTSRecord(RowRecord rowRecord) {
-    TSRowRecord tsRowRecord = new TSRowRecord();
-    tsRowRecord.setTimestamp(rowRecord.getTimestamp());
-    tsRowRecord.setValues(new ArrayList<>());
-    List<Field> fields = rowRecord.getFields();
-    for (Field f : fields) {
-      TSDataValue value = new TSDataValue(false);
-      if (f.getDataType() == null) {
-        value.setIs_empty(true);
-      } else {
-        switch (f.getDataType()) {
-          case BOOLEAN:
-            value.setBool_val(f.getBoolV());
-            break;
-          case INT32:
-            value.setInt_val(f.getIntV());
-            break;
-          case INT64:
-            value.setLong_val(f.getLongV());
-            break;
-          case FLOAT:
-            value.setFloat_val(f.getFloatV());
-            break;
-          case DOUBLE:
-            value.setDouble_val(f.getDoubleV());
-            break;
-          case TEXT:
-            value.setBinary_val(ByteBuffer.wrap(f.getBinaryV().getValues()));
-            break;
-          default:
-            throw new UnSupportedDataTypeException(String.format(
-                "data type %s is not supported when convert data at server",
-                f.getDataType().toString()));
-        }
-        value.setType(f.getDataType().toString());
-      }
-      tsRowRecord.getValues().add(value);
+    // calculate total valueOccupation
+    valueOccupation += rowCount * 8; // note the timestamp column needn't the boolean is_empty
+    valueOccupation += rowCount * dataTypes.size(); // for all is_empty
+
+    ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation);
+    for (ByteArrayOutputStream byteArrayOutputStream : byteArrayOutputStreams) {
+      valueBuffer.put(byteArrayOutputStream.toByteArray());
     }
-    return tsRowRecord;
+    valueBuffer.flip(); // PAY ATTENTION TO HERE
+    tsQueryDataSet.setValues(valueBuffer);
+    tsQueryDataSet.setRowCount(rowCount);
+    return tsQueryDataSet;
   }
 
 
