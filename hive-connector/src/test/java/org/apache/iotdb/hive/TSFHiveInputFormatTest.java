@@ -26,6 +26,7 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.iotdb.tsfile.hadoop.TSFInputSplit;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -47,13 +48,15 @@ public class TSFHiveInputFormatTest {
   private long startOffset;
   private long endOffset;
   private String[] measurementIds;
+  private String filePath = "test.tsfile";
 
   @Before
   public void setUp() throws IOException {
+    TsFileTestHelper.writeTsFile(filePath);
     inputFormat = new TSFHiveInputFormat();
     job = new JobConf();
-    job.set(FileInputFormat.INPUT_DIR, "src/test/resources");
-    Path path = new Path("src/test/resources/test.tsfile");
+    job.set(FileInputFormat.INPUT_DIR, filePath);
+    Path path = new Path(filePath);
     String[] hosts = {"127.0.0.1"};
     List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList = new ArrayList<>();
     deviceId = "device_1";
@@ -68,6 +71,11 @@ public class TSFHiveInputFormatTest {
     chunkGroupInfoList.add(chunkGroupInfo);
     inputSplit = new TSFInputSplit(path, hosts, length, chunkGroupInfoList);
 
+  }
+
+  @After
+  public void tearDown() {
+    TsFileTestHelper.deleteTsFile(filePath);
   }
 
   @Test

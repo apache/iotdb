@@ -25,6 +25,7 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.iotdb.tsfile.hadoop.TSFInputSplit;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -38,11 +39,14 @@ public class TSFHiveRecordReaderTest {
 
   private TSFHiveRecordReader tsfHiveRecordReader;
   private String deviceId;
+  private String filePath = "test.tsfile";
+
 
   @Before
   public void setUp() throws IOException {
+    TsFileTestHelper.writeTsFile(filePath);
     JobConf job = new JobConf();
-    Path path = new Path("src/test/resources/test.tsfile");
+    Path path = new Path(filePath);
     String[] hosts = {"127.0.0.1"};
     List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList = new ArrayList<>();
     deviceId = "device_1";
@@ -58,6 +62,11 @@ public class TSFHiveRecordReaderTest {
     TSFInputSplit inputSplit = new TSFInputSplit(path, hosts, length, chunkGroupInfoList);
 
     tsfHiveRecordReader = new TSFHiveRecordReader(inputSplit, job);
+  }
+
+  @After
+  public void tearDown() {
+    TsFileTestHelper.deleteTsFile(filePath);
   }
 
   @Test
