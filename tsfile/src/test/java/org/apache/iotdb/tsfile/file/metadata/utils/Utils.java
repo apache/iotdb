@@ -198,7 +198,6 @@ public class Utils {
         }
       }
 
-      assertEquals(metadata1.getCurrentVersion(), metadata2.getCurrentVersion());
       assertEquals(metadata1.getCreatedBy(), metadata2.getCreatedBy());
     }
   }
