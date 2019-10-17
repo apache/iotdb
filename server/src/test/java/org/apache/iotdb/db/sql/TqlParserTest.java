@@ -1543,22 +1543,6 @@ public class TqlParserTest {
     }
   }
 
-  @Test
-  public void quit() throws ParseException {
-    // template for test case
-    ArrayList<String> ans = new ArrayList<>(Collections.singletonList("TOK_QUIT"));
-    ArrayList<String> rec = new ArrayList<>();
-    AstNode astTree = ParseGenerator.generateAST("quit");
-    astTree = ParseUtils.findRootNonNullToken(astTree);
-    recursivePrintSon(astTree, rec);
-
-    int i = 0;
-    while (i <= rec.size() - 1) {
-      assertEquals(ans.get(i), rec.get(i));
-      i++;
-    }
-  }
-
   // Property Tree Operation
   @Test
   public void createProp() throws ParseException {
