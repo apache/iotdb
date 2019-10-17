@@ -27,7 +27,6 @@ import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
-import org.apache.iotdb.tsfile.read.expression.util.ExpressionPrinter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.junit.After;
@@ -67,7 +66,7 @@ public class IExpressionOptimizerTest {
           new GlobalTimeExpression(TimeFilter.gt(200L)));
 
     } catch (QueryFilterOptimizationException e) {
-      e.printStackTrace();
+      Assert.fail();
     }
 
   }
@@ -96,12 +95,11 @@ public class IExpressionOptimizerTest {
       IExpression expression = BinaryExpression
           .and(BinaryExpression.or(singleSeriesExp1, singleSeriesExp2),
               singleSeriesExp3);
-      Assert.assertEquals(true,
-          expression.toString()
-              .equals(expressionOptimizer.optimize(expression, selectedSeries).toString()));
+      Assert.assertEquals(expression.toString(),
+          expressionOptimizer.optimize(expression, selectedSeries).toString());
 
     } catch (QueryFilterOptimizationException e) {
-      e.printStackTrace();
+      Assert.fail();
     }
   }
 
@@ -123,7 +121,7 @@ public class IExpressionOptimizerTest {
     try {
       String rightRet = "[[d2.s1:((value > 100 || value < 50) && time < 14001234)] || [d1.s2:((value > 100.5 || value < 50.6) && time < 14001234)]]";
       IExpression regularFilter = expressionOptimizer.optimize(expression, selectedSeries);
-      Assert.assertEquals(true, rightRet.equals(regularFilter.toString()));
+      Assert.assertEquals(rightRet, regularFilter.toString());
     } catch (QueryFilterOptimizationException e) {
       Assert.fail();
     }
@@ -147,7 +145,7 @@ public class IExpressionOptimizerTest {
     try {
       String rightRet = "[[[[[d1.s1:time > 1] || [d2.s1:time > 1]] || [d1.s2:time > 1]] || [d2.s2:time > 1]] || [d2.s1:((value > 100 || value < 50) && time < 14001234)]]";
       IExpression regularFilter = expressionOptimizer.optimize(expression, selectedSeries);
-      Assert.assertEquals(true, rightRet.equals(regularFilter.toString()));
+      Assert.assertEquals(rightRet, regularFilter.toString());
     } catch (QueryFilterOptimizationException e) {
       Assert.fail();
     }
@@ -167,7 +165,7 @@ public class IExpressionOptimizerTest {
     try {
       String rightRet = "[d2.s1:((value > 100 || value < 50) && time < 14001234)]";
       IExpression regularFilter = expressionOptimizer.optimize(expression, selectedSeries);
-      Assert.assertEquals(true, rightRet.equals(regularFilter.toString()));
+      Assert.assertEquals(rightRet, regularFilter.toString());
     } catch (QueryFilterOptimizationException e) {
       Assert.fail();
     }
@@ -194,7 +192,7 @@ public class IExpressionOptimizerTest {
           "[[[[[d1.s1:time < 14001234] || [d2.s1:time < 14001234]] || [d1.s2:time < 14001234]] "
               + "|| [d2.s2:time < 14001234]] || [[d2.s1:(value > 100 || value < 50)] || [d1.s2:(value > 100.5 || value < 50.6)]]]";
       IExpression regularFilter = expressionOptimizer.optimize(expression, selectedSeries);
-      Assert.assertEquals(true, rightRet.equals(regularFilter.toString()));
+      Assert.assertEquals(rightRet, regularFilter.toString());
     } catch (QueryFilterOptimizationException e) {
       Assert.fail();
     }
@@ -222,7 +220,7 @@ public class IExpressionOptimizerTest {
               + "&& time > 14001000)]] || [d1.s2:(time < 14001234 && time > 14001000)]] || [d2.s2:(time < 14001234 "
               + "&& time > 14001000)]] || [[d2.s1:(value > 100 || value < 50)] || [d1.s2:(value > 100.5 || value < 50.6)]]]";
       IExpression regularFilter = expressionOptimizer.optimize(expression, selectedSeries);
-      Assert.assertEquals(true, rightRet.equals(regularFilter.toString()));
+      Assert.assertEquals(rightRet, regularFilter.toString());
     } catch (QueryFilterOptimizationException e) {
       Assert.fail();
     }
@@ -236,7 +234,7 @@ public class IExpressionOptimizerTest {
           "[[d2.s1:((value > 100 || value < 50) && (time < 14001234 && time > 14001000))] || "
               + "[d1.s2:((value > 100.5 || value < 50.6) && (time < 14001234 && time > 14001000))]]";
       IExpression regularFilter2 = expressionOptimizer.optimize(expression2, selectedSeries);
-      Assert.assertEquals(true, rightRet2.equals(regularFilter2.toString()));
+      Assert.assertEquals(rightRet2, regularFilter2.toString());
     } catch (QueryFilterOptimizationException e) {
       Assert.fail();
     }
