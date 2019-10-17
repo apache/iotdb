@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -24,8 +24,6 @@ import java.util.List;
 /**
  * this class is used to contact String effectively.It contains a StringBuider and initialize it
  * until {@code toString} is called. Note:it's not thread safety
- *
- * @author kangrong
  */
 public class StringContainer {
 

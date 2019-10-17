@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -28,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -36,6 +36,7 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageEngineFailureException;
+import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -78,7 +79,7 @@ public class StorageEngine implements IService {
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
     // create systemDir
     try {
-      FileUtils.forceMkdir(new File(systemDir));
+      FileUtils.forceMkdir(SystemFileFactory.INSTANCE.getFile(systemDir));
     } catch (IOException e) {
       throw new StorageEngineFailureException("create system directory failed!");
     }
@@ -126,7 +127,7 @@ public class StorageEngine implements IService {
         synchronized (storageGroupName) {
           processor = processorMap.get(storageGroupName);
           if (processor == null) {
-            logger.debug("construct a processor instance, the storage group is {}, Thread is {}",
+            logger.info("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroupName, Thread.currentThread().getId());
             processor = new StorageGroupProcessor(systemDir, storageGroupName);
             processorMap.put(storageGroupName, processor);
@@ -168,7 +169,11 @@ public class StorageEngine implements IService {
     }
 
     // TODO monitor: update statistics
-    return storageGroupProcessor.insert(insertPlan);
+    try {
+      return storageGroupProcessor.insert(insertPlan);
+    } catch (QueryProcessorException e) {
+      throw new StorageEngineException(e.getMessage());
+    }
   }
 
   /**
@@ -187,7 +192,11 @@ public class StorageEngine implements IService {
     }
 
     // TODO monitor: update statistics
-    return storageGroupProcessor.insertBatch(batchInsertPlan);
+    try {
+      return storageGroupProcessor.insertBatch(batchInsertPlan);
+    } catch (QueryProcessorException e) {
+      throw new StorageEngineException(e);
+    }
   }
 
   /**
@@ -335,6 +344,12 @@ public class StorageEngine implements IService {
       return false;
     }
     return true;
+  }
+
+  public void deleteStorageGroup(String storageGroupName) {
+    deleteAllDataFilesInOneStorageGroup(storageGroupName);
+    StorageGroupProcessor processor = processorMap.remove(storageGroupName);
+    processor.deleteFolder(systemDir);
   }
 
 }

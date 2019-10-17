@@ -24,7 +24,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -61,20 +60,22 @@ import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
+import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.JobFileManager;
-import org.apache.iotdb.rpc.TSStatusType;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.db.engine.fileSystem.FileFactory;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -185,7 +186,7 @@ public class StorageGroupProcessor {
     this.schema = constructSchema(storageGroupName);
 
     try {
-      storageGroupSysDir = new File(systemInfoDir, storageGroupName);
+      storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemInfoDir, storageGroupName);
       if (storageGroupSysDir.mkdirs()) {
         logger.info("Storage Group system Directory {} doesn't exist, create it",
             storageGroupSysDir.getPath());
@@ -215,7 +216,7 @@ public class StorageGroupProcessor {
       recoverUnseqFiles(unseqTsFiles);
 
       String taskName = storageGroupName + "-" + System.currentTimeMillis();
-      File mergingMods = new File(storageGroupSysDir, MERGING_MODIFICAITON_FILE_NAME);
+      File mergingMods = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, MERGING_MODIFICAITON_FILE_NAME);
       if (mergingMods.exists()) {
         mergingModification = new ModificationFile(mergingMods.getPath());
       }
@@ -240,7 +241,7 @@ public class StorageGroupProcessor {
   private List<TsFileResource> getAllFiles(List<String> folders) throws IOException {
     List<File> tsFiles = new ArrayList<>();
     for (String baseDir : folders) {
-      File fileFolder = FileFactory.INSTANCE.getFile(baseDir, storageGroupName);
+      File fileFolder = TSFileFactory.INSTANCE.getFile(baseDir, storageGroupName);
       if (!fileFolder.exists()) {
         continue;
       }
@@ -252,8 +253,8 @@ public class StorageGroupProcessor {
       // the process was interrupted before the merged files could be named
       continueFailedRenames(fileFolder, MERGE_SUFFIX);
 
-      Collections
-          .addAll(tsFiles, fileFolder.listFiles(file -> file.getName().endsWith(TSFILE_SUFFIX)));
+      Collections.addAll(tsFiles,
+          TSFileFactory.INSTANCE.listFilesBySuffix(fileFolder.getAbsolutePath(), TSFILE_SUFFIX));
     }
     tsFiles.sort(this::compareFileName);
     List<TsFileResource> ret = new ArrayList<>();
@@ -262,10 +263,10 @@ public class StorageGroupProcessor {
   }
 
   private void continueFailedRenames(File fileFolder, String suffix) {
-    File[] files = fileFolder.listFiles(file -> file.getName().endsWith(suffix));
+    File[] files = TSFileFactory.INSTANCE.listFilesBySuffix(fileFolder.getAbsolutePath(), suffix);
     if (files != null) {
       for (File tempResource : files) {
-        File originResource = new File(tempResource.getPath().replace(suffix, ""));
+        File originResource = TSFileFactory.INSTANCE.getFile(tempResource.getPath().replace(suffix, ""));
         if (originResource.exists()) {
           tempResource.delete();
         } else {
@@ -335,7 +336,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public boolean insert(InsertPlan insertPlan) {
+  public boolean insert(InsertPlan insertPlan) throws QueryProcessorException {
     writeLock();
     try {
       // init map
@@ -350,7 +351,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) {
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessorException {
     writeLock();
     try {
       // init map
@@ -362,7 +363,7 @@ public class StorageGroupProcessor {
       List<Integer> unsequenceIndexes = new ArrayList<>();
 
       for (int i = 0; i < batchInsertPlan.getRowCount(); i++) {
-        results[i] = TSStatusType.SUCCESS_STATUS.getStatusCode();
+        results[i] = TSStatusCode.SUCCESS_STATUS.getStatusCode();
         if (batchInsertPlan.getTimes()[i] > latestFlushedTimeForEachDevice
             .get(batchInsertPlan.getDeviceId())) {
           sequenceIndexes.add(i);
@@ -385,12 +386,12 @@ public class StorageGroupProcessor {
   }
 
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
-      List<Integer> indexes, boolean sequence, Integer[] results) {
+      List<Integer> indexes, boolean sequence, Integer[] results) throws QueryProcessorException {
 
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(sequence);
     if (tsFileProcessor == null) {
       for (int index : indexes) {
-        results[index] = TSStatusType.INTERNAL_SERVER_ERROR.getStatusCode();
+        results[index] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
       }
       return;
     }
@@ -416,7 +417,8 @@ public class StorageGroupProcessor {
     }
   }
 
-  private boolean insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence) {
+  private boolean insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence)
+      throws QueryProcessorException {
     TsFileProcessor tsFileProcessor;
     boolean result;
 
@@ -488,18 +490,17 @@ public class StorageGroupProcessor {
     } else {
       baseDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
     }
-    new File(baseDir, storageGroupName).mkdirs();
+    TSFileFactory.INSTANCE.getFile(baseDir, storageGroupName).mkdirs();
 
-    String filePath = Paths.get(baseDir, storageGroupName,
-        System.currentTimeMillis() + "-" + versionController.nextVersion()).toString()
-        + TSFILE_SUFFIX;
+    String filePath = baseDir + File.separator + storageGroupName + File.separator +
+        System.currentTimeMillis() + "-" + versionController.nextVersion() + TSFILE_SUFFIX;
 
     if (sequence) {
-      return new TsFileProcessor(storageGroupName, FileFactory.INSTANCE.getFile(filePath),
+      return new TsFileProcessor(storageGroupName, TSFileFactory.INSTANCE.getFile(filePath),
           schema, versionController, this::closeUnsealedTsFileProcessor,
           this::updateLatestFlushTimeCallback, sequence);
     } else {
-      return new TsFileProcessor(storageGroupName, FileFactory.INSTANCE.getFile(filePath),
+      return new TsFileProcessor(storageGroupName, TSFileFactory.INSTANCE.getFile(filePath),
           schema, versionController, this::closeUnsealedTsFileProcessor,
           () -> true, sequence);
     }
@@ -517,10 +518,30 @@ public class StorageGroupProcessor {
       updateEndTimeMap(workSequenceTsFileProcessor);
       workSequenceTsFileProcessor.asyncClose();
       workSequenceTsFileProcessor = null;
+      logger.info("close a sequence tsfile processor {}", storageGroupName);
     } else {
       closingUnSequenceTsFileProcessor.add(workUnSequenceTsFileProcessor);
       workUnSequenceTsFileProcessor.asyncClose();
       workUnSequenceTsFileProcessor = null;
+      logger.info("close an unsequence tsfile processor {}", storageGroupName);
+    }
+  }
+
+  /**
+   * delete the storageGroup's own folder in folder data/system/storage_groups
+   */
+  public void deleteFolder(String systemDir) {
+    waitForAllCurrentTsFileProcessorsClosed();
+    writeLock();
+    try {
+      File storageGroupFolder = SystemFileFactory.INSTANCE.getFile(systemDir, storageGroupName);
+      if (storageGroupFolder.exists()) {
+        FileUtils.deleteDirectory(storageGroupFolder);
+      }
+    } catch (IOException e) {
+      logger.error("Cannot delete the folder in storage group {}, because", storageGroupName, e);
+    } finally {
+      writeUnlock();
     }
   }
 
@@ -537,7 +558,7 @@ public class StorageGroupProcessor {
       List<String> folder = DirectoryManager.getInstance().getAllSequenceFileFolders();
       folder.addAll(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
       for (String tsfilePath : folder) {
-        File storageGroupFolder = new File(tsfilePath, storageGroupName);
+        File storageGroupFolder = TSFileFactory.INSTANCE.getFile(tsfilePath, storageGroupName);
         if (storageGroupFolder.exists()) {
           try {
             FileUtils.deleteDirectory(storageGroupFolder);

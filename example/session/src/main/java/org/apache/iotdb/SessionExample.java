@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,22 +18,27 @@
  */
 package org.apache.iotdb;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.session.IoTDBSessionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.thrift.TException;
 
 public class SessionExample {
 
   private static Session session;
 
-  public static void main(String[] args) throws IoTDBSessionException {
+  public static void main(String[] args)
+      throws IoTDBSessionException, TException, IoTDBRPCException, SQLException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -43,8 +48,11 @@ public class SessionExample {
     session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
 
     insert();
-//    insertRowBatch();
-
+    insertRowBatch();
+    nonQuery();
+    query();
+    deleteData();
+    deleteTimeseries();
     session.close();
   }
 
@@ -54,7 +62,7 @@ public class SessionExample {
     measurements.add("s1");
     measurements.add("s2");
     measurements.add("s3");
-    for (long time = 0; time < 30000; time++) {
+    for (long time = 0; time < 100; time++) {
       List<String> values = new ArrayList<>();
       values.add("1");
       values.add("2");
@@ -74,7 +82,7 @@ public class SessionExample {
     long[] timestamps = rowBatch.timestamps;
     Object[] values = rowBatch.values;
 
-    for (long time = 0; time < 30000; time++) {
+    for (long time = 0; time < 100; time++) {
       int row = rowBatch.batchSize++;
       timestamps[row] = time;
       for (int i = 0; i < 3; i++) {
@@ -91,5 +99,33 @@ public class SessionExample {
       session.insertBatch(rowBatch);
       rowBatch.reset();
     }
+  }
+
+  private static void deleteData() throws IoTDBSessionException {
+    String path = "root.sg1.d1.s1";
+    long deleteTime = 99;
+    session.deleteData(path, deleteTime);
+  }
+
+  private static void deleteTimeseries() throws IoTDBSessionException {
+    List<String> paths = new ArrayList<>();
+    paths.add("root.sg1.d1.s1");
+    paths.add("root.sg1.d1.s2");
+    paths.add("root.sg1.d1.s3");
+    session.deleteTimeseries(paths);
+  }
+
+  private static void query() throws TException, IoTDBRPCException, SQLException {
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+    dataSet.setBatchSize(1024); // default is 512
+    while (dataSet.hasNext()){
+      System.out.println(dataSet.next());
+    }
+
+    dataSet.closeOperationHandle();
+  }
+
+  private static void nonQuery() throws TException, IoTDBRPCException, SQLException {
+    session.executeNonQueryStatement("insert into root.sg1.d1(timestamp,s0) values(200, 1);");
   }
 }

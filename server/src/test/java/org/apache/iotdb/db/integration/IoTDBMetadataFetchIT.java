@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -94,7 +94,7 @@ public class IoTDBMetadataFetchIT {
       String[] sqls = new String[]{"show timeseries root.ln.wf01.wt01.status", // full seriesPath
           "show timeseries root.ln", // prefix seriesPath
           "show timeseries root.ln.*.wt01", // seriesPath with stars
-
+          "show timeseries", // the same as root
           "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
           "show timeseries root.ln,root.ln",
           // SHOW TIMESERIES <PATH> only accept single seriesPath, thus
@@ -108,6 +108,9 @@ public class IoTDBMetadataFetchIT {
 
           "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n"
               + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,\n",
+
+          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n"
+                  + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,\n",
 
           "",
 
@@ -135,17 +138,6 @@ public class IoTDBMetadataFetchIT {
           fail(e.getMessage());
         }
       }
-    }
-  }
-
-  @Test(expected = SQLException.class)
-  public void showTimeseriesTest2() throws ClassNotFoundException, SQLException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-            "root"); Statement statement = connection.createStatement()) {
-      String sql = "show timeseries"; // not supported in jdbc, thus expecting SQLException
-      statement.execute(sql);
     }
   }
 
@@ -238,10 +230,10 @@ public class IoTDBMetadataFetchIT {
    * get all delta objects under a given column
    */
   private void device() throws SQLException {
-    String standard = "column,\n" + "root.ln.wf01.wt01,\n";
+    String standard = "Device,\n" + "root.ln.wf01,\n";
 
 
-    try (ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_DEVICE, "ln", null,
+    try (ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_DEVICES, null, null,
         null)) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();

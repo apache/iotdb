@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -259,7 +259,7 @@ Statement statement = connection.createStatement()) {
 Statement statement = connection.createStatement()) {
       // TODO select s0,s1 from root.vehicle.d0 where time > 106 and root.vehicle.d1.s0 > 100;
       boolean hasResultSet = statement.execute(
-          "select s0,s1 from root.vehicle.d0,root.vehicle.d1 where time > 106 and root.vehicle.d0.s0 > 100");
+          "select d0.s0, d0.s1, d1.s0 from root.vehicle where time > 106 and root.vehicle.d0.s0 > 100");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {

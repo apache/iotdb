@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.integration;
 
+import static org.apache.iotdb.db.integration.Constant.avg;
 import static org.apache.iotdb.db.integration.Constant.count;
 import static org.apache.iotdb.db.integration.Constant.first;
 import static org.apache.iotdb.db.integration.Constant.last;
 import static org.apache.iotdb.db.integration.Constant.max_time;
 import static org.apache.iotdb.db.integration.Constant.max_value;
-import static org.apache.iotdb.db.integration.Constant.mean;
 import static org.apache.iotdb.db.integration.Constant.min_time;
 import static org.apache.iotdb.db.integration.Constant.min_value;
 import static org.apache.iotdb.db.integration.Constant.sum;
@@ -36,7 +36,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
-
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -415,7 +414,7 @@ public class IoTDBAggregationIT {
   }
 
   @Test
-  public void meanSumTest() {
+  public void avgSumTest() {
     String[] retArray = new String[]{
         "0,1.4508E7,7250.374812593703",
         "0,626750.0,1250.998003992016"
@@ -424,7 +423,7 @@ public class IoTDBAggregationIT {
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select sum(s0),mean(s2)" +
+      boolean hasResultSet = statement.execute("select sum(s0),avg(s2)" +
           "from root.vehicle.d0 where time >= 6000 and time <= 9000");
 
       Assert.assertTrue(hasResultSet);
@@ -432,21 +431,21 @@ public class IoTDBAggregationIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(sum(d0s0))
-              + "," + resultSet.getString(mean(d0s2));
+              + "," + resultSet.getString(avg(d0s2));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
       }
 
-      hasResultSet = statement.execute("select sum(s0),mean(s2)" +
+      hasResultSet = statement.execute("select sum(s0),avg(s2)" +
           "from root.vehicle.d0 where time >= 1000 and time <= 2000");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(sum(d0s0))
-              + "," + resultSet.getString(mean(d0s2));
+              + "," + resultSet.getString(avg(d0s2));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -459,19 +458,19 @@ public class IoTDBAggregationIT {
   }
 
   @Test
-  public void meanSumErrorTest() throws SQLException {
+  public void avgSumErrorTest() throws SQLException {
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select mean(s3)" +
+      boolean hasResultSet = statement.execute("select avg(s3)" +
           "from root.vehicle.d0 where time >= 6000 and time <= 9000");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("Internal server error: Unsupported data type in aggregation MEAN : TEXT", e.getMessage());
+        Assert.assertEquals("Internal server error: Unsupported data type in aggregation AVG : TEXT", e.getMessage());
       }
 
       hasResultSet = statement.execute("select sum(s3)" +
@@ -484,7 +483,7 @@ public class IoTDBAggregationIT {
         Assert.assertEquals("Internal server error: Unsupported data type in aggregation SUM : TEXT", e.getMessage());
       }
 
-      hasResultSet = statement.execute("select mean(s4)" +
+      hasResultSet = statement.execute("select avg(s4)" +
           "from root.vehicle.d0 where time >= 6000 and time <= 9000");
       Assert.assertTrue(hasResultSet);
 
@@ -492,7 +491,7 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("Internal server error: Unsupported data type in aggregation MEAN : BOOLEAN", e.getMessage());
+        Assert.assertEquals("Internal server error: Unsupported data type in aggregation AVG : BOOLEAN", e.getMessage());
       }
 
       hasResultSet = statement.execute("select sum(s4)" +

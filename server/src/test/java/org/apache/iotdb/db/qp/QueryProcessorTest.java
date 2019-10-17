@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -26,7 +26,7 @@ import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -36,7 +36,8 @@ import org.junit.Test;
 
 public class QueryProcessorTest {
 
-  private CompressionType compressionType = CompressionType.valueOf(TSFileConfig.compressor);
+  private CompressionType compressionType = CompressionType.valueOf(
+      TSFileDescriptor.getInstance().getConfig().getCompressor());
   private MManager mManager = MManager.getInstance();
   private QueryProcessor processor = new QueryProcessor(new QueryProcessExecutor());
 
@@ -47,8 +48,8 @@ public class QueryProcessorTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    mManager.setStorageLevelToMTree("root.vehicle");
-    mManager.setStorageLevelToMTree("root.vehicle1");
+    mManager.setStorageGroupToMTree("root.vehicle");
+    mManager.setStorageGroupToMTree("root.vehicle1");
     mManager.addPathToMTree("root.vehicle.device1.sensor1", TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());

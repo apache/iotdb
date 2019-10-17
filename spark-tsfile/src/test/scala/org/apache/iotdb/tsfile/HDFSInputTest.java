@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -22,7 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.tool.TsFileWriteTool;
-import org.apache.iotdb.tsfile.io.HDFSInput;
+import org.apache.iotdb.tsfile.fileSystem.HDFSInput;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

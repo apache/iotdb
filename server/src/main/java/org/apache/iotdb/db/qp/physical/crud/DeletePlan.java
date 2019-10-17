@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -38,7 +38,7 @@ public class DeletePlan extends PhysicalPlan {
   /**
    * constructor of DeletePlan with single path.
    *
-   * @param deleteTime delete time
+   * @param deleteTime delete time (data points to be deleted in the timeseries whose time is <= deleteTime)
    * @param path time series path
    */
   public DeletePlan(long deleteTime, Path path) {
@@ -50,7 +50,7 @@ public class DeletePlan extends PhysicalPlan {
   /**
    * constructor of DeletePlan with multiple paths.
    *
-   * @param deleteTime delete time
+   * @param deleteTime delete time (data points to be deleted in the timeseries whose time is <= deleteTime)
    * @param paths time series paths in List structure
    */
   public DeletePlan(long deleteTime, List<Path> paths) {
@@ -69,6 +69,10 @@ public class DeletePlan extends PhysicalPlan {
 
   public void addPath(Path path) {
     this.paths.add(path);
+  }
+
+  public void addPaths(List<Path> paths) {
+    this.paths.addAll(paths);
   }
 
   @Override

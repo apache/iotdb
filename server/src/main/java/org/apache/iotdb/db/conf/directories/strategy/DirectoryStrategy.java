@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -27,8 +27,6 @@ import org.slf4j.LoggerFactory;
 /**
  * The basic class of all the strategies of multiple directories. If a user wants to define his own
  * strategy, his strategy has to extend this class and implement the abstract method.
- *
- * @author East
  */
 public abstract class DirectoryStrategy {
 

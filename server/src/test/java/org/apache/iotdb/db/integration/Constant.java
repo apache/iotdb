@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -63,8 +63,8 @@ public class Constant {
     return String.format("sum(%s)", path);
   }
 
-  public static String mean(String path) {
-    return String.format("mean(%s)", path);
+  public static String avg(String path) {
+    return String.format("avg(%s)", path);
   }
 
   public static String count(String path) {

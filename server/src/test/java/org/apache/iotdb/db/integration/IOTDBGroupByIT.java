@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.integration;
 
+import static org.apache.iotdb.db.integration.Constant.avg;
 import static org.apache.iotdb.db.integration.Constant.count;
 import static org.apache.iotdb.db.integration.Constant.first;
 import static org.apache.iotdb.db.integration.Constant.last;
 import static org.apache.iotdb.db.integration.Constant.max_time;
 import static org.apache.iotdb.db.integration.Constant.max_value;
-import static org.apache.iotdb.db.integration.Constant.mean;
 import static org.apache.iotdb.db.integration.Constant.min_time;
 import static org.apache.iotdb.db.integration.Constant.min_value;
 import static org.apache.iotdb.db.integration.Constant.sum;
@@ -127,7 +127,7 @@ public class IOTDBGroupByIT {
   }
 
   @Test
-  public void countSumMeanTest() throws SQLException {
+  public void countSumAvgTest() throws SQLException {
     String[] retArray1 = new String[]{
         "2,1,4.4,4.4",
         "5,3,35.8,11.933333333333332",
@@ -156,7 +156,7 @@ public class IOTDBGroupByIT {
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select count(temperature), sum(temperature), mean(temperature) from "
+          "select count(temperature), sum(temperature), avg(temperature) from "
               + "root.ln.wf01.wt01 where time > 3 "
               + "GROUP BY (20ms, 5,[2,30], [35,37], [50, 160], [310, 314])");
 
@@ -168,7 +168,7 @@ public class IOTDBGroupByIT {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
               .getString(count("root.ln.wf01.wt01.temperature")) + "," +
               resultSet.getString(sum("root.ln.wf01.wt01.temperature")) + "," + resultSet
-              .getString(mean("root.ln.wf01.wt01.temperature"));
+              .getString(avg("root.ln.wf01.wt01.temperature"));
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
@@ -176,7 +176,7 @@ public class IOTDBGroupByIT {
       }
 
       hasResultSet = statement.execute(
-          "select count(temperature), sum(temperature), mean(temperature) from "
+          "select count(temperature), sum(temperature), avg(temperature) from "
               + "root.ln.wf01.wt01 where temperature > 3 "
               + "GROUP BY (20ms, 5,[2,30], [35,37], [50, 160], [310, 314])");
 
@@ -187,7 +187,7 @@ public class IOTDBGroupByIT {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
               .getString(count("root.ln.wf01.wt01.temperature")) + "," +
               resultSet.getString(sum("root.ln.wf01.wt01.temperature")) + "," + resultSet
-              .getString(mean("root.ln.wf01.wt01.temperature"));
+              .getString(avg("root.ln.wf01.wt01.temperature"));
           Assert.assertEquals(retArray2[cnt], ans);
           cnt++;
         }

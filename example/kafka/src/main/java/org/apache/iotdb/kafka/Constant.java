@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,9 +20,6 @@ package org.apache.iotdb.kafka;
 
 import org.apache.iotdb.jdbc.Config;
 
-/**
- * @author lta
- */
 public class Constant {
 
   public static final String TOPIC = "Kafka-Test";

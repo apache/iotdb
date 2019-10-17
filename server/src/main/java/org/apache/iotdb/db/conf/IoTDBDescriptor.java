@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -145,6 +146,8 @@ public class IoTDBDescriptor {
 
       conf.setSchemaDir(FilePathUtils.regularizePath(conf.getSystemDir()) + "schema");
 
+      conf.setQueryDir(FilePathUtils.regularizePath(conf.getBaseDir()) + "query");
+
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));
 
@@ -220,6 +223,11 @@ public class IoTDBDescriptor {
       conf.setZoneID(ZoneId.of(tmpTimeZone.trim()));
       logger.info("Time zone has been set to {}", conf.getZoneID());
 
+      conf.setEnableExternalSort(Boolean.parseBoolean(properties
+          .getProperty("enable_external_sort", Boolean.toString(conf.isEnableExternalSort()))));
+      conf.setExternalSortThreshold(Integer.parseInt(properties
+          .getProperty("external_sort_threshold",
+              Integer.toString(conf.getExternalSortThreshold()))));
       conf.setMergeMemoryBudget(Long.parseLong(properties.getProperty("merge_memory_budget",
           Long.toString(conf.getMergeMemoryBudget()))));
       conf.setMergeThreadNum(Integer.parseInt(properties.getProperty("merge_thread_num",
@@ -268,7 +276,15 @@ public class IoTDBDescriptor {
 
       conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
-      conf.setStorageFs(properties.getProperty("storage_fs"));
+      conf.setTsFileStorageFs(properties.getProperty("tsfile_storage_fs"));
+      conf.setHdfsIp(properties.getProperty("hdfs_ip"));
+      conf.setHdfsPort(properties.getProperty("hdfs_port"));
+
+      // At the same time, set TSFileConfig
+      TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
+      TSFileDescriptor.getInstance().getConfig().setHdfsIp(properties.getProperty("hdfs_ip"));
+      TSFileDescriptor.getInstance().getConfig().setHdfsPort(properties.getProperty("hdfs_port"));
+
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -26,8 +26,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 /**
  * This statistic is used as Unsupported data type. It just return a 0-byte array while asked max or
  * min.
- *
- * @author kangrong
  */
 public class NoStatistics extends Statistics<Long> {
 

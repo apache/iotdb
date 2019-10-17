@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
@@ -48,7 +49,7 @@ public class TsFileSequenceRead {
       filename = args[0];
     }
     TsFileSequenceReader reader = new TsFileSequenceReader(filename);
-    System.out.println("file length: " + new File(filename).length());
+    System.out.println("file length: " + TSFileFactory.INSTANCE.getFile(filename).length());
     System.out.println("file magic head: " + reader.readHeadMagic());
     System.out.println("file magic tail: " + reader.readTailMagic());
     System.out.println("Level 1 metadata position: " + reader.getFileMetadataPos());
@@ -69,7 +70,7 @@ public class TsFileSequenceRead {
           ChunkHeader header = reader.readChunkHeader();
           System.out.println("\tMeasurement: " + header.getMeasurementID());
           Decoder defaultTimeDecoder = Decoder.getDecoderByType(
-              TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().timeEncoder),
+              TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
               TSDataType.INT64);
           Decoder valueDecoder = Decoder
               .getDecoderByType(header.getEncodingType(), header.getDataType());

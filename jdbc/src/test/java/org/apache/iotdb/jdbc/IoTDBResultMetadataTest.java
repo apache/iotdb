@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -43,7 +43,7 @@ public class IoTDBResultMetadataTest {
 
   @Test
   public void testGetColumnCount() throws SQLException {
-    metadata = new IoTDBResultMetadata(null, null, null);
+    metadata = new IoTDBResultMetadata(null, null);
     boolean flag = false;
     try {
       metadata.getColumnCount();
@@ -55,7 +55,7 @@ public class IoTDBResultMetadataTest {
     List<String> columnInfoList = new ArrayList<>();
     flag = false;
     try {
-      metadata = new IoTDBResultMetadata(columnInfoList, null, null);
+      metadata = new IoTDBResultMetadata(columnInfoList, null);
       metadata.getColumnCount();
     } catch (Exception e) {
       flag = true;
@@ -68,7 +68,7 @@ public class IoTDBResultMetadataTest {
 
   @Test
   public void testGetColumnName() throws SQLException {
-    metadata = new IoTDBResultMetadata(null, null, null);
+    metadata = new IoTDBResultMetadata(null, null);
     boolean flag = false;
     try {
       metadata.getColumnName(1);
@@ -78,7 +78,7 @@ public class IoTDBResultMetadataTest {
     assertEquals(flag, true);
 
     List<String> columnInfoList = new ArrayList<>();
-    metadata = new IoTDBResultMetadata(columnInfoList, null, null);
+    metadata = new IoTDBResultMetadata(columnInfoList, null);
     flag = false;
     try {
       metadata.getColumnName(1);
@@ -88,7 +88,7 @@ public class IoTDBResultMetadataTest {
     assertEquals(flag, true);
 
     String[] colums = {"root.a.b.c1", "root.a.b.c2", "root.a.b.c3"};
-    metadata = new IoTDBResultMetadata(Arrays.asList(colums), null, null);
+    metadata = new IoTDBResultMetadata(Arrays.asList(colums), null);
     flag = false;
     try {
       metadata.getColumnName(colums.length + 1);
@@ -113,7 +113,7 @@ public class IoTDBResultMetadataTest {
 
   @Test
   public void testGetColumnType() throws SQLException {
-    metadata = new IoTDBResultMetadata(null, null, null);
+    metadata = new IoTDBResultMetadata(null, null);
     boolean flag = false;
     try {
       metadata.getColumnType(1);
@@ -123,7 +123,7 @@ public class IoTDBResultMetadataTest {
     assertEquals(flag, true);
 
     List<String> columnInfoList = new ArrayList<>();
-    metadata = new IoTDBResultMetadata(columnInfoList, null, null);
+    metadata = new IoTDBResultMetadata(columnInfoList, null);
     flag = false;
     try {
       metadata.getColumnType(1);
@@ -138,7 +138,7 @@ public class IoTDBResultMetadataTest {
     String[] typesString = {"BOOLEAN", "INT32", "INT64", "FLOAT", "DOUBLE", "TEXT"};
     int[] types = {Types.BOOLEAN, Types.INTEGER, Types.BIGINT, Types.FLOAT, Types.DOUBLE,
         Types.VARCHAR};
-    metadata = new IoTDBResultMetadata(Arrays.asList(columns), null, Arrays.asList(typesString));
+    metadata = new IoTDBResultMetadata(Arrays.asList(columns), Arrays.asList(typesString));
     flag = false;
     try {
       metadata.getColumnType(columns.length + 1);
@@ -160,12 +160,4 @@ public class IoTDBResultMetadataTest {
       assertEquals(metadata.getColumnType(i + 1), types[i - 1]);
     }
   }
-
-  @Test
-  public void testGetColumnTypeName() throws SQLException {
-    String operationType = "sum";
-    metadata = new IoTDBResultMetadata(null, operationType, null);
-    assertEquals(metadata.getColumnTypeName(1), operationType);
-  }
-
 }

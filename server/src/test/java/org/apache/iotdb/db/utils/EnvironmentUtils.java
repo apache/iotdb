@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -48,9 +48,6 @@ import org.slf4j.LoggerFactory;
  * <p>
  * This class is used for cleaning test environment in unit test and integration test
  * </p>
- *
- * @author liukun
- *
  */
 public class EnvironmentUtils {
 
@@ -117,6 +114,8 @@ public class EnvironmentUtils {
     cleanDir(config.getWalFolder());
     // delete index
     cleanDir(config.getIndexFileDir());
+    // delete query
+    cleanDir(config.getQueryDir());
     cleanDir(config.getBaseDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
@@ -129,16 +128,14 @@ public class EnvironmentUtils {
   }
 
   /**
-   * disable the system monitor</br>
-   * this function should be called before all code in the setup
+   * disable the system monitor</br> this function should be called before all code in the setup
    */
   public static void closeStatMonitor() {
     config.setEnableStatMonitor(false);
   }
 
   /**
-   * disable memory control</br>
-   * this function should be called before all code in the setup
+   * disable memory control</br> this function should be called before all code in the setup
    */
   public static void envSetUp() throws StartupException, IOException {
     IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(false);
@@ -181,8 +178,10 @@ public class EnvironmentUtils {
     createDir(config.getWalFolder());
     // create index
     createDir(config.getIndexFileDir());
+    // create query
+    createDir(config.getQueryDir());
     // create data
-    for (String dataDir: config.getDataDirs()) {
+    for (String dataDir : config.getDataDirs()) {
       createDir(dataDir);
     }
   }

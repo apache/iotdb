@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.integration;
 
+import static org.apache.iotdb.db.integration.Constant.avg;
 import static org.apache.iotdb.db.integration.Constant.count;
 import static org.apache.iotdb.db.integration.Constant.first;
 import static org.apache.iotdb.db.integration.Constant.last;
 import static org.apache.iotdb.db.integration.Constant.max_time;
 import static org.apache.iotdb.db.integration.Constant.max_value;
-import static org.apache.iotdb.db.integration.Constant.mean;
 import static org.apache.iotdb.db.integration.Constant.min_time;
 import static org.apache.iotdb.db.integration.Constant.min_value;
 import static org.apache.iotdb.db.integration.Constant.sum;
@@ -358,7 +358,7 @@ public class IoTDBAggregationSmallDataIT {
   }
 
   @Test
-  public void meanAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
+  public void avgAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
         "0,11160.5,18645,206"
     };
@@ -367,14 +367,14 @@ public class IoTDBAggregationSmallDataIT {
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select mean(s0),mean(s1),mean(s2) from root.vehicle.d0 where s2 >= 3.33");
+          "select avg(s0),avg(s1),avg(s2) from root.vehicle.d0 where s2 >= 3.33");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(mean(d0s0))
-              + "," + Math.round(resultSet.getDouble(mean(d0s1))) + ","
-              + Math.round(resultSet.getDouble(mean(d0s2)));
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(avg(d0s0))
+              + "," + Math.round(resultSet.getDouble(avg(d0s1))) + ","
+              + Math.round(resultSet.getDouble(avg(d0s2)));
           //System.out.println("!!!!!============ " + ans);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;

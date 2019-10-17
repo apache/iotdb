@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -55,7 +55,7 @@ public class ChunkGroupFooter {
     this.dataSize = dataSize;
     this.numberOfChunks = numberOfChunks;
     this.serializedSize =
-        Byte.BYTES + Integer.BYTES + deviceID.getBytes(TSFileConfig.STRING_ENCODING).length + Long.BYTES + Integer.BYTES;
+        Byte.BYTES + Integer.BYTES + deviceID.getBytes(TSFileConfig.STRING_CHARSET).length + Long.BYTES + Integer.BYTES;
   }
 
   public static int getSerializedSize(String deviceID) {

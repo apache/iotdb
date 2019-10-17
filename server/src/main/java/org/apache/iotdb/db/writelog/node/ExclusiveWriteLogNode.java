@@ -26,7 +26,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.io.ILogWriter;
@@ -70,7 +70,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     this.identifier = identifier;
     this.logDirectory =
         DirectoryManager.getInstance().getWALFolder() + File.separator + this.identifier;
-    if (new File(logDirectory).mkdirs()) {
+    if (SystemFileFactory.INSTANCE.getFile(logDirectory).mkdirs()) {
       logger.info("create the WAL folder {}." + logDirectory);
     }
   }
@@ -143,7 +143,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   public void notifyEndFlush() {
     lock.writeLock().lock();
     try {
-      File logFile = new File(logDirectory, WAL_FILE_NAME + ++lastFlushedId);
+      File logFile = SystemFileFactory.INSTANCE.getFile(logDirectory, WAL_FILE_NAME + ++lastFlushedId);
       discard(logFile);
     } finally {
       lock.writeLock().unlock();
@@ -166,7 +166,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     try {
       logBuffer.clear();
       close();
-      FileUtils.deleteDirectory(new File(logDirectory));
+      FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(logDirectory));
     } finally {
       lock.writeLock().unlock();
     }
@@ -174,7 +174,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public ILogReader getLogReader() {
-    File[] logFiles = new File(logDirectory).listFiles();
+    File[] logFiles = SystemFileFactory.INSTANCE.getFile(logDirectory).listFiles();
     Arrays.sort(logFiles,
         Comparator.comparingInt(f -> Integer.parseInt(f.getName().replace(WAL_FILE_NAME, ""))));
     return new MultiFileLogReader(logFiles);
@@ -238,7 +238,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private void nextFileWriter() {
     fileId++;
-    File newFile = new File(logDirectory, WAL_FILE_NAME + fileId);
+    File newFile = SystemFileFactory.INSTANCE.getFile(logDirectory, WAL_FILE_NAME + fileId);
     if (newFile.getParentFile().mkdirs()) {
       logger.info("create WAL parent folder {}.", newFile.getParent());
     }

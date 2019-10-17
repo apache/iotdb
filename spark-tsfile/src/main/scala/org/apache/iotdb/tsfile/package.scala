@@ -19,19 +19,21 @@
 
 package org.apache.iotdb
 
-import org.apache.spark.sql.{DataFrame, DataFrameReader, DataFrameWriter, SparkSession}
+import org.apache.spark.sql.{DataFrame, DataFrameReader, DataFrameWriter}
 
 package object tsfile {
 
   /**
     * add a method 'tsfile' to DataFrameReader to read tsfile
+    *
     * @param reader dataframeReader
     */
   implicit class TsFileDataFrameReader(reader: DataFrameReader) {
     def tsfile(path: String,
                isNarrowForm: Boolean = false): DataFrame = {
       if (isNarrowForm) {
-        reader.option(DefaultSource.path, path).option(DefaultSource.isNarrowForm, "narrow_form").format("org.apache.iotdb.tsfile").load
+        reader.option(DefaultSource.path, path).option(DefaultSource.isNarrowForm, "narrow_form").
+          format("org.apache.iotdb.tsfile").load
       }
       else {
         reader.option(DefaultSource.path, path).format("org.apache.iotdb.tsfile").load
@@ -46,7 +48,8 @@ package object tsfile {
     def tsfile(path: String,
                isNarrowForm: Boolean = false): Unit = {
       if (isNarrowForm) {
-        writer.option(DefaultSource.path, path).option(DefaultSource.isNarrowForm, "narrow_form").format("org.apache.iotdb.tsfile").save
+        writer.option(DefaultSource.path, path).option(DefaultSource.isNarrowForm, "narrow_form").
+          format("org.apache.iotdb.tsfile").save
       }
       else {
         writer.option(DefaultSource.path, path).format("org.apache.iotdb.tsfile").save

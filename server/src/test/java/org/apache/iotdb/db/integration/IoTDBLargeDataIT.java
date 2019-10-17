@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -57,14 +57,14 @@ public class IoTDBLargeDataIT {
 
     // use small page setting
     // origin value
-    maxNumberOfPointsInPage = tsFileConfig.maxNumberOfPointsInPage;
-    pageSizeInByte = tsFileConfig.pageSizeInByte;
-    groupSizeInByte = tsFileConfig.groupSizeInByte;
+    maxNumberOfPointsInPage = tsFileConfig.getMaxNumberOfPointsInPage();
+    pageSizeInByte = tsFileConfig.getPageSizeInByte();
+    groupSizeInByte = tsFileConfig.getGroupSizeInByte();
 
     // new value
-    tsFileConfig.maxNumberOfPointsInPage = 1000;
-    tsFileConfig.pageSizeInByte = 1024 * 150;
-    tsFileConfig.groupSizeInByte = 1024 * 1000;
+    tsFileConfig.setMaxNumberOfPointsInPage(1000);
+    tsFileConfig.setPageSizeInByte(1024 * 150);
+    tsFileConfig.setGroupSizeInByte(1024 * 1000);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1000);
 
     daemon = IoTDB.getInstance();
@@ -79,9 +79,9 @@ public class IoTDBLargeDataIT {
     daemon.stop();
 
     // recovery value
-    tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
-    tsFileConfig.pageSizeInByte = pageSizeInByte;
-    tsFileConfig.groupSizeInByte = groupSizeInByte;
+    tsFileConfig.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
+    tsFileConfig.setPageSizeInByte(pageSizeInByte);
+    tsFileConfig.setGroupSizeInByte(groupSizeInByte);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
 
     EnvironmentUtils.cleanEnv();

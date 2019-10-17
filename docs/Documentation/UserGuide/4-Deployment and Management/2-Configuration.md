@@ -327,3 +327,30 @@ The detail of each variables are as follows:
 |Type| Int32 |
 |Default|600 |
 |Effective|After restart system|
+
+* tsfile\_storage\_fs
+
+|Name| tsfile\_storage\_fs |
+|:---:|:---|
+|Description| The storage file system of Tsfile and related data files. Currently LOCAL file system and HDFS are supported.|
+|Type| String |
+|Default|LOCAL |
+|Effective|After restart system|
+
+* hdfs\_ip
+
+|Name| hdfs\_ip |
+|:---:|:---|
+|Description| IP of HDFS if Tsfile and related data files are stored in HDFS|
+|Type| String |
+|Default|localhost |
+|Effective|After restart system|
+
+* hdfs\_port
+
+|Name| hdfs\_port |
+|:---:|:---|
+|Description| Port of HDFS if Tsfile and related data files are stored in HDFS|
+|Type| String |
+|Default|9000 |
+|Effective|After restart system|

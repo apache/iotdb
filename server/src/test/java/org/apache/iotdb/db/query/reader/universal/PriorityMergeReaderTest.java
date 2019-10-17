@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -63,38 +63,6 @@ public class PriorityMergeReaderTest {
       Assert.assertEquals(retTimestamp[i], timeValuePair.getTimestamp());
       Assert.assertEquals(retValue[i], timeValuePair.getValue().getValue());
       i++;
-    }
-  }
-
-  public static class FakedSeriesReader implements IPointReader {
-
-    private long[] timestamps;
-    private int index;
-    private long value;
-
-    FakedSeriesReader(long[] timestamps, long value) {
-      this.timestamps = timestamps;
-      index = 0;
-      this.value = value;
-    }
-
-    @Override
-    public boolean hasNext() {
-      return index < timestamps.length;
-    }
-
-    @Override
-    public TimeValuePair next() {
-      return new TimeValuePair(timestamps[index++], new TsPrimitiveType.TsLong(value));
-    }
-
-    @Override
-    public TimeValuePair current() {
-      return new TimeValuePair(timestamps[index], new TsPrimitiveType.TsLong(value));
-    }
-
-    @Override
-    public void close() {
     }
   }
 }

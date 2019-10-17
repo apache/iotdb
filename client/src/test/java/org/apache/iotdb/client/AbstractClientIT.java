@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -52,7 +52,6 @@ public class AbstractClientIT {
     MockitoAnnotations.initMocks(this);
     when(connection.getMetaData()).thenReturn(databaseMetadata);
     when(connection.getTimeZone()).thenReturn("Asia/Shanghai");
-    when(databaseMetadata.getMetadataInJson()).thenReturn("test metadata");
   }
 
   @After
@@ -147,10 +146,6 @@ public class AbstractClientIT {
         .handleInputCmd(AbstractClient.EXIT_COMMAND, connection));
     assertEquals(OperationResult.STOP_OPER, AbstractClient
         .handleInputCmd(AbstractClient.QUIT_COMMAND, connection));
-
-    assertEquals(OperationResult.CONTINUE_OPER, AbstractClient
-        .handleInputCmd(AbstractClient.SHOW_METADATA_COMMAND, connection));
-
     assertEquals(OperationResult.CONTINUE_OPER, AbstractClient
         .handleInputCmd(String.format("%s=", AbstractClient.SET_TIMESTAMP_DISPLAY), connection));
     assertEquals(OperationResult.CONTINUE_OPER, AbstractClient

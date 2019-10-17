@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 public class MathUtils {
 
@@ -40,12 +41,12 @@ public class MathUtils {
   }
 
   public static float roundWithGivenPrecision(float data) {
-    if (TSFileConfig.floatPrecision == 0) {
+    if (TSFileDescriptor.getInstance().getConfig().getFloatPrecision() == 0) {
       return Math.round(data);
     }
     return Math.round(data)
-        + Math.round(((data - Math.round(data)) * (float) Math.pow(10, TSFileConfig.floatPrecision)))
-        / (float) Math.pow(10,  TSFileConfig.floatPrecision);
+        + Math.round(((data - Math.round(data)) * (float) Math.pow(10, TSFileDescriptor.getInstance().getConfig().getFloatPrecision())))
+        / (float) Math.pow(10,  TSFileDescriptor.getInstance().getConfig().getFloatPrecision());
   }
 
   /**
@@ -66,11 +67,11 @@ public class MathUtils {
    * value.
    */
   public static double roundWithGivenPrecision(double data) {
-    if (TSFileConfig.floatPrecision == 0) {
+    if (TSFileDescriptor.getInstance().getConfig().getFloatPrecision() == 0) {
       return Math.round(data);
     }
     return Math.round(data)
-        + Math.round(((data - Math.round(data)) * Math.pow(10, TSFileConfig.floatPrecision)))
-        / Math.pow(10, TSFileConfig.floatPrecision);
+        + Math.round(((data - Math.round(data)) * Math.pow(10, TSFileDescriptor.getInstance().getConfig().getFloatPrecision())))
+        / Math.pow(10, TSFileDescriptor.getInstance().getConfig().getFloatPrecision());
   }
 }

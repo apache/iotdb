@@ -21,6 +21,6 @@ package org.apache.iotdb.session;
 public class Config {
 
   public static final String DEFAULT_USER = "user";
-  public static final String DEFALUT_PASSWORD = "password";
+  public static final String DEFAULT_PASSWORD = "password";
 
 }

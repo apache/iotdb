@@ -18,46 +18,41 @@
  */
 package org.apache.iotdb.tsfile.read;
 
-import static org.apache.iotdb.tsfile.write.writer.TsFileIOWriter.magicStringBytes;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.TsDigest;
+import org.apache.iotdb.tsfile.file.metadata.*;
 import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.fileSystem.FileInputFactory;
+import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.file.Paths;
+import java.util.*;
+
+import static org.apache.iotdb.tsfile.write.writer.TsFileIOWriter.magicStringBytes;
+
 public class TsFileSequenceReader implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileSequenceReader.class);
+  protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+
   protected String file;
   private TsFileInput tsFileInput;
   private long fileMetadataPos;
@@ -89,8 +84,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
     this.file = file;
-    final java.nio.file.Path path = Paths.get(file);
-    tsFileInput = new DefaultTsFileInput(path);
+    tsFileInput = FileInputFactory.INSTANCE.getTsFileInput(file);
     try {
       if (loadMetadataSize) {
         loadMetadataSize();
@@ -505,7 +499,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public long selfCheck(Map<String, MeasurementSchema> newSchema,
       List<ChunkGroupMetaData> newMetaData, boolean fastFinish) throws IOException {
-    File checkFile = new File(this.file);
+    File checkFile = TSFileFactory.INSTANCE.getFile(this.file);
     long fileSize;
     if (!checkFile.exists()) {
       return TsFileCheckStatus.FILE_NOT_FOUND;
@@ -683,6 +677,24 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     chunkMetaDataList.sort(Comparator.comparingLong(ChunkMetaData::getStartTime));
     return chunkMetaDataList;
+  }
+
+  public List<ChunkGroupMetaData> getSortedChunkGroupMetaDataListByDeviceIds() throws IOException {
+    if (tsFileMetaData == null) {
+      readFileMetadata();
+    }
+
+    List<ChunkGroupMetaData> result = new ArrayList<>();
+
+    for (Map.Entry<String, TsDeviceMetadataIndex> entry : tsFileMetaData.getDeviceMap().entrySet()) {
+      // read TsDeviceMetadata from file
+      TsDeviceMetadata tsDeviceMetadata = readTsDeviceMetaData(entry.getValue());
+      result.addAll(tsDeviceMetadata.getChunkGroupMetaDataList());
+    }
+    // sort by the start offset Of the ChunkGroup
+    result.sort(Comparator.comparingLong(ChunkGroupMetaData::getStartOffsetOfChunkGroup));
+
+    return result;
   }
 
   /**
