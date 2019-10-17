@@ -38,7 +38,6 @@ public class HDFSOutputFactory implements FileOutputFactory {
       logger.error(
           "Failed to get HDFSInput in Hadoop file system. Please check your dependency of Hadoop module.",
           e);
-      throw new RuntimeException();
     }
   }
 
