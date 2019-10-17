@@ -100,7 +100,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
               String.format("%s is not in TsFile format.", file.getAbsolutePath()));
         } else if (truncatedPosition == TsFileCheckStatus.ONLY_MAGIC_HEAD) {
           crashed = true;
-          out.truncate(TSFileConfig.MAGIC_STRING.length());
+          out.truncate(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length);
         } else {
           crashed = true;
           //remove broken data

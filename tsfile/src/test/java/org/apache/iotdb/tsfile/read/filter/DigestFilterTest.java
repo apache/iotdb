@@ -38,79 +38,79 @@ public class DigestFilterTest {
   @Test
   public void testEq() {
     Filter timeEq = TimeFilter.eq(10L);
-    Assert.assertEquals(true, timeEq.satisfy(digest1));
-    Assert.assertEquals(false, timeEq.satisfy(digest2));
-    Assert.assertEquals(false, timeEq.satisfy(digest3));
+    Assert.assertTrue(timeEq.satisfy(digest1));
+    Assert.assertFalse(timeEq.satisfy(digest2));
+    Assert.assertFalse(timeEq.satisfy(digest3));
 
     Filter valueEq = ValueFilter.eq(100);
-    Assert.assertEquals(true, valueEq.satisfy(digest1));
-    Assert.assertEquals(false, valueEq.satisfy(digest2));
-    Assert.assertEquals(true, valueEq.satisfy(digest3));
+    Assert.assertTrue(valueEq.satisfy(digest1));
+    Assert.assertFalse(valueEq.satisfy(digest2));
+    Assert.assertTrue(valueEq.satisfy(digest3));
   }
 
   @Test
   public void testGt() {
     Filter timeGt = TimeFilter.gt(100L);
-    Assert.assertEquals(false, timeGt.satisfy(digest1));
-    Assert.assertEquals(true, timeGt.satisfy(digest2));
-    Assert.assertEquals(true, timeGt.satisfy(digest3));
+    Assert.assertFalse(timeGt.satisfy(digest1));
+    Assert.assertTrue(timeGt.satisfy(digest2));
+    Assert.assertTrue(timeGt.satisfy(digest3));
 
     Filter valueGt = ValueFilter.gt(100);
-    Assert.assertEquals(false, valueGt.satisfy(digest1));
-    Assert.assertEquals(true, valueGt.satisfy(digest2));
-    Assert.assertEquals(true, valueGt.satisfy(digest3));
+    Assert.assertFalse(valueGt.satisfy(digest1));
+    Assert.assertTrue(valueGt.satisfy(digest2));
+    Assert.assertTrue(valueGt.satisfy(digest3));
   }
 
   @Test
   public void testGtEq() {
     Filter timeGtEq = TimeFilter.gtEq(100L);
-    Assert.assertEquals(true, timeGtEq.satisfy(digest1));
-    Assert.assertEquals(true, timeGtEq.satisfy(digest2));
-    Assert.assertEquals(true, timeGtEq.satisfy(digest3));
+    Assert.assertTrue(timeGtEq.satisfy(digest1));
+    Assert.assertTrue(timeGtEq.satisfy(digest2));
+    Assert.assertTrue(timeGtEq.satisfy(digest3));
 
     Filter valueGtEq = ValueFilter.gtEq(100);
-    Assert.assertEquals(true, valueGtEq.satisfy(digest1));
-    Assert.assertEquals(true, valueGtEq.satisfy(digest3));
-    Assert.assertEquals(true, valueGtEq.satisfy(digest3));
+    Assert.assertTrue(valueGtEq.satisfy(digest1));
+    Assert.assertTrue(valueGtEq.satisfy(digest3));
+    Assert.assertTrue(valueGtEq.satisfy(digest3));
   }
 
   @Test
   public void testLt() {
     Filter timeLt = TimeFilter.lt(101L);
-    Assert.assertEquals(true, timeLt.satisfy(digest1));
-    Assert.assertEquals(false, timeLt.satisfy(digest2));
-    Assert.assertEquals(false, timeLt.satisfy(digest3));
+    Assert.assertTrue(timeLt.satisfy(digest1));
+    Assert.assertFalse(timeLt.satisfy(digest2));
+    Assert.assertFalse(timeLt.satisfy(digest3));
 
     Filter valueLt = ValueFilter.lt(101);
-    Assert.assertEquals(true, valueLt.satisfy(digest1));
-    Assert.assertEquals(false, valueLt.satisfy(digest2));
-    Assert.assertEquals(true, valueLt.satisfy(digest3));
+    Assert.assertTrue(valueLt.satisfy(digest1));
+    Assert.assertFalse(valueLt.satisfy(digest2));
+    Assert.assertTrue(valueLt.satisfy(digest3));
   }
 
   @Test
   public void testLtEq() {
     Filter timeLtEq = TimeFilter.ltEq(101L);
-    Assert.assertEquals(true, timeLtEq.satisfy(digest1));
-    Assert.assertEquals(true, timeLtEq.satisfy(digest2));
-    Assert.assertEquals(true, timeLtEq.satisfy(digest3));
+    Assert.assertTrue(timeLtEq.satisfy(digest1));
+    Assert.assertTrue(timeLtEq.satisfy(digest2));
+    Assert.assertTrue(timeLtEq.satisfy(digest3));
 
     Filter valueLtEq = ValueFilter.ltEq(101);
-    Assert.assertEquals(true, valueLtEq.satisfy(digest1));
-    Assert.assertEquals(true, valueLtEq.satisfy(digest2));
-    Assert.assertEquals(true, valueLtEq.satisfy(digest3));
+    Assert.assertTrue(valueLtEq.satisfy(digest1));
+    Assert.assertTrue(valueLtEq.satisfy(digest2));
+    Assert.assertTrue(valueLtEq.satisfy(digest3));
   }
 
   @Test
   public void testAndOr() {
     Filter andFilter = FilterFactory.and(TimeFilter.gt(10L), ValueFilter.lt(50));
-    Assert.assertEquals(true, andFilter.satisfy(digest1));
-    Assert.assertEquals(false, andFilter.satisfy(digest2));
-    Assert.assertEquals(true, andFilter.satisfy(digest3));
+    Assert.assertTrue(andFilter.satisfy(digest1));
+    Assert.assertFalse(andFilter.satisfy(digest2));
+    Assert.assertTrue(andFilter.satisfy(digest3));
 
     Filter orFilter = FilterFactory.or(andFilter, TimeFilter.eq(200L));
-    Assert.assertEquals(true, orFilter.satisfy(digest1));
-    Assert.assertEquals(true, orFilter.satisfy(digest2));
-    Assert.assertEquals(true, orFilter.satisfy(digest3));
+    Assert.assertTrue(orFilter.satisfy(digest1));
+    Assert.assertTrue(orFilter.satisfy(digest2));
+    Assert.assertTrue(orFilter.satisfy(digest3));
   }
 
 }
