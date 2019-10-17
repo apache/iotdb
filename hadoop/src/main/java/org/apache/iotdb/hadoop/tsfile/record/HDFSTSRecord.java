@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.hadoop.record;
+package org.apache.iotdb.hadoop.tsfile.record;
 
 import org.apache.hadoop.io.Writable;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
