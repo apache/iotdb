@@ -24,6 +24,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
@@ -72,11 +74,48 @@ public class TsDigest {
     if (size > 0) {
       digest.statistics = new ByteBuffer[StatisticType.getTotalTypeNum()];
       ByteBuffer value;
-      for (int i = 0; i < size; i++) {
-        short n = ReadWriteIOUtils.readShort(inputStream);
-        value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(inputStream);
-        digest.statistics[n] = value;
-        digest.serializedSize += Short.BYTES + Integer.BYTES + value.remaining();
+   // test if it's v0.8.0 version
+      inputStream.mark(10);
+      String key = ReadWriteIOUtils.readString(inputStream);
+      if (key.equals("min_value") || key.equals("max_value") || key.equals("first") 
+    	  || key.equals("last") || key.equals("sum")) {
+    	inputStream.reset();
+    	TSFileDescriptor.getInstance().getConfig().setEndian("LITTLE_ENDIAN");
+    	for (int i = 0; i < size; i++) {
+    	  key = ReadWriteIOUtils.readString(inputStream);
+          value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(inputStream);
+          short n;
+          switch (key) {
+            case "min_value":
+      	      n = 0;
+      	      break;
+      	    case "max_value":
+      	      n = 1;
+      	      break;
+      	    case "first":
+      	      n = 2;
+      	      break;
+      	    case "last":
+      	      n = 3;
+      	      break;
+      	    case "sum":
+      	      n = 4;
+      	      break;
+      	    default:
+      	      n = -1;
+          }
+          digest.statistics[n] = value;
+          digest.serializedSize += Short.BYTES + Integer.BYTES + value.remaining();
+    	}
+      }
+      else {
+    	inputStream.reset();
+    	for (int i = 0; i < size; i++) {
+          short n = ReadWriteIOUtils.readShort(inputStream);
+          value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(inputStream);
+          digest.statistics[n] = value;
+          digest.serializedSize += Short.BYTES + Integer.BYTES + value.remaining();
+    	}
       }
     } // else left digest.statistics as null
 
@@ -97,12 +136,49 @@ public class TsDigest {
     digest.serializedSize = Integer.BYTES;
     if (size > 0) {
       digest.statistics = new ByteBuffer[StatisticType.getTotalTypeNum()];
-      ByteBuffer value;
-      for (int i = 0; i < size; i++) {
-        short n = ReadWriteIOUtils.readShort(buffer);
-        value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer);
-        digest.statistics[n] = value;
-        digest.serializedSize += Short.BYTES + Integer.BYTES + value.remaining();
+      ByteBuffer value;      
+      // test if it's v0.8.0 version
+      buffer.mark();
+      String key = ReadWriteIOUtils.readString(buffer);
+      if (key.equals("min_value") || key.equals("max_value") || key.equals("first") 
+    	  || key.equals("last") || key.equals("sum")) {
+    	buffer.reset();
+    	TSFileDescriptor.getInstance().getConfig().setEndian("LITTLE_ENDIAN");
+    	for (int i = 0; i < size; i++) {
+    	  key = ReadWriteIOUtils.readString(buffer);
+          value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer);
+          short n;
+          switch (key) {
+            case "min_value":
+      	      n = 0;
+      	      break;
+      	    case "max_value":
+      	      n = 1;
+      	      break;
+      	    case "first":
+      	      n = 2;
+      	      break;
+      	    case "last":
+      	      n = 3;
+      	      break;
+      	    case "sum":
+      	      n = 4;
+      	      break;
+      	    default:
+      	      n = -1;
+          }
+          digest.statistics[n] = value;
+          digest.serializedSize += Short.BYTES + Integer.BYTES + value.remaining();
+    	}
+      }
+      else {
+    	buffer.reset();
+    	for (int i = 0; i < size; i++) {
+          short n = ReadWriteIOUtils.readShort(buffer);
+          value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer);
+          digest.statistics[n] = value;
+          digest.serializedSize += Short.BYTES + Integer.BYTES + value.remaining();
+      	}
       }
     } // else left digest.statistics as null
 

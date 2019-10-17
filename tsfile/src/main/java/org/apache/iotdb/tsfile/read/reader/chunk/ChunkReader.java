@@ -25,6 +25,7 @@ import java.util.Arrays;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -44,7 +45,8 @@ public abstract class ChunkReader {
   private Decoder valueDecoder;
   private Decoder timeDecoder = Decoder.getDecoderByType(
       TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-      TSDataType.INT64);
+      TSDataType.INT64, 
+      EndianType.valueOf(TSFileDescriptor.getInstance().getConfig().getEndian()));
 
   private Filter filter;
 
@@ -75,7 +77,8 @@ public abstract class ChunkReader {
     chunkHeader = chunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
     valueDecoder = Decoder
-        .getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
+        .getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType(),
+        EndianType.valueOf(TSFileDescriptor.getInstance().getConfig().getEndian()));
     data = new BatchData(chunkHeader.getDataType());
     hasCachedPageHeader = false;
   }
