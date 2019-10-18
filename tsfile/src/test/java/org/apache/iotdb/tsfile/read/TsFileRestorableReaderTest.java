@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,6 +20,7 @@
 package org.apache.iotdb.tsfile.read;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -48,12 +49,13 @@ public class TsFileRestorableReaderTest {
     assertTrue(file.delete());
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testToReadDamagedFileNoRepair() throws IOException {
     File file = TSFileFactory.INSTANCE.getFile(FILE_PATH);
 
     TsFileGeneratorForTest.writeFileWithOneIncompleteChunkHeader(file);
     // This should throw an Illegal Argument Exception
     TsFileSequenceReader reader = new TsFileRestorableReader(FILE_PATH, false);
+    assertFalse(reader.isComplete());
   }
 }
