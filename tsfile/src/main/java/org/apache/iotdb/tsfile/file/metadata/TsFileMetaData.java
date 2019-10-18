@@ -342,7 +342,6 @@ public class TsFileMetaData {
     for(String path : getAllPath(chunkGroupMetaDataList)){
       bloomFilter.add(path);
     }
-    //System.out.println(Arrays.toString(bloomFilter.serialize()));
     return bloomFilter;
   }
 
