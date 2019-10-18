@@ -33,36 +33,29 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.LocalFSFactory;
 public class FSFactoryProducer {
 
   private static FSType fSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
-  private static HDFSFactory hdfsFactory = new HDFSFactory();
-  private static LocalFSFactory localFSFactory = new LocalFSFactory();
-  private static HDFSInputFactory hdfsInputFactory = new HDFSInputFactory();
-  private static LocalFSInputFactory localFSInputFactory = new LocalFSInputFactory();
-  private static HDFSOutputFactory hdfsOutputFactory = new HDFSOutputFactory();
-  private static LocalFSOutputFactory localFSOutputFactory = new LocalFSOutputFactory();
-
 
   public static FSFactory getFSFactory() {
     if (fSType.equals(FSType.HDFS)) {
-      return hdfsFactory;
+      return new HDFSFactory();
     } else {
-      return localFSFactory;
+      return new LocalFSFactory();
     }
   }
 
 
   public static FileInputFactory getFileInputFactory() {
     if (fSType.equals(FSType.HDFS)) {
-      return hdfsInputFactory;
+      return new HDFSInputFactory();
     } else {
-      return localFSInputFactory;
+      return new LocalFSInputFactory();
     }
   }
 
   public static FileOutputFactory getFileOutputFactory() {
     if (fSType.equals(FSType.HDFS)) {
-      return hdfsOutputFactory;
+      return new HDFSOutputFactory();
     } else {
-      return localFSOutputFactory;
+      return new LocalFSOutputFactory();
     }
   }
 }
