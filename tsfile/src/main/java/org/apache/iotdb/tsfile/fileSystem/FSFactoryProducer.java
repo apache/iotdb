@@ -34,47 +34,32 @@ public class FSFactoryProducer {
 
   private static FSType fSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
 
-  private static HDFSFactory hdfsFactory;
-  private static LocalFSFactory localFSFactory;
-  private static HDFSInputFactory hdfsInputFactory;
-  private static LocalFSInputFactory localFSInputFactory;
-  private static HDFSOutputFactory hdfsOutputFactory;
-  private static LocalFSOutputFactory localFSOutputFactory;
+  private static FSFactory fsFactory;
+  private static FileInputFactory fileInputFactory;
+  private static FileOutputFactory fileOutputFactory;
 
   static {
     if (fSType.equals(FSType.HDFS)) {
-      hdfsFactory = new HDFSFactory();
-      hdfsInputFactory = new HDFSInputFactory();
-      hdfsOutputFactory = new HDFSOutputFactory();
+      fsFactory = new HDFSFactory();
+      fileInputFactory = new HDFSInputFactory();
+      fileOutputFactory = new HDFSOutputFactory();
     } else {
-      localFSFactory = new LocalFSFactory();
-      localFSInputFactory = new LocalFSInputFactory();
-      localFSOutputFactory = new LocalFSOutputFactory();
+      fsFactory = new LocalFSFactory();
+      fileInputFactory = new LocalFSInputFactory();
+      fileOutputFactory = new LocalFSOutputFactory();
     }
   }
 
   public static FSFactory getFSFactory() {
-    if (fSType.equals(FSType.HDFS)) {
-      return hdfsFactory;
-    } else {
-      return localFSFactory;
-    }
+    return fsFactory;
   }
 
 
   public static FileInputFactory getFileInputFactory() {
-    if (fSType.equals(FSType.HDFS)) {
-      return hdfsInputFactory;
-    } else {
-      return localFSInputFactory;
-    }
+    return fileInputFactory;
   }
 
   public static FileOutputFactory getFileOutputFactory() {
-    if (fSType.equals(FSType.HDFS)) {
-      return hdfsOutputFactory;
-    } else {
-      return localFSOutputFactory;
-    }
+    return fileOutputFactory;
   }
 }
