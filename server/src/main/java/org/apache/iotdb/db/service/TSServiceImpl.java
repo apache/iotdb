@@ -30,6 +30,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,6 +61,7 @@ import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.Metadata;
 import org.apache.iotdb.db.qp.QueryProcessor;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
@@ -68,6 +70,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -262,7 +265,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * convert from TSStatusCode to TSStatus according to status code and status message
    *
    * @param statusType status type
-   * @return
    */
   private TSStatus getStatus(TSStatusCode statusType) {
     TSStatusType statusCodeAndMessage = new TSStatusType(statusType.getStatusCode(),
@@ -276,7 +278,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    *
    * @param statusType status type
    * @param appendMessage appending message
-   * @return
    */
   private TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
     TSStatusType statusCodeAndMessage = new TSStatusType(statusType.getStatusCode(),
@@ -386,7 +387,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return MManager.getInstance().getMetadata();
   }
 
-  protected TSDataType getSeriesType(String path)
+  public static TSDataType getSeriesType(String path)
       throws PathErrorException {
     switch (path.toLowerCase()) {
       // authorization queries
@@ -648,8 +649,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (plan.getOperatorType() == OperatorType.AGGREGATION) {
         resp.setIgnoreTimeStamp(true);
       } // else default ignoreTimeStamp is false
-      resp.setColumns(columns);
-      resp.setDataTypeList(queryColumnsType(columns));
       resp.setOperationType(plan.getOperatorType().toString());
       TSHandleIdentifier operationId = new TSHandleIdentifier(
           ByteBuffer.wrap(username.get().getBytes()), ByteBuffer.wrap("PASS".getBytes()));
@@ -726,12 +725,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR,
             String.format("%s is not an auth query", authorPlan.getAuthorType())));
     }
+    resp.setColumns(columns);
     return resp;
   }
 
   private TSExecuteStatementResp executeDataQuery(PhysicalPlan plan, List<String> columns)
-      throws AuthException, TException {
+      throws AuthException, TException, PathErrorException {
     List<Path> paths = plan.getPaths();
+    List<String> respColumns = new ArrayList<>();
 
     // check seriesPath exists
     if (paths.isEmpty()) {
@@ -753,29 +754,68 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     TSExecuteStatementResp resp = getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS));
-    // Restore column header of aggregate to func(column_name), only
-    // support single aggregate function for now
-    switch (plan.getOperatorType()) {
-      case QUERY:
-      case FILL:
-        for (Path p : paths) {
-          columns.add(p.getFullPath());
+
+    if (((QueryPlan) plan).isGroupByDevice()) {
+      List<String> measurementColumns = ((QueryPlan) plan).getMeasurementColumnList();
+      respColumns.add(SQLConstant.GROUPBY_DEVICE_COLUMN_NAME);
+      respColumns.addAll(measurementColumns);
+      resp.setColumns(respColumns); // note this is without deduplication
+
+      Map<String, TSDataType> checker = ((QueryPlan) plan).getDataTypeConsistencyChecker();
+      List<String> columnsTypeStr = new ArrayList<>();
+      columnsTypeStr.add(TSDataType.TEXT.toString()); // the DEVICE column of GROUP_BY_DEVICE result
+      List<TSDataType> deduplicatedcolumnsType = new ArrayList<>();
+      deduplicatedcolumnsType.add(TSDataType.TEXT); // the DEVICE column of GROUP_BY_DEVICE result
+      List<String> deduplicatedMeasurementColumns = new ArrayList<>();
+      Set<String> tmpColumnSet = new HashSet<>();
+      for (String column : measurementColumns) {
+        TSDataType dataType = checker.get(column);
+        columnsTypeStr.add(dataType.toString());
+
+        if (!tmpColumnSet.contains(column)) {
+          // Note that the deduplication strategy must be consistent with that of IoTDBQueryResultSet.
+          tmpColumnSet.add(column);
+          deduplicatedMeasurementColumns.add(column);
+          deduplicatedcolumnsType.add(dataType);
         }
-        break;
-      case AGGREGATION:
-      case GROUPBY:
-        List<String> aggregations = plan.getAggregations();
-        if (aggregations.size() != paths.size()) {
-          for (int i = 1; i < paths.size(); i++) {
-            aggregations.add(aggregations.get(0));
+      }
+
+      resp.setDataTypeList(columnsTypeStr); // note this is without deduplication
+
+      ((QueryPlan) plan).setMeasurementColumnList(deduplicatedMeasurementColumns);
+      ((QueryPlan) plan).setDataTypes(deduplicatedcolumnsType);
+      // To avoid confusion, set null since they are useless henceforth.
+      ((QueryPlan) plan).setPaths(null);
+      ((QueryPlan) plan).setDataTypeConsistencyChecker(null);
+
+    } else {
+      // Restore column header of aggregate to func(column_name), only
+      // support single aggregate function for now
+      switch (plan.getOperatorType()) {
+        case QUERY:
+        case FILL:
+          for (Path p : paths) {
+            columns.add(p.getFullPath());
           }
-        }
-        for (int i = 0; i < paths.size(); i++) {
-          columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
-        }
-        break;
-      default:
-        throw new TException("unsupported query type: " + plan.getOperatorType());
+          break;
+        case AGGREGATION:
+        case GROUPBY:
+          List<String> aggregations = plan.getAggregations();
+          if (aggregations.size() != paths.size()) {
+            for (int i = 1; i < paths.size(); i++) {
+              aggregations.add(aggregations.get(0));
+            }
+          }
+          for (int i = 0; i < paths.size(); i++) {
+            columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
+          }
+          break;
+        default:
+          throw new TException("unsupported query type: " + plan.getOperatorType());
+      }
+
+      resp.setColumns(columns);
+      resp.setDataTypeList(queryColumnsType(columns));
     }
     return resp;
   }
