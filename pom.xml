@@ -469,6 +469,8 @@
                             <exclude>local-snapshots-dir/**</exclude>
                             <!-- JSON can't contain comments and therefore no Apache header -->
                             <exclude>*.json</exclude>
+                            <!-- visualization plans -->
+                            <exclude>**/*.plan</exclude>
                             <exclude>NOTICE-binary</exclude>
                             <exclude>LICENSE-binary</exclude>
                         </excludes>
