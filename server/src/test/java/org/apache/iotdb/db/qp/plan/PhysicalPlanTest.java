@@ -95,6 +95,16 @@ public class PhysicalPlanTest {
   }
 
   @Test
+  public void testMetadata2()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+    String metadata = "create timeseries root.vehicle.d1.s2 with datatype=int32,encoding=rle";
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    MetadataPlan plan = (MetadataPlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(String.format("seriesPath: root.vehicle.d1.s2%n" + "resultDataType: INT32%n" +
+        "encoding: RLE%nnamespace type: ADD_PATH%n" + "args: "), plan.toString());
+  }
+
+  @Test
   public void testAuthor()
       throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String sql = "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_TIMESERIES' on root.vehicle.d1.s1";

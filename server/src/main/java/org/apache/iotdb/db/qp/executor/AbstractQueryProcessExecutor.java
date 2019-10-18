@@ -36,6 +36,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.DeviceIterateDataSet;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.executor.IEngineQueryRouter;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -67,7 +68,11 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   private QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
       throws StorageEngineException, QueryFilterOptimizationException, PathErrorException,
       ProcessorException, IOException {
-    // deduplicate executed paths
+    if (queryPlan.isGroupByDevice()) {
+      return new DeviceIterateDataSet(queryPlan, context, queryRouter);
+    }
+
+    // deduplicate executed paths and aggregations if exist
     List<Path> deduplicatedPaths = new ArrayList<>();
 
     if (queryPlan instanceof GroupByPlan) {
@@ -115,7 +120,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       throw new ProcessorException(
           "The size of the path list does not equal that of the aggregation list.");
     }
-    HashSet<String> columnSet = new HashSet<>();
+    Set<String> columnSet = new HashSet<>();
     for (int i = 0; i < paths.size(); i++) {
       String column = aggregations.get(i) + "(" + paths.get(i).toString() + ")";
       if (!columnSet.contains(column)) {
@@ -134,7 +139,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     if (paths == null || deduplicatedPaths == null) {
       throw new ProcessorException("Parameters should not be null.");
     }
-    HashSet<String> columnSet = new HashSet<>();
+    Set<String> columnSet = new HashSet<>();
     for (Path path : paths) {
       String column = path.toString();
       if (!columnSet.contains(column)) {
@@ -159,7 +164,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       for (String onePath : existingPaths) {
         if (!mManager.pathExist(onePath)) {
           throw new ProcessorException(
-              String.format("TimeSeries %s does not exist and its data cannot be deleted", onePath));
+              String
+                  .format("TimeSeries %s does not exist and its data cannot be deleted", onePath));
         }
       }
       for (String path : existingPaths) {

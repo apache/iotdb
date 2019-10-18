@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.write;
 import java.io.File;
 import java.io.IOException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.exception.NotCompatibleException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -75,14 +76,16 @@ public class TsFileIOWriterTest {
   }
 
   @Test
-  public void endFileTest() throws IOException {
+  public void endFileTest() throws IOException, NotCompatibleException {
     TsFileSequenceReader reader = new TsFileSequenceReader(tsfile);
 
     // magic_string
     Assert.assertEquals(TSFileConfig.MAGIC_STRING, reader.readHeadMagic());
+    Assert.assertEquals(TSFileConfig.VERSION_NUMBER, reader.readVersionNumber());
     Assert.assertEquals(TSFileConfig.MAGIC_STRING, reader.readTailMagic());
 
     // chunk header
+    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length);
     Assert.assertEquals(MetaMarker.CHUNK_HEADER, reader.readMarker());
     ChunkHeader header = reader.readChunkHeader();
     Assert.assertEquals(TimeSeriesMetadataTest.measurementUID, header.getMeasurementID());
