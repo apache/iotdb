@@ -34,28 +34,47 @@ public class FSFactoryProducer {
 
   private static FSType fSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
 
+  private static HDFSFactory hdfsFactory;
+  private static LocalFSFactory localFSFactory;
+  private static HDFSInputFactory hdfsInputFactory;
+  private static LocalFSInputFactory localFSInputFactory;
+  private static HDFSOutputFactory hdfsOutputFactory;
+  private static LocalFSOutputFactory localFSOutputFactory;
+
+  static {
+    if (fSType.equals(FSType.HDFS)) {
+      hdfsFactory = new HDFSFactory();
+      hdfsInputFactory = new HDFSInputFactory();
+      hdfsOutputFactory = new HDFSOutputFactory();
+    } else {
+      localFSFactory = new LocalFSFactory();
+      localFSInputFactory = new LocalFSInputFactory();
+      localFSOutputFactory = new LocalFSOutputFactory();
+    }
+  }
+
   public static FSFactory getFSFactory() {
     if (fSType.equals(FSType.HDFS)) {
-      return new HDFSFactory();
+      return hdfsFactory;
     } else {
-      return new LocalFSFactory();
+      return localFSFactory;
     }
   }
 
 
   public static FileInputFactory getFileInputFactory() {
     if (fSType.equals(FSType.HDFS)) {
-      return new HDFSInputFactory();
+      return hdfsInputFactory;
     } else {
-      return new LocalFSInputFactory();
+      return localFSInputFactory;
     }
   }
 
   public static FileOutputFactory getFileOutputFactory() {
     if (fSType.equals(FSType.HDFS)) {
-      return new HDFSOutputFactory();
+      return hdfsOutputFactory;
     } else {
-      return new LocalFSOutputFactory();
+      return localFSOutputFactory;
     }
   }
 }
