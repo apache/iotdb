@@ -46,19 +46,20 @@ public class SessionDataSet {
   private TSIService.Iface client = null;
   private TSOperationHandle operationHandle;
   private int batchSize = 512;
-  private List<String> columnTypeDeduplicatedList; // deduplicated according to columnName
+  private List<String> columnTypeDeduplicatedList;
 
-  public SessionDataSet(String sql, List<String> columnName, List<String> columnTypeList,
+  public SessionDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
       long queryId, TSIService.Iface client, TSOperationHandle operationHandle) {
     this.sql = sql;
     this.queryId = queryId;
     this.client = client;
     this.operationHandle = operationHandle;
 
-    Set<String> columnSet = new HashSet<>(); // for deduplication
+    // deduplicate columnTypeList according to columnNameList
     this.columnTypeDeduplicatedList = new ArrayList<>();
-    for (int i = 0; i < columnName.size(); i++) {
-      String name = columnName.get(i);
+    Set<String> columnSet = new HashSet<>(); // for deduplication
+    for (int i = 0; i < columnNameList.size(); i++) {
+      String name = columnNameList.get(i);
       if (!columnSet.contains(name)) {
         columnSet.add(name);
         columnTypeDeduplicatedList.add(columnTypeList.get(i));

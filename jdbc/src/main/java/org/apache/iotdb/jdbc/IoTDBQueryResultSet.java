@@ -75,7 +75,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   private List<String> columnInfoList; // no deduplication
   private List<String> columnTypeList; // no deduplication
   private Map<String, Integer> columnInfoMap; // used because the server returns deduplicated columns
-  private List<String> columnTypeDeduplicatedList; // deduplicated in accordance with columnNames
+  private List<String> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   private RowRecord record;
   private Iterator<RowRecord> recordItr;
   private int rowsFetched = 0;
@@ -109,23 +109,24 @@ public class IoTDBQueryResultSet implements ResultSet {
     // do nothing
   }
 
-  public IoTDBQueryResultSet(Statement statement, List<String> columnName,
+  public IoTDBQueryResultSet(Statement statement, List<String> columnNameList,
       List<String> columnTypeList, boolean ignoreTimeStamp, TSIService.Iface client,
       TSOperationHandle operationHandle, String sql, long queryId)
       throws SQLException {
     this.statement = statement;
     this.maxRows = statement.getMaxRows();
     this.fetchSize = statement.getFetchSize();
-
     this.columnTypeList = columnTypeList;
+
     this.columnInfoList = new ArrayList<>();
     this.columnInfoList.add(TIMESTAMP_STR);
+    // deduplicate and map
     this.columnInfoMap = new HashMap<>();
     this.columnInfoMap.put(TIMESTAMP_STR, 1);
     this.columnTypeDeduplicatedList = new ArrayList<>();
     int index = 2;
-    for (int i = 0; i < columnName.size(); i++) {
-      String name = columnName.get(i);
+    for (int i = 0; i < columnNameList.size(); i++) {
+      String name = columnNameList.get(i);
       columnInfoList.add(name);
       if (!columnInfoMap.containsKey(name)) {
         columnInfoMap.put(name, index++);
