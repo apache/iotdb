@@ -59,7 +59,7 @@ path: LayerName (DOT LayerName)+
 LayerName: Identifier | STAR
 ```
 
-Among them, STAR is "* " and DOT is ".".
+Among them, STAR is "*" and DOT is ".".
 
 We call the middle part of a path between two "." as a layer, and thus `root.A.B.C` is a path with four layers. 
 
@@ -169,7 +169,7 @@ IoTDB can support LONG types and DATETIME-DISPLAY types when displaying timestam
 
 * Value
 
-The value of a time series is actually the value sent by a sensor to IoTDB. This value can be stored by IoTDB according to the data type. At the same time, users can select the compression mode and the corresponding encoding mode according to the data type of this value. See [Data Type](/#/Documents/progress/chap2/sec2) and [Encoding](/#/Documents/progress/chap2/sec3) of this document for details on data type and corresponding encoding.
+The value of a time series is actually the value sent by a sensor to IoTDB. This value can be stored by IoTDB according to the data type. At the same time, users can select the compression mode and the corresponding encoding mode according to the data type of this value. See [Data Type](/#/Documents/progress/chap2/sec2), [Encoding](/#/Documents/progress/chap2/sec3) and [Compression](/#/Documents/progress/chap2/sec4) of this document for details on data type and corresponding encoding.
 
 * Point
 

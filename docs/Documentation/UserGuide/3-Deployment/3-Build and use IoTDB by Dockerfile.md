@@ -85,8 +85,6 @@ $ start-cli.sh -h localhost -p 6667 -u root -pw root
             <version>0.8.0-SNAPSHOT</version>
         </dependency>
 ```
-Some example about how to use IoTDB with IoTDB-JDBC can be found at: https://github.com/apache/incubator-iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb
-
-(Notice that because we have not published Apache IoTDB version 0.8.0 now, you have to compile the source code by `mvn install -DskipTests` to install the dependence into your local maven repository)
+Some examples about how to use IoTDB with IoTDB-JDBC can be found at: https://github.com/apache/incubator-iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb
 
 6. Now enjoy it!

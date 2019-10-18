@@ -26,11 +26,11 @@
 
 * Flexible deployment. 
 
-IoTDB provides users one-click installation tool on the cloud, once-decompressed-used terminal tool and the bridge tool between cloud platform and terminal tool (Data Synchronization Tool).
+IoTDB provides users one-click installation tool on the cloud, once-decompressed-used terminal tool and the bridging tool between cloud platforms and terminal tools (Data Synchronization Tool).
 
-* Low cost on hardware. 
+* Low storage cost. 
 
-IoTDB can reach a high compression ratio of disk storage (For one billion data storage, hard drive cost less than $0.23)
+IoTDB can reach a high compression ratio of disk storage, which means IoTDB can store the same amount of data with less hardware disk cost.
 
 * Efficient directory structure. 
 
@@ -43,9 +43,9 @@ IoTDB supports millions of low-power devices' strong connection data access, hig
 
 IoTDB supports time alignment for timeseries data accross devices and sensors, computation in timeseries field (frequency domain transformation) and rich aggregation function support in time dimension.
 
-* Easy to get start. 
+* Easy to get startd. 
 
-IoTDB supports SQL-Like language, JDBC standard API and import/export tools which is easy to use.
+IoTDB supports SQL-Like language, JDBC standard API and import/export tools which are easy to use.
 
 * Intense integration with Open Source Ecosystem. 
 

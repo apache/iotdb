@@ -33,7 +33,7 @@ IoTDB为用户提供多种插入实时数据的方式，例如在[Cli/Shell工�
 本节主要为您介绍实时数据接入的[INSERT语句](/#/Documents/progress/chap4/sec7)在场景中的实际使用示例，有关INSERT SQL语句的详细语法请参见本文[INSERT语句](/#/Documents/progress/chap4/sec7)节。
 
 #### 使用INSERT语句
-使用[INSERT语句](/#/Documents/progress/chap4/sec7)可以向指定的已经创建的一条或多条时间序列中插入数据。对于每一条数据，均由一个时间戳类型的[时间戳](/#/Documents/progress/chap2/sec1)和一个[数值类型](/#/Documents/progress/chap2/sec2)的传感器采集值组成。
+使用[INSERT语句](/#/Documents/progress/chap4/sec7)可以向指定的已经创建的一条或多条时间序列中插入数据。对于每一条数据，均由一个时间戳类型的[时间戳](/#/Documents/progress/chap2/sec1)和一个[数值或布尔值、字符串类型](/#/Documents/progress/chap2/sec2)的传感器采集值组成。
 
 在本节的场景实例下，以其中的两个时间序列`root.ln.wf02.wt02.status`和`root.ln.wf02.wt02.hardware`为例 ，它们的数据类型分别为BOOLEAN和TEXT。
 

@@ -144,7 +144,7 @@ IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp, status, temperature) VALUES (15
 >Note: The order of Sensor and PointValue need one-to-one correspondence
 
 
-#### Update Record Statement
+#### Update Record Statement (Currently Unsupported)
 
 UPDATE &lt;UpdateClause> SET &lt;SetClause> WHERE &lt;WhereClause>
 

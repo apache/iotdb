@@ -36,7 +36,7 @@ IoTDB需要存储的数据分为三类，分别为数据文件、系统文件以
 
 ### 系统文件
 
-系统文件包括Restore文件和Schema文件，存储了数据文件的元数据信息。可通过sys_dir配置项进行配置（详情见[sys_dir配置项](/#/Documents/progress/chap3/sec2)）。
+系统Schema文件，存储了数据文件的元数据信息。可通过sys_dir配置项进行配置（详情见[sys_dir配置项](/#/Documents/progress/chap3/sec2)）。
 
 ### 写前日志文件
 

@@ -483,10 +483,10 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 Keywords for IoTDB (case insensitive):
 ADD, BY, COMPRESSOR, CREATE, DATATYPE, DELETE, DESCRIBE, DROP, ENCODING, EXIT, FROM, GRANT, GROUP, LABLE, LINK, INDEX, INSERT, INTO, LOAD, MAX_POINT_NUMBER, MERGE, METADATA, ON, ORDER, PASSWORD, PRIVILEGES, PROPERTY, QUIT, REVOKE, ROLE, ROOT, SELECT, SET, SHOW, STORAGE, TIME, TIMESERIES, TIMESTAMP, TO, UNLINK, UPDATE, USER, USING, VALUE, VALUES, WHERE, WITH
 
-Keywords with special meanings (case sensitive):
-* Data Types: BOOLEAN, DOUBLE, FLOAT, INT32, INT64, TEXT (Only capitals is acceptable)
-* Encoding Methods: BITMAP, DFT, GORILLA, PLAIN, RLE, TS_2DIFF (Only capitals is acceptable)
-* Compression Methods: UNCOMPRESSED, SNAPPY (Only capitals is acceptable)
+Keywords with special meanings (case insensitive):
+* Data Types: BOOLEAN, DOUBLE, FLOAT, INT32, INT64, TEXT 
+* Encoding Methods: BITMAP, DFT, GORILLA, PLAIN, RLE, TS_2DIFF
+* Compression Methods: UNCOMPRESSED, SNAPPY
 * Logical symbol: AND, &, &&, OR, | , ||, NOT, !, TRUE, FALSE
 ```
 
