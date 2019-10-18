@@ -89,6 +89,15 @@ public class TsFileSequenceReader implements AutoCloseable {
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
     this.file = file;
     tsFileInput = FileInputFactory.INSTANCE.getTsFileInput(file);
+    System.out.println(this.readVersionNumber());
+    System.out.println(this.readVersionNumber());
+    System.out.println(this.readVersionNumber());
+    if (this.readVersionNumber().startsWith("v")) {
+      config.setEndian("LITTLE_ENDIAN");
+    }
+    else {
+      config.setEndian("BIG_ENDIAN");
+    }
     try {
       if (loadMetadataSize) {
         loadMetadataSize();
@@ -128,6 +137,12 @@ public class TsFileSequenceReader implements AutoCloseable {
   public TsFileSequenceReader(TsFileInput input, boolean loadMetadataSize)
       throws IOException {
     this.tsFileInput = input;
+    if (this.readVersionNumber().startsWith("v")) {
+      config.setEndian("LITTLE_ENDIAN");
+    }
+    else {
+      config.setEndian("BIG_ENDIAN");
+    }
     try {
       if (loadMetadataSize) { // NOTE no autoRepair here
         loadMetadataSize();
@@ -225,10 +240,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     tsFileInput.read(versionNumberBytes, TSFileConfig.MAGIC_STRING.getBytes().length);
     versionNumberBytes.flip();
     String versionNumberString = new String(versionNumberBytes.array());
-    if(!versionNumberString.equals(TSFileConfig.VERSION_NUMBER)) {
-      throw new NotCompatibleException("TsFile isn't compatible. " + TSFileConfig.MAGIC_STRING +
-          TSFileConfig.VERSION_NUMBER + " is expected.");
-    }
     return versionNumberString;
   }
 

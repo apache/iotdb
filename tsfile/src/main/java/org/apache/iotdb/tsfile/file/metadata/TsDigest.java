@@ -67,20 +67,19 @@ public class TsDigest {
    */
   public static TsDigest deserializeFrom(InputStream inputStream) throws IOException {
     TsDigest digest = new TsDigest();
-
     int size = ReadWriteIOUtils.readInt(inputStream);
     digest.validSizeOfArray = size;
     digest.serializedSize = Integer.BYTES;
     if (size > 0) {
       digest.statistics = new ByteBuffer[StatisticType.getTotalTypeNum()];
       ByteBuffer value;
-   // test if it's v0.8.0 version
+   // check if it's old version of TsFile
       inputStream.mark(10);
       String key = ReadWriteIOUtils.readString(inputStream);
       if (key.equals("min_value") || key.equals("max_value") || key.equals("first") 
     	  || key.equals("last") || key.equals("sum")) {
     	inputStream.reset();
-    	TSFileDescriptor.getInstance().getConfig().setEndian("LITTLE_ENDIAN");
+    	//TSFileDescriptor.getInstance().getConfig().setEndian("LITTLE_ENDIAN");
     	for (int i = 0; i < size; i++) {
     	  key = ReadWriteIOUtils.readString(inputStream);
           value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(inputStream);
@@ -130,20 +129,19 @@ public class TsDigest {
    */
   public static TsDigest deserializeFrom(ByteBuffer buffer) {
     TsDigest digest = new TsDigest();
-
     int size = ReadWriteIOUtils.readInt(buffer);
     digest.validSizeOfArray = size;
     digest.serializedSize = Integer.BYTES;
     if (size > 0) {
       digest.statistics = new ByteBuffer[StatisticType.getTotalTypeNum()];
-      ByteBuffer value;      
-      // test if it's v0.8.0 version
+      ByteBuffer value;
+      // check if it's old version of TsFile
       buffer.mark();
       String key = ReadWriteIOUtils.readString(buffer);
       if (key.equals("min_value") || key.equals("max_value") || key.equals("first") 
     	  || key.equals("last") || key.equals("sum")) {
     	buffer.reset();
-    	TSFileDescriptor.getInstance().getConfig().setEndian("LITTLE_ENDIAN");
+    	//TSFileDescriptor.getInstance().getConfig().setEndian("LITTLE_ENDIAN");
     	for (int i = 0; i < size; i++) {
     	  key = ReadWriteIOUtils.readString(buffer);
           value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer);
@@ -173,6 +171,7 @@ public class TsDigest {
       }
       else {
     	buffer.reset();
+
     	for (int i = 0; i < size; i++) {
           short n = ReadWriteIOUtils.readShort(buffer);
           value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer);
