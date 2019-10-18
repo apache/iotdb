@@ -19,10 +19,16 @@
 
 package org.apache.iotdb.tsfile.fileSystem;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -32,6 +38,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.PathFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -219,6 +226,70 @@ public class HDFSFile extends File {
     }
   }
 
+  public BufferedReader getBufferedReader(String filePath) {
+    try {
+      return new BufferedReader(new InputStreamReader(fs.open(new Path(filePath))));
+    } catch (IOException e) {
+      logger.error("Failed to get buffered reader for {}. ", filePath, e);
+      return null;
+    }
+  }
+
+  public BufferedWriter getBufferedWriter(String filePath, boolean append) {
+    try {
+        return new BufferedWriter(new OutputStreamWriter(fs.create(new Path(filePath))));
+    } catch (IOException e) {
+      logger.error("Failed to get buffered writer for {}. ", filePath, e);
+      return null;
+    }
+  }
+
+  public BufferedInputStream getBufferedInputStream(String filePath) {
+    try {
+      return new BufferedInputStream(fs.open(new Path(filePath)));
+    } catch (IOException e) {
+      logger.error("Failed to get buffered input stream for {}. ", filePath, e);
+      return null;
+    }
+  }
+
+  public BufferedOutputStream getBufferedOutputStream(String filePath) {
+    try {
+      return new BufferedOutputStream(fs.create(new Path(filePath)));
+    } catch (IOException e) {
+      logger.error("Failed to get buffered output stream for {}. ", filePath, e);
+      return null;
+    }
+  }
+
+  public File[] listFilesBySuffix(String fileFolder, String suffix) {
+    PathFilter pathFilter = path -> path.toUri().toString().endsWith(suffix);
+    List<HDFSFile> files = listFiles(fileFolder, pathFilter);
+    return files.toArray(new HDFSFile[files.size()]);
+  }
+
+  public File[] listFilesByPrefix(String fileFolder, String prefix) {
+    PathFilter pathFilter = path -> path.toUri().toString().startsWith(prefix);
+    List<HDFSFile> files = listFiles(fileFolder, pathFilter);
+    return files.toArray(new HDFSFile[files.size()]);
+  }
+
+  private List<HDFSFile> listFiles(String fileFolder, PathFilter pathFilter) {
+    List<HDFSFile> files = new ArrayList<>();
+    try {
+      Path path = new Path(fileFolder);
+      for (FileStatus fileStatus : fs.listStatus(path)) {
+        Path filePath = fileStatus.getPath();
+        if (pathFilter.accept(filePath)) {
+          HDFSFile file = new HDFSFile(filePath.toUri().toString());
+          files.add(file);
+        }
+      }
+    } catch (IOException e) {
+      logger.error("Failed to list files in {}. ", fileFolder);
+    }
+    return files;
+  }
 
   @Override
   public String getParent() {
