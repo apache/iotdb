@@ -27,6 +27,7 @@ import org.apache.hadoop.io.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -63,7 +64,7 @@ public class TsFileDeserializer {
     }
     MapWritable mapWritable = (MapWritable) writable;
     String deviceId = mapWritable.get(new Text("device_id")).toString();
-    if (!Objects.equals(deviceId, tableName)) {
+    if (!Objects.equals(deviceId.toLowerCase(), tableName)) {
       return null;
     }
 
@@ -126,6 +127,14 @@ public class TsFileDeserializer {
         case STRING:
           if (data instanceof Text) {
             row.add(data.toString());
+          }
+          else {
+            throw new TsFileSerDeException("Unexpected data type: " + data.getClass().getName() + " for Date TypeInfo: " + type);
+          }
+          break;
+        case TIMESTAMP:
+          if (data instanceof LongWritable) {
+            row.add(new Timestamp(((LongWritable)data).get()));
           }
           else {
             throw new TsFileSerDeException("Unexpected data type: " + data.getClass().getName() + " for Date TypeInfo: " + type);

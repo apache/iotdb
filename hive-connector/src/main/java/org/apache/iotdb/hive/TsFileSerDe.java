@@ -62,7 +62,16 @@ public class TsFileSerDe extends AbstractSerDe {
 
     // in our implementation, tableName should be set same as device_id
 
+
+    logger.debug("before table name {}", tbl.getProperty(TABLE_NAME));
+
     tableName = tbl.getProperty(TABLE_NAME).split("\\.")[1];
+
+    tableName = String.join(".", tableName.split("/"));
+
+    logger.debug("after table name {}", tableName);
+
+    logger.debug("column names {}", columnNameProperty);
 
     if (columnNameProperty == null || columnNameProperty.isEmpty()
     || columnTypeProperty == null || columnTypeProperty.isEmpty()) {

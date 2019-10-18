@@ -20,6 +20,7 @@ package org.apache.iotdb.hive;
 
 import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
@@ -73,7 +74,10 @@ public class TSFHiveRecordReader implements RecordReader<NullWritable, MapWritab
         long timestamp = rowRecord.getTimestamp();
 
         try {
-          value.putAll(getCurrentValue(deviceIdList, currentIndex, timestamp, isReadTime, isReadDeviceId, fields, measurementIds));
+          MapWritable res = new MapWritable();
+          getCurrentValue(deviceIdList, currentIndex, timestamp, isReadTime, isReadDeviceId, fields, measurementIds)
+                  .forEach((k, v) -> res.put(new Text(k.toString().toLowerCase()), v));
+          value.putAll(res);
         } catch (InterruptedException e) {
           throw new IOException(e.getMessage());
         }
