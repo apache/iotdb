@@ -227,20 +227,97 @@ Expression: [NOT|!]?<TimeExpr> | [NOT|!]?<SensorExpr>
 TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
 SensorExpr : (<Timeseries>|<Path>) PrecedenceEqualOperator <PointValue>
 LIMITClause : <N> [OFFSETClause]?
-N : NonNegativeInteger
+N : PositiveInteger
 OFFSETClause : OFFSET <OFFSETValue>
 OFFSETValue : NonNegativeInteger
 SLIMITClause : <SN> [SOFFSETClause]?
-SN : NonNegativeInteger
+SN : PositiveInteger
 SOFFSETClause : SOFFSET <SOFFSETValue>
 SOFFSETValue : NonNegativeInteger
 NonNegativeInteger:= ('+')? Digit+
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00 LIMIT 3 OFFSET 2
 Eg. IoTDB > SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY(5m, 1509465660000, [1509465720000, 1509466380000]) LIMIT 3
 Note: The order of <LIMITClause> and <SLIMITClause> does not affect the grammatical correctness.
-Note: <SLIMITClause> can only effect in Prefixpath and StarPath.
 Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
 ```
+
+* Group By Device Statement
+```
+GroupbyDeviceClause : GROUP BY DEVICE
+
+Rules:  
+1. Both uppercase and lowercase are ok.  
+Correct example: select * from root.sg1 group by device  
+Correct example: select * from root.sg1 GROUP BY DEVICE  
+
+2. GroupbyDeviceClause can only be used at the end of a query statement.  
+Correct example: select * from root.sg1 where time > 10 group by device  
+Wrong example: select * from root.sg1 group by device where time > 10  
+
+3. The paths of the SELECT clause can only be single level. In other words, the paths of the SELECT clause can only be measurements or STAR, without DOT.
+Correct example: select s0,s1 from root.sg1.* group by device  
+Correct example: select s0,s1 from root.sg1.d0, root.sg1.d1 group by device  
+Correct example: select * from root.sg1.* group by device  
+Correct example: select * from root group by device  
+Correct example: select s0,s1,* from root.*.* group by device  
+Wrong example: select d0.s1, d0.s2, d1.s0 from root.sg1 group by device  
+Wrong example: select *.s0, *.s1 from root.* group by device  
+Wrong example: select *.*.* from root group by device
+
+4. The data types of the same measurement column should be the same across devices. 
+Note that when it comes to aggregated paths, the data type of the measurement column will reflect 
+the aggregation function rather than the original timeseries.
+
+Correct example: select s0 from root.sg1.d0,root.sg1.d1 group by device   
+root.sg1.d0.s0 and root.sg1.d1.s0 are both INT32.  
+
+Correct example: select count(s0) from root.sg1.d0,root.sg1.d1 group by device   
+count(root.sg1.d0.s0) and count(root.sg1.d1.s0) are both INT64.  
+
+Wrong example: select s0 from root.sg1.d0, root.sg2.d3 group by device  
+root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT. 
+
+5. The display principle of the result table is that only when the column (or row) has existing data will the column (or row) be shown, with nonexistent cells being null.   
+For example, "select s0,s1,s2 from root.sg.d0, root.sg.d1, root.sg.d2 group by device". Suppose that the actual existing timeseries are as follows:  
+- root.sg.d0.s0
+- root.sg.d0.s1
+- root.sg.d1.s0
+
+Then the header of the result table will be: [Time, Device, s0, s1].  
+And you could expect a table like:  
+
+| Time | Device   | s0 | s1 |
+| ---  | ---      | ---| ---|
+|  1   |root.sg.d0| 20 | 2.5|
+|  2   |root.sg.d0| 23 | 3.1|
+| ...  | ...      | ...| ...|
+|  1   |root.sg.d1| 12 |null|
+|  2   |root.sg.d1| 19 |null|
+| ...  | ...      | ...| ...|
+
+Note that the cells of measurement 's0' and device 'root.sg.d1' are all null.    
+Also note that the column of 's2' and the rows of 'root.sg.d2' are not existent.  
+
+6. The duplicated devices in the prefix paths are neglected.  
+For example, "select s0,s1 from root.sg.d0,root.sg.d0,root.sg.d1 group by device" is equal to "select s0,s1 from root.sg.d0,root.sg.d1 group by device".  
+For example. "select s0,s1 from root.sg.*,root.sg.d0 group by device" is equal to "select s0,s1 from root.sg.* group by device".  
+
+7. The duplicated measurements in the suffix paths are not neglected.  
+For example, "select s0,s0,s1 from root.sg.* group by device" is not equal to "select s0,s1 from root.sg.* group by device".
+
+8. More correct examples: 
+   - select * from root.vehicle group by device
+   - select s0,s0,s1 from root.vehicle.* group by device
+   - select s0,s1 from root.vehicle.* limit 10 offset 1 group by device
+   - select * from root.vehicle slimit 10 soffset 2 group by device
+   - select * from root.vehicle where time > 10 group by device
+   - select * from root.vehicle where root.vehicle.d0.s0>0 group by device
+   - select count(*) from root.vehicle group by device
+   - select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) group by device
+   - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) group by device
+
+```
+
 
 ### Database Management Statement
 

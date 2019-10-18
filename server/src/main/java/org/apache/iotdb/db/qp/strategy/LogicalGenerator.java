@@ -59,7 +59,6 @@ import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.db.sql.parse.AstNode;
 import org.apache.iotdb.db.sql.parse.Node;
 import org.apache.iotdb.db.sql.parse.TSParser;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -215,6 +214,9 @@ public class LogicalGenerator {
         return;
       case TSParser.TOK_TTL:
         analyzeTTL(astNode);
+        return;
+      case TSParser.TOK_GROUPBY_DEVICE:
+        ((QueryOperator) initializedOperator).setGroupByDevice(true);
         return;
       default:
         throw new QueryProcessorException("Not supported TSParser type" + tokenIntType);
@@ -440,16 +442,16 @@ public class LogicalGenerator {
   private void analyzeMetadataCreate(AstNode astNode) throws MetadataErrorException {
     Path series = parsePath(astNode.getChild(0).getChild(0));
     AstNode paramNode = astNode.getChild(1);
-    String dataType = paramNode.getChild(0).getChild(0).getText();
-    String encodingType = paramNode.getChild(1).getChild(0).getText();
+    String dataType = paramNode.getChild(0).getChild(0).getText().toUpperCase();
+    String encodingType = paramNode.getChild(1).getChild(0).getText().toUpperCase();
     String compressor;
     int offset = 2;
     if (paramNode.getChildren().size() > offset
         && paramNode.getChild(offset).getToken().getText().equals("TOK_COMPRESSOR")) {
-      compressor = paramNode.getChild(offset).getChild(0).getText();
+      compressor = paramNode.getChild(offset).getChild(0).getText().toUpperCase();
       offset++;
     } else {
-      compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
+      compressor = TSFileDescriptor.getInstance().getConfig().getCompressor().toUpperCase();
     }
     checkMetadataArgs(dataType, encodingType, compressor);
     Map<String, String> props = new HashMap<>(paramNode.getChildCount() - offset + 1, 1);

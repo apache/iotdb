@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -16,36 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.hadoop;
+package org.apache.iotdb.db.query.externalsort;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
-import org.apache.hadoop.io.Writable;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 
-public class TSRow implements Writable {
-
-  private TSRecord row;
-
-  public TSRow(TSRecord row) {
-
-    this.row = row;
-  }
-
-  public TSRecord getRow() {
-    return row;
+public class FakeChunkReaderWrap extends ChunkReaderWrap {
+  private IPointReader pointReader;
+  public FakeChunkReaderWrap(IPointReader pointReader){
+    super();
+    this.pointReader = pointReader;
   }
 
   @Override
-  public void write(DataOutput out) throws IOException {
-
-    throw new IOException("Not support");
+  public IPointReader getIPointReader() {
+    return pointReader;
   }
 
   @Override
-  public void readFields(DataInput in) throws IOException {
-
-    throw new IOException("Not support");
+  public IReaderByTimestamp getIReaderByTimestamp() {
+    return null;
   }
+
 }

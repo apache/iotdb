@@ -83,6 +83,8 @@ TOK_TTL;
 TOK_GRANT_WATERMARK_EMBEDDING;
 TOK_REVOKE_WATERMARK_EMBEDDING;
 
+TOK_GROUPBY_DEVICE;
+
 /*
   BELOW IS THE METADATA TOKEN
 */
@@ -510,12 +512,13 @@ queryStatement
 
 specialClause
     :
-    limitClause slimitClause? -> limitClause slimitClause?
-    |slimitClause limitClause? -> slimitClause limitClause?
-    |(groupbyClause limitClause)=>groupbyClause limitClause slimitClause? -> groupbyClause limitClause slimitClause?
-    |(groupbyClause slimitClause)=>groupbyClause slimitClause limitClause? -> groupbyClause slimitClause limitClause?
-    |groupbyClause -> groupbyClause
-    |fillClause slimitClause? -> fillClause slimitClause?
+    limitClause slimitClause? groupbyDeviceClause? -> limitClause slimitClause? groupbyDeviceClause?
+    |slimitClause limitClause? groupbyDeviceClause? -> slimitClause limitClause? groupbyDeviceClause?
+    |(groupbyClause limitClause)=>groupbyClause limitClause slimitClause? groupbyDeviceClause? -> groupbyClause limitClause slimitClause? groupbyDeviceClause?
+    |(groupbyClause slimitClause)=>groupbyClause slimitClause limitClause? groupbyDeviceClause? -> groupbyClause slimitClause limitClause? groupbyDeviceClause?
+    |groupbyClause groupbyDeviceClause? -> groupbyClause groupbyDeviceClause?
+    |fillClause slimitClause? groupbyDeviceClause? -> fillClause slimitClause? groupbyDeviceClause?
+    |groupbyDeviceClause -> groupbyDeviceClause
     ;
 
 authorStatement
@@ -809,6 +812,12 @@ soffsetClause
     :
     KW_SOFFSET SOFFSETValue=nonNegativeInteger
     -> ^(TOK_SOFFSET $SOFFSETValue)
+    ;
+
+groupbyDeviceClause
+    :
+    KW_GROUP KW_BY KW_DEVICE
+    -> ^(TOK_GROUPBY_DEVICE)
     ;
 
 typeClause
