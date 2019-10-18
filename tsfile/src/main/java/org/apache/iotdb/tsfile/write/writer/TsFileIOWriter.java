@@ -63,11 +63,13 @@ import org.slf4j.LoggerFactory;
 public class TsFileIOWriter {
 
   public static final byte[] magicStringBytes;
+  public static final byte[] versionNumberBytes;
   private static final Logger logger = LoggerFactory.getLogger(TsFileIOWriter.class);
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 
   static {
     magicStringBytes = BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING);
+    versionNumberBytes = TSFileConfig.VERSION_NUMBER.getBytes();
   }
 
   protected TsFileOutput out;
@@ -141,6 +143,7 @@ public class TsFileIOWriter {
 
   protected void startFile() throws IOException {
     out.write(magicStringBytes);
+    out.write(versionNumberBytes);
   }
 
   /**
@@ -263,8 +266,7 @@ public class TsFileIOWriter {
     Map<String, TsDeviceMetadataIndex> tsDeviceMetadataIndexMap = flushTsDeviceMetaDataAndGetIndex(
         this.chunkGroupMetaDataList);
 
-    TsFileMetaData tsFileMetaData = new TsFileMetaData(tsDeviceMetadataIndexMap, schemaDescriptors,
-        TSFileConfig.CURRENT_VERSION);
+    TsFileMetaData tsFileMetaData = new TsFileMetaData(tsDeviceMetadataIndexMap, schemaDescriptors);
     tsFileMetaData.setTotalChunkNum(totalChunkNum);
     tsFileMetaData.setInvalidChunkNum(invalidChunkNum);
 
