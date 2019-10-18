@@ -694,7 +694,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     resp.setIgnoreTimeStamp(true);
     columns.add(STORAGE_GROUP);
     columns.add(TTL);
-
+    resp.setColumns(columns);
     return resp;
   }
 
