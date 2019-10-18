@@ -19,7 +19,7 @@
 
 -->
 
-# Chapter 4: Operation Manual
+# Chapter 5: IoTDB SQL Documentation
 
 In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a SQL-like query language for interacting with IoTDB, the query language can be devided into 4 major parts:
 
@@ -30,696 +30,554 @@ In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a S
 
 All of these statements are write in IoTDB's own syntax, for details about the syntax composition, please check the `Reference` section.
 
-## IoTDB Query Language
+## IoTDB Query Statement
 
 
 ### Schema Statement
 
-#### Set Storage Group
+* Set Storage Group
 
-
-
-
-SET STORAGE GROUP TO &lt;PrefixPath>
-
-Eg: 
 ``` SQL
-IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
+SET STORAGE GROUP TO <PrefixPath>
+Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
+Note: PrefixPath can not include `*`
 ```
->Note: PrefixPath can not include `*`
+* Create Timeseries Statement
 
-#### Create Timeseries Statement
- 
-
-CREATE TIMESERIES &lt;Timeseries> WITH &lt;AttributeClauses>
-
-AttributeClauses : DATATYPE=&lt;DataTypeValue> COMMA ENCODING=&lt;EncodingValue> [COMMA &lt;ExtraAttributeClause>]*
-
+```
+CREATE TIMESERIES <Timeseries> WITH <AttributeClauses>
+AttributeClauses : DATATYPE=<DataTypeValue> COMMA ENCODING=<EncodingValue> [COMMA <ExtraAttributeClause>]*
 DataTypeValue: BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
 EncodingValue: GORILLA | PLAIN | RLE | TS_2DIFF | REGULAR
-
 ExtraAttributeClause: {
-	COMPRESSOR = &lt;CompressorValue>
-	MAX_POINT_NUMBER = Integer
+    COMPRESSOR = <CompressorValue>
+    MAX_POINT_NUMBER = Integer
 }
-
 CompressorValue: UNCOMPRESSED | SNAPPY
-
-Eg: 
-```
-IoTDB > CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
-IoTDB > CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
-IoTDB > CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, COMPRESSOR=SNAPPY, MAX_POINT_NUMBER=3
-```
->Note: Datatype and encoding type must be corresponding. Please check Chapter 3 Encoding Section for details.
-
-
-#### Delete Timeseries Statement
-
-
-DELETE TIMESERIES &lt;PrefixPath> [COMMA &lt;PrefixPath>]*
-
-Eg: 
-```
-IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status
-IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature
-IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.*
+Eg: IoTDB > CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
+Eg: IoTDB > CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
+Eg: IoTDB > CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, COMPRESSOR=SNAPPY, MAX_POINT_NUMBER=3
+Note: Datatype and encoding type must be corresponding. Please check Chapter 3 Encoding Section for details.
 ```
 
-#### Show All Timeseries Statement
+* Delete Timeseries Statement
 
+```
+DELETE TIMESERIES <PrefixPath> [COMMA <PrefixPath>]*
+Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status
+Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature
+Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.*
+```
+
+* Show All Timeseries Statement
+
+```
 SHOW TIMESERIES
-
-Eg:
+Eg: IoTDB > SHOW TIMESERIES
+Note: This statement can only be used in IoTDB Client. If you need to show all timeseries in JDBC, please use `DataBaseMetadata` interface.
 ```
-IoTDB > SHOW TIMESERIES
+
+* Show Specific Timeseries Statement
+
 ```
->Note: This statement can only be used in IoTDB Client. If you need to show all timeseries in JDBC, please use `DataBaseMetadata` interface.
-
-#### Show Specific Timeseries Statement
-
-
-SHOW TIMESERIES &lt;Path>
-
-Eg: 
+SHOW TIMESERIES <Path>
+Eg: IoTDB > SHOW TIMESERIES root
+Eg: IoTDB > SHOW TIMESERIES root.ln
+Eg: IoTDB > SHOW TIMESERIES root.ln.*.*.status
+Eg: IoTDB > SHOW TIMESERIES root.ln.wf01.wt01.status
+Note: The path can be prefix path, star path or timeseries path
+Note: This statement can be used in IoTDB Client and JDBC.
 ```
-IoTDB > SHOW TIMESERIES root
-IoTDB > SHOW TIMESERIES root.ln
-IoTDB > SHOW TIMESERIES root.ln.*.*.status
-IoTDB > SHOW TIMESERIES root.ln.wf01.wt01.status
+
+* Show Storage Group Statement
+
 ```
->Note: The path can be prefix path, star path or timeseries path
-
->Note: This statement can be used in IoTDB Client and JDBC.
-
-
-#### Show Storage Group Statement
-
 SHOW STORAGE GROUP
-
-Eg:
-``` 
-IoTDB > SHOW STORAGE GROUP
+Eg: IoTDB > SHOW STORAGE GROUP
+Note: This statement can be used in IoTDB Client and JDBC.
 ```
->Note: This statement can be used in IoTDB Client and JDBC.
 
 ### Data Management Statement
 
-#### Insert Record Statement
+* Insert Record Statement
 
-
-INSERT INTO &lt;PrefixPath> LPAREN TIMESTAMP COMMA &lt;Sensor> [COMMA &lt;Sensor>]* RPAREN VALUES LPAREN &lt;TimeValue>, &lt;PointValue> [COMMA &lt;PointValue>]* RPAREN
-
+```
+INSERT INTO <PrefixPath> LPAREN TIMESTAMP COMMA <Sensor> [COMMA <Sensor>]* RPAREN VALUES LPAREN <TimeValue>, <PointValue> [COMMA <PointValue>]* RPAREN
 Sensor : Identifier
-
-Eg: 
-```
-IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
-IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false)
-IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,temperature) VALUES(2017-11-01T00:17:00.000+08:00,24.22028)
-IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp, status, temperature) VALUES (1509466680000, false, 20.060787);
-```
->Note: the statement needs to satisfy this constraint: &lt;PrefixPath> + &lt;Path> = &lt;Timeseries>
-
->Note: The order of Sensor and PointValue need one-to-one correspondence
-
-
-#### Update Record Statement (Currently Unsupported)
-
-UPDATE &lt;UpdateClause> SET &lt;SetClause> WHERE &lt;WhereClause>
-
-UpdateClause: &lt;prefixPath>
-
-SetClause: &lt;SetExpression> 
-
-SetExpression: &lt;Path> EQUAL &lt;PointValue>
-
-WhereClause : &lt;Condition> [(AND | OR) &lt;Condition>]*
-
-Condition  : &lt;Expression> [(AND | OR) &lt;Expression>]*
-
-Expression : [NOT | !]? TIME PrecedenceEqualOperator &lt;TimeValue>
-
-Eg: 
-```
-IoTDB > UPDATE root.ln.wf01.wt01 SET temperature = 23 WHERE time < NOW() and time > 2017-11-1T00:15:00+08:00
-```
->Note: the statement needs to satisfy this constraint: &lt;PrefixPath> + &lt;Path> = &lt;Timeseries>
-
-
-#### Delete Record Statement
-
-DELETE FROM &lt;PrefixPath> [COMMA &lt;PrefixPath>]* WHERE TIME LESSTHAN &lt;TimeValue>
-
-Eg:
-```
-DELETE FROM root.ln.wf01.wt01.temperature WHERE time < 2017-11-1T00:05:00+08:00
-DELETE FROM root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature WHERE time < NOW()
-DELETE FROM root.ln.wf01.wt01.* WHERE time < 1509466140000
+Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
+Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false)
+Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,temperature) VALUES(2017-11-01T00:17:00.000+08:00,24.22028)
+Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp, status, temperature) VALUES (1509466680000, false, 20.060787);
+Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
+Note: The order of Sensor and PointValue need one-to-one correspondence
 ```
 
-#### Select Record Statement
+* Update Record Statement (Currently unsupported)
 
+```
+UPDATE <UpdateClause> SET <SetClause> WHERE <WhereClause>
+UpdateClause: <prefixPath>
+SetClause: <SetExpression> 
+SetExpression: <Path> EQUAL <PointValue>
+WhereClause : <Condition> [(AND | OR) <Condition>]*
+Condition  : <Expression> [(AND | OR) <Expression>]*
+Expression : [NOT | !]? TIME PrecedenceEqualOperator <TimeValue>
+Eg: IoTDB > UPDATE root.ln.wf01.wt01 SET temperature = 23 WHERE time < NOW() and time > 2017-11-1T00:15:00+08:00
+Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
+```
 
-SELECT &lt;SelectClause> FROM &lt;FromClause> [WHERE &lt;WhereClause>]?
+* Delete Record Statement
 
-SelectClause : &lt;SelectPath> (COMMA &lt;SelectPath>)*
+```
+DELETE FROM <PrefixPath> [COMMA <PrefixPath>]* WHERE TIME LESSTHAN <TimeValue>
+Eg: DELETE FROM root.ln.wf01.wt01.temperature WHERE time < 2017-11-1T00:05:00+08:00
+Eg: DELETE FROM root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature WHERE time < NOW()
+Eg: DELETE FROM root.ln.wf01.wt01.* WHERE time < 1509466140000
+```
 
-SelectPath : &lt;FUNCTION> LPAREN &lt;Path> RPAREN | &lt;Path>
+* Select Record Statement
 
+```
+SELECT <SelectClause> FROM <FromClause> [WHERE <WhereClause>]?
+SelectClause : <SelectPath> (COMMA <SelectPath>)*
+SelectPath : <FUNCTION> LPAREN <Path> RPAREN | <Path>
 FUNCTION : ‘COUNT’ , ‘MIN_TIME’, ‘MAX_TIME’, ‘MIN_VALUE’, ‘MAX_VALUE’
-
-FromClause : &lt;PrefixPath> (COMMA &lt;PrefixPath>)?
-
-WhereClause : &lt;Condition> [(AND | OR) &lt;Condition>]*
-
-Condition  : &lt;Expression> [(AND | OR) &lt;Expression>]*
-
-Expression : [NOT | !]? &lt;TimeExpr> | [NOT | !]? &lt;SensorExpr>
-
-TimeExpr : TIME PrecedenceEqualOperator &lt;TimeValue>
-
-SensorExpr : (&lt;Timeseries> | &lt;Path>) PrecedenceEqualOperator &lt;PointValue>
-
-Eg: 
+FromClause : <PrefixPath> (COMMA <PrefixPath>)?
+WhereClause : <Condition> [(AND | OR) <Condition>]*
+Condition  : <Expression> [(AND | OR) <Expression>]*
+Expression : [NOT | !]? <TimeExpr> | [NOT | !]? <SensorExpr>
+TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
+SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
+Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
+Eg. IoTDB > SELECT * FROM root
+Eg. IoTDB > SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
+Eg. IoTDB > SELECT MIN_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
+Eg. IoTDB > SELECT MAX_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature > 24
+Eg. IoTDB > SELECT MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature > 23
+Eg. IoTDB > SELECT MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
+Note: the statement needs to satisfy this constraint: <Path>(SelectClause) + <PrefixPath>(FromClause) = <Timeseries>
+Note: If the <SensorExpr>(WhereClause) is started with <Path> and not with ROOT, the statement needs to satisfy this constraint: <PrefixPath>(FromClause) + <Path>(SensorExpr) = <Timeseries>
+Note: In Version 0.7.0, if <WhereClause> includes `OR`, time filter can not be used.
 ```
-IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
-IoTDB > SELECT * FROM root
-IoTDB > SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
-IoTDB > SELECT MIN_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
-IoTDB > SELECT MAX_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature > 24
-IoTDB > SELECT MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature > 23
-IoTDB > SELECT MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
+
+* Group By Statement
+
 ```
->Note: the statement needs to satisfy this constraint: &lt;Path>(SelectClause) + &lt;PrefixPath>(FromClause) = &lt;Timeseries>
-
->Note: If the &lt;SensorExpr>(WhereClause) is started with &lt;Path> and not with ROOT, the statement needs to satisfy this constraint: &lt;PrefixPath>(FromClause) + &lt;Path>(SensorExpr) = &lt;Timeseries>
-
->Note: In Version 0.7.0, if &lt;WhereClause> includes `OR`, time filter can not be used.
-
-
-#### Group By Statement
-
-
-SELECT &lt;SelectClause> FROM &lt;FromClause> WHERE  &lt;WhereClause> GROUP BY &lt;GroupByClause>
-
-SelectClause : &lt;Function> [COMMA &lt; Function >]*
-
-Function : &lt;AggregationFunction> LPAREN &lt;Path> RPAREN
-
-FromClause : &lt;PrefixPath>
-
-WhereClause : &lt;Condition> [(AND | OR) &lt;Condition>]*
-
-Condition  : &lt;Expression> [(AND | OR) &lt;Expression>]*
-
-Expression : [NOT | !]? &lt;TimeExpr> | [NOT | !]? &lt;SensorExpr>
-
-TimeExpr : TIME PrecedenceEqualOperator &lt;TimeValue>
-
-SensorExpr : (&lt;Timeseries> | &lt;Path>) PrecedenceEqualOperator &lt;PointValue>
-
-GroupByClause : LPAREN &lt;TimeUnit> (COMMA TimeValue)? COMMA &lt;TimeInterval> (COMMA &lt;TimeInterval>)* RPAREN
-
-TimeUnit : Integer &lt;DurationUnit>
-
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByClause>
+SelectClause : <Function> [COMMA < Function >]*
+Function : <AggregationFunction> LPAREN <Path> RPAREN
+FromClause : <PrefixPath>
+WhereClause : <Condition> [(AND | OR) <Condition>]*
+Condition  : <Expression> [(AND | OR) <Expression>]*
+Expression : [NOT | !]? <TimeExpr> | [NOT | !]? <SensorExpr>
+TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
+SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
+GroupByClause : LPAREN <TimeUnit> (COMMA TimeValue)? COMMA <TimeInterval> (COMMA <TimeInterval>)* RPAREN
+TimeUnit : Integer <DurationUnit>
 DurationUnit : "ms" | "s" | "m" | "h" | "d" | "w"
-
-TimeInterval: LBRACKET &lt;TimeValue> COMMA &lt;TimeValue> RBRACKET
-
-Eg: 
+TimeInterval: LBRACKET <TimeValue> COMMA <TimeValue> RBRACKET
+Eg: SELECT COUNT(status), COUNT(temperature) FROM root.ln.wf01.wt01 where temperature < 24 GROUP BY(5m, [1509465720000, 1509466380000])
+Eg. SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY(5m, 1509465660000, [1509465720000, 1509466380000])
+Eg. SELECT MIN_TIME(status), MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE temperature < 25 and time < 1509466800000 GROUP BY (3m, 1509465600000, [1509466140000, 1509466380000], [1509466440000, 1509466620000])
+Note: the statement needs to satisfy this constraint: <Path>(SelectClause) + <PrefixPath>(FromClause) = <Timeseries>
+Note: If the <SensorExpr>(WhereClause) is started with <Path> and not with ROOT, the statement needs to satisfy this constraint: <PrefixPath>(FromClause) + <Path>(SensorExpr) = <Timeseries>
+Note: <TimeValue>(TimeInterval) needs to be greater than 0
+Note: First <TimeValue>(TimeInterval) in needs to be smaller than second <TimeValue>(TimeInterval)
 ```
-SELECT COUNT(status), COUNT(temperature) FROM root.ln.wf01.wt01 where temperature < 24 GROUP BY(5m, [1509465720000, 1509466380000])
-SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY(5m, 1509465660000, [1509465720000, 1509466380000])
-SELECT MIN_TIME(status), MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE temperature < 25 and time < 1509466800000 GROUP BY (3m, 1509465600000, [1509466140000, 1509466380000], [1509466440000, 1509466620000])
+
+* Fill Statement
+
 ```
-
->Note: the statement needs to satisfy this constraint: &lt;Path>(SelectClause) + &lt;PrefixPath>(FromClause) = &lt;Timeseries>
-
->Note: If the &lt;SensorExpr>(WhereClause) is started with &lt;Path> and not with ROOT, the statement needs to satisfy this constraint: &lt;PrefixPath>(FromClause) + &lt;Path>(SensorExpr) = &lt;Timeseries>
-
->Note: &lt;TimeValue>(TimeInterval) needs to be greater than 0
-
->Note: First &lt;TimeValue>(TimeInterval) in needs to be smaller than second &lt;TimeValue>(TimeInterval)
-
-#### Fill Statement
-
-
-SELECT &lt;SelectClause> FROM &lt;FromClause> WHERE &lt;WhereClause> FILL &lt;FillClause>
-
-SelectClause : &lt;Path> [COMMA &lt;Path>]*
-
-FromClause : &lt; PrefixPath > [COMMA &lt; PrefixPath >]*
-
-WhereClause : &lt;WhereExpression>
-
-WhereExpression : TIME EQUAL &lt;TimeValue>
-
-FillClause : LPAREN &lt;TypeClause> [COMMA &lt;TypeClause>]* RPAREN
-
-TypeClause : &lt;Int32Clause> | &lt;Int64Clause> | &lt;FloatClause> | &lt;DoubleClause> | &lt;BoolClause> | &lt;TextClause>
-
-Int32Clause: INT32 LBRACKET (&lt;LinearClause> | &lt;PreviousClause>)  RBRACKET
-
-Int64Clause: INT64 LBRACKET (&lt;LinearClause> | &lt;PreviousClause>)  RBRACKET
-
-FloatClause: FLOAT LBRACKET (&lt;LinearClause> | &lt;PreviousClause>)  RBRACKET
-
-DoubleClause: DOUBLE LBRACKET (&lt;LinearClause> | &lt;PreviousClause>)  RBRACKET
-
-BoolClause: BOOLEAN LBRACKET (&lt;LinearClause> | &lt;PreviousClause>)  RBRACKET
-
-TextClause: TEXT LBRACKET (&lt;LinearClause> | &lt;PreviousClause>)  RBRACKET
-
-PreviousClause : PREVIOUS [COMMA &lt;ValidPreviousTime>]?
-
-LinearClause : LINEAR [COMMA &lt;ValidPreviousTime> COMMA &lt;ValidBehindTime>]?
-
-ValidPreviousTime, ValidBehindTime: &lt;TimeUnit>
-
-TimeUnit : Integer &lt;DurationUnit>
-
+SELECT <SelectClause> FROM <FromClause> WHERE <WhereClause> FILL <FillClause>
+SelectClause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : <WhereExpression>
+WhereExpression : TIME EQUAL <TimeValue>
+FillClause : LPAREN <TypeClause> [COMMA <TypeClause>]* RPAREN
+TypeClause : <Int32Clause> | <Int64Clause> | <FloatClause> | <DoubleClause> | <BoolClause> | <TextClause>
+Int32Clause: INT32 LBRACKET (<LinearClause> | <PreviousClause>)  RBRACKET
+Int64Clause: INT64 LBRACKET (<LinearClause> | <PreviousClause>)  RBRACKET
+FloatClause: FLOAT LBRACKET (<LinearClause> | <PreviousClause>)  RBRACKET
+DoubleClause: DOUBLE LBRACKET (<LinearClause> | <PreviousClause>)  RBRACKET
+BoolClause: BOOLEAN LBRACKET (<LinearClause> | <PreviousClause>)  RBRACKET
+TextClause: TEXT LBRACKET (<LinearClause> | <PreviousClause>)  RBRACKET
+PreviousClause : PREVIOUS [COMMA <ValidPreviousTime>]?
+LinearClause : LINEAR [COMMA <ValidPreviousTime> COMMA <ValidBehindTime>]?
+ValidPreviousTime, ValidBehindTime: <TimeUnit>
+TimeUnit : Integer <DurationUnit>
 DurationUnit : "ms" | "s" | "m" | "h" | "d" | "w"
-
-Eg: 
+Eg: SELECT temperature FROM root.ln.wf01.wt01 WHERE time = 2017-11-01T16:37:50.000 FILL(float[previous, 1m])
+Eg: SELECT temperature,status FROM root.ln.wf01.wt01 WHERE time = 2017-11-01T16:37:50.000 FILL (float[linear, 1m, 1m], boolean[previous, 1m])
+Eg: SELECT temperature,status,hardware FROM root.ln.wf01.wt01 WHERE time = 2017-11-01T16:37:50.000 FILL (float[linear, 1m, 1m], boolean[previous, 1m], text[previous])
+Eg: SELECT temperature,status,hardware FROM root.ln.wf01.wt01 WHERE time = 2017-11-01T16:37:50.000 FILL (float[linear], boolean[previous, 1m], text[previous])
+Note: the statement needs to satisfy this constraint: <PrefixPath>(FromClause) + <Path>(SelectClause) = <Timeseries>
+Note: Integer in <TimeUnit> needs to be greater than 0
 ```
-SELECT temperature FROM root.ln.wf01.wt01 WHERE time = 2017-11-01T16:37:50.000 FILL(float[previous, 1m])
-SELECT temperature,status FROM root.ln.wf01.wt01 WHERE time = 2017-11-01T16:37:50.000 FILL (float[linear, 1m, 1m], boolean[previous, 1m])
-SELECT temperature,status,hardware FROM root.ln.wf01.wt01 WHERE time = 2017-11-01T16:37:50.000 FILL (float[linear, 1m, 1m], boolean[previous, 1m], text[previous])
-SELECT temperature,status,hardware FROM root.ln.wf01.wt01 WHERE time = 2017-11-01T16:37:50.000 FILL (float[linear], boolean[previous, 1m], text[previous])
+
+* Limit Statement
+
 ```
->Note: the statement needs to satisfy this constraint: &lt;PrefixPath>(FromClause) + &lt;Path>(SelectClause) = &lt;Timeseries>
-
->Note: Integer in &lt;TimeUnit> needs to be greater than 0
-
-#### Limit Statement
-
-
-SELECT &lt;SelectClause> FROM &lt;FromClause> [WHERE &lt;WhereClause>] [LIMIT &lt;LIMITClause>] [SLIMIT &lt;SLIMITClause>]
-
-SelectClause : [&lt;Path> | Function]+
-
-Function : &lt;AggregationFunction> LPAREN &lt;Path> RPAREN
-
-FromClause : &lt;Path>
-
-WhereClause : &lt;Condition> [(AND | OR) &lt;Condition>]*
-
-Condition : &lt;Expression> [(AND | OR) &lt;Expression>]*
-
-Expression: [NOT|!]?&lt;TimeExpr> | [NOT|!]?&lt;SensorExpr>
-
-TimeExpr : TIME PrecedenceEqualOperator &lt;TimeValue>
-
-SensorExpr : (&lt;Timeseries>|&lt;Path>) PrecedenceEqualOperator &lt;PointValue>
-
-LIMITClause : &lt;N> [OFFSETClause]?
-
-N : NonNegativeInteger
-
-OFFSETClause : OFFSET &lt;OFFSETValue>
-
+SELECT <SelectClause> FROM <FromClause> [WHERE <WhereClause>] [LIMIT <LIMITClause>] [SLIMIT <SLIMITClause>]
+SelectClause : [<Path> | Function]+
+Function : <AggregationFunction> LPAREN <Path> RPAREN
+FromClause : <Path>
+WhereClause : <Condition> [(AND | OR) <Condition>]*
+Condition : <Expression> [(AND | OR) <Expression>]*
+Expression: [NOT|!]?<TimeExpr> | [NOT|!]?<SensorExpr>
+TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
+SensorExpr : (<Timeseries>|<Path>) PrecedenceEqualOperator <PointValue>
+LIMITClause : <N> [OFFSETClause]?
+N : PositiveInteger
+OFFSETClause : OFFSET <OFFSETValue>
 OFFSETValue : NonNegativeInteger
-
-SLIMITClause : &lt;SN> [SOFFSETClause]?
-
-SN : NonNegativeInteger
-
-SOFFSETClause : SOFFSET &lt;SOFFSETValue>
-
+SLIMITClause : <SN> [SOFFSETClause]?
+SN : PositiveInteger
+SOFFSETClause : SOFFSET <SOFFSETValue>
 SOFFSETValue : NonNegativeInteger
-
 NonNegativeInteger:= ('+')? Digit+
-
-Eg: 
+Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00 LIMIT 3 OFFSET 2
+Eg. IoTDB > SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY(5m, 1509465660000, [1509465720000, 1509466380000]) LIMIT 3
+Note: The order of <LIMITClause> and <SLIMITClause> does not affect the grammatical correctness.
+Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
 ```
-IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00 LIMIT 3 OFFSET 2
-IoTDB > SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY(5m, 1509465660000, [1509465720000, 1509466380000]) LIMIT 3
+
+* Group By Device Statement
 ```
->Note: The order of &lt;LIMITClause> and &lt;SLIMITClause> does not affect the grammatical correctness.
+GroupbyDeviceClause : GROUP BY DEVICE
 
->Note: &lt;SLIMITClause> can only effect in Prefixpath and StarPath.
+Rules:  
+1. Both uppercase and lowercase are ok.  
+Correct example: select * from root.sg1 group by device  
+Correct example: select * from root.sg1 GROUP BY DEVICE  
 
->Note: &lt;FillClause> can not use &lt;LIMITClause> but not &lt;SLIMITClause>.
+2. GroupbyDeviceClause can only be used at the end of a query statement.  
+Correct example: select * from root.sg1 where time > 10 group by device  
+Wrong example: select * from root.sg1 group by device where time > 10  
+
+3. The paths of the SELECT clause can only be single level. In other words, the paths of the SELECT clause can only be measurements or STAR, without DOT.
+Correct example: select s0,s1 from root.sg1.* group by device  
+Correct example: select s0,s1 from root.sg1.d0, root.sg1.d1 group by device  
+Correct example: select * from root.sg1.* group by device  
+Correct example: select * from root group by device  
+Correct example: select s0,s1,* from root.*.* group by device  
+Wrong example: select d0.s1, d0.s2, d1.s0 from root.sg1 group by device  
+Wrong example: select *.s0, *.s1 from root.* group by device  
+Wrong example: select *.*.* from root group by device
+
+4. The data types of the same measurement column should be the same across devices. 
+Note that when it comes to aggregated paths, the data type of the measurement column will reflect 
+the aggregation function rather than the original timeseries.
+
+Correct example: select s0 from root.sg1.d0,root.sg1.d1 group by device   
+root.sg1.d0.s0 and root.sg1.d1.s0 are both INT32.  
+
+Correct example: select count(s0) from root.sg1.d0,root.sg1.d1 group by device   
+count(root.sg1.d0.s0) and count(root.sg1.d1.s0) are both INT64.  
+
+Wrong example: select s0 from root.sg1.d0, root.sg2.d3 group by device  
+root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT. 
+
+5. The display principle of the result table is that only when the column (or row) has existing data will the column (or row) be shown, with nonexistent cells being null.   
+For example, "select s0,s1,s2 from root.sg.d0, root.sg.d1, root.sg.d2 group by device". Suppose that the actual existing timeseries are as follows:  
+- root.sg.d0.s0
+- root.sg.d0.s1
+- root.sg.d1.s0
+
+Then the header of the result table will be: [Time, Device, s0, s1].  
+And you could expect a table like:  
+
+| Time | Device   | s0 | s1 |
+| ---  | ---      | ---| ---|
+|  1   |root.sg.d0| 20 | 2.5|
+|  2   |root.sg.d0| 23 | 3.1|
+| ...  | ...      | ...| ...|
+|  1   |root.sg.d1| 12 |null|
+|  2   |root.sg.d1| 19 |null|
+| ...  | ...      | ...| ...|
+
+Note that the cells of measurement 's0' and device 'root.sg.d1' are all null.    
+Also note that the column of 's2' and the rows of 'root.sg.d2' are not existent.  
+
+6. The duplicated devices in the prefix paths are neglected.  
+For example, "select s0,s1 from root.sg.d0,root.sg.d0,root.sg.d1 group by device" is equal to "select s0,s1 from root.sg.d0,root.sg.d1 group by device".  
+For example. "select s0,s1 from root.sg.*,root.sg.d0 group by device" is equal to "select s0,s1 from root.sg.* group by device".  
+
+7. The duplicated measurements in the suffix paths are not neglected.  
+For example, "select s0,s0,s1 from root.sg.* group by device" is not equal to "select s0,s1 from root.sg.* group by device".
+
+8. More correct examples: 
+   - select * from root.vehicle group by device
+   - select s0,s0,s1 from root.vehicle.* group by device
+   - select s0,s1 from root.vehicle.* limit 10 offset 1 group by device
+   - select * from root.vehicle slimit 10 soffset 2 group by device
+   - select * from root.vehicle where time > 10 group by device
+   - select * from root.vehicle where root.vehicle.d0.s0>0 group by device
+   - select count(*) from root.vehicle group by device
+   - select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) group by device
+   - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) group by device
+
+```
 
 
 ### Database Management Statement
 
-#### Create User
+* Create User
 
-
-CREATE USER &lt;userName> &lt;password>;  
-
+```
+CREATE USER <userName> <password>;  
 userName:=identifier  
-
 password:=identifier
-
-Eg: 
-```
-IoTDB > CREATE USER thulab pwd;
+Eg: IoTDB > CREATE USER thulab pwd;
 ```
 
-#### Delete User
+* Delete User
 
-
-DROP USER &lt;userName>;  
-
+```
+DROP USER <userName>;  
 userName:=identifier
-
-Eg:
-```
-IoTDB > DROP USER xiaoming;
+Eg: IoTDB > DROP USER xiaoming;
 ```
 
-#### Create Role
+* Create Role
 
-
-CREATE ROLE &lt;roleName>;  
-
+```
+CREATE ROLE <roleName>;  
 roleName:=identifie
-
-Eg: 
-```
-IoTDB > CREATE ROLE admin;
+Eg: IoTDB > CREATE ROLE admin;
 ```
 
-#### Delete Role
+* Delete Role
 
-DROP ROLE &lt;roleName>;  
-
+```
+DROP ROLE <roleName>;  
 roleName:=identifier
-
-Eg: 
-```
-IoTDB > DROP ROLE admin;
+Eg: IoTDB > DROP ROLE admin;
 ```
 
-#### Grant User Privileges
+* Grant User Privileges
 
-
-GRANT USER &lt;userName> PRIVILEGES &lt;privileges> ON &lt;nodeName>;  
-
+```
+GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>;  
 userName:=identifier  
-
 nodeName:=identifier (DOT identifier)*  
-
 privileges:= string (COMMA string)*
-
-Eg: 
-```
-IoTDB > GRANT USER tempuser PRIVILEGES 'DELETE_TIMESERIES' on root.ln;
+Eg: IoTDB > GRANT USER tempuser PRIVILEGES 'DELETE_TIMESERIES' on root.ln;
 ```
 
-#### Grant Role Privileges
+* Grant Role Privileges
 
-GRANT ROLE &lt;roleName> PRIVILEGES &lt;privileges> ON &lt;nodeName>;  
-
+```
+GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
 privileges:= string (COMMA string)*  
-
 roleName:=identifier  
-
 nodeName:=identifier (DOT identifier)*
-
-Eg: 
-```
-IoTDB > GRANT ROLE temprole PRIVILEGES 'DELETE_TIMESERIES' ON root.ln;
+Eg: IoTDB > GRANT ROLE temprole PRIVILEGES 'DELETE_TIMESERIES' ON root.ln;
 ```
 
-#### Grant User Role
+* Grant User Role
 
-GRANT &lt;roleName> TO &lt;userName>;  
-
+```
+GRANT <roleName> TO <userName>;  
 roleName:=identifier  
-
 userName:=identifier
-
-Eg: 
-```
-IoTDB > GRANT temprole TO tempuser;
+Eg: IoTDB > GRANT temprole TO tempuser;
 ```
 
-#### Revoke User Privileges
+* Revoke User Privileges
 
-REVOKE USER &lt;userName> PRIVILEGES &lt;privileges> ON &lt;nodeName>;   
-
+```
+REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>;   
 privileges:= string (COMMA string)*  
-
 userName:=identifier  
-
 nodeName:=identifier (DOT identifier)*
-
-Eg: 
-```
-IoTDB > REVOKE USER tempuser PRIVILEGES 'DELETE_TIMESERIES' on root.ln;
+Eg: IoTDB > REVOKE USER tempuser PRIVILEGES 'DELETE_TIMESERIES' on root.ln;
 ```
 
-#### Revoke Role Privileges
+* Revoke Role Privileges
 
-REVOKE ROLE &lt;roleName> PRIVILEGES &lt;privileges> ON &lt;nodeName>;  
-
+```
+REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
 privileges:= string (COMMA string)*  
-
 roleName:= identifier  
-
 nodeName:=identifier (DOT identifier)*
-
-Eg: 
-```
-IoTDB > REVOKE ROLE temprole PRIVILEGES 'DELETE_TIMESERIES' ON root.ln;
+Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES 'DELETE_TIMESERIES' ON root.ln;
 ```
 
-#### Revoke Role From User
+* Revoke Role From User
 
-REVOKE &lt;roleName> FROM &lt;userName>;
-
+```
+REVOKE <roleName> FROM <userName>;
 roleName:=identifier
-
 userName:=identifier
-
-Eg: 
-```
-IoTDB > REVOKE temproleFROM tempuser;
+Eg: IoTDB > REVOKE temproleFROM tempuser;
 ```
 
-#### List Users
+* List Users
 
+```
 LIST USER
-
-Eg: 
-```
-IoTDB > LIST USER
+Eg: IoTDB > LIST USER
 ```
 
-#### List Roles
+* List Roles
 
+```
 LIST ROLE
-
-Eg:
-```
-IoTDB > LIST ROLE
+Eg: IoTDB > LIST ROLE
 ```
 
-#### List Privileges
+* List Privileges
 
-LIST PRIVILEGES USER  &lt;username> ON &lt;path>;    
-
+```
+LIST PRIVILEGES USER  <username> ON <path>;    
 username:=identifier    
-
 path=‘root’ (DOT identifier)*
-
-Eg:
-```
-IoTDB > LIST PRIVIEGES USER sgcc_wirte_user ON root.sgcc;
+Eg: IoTDB > LIST PRIVIEGES USER sgcc_wirte_user ON root.sgcc;
 ```
 
-#### List Privileges of Roles(On Specific Path)
+* List Privileges of Roles(On Specific Path)
 
-LIST PRIVILEGES ROLE &lt;roleName> ON &lt;path>;    
-
+```
+LIST PRIVILEGES ROLE <roleName> ON <path>;    
 roleName:=identifier  
-
 path=‘root’ (DOT identifier)*
-
-Eg: 
-```
-IoTDB > LIST PRIVIEGES ROLE wirte_role ON root.sgcc;
+Eg: IoTDB > LIST PRIVIEGES ROLE wirte_role ON root.sgcc;
 ```
 
-#### List Privileges of Users
+* List Privileges of Users
 
-
-LIST USER PRIVILEGES &lt;username> ;   
-
+```
+LIST USER PRIVILEGES <username> ;   
 username:=identifier  
-
-Eg: 
-```
-IoTDB > LIST USER PRIVIEGES tempuser;
+Eg: IoTDB > LIST USER PRIVIEGES tempuser;
 ```
 
-#### List Privileges of Roles
+* List Privileges of Roles
 
-LIST ROLE PRIVILEGES &lt;roleName>
-
+```
+LIST ROLE PRIVILEGES <roleName>
 roleName:=identifier
-
-Eg: 
-```
-IoTDB > LIST ROLE PRIVIEGES actor;
+Eg: IoTDB > LIST ROLE PRIVIEGES actor;
 ```
 
-#### List Roles of Users
+* List Roles of Users
 
-LIST ALL ROLE OF USER &lt;username> ;  
-
+```
+LIST ALL ROLE OF USER <username> ;  
 username:=identifier
-
-Eg: 
-```
-IoTDB > LIST ALL ROLE OF USER tempuser;
+Eg: IoTDB > LIST ALL ROLE OF USER tempuser;
 ```
 
-#### List Users of Role
+* List Users of Role
 
-LIST ALL USER OF ROLE &lt;roleName>;
-
+```
+LIST ALL USER OF ROLE <roleName>;
 roleName:=identifier
-
-Eg: 
-```
-IoTDB > LIST ALL USER OF ROLE roleuser;
+Eg: IoTDB > LIST ALL USER OF ROLE roleuser;
 ```
 
-#### Update Password
+* Update Password
 
-
-UPDATE USER &lt;username> SET PASSWORD &lt;password>;
-
+```
+UPDATE USER <username> SET PASSWORD <password>;
 roleName:=identifier
-
 password:=identifier
-
-Eg: 
-```
-IoTDB > UPDATE USER tempuser SET PASSWORD newpwd;
+Eg: IoTDB > UPDATE USER tempuser SET PASSWORD newpwd;
 ```
 
 ### Functions
 
-#### COUNT
+* COUNT
 
 The COUNT function returns the value number of timeseries(one or more) non-null values selected by the SELECT statement. The result is a signed 64-bit integer. If there are no matching rows, COUNT () returns 0.
 
-
-SELECT COUNT(Path) (COMMA COUNT(Path))* FROM &lt;FromClause> [WHERE &lt;WhereClause>]?
-
-Eg. 
 ```
-SELECT COUNT(status), COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+SELECT COUNT(Path) (COMMA COUNT(Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT COUNT(status), COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
->Note: the statement needs to satisfy this constraint: &lt;PrefixPath> + &lt;Path> = &lt;Timeseries>
 
 * FIRST
 
 The FIRST function returns the first point value of the choosen timeseries(one or more).
 
-SELECT FIRST (Path) (COMMA FIRST (Path))* FROM &lt;FromClause> [WHERE &lt;WhereClause>]?
-
-Eg. 
 ```
-SELECT FIRST (status), FIRST (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+SELECT FIRST (Path) (COMMA FIRST (Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT FIRST (status), FIRST (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
->Note: the statement needs to satisfy this constraint: &lt;PrefixPath> + &lt;Path> = &lt;Timeseries>
 
-#### MAX_TIME
+* MAX_TIME
 
 The MAX_TIME function returns the maximum timestamp of the choosen timeseries(one or more). The result is a signed 64-bit integer, greater than 0.
 
-SELECT MAX_TIME (Path) (COMMA MAX_TIME (Path))* FROM &lt;FromClause> [WHERE &lt;WhereClause>]?
-
-Eg. 
 ```
-SELECT MAX_TIME(status), MAX_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+SELECT MAX_TIME (Path) (COMMA MAX_TIME (Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT MAX_TIME(status), MAX_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
->Note: the statement needs to satisfy this constraint: &lt;PrefixPath> + &lt;Path> = &lt;Timeseries>
 
-
-#### MAX_VALUE
+* MAX_VALUE
 
 The MAX_VALUE function returns the maximum value(lexicographically ordered) of the choosen timeseries (one or more). 
 
-SELECT MAX_VALUE (Path) (COMMA MAX_VALUE (Path))* FROM &lt;FromClause> [WHERE &lt;WhereClause>]?
-
-Eg. 
 ```
-SELECT MAX_VALUE(status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+SELECT MAX_VALUE (Path) (COMMA MAX_VALUE (Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT MAX_VALUE(status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
->Note: the statement needs to satisfy this constraint: &lt;PrefixPath> + &lt;Path> = &lt;Timeseries>
 
-#### MEAN
+* MEAN
 
 The MEAN function returns the arithmetic mean value of the choosen timeseries over a specified period of time. The timeseries must be int32, int64, float, double type, and the other types are not to be calculated. The result is a double type number.
 
-SELECT MEAN (Path) (COMMA MEAN (Path))* FROM &lt;FromClause> [WHERE &lt;WhereClause>]?
-
-Eg. 
 ```
-SELECT MEAN (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+SELECT MEAN (Path) (COMMA MEAN (Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT MEAN (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
->Note: the statement needs to satisfy this constraint: &lt;PrefixPath> + &lt;Path> = &lt;Timeseries>
 
-#### MIN_TIME
+* MIN_TIME
 
 The MIN_TIME function returns the minimum timestamp of the choosen timeseries(one or more). The result is a signed 64-bit integer, greater than 0.
 
-SELECT MIN_TIME (Path) (COMMA MIN_TIME (Path))* FROM &lt;FromClause> [WHERE &lt;WhereClause>]?
-
-Eg. 
 ```
-SELECT MIN_TIME(status), MIN_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+SELECT MIN_TIME (Path) (COMMA MIN_TIME (Path))*FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT MIN_TIME(status), MIN_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
->Note: the statement needs to satisfy this constraint: &lt;PrefixPath> + &lt;Path> = &lt;Timeseries>
 
-#### MIN_VALUE
+* MIN_VALUE
 
 The MIN_VALUE function returns the minimum value(lexicographically ordered) of the choosen timeseries (one or more). 
 
-
-SELECT MIN_VALUE (Path) (COMMA MIN_VALUE (Path))* FROM &lt;FromClause> [WHERE &lt;WhereClause>]?
-
-Eg. 
 ```
-SELECT MIN_VALUE(status),MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+SELECT MIN_VALUE (Path) (COMMA MIN_VALUE (Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT MIN_VALUE(status),MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
->Note: the statement needs to satisfy this constraint: &lt;PrefixPath> + &lt;Path> = &lt;Timeseries>
 
-#### NOW
+* NOW
 
 The NOW function returns the current timestamp. This function can be used in the data operation statement to represent time. The result is a signed 64-bit integer, greater than 0. 
 
-
+```
 NOW()
-
-Eg.
+Eg. INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false) 
+Eg. UPDATE root.ln.wf01.wt01 SET temperature = 23 WHERE time < NOW()
+Eg. DELETE FROM root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature WHERE time < NOW()
+Eg. SELECT * FROM root WHERE time < NOW()
+Eg. SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE time < NOW()
 ```
-INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false) 
-UPDATE root.ln.wf01.wt01 SET temperature = 23 WHERE time < NOW()
-DELETE FROM root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature WHERE time < NOW()
-SELECT * FROM root WHERE time < NOW()
-SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE time < NOW()
-```
-#### SUM
+* SUM
 
 The SUM function returns the sum of the choosen timeseries (one or more) over a specified period of time. The timeseries must be int32, int64, float, double type, and the other types are not to be calculated. The result is a double type number. 
 
-SELECT SUM(Path) (COMMA SUM(Path))* FROM &lt;FromClause> [WHERE &lt;WhereClause>]?
-
-Eg. 
 ```
-SELECT SUM(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+SELECT SUM(Path) (COMMA SUM(Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT SUM(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
->Note: the statement needs to satisfy this constraint: &lt;PrefixPath> + &lt;Path> = &lt;Timeseries>
-
 ## Reference
 
 ### Keywords
@@ -728,10 +586,10 @@ SELECT SUM(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperatu
 Keywords for IoTDB (case insensitive):
 ADD, BY, COMPRESSOR, CREATE, DATATYPE, DELETE, DESCRIBE, DROP, ENCODING, EXIT, FROM, GRANT, GROUP, LABLE, LINK, INDEX, INSERT, INTO, LOAD, MAX_POINT_NUMBER, MERGE, METADATA, ON, ORDER, PASSWORD, PRIVILEGES, PROPERTY, QUIT, REVOKE, ROLE, ROOT, SELECT, SET, SHOW, STORAGE, TIME, TIMESERIES, TIMESTAMP, TO, UNLINK, UPDATE, USER, USING, VALUE, VALUES, WHERE, WITH
 
-Keywords with special meanings (case sensitive):
-* Data Types: BOOLEAN, DOUBLE, FLOAT, INT32, INT64, TEXT (Only capitals is acceptable)
-* Encoding Methods: BITMAP, DFT, GORILLA, PLAIN, RLE, TS_2DIFF (Only capitals is acceptable)
-* Compression Methods: UNCOMPRESSED, SNAPPY (Only capitals is acceptable)
+Keywords with special meanings (case insensitive):
+* Data Types: BOOLEAN, DOUBLE, FLOAT, INT32, INT64, TEXT 
+* Encoding Methods: BITMAP, DFT, GORILLA, PLAIN, RLE, TS_2DIFF 
+* Compression Methods: UNCOMPRESSED, SNAPPY, GZIP, LZ0, ZDT, PAA, PLA
 * Logical symbol: AND, &, &&, OR, | , ||, NOT, !, TRUE, FALSE
 ```
 
@@ -766,8 +624,8 @@ Boolean := TRUE | FALSE | 0 | 1 (case insensitive)
 
 ```
 StringLiteral := ( '\'' ( ~('\'') )* '\'' | '\"' ( ~('\"') )* '\"');
-eg. â€˜abcâ€?
-eg. â€œabcâ€?
+eg. 'abc'
+eg. 'abc'
 ```
 
 ```
