@@ -32,7 +32,7 @@ public class HDFSOutputFactory implements FileOutputFactory {
 
   static {
     try {
-      Class<?> clazz = Class.forName("org.apache.iotdb.tsfile.fileSystem.HDFSOutput");
+      Class<?> clazz = Class.forName("org.apache.iotdb.hadoop.fileSystem.HDFSOutput");
       constructor = clazz.getConstructor(String.class, boolean.class);
     } catch (ClassNotFoundException | NoSuchMethodException e) {
       logger.error(
