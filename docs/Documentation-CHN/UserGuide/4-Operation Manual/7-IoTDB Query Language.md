@@ -521,8 +521,8 @@ Boolean := TRUE | FALSE | 0 | 1 (case insensitive)
 
 ```
 StringLiteral := ( '\'' ( ~('\'') )* '\'' | '\"' ( ~('\"') )* '\"');
-eg. ‘abc’
-eg. “abc”
+eg. 'abc'
+eg. "abc"
 ```
 
 ```
