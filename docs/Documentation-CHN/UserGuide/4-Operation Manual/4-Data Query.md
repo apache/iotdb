@@ -284,7 +284,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 ### 查询结果的分页控制
 为方便用户在对IoTDB进行查询时更好的进行结果阅读，IoTDB为用户提供了[LIMIT/SLIMIT](/#/Documents/progress/chap4/sec7)子句以及[OFFSET/SOFFSET](/#/Documents/progress/chap4/sec7)子句。使用LIMIT和SLIMIT子句可以允许用户对查询结果的行数和列数进行控制，使用OFFSET和SOFFSET子句可以允许用户设定结果展示的起始位置。
 
-值得说明的是，LIMIT/SLIMIT子句以及OFFSET/SOFFSET子句均不改变查询的实际执行过程，仅对查询返回的结果进行约束。
+值得说明的是，LIMIT以及OFFSET/SOFFSET子句均不改变查询的实际执行过程，仅对查询返回的结果进行约束。
 
 本章节主要介绍查询结果分页控制的相关示例。同时你也可以使用[Java JDBC](/#/Documents/progress/chap6/sec1)标准接口来执行相关的查询语句。
 
