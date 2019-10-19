@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.hadoop;
+package org.apache.iotdb.hadoop.tsfile;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
-import org.apache.iotdb.tsfile.fileSystem.HDFSOutput;
+import org.apache.iotdb.hadoop.fileSystem.HDFSOutput;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.hadoop.record.HDFSTSRecord;
+import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.slf4j.Logger;

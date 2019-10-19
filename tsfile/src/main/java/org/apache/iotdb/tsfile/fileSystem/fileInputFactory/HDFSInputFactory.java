@@ -32,7 +32,7 @@ public class HDFSInputFactory implements FileInputFactory {
 
   static {
     try {
-      Class<?> clazz = Class.forName("org.apache.iotdb.tsfile.fileSystem.HDFSInput");
+      Class<?> clazz = Class.forName("org.apache.iotdb.hadoop.fileSystem.HDFSInput");
       constructor = clazz.getConstructor(String.class);
     } catch (ClassNotFoundException | NoSuchMethodException e) {
       logger.error(

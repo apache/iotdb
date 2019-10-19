@@ -47,7 +47,7 @@ public class HDFSFactory implements FSFactory {
 
   static {
     try {
-      Class<?> clazz = Class.forName("org.apache.iotdb.tsfile.fileSystem.HDFSFile");
+      Class<?> clazz = Class.forName("org.apache.iotdb.hadoop.fileSystem.HDFSFile");
       constructorWithPathname = clazz.getConstructor(String.class);
       constructorWithParentStringAndChild = clazz.getConstructor(String.class, String.class);
       constructorWithParentFileAndChild = clazz.getConstructor(File.class, String.class);

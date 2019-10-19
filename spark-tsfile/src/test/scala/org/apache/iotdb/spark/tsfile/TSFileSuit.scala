@@ -23,9 +23,9 @@ import java.net.URI
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
+import org.apache.iotdb.hadoop.fileSystem.HDFSInput
 import org.apache.iotdb.spark.tool.TsFileWriteTool
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
-import org.apache.iotdb.tsfile.fileSystem.HDFSInput
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types._
