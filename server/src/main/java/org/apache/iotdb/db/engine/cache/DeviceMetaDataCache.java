@@ -151,15 +151,10 @@ public class DeviceMetaDataCache {
     if (!logger.isDebugEnabled()) {
       return;
     }
-    if (isHit) {
-      logger.debug(
-          "[ChunkMetaData cache hit] The number of requests for cache is {}, hit rate is {}.",
-          cacheRequestNum.get(), cacheHitNum.get() * 1.0 / cacheRequestNum.get());
-    } else {
-      logger.debug(
-          "[ChunkMetaData cache didn't hit] The number of requests for cache is {}, hit rate is {}.",
-          cacheRequestNum.get(), cacheHitNum.get() * 1.0 / cacheRequestNum.get());
-    }
+    logger.debug(
+        "[ChunkMetaData cache {}hit] The number of requests for cache is {}, hit rate is {}.",
+        isHit ? "" : "didn't ", cacheRequestNum.get(),
+        cacheHitNum.get() * 1.0 / cacheRequestNum.get());
   }
 
   public double calculateChunkMetaDataHitRatio() {
