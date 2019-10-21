@@ -20,31 +20,7 @@
 -->
 
 
-<!-- TOC -->
-## Outline
-
-- TsFile-Spark-Connector User Guide
-	- 1. About TsFile-Spark-Connector
-	- 2. System Requirements
-	- 3. Quick Start
-		- Local Mode
-		- Distributed Mode
-	- 4. Data Type Correspondence
-	- 5. Schema Inference
-	- 6. Scala API
-		- Example 1: read from the local file system
-		- Example 2: read from the hadoop file system
-		- Example 3: read from a specific directory
-		- Example 4: query in wide form
-		- Example 5: query in narrow form
-		- Example 6: write in wide form
-		- Example 7: write in narrow form
-	- Appendix A: Old Design of Schema Inference
-        - the default way
-        - unfolding delta_object column
-	- Appendix B: Old Note
-
-<!-- /TOC -->
+# Chapter 8: System Tools
 
 # TsFile-Spark-Connector User Guide
 

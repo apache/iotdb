@@ -19,19 +19,7 @@
 
 -->
 
-<!-- TOC -->
-## Outline
-
-- TsFile-Hadoop-Connector User Guide
-	- About TsFile-Hadoop-Connector
-	- System Requirements
-	- Data Type Correspondence
-	- TSFInputFormat Explanation
-	- Examples
-		- Read Example: calculate the sum
-		- Write Example: write the average into Tsfile
-
-<!-- /TOC -->
+# Chapter 8: System Tools
 # TsFile-Hadoop-Connector User Guide
 
 ## About TsFile-Hadoop-Connector

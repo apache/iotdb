@@ -21,17 +21,7 @@ under the License.
 
 -->
 
-**Outline**
-
-1. Watermark Embedding
-
-   1.1 Configuration
-
-   1.2 Usage Example
-
-2. Watermark Detection
-
-
+# Chapter 8: System Tools
 
 # IoTDB Time Series Data Watermark Tool: User Manual
 
