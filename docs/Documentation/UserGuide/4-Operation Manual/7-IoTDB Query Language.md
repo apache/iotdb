@@ -18,9 +18,8 @@
     under the License.
 
 -->
-
-# Chapter 5: IoTDB SQL Documentation
-
+# Chapter 4 Operation Manual
+# IoTDB SQL Language
 In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a SQL-like query language for interacting with IoTDB, the query language can be devided into 4 major parts:
 
 * Schema Statement: statements about schema management are all listed in this section.
@@ -50,8 +49,8 @@ AttributeClauses : DATATYPE=<DataTypeValue> COMMA ENCODING=<EncodingValue> [COMM
 DataTypeValue: BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
 EncodingValue: GORILLA | PLAIN | RLE | TS_2DIFF | REGULAR
 ExtraAttributeClause: {
-    COMPRESSOR = <CompressorValue>
-    MAX_POINT_NUMBER = Integer
+  COMPRESSOR = <CompressorValue>
+  MAX_POINT_NUMBER = Integer
 }
 CompressorValue: UNCOMPRESSED | SNAPPY
 Eg: IoTDB > CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
@@ -112,7 +111,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 Note: The order of Sensor and PointValue need one-to-one correspondence
 ```
 
-* Update Record Statement (Currently unsupported)
+* Update Record Statement
 
 ```
 UPDATE <UpdateClause> SET <SetClause> WHERE <WhereClause>
@@ -578,6 +577,7 @@ SELECT SUM(Path) (COMMA SUM(Path))* FROM <FromClause> [WHERE <WhereClause>]?
 Eg. SELECT SUM(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
+
 ## Reference
 
 ### Keywords
