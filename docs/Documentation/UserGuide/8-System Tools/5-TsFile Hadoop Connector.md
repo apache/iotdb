@@ -18,8 +18,21 @@
     under the License.
 
 -->
-
 # Chapter 8: System Tools
+# TsFile-Hadoop-Connector
+<!-- TOC -->
+## Outline
+
+- TsFile-Hadoop-Connector User Guide
+    - About TsFile-Hadoop-Connector
+    - System Requirements
+    - Data Type Correspondence
+    - TSFInputFormat Explanation
+    - Examples
+        - Read Example: calculate the sum
+        - Write Example: write the average into Tsfile
+
+<!-- /TOC -->
 # TsFile-Hadoop-Connector User Guide
 
 ## About TsFile-Hadoop-Connector
@@ -45,10 +58,10 @@ With this connector, you can
 | ---------------- | --------------- |
 | BOOLEAN          | BooleanWritable |
 | INT32            | IntWritable     |
-| INT64       	   | LongWritable    |
-| FLOAT       	   | FloatWritable   |
-| DOUBLE      	   | DoubleWritable  |
-| TEXT      	   | Text            |
+| INT64            | LongWritable    |
+| FLOAT            | FloatWritable   |
+| DOUBLE           | DoubleWritable  |
+| TEXT             | Text            |
 
 ## TSFInputFormat Explanation
 
@@ -137,7 +150,7 @@ Then, the `mapper` and `reducer` class is how you deal with the `MapWritable` pr
   }
 ```
 
-> Note: For the complete code, please see the following link: https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb/tsfile/hadoop/TSFMRReadExample.java
+> Note: For the complete code, please see the following link: https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb//hadoop/tsfile/TSFMRReadExample.java
 
 
 ### Write Example: write the average into Tsfile
@@ -198,4 +211,4 @@ Then, the `mapper` and `reducer` class is how you deal with the `MapWritable` pr
         }
     }
 ```
-> Note: For the complete code, please see the following link: https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb/tsfile/hadoop/TSMRWriteExample.java
+> Note: For the complete code, please see the following link: https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb//hadoop/tsfile/TSMRWriteExample.java

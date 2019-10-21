@@ -19,18 +19,18 @@
 
 -->
 # 第8章: 系统工具
-
+# TsFile的Hadoop连接器
 <!-- TOC -->
 ## 概要
 
 - TsFile的Hadoop连接器使用手册
-	- 什么是TsFile的Hadoop连接器
-	- 系统环境要求
-	- 数据类型对应关系
-	- 关于TSFInputFormat的说明
-	- 使用示例
-		- 读示例: 求和
-		- 写示例: 计算平均数并写入Tsfile中
+    - 什么是TsFile的Hadoop连接器
+    - 系统环境要求
+    - 数据类型对应关系
+    - 关于TSFInputFormat的说明
+    - 使用示例
+        - 读示例: 求和
+        - 写示例: 计算平均数并写入Tsfile中
 
 <!-- /TOC -->
 # TsFile的Hadoop连接器使用手册
@@ -58,10 +58,10 @@ TsFile的Hadoop连接器实现了对Hadoop读取外部Tsfile类型的文件格�
 | ---------------- | --------------- |
 | BOOLEAN          | BooleanWritable |
 | INT32            | IntWritable     |
-| INT64       	   | LongWritable    |
-| FLOAT       	   | FloatWritable   |
-| DOUBLE      	   | DoubleWritable  |
-| TEXT      	   | Text            |
+| INT64            | LongWritable    |
+| FLOAT            | FloatWritable   |
+| DOUBLE           | DoubleWritable  |
+| TEXT             | Text            |
 
 ## 关于TSFInputFormat的说明
 
@@ -153,7 +153,7 @@ TSFInputFormat将tsfile中的数据以多个`MapWritable`记录的形式返回�
   }
 ```
 
-> 注意: 完整的代码示例可以在如下链接中找到：https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb/tsfile/hadoop/TSFMRReadExample.java
+> 注意: 完整的代码示例可以在如下链接中找到：https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb/hadoop/tsfile/TSFMRReadExample.java
 
 
 ### 写示例: 计算平均数并写入Tsfile中
@@ -214,4 +214,4 @@ TSFInputFormat将tsfile中的数据以多个`MapWritable`记录的形式返回�
         }
     }
 ```
-> 注意: 完整的代码示例可以在如下链接中找到：https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb/tsfile/hadoop/TSMRWriteExample.java
+> 注意: 完整的代码示例可以在如下链接中找到：https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb/hadoop/tsfile/TSMRWriteExample.java
