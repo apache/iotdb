@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.session;
 
+import static org.apache.iotdb.session.Config.PATH_MATCHER;
+
 import java.sql.SQLException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -257,6 +260,7 @@ public class Session {
   }
 
   public synchronized TSStatus setStorageGroup(String storageGroupId) throws IoTDBSessionException {
+    checkPathValidity(storageGroupId);
     try {
       return checkAndReturn(client.setStorageGroup(storageGroupId));
     } catch (TException e) {
@@ -283,6 +287,7 @@ public class Session {
 
   public synchronized TSStatus createTimeseries(String path, TSDataType dataType,
       TSEncoding encoding, CompressionType compressor) throws IoTDBSessionException {
+    checkPathValidity(path);
     TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
     request.setPath(path);
     request.setDataType(dataType.ordinal());
@@ -376,4 +381,18 @@ public class Session {
 
     RpcUtils.verifySuccess(execResp.getStatus());
   }
+
+  private void checkPathValidity(String path) throws IoTDBSessionException {
+    if (!Pattern.matches(PATH_MATCHER, path)) {
+      throw new IoTDBSessionException(String.format("Path %s is invalid", path));
+    }
+  }
+
+
+  public static void main(String[] args) {
+    System.out.println(
+        Pattern.matches("root([.](([a-zA-Z_][a-zA-Z0-9_-]*)|([+-]?[0-9]+)))+", "root.\tvehicle"));
+  }
+
+
 }
