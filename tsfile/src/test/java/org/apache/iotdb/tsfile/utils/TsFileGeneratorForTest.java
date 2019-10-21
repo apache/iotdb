@@ -36,7 +36,8 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -58,6 +59,7 @@ public class TsFileGeneratorForTest {
   private static int rowCount;
   private static int chunkGroupSize;
   private static int pageSize;
+  private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   public static void generateFile(int rowCount, int chunkGroupSize, int pageSize)
       throws IOException, InterruptedException, WriteProcessException {
@@ -80,22 +82,22 @@ public class TsFileGeneratorForTest {
   }
 
   public static void after() {
-    File file = TSFileFactory.INSTANCE.getFile(inputDataFile);
+    File file = fsFactory.getFile(inputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
-    file = TSFileFactory.INSTANCE.getFile(outputDataFile);
+    file = fsFactory.getFile(outputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
-    file = TSFileFactory.INSTANCE.getFile(errorOutputDataFile);
+    file = fsFactory.getFile(errorOutputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
   }
 
   static private void generateSampleInputDataFile(int minRowCount, int maxRowCount) throws IOException {
-    File file = TSFileFactory.INSTANCE.getFile(inputDataFile);
+    File file = fsFactory.getFile(inputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
@@ -148,8 +150,8 @@ public class TsFileGeneratorForTest {
   }
 
   static public void write() throws IOException {
-    File file = TSFileFactory.INSTANCE.getFile(outputDataFile);
-    File errorFile = TSFileFactory.INSTANCE.getFile(errorOutputDataFile);
+    File file = fsFactory.getFile(outputDataFile);
+    File errorFile = fsFactory.getFile(errorOutputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
@@ -164,7 +166,7 @@ public class TsFileGeneratorForTest {
     innerWriter = new TsFileWriter(file, schema, TSFileDescriptor.getInstance().getConfig());
 
     // write
-    try (Scanner in = new Scanner(TSFileFactory.INSTANCE.getFile(inputDataFile))) {
+    try (Scanner in = new Scanner(fsFactory.getFile(inputDataFile))) {
       assert in != null;
       while (in.hasNextLine()) {
         String str = in.nextLine();
