@@ -22,6 +22,8 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -56,9 +58,7 @@ public class PlainDecoder extends Decoder {
   @Override
   public short readShort(ByteBuffer buffer) {
     if (this.endianType == EndianType.LITTLE_ENDIAN) {
-      int ch1 = ReadWriteIOUtils.read(buffer);
-      int ch2 = ReadWriteIOUtils.read(buffer);
-      return (short) (ch1 + (ch2 << 8));
+      buffer.order(ByteOrder.LITTLE_ENDIAN);
     }
     return buffer.getShort();
   }
@@ -66,11 +66,7 @@ public class PlainDecoder extends Decoder {
   @Override
   public int readInt(ByteBuffer buffer) {
     if (this.endianType == EndianType.LITTLE_ENDIAN) {
-      int ch1 = ReadWriteIOUtils.read(buffer);
-      int ch2 = ReadWriteIOUtils.read(buffer);
-      int ch3 = ReadWriteIOUtils.read(buffer);
-      int ch4 = ReadWriteIOUtils.read(buffer);
-      return ch1 + (ch2 << 8) + (ch3 << 16) + (ch4 << 24);
+      buffer.order(ByteOrder.LITTLE_ENDIAN);
     }
     return buffer.getInt();
   }
@@ -78,15 +74,7 @@ public class PlainDecoder extends Decoder {
   @Override
   public long readLong(ByteBuffer buffer) {
     if (this.endianType == EndianType.LITTLE_ENDIAN) {
-      int[] buf = new int[8];
-      for (int i = 0; i < 8; i++) {
-        buf[i] = ReadWriteIOUtils.read(buffer);
-      }
-      Long res = 0L;
-      for (int i = 0; i < 8; i++) {
-        res += ((long) buf[i] << (i * 8));
-      }
-      return res;
+      buffer.order(ByteOrder.LITTLE_ENDIAN);
     }
     return buffer.getLong();
   }
@@ -94,7 +82,7 @@ public class PlainDecoder extends Decoder {
   @Override
   public float readFloat(ByteBuffer buffer) {
     if (this.endianType == EndianType.LITTLE_ENDIAN) {
-      return Float.intBitsToFloat(readInt(buffer));
+      buffer.order(ByteOrder.LITTLE_ENDIAN);
     }
     return buffer.getFloat();
   }
@@ -102,7 +90,7 @@ public class PlainDecoder extends Decoder {
   @Override
   public double readDouble(ByteBuffer buffer) {
     if (this.endianType == EndianType.LITTLE_ENDIAN) {
-      return Double.longBitsToDouble(readLong(buffer));
+      buffer.order(ByteOrder.LITTLE_ENDIAN);
     }
     return buffer.getDouble();
   }
