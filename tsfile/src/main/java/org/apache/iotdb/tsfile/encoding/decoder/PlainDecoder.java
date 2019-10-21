@@ -93,9 +93,9 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public float readFloat(ByteBuffer buffer) {
-	if (this.endianType == EndianType.LITTLE_ENDIAN) {
-	  return Float.intBitsToFloat(readInt(buffer));
-	}
+    if (this.endianType == EndianType.LITTLE_ENDIAN) {
+      return Float.intBitsToFloat(readInt(buffer));
+    }
     return buffer.getFloat();
   }
 
