@@ -89,15 +89,6 @@ public class TsFileSequenceReader implements AutoCloseable {
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
     this.file = file;
     tsFileInput = FileInputFactory.INSTANCE.getTsFileInput(file);
-    System.out.println(this.readVersionNumber());
-    System.out.println(this.readVersionNumber());
-    System.out.println(this.readVersionNumber());
-    if (this.readVersionNumber().startsWith("v")) {
-      config.setEndian("LITTLE_ENDIAN");
-    }
-    else {
-      config.setEndian("BIG_ENDIAN");
-    }
     try {
       if (loadMetadataSize) {
         loadMetadataSize();
@@ -137,12 +128,6 @@ public class TsFileSequenceReader implements AutoCloseable {
   public TsFileSequenceReader(TsFileInput input, boolean loadMetadataSize)
       throws IOException {
     this.tsFileInput = input;
-    if (this.readVersionNumber().startsWith("v")) {
-      config.setEndian("LITTLE_ENDIAN");
-    }
-    else {
-      config.setEndian("BIG_ENDIAN");
-    }
     try {
       if (loadMetadataSize) { // NOTE no autoRepair here
         loadMetadataSize();
@@ -351,6 +336,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return the pages of this chunk
    */
   public ByteBuffer readChunk(ChunkHeader header) throws IOException {
+	if (this.readVersionNumber().startsWith("v")) {
+	  config.setEndian("LITTLE_ENDIAN");
+	}
+	else {
+	  config.setEndian("BIG_ENDIAN");
+	}
     return readData(-1, header.getDataSize());
   }
 
@@ -361,6 +352,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return the pages of this chunk
    */
   public ByteBuffer readChunk(ChunkHeader header, long position) throws IOException {
+	if (this.readVersionNumber().startsWith("v")) {
+	  config.setEndian("LITTLE_ENDIAN");
+	}
+	else {
+	  config.setEndian("BIG_ENDIAN");
+	}
     return readData(position, header.getDataSize());
   }
 
@@ -372,6 +369,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return the pages of this chunk
    */
   private ByteBuffer readChunk(long position, int dataSize) throws IOException {
+	if (this.readVersionNumber().startsWith("v")) {
+	  config.setEndian("LITTLE_ENDIAN");
+	}
+	else {
+	  config.setEndian("BIG_ENDIAN");
+	}
     return readData(position, dataSize);
   }
 
