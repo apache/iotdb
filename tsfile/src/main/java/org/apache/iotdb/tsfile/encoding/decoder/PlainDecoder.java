@@ -65,29 +65,28 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public int readInt(ByteBuffer buffer) {
-	if (this.endianType == EndianType.LITTLE_ENDIAN) {
-	  int ch1 = ReadWriteIOUtils.read(buffer);
-	  int ch2 = ReadWriteIOUtils.read(buffer);
-	  int ch3 = ReadWriteIOUtils.read(buffer);
-	  int ch4 = ReadWriteIOUtils.read(buffer);
-	  return ch1 + (ch2 << 8) + (ch3 << 16) + (ch4 << 24);
+    if (this.endianType == EndianType.LITTLE_ENDIAN) {
+      int ch1 = ReadWriteIOUtils.read(buffer);
+      int ch2 = ReadWriteIOUtils.read(buffer);
+      int ch3 = ReadWriteIOUtils.read(buffer);
+      int ch4 = ReadWriteIOUtils.read(buffer);
+      return ch1 + (ch2 << 8) + (ch3 << 16) + (ch4 << 24);
     }
     return buffer.getInt();
   }
 
   @Override
   public long readLong(ByteBuffer buffer) {
-	if (this.endianType == EndianType.LITTLE_ENDIAN) {
-	  int[] buf = new int[8];
-	  for (int i = 0; i < 8; i++) {
+    if (this.endianType == EndianType.LITTLE_ENDIAN) {
+      int[] buf = new int[8];
+      for (int i = 0; i < 8; i++) {
         buf[i] = ReadWriteIOUtils.read(buffer);
-	  }
-
-	  Long res = 0L;
-	  for (int i = 0; i < 8; i++) {
-	    res += ((long) buf[i] << (i * 8));
-	  }
-	  return res;
+      }
+      Long res = 0L;
+      for (int i = 0; i < 8; i++) {
+        res += ((long) buf[i] << (i * 8));
+      }
+      return res;
     }
     return buffer.getLong();
   }
@@ -102,9 +101,9 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public double readDouble(ByteBuffer buffer) {
-	if (this.endianType == EndianType.LITTLE_ENDIAN) {
-	  return Double.longBitsToDouble(readLong(buffer));
-	}
+    if (this.endianType == EndianType.LITTLE_ENDIAN) {
+      return Double.longBitsToDouble(readLong(buffer));
+    }
     return buffer.getDouble();
   }
 
