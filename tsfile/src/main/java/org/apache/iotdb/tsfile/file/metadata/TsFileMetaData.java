@@ -152,18 +152,8 @@ public class TsFileMetaData {
       fileMetaData.createdBy = ReadWriteIOUtils.readString(buffer);
     }  
     // if using v0.8.0 TsFile, use 0 to represent missing fields
-    if (buffer == null) {
-      fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
-    }
-    else {
-      fileMetaData.totalChunkNum = 0;
-    }
-    if (buffer == null) {
-      fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
-    }
-    else {
-      fileMetaData.invalidChunkNum = 0;
-    }
+    fileMetaData.totalChunkNum = buffer == null ? 0 : ReadWriteIOUtils.readInt(buffer);
+    fileMetaData.invalidChunkNum = buffer == null ? 0 : ReadWriteIOUtils.readInt(buffer);
 
 
     return fileMetaData;
