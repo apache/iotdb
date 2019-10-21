@@ -74,12 +74,8 @@ public class TsDigest {
       digest.statistics = new ByteBuffer[StatisticType.getTotalTypeNum()];
       ByteBuffer value;
    // check if it's old version of TsFile
-      inputStream.mark(10);
-      String key = ReadWriteIOUtils.readString(inputStream);
-      if (key.equals("min_value") || key.equals("max_value") || key.equals("first") 
-    	  || key.equals("last") || key.equals("sum")) {
-    	inputStream.reset();
-    	//TSFileDescriptor.getInstance().getConfig().setEndian("LITTLE_ENDIAN");
+      String key = "";
+      if (TSFileDescriptor.getInstance().getConfig().getEndian().equals("LITTLE_ENDIAN")) {
     	for (int i = 0; i < size; i++) {
     	  key = ReadWriteIOUtils.readString(inputStream);
           value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(inputStream);
@@ -108,7 +104,6 @@ public class TsDigest {
     	}
       }
       else {
-    	inputStream.reset();
     	for (int i = 0; i < size; i++) {
           short n = ReadWriteIOUtils.readShort(inputStream);
           value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(inputStream);
@@ -141,7 +136,6 @@ public class TsDigest {
       if (key.equals("min_value") || key.equals("max_value") || key.equals("first") 
     	  || key.equals("last") || key.equals("sum")) {
     	buffer.reset();
-    	//TSFileDescriptor.getInstance().getConfig().setEndian("LITTLE_ENDIAN");
     	for (int i = 0; i < size; i++) {
     	  key = ReadWriteIOUtils.readString(buffer);
           value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer);
@@ -171,7 +165,6 @@ public class TsDigest {
       }
       else {
     	buffer.reset();
-
     	for (int i = 0; i < size; i++) {
           short n = ReadWriteIOUtils.readShort(buffer);
           value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer);
