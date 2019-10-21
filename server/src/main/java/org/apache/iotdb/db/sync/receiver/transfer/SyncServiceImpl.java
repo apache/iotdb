@@ -39,6 +39,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.sync.receiver.load.FileLoader;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
+import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
 import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogAnalyzer;
 import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogger;
 import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
@@ -261,7 +262,13 @@ public class SyncServiceImpl implements SyncService.Iface {
       if (syncLog.get() != null) {
         syncLog.get().close();
       }
-      FileLoaderManager.getInstance().getFileLoader(senderName.get()).endSync();
+      IFileLoader loader = FileLoaderManager.getInstance().getFileLoader(senderName.get());
+      if (loader != null) {
+        loader.endSync();
+      } else {
+        return getErrorResult(
+            String.format("File Loader of the storage group %s is null", currentSG.get()));
+      }
       logger.info("Sync process with sender {} finished.", senderName.get());
     } catch (IOException e) {
       logger.error("Can not end sync", e);

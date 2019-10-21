@@ -25,8 +25,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.math.BigInteger;
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.net.Socket;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileLock;
@@ -227,8 +229,11 @@ public class DataTransferManager implements IDataTransferManager {
 
     // 3. Sync all data
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    for (String dataDir : dataDirs) {
-      logger.info("Start to sync data in data dir {}", dataDir);
+    logger.info("There are {} data dirs to be synced.", dataDirs.length);
+    for (int i = 0 ; i < dataDirs.length; i++) {
+      String dataDir = dataDirs[i];
+      logger.info("Start to sync data in data dir {}, the process is {}/{}", dataDir, i + 1,
+          dataDirs.length);
 
       config.update(dataDir);
       syncFileManager.getValidFiles(dataDir);
@@ -243,7 +248,8 @@ public class DataTransferManager implements IDataTransferManager {
       }
       sync();
       endSync();
-      logger.info("Finish to sync data in data dir {}", dataDir);
+      logger.info("Finish to sync data in data dir {}, the process is {}/{}", dataDir, i + 1,
+          dataDirs.length);
     }
 
     // 4. notify receiver that synchronization finish
@@ -276,9 +282,9 @@ public class DataTransferManager implements IDataTransferManager {
 
   @Override
   public void confirmIdentity() throws SyncConnectionException {
-    try {
-      ResultStatus status = serviceClient.check(getLocalHost(),
-          getOrCreateUUID(config.getUuidPath()));
+    try (Socket socket = new Socket(config.getServerIp(), config.getServerPort())){
+      ResultStatus status = serviceClient
+          .check(socket.getLocalAddress().getHostAddress(), getOrCreateUUID(config.getUuidPath()));
       if (!status.success) {
         throw new SyncConnectionException(
             "The receiver rejected the synchronization task because " + status.errorMsg);
@@ -287,21 +293,6 @@ public class DataTransferManager implements IDataTransferManager {
       logger.error("Cannot confirm identity with the receiver.");
       throw new SyncConnectionException(e);
     }
-  }
-
-  private String getLocalHost() throws SocketException {
-    Enumeration enumeration = NetworkInterface.getNetworkInterfaces();
-    while(enumeration.hasMoreElements()){
-      NetworkInterface networkInterface=(NetworkInterface) enumeration.nextElement();
-      Enumeration ee = networkInterface.getInetAddresses();
-      while(ee.hasMoreElements()) {
-        InetAddress address= (InetAddress) ee.nextElement();
-        if (!address.isLoopbackAddress() && !address.isLinkLocalAddress() && address.isSiteLocalAddress()){
-          return address.getHostAddress();
-        }
-      }
-    }
-    throw new SocketException("Can not get local host ip address.");
   }
 
   /**
@@ -338,6 +329,10 @@ public class DataTransferManager implements IDataTransferManager {
 
   @Override
   public void syncSchema() throws SyncConnectionException, TException {
+    if (!getSchemaLogFile().exists()) {
+      logger.info("Schema file {} doesn't exist.", getSchemaLogFile().getName());
+      return;
+    }
     int retryCount = 0;
     serviceClient.initSyncData(MetadataConstant.METADATA_LOG);
     while (true) {
