@@ -29,11 +29,14 @@ public class TypeInferenceUtilsTest {
   @Test
   public void isNumberTest() {
     String[] values = {"123", "123.123", "-123.123", "+123.123", ".123", String.valueOf(Integer.MAX_VALUE),
-        String.valueOf(Integer.MIN_VALUE), "abc", "123.", "123a", ".", "123.1.23"};
+        String.valueOf(Integer.MIN_VALUE), String.valueOf(Double.MAX_VALUE), String.valueOf(Double.MIN_VALUE),
+        "abc", "123.", "123a", ".", "123.1.23"};
     boolean[] results = {true, true, true, true, true, true,
-        true, false, false, false, false, false};
+        true, true, true,
+        false, true, false, false, false};
 
     for (int i = 0; i < values.length; i++) {
+      System.out.println(values[i]);
       assertEquals(TypeInferenceUtils.isNumber(values[i]), results[i]);
     }
   }

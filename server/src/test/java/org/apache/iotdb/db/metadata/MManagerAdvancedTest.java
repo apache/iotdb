@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.After;
 import org.junit.Assert;
@@ -99,7 +100,7 @@ public class MManagerAdvancedTest {
   }
 
   @Test
-  public void testCache() throws PathErrorException, IOException, MetadataErrorException, StorageGroupException {
+  public void testCache() throws PathErrorException, IOException, StorageGroupException, CacheException {
     mmanager.addPathToMTree("root.vehicle.d2.s0", "DOUBLE", "RLE");
     mmanager.addPathToMTree("root.vehicle.d2.s1", "BOOLEAN", "PLAIN");
     mmanager.addPathToMTree("root.vehicle.d2.s2.g0", "TEXT", "PLAIN");
@@ -121,7 +122,7 @@ public class MManagerAdvancedTest {
     try {
       MNode node1 = mmanager.getNodeByDeviceIdFromCache("root.vehicle.d100");
       fail();
-    } catch (PathErrorException e) {
+    } catch (CacheException e) {
 
     }
   }

@@ -28,31 +28,9 @@ public class TypeInferenceUtils {
   }
 
   public static boolean isNumber(String s) {
-    if (s.isEmpty()) {
-      return false;
-    }
-    int start = 0;
-    char firstChar = s.charAt(0);
-    if (firstChar == '+' || firstChar == '-' || firstChar == '.') {
-      start = 1;
-      if (s.length() == 1) {
-        return false;
-      }
-    }
-    int pointCount = 0;
-    for (int i = start; i < s.length(); i++) {
-      char c = s.charAt(i);
-      if (pointCount > 1) {
-        return false;
-      }
-      if (c == '.') {
-        pointCount++;
-      }
-      if (!Character.isDigit(c) && c != '.') {
-        return false;
-      }
-    }
-    if (s.charAt(s.length() - 1) == '.') {
+    try {
+      Double.parseDouble(s);
+    } catch (NumberFormatException e) {
       return false;
     }
     return true;

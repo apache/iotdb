@@ -64,7 +64,7 @@ public class FileNodeManagerBenchmark {
   }
 
   private static void prepare()
-          throws MetadataErrorException, PathErrorException, IOException, StorageGroupException {
+      throws MetadataErrorException, PathErrorException, IOException, StorageGroupException {
     MManager manager = MManager.getInstance();
     manager.setStorageGroupToMTree(prefix);
     for (String device : devices) {

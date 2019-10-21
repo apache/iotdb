@@ -23,8 +23,11 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.ROLE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.USER;
 
 import java.io.IOException;
-import java.util.*;
-
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
@@ -35,7 +38,11 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.*;
+import org.apache.iotdb.db.exception.MetadataErrorException;
+import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -212,39 +219,11 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
+      MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
       String[] values = insertPlan.getValues();
       TSDataType[] dataTypes = new TSDataType[measurementList.length];
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-      boolean hasCheckedMeasurement = false;
 
-      try {
-        mManager.checkDeviceId(deviceId);
-      } catch (StorageGroupException e1) {
-        if (!conf.isAutoCreateSchemaEnabled()) {
-          throw new ProcessorException(e1);
-        } else {
-          try {
-            // set storage group by auto level
-            setStorageGroupToMTreeByAutoLevel(deviceId);
-            // create timeserires
-            addPathListToMTree(deviceId, measurementList, values);
-            hasCheckedMeasurement = true;
-          } catch (PathErrorException | MetadataErrorException e2) {
-            throw new ProcessorException(e2);
-          }
-        }
-      } catch (PathErrorException e3) {
-        if (!conf.isAutoCreateSchemaEnabled()) {
-          throw new ProcessorException(e3);
-        } else {
-          addPathListToMTree(deviceId, measurementList, values);
-          hasCheckedMeasurement = true;
-        }
-      } catch (CacheException e4) {
-        throw new ProcessorException(e4);
-      }
-
-      MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
       for (int i = 0; i < measurementList.length; i++) {
         if (!node.hasChild(measurementList[i])) {
           if (!conf.isAutoCreateSchemaEnabled()) {
@@ -252,9 +231,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
                 String.format("Current deviceId[%s] does not contain measurement:%s",
                     deviceId, measurementList[i]));
           }
-          if (!hasCheckedMeasurement) {
-            addPathToMTree(deviceId, measurementList[i], values[i]);
-          }
+          addPathToMTree(deviceId, measurementList[i], values[i]);
         }
         MNode measurementNode = node.getChild(measurementList[i]);
         if (!measurementNode.isLeaf()) {
@@ -269,7 +246,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       insertPlan.setDataTypes(dataTypes);
       return storageEngine.insert(insertPlan);
 
-    } catch (PathErrorException | StorageEngineException | MetadataErrorException e) {
+    } catch (PathErrorException | StorageEngineException | MetadataErrorException | CacheException e) {
       throw new ProcessorException(e.getMessage());
     }
   }
@@ -279,40 +256,10 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       String[] measurementList = batchInsertPlan.getMeasurements();
       String deviceId = batchInsertPlan.getDeviceId();
+      MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
       Object[] values;
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-      boolean hasCheckedMeasurement = false;
 
-      try {
-        mManager.checkDeviceId(deviceId);
-      } catch (StorageGroupException e1) {
-        if (!conf.isAutoCreateSchemaEnabled()) {
-          throw new ProcessorException(e1);
-        } else {
-          try {
-            // set storage group by auto level
-            setStorageGroupToMTreeByAutoLevel(deviceId);
-            // create timeserires
-            values = collectFirstElements(batchInsertPlan.getColumns());
-            addPathListToMTree(deviceId, measurementList, values);
-            hasCheckedMeasurement = true;
-          } catch (PathErrorException | MetadataErrorException e2) {
-            throw new ProcessorException(e2);
-          }
-        }
-      } catch (PathErrorException e3) {
-        if (!conf.isAutoCreateSchemaEnabled()) {
-          throw new ProcessorException(e3);
-        } else {
-          values = collectFirstElements(batchInsertPlan.getColumns());
-          addPathListToMTree(deviceId, measurementList, values);
-          hasCheckedMeasurement = true;
-        }
-      } catch (CacheException e4) {
-        throw new ProcessorException(e4);
-      }
-
-      MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
       for (int i = 0; i < measurementList.length; i++) {
         if (!node.hasChild(measurementList[i])) {
           if (!conf.isAutoCreateSchemaEnabled()) {
@@ -320,21 +267,18 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
                 String.format("Current deviceId[%s] does not contain measurement:%s",
                     deviceId, measurementList[i]));
           }
-          if (!hasCheckedMeasurement) {
-            values = collectFirstElements(batchInsertPlan.getColumns());
-            addPathToMTree(deviceId, measurementList[i], values[i]);
-          }
+          values = collectFirstElements(batchInsertPlan.getColumns());
+          addPathToMTree(deviceId, measurementList[i], values[i]);
         }
         MNode measurementNode = node.getChild(measurementList[i]);
         if (!measurementNode.isLeaf()) {
           throw new ProcessorException(
-              String.format("Current Path is not leaf node. %s.%s",
-                  deviceId, measurementList[i]));
+              String.format("Current Path is not leaf node. %s.%s", deviceId, measurementList[i]));
         }
       }
       return storageEngine.insertBatch(batchInsertPlan);
 
-    } catch (PathErrorException | StorageEngineException | MetadataErrorException e) {
+    } catch (PathErrorException | StorageEngineException | MetadataErrorException | CacheException e) {
       throw new ProcessorException(e);
     }
   }
@@ -737,21 +681,8 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   }
 
   /**
-   * Set storage group when creating schema automatically is enable
+   * Add a seriesPath to MTree
    */
-  private void setStorageGroupToMTreeByAutoLevel(String deviceId) throws PathErrorException, MetadataErrorException {
-    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-    String storageGroupName = mManager.getStorageGroupNameByAutoLevel(deviceId, conf.getDefaultStorageGroupLevel());
-    mManager.setStorageGroupToMTree(storageGroupName);
-  }
-
-  private void addPathListToMTree(String deviceId, String[] measurementList, Object[] values)
-      throws MetadataErrorException, PathErrorException, StorageEngineException {
-    for (int i = 0; i < measurementList.length; i++) {
-      addPathToMTree(deviceId, measurementList[i], values[i]);
-    }
-  }
-
   private void addPathToMTree(String deviceId, String measurementId, Object value)
       throws PathErrorException, MetadataErrorException, StorageEngineException {
     String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;

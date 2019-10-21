@@ -26,7 +26,6 @@ import static org.junit.Assert.fail;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -366,7 +365,6 @@ public class MManagerBasicTest {
 
   @Test
   public void testGetStorageGroupNameByAutoLevel() {
-
     MManager manager = MManager.getInstance();
     int level = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     boolean caughtException;

@@ -22,7 +22,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -86,6 +85,13 @@ public class MGraph implements Serializable {
       throw new PathErrorException("Timeseries is null");
     }
     mtree.addTimeseriesPath(path, dataType, encoding, compressor, props);
+  }
+
+  /**
+   * Add a deviceId to Metadata Tree.
+   */
+  public MNode addDeviceIdToMTree(String deviceId) throws PathErrorException {
+    return mtree.addDeviceId(deviceId);
   }
 
   /**
@@ -319,13 +325,6 @@ public class MGraph implements Serializable {
 
   boolean checkFileNameByPath(String path) {
     return mtree.checkFileNameByPath(path);
-  }
-
-  /**
-   * Check whether the given deviceId exists in the MTree
-   */
-  boolean checkDeviceId(String deviceId) throws StorageGroupException, PathErrorException {
-    return mtree.checkDeviceId(deviceId);
   }
 
   /**

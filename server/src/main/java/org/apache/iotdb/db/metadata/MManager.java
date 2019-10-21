@@ -32,7 +32,6 @@ import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.monitor.MonitorConstants;
-import org.apache.iotdb.db.utils.DeviceIdCache;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
@@ -67,7 +66,6 @@ public class MManager {
 
   private RandomDeleteCache<String, PathCheckRet> checkAndGetDataTypeCache;
   private RandomDeleteCache<String, MNode> mNodeCache;
-  private DeviceIdCache deviceIdCache;
 
   private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
   private long maxSeriesNumberAmongStorageGroup;
@@ -115,18 +113,6 @@ public class MManager {
         } catch (PathErrorException | StorageGroupException e) {
           throw new CacheException(e);
         }
-      }
-    };
-
-    deviceIdCache = new DeviceIdCache(cacheSize) {
-      @Override
-      public void beforeRemove(String deviceId) {
-
-      }
-
-      @Override
-      public void loadObject(String deviceId) throws StorageGroupException, PathErrorException {
-        mgraph.checkDeviceId(deviceId);
       }
     };
   }
@@ -189,7 +175,6 @@ public class MManager {
       this.mgraph = new MGraph(ROOT_NAME);
       this.checkAndGetDataTypeCache.clear();
       this.mNodeCache.clear();
-      this.deviceIdCache.clear();
       this.seriesNumberInStorageGroups.clear();
       this.maxSeriesNumberAmongStorageGroup = 0;
       if (logWriter != null) {
@@ -373,9 +358,9 @@ public class MManager {
     lock.writeLock().lock();
     try {
       mgraph.addPathToMTree(path, dataType, encoding, compressor, props);
-      String storageName = mgraph.getStorageGroupNameByPath(path);
-      int size = seriesNumberInStorageGroups.get(storageName);
-      seriesNumberInStorageGroups.put(storageName, size + 1);
+      String storageGroupName = mgraph.getStorageGroupNameByPath(path);
+      int size = seriesNumberInStorageGroups.get(storageGroupName);
+      seriesNumberInStorageGroups.put(storageGroupName, size + 1);
       if (size + 1 > maxSeriesNumberAmongStorageGroup) {
         maxSeriesNumberAmongStorageGroup = size + 1;
       }
@@ -412,6 +397,22 @@ public class MManager {
     TSEncoding tsEncoding = TSEncoding.valueOf(encoding);
     CompressionType type = CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
     addPathToMTreeInternal(path, tsDataType, tsEncoding, type, Collections.emptyMap());
+  }
+
+  /**
+   * <p> Add one <code>deviceId</code> to metadata.</p>
+   *
+   * This is available IF and ONLY IF creating schema automatically is enabled.
+   *
+   * @param deviceId the deviceId of a timeseries seriesPath
+   */
+  private MNode addDeviceIdToMTree(String deviceId) throws PathErrorException {
+    lock.writeLock().lock();
+    try {
+      return mgraph.addDeviceIdToMTree(deviceId);
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 
   private List<String> collectPaths(List<Path> paths) throws MetadataErrorException {
@@ -517,12 +518,11 @@ public class MManager {
    * otherwise null
    */
   private String deletePathFromMTree(String path)
-          throws PathErrorException, IOException, StorageGroupException {
+      throws PathErrorException, IOException, StorageGroupException {
     lock.writeLock().lock();
     try {
       checkAndGetDataTypeCache.clear();
       mNodeCache.clear();
-      deviceIdCache.clear();
       String dataFileName = mgraph.deletePath(path);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
@@ -556,6 +556,8 @@ public class MManager {
   public void setStorageGroupToMTree(String path) throws MetadataErrorException {
     lock.writeLock().lock();
     try {
+      checkAndGetDataTypeCache.clear();
+      mNodeCache.clear();
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
       mgraph.setStorageGroup(path);
       seriesNumberInStorageGroups.put(path, 0);
@@ -602,7 +604,6 @@ public class MManager {
         try {
           checkAndGetDataTypeCache.clear();
           mNodeCache.clear();
-          deviceIdCache.clear();
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
           mgraph.deleteStorageGroup(delStorageGroup);
           seriesNumberInStorageGroups.remove(delStorageGroup);
@@ -1110,14 +1111,39 @@ public class MManager {
   /**
    * function for getting node by deviceId from cache.
    */
-  public MNode getNodeByDeviceIdFromCache(String deviceId) throws PathErrorException {
+  public MNode getNodeByDeviceIdFromCache(String deviceId) throws CacheException, PathErrorException {
     lock.readLock().lock();
+    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    MNode node = null;
+    boolean createSchema = false;
+    boolean setStorageGroup = false;
     try {
-      return mNodeCache.get(deviceId);
+      node = mNodeCache.get(deviceId);
     } catch (CacheException e) {
-      throw new PathErrorException(e);
+      if (!conf.isAutoCreateSchemaEnabled()) {
+        throw e;
+      } else {
+        createSchema = true;
+        setStorageGroup = e.getCause() instanceof StorageGroupException;
+      }
     } finally {
       lock.readLock().unlock();
+      if (createSchema) {
+        if (setStorageGroup) {
+          try {
+            String storageGroupName = getStorageGroupNameByAutoLevel(
+                deviceId, conf.getDefaultStorageGroupLevel());
+            setStorageGroupToMTree(storageGroupName);
+          } catch (MetadataErrorException | PathErrorException e1) {
+            throw new CacheException(e1);
+          }
+        }
+        node = addDeviceIdToMTree(deviceId);
+      }
+      if (node == null) {
+        throw new CacheException(String.format("DeviceId %s doesn't exist in the metadata tree.", deviceId));
+      }
+      return node;
     }
   }
 
@@ -1222,7 +1248,7 @@ public class MManager {
   /**
    * function for checking file level.
    */
-  public boolean checkFileLevel(String path) throws StorageGroupException {
+  boolean checkFileLevel(String path) throws StorageGroupException {
 
     lock.readLock().lock();
     try {
@@ -1241,18 +1267,6 @@ public class MManager {
     try {
       getStorageGroupNameByPath(node, path);
       return true;
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * function for checking deviceId
-   */
-  public void checkDeviceId(String deviceId) throws StorageGroupException, PathErrorException, CacheException {
-    lock.readLock().lock();
-    try {
-      deviceIdCache.get(deviceId);
     } finally {
       lock.readLock().unlock();
     }

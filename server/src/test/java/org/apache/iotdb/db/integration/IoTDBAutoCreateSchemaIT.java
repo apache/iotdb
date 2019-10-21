@@ -89,9 +89,9 @@ public class IoTDBAutoCreateSchemaIT {
    */
   @Test
   public void insertTest2() throws ClassNotFoundException {
-    String[] sqls = {"INSERT INTO root.sg0.d1(timestamp,s3) values(1,\"abc\")",
-        "INSERT INTO root.sg0.d2(timestamp,s2) values(1,123.123)",
-        "INSERT INTO root.sg0.d3(timestamp,s4) values(1,123456)",
+    String[] sqls = {"INSERT INTO root.sg0.d1(timestamp,s2) values(1,\"abc\")",
+        "INSERT INTO root.sg0.d2(timestamp,s3) values(1,123.123)",
+        "INSERT INTO root.sg0.d2(timestamp,s4) values(1,123456)",
     };
     executeSQL(sqls);
   }

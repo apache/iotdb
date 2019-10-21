@@ -84,7 +84,7 @@ public class MTree implements Serializable {
     String levelPath = cur.getDataFileName();
 
     MNode leaf = new MNode(nodeNames[nodeNames.length - 1], cur, dataType, encoding, compressor);
-    if ( props != null && !props.isEmpty()) {
+    if (props != null && !props.isEmpty()) {
       leaf.getSchema().setProps(props);
     }
     leaf.setDataFileName(levelPath);
@@ -94,6 +94,24 @@ public class MTree implements Serializable {
               cur.getName(), timeseriesPath));
     }
     cur.addChild(nodeNames[nodeNames.length - 1], leaf);
+  }
+
+  /**
+   * function for adding deviceId
+   */
+  MNode addDeviceId(String deviceId) throws PathErrorException {
+    String[] nodeNames = deviceId.trim().split(DOUB_SEPARATOR);
+    if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
+      throw new PathErrorException(String.format("Timeseries %s is not right.", deviceId));
+    }
+    MNode cur = getRoot();
+    for (int i = 1; i < nodeNames.length; i++) {
+      if (!cur.hasChild(nodeNames[i])) {
+        cur.addChild(nodeNames[i], new MNode(nodeNames[i], cur, false));
+      }
+      cur = cur.getChild(nodeNames[i]);
+    }
+    return cur;
   }
 
   private MNode findLeafParent(String[] nodeNames) throws PathErrorException {
@@ -648,38 +666,6 @@ public class MTree implements Serializable {
       }
     }
     return false;
-  }
-
-  /**
-   * Check whether the given deviceId exists in the MTree
-   *
-   * @return true when the deviceId exists in the MTree and the prefix of it is storage group seriesPath
-   * @exception
-   * throws StorageGroupException when none of prefixes of the deviceId are set as the storage group seriesPath
-   * throws PathErrorException when the deviceId is not correct in the MTree
-   *        however one of prefixes of it is storage group seriesPath
-   */
-  boolean checkDeviceId(String deviceId) throws StorageGroupException, PathErrorException {
-    String[] nodes = deviceId.split(DOUB_SEPARATOR);
-    MNode cur = getRoot();
-    if (nodes.length <= 1 || !nodes[0].equals(getRoot().getName())) {
-      throw new PathErrorException(String.format(SERIES_NOT_CORRECT, deviceId));
-    }
-    boolean isStorageLevel = false;
-    for (int i = 1; i < nodes.length; i++) {
-      cur = cur.getChild(nodes[i]);
-      if (cur == null) {
-        if (!isStorageLevel) {
-          throw new StorageGroupException(
-                  String.format("The device %s doesn't belong to any storage group.", deviceId));
-        } else {
-          throw new PathErrorException(String.format(SERIES_NOT_CORRECT, deviceId));
-        }
-      } else if (cur.isStorageGroup()) {
-        isStorageLevel = true;
-      }
-    }
-    return true;
   }
 
   /**

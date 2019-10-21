@@ -25,9 +25,9 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
@@ -74,7 +74,7 @@ public class MManagerImproveTest {
   }
 
   @Test
-  public void analyseTimeCost() throws PathErrorException, ProcessorException, StorageGroupException {
+  public void analyseTimeCost() throws PathErrorException, StorageGroupException {
     mManager = MManager.getInstance();
 
     long startTime, endTime;
@@ -213,7 +213,7 @@ public class MManagerImproveTest {
   }
 
   public void doCacheTest(String deviceId, List<String> measurementList)
-      throws PathErrorException {
+      throws CacheException, PathErrorException {
     MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
     for (int i = 0; i < measurementList.size(); i++) {
       assertEquals(true, node.hasChild(measurementList.get(i)));
@@ -225,7 +225,7 @@ public class MManagerImproveTest {
   }
 
   @Test
-  public void improveTest() throws PathErrorException, StorageGroupException {
+  public void improveTest() throws PathErrorException, StorageGroupException, CacheException {
     mManager = MManager.getInstance();
 
     long startTime, endTime;
