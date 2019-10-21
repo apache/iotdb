@@ -58,7 +58,7 @@
         <module>spark-iotdb-connector</module>
         <module>distribution</module>
     </modules>
-    <!-- Properties Management -->
+<!-- Properties Management -->
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
@@ -404,6 +404,7 @@
                         <generateBackupPoms>false</generateBackupPoms>
                     </configuration>
                 </plugin>
+                
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-javadoc-plugin</artifactId>
