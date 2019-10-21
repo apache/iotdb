@@ -55,11 +55,11 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public short readShort(ByteBuffer buffer) {
-	if (this.endianType == EndianType.LITTLE_ENDIAN) {
-	  int ch1 = ReadWriteIOUtils.read(buffer);
-	  int ch2 = ReadWriteIOUtils.read(buffer);
-	  return (short) (ch1 + (ch2 << 8));
-	}
+    if (this.endianType == EndianType.LITTLE_ENDIAN) {
+      int ch1 = ReadWriteIOUtils.read(buffer);
+      int ch2 = ReadWriteIOUtils.read(buffer);
+      return (short) (ch1 + (ch2 << 8));
+    }
     return buffer.getShort();
   }
 
