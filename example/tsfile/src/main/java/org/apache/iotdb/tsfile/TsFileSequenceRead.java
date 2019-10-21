@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
@@ -70,9 +71,11 @@ public class TsFileSequenceRead {
           System.out.println("\tMeasurement: " + header.getMeasurementID());
           Decoder defaultTimeDecoder = Decoder.getDecoderByType(
               TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-              TSDataType.INT64);
+              TSDataType.INT64,
+              EndianType.valueOf(TSFileDescriptor.getInstance().getConfig().getEndian()));
           Decoder valueDecoder = Decoder
-              .getDecoderByType(header.getEncodingType(), header.getDataType());
+              .getDecoderByType(header.getEncodingType(), header.getDataType(),
+              EndianType.valueOf(TSFileDescriptor.getInstance().getConfig().getEndian()));
           for (int j = 0; j < header.getNumOfPages(); j++) {
             valueDecoder.reset();
             System.out.println("\t\t[Page]\n \t\tPage head position: " + reader.position());
