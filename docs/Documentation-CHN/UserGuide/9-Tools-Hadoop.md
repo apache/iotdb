@@ -152,7 +152,7 @@ TSFInputFormat将tsfile中的数据以多个`MapWritable`记录的形式返回�
   }
 ```
 
-> 注意: 完整的代码示例可以在如下链接中找到：https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb/tsfile/hadoop/TSFMRReadExample.java
+> 注意: 完整的代码示例可以在如下链接中找到：https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb/hadoop/tsfile/TSFMRReadExample.java
 
 
 ### 写示例: 计算平均数并写入Tsfile中
@@ -213,4 +213,4 @@ TSFInputFormat将tsfile中的数据以多个`MapWritable`记录的形式返回�
         }
     }
 ```
-> 注意: 完整的代码示例可以在如下链接中找到：https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb/tsfile/hadoop/TSMRWriteExample.java
+> 注意: 完整的代码示例可以在如下链接中找到：https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb/hadoop/tsfile/TSMRWriteExample.java
