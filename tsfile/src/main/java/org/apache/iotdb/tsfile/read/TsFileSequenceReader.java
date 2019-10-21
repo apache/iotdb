@@ -177,7 +177,6 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public String readTailMagic() throws IOException {
     long totalSize = tsFileInput.size();
-
     ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.getBytes().length);
     tsFileInput.read(magicStringBytes, totalSize - TSFileConfig.MAGIC_STRING.getBytes().length);
     magicStringBytes.flip();
