@@ -20,67 +20,63 @@
 -->
 
 <!-- TOC -->
-## 概览
+## Outline
 
 - IoTDB-Grafana
-    - Grafana的安装与部署
-        - 安装
-        - simple-json-datasource数据源插件安装
-        - 启动Grafana
-    - IoTDB安装
-    - IoTDB-Grafana连接器安装
-        - 启动IoTDB-Grafana
-    - 使用Grafana
-        - 添加IoTDB数据源
-        - 操作Grafana
+    - Grafana installation
+        - Install Grafana
+        - Install data source plugin
+        - Start Grafana
+    - IoTDB installation
+    - IoTDB-Grafana installation
+        - Start IoTDB-Grafana
+    - Explore in Grafana
+        - Add data source
+        - Design in dashboard
 
 <!-- /TOC -->
-
 # IoTDB-Grafana
 
-Grafana是开源的指标量监测和可视化工具，可用于展示时序数据和应用程序运行分析。Grafana支持Graphite，InfluxDB等国际主流时序时序数据库作为数据源。在IoTDB项目中，我们开发了Grafana展现IoTDB中时序数据的连接器IoTDB-Grafana，为您提供使用Grafana展示IoTDB数据库中的时序数据的可视化方法。
+This project provides a connector which reads data from IoTDB and sends to Grafana(https://grafana.com/). Before you use this tool, make sure Grafana and IoTDB are correctly installed and started.
 
-## Grafana的安装与部署
+## Grafana installation
 
-### 安装
+### Install Grafana
 
-* Grafana组件下载地址：https://grafana.com/grafana/download
-* 版本 >= 4.4.1
+* Download url: https://grafana.com/grafana/download
+* version >= 4.4.1
 
-### simple-json-datasource数据源插件安装
+### Install data source plugin
 
-* 插件名称: simple-json-datasource
-* 下载地址: https://github.com/grafana/simple-json-datasource
+* plugin name: simple-json-datasource
+* Download url: https://github.com/grafana/simple-json-datasource
 
-具体下载方法是：到Grafana的插件目录中：`{Grafana文件目录}\data\plugin\`（Windows系统，启动Grafana后会自动创建`data\plugin`目录）或`/var/lib/grafana/plugins` （Linux系统，plugins目录需要手动创建）或`/usr/local/var/lib/grafana/plugins`（MacOS系统，具体位置参看使用`brew install`安装Grafana后命令行给出的位置提示。
-
-执行下面的命令：
+After downloading this plugin, you can use the grafana-cli tool to install SimpleJson from the commandline:
 
 ```
-Shell > git clone https://github.com/grafana/simple-json-datasource.git
-```
-然后重启Grafana服务器，在浏览器中登录Grafana，在“Add data source”页面中“Type”选项出现“SimpleJson”即为安装成功。
-
-### 启动Grafana
-进入Grafana的安装目录，使用以下命令启动Grafana：
-* Windows系统：
-```
-Shell > bin\grafana-server.exe
-```
-* Linux系统：
-```
-Shell > sudo service grafana-server start
-```
-* MacOS系统：
-```
-Shell > grafana-server --config=/usr/local/etc/grafana/grafana.ini --homepath /usr/local/share/grafana cfg:default.paths.logs=/usr/local/var/log/grafana cfg:default.paths.data=/usr/local/var/lib/grafana cfg:default.paths.plugins=/usr/local/var/lib/grafana/plugins
+grafana-cli plugins install grafana-simple-json-datasource
 ```
 
-## IoTDB安装
+Alternatively, you can manually download the .zip file and unpack it into your grafana plugins directory.
 
-参见[https://github.com/apache/incubator-iotdb](https://github.com/apache/incubator-iotdb)
+* `{grafana-install-directory}\data\plugin\` (Windows)
+* `/var/lib/grafana/plugins` (Linux)
+* `/usr/local/var/lib/grafana/plugins`(Mac)
 
-## IoTDB-Grafana连接器安装
+### Start Grafana
+If you use Unix, Grafana will auto start after installing, or you can run `sudo service grafana-server start` command. See more information [here](http://docs.grafana.org/installation/debian/).
+
+If you use Mac and `homebrew` to install Grafana, you can use `homebrew` to start Grafana.
+First make sure homebrew/services is installed by running `brew tap homebrew/services`, then start Grafana using: `brew services start grafana`.
+See more information [here](http://docs.grafana.org/installation/mac/).
+
+If you use Windows, start Grafana by executing grafana-server.exe, located in the bin directory, preferably from the command line. See more information [here](http://docs.grafana.org/installation/windows/).
+
+## IoTDB installation
+
+See https://github.com/apache/incubator-iotdb
+
+## IoTDB-Grafana installation
 
 ```shell
 git clone https://github.com/apache/incubator-iotdb.git
@@ -88,7 +84,9 @@ mvn clean package -pl grafana -am -Dmaven.test.skip=true
 cd grafana
 ```
 
-编译成功后，您需将`application.properties`文件从`conf/`目录复制到`target/`目录下，并在该文件中插入以下（编辑属性值）：
+Copy `application.properties` from `conf/` directory to `target` directory. (Or just make sure that `application.properties` and `iotdb-grafana-{version}.war` are in the same directory.)
+
+Edit `application.properties`
 
 ```
 # ip and port of IoTDB 
@@ -99,11 +97,18 @@ spring.datasource.driver-class-name=org.apache.iotdb.jdbc.IoTDBDriver
 server.port = 8888
 ```
 
-### 启动IoTDB-Grafana
+### Start IoTDB-Grafana
 
 ```shell
 cd grafana/target/
 java -jar iotdb-grafana-{version}.war
+```
+
+If you see the following output, iotdb-grafana connector is successfully activated.
+
+```shell
+$ java -jar iotdb-grafana-{version}.war
+
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
 ( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
@@ -114,23 +119,21 @@ java -jar iotdb-grafana-{version}.war
 ...
 ```
 
-## 使用Grafana
+## Explore in Grafana
 
-Grafana以网页的dashboard形式为您展示数据，在使用时请您打开浏览器，访问http://\<ip\>:\<port\>
+The default port of Grafana is 3000, see http://localhost:3000
 
-注：IP为您的Grafana所在的服务器IP，Port为Grafana的运行端口（默认3000）。默认登录的用户名和密码都是“admin”。
+Username and password are both "admin" by default.
 
-### 添加IoTDB数据源
+### Add data source
 
-点击左上角的“Grafana”图标，选择`Data Source`选项，然后再点击`Add data source`。
+Select `Data Sources` and  then `Add data source`, select `SimpleJson` in `Type` and `URL` is http://localhost:8888
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664777-2766ae00-1ff5-11e9-9d2f-7489f8ccbfc2.png">
 
-在编辑数据源的时候，`Type`一栏选择`Simplejson`，`URL`一栏填写http://\<ip\>:\<port\>，IP为您的IoTDB-Grafana连接器所在的服务器IP，Port为运行端口（默认8888）。之后确保IoTDB已经启动，点击“Save & Test”，出现“Data Source is working”提示表示配置成功。
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664842-554bf280-1ff5-11e9-97d2-54eebe0b2ca1.png">
 
-### 操作Grafana
+### Design in dashboard
 
-进入Grafana可视化页面后，可以选择添加时间序列，如图 6.9。您也可以按照Grafana官方文档进行相应的操作，详情可参看Grafana官方文档：http://docs.grafana.org/guides/getting_started/。
+Add diagrams in dashboard and customize your query. See http://docs.grafana.org/guides/getting_started/
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664878-6e54a380-1ff5-11e9-9718-4d0e24627fa8.png">
-

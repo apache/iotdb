@@ -20,40 +20,40 @@
 -->
 
 <!-- TOC -->
-## 概要
+## Outline
 
-- TsFile的Hadoop连接器使用手册
-	- 什么是TsFile的Hadoop连接器
-	- 系统环境要求
-	- 数据类型对应关系
-	- 关于TSFInputFormat的说明
-	- 使用示例
-		- 读示例: 求和
-		- 写示例: 计算平均数并写入Tsfile中
+- TsFile-Hadoop-Connector User Guide
+	- About TsFile-Hadoop-Connector
+	- System Requirements
+	- Data Type Correspondence
+	- TSFInputFormat Explanation
+	- Examples
+		- Read Example: calculate the sum
+		- Write Example: write the average into Tsfile
 
 <!-- /TOC -->
-# TsFile的Hadoop连接器使用手册
+# TsFile-Hadoop-Connector User Guide
 
-## 什么是TsFile的Hadoop连接器
+## About TsFile-Hadoop-Connector
 
-TsFile的Hadoop连接器实现了对Hadoop读取外部Tsfile类型的文件格式的支持。让用户可以使用Hadoop的map、reduce等操作对Tsfile文件进行读取、写入和查询。
+TsFile-Hadoop-Connector implements the support of Hadoop for external data sources of Tsfile type. This enables users to read, write and query Tsfile by Hadoop.
 
-有了这个连接器，用户可以
-* 将单个Tsfile文件加载进Hadoop，不论文件是存储在本地文件系统或者是HDFS中
-* 将某个特定目录下的所有文件加载进Hadoop，不论文件是存储在本地文件系统或者是HDFS中
-* 将Hadoop处理完后的结果以Tsfile的格式保存
+With this connector, you can
+* load a single TsFile, from either the local file system or hdfs, into Hadoop
+* load all files in a specific directory, from either the local file system or hdfs, into hadoop
+* write data from Hadoop into TsFile
 
-## 系统环境要求
+## System Requirements
 
-|Hadoop 版本     | Java 版本     | TsFile 版本 |
+|Hadoop Version | Java Version | TsFile Version|
 |-------------  | ------------ |------------ |
 | `2.7.3`       | `1.8`        | `0.8.0-SNAPSHOT`|
 
->注意：关于如何下载和使用Tsfile, 请参考以下链接: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
+> Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
 
-## 数据类型对应关系
+## Data Type Correspondence
 
-| TsFile 数据类型    | Hadoop writable |
+| TsFile data type | Hadoop writable |
 | ---------------- | --------------- |
 | BOOLEAN          | BooleanWritable |
 | INT32            | IntWritable     |
@@ -62,19 +62,15 @@ TsFile的Hadoop连接器实现了对Hadoop读取外部Tsfile类型的文件格�
 | DOUBLE      	   | DoubleWritable  |
 | TEXT      	   | Text            |
 
-## 关于TSFInputFormat的说明
+## TSFInputFormat Explanation
 
-TSFInputFormat继承了Hadoop中FileInputFormat类，重写了其中切片的方法。
+TSFInputFormat extract data from tsfile and format them into records of `MapWritable`.
 
-目前的切片方法是根据每个ChunkGroup的中点的offset是否属于Hadoop所切片的startOffset和endOffset之间，来判断是否将该ChunkGroup放入此切片。
+Supposing that we want to extract data of the device named `d1` which has three sensors named `s1`, `s2`, `s3`.
 
-TSFInputFormat将tsfile中的数据以多个`MapWritable`记录的形式返回给用户。
+`s1`'s type is `BOOLEAN`, `s2`'s type is `DOUBLE`, `s3`'s type is `TEXT`.
 
-假设我们想要从Tsfile中获得名为`d1`的设备的数据，该设备有三个传感器，名称分别为`s1`, `s2`, `s3`。
-
-`s1`的类型是`BOOLEAN`, `s2`的类型是 `DOUBLE`, `s3`的类型是`TEXT`.
-
-`MapWritable`的结构如下所示：
+The `MapWritable` struct will be like:
 ```
 {
     "time_stamp": 10000000,
@@ -85,16 +81,16 @@ TSFInputFormat将tsfile中的数据以多个`MapWritable`记录的形式返回�
 }
 ```
 
-在Hadoop的Map job中，你可以采用如下方法获得你想要的任何值
+In the Map job of Hadoop, you can get any value you want by key as following:
 
 `mapwritable.get(new Text("s1"))`
-> 注意: `MapWritable`中所有的键值类型都是`Text`。
+> Note: All the keys in `MapWritable` have type of `Text`.
 
-## 使用示例
+## Examples
 
-### 读示例: 求和
+### Read Example: calculate the sum
 
-首先，我们需要在TSFInputFormat中配置我们需要哪些数据
+First of all, we should tell InputFormat what kind of data we want from tsfile.
 
 ```
     // configure reading time enable
@@ -109,7 +105,7 @@ TSFInputFormat将tsfile中的数据以多个`MapWritable`记录的形式返回�
     TSFInputFormat.setReadMeasurementIds(job, measurementIds);
 ```
 
-然后，必须指定mapper和reducer输出的键和值类型
+And then,the output key and value of mapper and reducer should be specified
 
 ```
     // set inputformat and outputformat
@@ -121,7 +117,8 @@ TSFInputFormat将tsfile中的数据以多个`MapWritable`记录的形式返回�
     job.setOutputKeyClass(Text.class);
     job.setOutputValueClass(DoubleWritable.class);
 ```
-接着，就可以编写包含具体的处理数据逻辑的`mapper`和`reducer`类了。
+
+Then, the `mapper` and `reducer` class is how you deal with the `MapWritable` produced by `TSFInputFormat` class.
 
 ```
   public static class TSMapper extends Mapper<NullWritable, MapWritable, Text, DoubleWritable> {
@@ -152,12 +149,12 @@ TSFInputFormat将tsfile中的数据以多个`MapWritable`记录的形式返回�
   }
 ```
 
-> 注意: 完整的代码示例可以在如下链接中找到：https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb/hadoop/tsfile/TSFMRReadExample.java
+> Note: For the complete code, please see the following link: https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb//hadoop/tsfile/TSFMRReadExample.java
 
 
-### 写示例: 计算平均数并写入Tsfile中
+### Write Example: write the average into Tsfile
 
-除了`OutputFormatClass`，剩下的配置代码跟上面的读示例是一样的
+Except for the `OutputFormatClass`, the rest of configuration code for hadoop map-reduce job is almost same as above.
 
 ```
    job.setOutputFormatClass(TSFOutputFormat.class);
@@ -166,7 +163,7 @@ TSFInputFormat将tsfile中的数据以多个`MapWritable`记录的形式返回�
    job.setOutputValueClass(HDFSTSRecord.class);
 ```
 
-然后，是包含具体的处理数据逻辑的`mapper`和`reducer`类。
+Then, the `mapper` and `reducer` class is how you deal with the `MapWritable` produced by `TSFInputFormat` class.
 
 ```
     public static class TSMapper extends Mapper<NullWritable, MapWritable, Text, MapWritable> {
@@ -213,4 +210,4 @@ TSFInputFormat将tsfile中的数据以多个`MapWritable`记录的形式返回�
         }
     }
 ```
-> 注意: 完整的代码示例可以在如下链接中找到：https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb/hadoop/tsfile/TSMRWriteExample.java
+> Note: For the complete code, please see the following link: https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb//hadoop/tsfile/TSMRWriteExample.java

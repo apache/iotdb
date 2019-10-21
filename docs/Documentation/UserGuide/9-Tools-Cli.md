@@ -20,32 +20,39 @@
 -->
 
 <!-- TOC -->
-## 概览
-- Cli / Shell工具
-    - Cli / Shell运行方式
-    - Cli / Shell运行参数
-    - Cli / Shell的-e参数
+## Outline
+- Cli/shell tool
+    - Running Cli/Shell
+    - Cli/Shell Parameters
+    - Cli/shell tool with -e parameter
 
 <!-- /TOC -->
+# Cli/shell tool
+IoTDB provides Cli/shell tools for users to interact with IoTDB server in command lines. This document will show how Cli/shell tool works and what does it parameters mean.
 
-# Cli / Shell工具
-IOTDB为用户提供Client/Shell工具用于启动客户端和服务端程序。下面介绍每个Client/Shell工具的运行方式和相关参数。
-> \$IOTDB\_HOME表示IoTDB的安装目录所在路径。
+> Note: In this document, \$IOTDB\_HOME represents the path of the IoTDB installation directory.
 
-## Cli  / Shell运行方式
-安装后的IoTDB中有一个默认用户：`root`，默认密码为`root`。用户可以使用该用户尝试运行IoTDB客户端以测试服务器是否正常启动。客户端启动脚本为$IOTDB_HOME/bin文件夹下的`start-client`脚本。启动脚本时需要指定运行IP和PORT。以下为服务器在本机启动，且用户未更改运行端口号的示例，默认端口为6667。若用户尝试连接远程服务器或更改了服务器运行的端口号，请在-h和-p项处使用服务器的IP和PORT。	
+## Running Cli/Shell
 
-Linux系统与MacOS系统启动命令如下：
+After installation, there is a default user in IoTDB: `root`, and the
+default password is `root`. Users can use this username to try IoTDB Cli/Shell tool. The client startup script is the `start-client` file under the \$IOTDB\_HOME/bin folder. When starting the script, you need to specify the IP and PORT. (Make sure the IoTDB server is running properly when you use Cli/Shell tool to connect it.)
+
+Here is an example where the server is started locally and the user has not changed the running port. The default port is
+6667. If you need to connect to the remote server or changes
+the port number of the server running, set the specific IP and PORT at -h and -p.
+
+The Linux and MacOS system startup commands are as follows:
 
 ```
   Shell > ./sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
-Windows系统启动命令如下：
+The Windows system startup commands are as follows:
 
 ```
   Shell > \sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
-回车后即可成功启动客户端。启动后出现如图提示即为启动成功。
+After using these commands, the client can be started successfully. The successful status will be as follows: 
+
 ```
  _____       _________  ______   ______
 |_   _|     |  _   _  ||_   _ `.|_   _ \
@@ -58,58 +65,49 @@ Windows系统启动命令如下：
 IoTDB> login successfully
 IoTDB>
 ```
-输入`quit`或`exit`可退出Client结束本次会话，Client输出`quit normally`表示退出成功。
+Enter ```quit``` or `exit` can exit Client. The client will shows `quit normally` 
 
-## Cli / Shell运行参数
+## Cli/Shell Parameters
 
-|参数名|参数类型|是否为必需参数| 说明| 例子 |
+|Parameter name|Parameter type|Required| Description| Example |
 |:---|:---|:---|:---|:---|
-|-disableIS08601 |没有参数 | 否 |如果设置了这个参数，IoTDB将以数字的形式打印时间戳(timestamp)。|-disableIS08601|
-|-h <`host`> |string类型，不需要引号|是|IoTDB客户端连接IoTDB服务器的IP地址。|-h 10.129.187.21|
-|-help|没有参数|否|打印IoTDB的帮助信息|-help|
-|-p <`port`>|int类型|是|IoTDB连接服务器的端口号，IoTDB默认运行在6667端口。|-p 6667|
-|-pw <`password`>|string类型，不需要引号|否|IoTDB连接服务器所使用的密码。如果没有输入密码IoTDB会在Cli端提示输入密码。|-pw root|
-|-u <`username`>|string类型，不需要引号|是|IoTDB连接服务器锁使用的用户名。|-u root|
-|-maxPRC <`maxPrintRowCount`>|int类型|否|设置IoTDB返回客户端命令行中所显示的最大行数。|-maxPRC 10|
-|-e <`execute`> |string类型|否|在不进入客户端输入模式的情况下，批量操作IoTDB|-e "show storage group"|
+|-disableIS08601 |No parameters | No |If this parameter is set, IoTDB will print the timestamp in digital form|-disableIS08601|
+|-h <`host`> |string, no quotation marks|Yes|The IP address of the IoTDB server|-h 10.129.187.21|
+|-help|No parameters|No|Print help information for IoTDB|-help|
+|-p <`port`>|int|Yes|The port number of the IoTDB server. IoTDB runs on port 6667 by default|-p 6667|
+|-pw <`password`>|string, no quotation marks|No|The password used for IoTDB to connect to the server. If no password is entered, IoTDB will ask for password in Cli command|-pw root|
+|-u <`username`>|string, no quotation marks|Yes|User name used for IoTDB to connect the server|-u root|
+|-maxPRC <`maxPrintRowCount`>|int|No|Set the maximum number of rows that IoTDB returns|-maxPRC 10|
+|-e <`execute`> |string|No|manipulate IoTDB in batches without entering client input mode|-e "show storage group"|
 
+Following is a client command which connects the host with IP
+10.129.187.21, port 6667, username "root", password "root", and prints the timestamp in digital form. The maximum number of lines displayed on the IoTDB command line is 10.
 
-下面展示一条客户端命令，功能是连接IP为10.129.187.21的主机，端口为6667 ，用户名为root，密码为root，以数字的形式打印时间戳，IoTDB命令行显示的最大行数为10。
-
-Linux系统与MacOS系统启动命令如下：
+The Linux and MacOS system startup commands are as follows:
 
 ```
-  Shell >./sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell > ./sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
 ```
-Windows系统启动命令如下：
+The Windows system startup commands are as follows:
 
 ```
   Shell > \sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
 ```
-## Cli / Shell的-e参数
-当您想要通过脚本的方式通过Cli / Shell对IoTDB进行批量操作时，可以使用-e参数。通过使用该参数，您可以在不进入客户端输入模式的情况下操作IoTDB。
+## Cli/shell tool with -e parameter
 
-为了避免SQL语句和其他参数混淆，现在只支持-e参数作为最后的参数使用。
+-e parameter is designed for the Cli/shell tool in the situation where you would like to manipulate IoTDB in batches through scripts. By using the -e parameter, you can operate IoTDB without entering the client's input mode. 
 
-针对Client/Shell工具的-e参数用法如下：
+In order to avoid confusion between statements and other parameters, the current situation only supports the -e parameter as the last parameter.
+
+The usage of -e parameter for Cli/shell is as follows:
 
 ```
   Shell > ./sbin/start-cli.sh -h {host} -p {port} -u {user} -pw {password} -e {sql for iotdb}
 ```
 
-为了更好的解释-e参数的使用，可以参考下面的例子。
+In order to better explain the use of -e parameter, take following as an example.
 
-假设用户希望对一个新启动的IoTDB进行如下操作：
-
-1.创建名为root.demo的存储组
-
-2.创建名为root.demo.s1的时间序列
-
-3.向创建的时间序列中插入三个数据点
-
-4.查询验证数据是否插入成功
-
-那么通过使用Client/Shell工具的-e参数，可以采用如下的脚本：
+Suppose you want to create a storage group root.demo to a newly launched IoTDB, create a timeseries root.demo.s1 and insert three data points into it. With -e parameter, you could write a shell like this:
 
 ```
 # !/bin/bash
@@ -127,8 +125,8 @@ pass=root
 ./sbin/start-cli.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "select s1 from root.demo"
 ```
 
-打印出来的结果显示在下图，通过这种方式进行的操作与客户端的输入模式以及通过JDBC进行操作结果是一致的。
+The print results are shown in the figure, which are consistent with the client and jdbc operations.
 
 ![img](https://issues.apache.org/jira/secure/attachment/12976042/12976042_image-2019-07-27-15-47-12-045.png)
 
-需要特别注意的是，在脚本中使用-e参数时要对特殊字符进行转义。
+It should be noted that the use of the -e parameter in shell scripts requires attention to the escaping of special characters. 
