@@ -43,7 +43,7 @@ IoTDB supports millions of low-power devices' strong connection data access, hig
 
 IoTDB supports time alignment for timeseries data accross devices and sensors, computation in timeseries field (frequency domain transformation) and rich aggregation function support in time dimension.
 
-* Easy to get startd. 
+* Easy to get started. 
 
 IoTDB supports SQL-Like language, JDBC standard API and import/export tools which are easy to use.
 
