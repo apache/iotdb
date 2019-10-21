@@ -52,22 +52,24 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
     cacheLimit = 0;
     cacheIdx = 0;
     while (!heap.isEmpty() && cacheLimit < CACHE_SIZE) {
-      Element top = heap.poll();
+      Element top = heap.peek();
       if (lastTimestamp == null || top.currTime() != lastTimestamp) {
         TimeValuePairUtils.setTimeValuePair(top.timeValuePair, timeValuePairCache[cacheLimit++]);
         lastTimestamp = top.currTime();
-        while (heap.peek() != null && heap.peek().currTime() == lastTimestamp) {
-          heap.poll();
-        }
       }
-      if (top.hasNext()) {
-        top.next();
-        heap.add(top);
-      } else {
-        top.close();
+      // remove duplicates
+      while (heap.peek() != null && heap.peek().currTime() == lastTimestamp) {
+        top = heap.poll();
+        if (top.hasNext()) {
+          top.next();
+          heap.add(top);
+        } else {
+          top.close();
+        }
       }
     }
   }
+
 
   @Override
   public TimeValuePair next() throws IOException {

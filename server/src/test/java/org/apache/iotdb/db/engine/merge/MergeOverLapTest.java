@@ -80,7 +80,7 @@ public class MergeOverLapTest extends MergeTest {
     File file = SystemFileFactory.INSTANCE.getFile(unseqFileNum + "unseq.tsfile");
     TsFileResource tsFileResource = new TsFileResource(file);
     unseqResources.add(tsFileResource);
-    prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
+    prepareUnseqFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
   }
 
   void prepareUnseqFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
