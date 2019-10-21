@@ -34,10 +34,10 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
   private TimeValuePair[] timeValuePairCache = new TimeValuePair[CACHE_SIZE];
   private int cacheLimit = 0;
   private int cacheIdx = 0;
-  private TSDataType dataType;
+
+  private Long lastTimestamp = null;
 
   public CachedPriorityMergeReader(TSDataType dataType) {
-    this.dataType = dataType;
     for (int i = 0; i < CACHE_SIZE; i++) {
       timeValuePairCache[i] = TimeValuePairUtils.getEmptyTimeValuePair(dataType);
     }
@@ -53,21 +53,18 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
     cacheIdx = 0;
     while (!heap.isEmpty() && cacheLimit < CACHE_SIZE) {
       Element top = heap.poll();
-      if (cacheLimit == 0 || top.currTime() != timeValuePairCache[cacheLimit - 1].getTimestamp()) {
+      if (lastTimestamp == null || top.currTime() != lastTimestamp) {
         TimeValuePairUtils.setTimeValuePair(top.timeValuePair, timeValuePairCache[cacheLimit++]);
-        if (top.hasNext()) {
-          top.next();
-          heap.add(top);
-        } else {
-          top.close();
+        lastTimestamp = top.currTime();
+        while (heap.peek() != null && heap.peek().currTime() == lastTimestamp) {
+          heap.poll();
         }
-      } else if (top.currTime() == timeValuePairCache[cacheLimit - 1].getTimestamp()) {
-        if (top.hasNext()) {
-          top.next();
-          heap.add(top);
-        } else {
-          top.close();
-        }
+      }
+      if (top.hasNext()) {
+        top.next();
+        heap.add(top);
+      } else {
+        top.close();
       }
     }
   }
@@ -85,11 +82,12 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
   }
 
   @Override
-  public TimeValuePair current() {
+  public TimeValuePair current() throws IOException {
     if (0 <= cacheIdx && cacheIdx < cacheLimit) {
       return timeValuePairCache[cacheIdx];
     } else {
-      return heap.peek().timeValuePair;
+      fetch();
+      return timeValuePairCache[cacheIdx];
     }
   }
 }
