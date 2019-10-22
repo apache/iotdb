@@ -81,7 +81,7 @@ public abstract class AbstractClient {
   static final String SCRIPT_HINT = "./start-client.sh(start-client.bat if Windows)";
   static final String QUIT_COMMAND = "quit";
   static final String EXIT_COMMAND = "exit";
-  static final String SHOW_METADATA_COMMAND = "show timeseries";
+  private static final String SHOW_METADATA_COMMAND = "show timeseries";
   static final int MAX_HELP_CONSOLE_WIDTH = 88;
   static final String TIMESTAMP_STR = "Time";
   static final int ISO_DATETIME_LEN = 35;
@@ -93,6 +93,10 @@ public abstract class AbstractClient {
   private static int fetchSize = 10000;
   static int maxTimeLength = ISO_DATETIME_LEN;
   static int maxValueLength = 15;
+  private static int deviceColumnLength = 20; // for GROUP_BY_DEVICE sql
+  private static int measurementColumnLength = 10; // for GROUP_BY_DEVICE sql
+  // for GROUP_BY_DEVICE sql; this name should be the same as that used in server
+  private static String GROUPBY_DEVICE_COLUMN_NAME = "Device";
   private static boolean isQuit = false;
   static String TIMESTAMP_PRECISION = "ms";
 
@@ -271,7 +275,7 @@ public abstract class AbstractClient {
     print("|");
     for (int i = 1; i <= colCount; i++) {
       formatValue = "%" + maxValueLengthForShow[i - 1] + "s|";
-      printf(formatValue, String.valueOf(res.getString(i)));
+      printf(formatValue, res.getString(i));
     }
     println();
   }
@@ -309,7 +313,11 @@ public abstract class AbstractClient {
         handleException(e);
       }
     } else {
-      printf(formatValue, String.valueOf(res.getString(i)));
+      if (i == 2 && resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
+        printf("%" + deviceColumnLength + "s|", res.getString(i));
+      } else {
+        printf(formatValue, res.getString(i));
+      }
     }
   }
 
@@ -488,19 +496,27 @@ public abstract class AbstractClient {
         blockLine.append(StringUtils.repeat('-', maxValueLengthForShow[i - 1])).append("+");
       }
     } else {
-      int tmp = Integer.MIN_VALUE;
-      for (int i = 1; i <= colCount; i++) {
-        int len = resultSetMetaData.getColumnLabel(i).length();
-        tmp = tmp > len ? tmp : len;
-      }
-      maxValueLength = tmp;
       if (printTimestamp) {
         blockLine.append("+").append(StringUtils.repeat('-', maxTimeLength)).append("+");
       } else {
         blockLine.append("+");
       }
-      for (int i = 0; i < colCount - 1; i++) {
-        blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
+      if (resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
+        maxValueLength = measurementColumnLength;
+      } else {
+        int tmp = Integer.MIN_VALUE;
+        for (int i = 1; i <= colCount; i++) {
+          int len = resultSetMetaData.getColumnLabel(i).length();
+          tmp = tmp > len ? tmp : len;
+        }
+        maxValueLength = tmp;
+      }
+      for (int i = 2; i <= colCount; i++) {
+        if (i == 2 && resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
+          blockLine.append(StringUtils.repeat('-', deviceColumnLength)).append("+");
+        } else {
+          blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
+        }
       }
     }
     println(blockLine);
@@ -521,7 +537,11 @@ public abstract class AbstractClient {
         printf(formatTime, TIMESTAMP_STR);
       }
       for (int i = 2; i <= colCount; i++) {
-        printf(formatValue, resultSetMetaData.getColumnLabel(i));
+        if (i == 2 && resultSetMetaData.getColumnName(2).equals(GROUPBY_DEVICE_COLUMN_NAME)) {
+          printf("%" + deviceColumnLength + "s|", resultSetMetaData.getColumnLabel(i));
+        } else {
+          printf(formatValue, resultSetMetaData.getColumnLabel(i));
+        }
       }
     }
     println();

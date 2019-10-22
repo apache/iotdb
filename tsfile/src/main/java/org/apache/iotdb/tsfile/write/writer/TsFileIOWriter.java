@@ -46,7 +46,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.fileSystem.FileOutputFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -63,11 +63,13 @@ import org.slf4j.LoggerFactory;
 public class TsFileIOWriter {
 
   public static final byte[] magicStringBytes;
+  public static final byte[] versionNumberBytes;
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(TsFileIOWriter.class);
 
   static {
     magicStringBytes = BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING);
+    versionNumberBytes = TSFileConfig.VERSION_NUMBER.getBytes();
   }
 
   protected TsFileOutput out;
@@ -118,8 +120,7 @@ public class TsFileIOWriter {
    */
   public TsFileIOWriter(TsFileOutput out, List<ChunkGroupMetaData> chunkGroupMetaDataList)
       throws IOException {
-    this.out = FileOutputFactory.INSTANCE
-        .getTsFileOutput(file.getPath(), false); //NOTE overwrite false here
+    this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), false); //NOTE overwrite false here
     this.chunkGroupMetaDataList = chunkGroupMetaDataList;
     if (chunkGroupMetaDataList.isEmpty()) {
       startFile();
@@ -139,6 +140,7 @@ public class TsFileIOWriter {
 
   protected void startFile() throws IOException {
     out.write(magicStringBytes);
+    out.write(versionNumberBytes);
   }
 
   /**
@@ -260,7 +262,9 @@ public class TsFileIOWriter {
     Map<String, TsDeviceMetadataIndex> tsDeviceMetadataIndexMap = flushTsDeviceMetaDataAndGetIndex(
         this.chunkGroupMetaDataList);
 
-    TsFileMetaData tsFileMetaData = new TsFileMetaData(tsDeviceMetadataIndexMap, schemaDescriptors, TSFileConfig.CURRENT_VERSION);
+
+    TsFileMetaData tsFileMetaData = new TsFileMetaData(tsDeviceMetadataIndexMap, schemaDescriptors);
+
     tsFileMetaData.setTotalChunkNum(totalChunkNum);
     tsFileMetaData.setInvalidChunkNum(invalidChunkNum);
 

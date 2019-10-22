@@ -46,12 +46,7 @@ public class TsFileMetaData {
    * TSFile schema for this file. This schema contains metadata for all the measurements.
    */
   private Map<String, MeasurementSchema> measurementSchema = new HashMap<>();
-
-  /**
-   * Version of this file.
-   */
-  private int currentVersion;
-
+  
   /**
    * String for application that wrote this file. This should be in the format [Application] version
    * [App Version](build [App Build Hash]). e.g. impala version 1.0 (build SHA-1_hash_code)
@@ -79,13 +74,11 @@ public class TsFileMetaData {
    * construct function for TsFileMetaData.
    *
    * @param measurementSchema - time series info list
-   * @param currentVersion - current version
    */
   public TsFileMetaData(Map<String, TsDeviceMetadataIndex> deviceMap,
-      Map<String, MeasurementSchema> measurementSchema, int currentVersion) {
+      Map<String, MeasurementSchema> measurementSchema) {
     this.deviceIndexMap = deviceMap;
     this.measurementSchema = measurementSchema;
-    this.currentVersion = currentVersion;
   }
 
   /**
@@ -121,8 +114,6 @@ public class TsFileMetaData {
         fileMetaData.measurementSchema.put(key, value);
       }
     }
-
-    fileMetaData.currentVersion = ReadWriteIOUtils.readInt(inputStream);
 
     if (ReadWriteIOUtils.readIsNull(inputStream)) {
       fileMetaData.createdBy = ReadWriteIOUtils.readString(inputStream);
@@ -174,8 +165,6 @@ public class TsFileMetaData {
       }
     }
 
-    fileMetaData.currentVersion = ReadWriteIOUtils.readInt(buffer);
-
     if (ReadWriteIOUtils.readIsNull(buffer)) {
       fileMetaData.createdBy = ReadWriteIOUtils.readString(buffer);
     }
@@ -204,16 +193,7 @@ public class TsFileMetaData {
   @Override
   public String toString() {
     return "TsFileMetaData{" + "deviceIndexMap=" + deviceIndexMap + ", measurementSchema="
-        + measurementSchema
-        + ", CURRENT_VERSION=" + currentVersion + ", createdBy='" + createdBy + '\'' + '}';
-  }
-
-  public int getCurrentVersion() {
-    return currentVersion;
-  }
-
-  public void setCurrentVersion(int currentVersion) {
-    this.currentVersion = currentVersion;
+        + measurementSchema + ", createdBy='" + createdBy + '\'' + '}';
   }
 
   public String getCreatedBy() {
@@ -282,8 +262,6 @@ public class TsFileMetaData {
       byteLen += ReadWriteIOUtils.write(entry.getKey(), outputStream);
       byteLen += entry.getValue().serializeTo(outputStream);
     }
-
-    byteLen += ReadWriteIOUtils.write(currentVersion, outputStream);
 
     byteLen += ReadWriteIOUtils.writeIsNull(createdBy, outputStream);
     if (createdBy != null) {
@@ -366,8 +344,6 @@ public class TsFileMetaData {
       byteLen += ReadWriteIOUtils.write(entry.getKey(), buffer);
       byteLen += entry.getValue().serializeTo(buffer);
     }
-
-    byteLen += ReadWriteIOUtils.write(currentVersion, buffer);
 
     byteLen += ReadWriteIOUtils.writeIsNull(createdBy, buffer);
     if (createdBy != null) {
