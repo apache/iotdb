@@ -34,7 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.fileSystem.FileOutputFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -72,7 +72,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    */
   public RestorableTsFileIOWriter(File file) throws IOException {
     this.file = file;
-    this.out = FileOutputFactory.INSTANCE.getTsFileOutput(file.getPath(), true);
+    this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), true);
 
     // file doesn't exist
     if (file.length() == 0) {

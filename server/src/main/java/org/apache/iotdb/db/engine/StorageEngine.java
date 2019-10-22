@@ -32,10 +32,10 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageEngineFailureException;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
@@ -135,7 +135,7 @@ public class StorageEngine implements IService {
         }
       }
       return processor;
-    } catch (PathErrorException | ProcessorException e) {
+    } catch (StorageGroupException | ProcessorException e) {
       logger.error("Fail to get StorageGroupProcessor {}", storageGroupName, e);
       throw new StorageEngineException(e);
     }
@@ -363,7 +363,9 @@ public class StorageEngine implements IService {
   public void deleteStorageGroup(String storageGroupName) {
     deleteAllDataFilesInOneStorageGroup(storageGroupName);
     StorageGroupProcessor processor = processorMap.remove(storageGroupName);
-    processor.deleteFolder(systemDir);
+    if(processor != null) {
+      processor.deleteFolder(systemDir);
+    }
   }
 
 }
