@@ -68,12 +68,12 @@
 
     long t0 = System. currentTimeMillis();
 
-
 在监控结束区域增加记录代码: 
 
-    Measurement.INSTANCE.addOperationLatency(Operation, t0);
+  	Measurement.INSTANCE.addOperationLatency(Operation, t0);
 
 ## cache命中率统计
+
 ### 概述
 
 为了提高查询性能，IOTDB对ChunkMetaData和TsFileMetaData进行了缓存。用户可以通过debug级别的日志以及MXBean两种方式来查看缓存的命中率，并根据缓存命中率以及系统内存来调节缓存所使用的内存大小。使用MXBean查看缓存命中率的方法为：

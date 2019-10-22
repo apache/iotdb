@@ -57,6 +57,7 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.QueryInBatchStmtException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -759,7 +760,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     // check file level set
     try {
       checkFileLevelSet(paths);
-    } catch (PathErrorException e) {
+    } catch (StorageGroupException e) {
       logger.error("meet error while checking file level.", e);
       return getTSExecuteStatementResp(
           getStatus(TSStatusCode.CHECK_FILE_LEVEL_ERROR, e.getMessage()));
@@ -837,7 +838,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  private void checkFileLevelSet(List<Path> paths) throws PathErrorException {
+  private void checkFileLevelSet(List<Path> paths) throws StorageGroupException {
     MManager.getInstance().checkFileLevel(paths);
   }
 
