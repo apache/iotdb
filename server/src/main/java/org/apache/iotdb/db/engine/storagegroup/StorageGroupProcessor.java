@@ -844,6 +844,22 @@ public class StorageGroupProcessor {
     }
   }
 
+
+  public void upgrade() {
+    insertLock.readLock().lock();
+    try {
+      for (TsFileResource seqTsFileResource : sequenceFileList) {
+        seqTsFileResource.doUpgrade();
+      }
+      for (TsFileResource unseqTsFileResource : unSequenceFileList) {
+        unseqTsFileResource.doUpgrade();
+      }
+    } finally {
+      insertLock.readLock().unlock();
+    }
+  }
+
+
   public void merge(boolean fullMerge) {
     writeLock();
     try {
@@ -926,17 +942,17 @@ public class StorageGroupProcessor {
     }
 
     for (TsFileResource unseqFile : unseqFiles) {
-      unseqFile.getMergeQueryLock().writeLock().lock();
+      unseqFile.getWriteQueryLock().writeLock().lock();
       try {
         unseqFile.remove();
       } finally {
-        unseqFile.getMergeQueryLock().writeLock().unlock();
+        unseqFile.getWriteQueryLock().writeLock().unlock();
       }
     }
 
     for (int i = 0; i < seqFiles.size(); i++) {
       TsFileResource seqFile = seqFiles.get(i);
-      seqFile.getMergeQueryLock().writeLock().lock();
+      seqFile.getWriteQueryLock().writeLock().lock();
       mergeLock.writeLock().lock();
       try {
         logger.debug("{} is updating the {} merged file's modification file", storageGroupName, i);
@@ -965,7 +981,7 @@ public class StorageGroupProcessor {
         }
       } finally {
         mergeLog.delete();
-        seqFile.getMergeQueryLock().writeLock().unlock();
+        seqFile.getWriteQueryLock().writeLock().unlock();
         mergeLock.writeLock().unlock();
       }
     }

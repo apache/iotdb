@@ -301,4 +301,14 @@ public class TsFileMetaData {
   public List<MeasurementSchema> getMeasurementSchemaList() {
     return new ArrayList<MeasurementSchema>(measurementSchema.values());
   }
+
+  public void setDeviceIndexMap(
+      Map<String, TsDeviceMetadataIndex> deviceIndexMap) {
+    this.deviceIndexMap = deviceIndexMap;
+  }
+
+  public void setMeasurementSchema(
+      Map<String, MeasurementSchema> measurementSchema) {
+    this.measurementSchema = measurementSchema;
+  }
 }

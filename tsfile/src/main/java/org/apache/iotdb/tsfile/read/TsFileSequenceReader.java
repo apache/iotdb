@@ -188,8 +188,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    * whether the file is a complete TsFile: only if the head magic and tail magic string exists.
    */
   public boolean isComplete() throws IOException {
-    return tsFileInput.size() >= TSFileConfig.MAGIC_STRING.getBytes().length * 2 + TSFileConfig.VERSION_NUMBER.getBytes().length &&
-        readTailMagic().equals(readHeadMagic());
+    return tsFileInput.size()
+        >= TSFileConfig.MAGIC_STRING.getBytes().length * 2 + TSFileConfig.VERSION_NUMBER.getBytes().length &&
+        (readTailMagic().equals(readHeadMagic()) || readTailMagic().equals(TSFileConfig.OLD_VERSION));
   }
 
   /**
@@ -221,11 +222,13 @@ public class TsFileSequenceReader implements AutoCloseable {
    * this function reads version number and checks compatibility of TsFile.
    */
   public String readVersionNumber() throws IOException, NotCompatibleException {
-    ByteBuffer versionNumberBytes = ByteBuffer.allocate(TSFileConfig.VERSION_NUMBER.getBytes().length);
+    ByteBuffer versionNumberBytes = ByteBuffer
+        .allocate(TSFileConfig.VERSION_NUMBER.getBytes().length);
     tsFileInput.read(versionNumberBytes, TSFileConfig.MAGIC_STRING.getBytes().length);
     versionNumberBytes.flip();
     String versionNumberString = new String(versionNumberBytes.array());
-    if(!versionNumberString.equals(TSFileConfig.VERSION_NUMBER)) {
+    if (!versionNumberString.equals(TSFileConfig.VERSION_NUMBER) && !versionNumberString
+        .equals(TSFileConfig.OLD_VERSION)) {
       throw new NotCompatibleException("TsFile isn't compatible. " + TSFileConfig.MAGIC_STRING +
           TSFileConfig.VERSION_NUMBER + " is expected.");
     }

@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +31,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
+import org.apache.iotdb.db.service.UpgradeSevice;
+import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -55,6 +61,7 @@ public class TsFileResource {
 
   private volatile boolean closed = false;
 
+
   /**
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
    * process.
@@ -66,7 +73,7 @@ public class TsFileResource {
    */
   private ReadOnlyMemChunk readOnlyMemChunk;
 
-  private ReentrantReadWriteLock mergeQueryLock = new ReentrantReadWriteLock();
+  private ReentrantReadWriteLock writeQueryLock = new ReentrantReadWriteLock();
 
   public TsFileResource(File file) {
     this.file = file;
@@ -224,8 +231,15 @@ public class TsFileResource {
     return processor;
   }
 
-  public ReentrantReadWriteLock getMergeQueryLock() {
-    return mergeQueryLock;
+  public ReentrantReadWriteLock getWriteQueryLock() {
+    return writeQueryLock;
+  }
+
+  public void doUpgrade(){
+    if (UpgradeUtils.isNeedUpgrade(this)) {
+      UpgradeTask upgradeTask = new UpgradeTask(this);
+      UpgradeSevice.getINSTANCE().submitUpgradeTask(upgradeTask);
+    }
   }
 
   public void removeModFile() throws IOException {
@@ -264,4 +278,5 @@ public class TsFileResource {
   public void setClosed(boolean closed) {
     this.closed = closed;
   }
+
 }

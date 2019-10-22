@@ -31,8 +31,9 @@ public enum ServiceType {
   AUTHORIZATION_SERVICE("Authorization ServerService", ""),
   FILE_READER_MANAGER_SERVICE("File reader manager ServerService", ""),
   SYNC_SERVICE("SYNC ServerService", ""),
+  UPGRADE_SERVICE("UPGRADE DataService", ""),
   MERGE_SERVICE("Merge Manager", ""),
-  PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE","PERFORMANCE_STATISTIC_SERVICE"),
+  PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE", "PERFORMANCE_STATISTIC_SERVICE"),
   MANAGE_DYNAMIC_PARAMETERS_SERVICE("Manage Dynamic Parameters", "Manage Dynamic Parameters"),
   TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
 
@@ -55,7 +56,7 @@ public enum ServiceType {
     return jmxName;
   }
 
-  private static String generateJmxName(String packageName,  String jmxName) {
+  private static String generateJmxName(String packageName, String jmxName) {
     return String
         .format("%s:type=%s", packageName, jmxName);
   }

@@ -297,6 +297,11 @@ public class IoTDBConfig {
   private long mergeMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.2);
 
   /**
+   * How many threads will be set up to perform upgrade tasks.
+   */
+  private int upgradeThreadNum = 1;
+
+  /**
    * How many threads will be set up to perform main merge tasks.
    */
   private int mergeThreadNum = 1;
@@ -991,5 +996,14 @@ public class IoTDBConfig {
 
   public void setHdfsPort(String hdfsPort) {
     this.hdfsPort = hdfsPort;
+  }
+
+
+  public int getUpgradeThreadNum() {
+    return upgradeThreadNum;
+  }
+
+  public void setUpgradeThreadNum(int upgradeThreadNum) {
+    this.upgradeThreadNum = upgradeThreadNum;
   }
 }

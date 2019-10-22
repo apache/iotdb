@@ -1,8 +1,27 @@
-package org.apache.iotdb.tsfile.tool.update;
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iotdb.tsfile.tool.upgrade;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -23,9 +42,11 @@ import org.apache.iotdb.tsfile.file.metadata.TsDigest;
 import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -34,9 +55,9 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TsFileUpdaterV0_8_0 implements AutoCloseable {
+public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileUpdaterV0_8_0.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsfileUpgradeToolV0_8_0.class);
 
   private TsFileInput tsFileInput;
   private long fileMetadataPos;
@@ -52,7 +73,7 @@ public class TsFileUpdaterV0_8_0 implements AutoCloseable {
    * @param file the data file
    * @throws IOException If some I/O error occurs
    */
-  public TsFileUpdaterV0_8_0(String file) throws IOException {
+  public TsfileUpgradeToolV0_8_0(String file) throws IOException {
     this(file, true);
   }
 
@@ -62,13 +83,13 @@ public class TsFileUpdaterV0_8_0 implements AutoCloseable {
    * @param file -given file name
    * @param loadMetadataSize -load meta data size
    */
-  public TsFileUpdaterV0_8_0(String file, boolean loadMetadataSize) throws IOException {
+  public TsfileUpgradeToolV0_8_0(String file, boolean loadMetadataSize) throws IOException {
     this.file = file;
     final Path path = Paths.get(file);
     tsFileInput = new DefaultTsFileInput(path);
     try {
       if (loadMetadataSize) {
-        loadMetadataSize();
+        loadMetadataSize(false);
       }
     } catch (Throwable e) {
       tsFileInput.close();
@@ -77,35 +98,31 @@ public class TsFileUpdaterV0_8_0 implements AutoCloseable {
   }
 
   /**
-   * construct function for TsFileSequenceReader.
-   *
-   * @param input -given input
-   * @param loadMetadataSize -load meta data size
+   * @param sealedWithNewMagic true when an old version tsfile sealed with new version MAGIC_STRING
    */
-  public TsFileUpdaterV0_8_0(TsFileInput input, boolean loadMetadataSize)
-      throws IOException {
-    this.tsFileInput = input;
-    try {
-      if (loadMetadataSize) { // NOTE no autoRepair here
-        loadMetadataSize();
-      }
-    } catch (Throwable e) {
-      tsFileInput.close();
-      throw e;
-    }
-  }
-
-  public void loadMetadataSize() throws IOException {
+  public void loadMetadataSize(boolean sealedWithNewMagic) throws IOException {
     ByteBuffer metadataSize = ByteBuffer.allocate(Integer.BYTES);
-    tsFileInput.read(metadataSize,
-        tsFileInput.size() - TSFileConfig.MAGIC_STRING.length() - Integer.BYTES);
-    metadataSize.flip();
-    // read file metadata size and position
-    fileMetadataSize = ReadWriteIOUtils.readInt(metadataSize);
-    fileMetadataPos =
-        tsFileInput.size() - TSFileConfig.MAGIC_STRING.length() - Integer.BYTES - fileMetadataSize;
+    if (sealedWithNewMagic) {
+      tsFileInput.read(metadataSize,
+          tsFileInput.size() - TSFileConfig.MAGIC_STRING.getBytes().length - Integer.BYTES);
+      metadataSize.flip();
+      // read file metadata size and position
+      fileMetadataSize = ReadWriteIOUtils.readInt(metadataSize);
+      fileMetadataPos =
+          tsFileInput.size() - TSFileConfig.MAGIC_STRING.getBytes().length - Integer.BYTES
+              - fileMetadataSize;
+    } else {
+      tsFileInput.read(metadataSize,
+          tsFileInput.size() - TSFileConfig.OLD_MAGIC_STRING.length() - Integer.BYTES);
+      metadataSize.flip();
+      // read file metadata size and position
+      fileMetadataSize = ReadWriteIOUtils.readInt(metadataSize);
+      fileMetadataPos =
+          tsFileInput.size() - TSFileConfig.OLD_MAGIC_STRING.length() - Integer.BYTES
+              - fileMetadataSize;
+    }
     // skip the magic header
-    tsFileInput.position(TSFileConfig.MAGIC_STRING.length());
+    position(TSFileConfig.OLD_MAGIC_STRING.length());
   }
 
   /**
@@ -114,8 +131,8 @@ public class TsFileUpdaterV0_8_0 implements AutoCloseable {
   public String readTailMagic() throws IOException {
     long totalSize = tsFileInput.size();
 
-    ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.length());
-    tsFileInput.read(magicStringBytes, totalSize - TSFileConfig.MAGIC_STRING.length());
+    ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.OLD_MAGIC_STRING.length());
+    tsFileInput.read(magicStringBytes, totalSize - TSFileConfig.OLD_MAGIC_STRING.length());
     magicStringBytes.flip();
     return new String(magicStringBytes.array());
   }
@@ -124,7 +141,7 @@ public class TsFileUpdaterV0_8_0 implements AutoCloseable {
    * whether the file is a complete TsFile: only if the head magic and tail magic string exists.
    */
   public boolean isComplete() throws IOException {
-    return tsFileInput.size() >= TSFileConfig.MAGIC_STRING.length() * 2 && readTailMagic()
+    return tsFileInput.size() >= TSFileConfig.OLD_MAGIC_STRING.length() * 2 && readTailMagic()
         .equals(readHeadMagic());
   }
 
@@ -142,7 +159,7 @@ public class TsFileUpdaterV0_8_0 implements AutoCloseable {
    * to the end of the magic head string.
    */
   public String readHeadMagic(boolean movePosition) throws IOException {
-    ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.length());
+    ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.OLD_MAGIC_STRING.length());
     if (movePosition) {
       tsFileInput.position(0);
       tsFileInput.read(magicStringBytes);
@@ -185,7 +202,8 @@ public class TsFileUpdaterV0_8_0 implements AutoCloseable {
       }
     }
 
-    fileMetaData.setCurrentVersion(ReadWriteIOUtils.readInt(buffer));
+    ReadWriteIOUtils.readInt(buffer);
+//    fileMetaData.setCurrentVersion(ReadWriteIOUtils.readInt(buffer));
 
     if (ReadWriteIOUtils.readIsNull(buffer)) {
       fileMetaData.setCreatedBy(ReadWriteIOUtils.readString(buffer));
@@ -298,7 +316,7 @@ public class TsFileUpdaterV0_8_0 implements AutoCloseable {
   /**
    * Self Check the file and return the position before where the data is safe.
    */
-  public boolean updateFile(String updateFileName) throws IOException {
+  public boolean upgradeFile(String updateFileName) throws IOException {
     File checkFile = new File(this.file);
     File updateFile = new File(updateFileName);
     if (!updateFile.getParentFile().exists()) {
@@ -320,16 +338,20 @@ public class TsFileUpdaterV0_8_0 implements AutoCloseable {
     Schema schema = null;
 
     String magic = readHeadMagic(true);
-    if (!magic.equals("TsFilev0.8.0")) {
+    if (!magic.equals(TSFileConfig.OLD_MAGIC_STRING)) {
       logger.error("the file's MAGIC STRING is correct, file path: {}", checkFile.getPath());
       return false;
     }
 
-    if (fileSize == "TsFilev0.8.0".length()) {
+    if (fileSize == TSFileConfig.OLD_MAGIC_STRING.length()) {
       logger.error("the file only contains magic string, file path: {}", checkFile.getPath());
       return false;
-    } else if (readTailMagic().equals("TsFilev0.8.0")) {
-      loadMetadataSize();
+    } else if (readTailMagic().equals(TSFileConfig.OLD_MAGIC_STRING)) {
+      loadMetadataSize(false);
+      TsFileMetaData tsFileMetaData = readFileMetadata();
+      schema = new Schema(tsFileMetaData.getMeasurementSchema());
+    } else {
+      loadMetadataSize(true);
       TsFileMetaData tsFileMetaData = readFileMetadata();
       schema = new Schema(tsFileMetaData.getMeasurementSchema());
     }
@@ -421,13 +443,16 @@ public class TsFileUpdaterV0_8_0 implements AutoCloseable {
             ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
             String deviceID = chunkGroupFooter.getDeviceID();
             long endOffsetOfChunkGroup = this.position();
-            ChunkGroupMetaData currentChunkGroup = new ChunkGroupMetaData(deviceID, chunkMetaDataList,
+            ChunkGroupMetaData currentChunkGroup = new ChunkGroupMetaData(deviceID,
+                chunkMetaDataList,
                 startOffsetOfChunkGroup);
             currentChunkGroup.setEndOffsetOfChunkGroup(endOffsetOfChunkGroup);
             currentChunkGroup.setVersion(versionOfChunkGroup++);
             newMetaData.add(currentChunkGroup);
             tsFileIOWriter.startChunkGroup(deviceID);
             for (int i = 0; i < chunkHeaders.size(); i++) {
+              TSDataType tsDataType = chunkHeaders.get(i).getDataType();
+              TSEncoding encodingType = chunkHeaders.get(i).getEncodingType();
               ChunkHeader chunkHeader = chunkHeaders.get(i);
               List<PageHeader> pageHeaderList = pageHeadersList.get(i);
               List<ByteBuffer> pageList = pagesList.get(i);
@@ -442,6 +467,9 @@ public class TsFileUpdaterV0_8_0 implements AutoCloseable {
                   schema.getMeasurementSchema(chunkHeader.getMeasurementID()));
               for (int j = 0; j < pageHeaderList.size(); j++) {
 //                pageList.set(j, rewrite(pageList.get(j)));
+                if (encodingType.equals(TSEncoding.PLAIN)) {
+                  pageList.set(j, rewrite(pageList.get(j), tsDataType));
+                }
                 chunkBuffer.writePageHeaderAndDataIntoBuff(pageList.get(j), pageHeaderList.get(j));
               }
               chunkBuffer.writeAllPagesOfSeriesToTsFile(tsFileIOWriter, chunkStatisticsList.get(i));
@@ -466,9 +494,62 @@ public class TsFileUpdaterV0_8_0 implements AutoCloseable {
       // complete.
 
     } catch (IOException | PageException e2) {
-      logger.info("TsFile self-check cannot proceed at position {} after {} chunk groups "
+      logger.info("TsFile upgrade process cannot proceed at position {} after {} chunk groups "
           + "recovered, because : {}", this.position(), newMetaData.size(), e2.getMessage());
       return false;
     }
+  }
+
+  static ByteBuffer rewrite(ByteBuffer page, TSDataType tsDataType) {
+    ByteBuffer modifiedPage = ByteBuffer.allocate(page.capacity());
+
+    int timeBufferLength = ReadWriteForEncodingUtils.readUnsignedVarInt(page);
+    ByteBuffer timeBuffer = page.slice();
+    ByteBuffer valueBuffer = page.slice();
+
+    timeBuffer.limit(timeBufferLength);
+    valueBuffer.position(timeBufferLength);
+    valueBuffer.order(ByteOrder.LITTLE_ENDIAN);
+
+    modifiedPage.put(page.get(0));
+    modifiedPage.put(timeBuffer);
+//    timeBuffer.clear();
+    modifiedPage.order(ByteOrder.BIG_ENDIAN);
+    switch (tsDataType) {
+      case BOOLEAN:
+        modifiedPage.put(valueBuffer);
+        break;
+      case INT32:
+        while (valueBuffer.remaining() > 0) {
+          modifiedPage.putInt(valueBuffer.getInt());
+        }
+        break;
+      case INT64:
+        while (valueBuffer.remaining() > 0) {
+          modifiedPage.putLong(valueBuffer.getLong());
+        }
+        break;
+      case FLOAT:
+        while (valueBuffer.remaining() > 0) {
+          modifiedPage.putFloat(valueBuffer.getFloat());
+        }
+        break;
+      case DOUBLE:
+        while (valueBuffer.remaining() > 0) {
+          modifiedPage.putDouble(valueBuffer.getDouble());
+        }
+        break;
+      case TEXT:
+        while (valueBuffer.remaining() > 0) {
+          int length = valueBuffer.getInt();
+          byte[] buf = new byte[length];
+          valueBuffer.get(buf, 0, buf.length);
+          modifiedPage.putInt(length);
+          modifiedPage.put(buf);
+        }
+        break;
+    }
+    modifiedPage.clear();
+    return modifiedPage;
   }
 }

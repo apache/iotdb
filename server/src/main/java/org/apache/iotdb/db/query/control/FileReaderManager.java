@@ -158,7 +158,7 @@ public class FileReaderManager implements IService {
     } else {
       closedReferenceMap.computeIfAbsent(tsFile, k -> new AtomicInteger()).getAndIncrement();
     }
-    tsFile.getMergeQueryLock().readLock().lock();
+    tsFile.getWriteQueryLock().readLock().lock();
   }
 
   /**
@@ -171,7 +171,7 @@ public class FileReaderManager implements IService {
     } else if (closedReferenceMap.containsKey(tsFile)){
       closedReferenceMap.get(tsFile).getAndDecrement();
     }
-    tsFile.getMergeQueryLock().readLock().unlock();
+    tsFile.getWriteQueryLock().readLock().unlock();
   }
 
   /**
