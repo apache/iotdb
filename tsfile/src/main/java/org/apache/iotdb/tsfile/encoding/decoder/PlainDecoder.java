@@ -60,31 +60,26 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public int readInt(ByteBuffer buffer) {
-//    buffer.order(ByteOrder.LITTLE_ENDIAN);
     return buffer.getInt();
   }
 
   @Override
   public long readLong(ByteBuffer buffer) {
-//    buffer.order(ByteOrder.LITTLE_ENDIAN);
     return buffer.getLong();
   }
 
   @Override
   public float readFloat(ByteBuffer buffer) {
-//    buffer.order(ByteOrder.LITTLE_ENDIAN);
     return buffer.getFloat();
   }
 
   @Override
   public double readDouble(ByteBuffer buffer) {
-//    buffer.order(ByteOrder.LITTLE_ENDIAN);
     return buffer.getDouble();
   }
 
   @Override
   public Binary readBinary(ByteBuffer buffer) {
-//    buffer.order(ByteOrder.LITTLE_ENDIAN);
     int length = readInt(buffer);
     byte[] buf = new byte[length];
     buffer.get(buf, 0, buf.length);
