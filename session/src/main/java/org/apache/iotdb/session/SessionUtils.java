@@ -21,9 +21,7 @@ package org.apache.iotdb.session;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.service.rpc.thrift.TSDataValue;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -95,66 +93,73 @@ public class SessionUtils {
   }
 
 
-
   /**
    * convert row records.
-   *
-   * @param tsQueryDataSet -query data set
-   * @return -list of row record
    */
-  static List<RowRecord> convertRowRecords(TSQueryDataSet tsQueryDataSet) {
-    List<RowRecord> records = new ArrayList<>();
-    for (TSRowRecord ts : tsQueryDataSet.getRecords()) {
-      RowRecord r = new RowRecord(ts.getTimestamp());
-      int l = ts.getValuesSize();
-      for (int i = 0; i < l; i++) {
-        TSDataValue value = ts.getValues().get(i);
-        if (value.is_empty) {
-          Field field = new Field(null);
+  static List<RowRecord> convertRowRecords(TSQueryDataSet tsQueryDataSet,
+      List<String> columnTypeList) {
+    int rowCount = tsQueryDataSet.getRowCount();
+    ByteBuffer byteBuffer = tsQueryDataSet.bufferForValues();
+
+    // process time buffer
+    List<RowRecord> rowRecordList = processTimeAndCreateRowRecords(byteBuffer, rowCount);
+
+    for (String type : columnTypeList) {
+      for (int i = 0; i < rowCount; i++) {
+        Field field = null;
+        boolean is_empty = BytesUtils.byteToBool(byteBuffer.get());
+        if (is_empty) {
+          field = new Field(null);
           field.setNull();
-          r.getFields().add(field);
         } else {
-          TSDataType dataType = TSDataType.valueOf(value.getType());
-          Field field = new Field(dataType);
-          addFieldAccordingToDataType(field, dataType, value);
-          r.getFields().add(field);
+          TSDataType dataType = TSDataType.valueOf(type);
+          field = new Field(dataType);
+          switch (dataType) {
+            case BOOLEAN:
+              boolean booleanValue = BytesUtils.byteToBool(byteBuffer.get());
+              field.setBoolV(booleanValue);
+              break;
+            case INT32:
+              int intValue = byteBuffer.getInt();
+              field.setIntV(intValue);
+              break;
+            case INT64:
+              long longValue = byteBuffer.getLong();
+              field.setLongV(longValue);
+              break;
+            case FLOAT:
+              float floatValue = byteBuffer.getFloat();
+              field.setFloatV(floatValue);
+              break;
+            case DOUBLE:
+              double doubleValue = byteBuffer.getDouble();
+              field.setDoubleV(doubleValue);
+              break;
+            case TEXT:
+              int binarySize = byteBuffer.getInt();
+              byte[] binaryValue = new byte[binarySize];
+              byteBuffer.get(binaryValue);
+              field.setBinaryV(new Binary(binaryValue));
+              break;
+            default:
+              throw new UnSupportedDataTypeException(
+                  String.format("Data type %s is not supported.", type));
+          }
         }
+        rowRecordList.get(i).getFields().add(field);
       }
-      records.add(r);
     }
-    return records;
+    return rowRecordList;
   }
 
-  /**
-   *
-   * @param field -the field need to add new data
-   * @param dataType, -the data type of the new data
-   * @param value, -the value of the new data
-   */
-  private static void addFieldAccordingToDataType(Field field, TSDataType dataType, TSDataValue value){
-    switch (dataType) {
-      case BOOLEAN:
-        field.setBoolV(value.isBool_val());
-        break;
-      case INT32:
-        field.setIntV(value.getInt_val());
-        break;
-      case INT64:
-        field.setLongV(value.getLong_val());
-        break;
-      case FLOAT:
-        field.setFloatV((float) value.getFloat_val());
-        break;
-      case DOUBLE:
-        field.setDoubleV(value.getDouble_val());
-        break;
-      case TEXT:
-        field.setBinaryV(new Binary(value.getBinary_val()));
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("data type %s is not supported when convert data at client",
-                dataType));
+  private static List<RowRecord> processTimeAndCreateRowRecords(ByteBuffer byteBuffer,
+      int rowCount) {
+    List<RowRecord> rowRecordList = new ArrayList<>();
+    for (int i = 0; i < rowCount; i++) {
+      long timestamp = byteBuffer.getLong(); // byteBuffer has been flipped by the server side
+      RowRecord rowRecord = new RowRecord(timestamp);
+      rowRecordList.add(rowRecord);
     }
+    return rowRecordList;
   }
 }

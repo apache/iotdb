@@ -361,7 +361,8 @@ public class Session {
 
     RpcUtils.verifySuccess(execResp.getStatus());
     operationHandle = execResp.getOperationHandle();
-    return new SessionDataSet(sql, queryId.incrementAndGet(), client, operationHandle);
+    return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
+        queryId.incrementAndGet(), client, operationHandle);
   }
 
   /**
