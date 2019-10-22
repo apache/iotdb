@@ -28,6 +28,9 @@ import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import org.apache.iotdb.hadoop.tsfile.TSFHadoopException;
+import org.apache.iotdb.hadoop.tsfile.TSFInputFormat;
+import org.apache.iotdb.hadoop.tsfile.TSFOutputFormat;
 
 /**
  * One example for reading TsFile with MapReduce.
