@@ -63,7 +63,6 @@ public class MergeOverLapTest extends MergeTest {
     FileUtils.deleteDirectory(tempSGDir);
   }
 
-  @Override
   void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
       File file = SystemFileFactory.INSTANCE.getFile(i + "seq.tsfile");
