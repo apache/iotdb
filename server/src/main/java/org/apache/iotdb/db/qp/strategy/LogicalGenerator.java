@@ -210,6 +210,9 @@ public class LogicalGenerator {
       case TSParser.TOK_SOFFSET:
         analyzeSoffset(astNode);
         return;
+      case TSParser.TOK_GROUPBY_DEVICE:
+        ((QueryOperator) initializedOperator).setGroupByDevice(true);
+        return;
       default:
         throw new QueryProcessorException("Not supported TSParser type" + tokenIntType);
     }

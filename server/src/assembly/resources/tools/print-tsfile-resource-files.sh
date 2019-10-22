@@ -50,30 +50,10 @@ CLASSPATH=""
 for f in ${IOTDB_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
-classname=org.apache.iotdb.db.tools.TsFileResourcePrinter
 
-
-launch_service()
-{
-	class="$1"
-	iotdb_parms="-Dlogback.configurationFile=${IOTDB_CONF}/logback.xml"
-	iotdb_parms="$iotdb_parms -DIOTDB_HOME=${IOTDB_HOME}"
-	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${IOTDB_HOME}"
-	iotdb_parms="$iotdb_parms -DIOTDB_CONF=${IOTDB_CONF}"
-#	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
-	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS $iotdb_parms -cp "$CLASSPATH"  "$class" "$WALPATH"
-	return $?
-}
+MAIN_CLASS=org.apache.iotdb.db.tools.TsFileResourcePrinter
 
 # Start up the service
-#launch_service "$classname"
-
-if [ ! -d ${IOTDB_HOME}/data/wal ]; then
-    echo "Can't find wal directory." 
-    exit 1;
-else
-    WALPATH=${IOTDB_HOME}/data/wal
-    launch_service "$classname"    
-fi
+"$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 
 exit $?

@@ -116,6 +116,9 @@ public class IoTDBDescriptor {
             + " use default value");
       }
 
+      conf.setMetricsPort(Integer.parseInt(properties.getProperty("metrics_port",
+          Integer.toString(conf.getMetricsPort()))));
+      
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
 
       conf.setRpcThriftCompressionEnable(Boolean.parseBoolean(properties.getProperty("rpc_thrift_compression_enable",

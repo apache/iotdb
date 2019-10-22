@@ -29,7 +29,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TsFileResource {
@@ -68,6 +69,8 @@ public class TsFileResource {
 
   private ReentrantReadWriteLock mergeQueryLock = new ReentrantReadWriteLock();
 
+  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+
   public TsFileResource(File file) {
     this.file = file;
     this.startTimeMap = new ConcurrentHashMap<>();
@@ -104,7 +107,7 @@ public class TsFileResource {
   }
 
   public void serialize() throws IOException {
-    try (OutputStream outputStream = TSFileFactory.INSTANCE.getBufferedOutputStream(
+    try (OutputStream outputStream = fsFactory.getBufferedOutputStream(
         file + RESOURCE_SUFFIX + TEMP_SUFFIX)) {
       ReadWriteIOUtils.write(this.startTimeMap.size(), outputStream);
       for (Entry<String, Long> entry : this.startTimeMap.entrySet()) {
@@ -117,14 +120,14 @@ public class TsFileResource {
         ReadWriteIOUtils.write(entry.getValue(), outputStream);
       }
     }
-    File src = TSFileFactory.INSTANCE.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
-    File dest = TSFileFactory.INSTANCE.getFile(file + RESOURCE_SUFFIX);
+    File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
+    File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
     dest.delete();
-    TSFileFactory.INSTANCE.moveFile(src, dest);
+    fsFactory.moveFile(src, dest);
   }
 
   public void deSerialize() throws IOException {
-    try (InputStream inputStream = TSFileFactory.INSTANCE.getBufferedInputStream(
+    try (InputStream inputStream = fsFactory.getBufferedInputStream(
         file + RESOURCE_SUFFIX)) {
       int size = ReadWriteIOUtils.readInt(inputStream);
       Map<String, Long> startTimes = new HashMap<>();
@@ -160,7 +163,7 @@ public class TsFileResource {
   }
 
   public boolean fileExists() {
-    return TSFileFactory.INSTANCE.getFile(file + RESOURCE_SUFFIX).exists();
+    return fsFactory.getFile(file + RESOURCE_SUFFIX).exists();
   }
 
   public void forceUpdateEndTime(String device, long time) {
@@ -239,8 +242,8 @@ public class TsFileResource {
 
   public void remove() {
     file.delete();
-    TSFileFactory.INSTANCE.getFile(file.getPath() + RESOURCE_SUFFIX).delete();
-    TSFileFactory.INSTANCE.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
+    fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).delete();
+    fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
   }
 
   @Override

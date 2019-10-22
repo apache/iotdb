@@ -77,7 +77,8 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -179,6 +180,7 @@ public class StorageGroupProcessor {
   private LinkedList<String> lruForSensorUsedInQuery = new LinkedList<>();
   private static final int MAX_CACHE_SENSORS = 5000;
 
+  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   public StorageGroupProcessor(String systemInfoDir, String storageGroupName)
       throws ProcessorException {
@@ -246,7 +248,7 @@ public class StorageGroupProcessor {
   private List<TsFileResource> getAllFiles(List<String> folders) throws IOException {
     List<File> tsFiles = new ArrayList<>();
     for (String baseDir : folders) {
-      File fileFolder = TSFileFactory.INSTANCE.getFile(baseDir, storageGroupName);
+      File fileFolder = fsFactory.getFile(baseDir, storageGroupName);
       if (!fileFolder.exists()) {
         continue;
       }
@@ -259,7 +261,7 @@ public class StorageGroupProcessor {
       continueFailedRenames(fileFolder, MERGE_SUFFIX);
 
       Collections.addAll(tsFiles,
-          TSFileFactory.INSTANCE.listFilesBySuffix(fileFolder.getAbsolutePath(), TSFILE_SUFFIX));
+          fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), TSFILE_SUFFIX));
     }
     tsFiles.sort(this::compareFileName);
     List<TsFileResource> ret = new ArrayList<>();
@@ -268,11 +270,10 @@ public class StorageGroupProcessor {
   }
 
   private void continueFailedRenames(File fileFolder, String suffix) {
-    File[] files = TSFileFactory.INSTANCE.listFilesBySuffix(fileFolder.getAbsolutePath(), suffix);
+    File[] files = fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), suffix);
     if (files != null) {
       for (File tempResource : files) {
-        File originResource = TSFileFactory.INSTANCE
-            .getFile(tempResource.getPath().replace(suffix, ""));
+        File originResource = fsFactory.getFile(tempResource.getPath().replace(suffix, ""));
         if (originResource.exists()) {
           tempResource.delete();
         } else {
@@ -500,18 +501,18 @@ public class StorageGroupProcessor {
     } else {
       baseDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
     }
-    TSFileFactory.INSTANCE.getFile(baseDir, storageGroupName).mkdirs();
+    fsFactory.getFile(baseDir, storageGroupName).mkdirs();
 
     String filePath = Paths.get(baseDir, storageGroupName,
         System.currentTimeMillis() + IoTDBConstant.TSFILE_NAME_SEPARATOR + versionController
             .nextVersion()).toString() + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0" + TSFILE_SUFFIX;
 
     if (sequence) {
-      return new TsFileProcessor(storageGroupName, TSFileFactory.INSTANCE.getFile(filePath),
+      return new TsFileProcessor(storageGroupName, fsFactory.getFile(filePath),
           schema, versionController, this::closeUnsealedTsFileProcessor,
           this::updateLatestFlushTimeCallback, sequence);
     } else {
-      return new TsFileProcessor(storageGroupName, TSFileFactory.INSTANCE.getFile(filePath),
+      return new TsFileProcessor(storageGroupName, fsFactory.getFile(filePath),
           schema, versionController, this::closeUnsealedTsFileProcessor,
           () -> true, sequence);
     }
@@ -569,7 +570,7 @@ public class StorageGroupProcessor {
       List<String> folder = DirectoryManager.getInstance().getAllSequenceFileFolders();
       folder.addAll(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
       for (String tsfilePath : folder) {
-        File storageGroupFolder = TSFileFactory.INSTANCE.getFile(tsfilePath, storageGroupName);
+        File storageGroupFolder = fsFactory.getFile(tsfilePath, storageGroupName);
         if (storageGroupFolder.exists()) {
           try {
             FileUtils.deleteDirectory(storageGroupFolder);

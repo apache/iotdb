@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import org.apache.iotdb.db.exception.MetadataErrorException;
@@ -45,6 +44,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
   private static final Logger LOG = LoggerFactory.getLogger(ConcatPathOptimizer.class);
   private static final String WARNING_NO_SUFFIX_PATHS = "given SFWOperator doesn't have suffix paths, cannot concat seriesPath";
+  private static final String WARNING_NO_PREFIX_PATHS = "given SFWOperator doesn't have prefix paths, cannot concat seriesPath";
 
   private IQueryProcessExecutor executor;
 
@@ -62,12 +62,12 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     FromOperator from = sfwOperator.getFromOperator();
     List<Path> prefixPaths;
     if (from == null) {
-      LOG.warn("given SFWOperator doesn't have prefix paths, cannot concat seriesPath");
+      LOG.warn(WARNING_NO_PREFIX_PATHS);
       return operator;
     } else {
       prefixPaths = from.getPrefixPaths();
       if (prefixPaths.isEmpty()) {
-        LOG.warn("given SFWOperator doesn't have prefix paths, cannot concat seriesPath");
+        LOG.warn(WARNING_NO_PREFIX_PATHS);
         return operator;
       }
     }
@@ -84,16 +84,31 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       }
     }
 
-    concatSelect(prefixPaths, select); // concat select paths
+    checkAggrOfSelectOperator(select);
 
-    if (operator instanceof QueryOperator && ((QueryOperator) operator).hasSlimit()) {
-      checkSlimitUsageConstraint(select, initialSuffixPaths, prefixPaths);
+    if (operator instanceof QueryOperator) {
+      if (!((QueryOperator) operator).isGroupByDevice()) {
+        concatSelect(prefixPaths, select); // concat and remove star
 
-      // Make 'SLIMIT&SOFFSET' take effect by trimming the suffixList
-      // and aggregations of the selectOperator
-      int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
-      int seriesOffset = ((QueryOperator) operator).getSeriesOffset();
-      slimitTrim(select, seriesLimit, seriesOffset);
+        if (((QueryOperator) operator).hasSlimit()) {
+          int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
+          int seriesOffset = ((QueryOperator) operator).getSeriesOffset();
+          slimitTrim(select, seriesLimit, seriesOffset);
+        }
+
+      } else {
+        for (Path path : initialSuffixPaths) {
+          String device = path.getDevice();
+          if (!device.isEmpty()) {
+            throw new LogicalOptimizeException(
+                "The paths of the SELECT clause can only be single level. In other words, "
+                    + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
+                    + " For more details please refer to the SQL document.");
+          }
+        }
+        // GROUP_BY_DEVICE leaves the 1) concat, 2) remove star, 3) slimit tasks to the next phase,
+        // i.e., PhysicalGenerator.transformQuery
+      }
     }
 
     // concat filter
@@ -141,7 +156,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   private void concatSelect(List<Path> fromPaths, SelectOperator selectOperator)
       throws LogicalOptimizeException {
     List<Path> suffixPaths = judgeSelectOperator(selectOperator);
-    checkAggrOfSelectOperator(selectOperator);
 
     List<Path> allPaths = new ArrayList<>();
     List<String> originAggregations = selectOperator.getAggregations();
@@ -151,70 +165,12 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       // selectPath cannot start with ROOT, which is guaranteed by TSParser
       Path selectPath = suffixPaths.get(i);
       for (Path fromPath : fromPaths) {
-        if (!fromPath.startWith(SQLConstant.ROOT)) {
-          throw new LogicalOptimizeException("illegal from clause : " + fromPath.getFullPath());
-        }
         allPaths.add(Path.addPrefixPath(selectPath, fromPath));
         extendListSafely(originAggregations, i, afterConcatAggregations);
       }
     }
 
     removeStarsInPath(allPaths, afterConcatAggregations, selectOperator);
-  }
-
-  private boolean isWithStar(List<Path> suffixPaths, List<Path> prefixPaths, List<Path> fakePaths) {
-    boolean isWithStar = false;
-    for (Iterator<Path> iterSuffix = suffixPaths.iterator();
-        iterSuffix.hasNext() && !isWithStar; ) {
-      // NOTE the traversal order should keep consistent with that of the `transformedPaths`
-      Path suffixPath = iterSuffix.next();
-      if (suffixPath.getFullPath().contains("*")) {
-        isWithStar = true; // the case of 3)seriesPath with stars
-        break;
-      }
-      for (Iterator<Path> iterPrefix = prefixPaths.iterator(); iterPrefix.hasNext(); ) {
-        Path fakePath = new Path(iterPrefix.next() + "." + suffixPath);
-        if (fakePath.getFullPath().contains("*")) {
-          isWithStar = true; // the case of 3)seriesPath with stars
-        } else {
-          fakePaths.add(fakePath);
-        }
-      }
-    }
-    return isWithStar;
-  }
-
-  /**
-   * Check whether SLIMIT is wrongly used with complete paths and throw an exception if it is.
-   * Considering a query seriesPath, there are three types: 1)complete seriesPath, 2)prefix
-   * seriesPath, 3)seriesPath with stars. And SLIMIT is designed to be used with 2) or 3). In
-   * another word, SLIMIT is not allowed to be used with 1).
-   */
-  private void checkSlimitUsageConstraint(SelectOperator selectOperator,
-      List<Path> initialSuffixPaths,
-      List<Path> prefixPaths) throws LogicalOptimizeException {
-    List<Path> transformedPaths = selectOperator.getSuffixPaths();
-
-    List<Path> fakePaths = new ArrayList<>();
-    boolean isWithStar = isWithStar(initialSuffixPaths, prefixPaths, fakePaths);
-    if (!isWithStar) {
-      int sz = fakePaths.size();
-      if (sz == transformedPaths.size()) {
-        int i = 0;
-        for (; i < sz; i++) {
-          if (!fakePaths.get(i).getFullPath().equals(transformedPaths.get(i).getFullPath())) {
-            break; // the case of 2)prefix seriesPath
-          }
-        }
-
-        if (i
-            >= sz) { // the case of 1)complete seriesPath, i.e.,
-          // SLIMIT is wrongly used with complete paths
-          throw new LogicalOptimizeException(
-              "Wrong use of SLIMIT: SLIMIT is not allowed to be used with complete paths.");
-        }
-      }
-    }
   }
 
   /**
@@ -320,6 +276,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       for (Path path : paths) {
         List<String> all;
         all = executor.getAllPaths(path.getFullPath());
+        if(all.isEmpty()){
+          throw new LogicalOptimizeException("Path: \"" + path + "\" doesn't correspond to any known time series");
+        }
         for (String subPath : all) {
           if (!pathMap.containsKey(subPath)) {
             pathMap.put(subPath, 1);
@@ -343,7 +302,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       try {
         List<String> actualPaths = executor.getAllPaths(paths.get(i).getFullPath());
         if(actualPaths.isEmpty()){
-          throw new LogicalOptimizeException("Path: \"" + paths.get(i) + "\" not corresponding any known time series");
+          throw new LogicalOptimizeException("Path: \"" + paths.get(i) + "\" doesn't correspond to any known time series");
         }
         for (String actualPath : actualPaths) {
           retPaths.add(new Path(actualPath));
