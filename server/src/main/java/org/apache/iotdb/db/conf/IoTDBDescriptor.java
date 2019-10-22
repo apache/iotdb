@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,6 +116,9 @@ public class IoTDBDescriptor {
             + " use default value");
       }
 
+      conf.setMetricsPort(Integer.parseInt(properties.getProperty("metrics_port",
+          Integer.toString(conf.getMetricsPort()))));
+      
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
 
       conf.setRpcThriftCompressionEnable(Boolean.parseBoolean(properties.getProperty("rpc_thrift_compression_enable",
@@ -146,6 +148,8 @@ public class IoTDBDescriptor {
       conf.setSystemDir(FilePathUtils.regularizePath(conf.getBaseDir()) + "system");
 
       conf.setSchemaDir(FilePathUtils.regularizePath(conf.getSystemDir()) + "schema");
+
+      conf.setQueryDir(FilePathUtils.regularizePath(conf.getBaseDir()) + "query");
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));
@@ -222,6 +226,11 @@ public class IoTDBDescriptor {
       conf.setZoneID(ZoneId.of(tmpTimeZone.trim()));
       logger.info("Time zone has been set to {}", conf.getZoneID());
 
+      conf.setEnableExternalSort(Boolean.parseBoolean(properties
+          .getProperty("enable_external_sort", Boolean.toString(conf.isEnableExternalSort()))));
+      conf.setExternalSortThreshold(Integer.parseInt(properties
+          .getProperty("external_sort_threshold",
+              Integer.toString(conf.getExternalSortThreshold()))));
       conf.setMergeMemoryBudget(Long.parseLong(properties.getProperty("merge_memory_budget",
           Long.toString(conf.getMergeMemoryBudget()))));
       conf.setMergeThreadNum(Integer.parseInt(properties.getProperty("merge_thread_num",

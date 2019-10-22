@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 public enum ServiceType {
   STORAGE_ENGINE_SERVICE("Storage Engine ServerService", ""),
   JMX_SERVICE("JMX ServerService", "JMX ServerService"),
+  METRICS_SERVICE("Metrics ServerService","MetricsService"),
   JDBC_SERVICE("JDBC ServerService", "JDBCService"),
   MONITOR_SERVICE("Monitor ServerService", "Monitor"),
   STAT_MONITOR_SERVICE("Statistics ServerService", ""),

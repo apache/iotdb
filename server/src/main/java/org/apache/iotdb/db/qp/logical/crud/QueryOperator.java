@@ -33,12 +33,17 @@ public class QueryOperator extends SFWOperator {
   private long unit;
   private long origin;
   private List<Pair<Long, Long>> intervals;
-  private boolean isGroupBy = false;
+  private boolean isGroupByTime = false;
+
   private Map<TSDataType, IFill> fillTypes;
   private boolean isFill = false;
+
   private int seriesLimit;
   private int seriesOffset;
   private boolean hasSlimit = false; // false if sql does not contain SLIMIT clause
+
+  private boolean isGroupByDevice = false;
+
   public QueryOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.QUERY;
@@ -61,11 +66,11 @@ public class QueryOperator extends SFWOperator {
   }
 
   public boolean isGroupBy() {
-    return isGroupBy;
+    return isGroupByTime;
   }
 
   public void setGroupBy(boolean isGroupBy) {
-    this.isGroupBy = isGroupBy;
+    this.isGroupByTime = isGroupBy;
   }
 
   public int getSeriesLimit() {
@@ -117,4 +122,11 @@ public class QueryOperator extends SFWOperator {
     this.intervals = intervals;
   }
 
+  public boolean isGroupByDevice() {
+    return isGroupByDevice;
+  }
+
+  public void setGroupByDevice(boolean isGroupByDevice) {
+    this.isGroupByDevice = isGroupByDevice;
+  }
 }

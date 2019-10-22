@@ -31,6 +31,7 @@ import static org.junit.Assert.fail;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.service.IoTDB;
@@ -42,8 +43,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
- * defined as integration test.
+ * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
+ * IoTDB server should be defined as integration test.
  */
 public class IoTDBDaemonIT {
 
@@ -140,6 +141,97 @@ public class IoTDBDaemonIT {
   }
 
   @Test
+  public void selectWithDuplicatedColumnsTest1() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "1,101,101,1101,",
+        "2,10000,10000,40000,",
+        "50,10000,10000,50000,",
+        "100,99,99,199,",
+        "101,99,99,199,",
+        "102,80,80,180,",
+        "103,99,99,199,",
+        "104,90,90,190,",
+        "105,99,99,199,",
+        "106,99,99,null,",
+        "1000,22222,22222,55555,",
+        "946684800000,null,null,100,"
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select s0,s0,s1 from root.vehicle.d0");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("Time,root.vehicle.d0.s0,root.vehicle.d0.s0,root.vehicle.d0.s1,",
+            header.toString());
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(12, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void selectWithDuplicatedColumnsTest2() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "0,11,11,42988.0,11,"
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select count(s0),count(s0),sum(s0),count(s1) from root.vehicle.d0");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("Time,count(root.vehicle.d0.s0),count(root.vehicle.d0.s0),"
+            + "sum(root.vehicle.d0.s0),count(root.vehicle.d0.s1),", header.toString());
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void selectAllSQLTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{"1,101,1101,null,null,999", "2,10000,40000,2.22,null,null",
         "3,null,null,3.33,null,null", "4,null,null,4.44,null,null", "50,10000,50000,null,null,null",
@@ -198,10 +290,9 @@ public class IoTDBDaemonIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute("select s2 from root.vehicle.*");
       Assert.assertTrue(hasResultSet);
-
 
       try (ResultSet resultSet = statement.getResultSet();) {
         int cnt = 0;
@@ -227,7 +318,7 @@ Statement statement = connection.createStatement()) {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement
           .execute(
               "select s0,s1 from root.vehicle.d0 where time < 106 and (s0 >= 60 or s1 <= 200)");
@@ -256,10 +347,10 @@ Statement statement = connection.createStatement()) {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       // TODO select s0,s1 from root.vehicle.d0 where time > 106 and root.vehicle.d1.s0 > 100;
       boolean hasResultSet = statement.execute(
-          "select s0,s1 from root.vehicle.d0,root.vehicle.d1 where time > 106 and root.vehicle.d0.s0 > 100");
+          "select d0.s0, d0.s1, d1.s0 from root.vehicle where time > 106 and root.vehicle.d0.s0 > 100");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -285,7 +376,7 @@ Statement statement = connection.createStatement()) {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement
           .execute(
               "select s0,s1 from root.vehicle.d0 where time > 106 and root.vehicle.d1.s0 > 100");
@@ -314,7 +405,7 @@ Statement statement = connection.createStatement()) {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
 
       boolean hasTextMaxResultSet = statement
           .execute("select s1 from root.vehicle.d0 where s1 < 199");
