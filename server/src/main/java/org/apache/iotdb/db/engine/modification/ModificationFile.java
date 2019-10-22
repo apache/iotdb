@@ -27,7 +27,7 @@ import java.util.List;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.modification.io.ModificationReader;
 import org.apache.iotdb.db.engine.modification.io.ModificationWriter;
-import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 /**
  * ModificationFile stores the Modifications of a TsFile or unseq file in another file in the same
@@ -122,7 +122,7 @@ public class ModificationFile {
 
   public void remove() throws IOException {
     close();
-    TSFileFactory.INSTANCE.getFile(filePath).delete();
+    FSFactoryProducer.getFSFactory().getFile(filePath).delete();
   }
 
 }

@@ -42,8 +42,7 @@ import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.fileSystem.FileInputFactory;
-import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
@@ -51,6 +50,13 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.*;
+
+import static org.apache.iotdb.tsfile.write.writer.TsFileIOWriter.magicStringBytes;
 
 public class TsFileSequenceReader implements AutoCloseable {
 
@@ -88,7 +94,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
     this.file = file;
-    tsFileInput = FileInputFactory.INSTANCE.getTsFileInput(file);
+    tsFileInput = FSFactoryProducer.getFileInputFactory().getTsFileInput(file);
     try {
       if (loadMetadataSize) {
         loadMetadataSize();
@@ -516,7 +522,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public long selfCheck(Map<String, MeasurementSchema> newSchema,
       List<ChunkGroupMetaData> newMetaData, boolean fastFinish) throws IOException {
-    File checkFile = TSFileFactory.INSTANCE.getFile(this.file);
+    File checkFile = FSFactoryProducer.getFSFactory().getFile(this.file);
     long fileSize;
     if (!checkFile.exists()) {
       return TsFileCheckStatus.FILE_NOT_FOUND;

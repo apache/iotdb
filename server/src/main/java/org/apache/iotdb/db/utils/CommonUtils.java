@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 public class CommonUtils {
 
@@ -43,13 +43,13 @@ public class CommonUtils {
   }
 
   /**
-   * NOTICE: This method is currently used only for data dir, thus using TSFileFactory to get file
+   * NOTICE: This method is currently used only for data dir, thus using FSFactory to get file
    *
    * @param dir directory path
    * @return
    */
   public static long getUsableSpace(String dir) {
-    return TSFileFactory.INSTANCE.getFile(dir).getFreeSpace();
+    return FSFactoryProducer.getFSFactory().getFile(dir).getFreeSpace();
   }
 
   public static boolean hasSpace(String dir) {

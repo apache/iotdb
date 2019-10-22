@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
 import java.io.File;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 /**
  * FileUtils is just used for return file attribute like file size, and contains some measurement conversion among B,
@@ -28,7 +28,7 @@ import java.io.File;
 public class FileUtils {
 
   public static double getLocalFileByte(String filePath, Unit unit) {
-    File f = TSFileFactory.INSTANCE.getFile(filePath);
+    File f = FSFactoryProducer.getFSFactory().getFile(filePath);
     return getLocalFileByte(f, unit);
   }
 
