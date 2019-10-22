@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.qp;
 
-import java.time.ZoneId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ArgsErrorException;
@@ -43,6 +42,8 @@ import org.apache.iotdb.db.sql.ParseGenerator;
 import org.apache.iotdb.db.sql.parse.AstNode;
 import org.apache.iotdb.db.sql.parse.ParseException;
 import org.apache.iotdb.db.sql.parse.ParseUtils;
+
+import java.time.ZoneId;
 
 /**
  * provide a integration method for other user.
