@@ -276,6 +276,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       for (Path path : paths) {
         List<String> all;
         all = executor.getAllPaths(path.getFullPath());
+        if(all.isEmpty()){
+          throw new LogicalOptimizeException("Path: \"" + path + "\" doesn't correspond to any known time series");
+        }
         for (String subPath : all) {
           if (!pathMap.containsKey(subPath)) {
             pathMap.put(subPath, 1);
@@ -299,7 +302,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       try {
         List<String> actualPaths = executor.getAllPaths(paths.get(i).getFullPath());
         if(actualPaths.isEmpty()){
-          throw new LogicalOptimizeException("Path: \"" + paths.get(i) + "\" not corresponding any known time series");
+          throw new LogicalOptimizeException("Path: \"" + paths.get(i) + "\" doesn't correspond to any known time series");
         }
         for (String actualPath : actualPaths) {
           retPaths.add(new Path(actualPath));

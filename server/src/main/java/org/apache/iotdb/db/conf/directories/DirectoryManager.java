@@ -25,7 +25,7 @@ import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategy;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +75,7 @@ public class DirectoryManager {
 
   private void mkDataDirs(List<String> folders) {
     for (String folder : folders) {
-      File file = TSFileFactory.INSTANCE.getFile(folder);
+      File file = FSFactoryProducer.getFSFactory().getFile(folder);
       if (file.mkdirs()) {
         logger.info("folder {} doesn't exist, create it", file.getPath());
       } else {

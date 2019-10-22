@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -26,7 +26,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.ConcurrentModificationException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -79,7 +78,8 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -188,6 +188,8 @@ public class StorageGroupProcessor {
    */
   private long dataTTL = Long.MAX_VALUE;
 
+  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+
   public StorageGroupProcessor(String systemInfoDir, String storageGroupName)
       throws ProcessorException {
     this.storageGroupName = storageGroupName;
@@ -252,7 +254,7 @@ public class StorageGroupProcessor {
   private List<TsFileResource> getAllFiles(List<String> folders) {
     List<File> tsFiles = new ArrayList<>();
     for (String baseDir : folders) {
-      File fileFolder = TSFileFactory.INSTANCE.getFile(baseDir, storageGroupName);
+      File fileFolder = fsFactory.getFile(baseDir, storageGroupName);
       if (!fileFolder.exists()) {
         continue;
       }
@@ -265,7 +267,7 @@ public class StorageGroupProcessor {
       continueFailedRenames(fileFolder, MERGE_SUFFIX);
 
       Collections.addAll(tsFiles,
-          TSFileFactory.INSTANCE.listFilesBySuffix(fileFolder.getAbsolutePath(), TSFILE_SUFFIX));
+          fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), TSFILE_SUFFIX));
     }
     tsFiles.sort(this::compareFileName);
     List<TsFileResource> ret = new ArrayList<>();
@@ -274,10 +276,10 @@ public class StorageGroupProcessor {
   }
 
   private void continueFailedRenames(File fileFolder, String suffix) {
-    File[] files = TSFileFactory.INSTANCE.listFilesBySuffix(fileFolder.getAbsolutePath(), suffix);
+    File[] files = fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), suffix);
     if (files != null) {
       for (File tempResource : files) {
-        File originResource = TSFileFactory.INSTANCE.getFile(tempResource.getPath().replace(suffix, ""));
+        File originResource = fsFactory.getFile(tempResource.getPath().replace(suffix, ""));
         if (originResource.exists()) {
           tempResource.delete();
         } else {
@@ -520,17 +522,17 @@ public class StorageGroupProcessor {
     } else {
       baseDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
     }
-    TSFileFactory.INSTANCE.getFile(baseDir, storageGroupName).mkdirs();
+    fsFactory.getFile(baseDir, storageGroupName).mkdirs();
 
     String filePath = baseDir + File.separator + storageGroupName + File.separator +
         System.currentTimeMillis() + "-" + versionController.nextVersion() + TSFILE_SUFFIX;
 
     if (sequence) {
-      return new TsFileProcessor(storageGroupName, TSFileFactory.INSTANCE.getFile(filePath),
+      return new TsFileProcessor(storageGroupName, fsFactory.getFile(filePath),
           schema, versionController, this::closeUnsealedTsFileProcessor,
           this::updateLatestFlushTimeCallback, sequence);
     } else {
-      return new TsFileProcessor(storageGroupName, TSFileFactory.INSTANCE.getFile(filePath),
+      return new TsFileProcessor(storageGroupName, fsFactory.getFile(filePath),
           schema, versionController, this::closeUnsealedTsFileProcessor,
           () -> true, sequence);
     }
@@ -588,7 +590,7 @@ public class StorageGroupProcessor {
       List<String> folder = DirectoryManager.getInstance().getAllSequenceFileFolders();
       folder.addAll(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
       for (String tsfilePath : folder) {
-        File storageGroupFolder = TSFileFactory.INSTANCE.getFile(tsfilePath, storageGroupName);
+        File storageGroupFolder = fsFactory.getFile(tsfilePath, storageGroupName);
         if (storageGroupFolder.exists()) {
           try {
             FileUtils.deleteDirectory(storageGroupFolder);
@@ -1111,12 +1113,12 @@ public class StorageGroupProcessor {
   }
 
   @TestOnly
-  public List<TsFileResource> getSequenceFileList() {
+  List<TsFileResource> getSequenceFileList() {
     return sequenceFileList;
   }
 
   @TestOnly
-  public List<TsFileResource> getUnSequenceFileList() {
+  List<TsFileResource> getUnSequenceFileList() {
     return unSequenceFileList;
   }
 }
