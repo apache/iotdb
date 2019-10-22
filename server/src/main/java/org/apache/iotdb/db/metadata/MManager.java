@@ -556,8 +556,6 @@ public class MManager {
   public void setStorageGroupToMTree(String path) throws MetadataErrorException {
     lock.writeLock().lock();
     try {
-      checkAndGetDataTypeCache.clear();
-      mNodeCache.clear();
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
       mgraph.setStorageGroup(path);
       seriesNumberInStorageGroups.put(path, 0);
@@ -1140,11 +1138,8 @@ public class MManager {
         }
         node = addDeviceIdToMTree(deviceId);
       }
-      if (node == null) {
-        throw new CacheException(String.format("DeviceId %s doesn't exist in the metadata tree.", deviceId));
-      }
-      return node;
     }
+    return node;
   }
 
   /**
