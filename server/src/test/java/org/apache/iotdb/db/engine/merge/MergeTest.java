@@ -152,7 +152,7 @@ abstract class MergeTest {
     FileReaderManager.getInstance().stop();
   }
 
-  private void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
+  void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
       long valueOffset)
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
