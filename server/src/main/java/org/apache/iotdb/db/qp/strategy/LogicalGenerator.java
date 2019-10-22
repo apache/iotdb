@@ -562,7 +562,7 @@ public class LogicalGenerator {
     try {
       AstNode timeValue = astNode.getChild(2).getChild(0);
       if (timeValue.getType() == TOK_DATETIME) {
-        timestamp = parseTimeFormat(parseTokenTime(timeValue));
+        timestamp = parseTimeFormat(cascadeChildrenText(timeValue));
       } else {
         timestamp = Long.parseLong(astNode.getChild(2).getChild(0).getText());
       }

@@ -759,7 +759,7 @@ ttlStatement
 
 setTTLStatement
     :
-    K_SET K_TTL K_TO path=prefixPath time=UnsignedInteger
+    K_SET K_TTL K_TO path=prefixPath time=INT
     -> ^(TOK_TTL TOK_SET $path $time)
     ;
 
