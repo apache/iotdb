@@ -22,13 +22,12 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -86,6 +85,13 @@ public class MGraph implements Serializable {
       throw new PathErrorException("Timeseries is null");
     }
     mtree.addTimeseriesPath(path, dataType, encoding, compressor, props);
+  }
+
+  /**
+   * Add a deviceId to Metadata Tree.
+   */
+  public MNode addDeviceIdToMTree(String deviceId) throws PathErrorException {
+    return mtree.addDeviceId(deviceId);
   }
 
   /**
@@ -156,7 +162,7 @@ public class MGraph implements Serializable {
    *
    * @param path Format: root.node.(node)*
    */
-  void setStorageGroup(String path) throws PathErrorException {
+  void setStorageGroup(String path) throws StorageGroupException {
     mtree.setStorageGroup(path);
   }
 
@@ -309,11 +315,11 @@ public class MGraph implements Serializable {
    * Get the file name for given seriesPath Notice: This method could be called if and only if the
    * seriesPath includes one node whose {@code isStorageGroup} is true.
    */
-  String getStorageGroupNameByPath(String path) throws PathErrorException {
+  String getStorageGroupNameByPath(String path) throws StorageGroupException {
     return mtree.getStorageGroupNameByPath(path);
   }
 
-  String getStorageGroupNameByPath(MNode node, String path) throws PathErrorException {
+  String getStorageGroupNameByPath(MNode node, String path) throws StorageGroupException {
     return mtree.getStorageGroupNameByPath(node, path);
   }
 
@@ -343,7 +349,7 @@ public class MGraph implements Serializable {
     return mtree.getNodeByPath(path);
   }
 
-  MNode getNodeByPathWithCheck(String path) throws PathErrorException {
+  MNode getNodeByPathWithCheck(String path) throws PathErrorException, StorageGroupException {
     return mtree.getNodeByPathWithFileLevelCheck(path);
   }
 
