@@ -77,12 +77,3 @@
 
 	Measurement.INSTANCE.addOperationLatency(Operation, t0);
 
-
-## cache命中率统计
-### 概述
-
-为了提高查询性能，IOTDB对ChunkMetaData和TsFileMetaData进行了缓存。用户可以通过debug级别的日志以及MXBean两种方式来查看缓存的命中率，并根据缓存命中率以及系统内存来调节缓存所使用的内存大小。使用MXBean查看缓存命中率的方法为：
-1. 通过端口31999连接jconsole，并在上方菜单项中选择‘MBean’. 
-2. 展开侧边框并选择 'org.apache.iotdb.db.service'. 将会得到如下图所示结果：
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/65687623-404fc380-e09c-11e9-83c3-3c7c63a5b0be.jpeg">
