@@ -72,12 +72,18 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
     }
     if (FileLoaderManager.getInstance().containsFileLoader(senderFolder.getName())) {
       FileLoaderManager.getInstance().getFileLoader(senderFolder.getName()).endSync();
+      try {
+        Thread.sleep(FileLoader.WAIT_TIME << 1);
+      } catch (InterruptedException e) {
+        LOGGER.error("Thread is interrupted from waiting for ending sync in recovery.");
+      }
     } else {
+      // TODO 有问题！！！
       scanLogger(FileLoader.createFileLoader(senderFolder),
           new File(senderFolder, SyncConstant.SYNC_LOG_NAME),
           new File(senderFolder, SyncConstant.LOAD_LOG_NAME));
     }
-    return FileLoaderManager.getInstance().containsFileLoader(senderFolder.getName());
+    return !FileLoaderManager.getInstance().containsFileLoader(senderFolder.getName());
   }
 
   @Override

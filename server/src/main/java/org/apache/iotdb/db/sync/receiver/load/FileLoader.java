@@ -44,7 +44,7 @@ public class FileLoader implements IFileLoader {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileLoader.class);
 
-  private static final int WAIT_TIME = 100;
+  public static final int WAIT_TIME = 100;
 
   private String syncFolderPath;
 
@@ -62,18 +62,19 @@ public class FileLoader implements IFileLoader {
     this.senderName = senderName;
     this.syncFolderPath = syncFolderPath;
     this.loadLog = new LoadLogger(new File(syncFolderPath, SyncConstant.LOAD_LOG_NAME));
-    FileLoaderManager.getInstance().addFileLoader(senderName, this);
-    FileLoaderManager.getInstance().addLoadTaskRunner(loadTaskRunner);
   }
 
   public static FileLoader createFileLoader(String senderName, String syncFolderPath)
       throws IOException {
-    return new FileLoader(senderName, syncFolderPath);
+    FileLoader fileLoader = new FileLoader(senderName, syncFolderPath);
+    FileLoaderManager.getInstance().addFileLoader(senderName, fileLoader);
+    FileLoaderManager.getInstance().addLoadTaskRunner(fileLoader.loadTaskRunner);
+    return fileLoader;
   }
 
   public static FileLoader createFileLoader(File syncFolder)
       throws IOException {
-    return new FileLoader(syncFolder.getName(), syncFolder.getAbsolutePath());
+    return createFileLoader(syncFolder.getName(), syncFolder.getAbsolutePath());
   }
 
   private Runnable loadTaskRunner = () -> {

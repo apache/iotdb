@@ -1266,8 +1266,8 @@ public class StorageGroupProcessor {
         FileUtils.moveFile(syncedTsFile, targetFile);
       } catch (IOException e) {
         throw new TsFileProcessorException(String.format(
-            "File renaming failed when loading tsfile. Origin: %s, Target: %s",
-            syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath()));
+            "File renaming failed when loading tsfile. Origin: %s, Target: %s, because %s",
+            syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath(), e.getMessage()));
       }
     }
     try {
@@ -1275,9 +1275,9 @@ public class StorageGroupProcessor {
           new File(targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
     } catch (IOException e) {
       throw new TsFileProcessorException(String.format(
-          "File renaming failed when loading .resource file. Origin: %s, Target: %s",
+          "File renaming failed when loading .resource file. Origin: %s, Target: %s, because %s",
           new File(syncedTsFile + TsFileResource.RESOURCE_SUFFIX).getAbsolutePath(),
-          new File(targetFile + TsFileResource.RESOURCE_SUFFIX).getAbsolutePath()));
+          new File(targetFile + TsFileResource.RESOURCE_SUFFIX).getAbsolutePath(), e.getMessage()));
     }
   }
 
