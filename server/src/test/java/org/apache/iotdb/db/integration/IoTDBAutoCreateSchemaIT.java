@@ -59,6 +59,7 @@ public class IoTDBAutoCreateSchemaIT {
   public void tearDown() throws Exception {
     daemon.stop();
     EnvironmentUtils.cleanEnv();
+    conf.setAutoCreateSchemaEnabled(false);
   }
 
   /**
