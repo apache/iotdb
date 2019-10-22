@@ -51,17 +51,17 @@ public abstract class Decoder {
    * @param dataType TSDataType
    * @return Decoder object
    */
-  public static Decoder getDecoderByType(TSEncoding type, TSDataType dataType, EndianType endian) {
+  public static Decoder getDecoderByType(TSEncoding type, TSDataType dataType) {
     // PLA and DFT encoding are not supported in current version
     if (type == TSEncoding.PLAIN) {
-      return new PlainDecoder(endian);
+      return new PlainDecoder(EndianType.BIG_ENDIAN);
     } else if (type == TSEncoding.RLE) {
       switch (dataType) {
         case BOOLEAN:
         case INT32:
-          return new IntRleDecoder(endian);
+          return new IntRleDecoder(EndianType.BIG_ENDIAN);
         case INT64:
-          return new LongRleDecoder(endian);
+          return new LongRleDecoder(EndianType.BIG_ENDIAN);
         case FLOAT:
         case DOUBLE:
           return new FloatDecoder(TSEncoding.valueOf(type.toString()), dataType);

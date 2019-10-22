@@ -70,6 +70,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   private ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
   private int totalChunkNum;
   private TsFileMetaData tsFileMetaData;
+  private String endianType = "BIG_ENDIAN";
 
   private boolean cacheDeviceMetadata = false;
   private Map<TsDeviceMetadataIndex, TsDeviceMetadata> deviceMetadataMap;
@@ -95,6 +96,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
     this.file = file;
     tsFileInput = FSFactoryProducer.getFileInputFactory().getTsFileInput(file);
+    this.endianType = this.readVersionNumber().startsWith("v") ? "LITTLE_ENDIAN" : "BIG_ENDIAN";
     try {
       if (loadMetadataSize) {
         loadMetadataSize();
@@ -232,6 +234,10 @@ public class TsFileSequenceReader implements AutoCloseable {
     String versionNumberString = new String(versionNumberBytes.array());
     return versionNumberString;
   }
+  
+  public String getEndianType() {
+	  return this.endianType;
+  }
 
   /**
    * this function does not modify the position of the file reader.
@@ -341,12 +347,6 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return the pages of this chunk
    */
   public ByteBuffer readChunk(ChunkHeader header) throws IOException {
-    if (this.readVersionNumber().startsWith("v")) {
-      config.setEndian("LITTLE_ENDIAN");
-    } 
-    else {
-      config.setEndian("BIG_ENDIAN");
-    }
     return readData(-1, header.getDataSize());
   }
 
@@ -357,12 +357,6 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return the pages of this chunk
    */
   public ByteBuffer readChunk(ChunkHeader header, long position) throws IOException {
-    if (this.readVersionNumber().startsWith("v")) {
-      config.setEndian("LITTLE_ENDIAN");
-    } 
-    else {
-      config.setEndian("BIG_ENDIAN");
-    }
     return readData(position, header.getDataSize());
   }
 
@@ -374,12 +368,6 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return the pages of this chunk
    */
   private ByteBuffer readChunk(long position, int dataSize) throws IOException {
-    if (this.readVersionNumber().startsWith("v")) {
-      config.setEndian("LITTLE_ENDIAN");
-    }
-    else {
-      config.setEndian("BIG_ENDIAN");
-    }
     return readData(position, dataSize);
   }
 
@@ -393,7 +381,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), false);
     ByteBuffer buffer = readChunk(metaData.getOffsetOfChunkHeader() + header.getSerializedSize(),
         header.getDataSize());
-    return new Chunk(header, buffer, metaData.getDeletedAt());
+    return new Chunk(header, buffer, metaData.getDeletedAt(), endianType);
   }
 
   /**

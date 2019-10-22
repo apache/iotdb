@@ -71,11 +71,9 @@ public class TsFileSequenceRead {
           System.out.println("\tMeasurement: " + header.getMeasurementID());
           Decoder defaultTimeDecoder = Decoder.getDecoderByType(
               TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-              TSDataType.INT64,
-              EndianType.valueOf(TSFileDescriptor.getInstance().getConfig().getEndian()));
+              TSDataType.INT64);
           Decoder valueDecoder = Decoder
-              .getDecoderByType(header.getEncodingType(), header.getDataType(),
-              EndianType.valueOf(TSFileDescriptor.getInstance().getConfig().getEndian()));
+              .getDecoderByType(header.getEncodingType(), header.getDataType());
           for (int j = 0; j < header.getNumOfPages(); j++) {
             valueDecoder.reset();
             System.out.println("\t\t[Page]\n \t\tPage head position: " + reader.position());

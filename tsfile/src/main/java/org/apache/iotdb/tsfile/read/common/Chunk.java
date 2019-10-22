@@ -32,11 +32,13 @@ public class Chunk {
    * All data with timestamp <= deletedAt are considered deleted.
    */
   private long deletedAt;
+  private String endianType;
 
-  public Chunk(ChunkHeader header, ByteBuffer buffer, long deletedAt) {
+  public Chunk(ChunkHeader header, ByteBuffer buffer, long deletedAt, String endianType) {
     this.chunkHeader = header;
     this.chunkData = buffer;
     this.deletedAt = deletedAt;
+    this.endianType = endianType;
   }
 
   public ChunkHeader getHeader() {
@@ -49,6 +51,10 @@ public class Chunk {
 
   public long getDeletedAt() {
     return deletedAt;
+  }
+  
+  public String getEndianType() {
+	  return endianType;
   }
 
   public void setDeletedAt(long deletedAt) {
