@@ -22,10 +22,10 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.exec.FileSinkOperator;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.iotdb.hadoop.tsfile.TSFRecordWriter;
+import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.fileSystem.HDFSOutput;
-import org.apache.iotdb.tsfile.hadoop.TSFRecordWriter;
-import org.apache.iotdb.tsfile.hadoop.record.HDFSTSRecord;
+import org.apache.iotdb.hadoop.fileSystem.HDFSOutput;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
@@ -33,8 +33,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
+
 /**
- * The function implement is same as {@link org.apache.iotdb.tsfile.hadoop.TSFRecordWriter}
+ * The function implement is same as {@link org.apache.iotdb.hadoop.tsfile.TSFRecordWriter}
  * and is customized for Hive
  */
 public class TSFHiveRecordWriter implements FileSinkOperator.RecordWriter {

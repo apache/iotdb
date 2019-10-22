@@ -28,14 +28,14 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordWriter;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.util.Progressable;
-import org.apache.iotdb.tsfile.hadoop.TSFOutputFormat;
-import org.apache.iotdb.tsfile.hadoop.record.HDFSTSRecord;
+import org.apache.iotdb.hadoop.tsfile.TSFOutputFormat;
+import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
 
 import java.io.IOException;
 import java.util.Properties;
 
 /**
- * The function implement is same as {@link org.apache.iotdb.tsfile.hadoop.TSFOutputFormat}
+ * The function implement is same as {@link org.apache.iotdb.hadoop.tsfile.TSFOutputFormat}
  * and is customized for Hive
  */
 public class TSFHiveOutputFormat extends TSFOutputFormat implements HiveOutputFormat<NullWritable, HDFSTSRecord> {

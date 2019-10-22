@@ -25,8 +25,8 @@ import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.iotdb.tsfile.hadoop.IReaderSet;
-import org.apache.iotdb.tsfile.hadoop.TSFInputSplit;
-import org.apache.iotdb.tsfile.hadoop.TSFRecordReader;
+import org.apache.iotdb.hadoop.tsfile.TSFInputSplit;
+import org.apache.iotdb.hadoop.tsfile.TSFRecordReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -38,7 +38,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.tsfile.hadoop.TSFRecordReader.getCurrentValue;
+import static org.apache.iotdb.hadoop.tsfile.TSFRecordReader.getCurrentValue;
 
 public class TSFHiveRecordReader implements RecordReader<NullWritable, MapWritable>, IReaderSet {
 

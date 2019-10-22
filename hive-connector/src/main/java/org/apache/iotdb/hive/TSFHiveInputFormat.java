@@ -21,7 +21,7 @@ package org.apache.iotdb.hive;
 import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapred.*;
-import org.apache.iotdb.tsfile.hadoop.TSFInputFormat;
+import org.apache.iotdb.hadoop.tsfile.TSFInputFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
