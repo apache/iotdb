@@ -152,9 +152,12 @@ public class TsFileMetaData {
       fileMetaData.createdBy = ReadWriteIOUtils.readString(buffer);
     }  
     // if using v0.8.0 TsFile, use 0 to represent missing fields
-    fileMetaData.totalChunkNum = buffer == null ? 0 : ReadWriteIOUtils.readInt(buffer);
-    fileMetaData.invalidChunkNum = buffer == null ? 0 : ReadWriteIOUtils.readInt(buffer);
-
+    fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
+    fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
+    System.out.println("total chunk num =" + fileMetaData.totalChunkNum);
+    System.out.println("total chunk num =" + fileMetaData.totalChunkNum);
+    System.out.println("inval chunk num =" + fileMetaData.invalidChunkNum);
+    System.out.println("inval chunk num =" + fileMetaData.invalidChunkNum);
 
     return fileMetaData;
   }
