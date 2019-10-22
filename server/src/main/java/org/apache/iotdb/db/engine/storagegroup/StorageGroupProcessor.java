@@ -777,6 +777,8 @@ public class StorageGroupProcessor {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     long timeLowerBound = dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long
         .MIN_VALUE;
+    context.setQueryTimeLowerBound(timeLowerBound);
+
     for (TsFileResource tsFileResource : tsFileResources) {
       // TODO: try filtering files if the query contains time filter
       if (!tsFileResource.containsDevice(deviceId)) {
@@ -799,7 +801,7 @@ public class StorageGroupProcessor {
           Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair;
           pair = tsFileResource
               .getUnsealedFileProcessor()
-              .query(deviceId, measurementId, dataType, mSchema.getProps(), context, timeLowerBound);
+              .query(deviceId, measurementId, dataType, mSchema.getProps(), context);
           tsfileResourcesForQuery
               .add(new TsFileResource(tsFileResource.getFile(),
                   tsFileResource.getStartTimeMap(),

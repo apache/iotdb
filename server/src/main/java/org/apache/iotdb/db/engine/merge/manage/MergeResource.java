@@ -65,24 +65,28 @@ public class MergeResource {
   private Map<String, MeasurementSchema> measurementSchemaMap = new HashMap<>();
   private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
 
+  private long fileTimeBound = Long.MAX_VALUE;
+
   private boolean cacheDeviceMeta = false;
 
   public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    this.seqFiles = seqFiles.stream().filter(res -> res.isClosed() && !res.isDeleted())
-        .collect(Collectors.toList());
+    this.seqFiles =
+        seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
     this.unseqFiles =
-        unseqFiles.stream().filter(res -> res.isClosed() && !res.isDeleted())
-            .collect(Collectors.toList());
+        unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
+  }
+
+  private boolean filterResource(TsFileResource res) {
+    return res.isClosed() && !res.isDeleted() && res.stillLives(fileTimeBound);
   }
 
   public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
       long timeBound) {
+    fileTimeBound = timeBound;
     this.seqFiles =
-        seqFiles.stream().filter(res -> res.isClosed() && !res.isDeleted()
-            && res.stillLives(timeBound)).collect(Collectors.toList());
+        seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
     this.unseqFiles =
-        unseqFiles.stream().filter(res -> res.isClosed() && !res.isDeleted()
-            && res.stillLives(timeBound)).collect(Collectors.toList());
+        unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
   }
 
   public void clear() throws IOException {

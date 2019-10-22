@@ -285,6 +285,9 @@ public class TsFileResource {
    * @return
    */
   public boolean stillLives(long timeBound) {
+    if (timeBound == Long.MAX_VALUE) {
+      return true;
+    }
     for (long endTime : endTimeMap.values()) {
       // the file cannot be deleted if any device still lives
       if (endTime >= timeBound) {

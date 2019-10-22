@@ -179,7 +179,7 @@ public abstract class AbstractMemTable implements IMemTable {
         }
       }
     }
-    return undeletedTime + 1 < timeLowerBound ? timeLowerBound : undeletedTime + 1;
+    return Math.max(undeletedTime + 1, timeLowerBound);
   }
 
   @Override
