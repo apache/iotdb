@@ -388,11 +388,4 @@ public class Session {
     }
   }
 
-
-  public static void main(String[] args) {
-    System.out.println(
-        Pattern.matches("root([.](([a-zA-Z_][a-zA-Z0-9_-]*)|([+-]?[0-9]+)))+", "root.\tvehicle"));
-  }
-
-
 }
