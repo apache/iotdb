@@ -24,7 +24,7 @@ import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
-import org.apache.iotdb.tsfile.hadoop.TSFInputSplit;
+import org.apache.iotdb.hadoop.tsfile.TSFInputSplit;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

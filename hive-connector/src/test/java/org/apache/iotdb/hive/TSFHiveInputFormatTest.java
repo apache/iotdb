@@ -25,7 +25,7 @@ import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.apache.iotdb.tsfile.hadoop.TSFInputSplit;
+import org.apache.iotdb.hadoop.tsfile.TSFInputSplit;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,6 +37,7 @@ import java.util.List;
 
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
+
 
 public class TSFHiveInputFormatTest {
 
