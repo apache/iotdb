@@ -53,8 +53,7 @@ public class TestHelper {
   private static final String LAST_VALUE = "222";
 
   public static TsFileMetaData createSimpleFileMetaData() {
-    TsFileMetaData metaData = new TsFileMetaData(generateDeviceIndexMetadataMap(), new HashMap<>(),
-        TsFileMetaDataTest.VERSION);
+    TsFileMetaData metaData = new TsFileMetaData(generateDeviceIndexMetadataMap(), new HashMap<>());
     metaData.addMeasurementSchema(TestHelper.createSimpleMeasurementSchema());
     metaData.addMeasurementSchema(TestHelper.createSimpleMeasurementSchema());
     metaData.setCreatedBy(TsFileMetaDataTest.CREATED_BY);

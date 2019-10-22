@@ -868,6 +868,33 @@ public class TqlParserTest {
   }
 
   @Test
+  public void queryGroupByDevice() throws ParseException {
+    // template for test case
+    ArrayList<String> ans = new ArrayList<>(
+            Arrays.asList("TOK_QUERY", "TOK_SELECT",
+                    "TOK_PATH", "sensor_1",
+                    "TOK_PATH", "sensor_2",
+                    "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle", "device_1",
+                    "TOK_WHERE", "and",
+                    "not", "<", "TOK_PATH", "TOK_ROOT", "laptop", "device_1", "sensor_1", "TOK_CONSTANT", "2000",
+                    ">", "TOK_PATH", "TOK_ROOT", "laptop", "device_2", "sensor_2", "TOK_CONSTANT", "1000",
+                    "TOK_GROUPBY_DEVICE"));
+    ArrayList<String> rec = new ArrayList<>();
+    AstNode astTree = ParseGenerator.generateAST(
+            "SELECT sensor_1,sensor_2 FROM root.vehicle.device_1 WHERE "
+                    + "not(root.laptop.device_1.sensor_1 < 2000) and root.laptop.device_2.sensor_2 > 1000 "
+                    + "group by device");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(ans.get(i), rec.get(i));
+      i++;
+    }
+  }
+
+  @Test
   public void aggregation1() throws ParseException {
     // template for test case
     ArrayList<String> ans = new ArrayList<>(
@@ -1702,69 +1729,74 @@ public class TqlParserTest {
     }
   }
 
-//  @Test
-//  public void selectIndex1() throws ParseException {
-//    ArrayList<String> ans = new ArrayList<>(
-//            Arrays.asList("TOK_QUERY", "TOK_SELECT_INDEX", "subsequence_matching",
-//                    "TOK_PATH", "TOK_ROOT", "a", "b", "c", "TOK_PATH", "TOK_ROOT", "a", "b", "c", "123",
-//                    "132",
-//                    "TOK_FLOAT_COMB", "123", ".", "1",
-//                    "TOK_WHERE", "<", "TOK_PATH", "time", "10"));
-//    ArrayList<String> rec = new ArrayList<>();
-//    AstNode astTree = ParseGenerator.generateAST("select index subsequence_matching(root.a.b.c, root.a.b.c, 123, 132 , 123.1) where time < 10");
-//    astTree = ParseUtils.findRootNonNullToken(astTree);
-//    recursivePrintSon(astTree, rec);
-//
-//    int i = 0;
-//    while (i <= rec.size() - 1) {
-//      assertEquals(ans.get(i), rec.get(i));
-//      i++;
-//    }
-//  }
-//
-//  @Test
-//  public void selectIndex2() throws ParseException {
-//    ArrayList<String> ans = new ArrayList<>(
-//            Arrays.asList("TOK_QUERY", "TOK_SELECT_INDEX", "subsequence_matching",
-//                    "TOK_PATH", "TOK_ROOT", "a", "b", "c", "TOK_PATH", "TOK_ROOT", "a", "b", "c", "123",
-//                    "132",
-//                    "TOK_FLOAT_COMB", "123", ".", "1",
-//                    "TOK_FLOAT_COMB", "0", ".", "123",
-//                    "TOK_FLOAT_COMB", "0", ".", "5",
-//                    "TOK_FROM", "TOK_PATH", "TOK_ROOT", "a", "b"));
-//    ArrayList<String> rec = new ArrayList<>();
-//    AstNode astTree = ParseGenerator.generateAST("select index subsequence_matching(root.a.b.c, root.a.b.c, 123, 132 , 123.1, 0.123, 0.5) from root.a.b;");
-//    astTree = ParseUtils.findRootNonNullToken(astTree);
-//    recursivePrintSon(astTree, rec);
-//
-//    int i = 0;
-//    while (i <= rec.size() - 1) {
-//      assertEquals(ans.get(i), rec.get(i));
-//      i++;
-//    }
-//  }
-//
-//  @Test
-//  public void selectIndex3() throws ParseException {
-//    ArrayList<String> ans = new ArrayList<>(
-//            Arrays.asList("TOK_QUERY", "TOK_SELECT_INDEX", "kvindex", "TOK_PATH",
-//                    "TOK_ROOT", "a", "b", "c", "TOK_PATH", "TOK_ROOT", "a", "b", "c", "TOK_DATETIME",
-//                    "2016-11-16T16:22:33+08:00", "TOK_DATETIME", "now",
-//                    "TOK_FLOAT_COMB", "123", ".", "1",
-//                    "TOK_FLOAT_COMB", "0", ".", "123",
-//                    "TOK_FLOAT_COMB", "0", ".", "5"
-//            ));
-//    ArrayList<String> rec = new ArrayList<>();
-//    AstNode astTree = ParseGenerator.generateAST("select index kvindex(root.a.b.c, root.a.b.c, 2016-11-16T16:22:33+08:00, now() , 123.1, 0.123, 0.5)");
-//    astTree = ParseUtils.findRootNonNullToken(astTree);
-//    recursivePrintSon(astTree, rec);
-//
-//    int i = 0;
-//    while (i <= rec.size() - 1) {
-//      assertEquals(ans.get(i), rec.get(i));
-//      i++;
-//    }
-//  }
+  @Test
+  public void selectIndex1() throws ParseException {
+    ArrayList<String> ans = new ArrayList<>(
+            Arrays.asList("TOK_QUERY", "TOK_SELECT_INDEX", "subsequence_matching",
+                    "TOK_PATH", "TOK_ROOT", "a", "b", "c", "TOK_PATH", "TOK_ROOT", "a", "b", "c", "123",
+                    "132",
+                    "TOK_CONSTANT", "123", ".", "1",
+                    "TOK_WHERE", "<", "TOK_PATH", "time", "TOK_CONSTANT", "10"));
+    ArrayList<String> rec = new ArrayList<>();
+    AstNode astTree = ParseGenerator.generateAST(
+            "select index subsequence_matching(root.a.b.c, root.a.b.c, 123, 132 , 123.1) where time < 10");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(ans.get(i), rec.get(i));
+      i++;
+    }
+  }
+
+  @Test
+  public void selectIndex2() throws ParseException {
+    ArrayList<String> ans = new ArrayList<>(
+            Arrays.asList("TOK_QUERY", "TOK_SELECT_INDEX", "subsequence_matching",
+                    "TOK_PATH", "TOK_ROOT", "a", "b", "c", "TOK_PATH", "TOK_ROOT", "a", "b", "c", "123",
+                    "132",
+                    "TOK_CONSTANT", "123", ".", "1",
+                    "TOK_CONSTANT", "0", ".", "123",
+                    "TOK_CONSTANT", "0", ".", "5",
+                    "TOK_FROM", "TOK_PATH", "TOK_ROOT", "a", "b"));
+    ArrayList<String> rec = new ArrayList<>();
+    // AstNode astTree = ParseGenerator.generateAST("select index kvindex(root.vehicle.d0.s0, root.vehicle.d0.s0, 1,
+    // 3, 0.0, 1.0, 0.0) from root.vehicle.d0.s0");
+    AstNode astTree = ParseGenerator.generateAST(
+            "select index subsequence_matching(root.a.b.c, root.a.b.c, 123, 132 , 123.1, 0.123, 0.5) from root.a.b;");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(ans.get(i), rec.get(i));
+      i++;
+    }
+  }
+
+  @Test
+  public void selectIndex3() throws ParseException {
+    ArrayList<String> ans = new ArrayList<>(
+            Arrays.asList("TOK_QUERY", "TOK_SELECT_INDEX", "kvindex", "TOK_PATH",
+                    "TOK_ROOT", "a", "b", "c", "TOK_PATH", "TOK_ROOT", "a", "b", "c", "TOK_DATETIME",
+                    "2016-11-16T16:22:33+08:00", "TOK_DATETIME", "now",
+                    "TOK_CONSTANT", "123", ".", "1",
+                    "TOK_CONSTANT", "0", ".", "123",
+                    "TOK_CONSTANT", "0", ".", "5"
+            ));
+    ArrayList<String> rec = new ArrayList<>();
+    AstNode astTree = ParseGenerator.generateAST(
+            "select index kvindex(root.a.b.c, root.a.b.c, 2016-11-16T16:22:33+08:00, now() , 123.1, 0.123, 0.5)");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(ans.get(i), rec.get(i));
+      i++;
+    }
+  }
 
   @Test
   public void dropIndex() throws ParseException {

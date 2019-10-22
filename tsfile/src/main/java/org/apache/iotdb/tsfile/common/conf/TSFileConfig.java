@@ -50,11 +50,9 @@ public class TSFileConfig {
   public static final String STRING_ENCODING = "UTF-8";
   public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
   public static final String CONFIG_FILE_NAME = "tsfile-format.properties";
-  public static final String MAGIC_STRING = "TsFilev0.8.0";
-  /**
-   * Current version is 3.
-   */
-  public static final int CURRENT_VERSION = 3;
+  public static final String MAGIC_STRING = "TsFile";
+  public static final String VERSION_NUMBER = "000001";
+
   /**
    * The default grow size of class BatchData.
    */

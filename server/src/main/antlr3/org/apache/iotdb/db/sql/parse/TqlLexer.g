@@ -312,6 +312,11 @@ K_REGULAR
 K_ADD
     : A D D
     ;
+
+K_DEVICE
+    : D E V I C E
+    ;
+
 // *************** comparison *******
 OPERATOR_GT
     : '>'

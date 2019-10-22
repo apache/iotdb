@@ -100,6 +100,8 @@ tokens{
     TOK_CONSTANT;
     TOK_TIMEINTERVALPAIR;
     TOK_PROPERTY_VALUE;
+    TOK_GROUPBY_DEVICE;
+    TOK_SELECT_INDEX;
 }
 
 @header{
@@ -345,7 +347,15 @@ property
     ;
 
 selectStatement
-    : K_SELECT selectElements
+    : K_SELECT K_INDEX func=ID
+    LR_BRACKET
+    p1=timeseriesPath COMMA p2=timeseriesPath COMMA n1=timeValue COMMA n2=timeValue COMMA epsilon=constant (COMMA alpha=constant COMMA beta=constant)?
+    RR_BRACKET
+    fromClause?
+    whereClause?
+    specialClause?
+     -> ^(TOK_QUERY ^(TOK_SELECT_INDEX $func $p1 $p2 $n1 $n2 $epsilon ($alpha $beta)?) fromClause? whereClause? specialClause?)
+    | K_SELECT selectElements
     fromClause
     whereClause?
     specialClause?
@@ -463,12 +473,13 @@ realLiteral
 specialClause
     : specialLimit
     | groupByClause specialLimit?
-    | fillClause slimitClause?
+    | fillClause slimitClause? groupByDeviceClause?
     ;
 
 specialLimit
-    : limitClause slimitClause?
-    | slimitClause limitClause?
+    : limitClause slimitClause? groupByDeviceClause?
+    | slimitClause limitClause? groupByDeviceClause?
+    | groupByDeviceClause
     ;
 
 limitClause
@@ -488,6 +499,12 @@ slimitClause
 soffsetClause
     : K_SOFFSET INT
     -> ^(TOK_SOFFSET INT)
+    ;
+
+groupByDeviceClause
+    :
+    K_GROUP K_BY K_DEVICE
+    -> ^(TOK_GROUPBY_DEVICE)
     ;
 
 date

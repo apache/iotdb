@@ -197,6 +197,9 @@ public class LogicalGenerator {
       case TqlParser.TOK_SOFFSET:
         analyzeSoffset(astNode);
         return;
+      case TqlParser.TOK_GROUPBY_DEVICE:
+        ((QueryOperator) initializedOperator).setGroupByDevice(true);
+        return;
       default:
         throw new QueryProcessorException("Not supported TqlParser type " + token.getText());
     }
