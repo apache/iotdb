@@ -343,7 +343,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   public ByteBuffer readChunk(ChunkHeader header) throws IOException {
     if (this.readVersionNumber().startsWith("v")) {
       config.setEndian("LITTLE_ENDIAN");
-    }
+    } 
     else {
       config.setEndian("BIG_ENDIAN");
     }
@@ -359,7 +359,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   public ByteBuffer readChunk(ChunkHeader header, long position) throws IOException {
     if (this.readVersionNumber().startsWith("v")) {
       config.setEndian("LITTLE_ENDIAN");
-    }
+    } 
     else {
       config.setEndian("BIG_ENDIAN");
     }

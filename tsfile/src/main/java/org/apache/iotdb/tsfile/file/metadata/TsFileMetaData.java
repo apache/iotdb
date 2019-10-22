@@ -154,10 +154,6 @@ public class TsFileMetaData {
     // if using v0.8.0 TsFile, use 0 to represent missing fields
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
-    System.out.println("total chunk num =" + fileMetaData.totalChunkNum);
-    System.out.println("total chunk num =" + fileMetaData.totalChunkNum);
-    System.out.println("inval chunk num =" + fileMetaData.invalidChunkNum);
-    System.out.println("inval chunk num =" + fileMetaData.invalidChunkNum);
 
     return fileMetaData;
   }
