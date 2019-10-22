@@ -20,15 +20,16 @@ package org.apache.iotdb.db.qp.constant;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.iotdb.db.sql.parse.TSParser;
+
+import org.apache.iotdb.db.sql.parse.TqlParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TSParserConstant {
+public class TqlParserConstant {
 
-  private static final Logger logger = LoggerFactory.getLogger(TSParserConstant.class);
+  private static final Logger logger = LoggerFactory.getLogger(TqlParserConstant.class);
 
-  private TSParserConstant() {
+  private TqlParserConstant() {
     // forbidding instantiation
   }
 
@@ -36,22 +37,22 @@ public class TSParserConstant {
 
   // used to get operator type when construct operator from AST Tree
   static {
-    antlrQpMap.put(TSParser.KW_AND, SQLConstant.KW_AND);
-    antlrQpMap.put(TSParser.KW_OR, SQLConstant.KW_OR);
-    antlrQpMap.put(TSParser.KW_NOT, SQLConstant.KW_NOT);
+    antlrQpMap.put(TqlParser.OPERATOR_AND, SQLConstant.KW_AND);
+    antlrQpMap.put(TqlParser.OPERATOR_OR, SQLConstant.KW_OR);
+    antlrQpMap.put(TqlParser.OPERATOR_NOT, SQLConstant.KW_NOT);
 
-    antlrQpMap.put(TSParser.EQUAL, SQLConstant.EQUAL);
-    antlrQpMap.put(TSParser.NOTEQUAL, SQLConstant.NOTEQUAL);
-    antlrQpMap.put(TSParser.LESSTHANOREQUALTO, SQLConstant.LESSTHANOREQUALTO);
-    antlrQpMap.put(TSParser.LESSTHAN, SQLConstant.LESSTHAN);
-    antlrQpMap.put(TSParser.GREATERTHANOREQUALTO, SQLConstant.GREATERTHANOREQUALTO);
-    antlrQpMap.put(TSParser.GREATERTHAN, SQLConstant.GREATERTHAN);
-    antlrQpMap.put(TSParser.EQUAL_NS, SQLConstant.EQUAL_NS);
+    antlrQpMap.put(TqlParser.OPERATOR_EQ, SQLConstant.EQUAL);
+    antlrQpMap.put(TqlParser.OPERATOR_NEQ, SQLConstant.NOTEQUAL);
+    antlrQpMap.put(TqlParser.OPERATOR_LTE, SQLConstant.LESSTHANOREQUALTO);
+    antlrQpMap.put(TqlParser.OPERATOR_LT, SQLConstant.LESSTHAN);
+    antlrQpMap.put(TqlParser.OPERATOR_GTE, SQLConstant.GREATERTHANOREQUALTO);
+    antlrQpMap.put(TqlParser.OPERATOR_GT, SQLConstant.GREATERTHAN);
+//    antlrQpMap.put(TqlParser.EQUAL_NS, SQLConstant.EQUAL_NS);
 
-    antlrQpMap.put(TSParser.TOK_SELECT, SQLConstant.TOK_SELECT);
-    antlrQpMap.put(TSParser.TOK_FROM, SQLConstant.TOK_FROM);
-    antlrQpMap.put(TSParser.TOK_WHERE, SQLConstant.TOK_WHERE);
-    antlrQpMap.put(TSParser.TOK_QUERY, SQLConstant.TOK_QUERY);
+    antlrQpMap.put(TqlParser.TOK_SELECT, SQLConstant.TOK_SELECT);
+    antlrQpMap.put(TqlParser.TOK_FROM, SQLConstant.TOK_FROM);
+    antlrQpMap.put(TqlParser.TOK_WHERE, SQLConstant.TOK_WHERE);
+    antlrQpMap.put(TqlParser.TOK_QUERY, SQLConstant.TOK_QUERY);
   }
 
   /**

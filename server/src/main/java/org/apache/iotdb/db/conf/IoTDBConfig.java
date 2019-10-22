@@ -879,7 +879,6 @@ public class IoTDBConfig {
   public void setMergeFileSelectionTimeBudget(long mergeFileSelectionTimeBudget) {
     this.mergeFileSelectionTimeBudget = mergeFileSelectionTimeBudget;
   }
-
   public boolean isRpcThriftCompressionEnable() {
     return rpcThriftCompressionEnable;
   }
