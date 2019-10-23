@@ -112,7 +112,6 @@ public class TsDigest {
     	  }
       }
     } // else left digest.statistics as null
-
     return digest;
   }
 
