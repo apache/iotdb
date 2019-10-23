@@ -81,13 +81,13 @@ public class ParseDriver {
    * @return parsed AST
    */
   public AstNode parse(String command) throws ParseException {
-    TSLexerX lexer = new TSLexerX(new ANTLRNoCaseStringStream(command));
+    TqlLexerX lexer = new TqlLexerX(new ANTLRNoCaseStringStream(command));
     TokenRewriteStream tokens = new TokenRewriteStream(lexer);
 
-    TSParser parser = new TSParser(tokens);
+    TqlParser parser = new TqlParser(tokens);
 
     parser.setTreeAdaptor(adaptor);
-    TSParser.statement_return r = null;
+    TqlParser.statement_return r = null;
 
     try {
 
@@ -145,14 +145,14 @@ public class ParseDriver {
   }
 
   /**
-   * TSLexerX.
+   * TqlLexerX.
    *
    */
-  public class TSLexerX extends TSLexer {
+  public class TqlLexerX extends TqlLexer {
 
     private final ArrayList<ParseError> errors;
 
-    public TSLexerX(CharStream input) {
+    public TqlLexerX(CharStream input) {
       super(input);
       errors = new ArrayList<>();
     }

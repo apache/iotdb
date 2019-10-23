@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -33,10 +33,10 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageEngineFailureException;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -136,7 +136,7 @@ public class StorageEngine implements IService {
         }
       }
       return processor;
-    } catch (PathErrorException | ProcessorException e) {
+    } catch (StorageGroupException | ProcessorException e) {
       logger.error("Fail to get StorageGroupProcessor {}", storageGroupName, e);
       throw new StorageEngineException(e);
     }
@@ -350,7 +350,9 @@ public class StorageEngine implements IService {
   public void deleteStorageGroup(String storageGroupName) {
     deleteAllDataFilesInOneStorageGroup(storageGroupName);
     StorageGroupProcessor processor = processorMap.remove(storageGroupName);
-    processor.deleteFolder(systemDir);
+    if(processor != null) {
+      processor.deleteFolder(systemDir);
+    }
   }
 
   public void loadNewTsFile(TsFileResource newTsFileResource)
