@@ -143,6 +143,9 @@ public class TsFileProcessor {
       }
     }
 
+    // insert insertPlan to the work memtable
+    workMemTable.insert(insertPlan);
+
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
         getLogNode().write(insertPlan);
@@ -151,6 +154,7 @@ public class TsFileProcessor {
         return false;
       }
     }
+
     // update start time of this memtable
     tsFileResource.updateStartTime(insertPlan.getDeviceId(), insertPlan.getTime());
     //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
@@ -158,9 +162,6 @@ public class TsFileProcessor {
     if (!sequence) {
       tsFileResource.updateEndTime(insertPlan.getDeviceId(), insertPlan.getTime());
     }
-
-    // insert insertPlan to the work memtable
-    workMemTable.insert(insertPlan);
 
     return true;
   }
