@@ -33,11 +33,12 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -71,7 +72,7 @@ public class DeletionFileNodeTest {
 
   @Before
   public void setup() throws MetadataErrorException,
-      PathErrorException, IOException, StorageEngineException, StartupException {
+      PathErrorException, IOException, StorageEngineException, StartupException, StorageGroupException {
     EnvironmentUtils.envSetUp();
 
     MManager.getInstance().setStorageGroupToMTree(processorName);

@@ -26,17 +26,19 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.junit.Test;
 
 public class TsFileRestorableReaderTest {
 
   private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
+  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   @Test
   public void testToReadDamagedFileAndRepair() throws IOException {
-    File file = TSFileFactory.INSTANCE.getFile(FILE_PATH);
+    File file = fsFactory.getFile(FILE_PATH);
 
     TsFileGeneratorForTest.writeFileWithOneIncompleteChunkHeader(file);
 
@@ -51,7 +53,7 @@ public class TsFileRestorableReaderTest {
 
   @Test
   public void testToReadDamagedFileNoRepair() throws IOException {
-    File file = TSFileFactory.INSTANCE.getFile(FILE_PATH);
+    File file = fsFactory.getFile(FILE_PATH);
 
     TsFileGeneratorForTest.writeFileWithOneIncompleteChunkHeader(file);
     // This should throw an Illegal Argument Exception

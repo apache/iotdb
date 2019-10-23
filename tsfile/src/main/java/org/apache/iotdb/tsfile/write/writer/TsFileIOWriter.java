@@ -46,7 +46,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.fileSystem.FileOutputFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -123,7 +123,7 @@ public class TsFileIOWriter {
    */
   public TsFileIOWriter(TsFileOutput out, List<ChunkGroupMetaData> chunkGroupMetaDataList)
       throws IOException {
-    this.out = FileOutputFactory.INSTANCE.getTsFileOutput(file.getPath(), false); //NOTE overwrite false here
+    this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), false); //NOTE overwrite false here
     this.chunkGroupMetaDataList = chunkGroupMetaDataList;
     if (chunkGroupMetaDataList.isEmpty()) {
       startFile();

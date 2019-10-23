@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -37,7 +36,7 @@ import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
@@ -50,16 +49,16 @@ public class TsFileSequenceRead {
       filename = args[0];
     }
     TsFileSequenceReader reader = new TsFileSequenceReader(filename);
-    System.out.println("file length: " + TSFileFactory.INSTANCE.getFile(filename).length());
+    System.out.println("file length: " + FSFactoryProducer.getFSFactory().getFile(filename).length());
     System.out.println("file magic head: " + reader.readHeadMagic());
     System.out.println("file magic tail: " + reader.readTailMagic());
     System.out.println("Level 1 metadata position: " + reader.getFileMetadataPos());
     System.out.println("Level 1 metadata size: " + reader.getFileMetadataSize());
     TsFileMetaData metaData = reader.readFileMetadata();
-//     Sequential reading of one ChunkGroup now follows this order:
-//     first SeriesChunks (headers and data) in one ChunkGroup, then the CHUNK_GROUP_FOOTER
-//     Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the marker) ahead and
-//     judge accordingly.
+    // Sequential reading of one ChunkGroup now follows this order:
+    // first SeriesChunks (headers and data) in one ChunkGroup, then the CHUNK_GROUP_FOOTER
+    // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the marker) ahead and
+    // judge accordingly.
     reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length);
     System.out.println("[Chunk Group]");
     System.out.println("position: " + reader.position());

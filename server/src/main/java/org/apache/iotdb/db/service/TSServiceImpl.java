@@ -34,6 +34,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
@@ -56,10 +57,12 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.QueryInBatchStmtException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.Metadata;
+import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
@@ -129,6 +132,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
+  private static final int MAX_SIZE = 200;
+  private static final int DELETE_SIZE = 50;
+  public static Vector<SqlArgument> sqlArgumentsList = new Vector<>();
 
   protected QueryProcessor processor;
   // Record the username for every rpc connection. Username.get() is null if
@@ -532,6 +538,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
+    long startTime = System.currentTimeMillis();
+    TSExecuteStatementResp resp;
+    SqlArgument sqlArgument;
     try {
       if (!checkLogin()) {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
@@ -575,7 +584,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       PhysicalPlan physicalPlan;
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
-        return executeQueryStatement(statement, physicalPlan);
+        resp = executeQueryStatement(statement, physicalPlan);
+        long endTime = System.currentTimeMillis();
+        sqlArgument = new SqlArgument(resp,physicalPlan,statement,startTime,endTime);
+        sqlArgumentsList.add(sqlArgument);
+        if (sqlArgumentsList.size() > MAX_SIZE) {
+          for (int i = 0; i < DELETE_SIZE; i++) {
+            sqlArgumentsList.remove(0);
+          }
+        }
+        return resp;
       } else {
         return executeUpdateStatement(physicalPlan);
       }
@@ -742,7 +760,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     // check file level set
     try {
       checkFileLevelSet(paths);
-    } catch (PathErrorException e) {
+    } catch (StorageGroupException e) {
       logger.error("meet error while checking file level.", e);
       return getTSExecuteStatementResp(
           getStatus(TSStatusCode.CHECK_FILE_LEVEL_ERROR, e.getMessage()));
@@ -820,7 +838,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  private void checkFileLevelSet(List<Path> paths) throws PathErrorException {
+  private void checkFileLevelSet(List<Path> paths) throws StorageGroupException {
     MManager.getInstance().checkFileLevel(paths);
   }
 

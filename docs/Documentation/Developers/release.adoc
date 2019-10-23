@@ -1,0 +1,519 @@
+//
+//  Licensed to the Apache Software Foundation (ASF) under one or more
+//  contributor license agreements.  See the NOTICE file distributed with
+//  this work for additional information regarding copyright ownership.
+//  The ASF licenses this file to You under the Apache License, Version 2.0
+//  (the "License"); you may not use this file except in compliance with
+//  the License.  You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
+//
+
+// NOTICE: This is based on the instructions from the PLC4X Project which are available under
+// src/site/developers/release.adoc or http://plc4x.apache.org/developers/release.html
+// most of the credits also go there!
+
+include::{pom-adoc}[]
+:imagesdir: ../images/
+:icons: font
+
+== Releasing IoTDB
+
+=== Preparing your system for being able to release
+
+As part of the release process, Maven will upload maven release artifacts to a so-called staging repository.
+
+This can be thought of as an ad-hoc Maven repository that contains only the artifacts for one release.
+This helps reviewers to see what's in the convenience maven package and to release that to the public repos with one click.
+
+But in order to be allowed to upload artifacts, your account has to be enabled for this and you have to tell Maven about your credentials.
+
+:current-full-version:
+
+In order to do this, you should provide these credentials via `.m2/settings.xml`.
+
+So if you don't already have one, you should create a `.m2` directory in your user home and inside that create a `settings.xml` file with at least this content:
+
+   <?xml version="1.0" encoding="UTF-8"?>
+   <settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.1.0 http://maven.apache.org/xsd/settings-1.1.0.xsd" xmlns="http://maven.apache.org/SETTINGS/1.1.0"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+     <servers>
+       <!-- Apache Repo Settings -->
+       <server>
+           <id>apache.snapshots.https</id>
+           <username>{user-id}</username>
+           <password>{user-pass}</password>
+       </server>
+       <server>
+           <id>apache.releases.https</id>
+           <username>{user-id}</username>
+           <password>{user-pass}</password>
+       </server>
+     </servers>
+   </settings>
+
+This tells maven to use above credentials as soon as a repository with the id `apache.snapshots.https` or `apache.releases.https` is being used.
+For a release all you need is the `releases` repo, but it is good to have the other in place as it enables you to also deploy SNAPSHOTs from your system.
+There repos are defined in the `apache` parent pom and is identical for all Apache projects.
+
+Additionally all artifacts are automatically signed by the release build. In order to be able to do this you need to setup GPG.
+
+The key being used to sign the artifacts will have to be linked to your Apache E-Mail ({apache-id}@apache.org) and verified by at least one fellow Apache committer (Ideally more) that have trusted keys themselves.
+Usually for this you have to get in touch - in real life - with any Apache committer with a trusted key.
+Attending an `ApacheCon` is usually a great way to do this as usually every ApacheCon has a `Key Signing event` in it's schedule.
+He can then sign your key and hereby enable you to sign Apache release artifacts.
+
+There's a detailed description https://github.com/apache/incubator-pulsar/wiki/Create-GPG-keys-to-sign-release-artifacts[here].
+
+If you happen to have multiple keys, adding the following profile to your `settings.xml` should help:
+
+    <profile>
+      <id>apache-release</id>
+      <properties>
+        <gpg.keyname>5C60D6B9</gpg.keyname><!-- Your GPG Keyname here -->
+        <!-- Use an agent: Prevents being asked for the password during the build -->
+        <gpg.useagent>true</gpg.useagent>
+        <gpg.passphrase>topsecret-password</gpg.passphrase>
+      </properties>
+    </profile>
+
+=== Preparing the codebase for a release
+
+Usually you will have to update the RELEASE_NOTES document to the new version.
+I would suggest doing this prior to the branch as otherwise you will definitely have to port it back to `develop`.
+So remove the `SNAPSHOT` and `(Unreleased)` markers from the file and add missing parts.
+
+Also if you are doing the first release in a new year, it is advisable to search for the old year and check if any occurrences are ok the way they are.
+Usually the `NOTICE` file has to be adjusted.
+
+=== Creating a release branch
+
+According to SemVer, we have: Major, Minor and Bugfix releases.
+
+For each new Major and Minor release we create a new branch at the beginning of a code-freeze phase.
+
+So if currently the project version in develop is `{current-full-version}-SNAPSHOT`, we create a branch `rel/{current-short-version}`.
+
+When creating the branch is exactly the moment in which the version in `develop` is incremented to the next minor version.
+
+This can and should be automated by the `maven-release-plugin`.
+
+Per default the plugin will ask for the working copy version during the build execution.
+This is the version the `develop` branch will be changed to.
+
+The parameter `autoVersionSubmodules` will tell the release plugin to release all modules with the same version.
+Otherwise we would have to define the working copy version for each module.
+
+   mvn release:branch -DbranchName=rel/{minor-version} -DautoVersionSubmodules=true
+
+Per default the plugin suggests the next bugfix version as working version, however we want it to use the next minor version.
+So in case of preparing the release branch for `0.5.0-SNAPSHOT` the command would be the following:
+
+[subs="verbatim,attributes"]
+----
+   mvn release:branch -DbranchName=rel/{current-short-version} -DautoVersionSubmodules=true
+----
+
+The plugin will then aks for the version:
+
+[subs="verbatim,attributes"]
+----
+   What is the new working copy version for "IoTDB"? (org.apache.iotdb:iotdb-parent) {current-next-incremental-version}-SNAPSHOT: : {current-next-minor-version}-SNAPSHOT
+----
+
+Where the suggested default is manually overridden.
+
+This step now should perform quite quickly as no build and no tests are involved.
+
+However in the end the versions of the `develop` branch are updated and a new `rel/{current-short-version}` branch is created.
+
+=== Preparing `develop` for the next iteration
+
+Now is a good time to add a new section to the `RELEASE_NOTES` document for the new `SNAPSHOT` version.
+
+Here comes a template:
+
+[subs="verbatim,attributes"]
+----
+==============================================================
+(Unreleased) Apache IoTDB {current-next-minor-version}-SNAPSHOT
+==============================================================
+
+New Features
+------------
+
+Incompatible changes
+--------------------
+
+Bug Fixes
+---------
+
+// Rest of the file
+
+----
+
+Also be sure to do a quick full-text-search to check if the version was updated correctly everywhere.
+
+WARNING: If you find anything here, you will need to pay attention during the release.
+
+=== Release stabilization phase
+
+Now usually comes a phase in which last tests and checks should be perfomed.
+
+If any problems are found they have to be fixed in the release branch.
+
+Changes should either be re applied in `develop` or `cherry-picked`, however merging things back can cause a lot of problems ans we no longer have the same versions.
+
+=== Preparing a release
+
+As especially when switching a lot between different branches, it is recommended to do a clean checkout of the repository.
+Otherwise a lot of directories can be left over, which would be included in the source-release zip.
+In order to prepare a release-candidate, the first step is switching to the corresponding release-branch.
+
+After that, the following command will to all preparation steps for the release:
+
+   mvn release:prepare -DautoVersionSubmodules=true
+
+In general the plugin will now ask you 3 questions:
+
+1. The version we want to release as (It will suggest the version you get by omitting the `-SNAPSHOT` suffix)
+2. The name of the tag the release commit will be tagged with in the SCM (Name it `release/{release-version}` (`release/{current-full-version}` in our case)
+3. The next development version (The version present in the pom after the release) (`{current-next-minor-version}` in our case)
+
+Usually for 1 and 3 the defaults are just fine, make sure the tag name is correct as this usually is different.
+
+We currently have a dependency to a SNAPSHOT dependency in the sandbox module.
+The release plugin will complain about this and we will not be able to release this way.
+As this in the sandbox module, we can force the plugin to continue by appending:
+
+   -DignoreSnapshots=true
+
+However it is important to check that nowhere else SNAPSHOT versions are referenced.
+
+What the plugin now does, is automatically execute the following operations:
+
+1. Check we aren't referencing any `SNAPSHOT` dependencies.
+2. Update all pom versions to the release version.
+3. Run a build with all tests
+4. Commit the changes (commit message: `[maven-release-plugin] prepare release release/{current-full-version}`)
+5. Push the commit
+6. Tag the commit
+7. Update all poms to the next development version.
+8. Commit the changes (commit message: `[maven-release-plugin] prepare for next development iteration`)
+9. Push the commit
+
+However this just prepared the git repository for the release, we have to perform the release to produce and stage the release artifacts.
+
+Please verify the git repository at: https://gitbox.apache.org/repos/asf?p=incubator-iotdb.git
+is in the correct state. Please select the release branch and verify the commit log looks similar to this
+
+image::release-git-history.png[]
+
+It is important that the commit with the message "[maven-release-plugin] prepare release release/{current-full-version}" is tagged with the release tag (in this case release/0.3.0)
+
+If you check the commit itself, it should mainly consist of version updates like this:
+
+image::release-git-diff-prepare-release.png[]
+
+The root pom has a few more changes, but in general this should be what you are seeing.
+
+After that should come a second commit:
+
+image::release-git-diff-next-development-iteration.png[]
+
+This now updates the versions again, but this time from the release version to the one we selected for the next development iteration (in this case 0.3.1-SNAPSHOT)
+
+NOTE: If the commit history doesn't look like this, something went wrong.
+
+== What if something goes wrong?
+
+If something goes wrong, you can always execute:
+
+   mvn release:rollback
+
+And it will change the versions back and commit and push things.
+
+However it will not delete the tag in GIT (locally and remotely). So you have to do that manually or use a different tag next time.
+
+=== Performing a release
+
+This is done by executing another goal of the `maven-release-plugin`:
+
+   mvn release:perform
+
+This executes automatically as all information it requires is located in the `release.properties` file the `prepare` goal prepared.
+
+The first step is that the `perform` goal checks out the previously tagged revision into the root modules `target/checkout` directory.
+Here it automatically executes a maven build (You don't have to do this, it's just that you know what's happening):
+
+   mvn clean deploy -P apache-release
+
+As the `apache-release` profile is also activated, this builds and tests the project as well as creates the JavaDocs, Source packages and signs each of these with your PGP key.
+
+As this time the build is building with release versions, Maven will automatically choose the release url for deploying artifacts.
+
+The way things are setup in the apache parent pom, is that release artifacts are deployed to a so-called `staging repository`.
+
+You can think of a `staging repository` as a dedicated repository created on the fly as soon as the first artifact comes in.
+
+After the build you will have a nice and clean Maven repository at https://repository.apache.org/ that contains only artifacts from the current build.
+
+After the build it is important to log in to `Nexus` at https://repository.apache.org/, select `Staging Repositories` and find the repository with the name: `orgapacheiotdb-{somenumber}`.
+
+Select that and click on the `Close` button.
+
+Now Nexus will do some checks on the artifacts and check the signatures.
+
+As soon as it's finished, we are done on the Maven side and ready to continue with the rest of the release process.
+
+A release build also produces a so-called `source-assembly` zip.
+
+This contains all sources of the project and will be what's actually the release from an Apache point of view and will be the thing we will be voting on.
+
+This file will also be signed and `SHA512` hashes will be created.
+
+=== Staging a release
+
+Each new release and release-candidate has to be staged in the Apache SVN under:
+
+https://dist.apache.org/repos/dist/dev/iotdb/
+
+The directory structure of this directory is as follows:
+
+[subs="verbatim,attributes"]
+----
+   ./KEYS
+   ./{current-full-version}/
+   ./{current-full-version}/rc1
+   ./{current-full-version}/rc1/README
+   ./{current-full-version}/rc1/RELEASE_NOTES
+   ./{current-full-version}/rc1/apache-iotdb-{current-full-version}-source-release.zip
+   ./{current-full-version}/rc1/apache-iotdb-{current-full-version}-source-release.zip.sha512
+----
+
+The `KEYS` file contains the PGP public key which belongs to the private key used to sign the release artifacts.
+
+If this is your first release be sure to add your key to this file.
+For the format have a look at the file itself.
+It should contain all the information needed.
+
+Be sure to stage exactly the `README` and `RELEASE_NOTES` files contained in the root of your project.
+Ideally you just copy them there from there.
+
+All of the three `*-source-relese.zip*` artifacts should be located in the directory: `target/checkout/target`
+
+So after committing these files to SVN you are ready to start the vote.
+
+=== Starting a vote on the mailing list
+
+After staging the release candidate in the Apache SVN, it is time to actually call out the vote.
+
+For this we usually send two emails.
+The following is the one used to do our first release:
+
+```
+E-Mail Topic:
+[VOTE] Apache IoTDB (Incubating) 0.8.0 RC1
+
+Message:
+Apache IoTDB (Incubating) 0.8.0 has been staged under [2] and it’s time to vote
+on accepting it for release.  All Maven artifacts are available under [1].
+If approved we will seek final release approval from the IPMC.
+Voting will be open for 72hr.
+
+A minimum of 3 binding +1 votes and more binding +1 than binding -1
+are required to pass.
+
+Release tag: release/0.8.0
+Hash for the release tag: 040cbd175b92969cbabf5548fe3df1cac7c88011
+
+Per [3] "Before voting +1 [P]PMC members are required to download
+the signed source code package, compile it as provided, and test
+the resulting executable on their own platform, along with also
+verifying that the package meets the requirements of the ASF policy
+on releases."
+
+You can achieve the above by following [4].
+
+[ ]  +1 accept (indicate what you validated - e.g. performed the non-RM items in [4])
+[ ]  -1 reject (explanation required)
+
+[1] https://repository.apache.org/content/repositories/orgapacheiotdb-1001
+[2] https://dist.apache.org/repos/dist/dev/incubator/iotdb/0.8.0/rc1
+[3] https://www.apache.org/dev/release.html#approving-a-release
+[4] https://cwiki.apache.org/confluence/display/IOTDB/Validating+a+staged+Release
+```
+
+As it is sometimes to do the vote counting, if voting and discussions are going on in the same thread, we send a second email:
+
+
+```
+E-Mail Topic:
+[DISCUSS] Apache IoTDB (Incubating) 0.8.0 RC1
+
+Message:
+This is the discussion thread for the corresponding VOTE thread.
+
+Please keep discussions in this thread to simplify the counting of votes.
+
+If you have to vote -1 please mention a brief description on why and then take the details to this thread.
+```
+
+Now we have to wait 72 hours till we can announce the result of the vote.
+
+This is an Apache policy to make it possible for anyone to participate in the vote, no matter where that person lives and not matter what weekends or public holidays might currently be.
+
+The vote passes, if at least 3 `+1` votes are received and more `+1` are received than `-1`.
+
+After the 72 hour minimum wait period is over and we have fulfilled the requirement of at least 3 +1 votes and more +1 than -1, a final reply is sent to the vote thread with a prefix of `[RESULT]` in the title in which the summary of the vote is presented in an aggregated form.
+
+[subs="verbatim,attributes"]
+----
+    E-Mail Topic:
+    [RESULT] [VOTE] Apache IoTDB {current-full-version} RC1
+
+    Message:
+    So, the vote passes with 3 +1 votes by PMC members and one +1 vote by a non PMC member.
+
+    Chris
+----
+
+=== Releasing after a successful vote
+
+As soon as the votes are finished and the results were in favor of a release, the staged artifacts can be released.
+This is done by moving them inside the Apache SVN.
+
+[subs="verbatim,attributes"]
+----
+   svn move -m "Release Apache PLC4X {current-full-version}" \
+       https://dist.apache.org/repos/dist/dev/plc4x/{current-full-version}/rc1 \
+       https://dist.apache.org/repos/dist/release/plc4x/{current-full-version}
+----
+
+This will make the release artifacts available and will trigger them being copied to mirror sites.
+
+This is also the reason why you should wait at least 24 hours before sending out the release notification emails.
+
+=== Cleaning up older release versions
+
+As a lot of mirrors are serving our releases, it is the Apache policy to clean old releases from the repo if newer versions are released.
+
+This can be done like this:
+
+    svn delete https://dist.apache.org/repos/dist/release/plc4x/0.3.0/ -m"deleted version 0.3.0"
+
+After this https://dist.apache.org/repos/dist/release/plc4x should only contain the latest release directory.
+
+=== Releasing the Maven artifacts
+
+The probably simplest part is releasing the Maven artifacts.
+
+In order to do this, the release manager logs into Nexus at https://repository.apache.org/, selects the staging repository and clicks on the `Release` button.
+
+This will move all artifacts into the Apache release repository and delete the staging repository after that.
+
+All release artifacts released to the Apache release repo, will automatically be synced to Maven central.
+
+=== Merge back release version to master branch
+
+The master branch should always point to the last released version.
+This has to be done with git
+
+[subs="verbatim,attributes"]
+----
+git checkout master
+git merge release/{current-full-version}
+----
+
+When there are conflicts it could help to use the "theirs" merge strategy, i.e.,
+
+[subs="verbatim,attributes"]
+----
+git merge -X theirs release/{current-full-version}
+----
+
+Possibly a manual conflict resolution has to be done afterwards. After that, changes need to
+be pushed.
+
+=== Updating Jira
+
+1. Set the released version to "released" and set the "release-date"
+2. Add the next version to the versions.
+
+=== Update the download site
+
+The URL http://plc4x.apache.org/users/download.html has to be changed and the current release
+has to be listed there.
+This is done by changing the `download.adoc` under `src/site/users/` (**in the develop branch, as this is where the site is generated from!**)
+
+1. Copy the last release down to _Previous Releases_
+2. Point the download links of the last release to archive, e.g. `http://archive.apache.org/dist/plc4x/{current-full-version}/apache-plc4x-{current-full-version}-source-release.zip`
+3. Add the new Release under _Current Releases_ and change all links.
+_Note: Please add an anchor for the toc_
+4. Update the sections for the changes according to the _RELEASE_NOTES_ from the release
+_Note: Transfer all to ascii-doc notation to ensure correct rendering of the site_
+_Also remove the JIRA TICKET ids in Front_
+
+=== Notifying the world
+
+Make sure you have given the Apache mirrors time to fetch the release files by waiting at least 24 hours after moving the release candidate to the release part of the SVN.
+
+After that it is time to announce your release to the world:
+
+[subs="verbatim,attributes"]
+----
+    From:
+your apache email address
+    To:
+announce@apache.org
+
+    CC:
+dev@plc4x.apache.org
+
+    E-Mail Topic:
+[ANNOUNCE] Apache PLC4X {current-full-version} released
+
+    Message:
+The Apache PLC4X team is pleased to announce the release of Apache PLC4X {current-full-version}
+
+PLC4X is a set of libraries for communicating with industrial programmable
+logic controllers (PLCs) using a variety of protocols but with a shared API.
+
+The current release contains drivers able to communicate with industrial PLCs using one of the following protocols:
+
+  *   Siemens S7 (0x32)
+  *   Beckhoff ADS
+  *   Modbus
+  *   EtherNet/IP
+
+Beyond that we also provide integration modules for the following Apache projects and frameworks:
+
+  *   Apache Edgent (Incubating)
+  *   Apache Camel
+  *   Apache Kafka (Kafka Connect)
+
+Visit the Apache PLC4X website [1] for general information or
+the downloads page [2] for release notes and download information.
+
+Regards,
+The Apache PLC4X team
+
+[1] http://plc4x.apache.org
+[2] http://plc4x.apache.org/users/download.html
+----
+
+It is important to note that you have to send this email from your apache email address or it will be rejected.
+This wasn't very simple for me to setup.
+A general description can be found here:
+https://reference.apache.org/committer/email
+Here's what I did in google mail to allow sending of emails:
+https://gmail.googleblog.com/2009/07/send-mail-from-another-address-without.html
+Note ... you will be able to select the alternate sending address if you click into the recipients line of a new email (Not very intuitive).
+
+After that email is out the door, you're done. Congrats!
