@@ -19,17 +19,26 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
 public class QueryPlan extends PhysicalPlan {
 
   private List<Path> paths = null;
+  private List<TSDataType> dataTypes = null;
   private IExpression expression = null;
+
+  private boolean isGroupByDevice = false; // for group by device sql
+  private List<String> measurementColumnList; // for group by device sql
+  private Map<String, Set<String>> measurementColumnsGroupByDevice; // for group by device sql
+  private Map<String, TSDataType> dataTypeConsistencyChecker; // for group by device sql
 
   public QueryPlan() {
     super(true);
@@ -66,5 +75,47 @@ public class QueryPlan extends PhysicalPlan {
 
   public void setPaths(List<Path> paths) {
     this.paths = paths;
+  }
+
+  public List<TSDataType> getDataTypes() {
+    return dataTypes;
+  }
+
+  public void setDataTypes(List<TSDataType> dataTypes) {
+    this.dataTypes = dataTypes;
+  }
+
+  public boolean isGroupByDevice() {
+    return isGroupByDevice;
+  }
+
+  public void setGroupByDevice(boolean groupByDevice) {
+    isGroupByDevice = groupByDevice;
+  }
+
+  public void setMeasurementColumnList(List<String> measurementColumnList) {
+    this.measurementColumnList = measurementColumnList;
+  }
+
+  public List<String> getMeasurementColumnList() {
+    return measurementColumnList;
+  }
+
+  public void setMeasurementColumnsGroupByDevice(
+      Map<String, Set<String>> measurementColumnsGroupByDevice) {
+    this.measurementColumnsGroupByDevice = measurementColumnsGroupByDevice;
+  }
+
+  public Map<String, Set<String>> getMeasurementColumnsGroupByDevice() {
+    return measurementColumnsGroupByDevice;
+  }
+
+  public void setDataTypeConsistencyChecker(
+      Map<String, TSDataType> dataTypeConsistencyChecker) {
+    this.dataTypeConsistencyChecker = dataTypeConsistencyChecker;
+  }
+
+  public Map<String, TSDataType> getDataTypeConsistencyChecker() {
+    return dataTypeConsistencyChecker;
   }
 }

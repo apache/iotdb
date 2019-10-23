@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.hadoop;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.DataOutputBuffer;
+import org.apache.iotdb.hadoop.tsfile.TSFInputSplit;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -32,7 +33,7 @@ import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.*;
 
 /**
- * Test the {@link org.apache.iotdb.tsfile.hadoop.TSFInputSplit}
+ * Test the {@link TSFInputSplit}
  * Assert the readFields function and write function is right
  *
  * @author Yuan Tian
