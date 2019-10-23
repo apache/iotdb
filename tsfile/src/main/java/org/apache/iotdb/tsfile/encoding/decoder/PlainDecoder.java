@@ -67,13 +67,11 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public long readLong(ByteBuffer buffer) {
-
     return buffer.getLong();
   }
 
   @Override
   public float readFloat(ByteBuffer buffer) {
-
     return buffer.getFloat();
   }
 
