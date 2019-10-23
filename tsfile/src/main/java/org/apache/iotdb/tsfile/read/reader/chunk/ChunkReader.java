@@ -47,8 +47,7 @@ public abstract class ChunkReader {
   private Decoder valueDecoder;
   private Decoder timeDecoder = Decoder.getDecoderByType(
       TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-      TSDataType.INT64, 
-      EndianType.valueOf(TSFileDescriptor.getInstance().getConfig().getEndian()));
+      TSDataType.INT64);
 
   private Filter filter;
 
@@ -80,8 +79,7 @@ public abstract class ChunkReader {
     chunkHeader = chunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
     valueDecoder = Decoder
-        .getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType(),
-        EndianType.valueOf(TSFileDescriptor.getInstance().getConfig().getEndian()));
+        .getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
     data = new BatchData(chunkHeader.getDataType());
     hasCachedPageHeader = false;
   }

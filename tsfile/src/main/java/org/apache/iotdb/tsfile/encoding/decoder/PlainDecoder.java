@@ -57,41 +57,28 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public short readShort(ByteBuffer buffer) {
-    if (this.endianType == EndianType.LITTLE_ENDIAN) {
-      buffer.order(ByteOrder.LITTLE_ENDIAN);
-    }
     return buffer.getShort();
   }
 
   @Override
   public int readInt(ByteBuffer buffer) {
-    if (this.endianType == EndianType.LITTLE_ENDIAN) {
-      buffer.order(ByteOrder.LITTLE_ENDIAN);
-    }
     return buffer.getInt();
   }
 
   @Override
   public long readLong(ByteBuffer buffer) {
-    if (this.endianType == EndianType.LITTLE_ENDIAN) {
-      buffer.order(ByteOrder.LITTLE_ENDIAN);
-    }
+
     return buffer.getLong();
   }
 
   @Override
   public float readFloat(ByteBuffer buffer) {
-    if (this.endianType == EndianType.LITTLE_ENDIAN) {
-      buffer.order(ByteOrder.LITTLE_ENDIAN);
-    }
+
     return buffer.getFloat();
   }
 
   @Override
   public double readDouble(ByteBuffer buffer) {
-	if (this.endianType == EndianType.LITTLE_ENDIAN) {
-	  return Double.longBitsToDouble(readLong(buffer));
-	}
     return buffer.getDouble();
   }
 
