@@ -479,54 +479,54 @@ public class DatetimeUtils {
    * convert duration string to millisecond, microsecond or nanosecond.
    */
   public static long convertDurationStrToLong(long value, String unit, String timestampPrecision) {
-
+    DurationUnit durationUnit = DurationUnit.valueOf(unit);
     long res = value;
-    switch (unit) {
-      case "y":
-        res *= 365 * 86400_000;
+    switch (durationUnit) {
+      case y:
+        res *= 365 * 86400_000L;
         break;
-      case "mo":
-        res *= 30 * 86400_000;
+      case mo:
+        res *= 30 * 86400_000L;
         break;
-      case "w":
-        res *= 7 * 86400_000;
+      case w:
+        res *= 7 * 86400_000L;
         break;
-      case "d":
-        res *= 86400_000;
+      case d:
+        res *= 86400_000L;
         break;
-      case "h":
-        res *= 3600_000;
+      case h:
+        res *= 3600_000L;
         break;
-      case "m":
-        res *= 60_000;
+      case m:
+        res *= 60_000L;
         break;
-      case "s":
-        res *= 1_000;
+      case s:
+        res *= 1_000L;
         break;
       default:
         break;
     }
 
     if (timestampPrecision.equals("us")) {
-      if (unit.equals("ns")) {
+      if (unit.equals(DurationUnit.ns)) {
         return value / 1000;
-      } else if (unit.equals("us")) {
+      } else if (unit.equals(DurationUnit.us)) {
         return value;
       } else {
         return res * 1000;
       }
     } else if (timestampPrecision.equals("ns")) {
-      if (unit.equals("ns")) {
+      if (unit.equals(DurationUnit.ns)) {
         return value;
-      } else if (unit.equals("us")) {
+      } else if (unit.equals(DurationUnit.us)) {
         return value * 1000;
       } else {
         return res * 1000_000;
       }
     } else {
-      if (unit.equals("ns")) {
+      if (unit.equals(DurationUnit.ns)) {
         return value / 1000_0000;
-      } else if (unit.equals("us")) {
+      } else if (unit.equals(DurationUnit.us)) {
         return value / 1000;
       } else {
         return res;
@@ -542,5 +542,9 @@ public class DatetimeUtils {
   public static ZonedDateTime convertMillsecondToZonedDateTime(long millisecond) {
     return ZonedDateTime.ofInstant(Instant.ofEpochMilli(millisecond),
         IoTDBDescriptor.getInstance().getConfig().getZoneID());
+  }
+
+  public enum DurationUnit {
+    y, mo, w, d, h, m, s, ms, us, ns
   }
 }

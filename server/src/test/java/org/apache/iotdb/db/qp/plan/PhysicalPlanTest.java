@@ -305,7 +305,7 @@ public class PhysicalPlanTest {
   @Test
   public void testQuery7()
       throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
-    String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 1571194740000ms - 1d5h or time < 10";
+    String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 2019-10-16 10:59:00+08:00 - 1d5h or time < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
     IExpression expect = new GlobalTimeExpression(

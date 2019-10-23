@@ -1956,7 +1956,6 @@ public class SQLParserTest {
     ArrayList<String> rec = new ArrayList<>();
     String sqlStr = "select * from root.vehicle.d1 where time = 2016-11-16 16:22:33+08:00 - 7y + 90";
     AstNode astTree = ParseGenerator.generateAST(sqlStr);
-    System.out.println(astTree.toStringTree());
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -1966,6 +1965,12 @@ public class SQLParserTest {
       i++;
     }
     assertEquals(rec.size(), ans.size());
+  }
+
+  @Test(expected = ParseException.class)
+  public void testDuration3() throws ParseException {
+    String sqlStr = "select * from root.vehicle.d1 where time = 1d - 7y";
+    ParseGenerator.generateAST(sqlStr);
   }
 
   public void recursivePrintSon(Node ns, ArrayList<String> rec) {

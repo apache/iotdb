@@ -370,8 +370,7 @@ execStatement
 
 
 dateFormat
-    : duration=Duration -> ^(TOK_DURATION $duration)
-    | datetime=DATETIME -> ^(TOK_DATETIME $datetime)
+    : datetime=DATETIME -> ^(TOK_DATETIME $datetime)
     | func=Identifier LPAREN RPAREN -> ^(TOK_DATETIME $func)
     ;
 
@@ -380,13 +379,18 @@ dateFormatWithNumber
     | integer -> integer
     ;
 
+durationExpr
+    : duration=Duration -> ^(TOK_DURATION $duration)
+    ;
+
+dateSubExpression
+    : dateFormatWithNumber ((PLUS^ | MINUS^) durationExpr)*
+    ;
+
 dateExpression
     : dateExpr=dateSubExpression -> ^(TOK_DATE_EXPR $dateExpr)
     ;
 
-dateSubExpression
-    : dateFormatWithNumber ((PLUS^ | MINUS^) dateFormatWithNumber)*
-    ;
 
 
 /*
