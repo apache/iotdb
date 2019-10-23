@@ -25,9 +25,10 @@
 
 <!-- TOC -->
 
-- [Chapter 9: System Tools](#chapter-9-system-tools)
+- [Chapter 8: System Tools](#chapter-8-system-tools)
     - [Data Import](#data-import)
 - [Introduction](#introduction)
+- [Application Scenario](#application-scenario)
 - [Configuration](#configuration)
     - [Sync Receiver](#sync-receiver)
     - [Sync Sender](#sync-sender)
@@ -48,6 +49,10 @@ On the receiver side of the sync, the sync module is embedded in the engine of I
 The sync tool has a many-to-one sender-receiver mode - that is, one sync receiver can receive data from multiple sync senders simultaneously while one sync sender can only send data to one sync receiver.
 
 > Note: Before using the sync tool, the client and server need to be configured separately. The configuration is detailed in Sections Configuration.
+# Application Scenario
+In the case of a factory application, there are usually multiple sub-factories and multiple general(main) factories. Each sub-factory uses an IoTDB instance to collect data, and then synchronize the data to the general factory for backup or analysis. A general factory can receive data from multiple sub-factories and a sub-factory can also synchronize data to multiple general factories. In this scenario, each IoTDB instance manages different devices. 
+      
+In the sync module, each sub-factory is a sender, a general factory is a receiver, and senders periodically synchronizes the data to receivers. In the above application scenario, the data of one device can only be collected by one sender, so there is no device overlap between the data synchronized by multiple senders. Otherwise, the application scenario of the sync module is not satisfied.
 # Configuration
 ## Sync Receiver
 The parameter configuration of the sync receiver is located in the configuration file `iotdb-engine.properties` of IoTDB, and its directory is `$IOTDB_HOME/conf/iotdb-engine.properties`. In this configuration file, there are four parameters related to the sync receiver. The configuration instructions are as follows:
