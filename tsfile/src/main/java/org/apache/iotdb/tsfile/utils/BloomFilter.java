@@ -130,7 +130,7 @@ public class BloomFilter {
       for (int i = 0; i < len; i++) {
         result = seed * result + value.charAt(i);
       }
-      return (cap - 1) & result;
+      return Math.abs(result) % cap;
     }
   }
 }
