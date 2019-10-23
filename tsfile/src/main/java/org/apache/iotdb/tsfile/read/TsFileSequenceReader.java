@@ -96,6 +96,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
     this.file = file;
     tsFileInput = FSFactoryProducer.getFileInputFactory().getTsFileInput(file);
+    // old version number of TsFile using little endian starts with "v"
     this.endianType = this.readVersionNumber().startsWith("v") ? "LITTLE_ENDIAN" : "BIG_ENDIAN";
     try {
       if (loadMetadataSize) {
@@ -236,7 +237,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
   
   public String getEndianType() {
-	  return this.endianType;
+    return this.endianType;
   }
 
   /**
