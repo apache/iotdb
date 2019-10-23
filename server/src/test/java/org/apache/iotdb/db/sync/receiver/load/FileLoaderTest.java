@@ -86,202 +86,97 @@ public class FileLoaderTest {
     EnvironmentUtils.cleanEnv();
   }
 
-//  @Test
-//  public void loadNewTsfiles() throws IOException, StorageEngineException {
-//    fileLoader = FileLoader.createFileLoader(getReceiverFolderFile());
-//    Map<String, List<File>> allFileList = new HashMap<>();
-//    Map<String, Set<String>> correctSequenceLoadedFileMap = new HashMap<>();
-//
-//    // add some new tsfiles
-//    Random r = new Random(0);
-//    long time = System.currentTimeMillis();
-//    for (int i = 0; i < 3; i++) {
-//      for (int j = 0; j < 10; j++) {
-//        allFileList.putIfAbsent(SG_NAME + i, new ArrayList<>());
-//        correctSequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-//        String rand = String.valueOf(r.nextInt(10000));
-//        String fileName =
-//            getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + (time + i * 100
-//                + j) + IoTDBConstant.TSFILE_NAME_SEPARATOR + rand
-//                + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0.tsfile";
-//        File syncFile = new File(fileName);
-//        File dataFile = new File(
-//            syncFile.getParentFile().getParentFile().getParentFile().getParentFile()
-//                .getParentFile(), IoTDBConstant.SEQUENCE_FLODER_NAME
-//            + File.separatorChar + syncFile.getParentFile().getName() + File.separatorChar
-//            + syncFile.getName());
-//        correctSequenceLoadedFileMap.get(SG_NAME + i).add(dataFile.getAbsolutePath());
-//        allFileList.get(SG_NAME + i).add(syncFile);
-//        if (!syncFile.getParentFile().exists()) {
-//          syncFile.getParentFile().mkdirs();
-//        }
-//        if (!syncFile.exists() && !syncFile.createNewFile()) {
-//          LOGGER.error("Can not create new file {}", syncFile.getPath());
-//        }
-//        if (!new File(syncFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
-//            && !new File(syncFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX)
-//            .createNewFile()) {
-//          LOGGER.error("Can not create new file {}", syncFile.getPath());
-//        }
-//        TsFileResource tsFileResource = new TsFileResource(syncFile);
-//        tsFileResource.getStartTimeMap().put(String.valueOf(i), (long) j * 10);
-//        tsFileResource.getEndTimeMap().put(String.valueOf(i), (long) j * 10 + 5);
-//        tsFileResource.serialize();
-//      }
-//    }
-//
-//    for (int i = 0; i < 3; i++) {
-//      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
-//      assertTrue(processor.getSequenceFileList().isEmpty());
-//      assertTrue(processor.getUnSequenceFileList().isEmpty());
-//    }
-//
-//    assertTrue(getReceiverFolderFile().exists());
-//    for (List<File> set : allFileList.values()) {
-//      for (File newTsFile : set) {
-//        if (!newTsFile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
-//          fileLoader.addTsfile(newTsFile);
-//        }
-//      }
-//    }
-//    fileLoader.endSync();
-//
-//    try {
-//      long waitTime = 0;
-//      while (FileLoaderManager.getInstance()
-//          .containsFileLoader(getReceiverFolderFile().getName())) {
-//        Thread.sleep(100);
-//        waitTime += 100;
-//        LOGGER.info("Has waited for loading new tsfiles {}ms", waitTime);
-//      }
-//    } catch (InterruptedException e) {
-//      LOGGER.error("Fail to wait for loading new tsfiles", e);
-//    }
-//
-//    assertFalse(new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists());
-//    Map<String, Set<String>> sequenceLoadedFileMap = new HashMap<>();
-//    for (int i = 0; i < 3; i++) {
-//      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
-//      sequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-//      assertEquals(10, processor.getSequenceFileList().size());
-//      for (TsFileResource tsFileResource : processor.getSequenceFileList()) {
-//        sequenceLoadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
-//      }
-//      assertTrue(processor.getUnSequenceFileList().isEmpty());
-//    }
-//
-//    assertEquals(sequenceLoadedFileMap.size(), correctSequenceLoadedFileMap.size());
-//    for (Entry<String, Set<String>> entry : correctSequenceLoadedFileMap.entrySet()) {
-//      String sg = entry.getKey();
-//      assertEquals(entry.getValue().size(), sequenceLoadedFileMap.get(sg).size());
-//      assertTrue(entry.getValue().containsAll(sequenceLoadedFileMap.get(sg)));
-//    }
-//
-//    // add some overlap new tsfiles
-//    fileLoader = FileLoader.createFileLoader(getReceiverFolderFile());
-//    Map<String, Set<String>> correctUnSequenceLoadedFileMap = new HashMap<>();
-//    allFileList = new HashMap<>();
-//    r = new Random(1);
-//    time = System.currentTimeMillis();
-//    for (int i = 0; i < 3; i++) {
-//      for (int j = 0; j < 10; j++) {
-//        allFileList.putIfAbsent(SG_NAME + i, new ArrayList<>());
-//        correctUnSequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-//        String rand = String.valueOf(r.nextInt(10000));
-//        String fileName =
-//            getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + (time + i * 100
-//                + j) + IoTDBConstant.TSFILE_NAME_SEPARATOR + rand
-//                + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0.tsfile";
-//        File syncFile = new File(fileName);
-//        File dataFile = new File(
-//            syncFile.getParentFile().getParentFile().getParentFile().getParentFile()
-//                .getParentFile(), IoTDBConstant.UNSEQUENCE_FLODER_NAME
-//            + File.separatorChar + syncFile.getParentFile().getName() + File.separatorChar
-//            + syncFile.getName());
-//        correctUnSequenceLoadedFileMap.get(SG_NAME + i).add(dataFile.getAbsolutePath());
-//        allFileList.get(SG_NAME + i).add(syncFile);
-//        if (!syncFile.getParentFile().exists()) {
-//          syncFile.getParentFile().mkdirs();
-//        }
-//        if (!syncFile.exists() && !syncFile.createNewFile()) {
-//          LOGGER.error("Can not create new file {}", syncFile.getPath());
-//        }
-//        if (!new File(syncFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
-//            && !new File(syncFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX)
-//            .createNewFile()) {
-//          LOGGER.error("Can not create new file {}", syncFile.getPath());
-//        }
-//        TsFileResource tsFileResource = new TsFileResource(syncFile);
-//        tsFileResource.getStartTimeMap().put(String.valueOf(i), (long) j * 10);
-//        tsFileResource.getEndTimeMap().put(String.valueOf(i), (long) j * 10 + 3);
-//        tsFileResource.serialize();
-//      }
-//    }
-//
-//    for (int i = 0; i < 3; i++) {
-//      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
-//      assertFalse(processor.getSequenceFileList().isEmpty());
-//      assertTrue(processor.getUnSequenceFileList().isEmpty());
-//    }
-//
-//    assertTrue(getReceiverFolderFile().exists());
-//    for (List<File> set : allFileList.values()) {
-//      for (File newTsFile : set) {
-//        if (!newTsFile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
-//          fileLoader.addTsfile(newTsFile);
-//        }
-//      }
-//    }
-//    fileLoader.endSync();
-//
-//    try {
-//      long waitTime = 0;
-//      while (FileLoaderManager.getInstance()
-//          .containsFileLoader(getReceiverFolderFile().getName())) {
-//        Thread.sleep(100);
-//        waitTime += 100;
-//        LOGGER.info("Has waited for loading new tsfiles {}ms", waitTime);
-//      }
-//    } catch (InterruptedException e) {
-//      LOGGER.error("Fail to wait for loading new tsfiles", e);
-//    }
-//
-//    assertFalse(new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists());
-//    sequenceLoadedFileMap = new HashMap<>();
-//    for (int i = 0; i < 3; i++) {
-//      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
-//      sequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-////      assertEquals(10, processor.getSequenceFileList().size());
-//      for (TsFileResource tsFileResource : processor.getSequenceFileList()) {
-//        sequenceLoadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
-//      }
-//      assertFalse(processor.getUnSequenceFileList().isEmpty());
-//    }
-//
-//    assertEquals(sequenceLoadedFileMap.size(), correctSequenceLoadedFileMap.size());
-//    for (Entry<String, Set<String>> entry : correctSequenceLoadedFileMap.entrySet()) {
-//      String sg = entry.getKey();
-//      assertEquals(entry.getValue().size(), sequenceLoadedFileMap.get(sg).size());
-//      assertTrue(entry.getValue().containsAll(sequenceLoadedFileMap.get(sg)));
-//    }
-//
-//    Map<String, Set<String>> unsequenceLoadedFileMap = new HashMap<>();
-//    for (int i = 0; i < 3; i++) {
-//      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
-//      unsequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
-//      assertEquals(10, processor.getUnSequenceFileList().size());
-//      for (TsFileResource tsFileResource : processor.getUnSequenceFileList()) {
-//        unsequenceLoadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
-//      }
-//    }
-//
-//    assertEquals(unsequenceLoadedFileMap.size(), correctUnSequenceLoadedFileMap.size());
-//    for (Entry<String, Set<String>> entry : correctUnSequenceLoadedFileMap.entrySet()) {
-//      String sg = entry.getKey();
-//      assertEquals(entry.getValue().size(), unsequenceLoadedFileMap.get(sg).size());
-//      assertTrue(entry.getValue().containsAll(unsequenceLoadedFileMap.get(sg)));
-//    }
-//  }
+  @Test
+  public void loadNewTsfiles() throws IOException, StorageEngineException {
+    fileLoader = FileLoader.createFileLoader(getReceiverFolderFile());
+    Map<String, List<File>> allFileList = new HashMap<>();
+    Map<String, Set<String>> correctSequenceLoadedFileMap = new HashMap<>();
+
+    // add some new tsfiles
+    Random r = new Random(0);
+    long time = System.currentTimeMillis();
+    for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 10; j++) {
+        allFileList.putIfAbsent(SG_NAME + i, new ArrayList<>());
+        correctSequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
+        String rand = String.valueOf(r.nextInt(10000));
+        String fileName =
+            getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + (time + i * 100
+                + j) + IoTDBConstant.TSFILE_NAME_SEPARATOR + rand
+                + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0.tsfile";
+        File syncFile = new File(fileName);
+        File dataFile = new File(
+            syncFile.getParentFile().getParentFile().getParentFile().getParentFile()
+                .getParentFile(), IoTDBConstant.SEQUENCE_FLODER_NAME
+            + File.separatorChar + syncFile.getParentFile().getName() + File.separatorChar
+            + syncFile.getName());
+        correctSequenceLoadedFileMap.get(SG_NAME + i).add(dataFile.getAbsolutePath());
+        allFileList.get(SG_NAME + i).add(syncFile);
+        if (!syncFile.getParentFile().exists()) {
+          syncFile.getParentFile().mkdirs();
+        }
+        if (!syncFile.exists() && !syncFile.createNewFile()) {
+          LOGGER.error("Can not create new file {}", syncFile.getPath());
+        }
+        if (!new File(syncFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
+            && !new File(syncFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX)
+            .createNewFile()) {
+          LOGGER.error("Can not create new file {}", syncFile.getPath());
+        }
+        TsFileResource tsFileResource = new TsFileResource(syncFile);
+        tsFileResource.getStartTimeMap().put(String.valueOf(i), (long) j * 10);
+        tsFileResource.getEndTimeMap().put(String.valueOf(i), (long) j * 10 + 5);
+        tsFileResource.serialize();
+      }
+    }
+
+    for (int i = 0; i < 3; i++) {
+      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
+      assertTrue(processor.getSequenceFileList().isEmpty());
+      assertTrue(processor.getUnSequenceFileList().isEmpty());
+    }
+
+    assertTrue(getReceiverFolderFile().exists());
+    for (List<File> set : allFileList.values()) {
+      for (File newTsFile : set) {
+        if (!newTsFile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
+          fileLoader.addTsfile(newTsFile);
+        }
+      }
+    }
+    fileLoader.endSync();
+
+    try {
+      long waitTime = 0;
+      while (FileLoaderManager.getInstance()
+          .containsFileLoader(getReceiverFolderFile().getName())) {
+        Thread.sleep(100);
+        waitTime += 100;
+        LOGGER.info("Has waited for loading new tsfiles {}ms", waitTime);
+      }
+    } catch (InterruptedException e) {
+      LOGGER.error("Fail to wait for loading new tsfiles", e);
+    }
+
+    assertFalse(new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists());
+    Map<String, Set<String>> sequenceLoadedFileMap = new HashMap<>();
+    for (int i = 0; i < 3; i++) {
+      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
+      sequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
+      assertEquals(10, processor.getSequenceFileList().size());
+      for (TsFileResource tsFileResource : processor.getSequenceFileList()) {
+        sequenceLoadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
+      }
+      assertTrue(processor.getUnSequenceFileList().isEmpty());
+    }
+
+    assertEquals(sequenceLoadedFileMap.size(), correctSequenceLoadedFileMap.size());
+    for (Entry<String, Set<String>> entry : correctSequenceLoadedFileMap.entrySet()) {
+      String sg = entry.getKey();
+      assertEquals(entry.getValue().size(), sequenceLoadedFileMap.get(sg).size());
+      assertTrue(entry.getValue().containsAll(sequenceLoadedFileMap.get(sg)));
+    }
+  }
 
   @Test
   public void loadDeletedFileName()
