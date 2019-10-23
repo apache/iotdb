@@ -65,6 +65,6 @@ public class IoTDBConstant {
   public static final String USER = "User";
   public static final String PRIVILEGE = "Privilege";
 
-  public static final int MEMTABLE_NUM_INCREMETN = 4;
+  public static final int MEMTABLE_NUM_INCREMENT = 4;
 
 }
