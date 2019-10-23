@@ -24,7 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,12 +100,7 @@ public class TsFileMetaDataCache {
     synchronized (cache) {
       if (cache.containsKey(path)) {
         cacheHitNum.incrementAndGet();
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              "Cache hit: the number of requests for cache is {}, "
-                  + "the number of hints for cache is {}",
-              cacheRequestNum.get(), cacheHitNum.get());
-        }
+        printCacheLog(true);
         return cache.get(path);
       }
     }
@@ -114,18 +108,39 @@ public class TsFileMetaDataCache {
       synchronized (cache) {
         if (cache.containsKey(path)) {
           cacheHitNum.incrementAndGet();
+          printCacheLog(true);
           return cache.get(path);
         }
       }
-      if (logger.isDebugEnabled()) {
-        logger.debug("Cache didn't hit: the number of requests for cache is {}",
-            cacheRequestNum.get());
-      }
+      printCacheLog(false);
       TsFileMetaData fileMetaData = TsFileMetadataUtils.getTsFileMetaData(tsFileResource);
       synchronized (cache) {
         cache.put(tsFileResource, fileMetaData);
         return fileMetaData;
       }
+    }
+  }
+
+  private void printCacheLog(boolean isHit) {
+    if (!logger.isDebugEnabled()) {
+      return;
+    }
+    if (isHit) {
+      logger.debug(
+          "[TsFileMetaData cache hit] The number of requests for cache is {}, hit rate is {}.",
+          cacheRequestNum.get(), cacheHitNum.get() * 1.0 / cacheRequestNum.get());
+    } else {
+      logger.debug(
+          "[TsFileMetaData cache didn't hit] The number of requests for cache is {}, hit rate is {}.",
+          cacheRequestNum.get(), cacheHitNum.get() * 1.0 / cacheRequestNum.get());
+    }
+  }
+
+  public double calculateTsfileMetaDataHitRatio() {
+    if (cacheRequestNum.get() != 0) {
+      return cacheHitNum.get() * 1.0 / cacheRequestNum.get();
+    } else {
+      return 0;
     }
   }
 

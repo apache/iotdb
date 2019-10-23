@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -58,6 +59,7 @@ public class TsFileSequenceRead {
     // first SeriesChunks (headers and data) in one ChunkGroup, then the CHUNK_GROUP_FOOTER
     // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the marker) ahead and
     // judge accordingly.
+    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length);
     System.out.println("[Chunk Group]");
     System.out.println("position: " + reader.position());
     byte marker;

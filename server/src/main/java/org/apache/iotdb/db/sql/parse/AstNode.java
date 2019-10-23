@@ -327,7 +327,7 @@ public class AstNode extends CommonTree implements Node, Serializable {
     if (next.children == null || next.children.isEmpty()) {
       String str = next.toString();
       rootNode.addtoMemoizedString(
-          next.getType() != TSParser.StringLiteral ? str.toLowerCase() : str);
+          next.getType() != TqlParser.STRING_LITERAL ? str.toLowerCase() : str);
       next.endIndx = rootNode.getMemoizedStringLen();
       stack.pop();
       return;
@@ -337,7 +337,7 @@ public class AstNode extends CommonTree implements Node, Serializable {
       rootNode.addtoMemoizedString("(");
       String str = next.toString();
       rootNode.addtoMemoizedString(
-          (next.getType() == TSParser.StringLiteral || null == str) ? str : str.toLowerCase());
+          (next.getType() == TqlParser.STRING_LITERAL || null == str) ? str : str.toLowerCase());
       rootNode.addtoMemoizedString(" ");
     }
 

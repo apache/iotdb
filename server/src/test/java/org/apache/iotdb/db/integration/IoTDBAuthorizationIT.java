@@ -76,7 +76,7 @@ public class IoTDBAuthorizationIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     Statement adminStmt = adminCon.createStatement();
 
-    adminStmt.execute("CREATE USER tempuser temppw");
+    adminStmt.execute("CREATE USER tempuser 'temppw'");
     Connection userCon = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser",
             "temppw");
@@ -186,13 +186,13 @@ public class IoTDBAuthorizationIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     Statement adminStmt = adminCon.createStatement();
 
-    adminStmt.execute("CREATE USER tempuser temppw");
+    adminStmt.execute("CREATE USER tempuser 'temppw'");
     Connection userCon = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser",
             "temppw");
     userCon.close();
 
-    adminStmt.execute("UPDATE USER tempuser SET PASSWORD newpw");
+    adminStmt.execute("ALTER USER tempuser SET PASSWORD 'newpw'");
 
     boolean caught = false;
     try {
@@ -217,7 +217,7 @@ public class IoTDBAuthorizationIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     Statement adminStmt = adminCon.createStatement();
 
-    adminStmt.execute("CREATE USER tempuser temppw");
+    adminStmt.execute("CREATE USER tempuser 'temppw'");
 
     Connection userCon = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser",
@@ -358,7 +358,7 @@ public class IoTDBAuthorizationIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     Statement adminStmt = adminCon.createStatement();
 
-    adminStmt.execute("CREATE USER tempuser temppw");
+    adminStmt.execute("CREATE USER tempuser 'temppw'");
 
     Connection userCon = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser",
@@ -476,7 +476,7 @@ public class IoTDBAuthorizationIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     Statement adminStmt = adminCon.createStatement();
 
-    adminStmt.execute("CREATE USER tempuser temppw");
+    adminStmt.execute("CREATE USER tempuser 'temppw'");
 
     Connection userCon = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser",
@@ -542,7 +542,7 @@ public class IoTDBAuthorizationIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     Statement adminStmt = adminCon.createStatement();
 
-    adminStmt.execute("CREATE USER tempuser temppw");
+    adminStmt.execute("CREATE USER tempuser 'temppw'");
 
     Connection userCon = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser",
@@ -602,7 +602,7 @@ public class IoTDBAuthorizationIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     Statement adminStmt = adminCon.createStatement();
 
-    adminStmt.execute("CREATE USER tempuser temppw");
+    adminStmt.execute("CREATE USER tempuser 'temppw'");
     adminStmt.execute("SET STORAGE GROUP TO root.a");
     int privilegeCnt = 500;
     for (int i = 0; i < privilegeCnt; i++) {
@@ -664,7 +664,7 @@ public class IoTDBAuthorizationIT {
       validateResultSet(resultSet, ans);
 
       for (int i = 0; i < 10; i++) {
-        adminStmt.execute("CREATE USER user" + i + " password" + i);
+        adminStmt.execute("CREATE USER user" + i + " 'password "  + i + "'");
       }
       resultSet = adminStmt.executeQuery("LIST USER");
       ans = "0,root,\n"
@@ -753,7 +753,7 @@ public class IoTDBAuthorizationIT {
     Statement adminStmt = adminCon.createStatement();
 
     try {
-      adminStmt.execute("CREATE USER user1 password1");
+      adminStmt.execute("CREATE USER user1 'password1'");
       adminStmt.execute("GRANT USER user1 PRIVILEGES 'READ_TIMESERIES' ON root.a.b");
       adminStmt.execute("CREATE ROLE role1");
       adminStmt.execute(
@@ -839,7 +839,7 @@ public class IoTDBAuthorizationIT {
     Statement adminStmt = adminCon.createStatement();
 
     try {
-      adminStmt.execute("CREATE USER chenduxiu orange");
+      adminStmt.execute("CREATE USER chenduxiu 'orange'");
 
       adminStmt.execute("CREATE ROLE xijing");
       adminStmt.execute("CREATE ROLE dalao");
@@ -892,10 +892,10 @@ public class IoTDBAuthorizationIT {
           "RiverSky"};
 
       for (int i = 0; i < members.length - 1; i++) {
-        adminStmt.execute("CREATE USER " + members[i] + " 666666");
+        adminStmt.execute("CREATE USER " + members[i] + " '666666'");
         adminStmt.execute("GRANT dalao TO  " + members[i]);
       }
-      adminStmt.execute("CREATE USER RiverSky 2333333");
+      adminStmt.execute("CREATE USER RiverSky '2333333'");
       adminStmt.execute("GRANT zhazha TO RiverSky");
 
       ResultSet resultSet = adminStmt.executeQuery("LIST ALL USER OF ROLE dalao");
