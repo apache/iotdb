@@ -78,7 +78,6 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
         LOGGER.error("Thread is interrupted from waiting for ending sync in recovery.");
       }
     } else {
-      // TODO 有问题！！！
       scanLogger(FileLoader.createFileLoader(senderFolder),
           new File(senderFolder, SyncConstant.SYNC_LOG_NAME),
           new File(senderFolder, SyncConstant.LOAD_LOG_NAME));
