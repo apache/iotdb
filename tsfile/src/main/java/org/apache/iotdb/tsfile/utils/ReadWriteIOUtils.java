@@ -754,9 +754,6 @@ public class ReadWriteIOUtils {
    * @return whether the inputStream is reach the magic string
    */
   public static boolean checkIfMagicString(InputStream inputStream) throws IOException {
-    inputStream.mark(magicStringBytes.length);
-    boolean res = Arrays.equals(readBytes(inputStream, magicStringBytes.length), magicStringBytes);
-    inputStream.reset();
-    return res;
+    return inputStream.available() <= magicStringBytes.length;
   }
 }

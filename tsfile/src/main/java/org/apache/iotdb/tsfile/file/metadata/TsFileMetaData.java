@@ -287,7 +287,9 @@ public class TsFileMetaData {
     BloomFilter filter = buildBloomFilter(chunkGroupMetaDataList);
 
     byte[] bytes = filter.serialize();
-    byteLen += ReadWriteIOUtils.write(ByteBuffer.wrap(bytes), outputStream);
+    byteLen += ReadWriteIOUtils.write(bytes.length, outputStream);
+    outputStream.write(bytes);
+    byteLen += bytes.length;
     byteLen += ReadWriteIOUtils.write(filter.getSize(), outputStream);
     byteLen += ReadWriteIOUtils.write(filter.getHashFunctionSize(), outputStream);
     return byteLen;

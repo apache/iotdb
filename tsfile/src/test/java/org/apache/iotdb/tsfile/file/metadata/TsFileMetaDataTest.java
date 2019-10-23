@@ -56,18 +56,18 @@ public class TsFileMetaDataTest {
   }
 
   private TsFileMetaData deSerialized() {
-    FileInputStream fis = null;
+    FileInputStream fileInputStream = null;
     TsFileMetaData metaData = null;
     try {
-      fis = new FileInputStream(new File(PATH));
-      metaData = TsFileMetaData.deserializeFrom(fis);
+      fileInputStream = new FileInputStream(new File(PATH));
+      metaData = TsFileMetaData.deserializeFrom(fileInputStream);
       return metaData;
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
-      if (fis != null) {
+      if (fileInputStream != null) {
         try {
-          fis.close();
+          fileInputStream.close();
         } catch (IOException e) {
           e.printStackTrace();
         }

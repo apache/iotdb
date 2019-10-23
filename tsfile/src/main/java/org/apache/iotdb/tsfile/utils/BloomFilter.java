@@ -24,7 +24,7 @@ public class BloomFilter {
 
   private static final int MINIMAL_SIZE = 256;
   private static final int MAXIMAL_HASH_FUNCTION_SIZE = 8;
-  private static final int[] seeds = new int[]{5, 7, 11, 19, 31, 37, 43, 59};
+  private static final int[] SEEDS = new int[]{5, 7, 11, 19, 31, 37, 43, 59};
   private int size;
   private int hashFunctionSize;
   private BitSet bits;
@@ -36,7 +36,7 @@ public class BloomFilter {
     this.hashFunctionSize = hashFunctionSize;
     func = new HashFunction[hashFunctionSize];
     for (int i = 0; i < hashFunctionSize; i++) {
-      func[i] = new HashFunction(size, seeds[i]);
+      func[i] = new HashFunction(size, SEEDS[i]);
     }
     bits = BitSet.valueOf(bytes);
   }
@@ -46,7 +46,7 @@ public class BloomFilter {
     this.hashFunctionSize = hashFunctionSize;
     func = new HashFunction[hashFunctionSize];
     for (int i = 0; i < hashFunctionSize; i++) {
-      func[i] = new HashFunction(size, seeds[i]);
+      func[i] = new HashFunction(size, SEEDS[i]);
     }
     bits = new BitSet(size);
   }

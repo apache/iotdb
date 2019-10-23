@@ -120,7 +120,8 @@ public class TsFileIOWriter {
    */
   public TsFileIOWriter(TsFileOutput out, List<ChunkGroupMetaData> chunkGroupMetaDataList)
       throws IOException {
-    this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), false); //NOTE overwrite false here
+    this.out = FSFactoryProducer.getFileOutputFactory()
+        .getTsFileOutput(file.getPath(), false); //NOTE overwrite false here
     this.chunkGroupMetaDataList = chunkGroupMetaDataList;
     if (chunkGroupMetaDataList.isEmpty()) {
       startFile();
@@ -262,7 +263,6 @@ public class TsFileIOWriter {
     Map<String, TsDeviceMetadataIndex> tsDeviceMetadataIndexMap = flushTsDeviceMetaDataAndGetIndex(
         this.chunkGroupMetaDataList);
 
-
     TsFileMetaData tsFileMetaData = new TsFileMetaData(tsDeviceMetadataIndexMap, schemaDescriptors);
 
     tsFileMetaData.setTotalChunkNum(totalChunkNum);
@@ -273,11 +273,15 @@ public class TsFileIOWriter {
 
     // write TsFileMetaData
     int size = tsFileMetaData.serializeTo(out.wrapAsStream());
-    logger.debug("finish flushing the footer {}, file pos:{}", tsFileMetaData, out.getPosition());
+    if (logger.isDebugEnabled()) {
+      logger.debug("finish flushing the footer {}, file pos:{}", tsFileMetaData, out.getPosition());
+    }
 
     // write bloom filter
     size += tsFileMetaData.serializeBloomFilter(out.wrapAsStream(), chunkGroupMetaDataList);
-    logger.debug("finish flushing the bloom filter file pos:{}", out.getPosition());
+    if (logger.isDebugEnabled()) {
+      logger.debug("finish flushing the bloom filter file pos:{}", out.getPosition());
+    }
 
     // write TsFileMetaData size
     ReadWriteIOUtils.write(size, out.wrapAsStream());// write the size of the file metadata.

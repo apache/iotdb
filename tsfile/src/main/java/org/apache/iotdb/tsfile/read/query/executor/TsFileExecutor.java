@@ -61,7 +61,7 @@ public class TsFileExecutor implements QueryExecutor {
     // bloom filter
     BloomFilter bloomFilter = metadataQuerier.getWholeFileMetadata().getBloomFilter();
     List<Path> filteredSeriesPath = new ArrayList<>();
-    if(bloomFilter != null) {
+    if (bloomFilter != null) {
       for (Path path : queryExpression.getSelectedSeries()) {
         if (bloomFilter.contains(path.getFullPath())) {
           filteredSeriesPath.add(path);
@@ -69,7 +69,7 @@ public class TsFileExecutor implements QueryExecutor {
       }
       if (filteredSeriesPath.isEmpty()) {
         // return an empty QueryDataSet
-        LOG.warn(
+        LOG.debug(
             "This tsfile not contains all paths which specified in selected series, return empty dataset");
         return new DataSetWithoutTimeGenerator(Collections.emptyList(), Collections.emptyList(),
             Collections.emptyList());
