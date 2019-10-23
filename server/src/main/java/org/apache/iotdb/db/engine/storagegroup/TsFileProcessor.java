@@ -244,7 +244,7 @@ public class TsFileProcessor {
    * 3 SeriesNumber: Ns
    * 4 chunkSizeThreshold: Sc
    * 5 Total timeseries number: Nts  {@link IoTDBConfigDynamicAdapter#totalTimeseries}
-   * 6 MemTable Number for Each SG: Nmes  {@link IoTDBConstant#MEMTABLE_NUM_INCREMENT}
+   * 6 MemTable Number for Each SG: Nmes  {@link IoTDBConstant#MEMTABLE_NUM_IN_EACH_STORAGE_GROUP}
    *
    * <p>The equation: Σ(Ns * Sc) * Nmes = m * Nm  ==> Σ(Ns) * Sc * Nmes = m * Nm ==> Sc = m * Nm / Nmes / Nts
    * <p>Note: Σ means the sum of storage groups , so Nts = ΣNs
@@ -255,7 +255,7 @@ public class TsFileProcessor {
     return IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries() == 0 ? config
         .getMemtableSizeThreshold() :
         config.getMemtableSizeThreshold() * config.getMaxMemtableNumber()
-            / IoTDBConstant.MEMTABLE_NUM_INCREMENT / IoTDBConfigDynamicAdapter.getInstance()
+            / IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP / IoTDBConfigDynamicAdapter.getInstance()
             .getTotalTimeseries() * MManager.getInstance().getSeriesNumber(storageGroupName);
   }
 
