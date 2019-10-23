@@ -29,7 +29,7 @@ import java.io.IOException;
 import java.util.Arrays;
 
 /**
- * The class implement is same as {@link org.apache.iotdb.tsfile.hadoop.TSFInputFormat}
+ * The class implement is same as {@link org.apache.iotdb.hadoop.tsfile.TSFInputFormat}
  * and is customized for Hive to implements JobConfigurable interface.
  */
 public class TSFHiveInputFormat extends FileInputFormat<NullWritable, MapWritable> {

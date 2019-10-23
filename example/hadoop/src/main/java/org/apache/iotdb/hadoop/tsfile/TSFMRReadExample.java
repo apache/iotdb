@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.hadoop;
+package org.apache.iotdb.hadoop.tsfile;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -28,9 +28,6 @@ import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import org.apache.iotdb.hadoop.tsfile.TSFHadoopException;
-import org.apache.iotdb.hadoop.tsfile.TSFInputFormat;
-import org.apache.iotdb.hadoop.tsfile.TSFOutputFormat;
 
 /**
  * One example for reading TsFile with MapReduce.

@@ -935,7 +935,6 @@
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
                                 </configuration>
                             </execution>
-
                             <execution>
                                 <id>generate-thrift-sources-python</id>
                                 <phase>generate-sources</phase>
@@ -949,7 +948,6 @@
                                     <outputDirectory>${project.build.directory}/generated-sources-python</outputDirectory>
                                 </configuration>
                             </execution>
-
                             <execution>
                                 <id>generate-thrift-sources-go</id>
                                 <phase>generate-sources</phase>
@@ -963,7 +961,6 @@
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
                                 </configuration>
                             </execution>
-
                             <execution>
                                 <id>generate-thrift-sources-cpp</id>
                                 <phase>generate-sources</phase>
@@ -977,7 +974,6 @@
                                     <outputDirectory>${project.build.directory}/generated-sources-cpp</outputDirectory>
                                 </configuration>
                             </execution>
-                            
                         </executions>
                     </plugin>
                 </plugins>
