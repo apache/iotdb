@@ -38,4 +38,5 @@ else
 fi
 
 thrift -gen cpp -out ${SOURCE_DIR}  $(dirname $0)/../service-rpc/src/main/thrift/rpc.thrift
+rm ${SOURCE_DIR}TSIService_server.skeleton.cpp
 g++ -o ${executable_file_name} ${cpp_program_file_name}  ${SOURCE_DIR}IOTDBSession.cpp ${SOURCE_DIR}rpc_constants.cpp ${SOURCE_DIR}rpc_types.cpp ${SOURCE_DIR}TSIService.cpp -lthrift 

@@ -23,11 +23,15 @@ using namespace std;
 int main()
 {
     Session *session = new Session("127.0.0.1", 6667, "root", "root");
+    
     session->open();
+    
     session->setStorageGroup("root.sg1");
-    session->createTimeseries("root.sg1.d1.s1", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
-    session->createTimeseries("root.sg1.d1.s2", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
-    session->createTimeseries("root.sg1.d1.s3", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+    
+    session->createTimeseries("root.sg1.d1.s1", INT64, RLE, SNAPPY);
+    session->createTimeseries("root.sg1.d1.s2", INT64, RLE, SNAPPY);
+    session->createTimeseries("root.sg1.d1.s3", INT64, RLE, SNAPPY);
+    
     string deviceId = "root.sg1.d1";
     vector<string> measurements;
     measurements.push_back("s1");
@@ -42,10 +46,22 @@ int main()
         values.push_back("3");
         session->insert(deviceId, time, measurements, values);
     }
+    
     vector<string> del;
     del.push_back("root.sg1.d1.s1");
-    del.push_back("root.sg1.d1.s2");
-    del.push_back("root.sg1.d1.s3");
     session->deleteData(del, 99);
+    
+    
+    vector<string> paths;
+    paths.push_back("root.sg1.d1.s1");
+    paths.push_back("root.sg1.d1.s2");
+    paths.push_back("root.sg1.d1.s3");
+    session->deleteTimeseries(paths);
+    
+    session->deleteStorageGroup("root.sg1");
+    
     session->close();
 }
+
+
+

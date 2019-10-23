@@ -26,21 +26,26 @@
 #include<thrift/transport/TSocket.h>
 #include<thrift/transport/TTransportException.h>
 #include "TSIService.h"
+using namespace std;
+using ::apache::thrift::protocol::TBinaryProtocol;
+using ::apache::thrift::protocol::TCompactProtocol;
+using ::apache::thrift::transport::TSocket;
+using ::apache::thrift::transport::TTransportException;
+using ::apache::thrift::TException;
 
-
-class IoTDBSessionException : public std::exception
+class IoTDBSessionException : public exception
 {
     public:
         IoTDBSessionException() : message() {}
         IoTDBSessionException(const char* m) : message(m) {}
-        IoTDBSessionException(std::string m) : message(m) {}
+        IoTDBSessionException(string m) : message(m) {}
         virtual const char* what() const throw () 
         {
             return message.c_str();
         }
 
     private:
-        std::string message;
+        string message;
 };
 
 
@@ -61,36 +66,41 @@ enum TSEncoding
 class Session
 {
     private:
-        std::string host;
+        string host;
         int port;
-        std::string username;
-        std::string password;
-        TSProtocolVersion protocolVersion;
-        TSIServiceIf* client = NULL;
-        TS_SessionHandle* sessionHandle = NULL;
-        std::shared_ptr<apache::thrift::transport::TSocket> transport;
+        string username;
+        string password;
+        TSProtocolVersion::type protocolVersion = TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V1;
+        shared_ptr<TSIServiceIf> client;
+        TS_SessionHandle sessionHandle;
+        shared_ptr<apache::thrift::transport::TSocket> transport;
         bool isClosed = true;
-        std::string zoneId;
+        string zoneId;
         
     public:
-        Session(std::string host, int port, std::string username, std::string password) 
+        Session(string host, int port, string username, string password) 
         {
             this->host = host;
             this->port = port;
             this->username = username;
             this->password = password;
         }
-        Session(std::string host, std::string port, std::string username, std::string password) 
+        Session(string host, string port, string username, string password) 
         {
-            Session(host, std::stoi(port), username, password);
+            Session(host, stoi(port), username, password);
         }
         void open();
         void open(bool enableRPCCompression, int connectionTimeoutInMs);
         void close();
-        TSStatus insert(std::string deviceId, long time, std::vector<std::string> measurements, std::vector<std::string> values);
-        TSStatus deleteData(std::vector<std::string> deviceId, long time);
-        TSStatus setStorageGroup(std::string storageGroupId);
-        TSStatus createTimeseries(std::string path, TSDataType dataType, TSEncoding encoding, CompressionType compressor);
-        std::string getTimeZone();
-        void setTimeZone(std::string zoneId);
+        TSStatus insert(string deviceId, long long time, vector<string> measurements, vector<string> values);
+        TSStatus deleteData(string path, long long time);
+        TSStatus deleteData(vector<string> deviceId, long long time);
+        TSStatus setStorageGroup(string storageGroupId);
+        TSStatus deleteStorageGroup(string storageGroup);
+        TSStatus deleteStorageGroups(vector<string> storageGroups);
+        TSStatus createTimeseries(string path, TSDataType dataType, TSEncoding encoding, CompressionType compressor);
+        TSStatus deleteTimeseries(string path);
+        TSStatus deleteTimeseries(vector<string> paths);
+        string getTimeZone();
+        void setTimeZone(string zoneId);
 };
