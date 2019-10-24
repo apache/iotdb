@@ -398,14 +398,13 @@ public class LogicalGenerator {
       AstNode node = paramNode.getChild(offset++);
       props.put(node.getChild(0).getText().toLowerCase(), cascadeChildrenText(node.getChild(1)));
     }
-    MetadataOperator metadataOperator = new MetadataOperator(SQLConstant.TOK_METADATA_CREATE,
-            MetadataOperator.NamespaceType.ADD_PATH);
-    metadataOperator.setPath(series);
-    metadataOperator.setDataType(TSDataType.valueOf(dataType));
-    metadataOperator.setEncoding(TSEncoding.valueOf(encodingType));
-    metadataOperator.setProps(props);
-    metadataOperator.setCompressor(CompressionType.valueOf(compressor));
-    initializedOperator = metadataOperator;
+    AddPathOperator addPathOperator = new AddPathOperator(SQLConstant.TOK_METADATA_CREATE);
+    addPathOperator.setPath(series);
+    addPathOperator.setDataType(TSDataType.valueOf(dataType));
+    addPathOperator.setEncoding(TSEncoding.valueOf(encodingType));
+    addPathOperator.setProps(props);
+    addPathOperator.setCompressor(CompressionType.valueOf(compressor));
+    initializedOperator = addPathOperator;
   }
 
   private void analyzeMetadataDelete(AstNode astNode) {
@@ -413,19 +412,17 @@ public class LogicalGenerator {
     for (int i = 0; i < astNode.getChild(0).getChildCount(); i++) {
       deletePaths.add(parsePath(astNode.getChild(0).getChild(i)));
     }
-    MetadataOperator metadataOperator = new MetadataOperator(SQLConstant.TOK_METADATA_DELETE,
-            MetadataOperator.NamespaceType.DELETE_PATH);
-    metadataOperator.setDeletePathList(deletePaths);
-    initializedOperator = metadataOperator;
+    DeletePathOperator deletePathOperator = new DeletePathOperator(SQLConstant.TOK_METADATA_DELETE);
+    deletePathOperator.setDeletePathList(deletePaths);
+    initializedOperator = deletePathOperator;
   }
 
   private void analyzeMetadataSetFileLevel(AstNode astNode) {
-    MetadataOperator metadataOperator = new MetadataOperator(
-            SQLConstant.TOK_METADATA_SET_FILE_LEVEL,
-            MetadataOperator.NamespaceType.SET_STORAGE_GROUP);
+    SetStorageGroupOperator setStorageGroupOperator = new SetStorageGroupOperator(
+            SQLConstant.TOK_METADATA_SET_FILE_LEVEL);
     Path path = parsePath(astNode.getChild(0).getChild(0));
-    metadataOperator.setPath(path);
-    initializedOperator = metadataOperator;
+    setStorageGroupOperator.setPath(path);
+    initializedOperator = setStorageGroupOperator;
   }
 
   private void analyzeMetaDataDeleteFileLevel(AstNode astNode){
@@ -433,11 +430,10 @@ public class LogicalGenerator {
     for (int i = 0; i < astNode.getChild(0).getChildCount(); i++) {
       deletePaths.add(parsePath(astNode.getChild(0).getChild(i)));
     }
-    MetadataOperator metadataOperator = new MetadataOperator(
-            SQLConstant.TOK_METADATA_DELETE_FILE_LEVEL,
-            MetadataOperator.NamespaceType.DELETE_STORAGE_GROUP);
-    metadataOperator.setDeletePathList(deletePaths);
-    initializedOperator = metadataOperator;
+    DeleteStorageGroupOperator deleteStorageGroupOperator = new DeleteStorageGroupOperator(
+            SQLConstant.TOK_METADATA_DELETE_FILE_LEVEL);
+    deleteStorageGroupOperator.setDeletePathList(deletePaths);
+    initializedOperator = deleteStorageGroupOperator;
   }
 
   private void analyzeInsert(AstNode astNode) throws QueryProcessorException {

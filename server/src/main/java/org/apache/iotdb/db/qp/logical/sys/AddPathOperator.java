@@ -18,59 +18,35 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import java.util.List;
 import java.util.Map;
+
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-/**
- * this class maintains information in Metadata.namespace statement
- */
-public class MetadataOperator extends RootOperator {
+public class AddPathOperator extends RootOperator {
 
-  private final NamespaceType namespaceType;
   private Path path;
   private TSDataType dataType;
   private TSEncoding encoding;
   private CompressionType compressor;
   private Map<String, String> props;
-  private List<Path> deletePathList;
-
-  /**
-   * Constructor of MetadataOperator.
-   */
-  public MetadataOperator(int tokenIntType, NamespaceType type) {
+  
+  public AddPathOperator(int tokenIntType) {
     super(tokenIntType);
-    namespaceType = type;
-    switch (type) {
-      case DELETE_STORAGE_GROUP:
-        operatorType = OperatorType.DELETE_STORAGE_GROUP;
-        break;
-      case SET_STORAGE_GROUP:
-        operatorType = OperatorType.SET_STORAGE_GROUP;
-        break;
-      case ADD_PATH:
-        operatorType = OperatorType.CREATE_TIMESERIES;
-        break;
-      case DELETE_PATH:
-        operatorType = OperatorType.DELETE_TIMESERIES;
-        break;
-      default:
-        break;
-    }
+    operatorType = OperatorType.CREATE_TIMESERIES;
   }
-
+  
   public Path getPath() {
     return path;
   }
-
+  
   public void setPath(Path path) {
     this.path = path;
   }
-
+  
   public TSDataType getDataType() {
     return dataType;
   }
@@ -103,60 +79,4 @@ public class MetadataOperator extends RootOperator {
     this.props = props;
   }
 
-  public NamespaceType getNamespaceType() {
-    return namespaceType;
-  }
-
-  public List<Path> getDeletePathList() {
-    return deletePathList;
-  }
-
-  public void setDeletePathList(List<Path> deletePathList) {
-    this.deletePathList = deletePathList;
-  }
-
-  public enum NamespaceType {
-    ADD_PATH, DELETE_PATH, SET_STORAGE_GROUP, DELETE_STORAGE_GROUP;
-
-    /**
-     * deserialize short number.
-     *
-     * @param i short number
-     * @return NamespaceType
-     */
-    public static NamespaceType deserialize(short i) {
-      switch (i) {
-        case 0:
-          return ADD_PATH;
-        case 1:
-          return DELETE_PATH;
-        case 2:
-          return SET_STORAGE_GROUP;
-        case 3:
-          return DELETE_STORAGE_GROUP;
-        default:
-          return null;
-      }
-    }
-
-    /**
-     * serialize.
-     *
-     * @return short number
-     */
-    public short serialize() {
-      switch (this) {
-        case ADD_PATH:
-          return 0;
-        case DELETE_PATH:
-          return 1;
-        case SET_STORAGE_GROUP:
-          return 2;
-        case DELETE_STORAGE_GROUP:
-          return 3;
-        default:
-          return -1;
-      }
-    }
-  }
 }
