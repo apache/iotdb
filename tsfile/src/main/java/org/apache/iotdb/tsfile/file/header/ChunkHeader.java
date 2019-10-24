@@ -76,7 +76,8 @@ public class ChunkHeader {
   }
 
   public static int getSerializedSize(String measurementID) {
-      return Byte.BYTES + Integer.BYTES + getSerializedSize(measurementID.getBytes(TSFileConfig.STRING_CHARSET).length);
+    return Byte.BYTES + Integer.BYTES + getSerializedSize(
+        measurementID.getBytes(TSFileConfig.STRING_CHARSET).length);
   }
 
   private static int getSerializedSize(int measurementIdLength) {
@@ -135,29 +136,29 @@ public class ChunkHeader {
    *
    * @param input TsFileInput
    * @param offset offset
+   * @param chunkHeaderSize the size of chunk's header
    * @param markerRead read marker (boolean type)
    * @return CHUNK_HEADER object
    * @throws IOException IOException
    */
-  public static ChunkHeader deserializeFrom(TsFileInput input, long offset, boolean markerRead)
+  public static ChunkHeader deserializeFrom(TsFileInput input, long offset, int chunkHeaderSize,
+      boolean markerRead)
       throws IOException {
     long offsetVar = offset;
     if (!markerRead) {
       offsetVar++;
     }
-    ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+    ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES + chunkHeaderSize);
     input.read(buffer, offsetVar);
     buffer.flip();
+
     int size = buffer.getInt();
-    offsetVar += Integer.BYTES;
-    buffer = ByteBuffer.allocate(getSerializedSize(size));
-    ReadWriteIOUtils.readAsPossible(input, offsetVar, buffer);
-    buffer.flip();
     String measurementID = ReadWriteIOUtils.readStringWithoutLength(buffer, size);
     return deserializePartFrom(measurementID, buffer);
   }
 
-  private static ChunkHeader deserializePartFrom(String measurementID, ByteBuffer buffer) throws UnsupportedEncodingException {
+  private static ChunkHeader deserializePartFrom(String measurementID, ByteBuffer buffer)
+      throws UnsupportedEncodingException {
     int dataSize = ReadWriteIOUtils.readInt(buffer);
     TSDataType dataType = TSDataType.deserialize(ReadWriteIOUtils.readShort(buffer));
     int numOfPages = ReadWriteIOUtils.readInt(buffer);
