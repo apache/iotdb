@@ -32,6 +32,7 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
@@ -66,7 +67,7 @@ public class  DeletionQueryTest {
 
   @Before
   public void setup() throws MetadataErrorException,
-      PathErrorException, IOException, StorageEngineException, StartupException {
+      PathErrorException, IOException, StorageEngineException, StartupException, StorageGroupException {
     EnvironmentUtils.envSetUp();
 
     MManager.getInstance().setStorageGroupToMTree(processorName);

@@ -41,7 +41,7 @@
 
 # Quick Start
 
-This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](https://iotdb.apache.org/#/Documents/0.8.0/chap1/sec1).
+This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](https://iotdb.apache.org/#/Documents/progress/chap1/sec1).
 
 ## Prerequisites
 
@@ -88,7 +88,7 @@ configuration files are under "conf" folder
   * system config module (`tsfile-format.properties`, `iotdb-engine.properties`)
   * log config module (`logback.xml`). 
 
-For more, see [Chapter4: Deployment and Management](https://iotdb.apache.org/#/Documents/0.8.0/chap4/sec1) in detail.
+For more, see [Chapter3: Deployment](https://iotdb.apache.org/#/Documents/progress/chap3/sec1) in detail.
 
 ## Start
 
@@ -239,7 +239,7 @@ or
 IoTDB> exit
 ```
 
-For more on what commands are supported by IoTDB SQL, see [Chapter 5: IoTDB SQL Documentation](https://iotdb.apache.org/#/Documents/0.8.0/chap5/sec1).
+For more on what commands are supported by IoTDB SQL, see [IoTDB SQL Language](https://iotdb.apache.org/#/Documents/progress/chap4/sec7).
 
 ### Stop IoTDB
 

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
@@ -74,7 +75,7 @@ public class TTLTest {
 
   @Before
   public void setUp()
-      throws MetadataErrorException, ProcessorException, IOException, StartupException {
+      throws MetadataErrorException, ProcessorException, IOException, StartupException, PathErrorException {
     EnvironmentUtils.envSetUp();
     createSchemas();
   }
@@ -85,7 +86,7 @@ public class TTLTest {
     EnvironmentUtils.cleanEnv();
   }
 
-  private void createSchemas() throws MetadataErrorException, ProcessorException {
+  private void createSchemas() throws MetadataErrorException, ProcessorException, PathErrorException {
     MManager.getInstance().setStorageGroupToMTree(sg1);
     MManager.getInstance().setStorageGroupToMTree(sg2);
     storageGroupProcessor = new StorageGroupProcessor(IoTDBDescriptor.getInstance().getConfig()
@@ -97,7 +98,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testSetMetaTTL() throws IOException, PathErrorException {
+  public void testSetMetaTTL() throws IOException, PathErrorException, StorageGroupException {
     // exception is expected when setting ttl to a non-exist storage group
     boolean caught = false;
     try {
@@ -109,11 +110,11 @@ public class TTLTest {
 
     // normally set ttl
     MManager.getInstance().setTTL(sg1, ttl);
-    MNode mNode = MManager.getInstance().getNodeByPathFromCache(sg1);
+    MNode mNode = MManager.getInstance().getNodeByPathWithCheck(sg1);
     assertEquals(ttl, mNode.getDataTTL());
 
     // default ttl
-    mNode = MManager.getInstance().getNodeByPathFromCache(sg2);
+    mNode = MManager.getInstance().getNodeByPathWithCheck(sg2);
     assertEquals(Long.MAX_VALUE, mNode.getDataTTL());
   }
 

@@ -61,6 +61,7 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.QueryInBatchStmtException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -646,13 +647,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     long t1 = System.currentTimeMillis();
     try {
       TSExecuteStatementResp resp;
-      List<String> columns = new ArrayList<>();
       if (plan instanceof AuthorPlan) {
-        resp = executeAuthQuery(plan, columns);
+        resp = executeAuthQuery(plan);
       } else if(plan instanceof ShowTTLPlan) {
-        resp = executeShowTTL(columns);
+        resp = executeShowTTL();
       } else {
-        resp = executeDataQuery(plan, columns);
+        resp = executeDataQuery(plan);
       }
       if (plan.getOperatorType() == OperatorType.AGGREGATION) {
         resp.setIgnoreTimeStamp(true);
@@ -705,45 +705,59 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return columnTypes;
   }
 
-  private TSExecuteStatementResp executeShowTTL(List<String> columns) {
+
+  private TSExecuteStatementResp executeShowTTL() {
     TSExecuteStatementResp resp =
         getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS));
     resp.setIgnoreTimeStamp(true);
+    List<String> columns = new ArrayList<>();
+    List<String> columnTypes = new ArrayList<>();
     columns.add(STORAGE_GROUP);
     columns.add(TTL);
+    columnTypes.add(TSDataType.TEXT.toString());
+    columnTypes.add(TSDataType.INT64.toString());
     resp.setColumns(columns);
+    resp.setDataTypeList(columnTypes);
     return resp;
   }
 
-  private TSExecuteStatementResp executeAuthQuery(PhysicalPlan plan, List<String> columns) {
+  private TSExecuteStatementResp executeAuthQuery(PhysicalPlan plan) {
     TSExecuteStatementResp resp = getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS));
     resp.setIgnoreTimeStamp(true);
     AuthorPlan authorPlan = (AuthorPlan) plan;
+    List<String> columnsName = new ArrayList<>();
+    List<String> columnsType = new ArrayList<>();
     switch (authorPlan.getAuthorType()) {
       case LIST_ROLE:
       case LIST_USER_ROLES:
-        columns.add(ROLE);
+        columnsName.add(ROLE);
+        columnsType.add(TSDataType.TEXT.toString());
         break;
       case LIST_USER:
       case LIST_ROLE_USERS:
-        columns.add(USER);
+        columnsName.add(USER);
+        columnsType.add(TSDataType.TEXT.toString());
         break;
       case LIST_ROLE_PRIVILEGE:
-        columns.add(PRIVILEGE);
+        columnsName.add(PRIVILEGE);
+        columnsType.add(TSDataType.TEXT.toString());
         break;
       case LIST_USER_PRIVILEGE:
-        columns.add(ROLE);
-        columns.add(PRIVILEGE);
+        columnsName.add(ROLE);
+        columnsName.add(PRIVILEGE);
+        columnsType.add(TSDataType.TEXT.toString());
+        columnsType.add(TSDataType.TEXT.toString());
         break;
       default:
         return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR,
             String.format("%s is not an auth query", authorPlan.getAuthorType())));
     }
-    resp.setColumns(columns);
+    resp.setColumns(columnsName);
+    resp.setDataTypeList(columnsType);
     return resp;
   }
 
-  private TSExecuteStatementResp executeDataQuery(PhysicalPlan plan, List<String> columns)
+  private TSExecuteStatementResp executeDataQuery(PhysicalPlan plan)
       throws AuthException, TException, PathErrorException {
     List<Path> paths = plan.getPaths();
     List<String> respColumns = new ArrayList<>();
@@ -756,7 +770,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     // check file level set
     try {
       checkFileLevelSet(paths);
-    } catch (PathErrorException e) {
+    } catch (StorageGroupException e) {
       logger.error("meet error while checking file level.", e);
       return getTSExecuteStatementResp(
           getStatus(TSStatusCode.CHECK_FILE_LEVEL_ERROR, e.getMessage()));
@@ -770,35 +784,41 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSExecuteStatementResp resp = getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS));
 
     if (((QueryPlan) plan).isGroupByDevice()) {
+      // set columns in TSExecuteStatementResp. Note this is without deduplication.
       List<String> measurementColumns = ((QueryPlan) plan).getMeasurementColumnList();
       respColumns.add(SQLConstant.GROUPBY_DEVICE_COLUMN_NAME);
       respColumns.addAll(measurementColumns);
-      resp.setColumns(respColumns); // note this is without deduplication
+      resp.setColumns(respColumns);
 
-      Map<String, TSDataType> checker = ((QueryPlan) plan).getDataTypeConsistencyChecker();
-      List<String> columnsTypeStr = new ArrayList<>();
-      columnsTypeStr.add(TSDataType.TEXT.toString()); // the DEVICE column of GROUP_BY_DEVICE result
-      List<TSDataType> deduplicatedcolumnsType = new ArrayList<>();
-      deduplicatedcolumnsType.add(TSDataType.TEXT); // the DEVICE column of GROUP_BY_DEVICE result
+      // get column types and do deduplication
+      List<String> columnsType = new ArrayList<>();
+      columnsType.add(TSDataType.TEXT.toString()); // the DEVICE column of GROUP_BY_DEVICE result
+      List<TSDataType> deduplicatedColumnsType = new ArrayList<>();
+      deduplicatedColumnsType.add(TSDataType.TEXT); // the DEVICE column of GROUP_BY_DEVICE result
       List<String> deduplicatedMeasurementColumns = new ArrayList<>();
       Set<String> tmpColumnSet = new HashSet<>();
+      Map<String, TSDataType> checker = ((QueryPlan) plan).getDataTypeConsistencyChecker();
       for (String column : measurementColumns) {
         TSDataType dataType = checker.get(column);
-        columnsTypeStr.add(dataType.toString());
+        columnsType.add(dataType.toString());
 
         if (!tmpColumnSet.contains(column)) {
-          // Note that the deduplication strategy must be consistent with that of IoTDBQueryResultSet.
+          // Note that this deduplication strategy is consistent with that of client IoTDBQueryResultSet.
           tmpColumnSet.add(column);
           deduplicatedMeasurementColumns.add(column);
-          deduplicatedcolumnsType.add(dataType);
+          deduplicatedColumnsType.add(dataType);
         }
       }
 
-      resp.setDataTypeList(columnsTypeStr); // note this is without deduplication
+      // set dataTypeList in TSExecuteStatementResp. Note this is without deduplication.
+      resp.setDataTypeList(columnsType);
 
+      // save deduplicated measurementColumn names and types in QueryPlan for the next stage to use.
+      // i.e., used by DeviceIterateDataSet constructor in `fetchResults` stage.
       ((QueryPlan) plan).setMeasurementColumnList(deduplicatedMeasurementColumns);
-      ((QueryPlan) plan).setDataTypes(deduplicatedcolumnsType);
-      // To avoid confusion, set null since they are useless henceforth.
+      ((QueryPlan) plan).setDataTypes(deduplicatedColumnsType);
+
+      // set these null since they are never used henceforth in GROUP_BY_DEVICE query processing.
       ((QueryPlan) plan).setPaths(null);
       ((QueryPlan) plan).setDataTypeConsistencyChecker(null);
 
@@ -809,7 +829,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         case QUERY:
         case FILL:
           for (Path p : paths) {
-            columns.add(p.getFullPath());
+            respColumns.add(p.getFullPath());
           }
           break;
         case AGGREGATION:
@@ -821,20 +841,20 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             }
           }
           for (int i = 0; i < paths.size(); i++) {
-            columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
+            respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
           }
           break;
         default:
           throw new TException("unsupported query type: " + plan.getOperatorType());
       }
 
-      resp.setColumns(columns);
-      resp.setDataTypeList(queryColumnsType(columns));
+      resp.setColumns(respColumns);
+      resp.setDataTypeList(queryColumnsType(respColumns));
     }
     return resp;
   }
 
-  private void checkFileLevelSet(List<Path> paths) throws PathErrorException {
+  private void checkFileLevelSet(List<Path> paths) throws StorageGroupException {
     MManager.getInstance().checkFileLevel(paths);
   }
 
@@ -879,7 +899,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       } else {
         result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
       }
-      boolean hasResultSet = !result.getRecords().isEmpty();
+      boolean hasResultSet = (result.getRowCount() != 0);
       if (!hasResultSet && queryRet.get() != null) {
         queryRet.get().remove(statement);
       }

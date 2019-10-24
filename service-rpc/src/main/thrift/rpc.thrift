@@ -156,25 +156,9 @@ struct TSCloseOperationReq {
   3: optional i64 stmtId
 }
 
-struct TSDataValue{
-  1: required bool is_empty
-  2: optional bool bool_val
-  3: optional i32 int_val
-  4: optional i64 long_val
-  5: optional double float_val
-  6: optional double double_val
-  7: optional binary binary_val
-  8: optional string type
-}
-
-struct TSRowRecord{
-  1: required i64 timestamp
-  // column values
-  2: required list<TSDataValue> values
-}
-
 struct TSQueryDataSet{
-	1: required list<TSRowRecord> records
+   1: required binary values
+   2: required i32 rowCount
 }
 
 struct TSFetchResultsReq{

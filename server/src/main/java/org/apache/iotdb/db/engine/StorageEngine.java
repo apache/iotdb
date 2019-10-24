@@ -39,6 +39,7 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageEngineFailureException;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
@@ -91,7 +92,7 @@ public class StorageEngine implements IService {
       throw new StorageEngineFailureException("create system directory failed!");
     }
 
-    /**
+    /*
      * recover all storage group processors.
      */
     try {
@@ -159,13 +160,13 @@ public class StorageEngine implements IService {
             logger.info("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroupName, Thread.currentThread().getId());
             processor = new StorageGroupProcessor(systemDir, storageGroupName);
-            processor.setDataTTL(MManager.getInstance().getNodeByPathFromCache(storageGroupName).getDataTTL());
+            processor.setDataTTL(MManager.getInstance().getNodeByPathWithCheck(storageGroupName).getDataTTL());
             processorMap.put(storageGroupName, processor);
           }
         }
       }
       return processor;
-    } catch (PathErrorException | ProcessorException e) {
+    } catch (StorageGroupException | ProcessorException | PathErrorException e) {
       logger.error("Fail to get StorageGroupProcessor {}", storageGroupName, e);
       throw new StorageEngineException(e);
     }

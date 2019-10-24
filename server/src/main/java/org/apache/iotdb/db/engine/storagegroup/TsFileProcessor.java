@@ -141,6 +141,9 @@ public class TsFileProcessor {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
     }
 
+    // insert insertPlan to the work memtable
+    workMemTable.insert(insertPlan);
+
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
         getLogNode().write(insertPlan);
@@ -149,6 +152,7 @@ public class TsFileProcessor {
         return false;
       }
     }
+
     // update start time of this memtable
     tsFileResource.updateStartTime(insertPlan.getDeviceId(), insertPlan.getTime());
     //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
@@ -157,17 +161,18 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(insertPlan.getDeviceId(), insertPlan.getTime());
     }
 
-    // insert insertPlan to the work memtable
-    workMemTable.insert(insertPlan);
-
     return true;
   }
 
   public boolean insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes,
       Integer[] results) throws QueryProcessorException {
+
     if (workMemTable == null) {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
     }
+
+    // insert insertPlan to the work memtable
+    workMemTable.insertBatch(batchInsertPlan, indexes);
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
@@ -190,8 +195,6 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
     }
 
-    // insert insertPlan to the work memtable
-    workMemTable.insertBatch(batchInsertPlan, indexes);
     return true;
   }
 
