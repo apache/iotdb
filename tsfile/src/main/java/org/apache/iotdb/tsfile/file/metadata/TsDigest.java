@@ -44,7 +44,7 @@ public class TsDigest {
   private int serializedSize = Integer.BYTES; // initialize for number of statistics
 
   public TsDigest() {
-    // allowed to clair an empty TsDigest whose fields will be assigned later.
+    // allowed to declare an empty TsDigest whose fields will be assigned later.
   }
 
   public static int getNullDigestSize() {
@@ -73,7 +73,7 @@ public class TsDigest {
     if (size > 0) {
       digest.statistics = new ByteBuffer[StatisticType.getTotalTypeNum()];
       ByteBuffer value;
-   // check if it's old version of TsFile
+   // check if it's an old version of TsFile
       String key = "";
       if (TSFileDescriptor.getInstance().getConfig().getEndian().equals("LITTLE_ENDIAN")) {
     	  for (int i = 0; i < size; i++) {
@@ -104,7 +104,7 @@ public class TsDigest {
     	  }
       }
       else {
-    	for (int i = 0; i < size; i++) {
+    	  for (int i = 0; i < size; i++) {
           short n = ReadWriteIOUtils.readShort(inputStream);
           value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(inputStream);
           digest.statistics[n] = value;
@@ -112,7 +112,6 @@ public class TsDigest {
     	  }
       }
     } // else left digest.statistics as null
-
     return digest;
   }
 
@@ -164,8 +163,8 @@ public class TsDigest {
     	  }
       }
       else {
-    	buffer.reset();
-    	for (int i = 0; i < size; i++) {
+    	  buffer.reset();
+    	  for (int i = 0; i < size; i++) {
           short n = ReadWriteIOUtils.readShort(buffer);
           value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer);
           digest.statistics[n] = value;
