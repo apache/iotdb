@@ -87,7 +87,7 @@ git clone https://github.com/apache/incubator-iotdb.git
   * 系统配置模块 (`tsfile-format.properties`, `iotdb-engine.properties`)
   * 日志配置模块 (`logback.xml`). 
 
-想要了解更多，请浏览[Chapter4: Deployment and Management](https://iotdb.apache.org/#/Documents/0.8.0/chap4/sec1)
+想要了解更多，请浏览[Chapter3: Deployment](https://iotdb.apache.org/#/Documents/progress/chap3/sec1)
 	
 
 ## IoTDB试用
@@ -280,7 +280,7 @@ IoTDB> quit
 IoTDB> exit
 ```
 
-想要浏览更多IoTDB数据库支持的命令，请浏览[Chapter 5: IoTDB SQL Documentation](https://iotdb.apache.org/#/Documents/0.8.0/chap5/sec1).
+想要浏览更多IoTDB数据库支持的命令，请浏览[IoTDB SQL Documentation](https://iotdb.apache.org/#/Documents/progress/chap4/sec7).
 
 ### 停止IoTDB
 
