@@ -17,10 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.selector;
+package org.apache.iotdb.db.engine.merge.inplace.selector;
 
 import java.util.List;
 import java.util.NoSuchElementException;
+import org.apache.iotdb.db.engine.merge.IMergePathSelector;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class NaivePathSelector implements IMergePathSelector {

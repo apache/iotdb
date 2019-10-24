@@ -17,16 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.selector;
+package org.apache.iotdb.db.engine.merge.inplace.selector;
 
-import java.util.Iterator;
-import java.util.List;
-import org.apache.iotdb.tsfile.read.common.Path;
-
-/**
- * IMergePathSelector select paths to be merged at a time if all paths of a device cannot be
- * merged at the same time.
- */
-public interface IMergePathSelector extends Iterator<List<Path>> {
-
+public enum MergeFileStrategy {
+  MAX_SERIES_NUM,
+  MAX_FILE_NUM,
+  // TODO: HOW?
+  TRADE_OFF,
 }

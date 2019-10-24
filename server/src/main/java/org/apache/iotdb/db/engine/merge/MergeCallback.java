@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.task;
+package org.apache.iotdb.db.engine.merge;
 
 import java.io.File;
 import java.util.List;

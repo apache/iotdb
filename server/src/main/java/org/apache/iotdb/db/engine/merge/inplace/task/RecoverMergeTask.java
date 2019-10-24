@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.task;
+package org.apache.iotdb.db.engine.merge.inplace.task;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -28,10 +28,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.merge.recover.LogAnalyzer;
-import org.apache.iotdb.db.engine.merge.recover.LogAnalyzer.Status;
-import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
-import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.MergeCallback;
+import org.apache.iotdb.db.engine.merge.inplace.recover.LogAnalyzer;
+import org.apache.iotdb.db.engine.merge.inplace.recover.LogAnalyzer.Status;
+import org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger;
+import org.apache.iotdb.db.engine.merge.inplace.selector.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.utils.MergeUtils;

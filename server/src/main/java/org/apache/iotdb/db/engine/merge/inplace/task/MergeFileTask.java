@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.task;
+package org.apache.iotdb.db.engine.merge.inplace.task;
 
 import java.io.IOException;
 import java.util.List;
@@ -28,7 +28,7 @@ import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
+import org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
@@ -226,7 +226,7 @@ class MergeFileTask {
         if (metaData.getStartTime() == startTime) {
           Chunk chunk = reader.readMemChunk(metaData);
           fileWriter.writeChunk(chunk, metaData);
-          maxVersion = metaData.getVersion() > maxVersion ? metaData.getVersion() : maxVersion;
+          maxVersion = Math.max(metaData.getVersion(), maxVersion);
           context.incTotalPointWritten(metaData.getNumOfPoints());
           break;
         }

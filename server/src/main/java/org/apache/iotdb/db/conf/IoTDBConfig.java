@@ -25,7 +25,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
+import org.apache.iotdb.db.engine.merge.inplace.selector.MergeFileStrategy;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;

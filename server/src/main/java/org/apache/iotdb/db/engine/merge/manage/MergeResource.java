@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +46,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.merge.inplace.task.MergeTask.MERGE_SUFFIX;
 
 /**
  * MergeResource manages files and caches of readers, writers, MeasurementSchemas and
@@ -255,6 +256,12 @@ public class MergeResource {
   public void addMeasurements(List<MeasurementSchema> measurementSchemas) {
     for (MeasurementSchema measurementSchema : measurementSchemas) {
       measurementSchemaMap.put(measurementSchema.getMeasurementId(), measurementSchema);
+    }
+  }
+
+  public void flushChunks(TsFileIOWriter writer) throws IOException {
+    for (IChunkWriter chunkWriter : chunkWriterCache.values()) {
+      chunkWriter.writeToFileWriter(writer);
     }
   }
 }

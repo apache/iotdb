@@ -17,18 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.selector;
+package org.apache.iotdb.db.engine.merge;
 
+import java.util.Iterator;
 import java.util.List;
-import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
- * IMergeFileSelector selects a set of files from given seqFiles and unseqFiles which can be
- * merged without exceeding given memory budget.
+ * IMergePathSelector select paths to be merged at a time if all paths of a device cannot be
+ * merged at the same time.
  */
-public interface IMergeFileSelector {
+public interface IMergePathSelector extends Iterator<List<Path>> {
 
-  List[] select() throws MergeException;
-
-  int getConcurrentMergeNum();
 }

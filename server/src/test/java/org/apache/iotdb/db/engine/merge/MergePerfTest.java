@@ -25,7 +25,7 @@ import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
+import org.apache.iotdb.db.engine.merge.inplace.task.MergeTask;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 

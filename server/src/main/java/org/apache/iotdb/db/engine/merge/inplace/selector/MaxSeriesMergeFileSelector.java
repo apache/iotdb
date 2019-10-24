@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.selector;
+package org.apache.iotdb.db.engine.merge.inplace.selector;
 
 import java.io.IOException;
 import java.util.Collections;

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.selector;
+package org.apache.iotdb.db.engine.merge.inplace.selector;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.merge.IFileQueryMemMeasurement;
+import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;

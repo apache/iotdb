@@ -24,7 +24,7 @@ import static org.junit.Assert.assertEquals;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.inplace.selector.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.junit.Test;

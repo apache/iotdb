@@ -124,4 +124,6 @@ public interface IChunkWriter {
   int getNumOfPages();
 
   TSDataType getDataType();
+
+  int getPtNum();
 }

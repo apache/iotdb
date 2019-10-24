@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.merge.inplace.task.MergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
@@ -41,12 +42,12 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
-import org.apache.iotdb.db.engine.merge.task.RecoverMergeTask;
+import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.inplace.selector.MaxFileMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.inplace.selector.MaxSeriesMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.inplace.selector.MergeFileStrategy;
+import org.apache.iotdb.db.engine.merge.inplace.task.MergeTask;
+import org.apache.iotdb.db.engine.merge.inplace.task.RecoverMergeTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -495,7 +496,7 @@ public class StorageGroupProcessor {
     fsFactory.getFile(baseDir, storageGroupName).mkdirs();
 
     String filePath = baseDir + File.separator + storageGroupName + File.separator +
-        System.currentTimeMillis() + "-" + versionController.nextVersion() + TSFILE_SUFFIX;
+        System.currentTimeMillis() + TSFILE_SEPARATOR + versionController.nextVersion() + TSFILE_SUFFIX;
 
     if (sequence) {
       return new TsFileProcessor(storageGroupName, fsFactory.getFile(filePath),

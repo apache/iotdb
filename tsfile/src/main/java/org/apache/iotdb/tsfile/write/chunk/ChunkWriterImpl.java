@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.write.chunk;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -79,6 +78,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   private long minTimestamp = Long.MIN_VALUE;
 
   private MeasurementSchema measurementSchema;
+  private int ptNum;
 
   /**
    * constructor of ChunkWriterImpl.
@@ -117,6 +117,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void write(long time, long value) {
     this.time = time;
     ++valueCountInOnePage;
+    ++ptNum;
     dataPageWriter.write(time, value);
     pageStatistics.updateStats(value);
     if (minTimestamp == Long.MIN_VALUE) {
@@ -129,6 +130,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void write(long time, int value) {
     this.time = time;
     ++valueCountInOnePage;
+    ++ptNum;
     dataPageWriter.write(time, value);
     pageStatistics.updateStats(value);
     if (minTimestamp == Long.MIN_VALUE) {
@@ -141,6 +143,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void write(long time, boolean value) {
     this.time = time;
     ++valueCountInOnePage;
+    ++ptNum;
     dataPageWriter.write(time, value);
     pageStatistics.updateStats(value);
     if (minTimestamp == Long.MIN_VALUE) {
@@ -153,6 +156,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void write(long time, float value) {
     this.time = time;
     ++valueCountInOnePage;
+    ++ptNum;
     dataPageWriter.write(time, value);
     pageStatistics.updateStats(value);
     if (minTimestamp == Long.MIN_VALUE) {
@@ -165,6 +169,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void write(long time, double value) {
     this.time = time;
     ++valueCountInOnePage;
+    ++ptNum;
     dataPageWriter.write(time, value);
     pageStatistics.updateStats(value);
     if (minTimestamp == Long.MIN_VALUE) {
@@ -177,6 +182,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void write(long time, BigDecimal value) {
     this.time = time;
     ++valueCountInOnePage;
+    ++ptNum;
     dataPageWriter.write(time, value);
     pageStatistics.updateStats(value);
     if (minTimestamp == Long.MIN_VALUE) {
@@ -189,6 +195,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void write(long time, Binary value) {
     this.time = time;
     ++valueCountInOnePage;
+    ++ptNum;
     dataPageWriter.write(time, value);
     pageStatistics.updateStats(value);
     if (minTimestamp == Long.MIN_VALUE) {
@@ -201,6 +208,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void write(long[] timestamps, int[] values, int batchSize) {
     this.time = timestamps[batchSize - 1];
     valueCountInOnePage += batchSize;
+    ptNum += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
@@ -213,6 +221,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void write(long[] timestamps, long[] values, int batchSize) {
     this.time = timestamps[batchSize - 1];
     valueCountInOnePage += batchSize;
+    ptNum += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
@@ -225,6 +234,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void write(long[] timestamps, boolean[] values, int batchSize) {
     this.time = timestamps[batchSize - 1];
     valueCountInOnePage += batchSize;
+    ptNum += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
@@ -237,6 +247,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void write(long[] timestamps, float[] values, int batchSize) {
     this.time = timestamps[batchSize - 1];
     valueCountInOnePage += batchSize;
+    ptNum += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
@@ -249,6 +260,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void write(long[] timestamps, double[] values, int batchSize) {
     this.time = timestamps[batchSize - 1];
     valueCountInOnePage += batchSize;
+    ptNum += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
@@ -261,6 +273,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void write(long[] timestamps, BigDecimal[] values, int batchSize) {
     this.time = timestamps[batchSize - 1];
     valueCountInOnePage += batchSize;
+    ptNum += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
@@ -273,6 +286,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void write(long[] timestamps, Binary[] values, int batchSize) {
     this.time = timestamps[batchSize - 1];
     valueCountInOnePage += batchSize;
+    ptNum += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
@@ -342,10 +356,13 @@ public class ChunkWriterImpl implements IChunkWriter {
   @Override
   public void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException {
     sealCurrentPage();
-    chunkBuffer.writeAllPagesOfSeriesToTsFile(tsfileWriter, chunkStatistics);
+    if (chunkBuffer.writeAllPagesOfSeriesToTsFile(tsfileWriter, chunkStatistics) == 0) {
+      return;
+    }
     chunkBuffer.reset();
     // reset series_statistics
     this.chunkStatistics = Statistics.getStatsByType(dataType);
+    ptNum = 0;
   }
 
   @Override
@@ -379,5 +396,10 @@ public class ChunkWriterImpl implements IChunkWriter {
   @Override
   public TSDataType getDataType() {
     return dataType;
+  }
+
+  @Override
+  public int getPtNum() {
+    return ptNum;
   }
 }

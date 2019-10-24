@@ -161,6 +161,9 @@ public class TsFileIOWriter {
    * end chunk and write some log.
    */
   public void endChunkGroup(long version) throws IOException {
+    if (currentChunkGroupMetaData.getChunkMetaDataList().isEmpty()) {
+      return;
+    }
     long dataSize = out.getPosition() - currentChunkGroupMetaData.getStartOffsetOfChunkGroup();
     ChunkGroupFooter chunkGroupFooter = new ChunkGroupFooter(
         currentChunkGroupMetaData.getDeviceID(),

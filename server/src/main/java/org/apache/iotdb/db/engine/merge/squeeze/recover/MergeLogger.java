@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.recover;
+package org.apache.iotdb.db.engine.merge.squeeze.recover;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -126,6 +126,12 @@ public class MergeLogger {
 
   public void logMergeStart() throws IOException {
     logStream.write(STR_MERGE_START);
+    logStream.newLine();
+    logStream.flush();
+  }
+
+  public void logNewFile(TsFileResource resource) throws IOException {
+    logStream.write(resource.getFile().getAbsolutePath());
     logStream.newLine();
     logStream.flush();
   }

@@ -1,23 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
-package org.apache.iotdb.db.engine.merge.task;
+package org.apache.iotdb.db.engine.merge.squeeze.task;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,7 +8,8 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
+import org.apache.iotdb.db.engine.merge.MergeCallback;
+import org.apache.iotdb.db.engine.merge.squeeze.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -37,48 +19,40 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * MergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
- * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files
- *        2. move the merged chunks in the temp files back to the seqFiles or move the unmerged
- *        chunks in the seqFiles into temp files and replace the seqFiles with the temp files.
- *        3. remove unseqFiles
- */
-public class MergeTask implements Callable<Void> {
+public class SqueezeMergeTask implements Callable<Void> {
 
-  public static final String MERGE_SUFFIX = ".merge";
-  private static final Logger logger = LoggerFactory.getLogger(MergeTask.class);
+  static final String MERGE_SUFFIX = ".merge";
+  private static final Logger logger = LoggerFactory.getLogger(SqueezeMergeTask.class);
 
-  MergeResource resource;
-  String storageGroupSysDir;
-  String storageGroupName;
-  MergeLogger mergeLogger;
-  MergeContext mergeContext = new MergeContext();
+  private MergeResource resource;
+  private String storageGroupSysDir;
+  private String storageGroupName;
+  private MergeLogger mergeLogger;
+  private MergeContext mergeContext = new MergeContext();
 
   private MergeCallback callback;
-  int concurrentMergeSeriesNum;
-  String taskName;
-  boolean fullMerge;
+  private int concurrentMergeSeriesNum;
+  private String taskName;
 
-  MergeTask(List<TsFileResource> seqFiles,
+  private TsFileResource newResource;
+
+  SqueezeMergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupSysDir, MergeCallback callback,
-      String taskName, boolean fullMerge, String storageGroupName) {
+      String taskName, String storageGroupName) {
     this.resource = new MergeResource(seqFiles, unseqFiles);
     this.storageGroupSysDir = storageGroupSysDir;
     this.callback = callback;
     this.taskName = taskName;
-    this.fullMerge = fullMerge;
     this.concurrentMergeSeriesNum = 1;
     this.storageGroupName = storageGroupName;
   }
 
-  public MergeTask(MergeResource mergeResource, String storageGroupSysDir, MergeCallback callback,
-      String taskName, boolean fullMerge, int concurrentMergeSeriesNum, String storageGroupName) {
+  public SqueezeMergeTask(MergeResource mergeResource, String storageGroupSysDir, MergeCallback callback,
+      String taskName, int concurrentMergeSeriesNum, String storageGroupName) {
     this.resource = mergeResource;
     this.storageGroupSysDir = storageGroupSysDir;
     this.callback = callback;
     this.taskName = taskName;
-    this.fullMerge = fullMerge;
     this.concurrentMergeSeriesNum = concurrentMergeSeriesNum;
     this.storageGroupName = storageGroupName;
   }
@@ -92,7 +66,8 @@ public class MergeTask implements Callable<Void> {
       cleanUp(false);
       // call the callback to make sure the StorageGroup exit merging status, but passing 2
       // empty file lists to avoid files being deleted.
-      callback.call(Collections.emptyList(), Collections.emptyList(), new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
+      callback.call(
+          Collections.emptyList(), Collections.emptyList(), new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
       throw e;
     }
     return null;
@@ -122,13 +97,9 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logMergeStart();
 
-    MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName, mergeLogger, resource,
-        fullMerge, unmergedSeries, concurrentMergeSeriesNum);
-    mergeChunkTask.mergeSeries();
-
-    MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,
-        resource.getSeqFiles());
-    mergeFileTask.mergeFiles();
+    MergeSeriesTask mergeChunkTask = new MergeSeriesTask(mergeContext, taskName, mergeLogger, resource
+        ,unmergedSeries, concurrentMergeSeriesNum);
+    newResource = mergeChunkTask.mergeSeries();
 
     cleanUp(true);
     if (logger.isInfoEnabled()) {
@@ -145,7 +116,7 @@ public class MergeTask implements Callable<Void> {
     }
   }
 
-  void cleanUp(boolean executeCallback) throws IOException {
+  private void cleanUp(boolean executeCallback) throws IOException {
     logger.info("{} is cleaning up", taskName);
 
     resource.clear();
