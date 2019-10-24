@@ -136,7 +136,7 @@ public class StorageEngine implements IService {
     try {
       ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
-      logger.warn("TTL check thread still doesn't exist after 30s");
+      logger.warn("TTL check thread still doesn't exit after 30s");
     }
   }
 

@@ -618,7 +618,7 @@ Notice: When you set TTL to some storage groups, data out of the TTL will be mad
 immediately, but because the data files may contain both out-dated and living data or the data files may
 be being used by queries, the physical removal of data is stale. If you increase or unset TTL
 just after setting it previously, some previously invisible data may be seen again, but the
-physically removed one is lost forever. In other word, different from delete statement, the
+physically removed one is lost forever. In other words, different from delete statement, the
 atomicity of data deletion is not guaranteed for efficiency concerns. So we recommend that you do
 not change the TTL once it is set or at least do not reset it frequently, unless you are determined 
 to suffer the unpredictability. 
