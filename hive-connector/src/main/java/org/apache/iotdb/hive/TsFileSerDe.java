@@ -51,6 +51,7 @@ public class TsFileSerDe extends AbstractSerDe {
   private TsFileDeserializer tsFileDeserializer = null;
   private ObjectInspector oi;
   private String tableName;
+  private String sensorName;
 
   @Override
   public void initialize(@Nullable Configuration conf, Properties tbl) throws SerDeException {
@@ -65,9 +66,12 @@ public class TsFileSerDe extends AbstractSerDe {
 
     logger.debug("before table name {}", tbl.getProperty(TABLE_NAME));
 
-    tableName = tbl.getProperty(TABLE_NAME).split("\\.")[1];
+    String[] table = tbl.getProperty(TABLE_NAME).split("\\.");
 
-    tableName = String.join(".", tableName.split("/"));
+    tableName = table[1];
+    sensorName = table[0];
+
+    tableName = String.join(".", table[0].split("/"));
 
     logger.debug("after table name {}", tableName);
 
