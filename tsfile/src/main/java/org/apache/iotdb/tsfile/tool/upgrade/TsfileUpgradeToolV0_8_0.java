@@ -497,6 +497,13 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
       logger.info("TsFile upgrade process cannot proceed at position {} after {} chunk groups "
           + "recovered, because : {}", this.position(), newMetaData.size(), e2.getMessage());
       return false;
+    } finally {
+      if (tsFileInput != null) {
+        tsFileInput.close();
+      }
+      if (tsFileIOWriter != null) {
+        tsFileIOWriter.close();
+      }
     }
   }
 

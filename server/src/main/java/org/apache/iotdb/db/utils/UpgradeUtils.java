@@ -30,9 +30,8 @@ public class UpgradeUtils {
   private static final Logger logger = LoggerFactory.getLogger(UpgradeUtils.class);
 
   public static boolean isNeedUpgrade(TsFileResource tsFileResource) {
-    try {
-      TsFileSequenceReader tsFileSequenceReader = new TsFileSequenceReader(
-          tsFileResource.getFile().getAbsolutePath());
+    try (TsFileSequenceReader tsFileSequenceReader = new TsFileSequenceReader(
+        tsFileResource.getFile().getAbsolutePath())) {
       if (tsFileSequenceReader.readVersionNumber().equals(TSFileConfig.OLD_VERSION)) {
         return true;
       }
