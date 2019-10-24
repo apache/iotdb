@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
@@ -43,7 +42,7 @@ public abstract class ChunkReader {
   private ByteBuffer chunkDataBuffer;
 
   private IUnCompressor unCompressor;
-  private String endianType;
+  private EndianType endianType;
   private Decoder valueDecoder;
   private Decoder timeDecoder = Decoder.getDecoderByType(
       TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
@@ -156,7 +155,7 @@ public abstract class ChunkReader {
     chunkDataBuffer.get(compressedPageBody, 0, compressedPageBodyLength);
     valueDecoder.reset();
     ByteBuffer pageData = ByteBuffer.wrap(unCompressor.uncompress(compressedPageBody));
-    if (endianType.equals("LITTLE_ENDIAN")) {
+    if (endianType == EndianType.LITTLE_ENDIAN) {
       pageData.order(ByteOrder.LITTLE_ENDIAN);
     }
     PageReader reader = new PageReader(pageData, chunkHeader.getDataType(),
