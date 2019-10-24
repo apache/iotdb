@@ -192,7 +192,10 @@ public class TsFileMetaData {
     return this.deviceIndexMap.containsKey(deltaObjUid);
   }
 
-  public TsDeviceMetadataIndex getDeviceMetadataIndex(String deltaObjUid) {
+  public TsDeviceMetadataIndex getDeviceMetadataIndex(String deltaObjUid) throws IOException {
+    if (!this.deviceIndexMap.containsKey(deltaObjUid)) {
+      throw new IOException("No measurement path : " + deltaObjUid);
+    }
     return this.deviceIndexMap.get(deltaObjUid);
   }
 

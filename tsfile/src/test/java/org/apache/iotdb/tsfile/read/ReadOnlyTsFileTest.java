@@ -110,12 +110,13 @@ public class ReadOnlyTsFileTest {
 
   @Test
   public void test2() throws InterruptedException, WriteProcessException, IOException {
-    int minRowCount = 1000, maxRowCount=100000;
+    int minRowCount = 1000, maxRowCount = 100000;
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
     TsFileGeneratorForTest.generateFile(minRowCount, maxRowCount, 16 * 1024 * 1024, 10000);
     fileReader = new TsFileSequenceReader(FILE_PATH);
     tsFile = new ReadOnlyTsFile(fileReader);
     queryTest2();
+    queryNonExistPathTest();
     tsFile.close();
     TsFileGeneratorForTest.after();
   }
@@ -139,5 +140,19 @@ public class ReadOnlyTsFileTest {
     }
     Assert.assertEquals(10647, cnt);
   }
+
+  void queryNonExistPathTest() {
+    ArrayList<Path> paths = new ArrayList<>();
+    paths.add(new Path("dr.s1"));
+    paths.add(new Path("d2.s1"));
+    IExpression expression = new GlobalTimeExpression(TimeFilter.gt(1480562664760L));
+    QueryExpression queryExpression = QueryExpression.create(paths, expression);
+    try {
+      QueryDataSet queryDataSet = tsFile.query(queryExpression);
+    } catch (IOException e) {
+      Assert.assertNotNull(e.getMessage(), "No measurement path : dr");
+    }
+  }
+
 }
 
