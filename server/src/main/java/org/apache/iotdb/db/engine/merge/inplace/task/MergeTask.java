@@ -93,7 +93,8 @@ public class MergeTask implements Callable<Void> {
       cleanUp(false);
       // call the callback to make sure the StorageGroup exit merging status, but passing 2
       // empty file lists to avoid files being deleted.
-      callback.call(Collections.emptyList(), Collections.emptyList(), new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
+      callback.call(Collections.emptyList(), Collections.emptyList(), new File(storageGroupSysDir
+          , MergeLogger.MERGE_LOG_NAME), null);
       throw e;
     }
     return null;
@@ -165,7 +166,7 @@ public class MergeTask implements Callable<Void> {
     if (executeCallback) {
       // make sure merge.log is not deleted until unseqFiles are cleared so that when system
       // reboots, the undeleted files can be deleted again
-      callback.call(resource.getSeqFiles(), resource.getUnseqFiles(), logFile);
+      callback.call(resource.getSeqFiles(), resource.getUnseqFiles(), logFile, null);
     } else {
       logFile.delete();
     }

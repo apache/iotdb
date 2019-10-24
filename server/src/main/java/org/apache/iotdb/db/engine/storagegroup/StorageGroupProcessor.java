@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -241,7 +241,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  private List<TsFileResource> getAllFiles(List<String> folders) throws IOException {
+  private List<TsFileResource> getAllFiles(List<String> folders) {
     List<File> tsFiles = new ArrayList<>();
     for (String baseDir : folders) {
       File fileFolder = fsFactory.getFile(baseDir, storageGroupName);
@@ -303,13 +303,13 @@ public class StorageGroupProcessor {
 
   // TsFileNameComparator compares TsFiles by the version number in its name
   // ({systemTime}-{versionNum}.tsfile)
-  public int compareFileName(File o1, File o2) {
+  private int compareFileName(File o1, File o2) {
     String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split("-");
     String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split("-");
-    if (Long.valueOf(items1[0]) - Long.valueOf(items2[0]) == 0) {
-      return Long.compare(Long.valueOf(items1[1]), Long.valueOf(items2[1]));
+    if (Long.parseLong(items1[0]) - Long.parseLong(items2[0]) == 0) {
+      return Long.compare(Long.parseLong(items1[1]), Long.parseLong(items2[1]));
     } else {
-      return Long.compare(Long.valueOf(items1[0]), Long.valueOf(items2[0]));
+      return Long.compare(Long.parseLong(items1[0]), Long.parseLong(items2[0]));
     }
   }
 
@@ -826,8 +826,7 @@ public class StorageGroupProcessor {
   /**
    * put the memtable back to the MemTablePool and make the metadata in writer visible
    */
-  // TODO please consider concurrency with query and insert method.
-  public void closeUnsealedTsFileProcessor(
+  private void closeUnsealedTsFileProcessor(
       TsFileProcessor tsFileProcessor) throws TsFileProcessorException {
     closeQueryLock.writeLock().lock();
     try {
@@ -910,32 +909,10 @@ public class StorageGroupProcessor {
     }
   }
 
-  protected void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
-      File mergeLog) {
-    logger.info("{} a merge task is ending...", storageGroupName);
+  private void handleInplaceMerge(List<TsFileResource> seqFiles,
+      List<TsFileResource> unseqFiles, File mergeLog) {
 
-    if (unseqFiles.isEmpty()) {
-      // merge runtime exception arose, just end this merge
-      isMerging = false;
-      logger.info("{} a merge task abnormally ends", storageGroupName);
-      return;
-    }
-
-    mergeLock.writeLock().lock();
-    try {
-      unSequenceFileList.removeAll(unseqFiles);
-    } finally {
-      mergeLock.writeLock().unlock();
-    }
-
-    for (TsFileResource unseqFile : unseqFiles) {
-      unseqFile.getMergeQueryLock().writeLock().lock();
-      try {
-        unseqFile.remove();
-      } finally {
-        unseqFile.getMergeQueryLock().writeLock().unlock();
-      }
-    }
+    removeUnseqFiles(unseqFiles);
 
     for (int i = 0; i < seqFiles.size(); i++) {
       TsFileResource seqFile = seqFiles.get(i);
@@ -973,6 +950,91 @@ public class StorageGroupProcessor {
       }
     }
     logger.info("{} a merge task ends", storageGroupName);
+  }
+
+  private void handleSqueezeMerge(
+      List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, File mergeLog,
+      TsFileResource newFile) {
+
+    // make sure no queries are holding the seqFiles
+    for (TsFileResource seqFile : seqFiles) {
+      seqFile.getMergeQueryLock().writeLock().lock();
+    }
+    // block new queries and insertions to prevent the seqFiles from changing
+    writeLock();
+    mergeLock.writeLock().lock();;
+    try {
+      removeUnseqFiles(unseqFiles);
+      // insert the new file into a proper place
+      List<TsFileResource> newSeqFiles = new ArrayList<>();
+      int startIdx = sequenceFileList.indexOf(seqFiles.get(0));
+      int endIdx = sequenceFileList.indexOf(seqFiles.get(seqFiles.size() - 1));
+      for (int i = 0; i < startIdx; i++) {
+        newSeqFiles.add(sequenceFileList.get(i));
+      }
+      newSeqFiles.add(newFile);
+      for (int i = endIdx + 1; i < sequenceFileList.size(); i++) {
+        newSeqFiles.add(sequenceFileList.get(i));
+      }
+      sequenceFileList = newSeqFiles;
+      // move modifications generated during merge into the new file
+      if (mergingModification != null) {
+        logger.debug("{} is updating the merged file's modification file", storageGroupName);
+        for (Modification modification : mergingModification.getModifications()) {
+          newFile.getModFile().write(modification);
+        }
+        mergingModification.remove();
+        mergingModification = null;
+      }
+      // remove old seqFiles
+      for (TsFileResource seqFile : seqFiles) {
+        seqFile.remove();
+        seqFile.getMergeQueryLock().writeLock().unlock();
+      }
+      mergeLog.delete();
+    } catch (IOException e) {
+      logger.error("{} fails to do the after merge action,", storageGroupName, e);
+    } finally {
+      isMerging = false;
+      writeUnlock();
+      mergeLock.writeLock().unlock();
+      logger.info("{} a merge task ends", storageGroupName);
+    }
+  }
+
+  private void removeUnseqFiles(List<TsFileResource> unseqFiles) {
+    mergeLock.writeLock().lock();
+    try {
+      unSequenceFileList.removeAll(unseqFiles);
+    } finally {
+      mergeLock.writeLock().unlock();
+    }
+    for (TsFileResource unseqFile : unseqFiles) {
+      unseqFile.getMergeQueryLock().writeLock().lock();
+      try {
+        unseqFile.remove();
+      } finally {
+        unseqFile.getMergeQueryLock().writeLock().unlock();
+      }
+    }
+  }
+
+  void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
+      File mergeLog, TsFileResource newFile) {
+    logger.info("{} a merge task is ending...", storageGroupName);
+
+    if (unseqFiles.isEmpty()) {
+      // merge runtime exception arose, just end this merge
+      isMerging = false;
+      logger.info("{} a merge task abnormally ends", storageGroupName);
+      return;
+    }
+
+    if (newFile == null) {
+      handleInplaceMerge(seqFiles, unseqFiles, mergeLog);
+    } else {
+      handleSqueezeMerge(seqFiles, unseqFiles, mergeLog, newFile);
+    }
   }
 
 

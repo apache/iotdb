@@ -36,17 +36,6 @@ public class SqueezeMergeTask implements Callable<Void> {
 
   private TsFileResource newResource;
 
-  SqueezeMergeTask(List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles, String storageGroupSysDir, MergeCallback callback,
-      String taskName, String storageGroupName) {
-    this.resource = new MergeResource(seqFiles, unseqFiles);
-    this.storageGroupSysDir = storageGroupSysDir;
-    this.callback = callback;
-    this.taskName = taskName;
-    this.concurrentMergeSeriesNum = 1;
-    this.storageGroupName = storageGroupName;
-  }
-
   public SqueezeMergeTask(MergeResource mergeResource, String storageGroupSysDir, MergeCallback callback,
       String taskName, int concurrentMergeSeriesNum, String storageGroupName) {
     this.resource = mergeResource;
@@ -67,7 +56,8 @@ public class SqueezeMergeTask implements Callable<Void> {
       // call the callback to make sure the StorageGroup exit merging status, but passing 2
       // empty file lists to avoid files being deleted.
       callback.call(
-          Collections.emptyList(), Collections.emptyList(), new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
+          Collections.emptyList(), Collections.emptyList(), new File(storageGroupSysDir,
+              MergeLogger.MERGE_LOG_NAME), null);
       throw e;
     }
     return null;
@@ -135,7 +125,7 @@ public class SqueezeMergeTask implements Callable<Void> {
     if (executeCallback) {
       // make sure merge.log is not deleted until unseqFiles are cleared so that when system
       // reboots, the undeleted files can be deleted again
-      callback.call(resource.getSeqFiles(), resource.getUnseqFiles(), logFile);
+      callback.call(resource.getSeqFiles(), resource.getUnseqFiles(), logFile, newResource);
     } else {
       logFile.delete();
     }

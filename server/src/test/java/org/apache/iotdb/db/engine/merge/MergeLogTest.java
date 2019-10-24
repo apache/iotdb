@@ -65,7 +65,7 @@ public class MergeLogTest extends MergeTest {
   }
 
   private void testCallBack(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
-      File mergeLog) {
+      File mergeLog, TsFileResource newFile) {
     int lineCnt = 0;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(mergeLog))) {
       String line;
