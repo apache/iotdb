@@ -67,4 +67,6 @@ public class IoTDBConstant {
 
   public static final String STORAGE_GROUP = "storage group";
   public static final String TTL = "ttl";
+
+  public static final int MEMTABLE_NUM_IN_EACH_STORAGE_GROUP = 4;
 }
