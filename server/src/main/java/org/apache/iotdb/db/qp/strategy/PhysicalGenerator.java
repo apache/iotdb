@@ -35,14 +35,14 @@ import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.DeleteOperator;
+import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.sys.AddPathOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeletePathOperator;
+import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
@@ -54,10 +54,10 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.AddPathPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeletePathPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
@@ -106,18 +106,18 @@ public class PhysicalGenerator {
         DeleteStorageGroupOperator deleteStorageGroup = (DeleteStorageGroupOperator) operator;
         return new DeleteStorageGroupPlan(deleteStorageGroup.getDeletePathList());
       case CREATE_TIMESERIES:
-        AddPathOperator addPath = (AddPathOperator) operator;
-        return new AddPathPlan(addPath.getPath(), addPath.getDataType(),
+        CreateTimeSeriesOperator addPath = (CreateTimeSeriesOperator) operator;
+        return new CreateTimeSeriesPlan(addPath.getPath(), addPath.getDataType(),
             addPath.getEncoding(), addPath.getCompressor(), addPath.getProps());
       case DELETE_TIMESERIES:
-        DeletePathOperator deletePath = (DeletePathOperator) operator;
-        return new DeletePathPlan(deletePath.getDeletePathList());
+        DeleteTimeSeriesOperator deletePath = (DeleteTimeSeriesOperator) operator;
+        return new DeleteTimeSeriesPlan(deletePath.getDeletePathList());
       case PROPERTY:
         PropertyOperator property = (PropertyOperator) operator;
         return new PropertyPlan(property.getPropertyType(), property.getPropertyPath(),
             property.getMetadataPath());
       case DELETE:
-        DeleteOperator delete = (DeleteOperator) operator;
+        DeleteDataOperator delete = (DeleteDataOperator) operator;
         paths = delete.getSelectedPaths();
         return new DeletePlan(delete.getTime(), paths);
       case INSERT:

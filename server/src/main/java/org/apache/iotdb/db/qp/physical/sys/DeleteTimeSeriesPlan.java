@@ -16,28 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical.crud;
+package org.apache.iotdb.db.qp.physical.sys;
+
+import java.util.List;
 
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.read.common.Path;
 
-/**
- * this class extends {@code RootOperator} and process delete statement.
- */
-public class DeleteOperator extends SFWOperator {
-
-  private long time;
-
-  public DeleteOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = Operator.OperatorType.DELETE;
+public class DeleteTimeSeriesPlan extends PhysicalPlan {
+  
+  private List<Path> deletePathList;
+  
+  public DeleteTimeSeriesPlan (List<Path> deletePathList) {
+	  super(false, Operator.OperatorType.DELETE_TIMESERIES);
+	  this.deletePathList = deletePathList;
+  }
+  
+  @Override
+  public List<Path> getPaths() {
+    return deletePathList;
   }
 
-  public long getTime() {
-    return time;
-  }
-
-  public void setTime(long time) {
-    this.time = time;
-  }
 
 }

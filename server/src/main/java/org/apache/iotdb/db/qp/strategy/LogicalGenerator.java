@@ -398,13 +398,13 @@ public class LogicalGenerator {
       AstNode node = paramNode.getChild(offset++);
       props.put(node.getChild(0).getText().toLowerCase(), cascadeChildrenText(node.getChild(1)));
     }
-    AddPathOperator addPathOperator = new AddPathOperator(SQLConstant.TOK_METADATA_CREATE);
-    addPathOperator.setPath(series);
-    addPathOperator.setDataType(TSDataType.valueOf(dataType));
-    addPathOperator.setEncoding(TSEncoding.valueOf(encodingType));
-    addPathOperator.setProps(props);
-    addPathOperator.setCompressor(CompressionType.valueOf(compressor));
-    initializedOperator = addPathOperator;
+    CreateTimeSeriesOperator createTimeSeriesOperator = new CreateTimeSeriesOperator(SQLConstant.TOK_METADATA_CREATE);
+    createTimeSeriesOperator.setPath(series);
+    createTimeSeriesOperator.setDataType(TSDataType.valueOf(dataType));
+    createTimeSeriesOperator.setEncoding(TSEncoding.valueOf(encodingType));
+    createTimeSeriesOperator.setProps(props);
+    createTimeSeriesOperator.setCompressor(CompressionType.valueOf(compressor));
+    initializedOperator = createTimeSeriesOperator;
   }
 
   private void analyzeMetadataDelete(AstNode astNode) {
@@ -412,9 +412,9 @@ public class LogicalGenerator {
     for (int i = 0; i < astNode.getChild(0).getChildCount(); i++) {
       deletePaths.add(parsePath(astNode.getChild(0).getChild(i)));
     }
-    DeletePathOperator deletePathOperator = new DeletePathOperator(SQLConstant.TOK_METADATA_DELETE);
-    deletePathOperator.setDeletePathList(deletePaths);
-    initializedOperator = deletePathOperator;
+    DeleteTimeSeriesOperator deleteTimeSeriesOperator = new DeleteTimeSeriesOperator(SQLConstant.TOK_METADATA_DELETE);
+    deleteTimeSeriesOperator.setDeletePathList(deletePaths);
+    initializedOperator = deleteTimeSeriesOperator;
   }
 
   private void analyzeMetadataSetFileLevel(AstNode astNode) {
@@ -490,7 +490,7 @@ public class LogicalGenerator {
   }
 
   private void analyzeDelete(AstNode astNode) throws LogicalOperatorException {
-    initializedOperator = new DeleteOperator(SQLConstant.TOK_DELETE);
+    initializedOperator = new DeleteDataOperator(SQLConstant.TOK_DELETE);
     SelectOperator selectOp = new SelectOperator(TqlParser.TOK_SELECT);
     int selChildCount = astNode.getChildCount() - 1;
     for (int i = 0; i < selChildCount; i++) {
@@ -505,8 +505,8 @@ public class LogicalGenerator {
     }
     ((SFWOperator) initializedOperator).setSelectOperator(selectOp);
     analyzeWhere(astNode.getChild(selChildCount));
-    long deleteTime = parseDeleteTimeFilter((DeleteOperator) initializedOperator);
-    ((DeleteOperator) initializedOperator).setTime(deleteTime);
+    long deleteTime = parseDeleteTimeFilter((DeleteDataOperator) initializedOperator);
+    ((DeleteDataOperator) initializedOperator).setTime(deleteTime);
   }
 
   /**
@@ -514,7 +514,7 @@ public class LogicalGenerator {
    *
    * @param operator delete logical plan
    */
-  private long parseDeleteTimeFilter(DeleteOperator operator) throws LogicalOperatorException {
+  private long parseDeleteTimeFilter(DeleteDataOperator operator) throws LogicalOperatorException {
     FilterOperator filterOperator = operator.getFilterOperator();
     if (!(filterOperator.isLeaf())) {
       throw new LogicalOperatorException(

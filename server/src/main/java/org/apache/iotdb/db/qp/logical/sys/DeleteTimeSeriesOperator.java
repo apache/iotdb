@@ -23,11 +23,14 @@ import java.util.List;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-public class DeletePathOperator extends RootOperator {
+/**
+ * this class deletes whole data and metadata of the timeseries.
+ */
+public class DeleteTimeSeriesOperator extends RootOperator {
 
   private List<Path> deletePathList;
   
-  public DeletePathOperator(int tokenIntType) {
+  public DeleteTimeSeriesOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.DELETE_TIMESERIES;
   }

@@ -49,10 +49,10 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AddPathPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeletePathPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -112,15 +112,14 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         return operateWatermarkEmbedding(((DataAuthPlan) plan).getUsers(), true);
       case REVOKE_WATERMARK_EMBEDDING:
         return operateWatermarkEmbedding(((DataAuthPlan) plan).getUsers(), false);
-      case METADATA:
       case DELETE_TIMESERIES:
-        return operateTimeSeriesDeleting((DeletePathPlan) plan);
+        return deleteTimeSeries((DeleteTimeSeriesPlan) plan);
       case CREATE_TIMESERIES:
-        return operateTimeSeriesAdding((AddPathPlan) plan);
+        return createTimeSeries((CreateTimeSeriesPlan) plan);
       case SET_STORAGE_GROUP:
-        return operateStorageGroupSetting((SetStorageGroupPlan) plan);
+        return setStorageGroup((SetStorageGroupPlan) plan);
       case DELETE_STORAGE_GROUP:
-        return operateStorageGroupDeleting((DeleteStorageGroupPlan) plan);  
+        return deleteStorageGroup((DeleteStorageGroupPlan) plan);  
       case PROPERTY:
         PropertyPlan property = (PropertyPlan) plan;
         return operateProperty(property);
@@ -378,12 +377,12 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return true;
   }
   
-  private boolean operateTimeSeriesAdding(AddPathPlan addPathPlan) throws ProcessorException {
-    Path path = addPathPlan.getPath();
-    TSDataType dataType = addPathPlan.getDataType();
-    CompressionType compressor = addPathPlan.getCompressor();
-    TSEncoding encoding = addPathPlan.getEncoding();
-    Map<String, String> props = addPathPlan.getProps();
+  private boolean createTimeSeries(CreateTimeSeriesPlan createTimeSeriesPlan) throws ProcessorException {
+    Path path = createTimeSeriesPlan.getPath();
+    TSDataType dataType = createTimeSeriesPlan.getDataType();
+    CompressionType compressor = createTimeSeriesPlan.getCompressor();
+    TSEncoding encoding = createTimeSeriesPlan.getEncoding();
+    Map<String, String> props = createTimeSeriesPlan.getProps();
     try {
       boolean result = mManager.addPathToMTree(path, dataType, encoding, compressor, props);
       if (result) {
@@ -395,8 +394,8 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return true;
   }
   
-  private boolean operateTimeSeriesDeleting(DeletePathPlan deletePathPlan) throws ProcessorException {
-    List<Path> deletePathList = deletePathPlan.getPaths();
+  private boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws ProcessorException {
+    List<Path> deletePathList = deleteTimeSeriesPlan.getPaths();
     try {
       deleteDataOfTimeSeries(deletePathList);
       Set<String> emptyStorageGroups = mManager.deletePaths(deletePathList);
@@ -409,7 +408,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return true;
   }
   
-  private boolean operateStorageGroupSetting(SetStorageGroupPlan setStorageGroupPlan) throws ProcessorException {
+  private boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) throws ProcessorException {
     Path path = setStorageGroupPlan.getPath();
     try {
       mManager.setStorageGroupToMTree(path.getFullPath());
@@ -419,7 +418,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return true;
   }
   
-  private boolean operateStorageGroupDeleting(DeleteStorageGroupPlan deleteStorageGroupPlan) throws ProcessorException {
+  private boolean deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan) throws ProcessorException {
     List<Path> deletePathList = deleteStorageGroupPlan.getPaths();
     try {
       mManager.deleteStorageGroupsFromMTree(deletePathList);

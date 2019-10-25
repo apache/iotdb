@@ -16,33 +16,41 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.db.qp.physical.sys;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-public class AddPathOperator extends RootOperator {
+public class CreateTimeSeriesPlan extends PhysicalPlan {
 
   private Path path;
   private TSDataType dataType;
   private TSEncoding encoding;
   private CompressionType compressor;
   private Map<String, String> props;
-  
-  public AddPathOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.CREATE_TIMESERIES;
+	  
+  public CreateTimeSeriesPlan(Path path, TSDataType dataType, TSEncoding encoding, 
+      CompressionType compressor, Map<String, String> props) {
+    super(false, Operator.OperatorType.CREATE_TIMESERIES);
+    this.path = path;
+    this.dataType = dataType;
+    this.encoding = encoding;
+    this.compressor = compressor;
+    this.props = props;
   }
   
   public Path getPath() {
     return path;
   }
-  
+
   public void setPath(Path path) {
     this.path = path;
   }
@@ -55,6 +63,14 @@ public class AddPathOperator extends RootOperator {
     this.dataType = dataType;
   }
 
+  public CompressionType getCompressor() {
+    return compressor;
+  }
+
+  public void setCompressor(CompressionType compressor) {
+    this.compressor = compressor;
+  }
+
   public TSEncoding getEncoding() {
     return encoding;
   }
@@ -62,21 +78,30 @@ public class AddPathOperator extends RootOperator {
   public void setEncoding(TSEncoding encoding) {
     this.encoding = encoding;
   }
-
-  public void setCompressor(CompressionType compressor) {
-    this.compressor = compressor;
-  }
-
-  public CompressionType getCompressor() {
-    return compressor;
-  }
-
+  
   public Map<String, String> getProps() {
     return props;
   }
 
   public void setProps(Map<String, String> props) {
     this.props = props;
+  }
+  
+  @Override
+  public String toString() {
+    String ret = String.format("seriesPath: %s%nresultDataType: %s%nencoding: %s%nnamespace type:"
+        + " ADD_PATH%nargs: ", path, dataType, encoding);
+    StringBuilder stringBuilder = new StringBuilder(ret.length()+50);
+    stringBuilder.append(ret);
+    for (Map.Entry<String, String> prop : props.entrySet()) {
+      stringBuilder.append(prop.getKey()).append("=").append(prop.getValue()).append(",");
+    }
+    return stringBuilder.toString();
+  }
+  
+  @Override
+  public List<Path> getPaths() {
+    return Collections.singletonList(path);
   }
 
 }

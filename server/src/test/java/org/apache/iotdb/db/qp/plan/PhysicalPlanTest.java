@@ -34,7 +34,7 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.AddPathPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
@@ -89,7 +89,7 @@ public class PhysicalPlanTest {
       throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=INT32,encoding=RLE";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
-    AddPathPlan plan = (AddPathPlan) processor.parseSQLToPhysicalPlan(metadata);
+    CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(String.format("seriesPath: root.vehicle.d1.s2%n" + "resultDataType: INT32%n" +
         "encoding: RLE%nnamespace type: ADD_PATH%n" + "args: "), plan.toString());
   }
@@ -99,7 +99,7 @@ public class PhysicalPlanTest {
       throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=int32,encoding=rle";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
-    AddPathPlan plan = (AddPathPlan) processor.parseSQLToPhysicalPlan(metadata);
+    CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(String.format("seriesPath: root.vehicle.d1.s2%n" + "resultDataType: INT32%n" +
         "encoding: RLE%nnamespace type: ADD_PATH%n" + "args: "), plan.toString());
   }
