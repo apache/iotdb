@@ -44,14 +44,13 @@ public class TsFileSerDe extends AbstractSerDe {
   private static final Logger logger = LoggerFactory.getLogger(TsFileSerDe.class);
 
 
-  public static final String TABLE_NAME = "name";
+  public static final String DEVICE_ID = "device_id";
 
   private List<String> columnNames;
   private List<TypeInfo> columnTypes;
   private TsFileDeserializer tsFileDeserializer = null;
   private ObjectInspector oi;
-  private String tableName;
-  private String sensorName;
+  private String deviceId;
 
   @Override
   public void initialize(@Nullable Configuration conf, Properties tbl) throws SerDeException {
@@ -61,21 +60,9 @@ public class TsFileSerDe extends AbstractSerDe {
     final String columnNameDelimiter = tbl.containsKey(serdeConstants.COLUMN_NAME_DELIMITER) ? tbl
             .getProperty(serdeConstants.COLUMN_NAME_DELIMITER) : String.valueOf(SerDeUtils.COMMA);
 
-    // in our implementation, tableName should be set same as device_id
 
+    deviceId = tbl.getProperty(DEVICE_ID);
 
-    logger.debug("before table name {}", tbl.getProperty(TABLE_NAME));
-
-    String[] table = tbl.getProperty(TABLE_NAME).split("\\.");
-
-    tableName = table[1];
-    sensorName = table[0];
-
-    tableName = String.join(".", table[0].split("/"));
-
-    logger.debug("after table name {}", tableName);
-
-    logger.debug("column names {}", columnNameProperty);
 
     if (columnNameProperty == null || columnNameProperty.isEmpty()
     || columnTypeProperty == null || columnTypeProperty.isEmpty()) {
@@ -116,7 +103,7 @@ public class TsFileSerDe extends AbstractSerDe {
 
   @Override
   public Object deserialize(Writable blob) throws SerDeException {
-    return getDeserializer().deserialize(columnNames, columnTypes, blob, tableName);
+    return getDeserializer().deserialize(columnNames, columnTypes, blob, deviceId);
   }
 
   @Override

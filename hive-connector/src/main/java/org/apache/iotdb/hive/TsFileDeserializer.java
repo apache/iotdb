@@ -48,11 +48,12 @@ public class TsFileDeserializer {
    * @param columnNames List of columns Hive is expecting from record.
    * @param columnTypes List of column types matched by index to names
    * @param writable Instance of MapWritable to deserialize
+   * @param deviceId device name
    * @return A list of objects suitable for Hive to work with further
    * @throws TsFileSerDeException For any exception during deserialization
    */
   public Object deserialize(List<String> columnNames, List<TypeInfo> columnTypes,
-                            Writable writable, String tableName) throws TsFileSerDeException {
+                            Writable writable, String deviceId) throws TsFileSerDeException {
     if(!(writable instanceof MapWritable)) {
       throw new TsFileSerDeException("Expecting a MapWritable");
     }
@@ -63,8 +64,7 @@ public class TsFileDeserializer {
       row.clear();
     }
     MapWritable mapWritable = (MapWritable) writable;
-    String deviceId = mapWritable.get(new Text("device_id")).toString();
-    if (!Objects.equals(deviceId.toLowerCase(), tableName)) {
+    if (!Objects.equals(mapWritable.get(new Text("device_id")).toString(), deviceId)) {
       return null;
     }
 
