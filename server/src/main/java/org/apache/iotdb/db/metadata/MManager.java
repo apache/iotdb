@@ -18,10 +18,21 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.sql.SQLException;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -839,7 +850,7 @@ public class MManager {
    *
    * @return A HashSet instance which stores all devices info
    */
-  public Set<String> getAllDevices() throws PathErrorException {
+  public Set<String> getAllDevices() throws PathErrorException, SQLException {
 
     lock.readLock().lock();
     try {
@@ -854,11 +865,11 @@ public class MManager {
    *
    * @return A List instance which stores all node at given level
    */
-  public List<String> getNodesList(int nodeLevel) {
+  public List<String> getNodesList(String prefixPath, int nodeLevel) throws SQLException {
 
     lock.readLock().lock();
     try {
-      return mgraph.getNodesList(nodeLevel);
+      return mgraph.getNodesList(prefixPath, nodeLevel);
     } finally {
       lock.readLock().unlock();
     }
@@ -1277,6 +1288,10 @@ public class MManager {
     } finally {
       lock.readLock().unlock();
     }
+  }
+
+  public int getSeriesNumber(String storageGroup) {
+    return seriesNumberInStorageGroups.getOrDefault(storageGroup, 0);
   }
 
   /**

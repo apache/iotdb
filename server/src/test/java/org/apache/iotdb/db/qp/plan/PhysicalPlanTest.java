@@ -34,9 +34,9 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
 import org.apache.iotdb.db.query.fill.LinearFill;
@@ -89,7 +89,7 @@ public class PhysicalPlanTest {
       throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=INT32,encoding=RLE";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
-    MetadataPlan plan = (MetadataPlan) processor.parseSQLToPhysicalPlan(metadata);
+    CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(String.format("seriesPath: root.vehicle.d1.s2%n" + "resultDataType: INT32%n" +
         "encoding: RLE%nnamespace type: ADD_PATH%n" + "args: "), plan.toString());
   }
@@ -99,7 +99,7 @@ public class PhysicalPlanTest {
       throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=int32,encoding=rle";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
-    MetadataPlan plan = (MetadataPlan) processor.parseSQLToPhysicalPlan(metadata);
+    CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(String.format("seriesPath: root.vehicle.d1.s2%n" + "resultDataType: INT32%n" +
         "encoding: RLE%nnamespace type: ADD_PATH%n" + "args: "), plan.toString());
   }
@@ -154,6 +154,7 @@ public class PhysicalPlanTest {
       fail();
     }
     GroupByPlan mergePlan = (GroupByPlan) plan;
+    assertEquals(10 * 60 * 1000L, mergePlan.getUnit());
     assertEquals(44, mergePlan.getOrigin());
   }
 
@@ -297,6 +298,18 @@ public class PhysicalPlanTest {
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
     IExpression expect = new GlobalTimeExpression(
         FilterFactory.or(TimeFilter.gt(20L), TimeFilter.lt(10L)));
+    assertEquals(expect.toString(), queryFilter.toString());
+
+  }
+
+  @Test
+  public void testQuery7()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+    String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 2019-10-16 10:59:00+08:00 - 1d5h or time < 10";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression expect = new GlobalTimeExpression(
+        FilterFactory.or(TimeFilter.gt(1571090340000L), TimeFilter.lt(10L)));
     assertEquals(expect.toString(), queryFilter.toString());
 
   }

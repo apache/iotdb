@@ -29,9 +29,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
+import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
@@ -45,15 +47,16 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseTsFile
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTablePool;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -141,6 +144,9 @@ public class TsFileProcessor {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
     }
 
+    // insert insertPlan to the work memtable
+    workMemTable.insert(insertPlan);
+
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
         getLogNode().write(insertPlan);
@@ -149,6 +155,7 @@ public class TsFileProcessor {
         return false;
       }
     }
+
     // update start time of this memtable
     tsFileResource.updateStartTime(insertPlan.getDeviceId(), insertPlan.getTime());
     //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
@@ -157,17 +164,18 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(insertPlan.getDeviceId(), insertPlan.getTime());
     }
 
-    // insert insertPlan to the work memtable
-    workMemTable.insert(insertPlan);
-
     return true;
   }
 
   public boolean insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes,
       Integer[] results) throws QueryProcessorException {
+
     if (workMemTable == null) {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
     }
+
+    // insert insertPlan to the work memtable
+    workMemTable.insertBatch(batchInsertPlan, indexes);
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
@@ -190,8 +198,6 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
     }
 
-    // insert insertPlan to the work memtable
-    workMemTable.insertBatch(batchInsertPlan, indexes);
     return true;
   }
 
@@ -223,8 +229,37 @@ public class TsFileProcessor {
 
 
   boolean shouldFlush() {
-    return workMemTable != null && workMemTable.memSize() > IoTDBDescriptor.getInstance()
-        .getConfig().getMemtableSizeThreshold();
+    return workMemTable != null
+        && workMemTable.memSize() > getMemtableSizeThresholdBasedOnSeriesNum();
+  }
+
+  /**
+   * <p>In the dynamic parameter adjustment module{@link IoTDBConfigDynamicAdapter}, it calculated
+   * the average size of each metatable{@link IoTDBConfigDynamicAdapter#tryToAdaptParameters()}.
+   * However, considering that the number of timeseries between storage groups may vary greatly,
+   * it's appropriate to judge whether to flush the memtable according to the average memtable size.
+   * We need to adjust it according to the number of timeseries in a specific storage group.
+   *
+   * Abbreviation of parameters:
+   *
+   * 1 memtableSize: m
+   * 2 maxMemTableNum: Nm
+   * 3 SeriesNumber: Ns
+   * 4 chunkSizeThreshold: Sc
+   * 5 Total timeseries number: Nts  {@link IoTDBConfigDynamicAdapter#totalTimeseries}
+   * 6 MemTable Number for Each SG: Nmes  {@link IoTDBConstant#MEMTABLE_NUM_IN_EACH_STORAGE_GROUP}
+   *
+   * <p>The equation: Σ(Ns * Sc) * Nmes = m * Nm  ==> Σ(Ns) * Sc * Nmes = m * Nm ==> Sc = m * Nm / Nmes / Nts
+   * <p>Note: Σ means the sum of storage groups , so Nts = ΣNs
+   *
+   */
+  private long getMemtableSizeThresholdBasedOnSeriesNum() {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    return IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries() == 0 ? config
+        .getMemtableSizeThreshold() :
+        config.getMemtableSizeThreshold() * config.getMaxMemtableNumber()
+            / IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP / IoTDBConfigDynamicAdapter.getInstance()
+            .getTotalTimeseries() * MManager.getInstance().getSeriesNumber(storageGroupName);
   }
 
 

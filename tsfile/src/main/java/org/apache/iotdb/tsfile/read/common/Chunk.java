@@ -19,6 +19,8 @@
 package org.apache.iotdb.tsfile.read.common;
 
 import java.nio.ByteBuffer;
+
+import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 
 /**
@@ -32,11 +34,13 @@ public class Chunk {
    * All data with timestamp <= deletedAt are considered deleted.
    */
   private long deletedAt;
+  private EndianType endianType;
 
-  public Chunk(ChunkHeader header, ByteBuffer buffer, long deletedAt) {
+  public Chunk(ChunkHeader header, ByteBuffer buffer, long deletedAt, EndianType endianType) {
     this.chunkHeader = header;
     this.chunkData = buffer;
     this.deletedAt = deletedAt;
+    this.endianType = endianType;
   }
 
   public ChunkHeader getHeader() {
@@ -49,6 +53,10 @@ public class Chunk {
 
   public long getDeletedAt() {
     return deletedAt;
+  }
+  
+  public EndianType getEndianType() {
+	  return endianType;
   }
 
   public void setDeletedAt(long deletedAt) {
