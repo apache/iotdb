@@ -118,26 +118,19 @@ public class DeviceMetaDataCache {
       cacheRequestNum.incrementAndGet();
       if (lruCache.containsKey(key)) {
         cacheHitNum.incrementAndGet();
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              "Cache hit: the number of requests for cache is {}, "
-                  + "the number of hints for cache is {}",
-              cacheRequestNum.get(), cacheHitNum.get());
-        }
+        printCacheLog(true);
         return new ArrayList<>(lruCache.get(key));
       }
     }
     synchronized (devicePathObject) {
       synchronized (lruCache) {
         if (lruCache.containsKey(key)) {
+          printCacheLog(true);
           cacheHitNum.incrementAndGet();
           return new ArrayList<>(lruCache.get(key));
         }
       }
-      if (logger.isDebugEnabled()) {
-        logger.debug("Cache didn't hit: the number of requests for cache is {}",
-            cacheRequestNum.get());
-      }
+      printCacheLog(false);
       TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(resource);
       // bloom filter part
       BloomFilter bloomFilter = fileMetaData.getBloomFilter();
@@ -168,6 +161,24 @@ public class DeviceMetaDataCache {
         }
         return new ArrayList<>();
       }
+    }
+  }
+
+  private void printCacheLog(boolean isHit) {
+    if (!logger.isDebugEnabled()) {
+      return;
+    }
+    logger.debug(
+        "[ChunkMetaData cache {}hit] The number of requests for cache is {}, hit rate is {}.",
+        isHit ? "" : "didn't ", cacheRequestNum.get(),
+        cacheHitNum.get() * 1.0 / cacheRequestNum.get());
+  }
+
+  public double calculateChunkMetaDataHitRatio() {
+    if (cacheRequestNum.get() != 0) {
+      return cacheHitNum.get() * 1.0 / cacheRequestNum.get();
+    } else {
+      return 0;
     }
   }
 

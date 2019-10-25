@@ -24,6 +24,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
@@ -31,10 +35,20 @@ import java.sql.Types;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.*;
-
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TSStatusType;
+import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Before;
@@ -107,7 +121,8 @@ public class IoTDBQueryResultSetTest {
   @Mock
   private TSFetchResultsResp fetchResultsResp;
 
-  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
+  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+      "");
   private TSStatus Status_SUCCESS = new TSStatus(successStatus);
   private ZoneId zoneID = ZoneId.systemDefault();
 
@@ -165,6 +180,7 @@ public class IoTDBQueryResultSetTest {
         .getDataType();
 
     boolean hasResultSet = statement.execute(testSql);
+    Assert.assertTrue(hasResultSet);
 
     verify(fetchMetadataResp, times(0)).getDataType();
 
@@ -175,115 +191,125 @@ public class IoTDBQueryResultSetTest {
     TSQueryDataSet tsQueryDataSet = FakedFirstFetchResult();
     when(fetchResultsResp.getQueryDataSet()).thenReturn(tsQueryDataSet);
 
-    if (hasResultSet) {
-      try (ResultSet resultSet = statement.getResultSet()) {
-        // check columnInfoMap
-        Assert.assertEquals(resultSet.findColumn("Time"), 1);
-        Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s2"), 2);
-        Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s1"), 3);
-        Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s0"), 4);
+    try (ResultSet resultSet = statement.getResultSet()) {
+      // check columnInfoMap
+      Assert.assertEquals(resultSet.findColumn("Time"), 1);
+      Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s2"), 2);
+      Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s1"), 3);
+      Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s0"), 4);
 
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        // check columnInfoList
-        Assert.assertEquals(resultSetMetaData.getColumnName(1), "Time");
-        Assert.assertEquals(resultSetMetaData.getColumnName(2), "root.vehicle.d0.s2");
-        Assert.assertEquals(resultSetMetaData.getColumnName(3), "root.vehicle.d0.s1");
-        Assert.assertEquals(resultSetMetaData.getColumnName(4), "root.vehicle.d0.s0");
-        Assert.assertEquals(resultSetMetaData.getColumnName(5), "root.vehicle.d0.s2");
-        // check columnTypeList
-        Assert.assertEquals(resultSetMetaData.getColumnType(1), Types.TIMESTAMP);
-        Assert.assertEquals(resultSetMetaData.getColumnType(2), Types.FLOAT);
-        Assert.assertEquals(resultSetMetaData.getColumnType(3), Types.BIGINT);
-        Assert.assertEquals(resultSetMetaData.getColumnType(4), Types.INTEGER);
-        Assert.assertEquals(resultSetMetaData.getColumnType(5), Types.FLOAT);
-        // check fetched result
-        int colCount = resultSetMetaData.getColumnCount();
-        StringBuilder resultStr = new StringBuilder();
-        for (int i = 1; i < colCount + 1; i++) { // meta title
-          resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      // check columnInfoList
+      Assert.assertEquals(resultSetMetaData.getColumnName(1), "Time");
+      Assert.assertEquals(resultSetMetaData.getColumnName(2), "root.vehicle.d0.s2");
+      Assert.assertEquals(resultSetMetaData.getColumnName(3), "root.vehicle.d0.s1");
+      Assert.assertEquals(resultSetMetaData.getColumnName(4), "root.vehicle.d0.s0");
+      Assert.assertEquals(resultSetMetaData.getColumnName(5), "root.vehicle.d0.s2");
+      // check columnTypeList
+      Assert.assertEquals(resultSetMetaData.getColumnType(1), Types.TIMESTAMP);
+      Assert.assertEquals(resultSetMetaData.getColumnType(2), Types.FLOAT);
+      Assert.assertEquals(resultSetMetaData.getColumnType(3), Types.BIGINT);
+      Assert.assertEquals(resultSetMetaData.getColumnType(4), Types.INTEGER);
+      Assert.assertEquals(resultSetMetaData.getColumnType(5), Types.FLOAT);
+      // check fetched result
+      int colCount = resultSetMetaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      for (int i = 1; i < colCount + 1; i++) { // meta title
+        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
+      }
+      resultStr.append("\n");
+      while (resultSet.next()) { // data
+        for (int i = 1; i <= colCount; i++) {
+          resultStr.append(resultSet.getString(i)).append(",");
         }
         resultStr.append("\n");
-        while (resultSet.next()) { // data
-          for (int i = 1; i <= colCount; i++) {
-            resultStr.append(resultSet.getString(i)).append(",");
-          }
-          resultStr.append("\n");
 
-          fetchResultsResp.hasResultSet = false; // at the second time to fetch
-        }
-        String standard =
-            "Time,root.vehicle.d0.s2,root.vehicle.d0.s1,root.vehicle.d0.s0,root.vehicle.d0.s2,\n"
-                + "2,2.22,40000,null,2.22,\n" + "3,3.33,null,null,3.33,\n"
-                + "4,4.44,null,null,4.44,\n"
-                + "50,null,50000,null,null,\n" + "100,null,199,null,null,\n"
-                + "101,null,199,null,null,\n"
-                + "103,null,199,null,null,\n" + "105,11.11,199,33333,11.11,\n"
-                + "1000,1000.11,55555,22222,1000.11,\n";
-        Assert.assertEquals(resultStr.toString(), standard);
+        fetchResultsResp.hasResultSet = false; // at the second time to fetch
       }
+      String standard =
+          "Time,root.vehicle.d0.s2,root.vehicle.d0.s1,root.vehicle.d0.s0,root.vehicle.d0.s2,\n"
+              + "2,2.22,40000,null,2.22,\n"
+              + "3,3.33,null,null,3.33,\n"
+              + "4,4.44,null,null,4.44,\n"
+              + "50,null,50000,null,null,\n"
+              + "100,null,199,null,null,\n"
+              + "101,null,199,null,null,\n"
+              + "103,null,199,null,null,\n"
+              + "105,11.11,199,33333,11.11,\n"
+              + "1000,1000.11,55555,22222,1000.11,\n"; // Note the LIMIT&OFFSET clause takes effect
+      Assert.assertEquals(resultStr.toString(), standard);
     }
   }
 
   // fake the first-time fetched result of 'testSql' from an IoTDB server
-  private TSQueryDataSet FakedFirstFetchResult() {
-    TSQueryDataSet tsQueryDataSet = new TSQueryDataSet(new ArrayList<>());
-    final int DATA_TYPE_NUM = 3;
+  private TSQueryDataSet FakedFirstFetchResult() throws IOException {
+    List<TSDataType> tsDataTypeList = new ArrayList<>();
+    tsDataTypeList.add(TSDataType.FLOAT); // root.vehicle.d0.s2
+    tsDataTypeList.add(TSDataType.INT64); // root.vehicle.d0.s1
+    tsDataTypeList.add(TSDataType.INT32); // root.vehicle.d0.s0
+
     Object[][] input = {
-        {1L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64,
-            1101L,
-            "root.vehicle.d0.s0", TSDataType.INT32, null,},
-        {2L, "root.vehicle.d0.s2", TSDataType.FLOAT, 2.22F, "root.vehicle.d0.s1", TSDataType.INT64,
-            40000L,
-            "root.vehicle.d0.s0", TSDataType.INT32, null,},
-        {3L, "root.vehicle.d0.s2", TSDataType.FLOAT, 3.33F, "root.vehicle.d0.s1", TSDataType.INT64,
-            null,
-            "root.vehicle.d0.s0", TSDataType.INT32, null,},
-        {4L, "root.vehicle.d0.s2", TSDataType.FLOAT, 4.44F, "root.vehicle.d0.s1", TSDataType.INT64,
-            null,
-            "root.vehicle.d0.s0", TSDataType.INT32, null,},
-        {50L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64,
-            50000L,
-            "root.vehicle.d0.s0", TSDataType.INT32, null,},
-        {100L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64,
-            199L,
-            "root.vehicle.d0.s0", TSDataType.INT32, null,},
-        {101L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64,
-            199L,
-            "root.vehicle.d0.s0", TSDataType.INT32, null,},
-        {103L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64,
-            199L,
-            "root.vehicle.d0.s0", TSDataType.INT32, null,},
-        {105L, "root.vehicle.d0.s2", TSDataType.FLOAT, 11.11F, "root.vehicle.d0.s1",
-            TSDataType.INT64, 199L,
-            "root.vehicle.d0.s0", TSDataType.INT32, 33333,},
-        {1000L, "root.vehicle.d0.s2", TSDataType.FLOAT, 1000.11F, "root.vehicle.d0.s1",
-            TSDataType.INT64,
-            55555L, "root.vehicle.d0.s0", TSDataType.INT32, 22222,}};
-    for (Object[] item : input) {
-      TSRowRecord record = new TSRowRecord();
-      record.setTimestamp((long) item[0]);
-      List<String> keys = new ArrayList<>();
-      List<TSDataValue> values = new ArrayList<>();
-      for (int i = 0; i < DATA_TYPE_NUM; i++) {
-        keys.add((String) item[3 * i + 1]);
-        TSDataValue value = new TSDataValue(false);
-        if (item[3 * i + 3] == null) {
-          value.setIs_empty(true);
-        } else {
-          if (i == 0) {
-            value.setFloat_val((float) item[3 * i + 3]);
-          } else if (i == 1) {
-            value.setLong_val((long) item[3 * i + 3]);
-          } else {
-            value.setInt_val((int) item[3 * i + 3]);
-          }
-          value.setType(item[3 * i + 2].toString());
-        }
-        values.add(value);
-      }
-      record.setValues(values);
-      tsQueryDataSet.getRecords().add(record);
+        {1L, null, 1101L, null,},
+        {2L, 2.22F, 40000L, null,},
+        {3L, 3.33F, null, null,},
+        {4L, 4.44F, null, null,},
+        {50L, null, 50000L, null,},
+        {100L, null, 199L, null,},
+        {101L, null, 199L, null,},
+        {103L, null, 199L, null,},
+        {105L, 11.11F, 199L, 33333,},
+        {1000L, 1000.11F, 55555L, 22222,}};
+
+    TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
+    int rowCount = input.length;
+    tsQueryDataSet.setRowCount(rowCount);
+
+    int columnNum = tsDataTypeList.size();
+    int columnNumWithTime = columnNum + 1;
+    DataOutputStream[] dataOutputStreams = new DataOutputStream[columnNumWithTime];
+    ByteArrayOutputStream[] byteArrayOutputStreams = new ByteArrayOutputStream[columnNumWithTime];
+    for (int i = 0; i < columnNumWithTime; i++) {
+      byteArrayOutputStreams[i] = new ByteArrayOutputStream();
+      dataOutputStreams[i] = new DataOutputStream(byteArrayOutputStreams[i]);
     }
+
+    int valueOccupation = 0;
+    for (int i = 0; i < rowCount; i++) {
+      Object[] row = input[i];
+      // use columnOutput to write byte array
+      dataOutputStreams[0].writeLong((long) row[0]);
+      for (int k = 0; k < columnNum; k++) {
+        DataOutputStream dataOutputStream = dataOutputStreams[k + 1]; // DO NOT FORGET +1
+        Object value = row[1 + k];
+        if (value == null) {
+          dataOutputStream.writeBoolean(true); // is_empty true
+        } else {
+          dataOutputStream.writeBoolean(false); // is_empty false
+          if (k == 0) { // TSDataType.FLOAT
+            dataOutputStream.writeFloat((float) value);
+            valueOccupation += 4;
+          } else if (k == 1) { // TSDataType.INT64
+            dataOutputStream.writeLong((long) value);
+            valueOccupation += 8;
+          } else { // TSDataType.INT32
+            dataOutputStream.writeInt((int) value);
+            valueOccupation += 4;
+          }
+        }
+      }
+    }
+
+    // calculate total valueOccupation
+    valueOccupation += rowCount * 8; // note the timestamp column needn't the boolean is_empty
+    valueOccupation += rowCount * columnNum; // for all is_empty
+
+    ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation);
+    for (ByteArrayOutputStream byteArrayOutputStream : byteArrayOutputStreams) {
+      valueBuffer.put(byteArrayOutputStream.toByteArray());
+    }
+    valueBuffer.flip(); // PAY ATTENTION TO HERE
+    tsQueryDataSet.setValues(valueBuffer);
+    tsQueryDataSet.setRowCount(rowCount);
     return tsQueryDataSet;
   }
 }

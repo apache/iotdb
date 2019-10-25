@@ -110,6 +110,15 @@ public class BloomFilter {
     return ret;
   }
 
+  public int getBitCount() {
+    int res = 0;
+    for (int i = 0; i < size; i++) {
+      res += bits.get(i) ? 1 : 0;
+    }
+
+    return res;
+  }
+
   public byte[] serialize() {
     return bits.toByteArray();
   }
@@ -125,13 +134,7 @@ public class BloomFilter {
     }
 
     public int hash(String value) {
-      int result = 0;
-      int len = value.length();
-      for (int i = 0; i < len; i++) {
-        result = seed * result + value.charAt(i);
-      }
-      
-      return Math.abs(result) % cap;
+      return Math.abs(Murmur128Hash.hash(value, seed)) % cap;
     }
   }
 }

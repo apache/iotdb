@@ -280,4 +280,59 @@ public class IoTDBSessionIT {
     session.executeNonQueryStatement(
         "insert into root.sg1.d1(timestamp,s1, s2, s3) values(100, 1,2,3)");
   }
+
+  @Test
+  public void checkPathTest()
+      throws ClassNotFoundException, SQLException, IoTDBSessionException, TException, IoTDBRPCException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    //test set sg
+    checkSetSG(session, "root.vehicle", true);
+    checkSetSG(session, "root.123456", true);
+    checkSetSG(session, "root._1234", true);
+    checkSetSG(session, "root._vehicle", true);
+    checkSetSG(session, "root.\tvehicle", false);
+    checkSetSG(session, "root.\nvehicle", false);
+    checkSetSG(session, "root..vehicle", false);
+    checkSetSG(session, "root.1234a4", false);
+    checkSetSG(session, "root.+12345", true);
+    checkSetSG(session, "root.-12345", true);
+    checkSetSG(session, "root.%12345", false);
+    checkSetSG(session, "root.a{12345}", false);
+
+    //test create timeseries
+    checkCreateTimeseries(session, "root.vehicle.d0.s0", true);
+    checkCreateTimeseries(session, "root.vehicle.1110.s0", true);
+    checkCreateTimeseries(session, "root.vehicle.d0.1220", true);
+    checkCreateTimeseries(session, "root.vehicle._1234.s0", true);
+    checkCreateTimeseries(session, "root.vehicle.+1245.-1256", true);
+    checkCreateTimeseries(session, "root.vehicle./d0.s0", false);
+    checkCreateTimeseries(session, "root.vehicle.d\t0.s0", false);
+    checkCreateTimeseries(session, "root.vehicle.!d\t0.s0", false);
+    checkCreateTimeseries(session, "root.vehicle.d{dfewrew0}.s0", false);
+
+    session.close();
+  }
+
+  private void checkSetSG(Session session, String sg, boolean correctStatus){
+    boolean status = true;
+    try {
+      session.setStorageGroup(sg);
+    } catch (IoTDBSessionException e) {
+      status = false;
+    }
+    assertEquals(status, correctStatus);
+  }
+
+  private void checkCreateTimeseries(Session session, String timeseris, boolean correctStatus){
+    boolean status = true;
+    try {
+      session.createTimeseries(timeseris, TSDataType.INT64, TSEncoding.RLE,
+          CompressionType.SNAPPY);
+    } catch (IoTDBSessionException e) {
+      status = false;
+    }
+    assertEquals(status, correctStatus);
+  }
 }
