@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata;
 
 import java.io.Serializable;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -262,12 +263,12 @@ public class MGraph implements Serializable {
     return mtree.getAllStorageGroup();
   }
 
-  Set<String> getAllDevices() {
+  Set<String> getAllDevices() throws SQLException {
     return mtree.getAllDevices();
   }
 
-  List<String> getNodesList(int nodeLevel) {
-    return mtree.getNodesList(nodeLevel);
+  List<String> getNodesList(String schemaPattern, int nodeLevel) throws SQLException {
+    return mtree.getNodesList(schemaPattern, nodeLevel);
   }
 
   List<String> getLeafNodePathInNextLevel(String path) throws PathErrorException {

@@ -88,6 +88,38 @@ Eg: IoTDB > SHOW STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
+* 显示指定路径下时间序列数语句
+
+```
+COUNT TIMESERIES <Path>
+Eg: IoTDB > COUNT TIMESERIES root
+Eg: IoTDB > COUNT TIMESERIES root.ln
+Eg: IoTDB > COUNT TIMESERIES root.ln.*.*.status
+Eg: IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
+Note: The path can be prefix path, star path or timeseries path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+```
+COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>
+Eg: IoTDB > COUNT TIMESERIES root GROUP BY LEVEL=1
+Eg: IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
+Eg: IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=3
+Note: The path can be prefix path or timeseries path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+* 显示指定路径下特定层级的节点数语句
+
+```
+COUNT NODES <Path> LEVEL=<INTEGER>
+Eg: IoTDB > COUNT NODES root LEVEL=2
+Eg: IoTDB > COUNT NODES root.ln LEVEL=2
+Eg: IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
+Note: The path can be prefix path or timeseries path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
 ### 数据管理语句
 
 * 插入记录语句

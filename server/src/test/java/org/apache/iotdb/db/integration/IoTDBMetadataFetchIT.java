@@ -230,7 +230,7 @@ public class IoTDBMetadataFetchIT {
    * get all delta objects under a given column
    */
   private void device() throws SQLException {
-    String standard = "Device,\n" + "root.ln.wf01,\n";
+    String standard = "Device,\n" + "root.ln.wf01.wt01,\n";
 
 
     try (ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_DEVICES, null, null,
