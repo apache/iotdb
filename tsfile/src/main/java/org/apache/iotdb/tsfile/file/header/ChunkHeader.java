@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
 public class ChunkHeader {
@@ -122,28 +121,6 @@ public class ChunkHeader {
   }
 
   /**
-   * deserialize from ByteBuffer.
-   *
-   * @param byteBuffer ByteBuffer
-   * @param markerRead read marker (boolean type)
-   * @return CHUNK_HEADER object
-   * @throws IOException IOException
-   */
-  public static ChunkHeader deserializeFrom(ByteBuffer byteBuffer, boolean markerRead)
-      throws IOException {
-    if (!markerRead) {
-      byte marker = byteBuffer.get();
-      if (marker != MARKER) {
-        MetaMarker.handleUnexpectedMarker(marker);
-      }
-    }
-
-    String measurementID = ReadWriteIOUtils.readString(byteBuffer);
-    return deserializePartFrom(measurementID, ChunkHeader.getSerializedSize(measurementID),
-        byteBuffer);
-  }
-
-  /**
    * deserialize from TsFileInput.
    *
    * @param input TsFileInput
@@ -160,17 +137,15 @@ public class ChunkHeader {
     if (!markerRead) {
       offsetVar++;
     }
+
+    // read chunk header from input to buffer
     ByteBuffer buffer = ByteBuffer.allocate(chunkHeaderSize);
     input.read(buffer, offsetVar);
     buffer.flip();
 
+    // read measurementID
     int size = buffer.getInt();
-    String measurementID = ReadWriteIOUtils.readStringWithoutLength(buffer, size);
-    return deserializePartFrom(measurementID, chunkHeaderSize, buffer);
-  }
-
-  private static ChunkHeader deserializePartFrom(String measurementID, int chunkHeaderSize,
-      ByteBuffer buffer) {
+    String measurementID = ReadWriteIOUtils.readStringWithLength(buffer, size);
     int dataSize = ReadWriteIOUtils.readInt(buffer);
     TSDataType dataType = TSDataType.deserialize(ReadWriteIOUtils.readShort(buffer));
     int numOfPages = ReadWriteIOUtils.readInt(buffer);
