@@ -515,7 +515,7 @@ dateFormat
     ;
 
 durationExpr
-    : duration=Duration -> ^(TOK_DURATION $duration)
+    : duration=DURATION -> ^(TOK_DURATION $duration)
     ;
 
 dateExpression

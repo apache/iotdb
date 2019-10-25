@@ -539,7 +539,7 @@ WS  :   ( ' '
         ) {$channel=HIDDEN;}
     ;
 
-Duration
+DURATION
     :
-    (NUM+ ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS'))+
+    (NUM+ (Y|M O|W|D|H|M|S|M S|U S|N S))+
     ;

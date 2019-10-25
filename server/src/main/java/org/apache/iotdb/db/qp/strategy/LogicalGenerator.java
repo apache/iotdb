@@ -841,25 +841,35 @@ public class LogicalGenerator {
       }
       seriesValue = parseTokenTime(rightKey.getChild(0)) + "";
     } else if (rightKey.getType() == TqlParser.TOK_DATE_EXPR) {
-      seriesValue = parseTokenDataExpresssion(rightKey.getChild(0)) + "";
+      seriesValue = parseTokenDataExpression(rightKey.getChild(0)) + "";
     } else {
       seriesValue = cascadeChildrenText(rightKey);
     }
     return new Pair<>(seriesPath, seriesValue);
   }
 
-  private Long parseTokenDataExpresssion(AstNode astNode) throws LogicalOperatorException {
+  /**
+   * parse time expression, which is addition and subtraction expression of duration time, now() or
+   * DataTimeFormat time.
+   * <p>
+   * eg. now() + 1d - 2h
+   * </p>
+   */
+  private Long parseTokenDataExpression(AstNode astNode) throws LogicalOperatorException {
     if (astNode.getType() == TqlParser.PLUS) {
-      return parseTokenDataExpresssion(astNode.getChild(0)) + parseTokenDataExpresssion(
+      return parseTokenDataExpression(astNode.getChild(0)) + parseTokenDataExpression(
           astNode.getChild(1));
     } else if (astNode.getType() == TqlParser.MINUS) {
-      return parseTokenDataExpresssion(astNode.getChild(0)) - parseTokenDataExpresssion(
+      return parseTokenDataExpression(astNode.getChild(0)) - parseTokenDataExpression(
           astNode.getChild(1));
     } else {
       return parseTokenTime(astNode);
     }
   }
 
+  /**
+   * parse a time token, which can be duration time or now() or DataTimeFormat time.
+   */
   private Long parseTokenTime(AstNode astNode) throws LogicalOperatorException {
     if (astNode.getType() == TqlParser.TOK_DURATION) {
       return parseTokenDuration(astNode);
@@ -867,6 +877,11 @@ public class LogicalGenerator {
     return parseTimeFormat(cascadeChildrenText((astNode)));
   }
 
+  /**
+   * parse duration node to time value.
+   * @param astNode represent duration string like: 12d8m9ns, 1y1mo, etc.
+   * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
+   */
   private Long parseTokenDuration(AstNode astNode) {
     String durationStr = cascadeChildrenText(astNode);
     String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
@@ -880,6 +895,7 @@ public class LogicalGenerator {
         tmp += (ch - '0');
       } else {
         String unit = durationStr.charAt(i) + "";
+        // This is to identify units with two letters.
         if (i + 1 < durationStr.length() && !Character.isDigit(durationStr.charAt(i + 1))) {
           i++;
           unit += durationStr.charAt(i);
