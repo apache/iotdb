@@ -18,7 +18,8 @@
     under the License.
 
 -->
-
+# QuickStart
+* QuickStart
 # Chapter 1: Overview
 * 1-What is IoTDB
 * 2-Architecture
@@ -54,17 +55,18 @@
 * 3-Python API
 # Chapter 7: System Design
 * 1-Hierarchy
-# Chapter 8: System Tools
+# Chapter 8: Distributed Architecture
+* 1-Shared Storage Architecture
+* 2-Shared Nothing Architecture
+# Chapter 9: System Tools
 * 1-Sync Tool
 * 2-Memory Estimation Tool
 * 3-JMX Tool
-* 4-Grafana
-* 5-TsFile Hadoop Connector
-* 6-TsFile Spark Connector
-* 7-Spark IoTDB Connector
-* 8-Watermark Tool
-* 9-Log Visualizer
-* 10-Query History Visualization Tool
-# Chapter 9: Distributed Architecture
-* 1-Shared Storage Architecture
-* 2-Shared Nothing Architecture
+* 4-Watermark Tool
+* 5-Log Visualizer
+* 6-Query History Visualization Tool
+# Chapter 10: Ecosystem Integration
+* 1-Grafana
+* 2-TsFile Hadoop Connector
+* 3-TsFile Spark Connector
+* 4-Spark IoTDB Connector
