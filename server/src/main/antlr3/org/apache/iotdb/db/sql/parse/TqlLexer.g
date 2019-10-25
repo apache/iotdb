@@ -538,3 +538,8 @@ WS  :   ( ' '
         | '\n'
         ) {$channel=HIDDEN;}
     ;
+
+DURATION
+    :
+    (NUM+ (Y|M O|W|D|H|M|S|M S|U S|N S))+
+    ;
