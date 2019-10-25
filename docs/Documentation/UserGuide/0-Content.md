@@ -63,3 +63,6 @@
 * 6-TsFile Spark Connector
 * 7-Spark IoTDB Connector
 * 8-Watermark Tool
+* 9-Log Visualizer
+# Chapter 9: Distributed Architecture
+* 1-Shared Storage Architecture
