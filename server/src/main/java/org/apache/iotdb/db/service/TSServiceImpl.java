@@ -67,15 +67,16 @@ import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
-import org.apache.iotdb.db.qp.logical.sys.MetadataOperator.NamespaceType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
@@ -1232,8 +1233,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
 
-    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.SET_STORAGE_GROUP,
-        new Path(storageGroup));
+    SetStorageGroupPlan plan = new SetStorageGroupPlan(new Path(storageGroup));
     TSStatus status = checkAuthority(plan);
     if (status != null) {
       return new TSStatus(status);
@@ -1251,8 +1251,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     for (String storageGroup : storageGroups) {
       storageGroupList.add(new Path(storageGroup));
     }
-    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.DELETE_STORAGE_GROUP,
-        storageGroupList);
+    DeleteStorageGroupPlan plan = new DeleteStorageGroupPlan(storageGroupList);
     TSStatus status = checkAuthority(plan);
     if (status != null) {
       return new TSStatus(status);
@@ -1266,10 +1265,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
-    MetadataPlan plan = new MetadataPlan(MetadataOperator.NamespaceType.ADD_PATH,
-        new Path(req.getPath()),
+    CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.getPath()),
         TSDataType.values()[req.getDataType()], TSEncoding.values()[req.getEncoding()],
-        CompressionType.values()[req.compressor]);
+        CompressionType.values()[req.compressor], new HashMap<String, String>());
     TSStatus status = checkAuthority(plan);
     if (status != null) {
       return new TSStatus(status);
@@ -1287,7 +1285,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     for (String path : paths) {
       pathList.add(new Path(path));
     }
-    MetadataPlan plan = new MetadataPlan(NamespaceType.DELETE_PATH, pathList);
+    DeleteTimeSeriesPlan plan = new DeleteTimeSeriesPlan(pathList);
     TSStatus status = checkAuthority(plan);
     if (status != null) {
       return new TSStatus(status);
