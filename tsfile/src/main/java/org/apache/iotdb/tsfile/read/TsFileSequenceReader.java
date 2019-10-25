@@ -337,10 +337,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * read the chunk's header.
    *
    * @param position the file offset of this chunk's header
+   * @param chunkHeaderSize the size of chunk's header
    * @param markerRead true if the offset does not contains the marker , otherwise false
    */
-  private ChunkHeader readChunkHeader(long position, boolean markerRead) throws IOException {
-    return ChunkHeader.deserializeFrom(tsFileInput, position, markerRead);
+  private ChunkHeader readChunkHeader(long position, int chunkHeaderSize, boolean markerRead)
+      throws IOException {
+    return ChunkHeader.deserializeFrom(tsFileInput, position, chunkHeaderSize, markerRead);
   }
 
   /**
@@ -381,7 +383,8 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return -chunk
    */
   public Chunk readMemChunk(ChunkMetaData metaData) throws IOException {
-    ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), false);
+    int chunkHeadSize = ChunkHeader.getSerializedSize(metaData.getMeasurementUid());
+    ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), chunkHeadSize, false);
     ByteBuffer buffer = readChunk(metaData.getOffsetOfChunkHeader() + header.getSerializedSize(),
         header.getDataSize());
     return new Chunk(header, buffer, metaData.getDeletedAt(), endianType);
