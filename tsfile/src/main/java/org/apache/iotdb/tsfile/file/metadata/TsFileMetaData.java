@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -31,6 +27,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * TSFileMetaData collects all metadata info and saves in its data structure.
@@ -150,8 +149,7 @@ public class TsFileMetaData {
 
     if (ReadWriteIOUtils.readIsNull(buffer)) {
       fileMetaData.createdBy = ReadWriteIOUtils.readString(buffer);
-    }  
-    // if using v0.8.0 TsFile, use 0 to represent missing fields
+    }
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
 
@@ -193,8 +191,11 @@ public class TsFileMetaData {
     return this.deviceIndexMap.containsKey(deltaObjUid);
   }
 
-  public TsDeviceMetadataIndex getDeviceMetadataIndex(String deltaObjUid) {
-    return this.deviceIndexMap.get(deltaObjUid);
+  public TsDeviceMetadataIndex getDeviceMetadataIndex(String deviceUid) throws IOException {
+    if (!this.deviceIndexMap.containsKey(deviceUid)) {
+      throw new IOException("No device path : " + deviceUid);
+    }
+    return this.deviceIndexMap.get(deviceUid);
   }
 
   public boolean containsMeasurement(String measurement) {

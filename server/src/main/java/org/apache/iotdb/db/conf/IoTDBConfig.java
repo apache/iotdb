@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -295,6 +296,36 @@ public class IoTDBConfig {
    * Watermark method and parameters
    */
   private String watermarkMethod = "GroupBasedLSBMethod(embed_row_cycle=5,embed_lsb_num=5)";
+
+  /**
+   * Switch of creating schema automatically
+   */
+  private boolean enableAutoCreateSchema = false;
+
+  /**
+   * Storage group level when creating schema automatically is enabled
+   */
+  private int defaultStorageGroupLevel = 2;
+
+  /**
+   * Boolean encoding when creating schema automatically is enabled
+   */
+  private TSEncoding defaultBooleanEncoding = TSEncoding.RLE;
+
+  /**
+   * Long encoding when creating schema automatically is enabled
+   */
+  private TSEncoding defaultLongEncoding = TSEncoding.RLE;
+
+  /**
+   * Double encoding when creating schema automatically is enabled
+   */
+  private TSEncoding defaultDoubleEncoding = TSEncoding.GORILLA;
+
+  /**
+   * String encoding when creating schema automatically is enabled
+   */
+  private TSEncoding defaultStringEncoding = TSEncoding.PLAIN;
 
   /**
    * How much memory (in byte) can be used by a single merge task.
@@ -971,6 +1002,70 @@ public class IoTDBConfig {
       return m.group(1);
     }
     return null;
+  }
+
+  public boolean isAutoCreateSchemaEnabled() {
+    return enableAutoCreateSchema;
+  }
+
+  public void setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
+    this.enableAutoCreateSchema = enableAutoCreateSchema;
+  }
+
+  public int getDefaultStorageGroupLevel() {
+    return defaultStorageGroupLevel;
+  }
+
+  public void setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+    this.defaultStorageGroupLevel = defaultStorageGroupLevel;
+  }
+
+  public TSEncoding getDefaultBooleanEncoding() {
+    return defaultBooleanEncoding;
+  }
+
+  public void setDefaultBooleanEncoding(TSEncoding defaultBooleanEncoding) {
+    this.defaultBooleanEncoding = defaultBooleanEncoding;
+  }
+
+  public void setDefaultBooleanEncoding(String defaultBooleanEncoding) {
+    this.defaultBooleanEncoding = TSEncoding.valueOf(defaultBooleanEncoding);
+  }
+
+  public TSEncoding getDefaultLongEncoding() {
+    return defaultLongEncoding;
+  }
+
+  public void setDefaultLongEncoding(TSEncoding defaultLongEncoding) {
+    this.defaultLongEncoding = defaultLongEncoding;
+  }
+
+  public void setDefaultLongEncoding(String defaultLongEncoding) {
+    this.defaultLongEncoding = TSEncoding.valueOf(defaultLongEncoding);
+  }
+
+  public TSEncoding getDefaultDoubleEncoding() {
+    return defaultDoubleEncoding;
+  }
+
+  public void setDefaultDoubleEncoding(TSEncoding defaultDoubleEncoding) {
+    this.defaultDoubleEncoding = defaultDoubleEncoding;
+  }
+
+  public void setDefaultDoubleEncoding(String defaultDoubleEncoding) {
+    this.defaultDoubleEncoding = TSEncoding.valueOf(defaultDoubleEncoding);
+  }
+
+  public TSEncoding getDefaultStringEncoding() {
+    return defaultStringEncoding;
+  }
+
+  public void setDefaultStringEncoding(TSEncoding defaultStringEncoding) {
+    this.defaultStringEncoding = defaultStringEncoding;
+  }
+
+  public void setDefaultStringEncoding(String defaultStringEncoding) {
+    this.defaultStringEncoding = TSEncoding.valueOf(defaultStringEncoding);
   }
 
   public FSType getSystemFileStorageFs() {
