@@ -24,7 +24,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
-import org.apache.iotdb.tsfile.hadoop.IReaderSet;
+import org.apache.iotdb.hadoop.tsfile.IReaderSet;
 import org.apache.iotdb.hadoop.tsfile.TSFInputSplit;
 import org.apache.iotdb.hadoop.tsfile.TSFRecordReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;

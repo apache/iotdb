@@ -60,7 +60,7 @@ public class TsFileSerDeTest {
     tbl.setProperty(serdeConstants.COLUMN_NAME_DELIMITER, delimiter);
     tbl.setProperty(serdeConstants.LIST_COLUMNS, String.join(delimiter, columnNames));
     tbl.setProperty(serdeConstants.LIST_COLUMN_TYPES, "bigint,bigint");
-    tbl.setProperty(TsFileSerDe.TABLE_NAME, "device_1.sensor_1");
+    tbl.setProperty(TsFileSerDe.DEVICE_ID, "device_1");
     job = new JobConf();
     try {
       tsFileSerDer.initialize(job, tbl);

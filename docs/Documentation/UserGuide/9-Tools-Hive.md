@@ -84,15 +84,6 @@ Added resources: [/Users/hive/incubator-iotdb/hive-connector/target/hive-connect
 
 ## Creating Tsfile-backed Hive tables
 
-First of all, you should create a database named as the `device_id`.
-Considering there may be `.` in the device_id, but the hive database name can't contains `.`, so we need to manually replace all `.` in the device_id with `/`.
-For example, if you have a device_id named `root.baic2.WWS.leftfrontdoor.plc1`, you should create a `root/baic2/WWS/leftfrontdoor/plc1` database instead.
-
-```
-CREATE DATABASE `root/baic2/WWS/leftfrontdoor/plc1`;
-use `root/baic2/WWS/leftfrontdoor/plc1`;
-```
-
 To create a Tsfile-backed table, specify the `serde` as `org.apache.iotdb.hive.TsFileSerDe`, 
 specify the `inputformat` as `org.apache.iotdb.hive.TSFHiveInputFormat`, 
 and the `outputformat` as `org.apache.iotdb.hive.TSFHiveOutputFormat`.
@@ -104,7 +95,9 @@ The name of the table can be any valid tables names in hive.
 
 Also provide a location from which hive-connector will pull the most current data for the table.
 
-The location can be a specific directory or a specific file.
+The location must be a specific directory, it can be on your local file system or HDFS if you have set up Hadoop.
+
+At last, you should set the `device_id` in `TBLPROPERTIES` to the device name you want to analyze.
 
 For example:
 
@@ -116,13 +109,14 @@ ROW FORMAT SERDE 'org.apache.iotdb.hive.TsFileSerDe'
 STORED AS
   INPUTFORMAT 'org.apache.iotdb.hive.TSFHiveInputFormat'
   OUTPUTFORMAT 'org.apache.iotdb.hive.TSFHiveOutputFormat'
-LOCATION '/data/data/sequence/root.baic2.WWS.leftfrontdoor/';
+LOCATION '/data/data/sequence/root.baic2.WWS.leftfrontdoor/'
+TBLPROPERTIES ('device_id'='root.baic2.WWS.leftfrontdoor.plc1');
 ```
 In this example we're pulling the data of `root.baic2.WWS.leftfrontdoor.plc1.sensor_1` from the directory of `/data/data/sequence/root.baic2.WWS.leftfrontdoor/`. 
 This table might result in a description as below:
 
 ```
-hive> describe device_1;
+hive> describe only_sensor_1;
 OK
 time_stamp          	bigint              	from deserializer
 sensor_1            	bigint              	from deserializer
@@ -138,7 +132,7 @@ Before we do any queries, we should set the `hive.input.format` in hive by execu
 hive> set hive.input.format=org.apache.hadoop.hive.ql.io.HiveInputFormat;
 ```
 
-Now, we already have an external table named `root/baic2/WWS/leftfrontdoor/plc1.only_sensor_1` in hive. 
+Now, we already have an external table named `only_sensor_1` in hive. 
 We can use any query operations through HQL to analyse it.
 
 For example:

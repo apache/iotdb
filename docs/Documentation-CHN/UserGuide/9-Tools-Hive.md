@@ -85,14 +85,6 @@ Added resources: [/Users/hive/incubator-iotdb/hive-connector/target/hive-connect
 
 ## 创建Tsfile-backed的Hive表
 
-首先，你需要创建一个以你想要分析的设备的全路径名命名的数据库。考虑到设备名中可能有`.`，而hive的数据库名是不能包含`.`的，所以我们在创建数据库时，需要手动把设备名中的`.`用`/`代替。
-例如，你有一个名称为`root.baic2.WWS.leftfrontdoor.plc1`的设备，你应该创建一个名为`root/baic2/WWS/leftfrontdoor/plc1`的数据库。
-
-```
-CREATE DATABASE `root/baic2/WWS/leftfrontdoor/plc1`;
-use `root/baic2/WWS/leftfrontdoor/plc1`;
-```
-
 为了创建一个Tsfile-backed的表，需要将`serde`指定为`org.apache.iotdb.hive.TsFileSerDe`，
 将`inputformat`指定为`org.apache.iotdb.hive.TSFHiveInputFormat`，
 将`outputformat`指定为`org.apache.iotdb.hive.TSFHiveOutputFormat`。
@@ -101,9 +93,11 @@ use `root/baic2/WWS/leftfrontdoor/plc1`;
 `time_stamp`代表的是时间序列的时间值，`sensor_id`是你想要从tsfile文件中提取出来分析的传感器名称，比如说`sensor_1`。
 表的名字可以是hive所支持的任何表名。
 
-最后需要提供一个路径供hive-connector从其中拉取最新的数据。
+需要提供一个路径供hive-connector从其中拉取最新的数据。
 
-这个路径可以是一个指定的文件夹也可以是一个具体的文件。
+这个路径必须是一个指定的文件夹，这个文件夹可以在你的本地文件系统上，也可以在HDFS上，如果你启动了Hadoop的话。
+
+最后需要在`TBLPROPERTIES`里指明`device_id`
 
 例如：
 
@@ -115,7 +109,8 @@ ROW FORMAT SERDE 'org.apache.iotdb.hive.TsFileSerDe'
 STORED AS
   INPUTFORMAT 'org.apache.iotdb.hive.TSFHiveInputFormat'
   OUTPUTFORMAT 'org.apache.iotdb.hive.TSFHiveOutputFormat'
-LOCATION '/data/data/sequence/root.baic2.WWS.leftfrontdoor/';
+LOCATION '/data/data/sequence/root.baic2.WWS.leftfrontdoor/'
+TBLPROPERTIES ('device_id'='root.baic2.WWS.leftfrontdoor.plc1');
 ```
 
 在这个例子里，我们从`/data/data/sequence/root.baic2.WWS.leftfrontdoor/`中拉取`root.baic2.WWS.leftfrontdoor.plc1.sensor_1`的数据。
