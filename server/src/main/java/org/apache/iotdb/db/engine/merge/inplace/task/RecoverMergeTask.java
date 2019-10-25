@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
 import org.apache.iotdb.db.engine.merge.inplace.recover.LogAnalyzer;
 import org.apache.iotdb.db.engine.merge.inplace.recover.LogAnalyzer.Status;
@@ -60,7 +61,7 @@ public class RecoverMergeTask extends MergeTask {
   }
 
   public void recoverMerge(boolean continueMerge) throws IOException, MetadataErrorException {
-    File logFile = new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME);
+    File logFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME);
     if (!logFile.exists()) {
       logger.info("{} no merge.log, merge recovery ends", taskName);
       return;
