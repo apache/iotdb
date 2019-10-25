@@ -29,7 +29,7 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger;
+import org.apache.iotdb.db.engine.merge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -55,7 +55,7 @@ public class InplaceMergeTask implements Callable<Void> {
   MergeResource resource;
   String storageGroupSysDir;
   String storageGroupName;
-  MergeLogger mergeLogger;
+  InplaceMergeLogger mergeLogger;
   MergeContext mergeContext = new MergeContext();
 
   private MergeCallback callback;
@@ -96,7 +96,7 @@ public class InplaceMergeTask implements Callable<Void> {
       // call the callback to make sure the StorageGroup exit merging status, but passing 2
       // empty file lists to avoid files being deleted.
       callback.call(Collections.emptyList(), Collections.emptyList(),
-          SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME), null);
+          SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, InplaceMergeLogger.MERGE_LOG_NAME), null);
       throw e;
     }
     return null;
@@ -110,7 +110,7 @@ public class InplaceMergeTask implements Callable<Void> {
     long startTime = System.currentTimeMillis();
     long totalFileSize = MergeUtils.collectFileSizes(resource.getSeqFiles(),
         resource.getUnseqFiles());
-    mergeLogger = new MergeLogger(storageGroupSysDir);
+    mergeLogger = new InplaceMergeLogger(storageGroupSysDir);
 
     mergeLogger.logFiles(resource);
 
@@ -165,7 +165,7 @@ public class InplaceMergeTask implements Callable<Void> {
       mergeFile.delete();
     }
 
-    File logFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME);
+    File logFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, InplaceMergeLogger.MERGE_LOG_NAME);
     if (executeCallback) {
       // make sure merge.log is not deleted until unseqFiles are cleared so that when system
       // reboots, the undeleted files can be deleted again

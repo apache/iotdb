@@ -35,9 +35,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger;
+import org.apache.iotdb.db.engine.merge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.merge.IMergePathSelector;
-import org.apache.iotdb.db.engine.merge.inplace.selector.NaivePathSelector;
+import org.apache.iotdb.db.engine.merge.NaivePathSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -64,7 +64,7 @@ class MergeMultiChunkTask {
   private static int minChunkPointNum = IoTDBDescriptor.getInstance().getConfig()
       .getChunkMergePointThreshold();
 
-  private MergeLogger mergeLogger;
+  private InplaceMergeLogger mergeLogger;
   private List<Path> unmergedSeries;
 
   private String taskName;
@@ -82,7 +82,7 @@ class MergeMultiChunkTask {
   private int concurrentMergeSeriesNum;
   private List<Path> currMergingPaths = new ArrayList<>();
 
-  MergeMultiChunkTask(MergeContext context, String taskName, MergeLogger mergeLogger,
+  MergeMultiChunkTask(MergeContext context, String taskName, InplaceMergeLogger mergeLogger,
       MergeResource mergeResource, boolean fullMerge, List<Path> unmergedSeries,
       int concurrentMergeSeriesNum) {
     this.mergeContext = context;
@@ -297,8 +297,7 @@ class MergeMultiChunkTask {
         // this only happens when the seqFiles do not contain this series, otherwise the remaining
         // data will be merged with the last chunk in the seqFiles
         if (isLastFile && currTimeValuePairs[pathIdx] != null) {
-          ptWrittens[pathIdx] += writeRemainingUnseq(chunkWriter, unseqReaders[pathIdx], Long.MAX_VALUE,
-                  pathIdx);
+          ptWrittens[pathIdx] += writeRemainingUnseq(chunkWriter, unseqReaders[pathIdx], pathIdx);
           mergedChunkNum.incrementAndGet();
         }
         // the last merged chunk may still be smaller than the threshold, flush it anyway
@@ -385,10 +384,9 @@ class MergeMultiChunkTask {
   }
 
   private int writeRemainingUnseq(IChunkWriter chunkWriter,
-      IPointReader unseqReader, long timeLimit, int pathIdx) throws IOException {
+      IPointReader unseqReader,  int pathIdx) throws IOException {
     int ptWritten = 0;
-    while (currTimeValuePairs[pathIdx] != null
-        && currTimeValuePairs[pathIdx].getTimestamp() < timeLimit) {
+    while (currTimeValuePairs[pathIdx] != null) {
       writeTVPair(currTimeValuePairs[pathIdx], chunkWriter);
       ptWritten++;
       unseqReader.next();

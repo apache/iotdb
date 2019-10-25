@@ -25,7 +25,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.iotdb.db.engine.merge.inplace.selector.MergeFileStrategy;
+import org.apache.iotdb.db.engine.merge.MergeFileStrategy;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -375,7 +375,7 @@ public class IoTDBConfig {
    */
   private int chunkMergePointThreshold = 20480;
 
-  private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
+  private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.INPLACE_MAX_SERIES_NUM;
 
   /**
    * Default system file storage is in local file system (unsupported)

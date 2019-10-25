@@ -28,7 +28,7 @@ import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger;
+import org.apache.iotdb.db.engine.merge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
@@ -54,11 +54,11 @@ class MergeFileTask {
 
   private String taskName;
   private MergeContext context;
-  private MergeLogger mergeLogger;
+  private InplaceMergeLogger mergeLogger;
   private MergeResource resource;
   private List<TsFileResource> unmergedFiles;
 
-  MergeFileTask(String taskName, MergeContext context, MergeLogger mergeLogger,
+  MergeFileTask(String taskName, MergeContext context, InplaceMergeLogger mergeLogger,
       MergeResource resource, List<TsFileResource> unmergedSeqFiles) {
     this.taskName = taskName;
     this.context = context;

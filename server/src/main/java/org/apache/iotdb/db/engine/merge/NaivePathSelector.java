@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.inplace.selector;
+package org.apache.iotdb.db.engine.merge;
 
 import java.util.List;
 import java.util.NoSuchElementException;

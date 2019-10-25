@@ -17,35 +17,34 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge;
+package org.apache.iotdb.db.engine.merge.inplace;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.merge.MergeTest;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-public class MergePerfTest extends MergeTest{
+public class MergePerfTest extends MergeTest {
 
-  private long timeConsumption;
   private boolean fullMerge;
-  private File tempSGDir;
 
   public void test() throws Exception {
     MManager.getInstance().init();
-    tempSGDir = new File("tempSG");
+    File tempSGDir = new File("tempSG");
     tempSGDir.mkdirs();
     setUp();
-    timeConsumption = System.currentTimeMillis();
+    long timeConsumption = System.currentTimeMillis();
     MergeResource resource = new MergeResource(seqResources, unseqResources);
     resource.setCacheDeviceMeta(true);
     InplaceMergeTask mergeTask =
         new InplaceMergeTask(resource, tempSGDir.getPath(), (k, v
-            , l) -> {}, "test", fullMerge, 100, MERGE_TEST_SG);
+            , l, n) -> {}, "test", fullMerge, 100, MERGE_TEST_SG);
     mergeTask.call();
     timeConsumption = System.currentTimeMillis() - timeConsumption;
     tearDown();

@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.engine.merge.squeeze.recover;
 
 
-import static org.apache.iotdb.db.engine.merge.squeeze.recover.MergeLogger.STR_ALL_TS_END;
-import static org.apache.iotdb.db.engine.merge.squeeze.recover.MergeLogger.STR_SEQ_FILES;
-import static org.apache.iotdb.db.engine.merge.squeeze.recover.MergeLogger.STR_UNSEQ_FILES;
+import static org.apache.iotdb.db.engine.merge.squeeze.recover.SqueezeMergeLogger.STR_ALL_TS_END;
+import static org.apache.iotdb.db.engine.merge.squeeze.recover.SqueezeMergeLogger.STR_SEQ_FILES;
+import static org.apache.iotdb.db.engine.merge.squeeze.recover.SqueezeMergeLogger.STR_UNSEQ_FILES;
 
 import java.io.BufferedReader;
 import java.io.File;

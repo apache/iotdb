@@ -36,11 +36,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.IMergePathSelector;
+import org.apache.iotdb.db.engine.merge.NaivePathSelector;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.squeeze.recover.MergeLogger;
-import org.apache.iotdb.db.engine.merge.squeeze.selector.NaivePathSelector;
+import org.apache.iotdb.db.engine.merge.squeeze.recover.SqueezeMergeLogger;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -69,7 +69,7 @@ class MergeSeriesTask {
   private static int minChunkPointNum = IoTDBDescriptor.getInstance().getConfig()
       .getChunkMergePointThreshold();
 
-  private MergeLogger mergeLogger;
+  private SqueezeMergeLogger mergeLogger;
   private List<Path> unmergedSeries;
 
   private String taskName;
@@ -88,7 +88,7 @@ class MergeSeriesTask {
   private TsFileResource newResource;
   private String currDevice = null;
 
-  MergeSeriesTask(MergeContext context, String taskName, MergeLogger mergeLogger,
+  MergeSeriesTask(MergeContext context, String taskName, SqueezeMergeLogger mergeLogger,
       MergeResource mergeResource, List<Path> unmergedSeries,
       int concurrentMergeSeriesNum) {
     this.mergeContext = context;

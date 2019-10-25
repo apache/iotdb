@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.inplace.selector;
+package org.apache.iotdb.db.engine.merge;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -32,35 +32,45 @@ import org.slf4j.LoggerFactory;
  * MaxSeriesMergeFileSelector is an extension of IMergeFileSelector which tries to maximize the
  * number of timeseries that can be merged at the same time.
  */
-public class MaxSeriesMergeFileSelector extends MaxFileMergeFileSelector {
+public class MaxSeriesMergeFileSelector<T extends IMergeFileSelector> implements IMergeFileSelector {
 
-  public static final int MAX_SERIES_NUM = 1024;
-  private static final Logger logger = LoggerFactory.getLogger(MaxSeriesMergeFileSelector.class);
+  private T baseSelector;
+  private MergeResource resource;
+
+  public static final int MAX_SERIES_NUM = 10240;
+  private static final Logger logger = LoggerFactory.getLogger(
+      MaxSeriesMergeFileSelector.class);
 
   private List<TsFileResource> lastSelectedSeqFiles = Collections.emptyList();
   private List<TsFileResource> lastSelectedUnseqFiles = Collections.emptyList();
   private long lastTotalMemoryCost;
 
-  public MaxSeriesMergeFileSelector(
-      MergeResource mergeResource,
-      long memoryBudget) {
-    super(mergeResource, memoryBudget);
+  private int concurrentMergeNum;
+  private long totalCost;
+
+
+  public MaxSeriesMergeFileSelector(T baseSelector) {
+    this.baseSelector = baseSelector;
+    this.resource = baseSelector.getResource();
   }
 
   @Override
-  public List[] select() throws MergeException {
+  public void select() throws MergeException {
     long startTime = System.currentTimeMillis();
     try {
-      logger.info("Selecting merge candidates from {} seqFile, {} unseqFiles", resource.getSeqFiles().size(),
+      logger.info("Selecting merge candidates from {} seqFile, {} unseqFiles",
+          resource.getSeqFiles().size(),
           resource.getUnseqFiles().size());
 
       searchMaxSeriesNum();
+      List<TsFileResource> selectedSeqFiles = baseSelector.getSelectedSeqFiles();
+      List<TsFileResource> selectedUnseqFiles = baseSelector.getSelectedUnseqFiles();
       resource.setSeqFiles(selectedSeqFiles);
       resource.setUnseqFiles(selectedUnseqFiles);
       resource.removeOutdatedSeqReaders();
-      if (selectedUnseqFiles.isEmpty()) {
+      if (selectedUnseqFiles.isEmpty() && selectedSeqFiles.isEmpty()) {
         logger.info("No merge candidates are found");
-        return new List[0];
+        return;
       }
     } catch (IOException e) {
       throw new MergeException(e);
@@ -68,17 +78,52 @@ public class MaxSeriesMergeFileSelector extends MaxFileMergeFileSelector {
     if (logger.isInfoEnabled()) {
       logger.info("Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}, "
               + "concurrent merge num {}" + "time consumption {}ms",
-          selectedSeqFiles.size(), selectedUnseqFiles.size(), totalCost, concurrentMergeNum,
+          resource.getSeqFiles().size(), resource.getUnseqFiles().size(), baseSelector.getTotalCost(),
+          baseSelector.getConcurrentMergeNum(),
           System.currentTimeMillis() - startTime);
     }
-    return new List[]{selectedSeqFiles, selectedUnseqFiles};
   }
 
-  private void searchMaxSeriesNum() throws IOException {
+  @Override
+  public void select(boolean useTightBound) throws MergeException {
+    select();
+  }
+
+  @Override
+  public int getConcurrentMergeNum() {
+    return concurrentMergeNum;
+  }
+
+  @Override
+  public void setConcurrentMergeNum(int concurrentMergeNum) {
+
+  }
+
+  @Override
+  public MergeResource getResource() {
+    return resource;
+  }
+
+  @Override
+  public List<TsFileResource> getSelectedSeqFiles() {
+    return lastSelectedSeqFiles;
+  }
+
+  @Override
+  public List<TsFileResource> getSelectedUnseqFiles() {
+    return lastSelectedUnseqFiles;
+  }
+
+  @Override
+  public long getTotalCost() {
+    return totalCost;
+  }
+
+  private void searchMaxSeriesNum() throws IOException, MergeException {
     binSearch();
   }
 
-  private void binSearch() throws IOException {
+  private void binSearch() throws IOException, MergeException {
     int lb = 0;
     int ub = MAX_SERIES_NUM + 1;
     while (true) {
@@ -86,22 +131,20 @@ public class MaxSeriesMergeFileSelector extends MaxFileMergeFileSelector {
       if (mid == lb) {
         break;
       }
-      concurrentMergeNum = mid;
-      select(false);
-      if (selectedUnseqFiles.isEmpty()) {
-        select(true);
+      baseSelector.setConcurrentMergeNum(mid);
+      baseSelector.select(false);
+      if (baseSelector.getSelectedUnseqFiles().isEmpty() && baseSelector.getSelectedSeqFiles().isEmpty()) {
+        baseSelector.select(true);
       }
-      if (selectedUnseqFiles.isEmpty()) {
+      if (baseSelector.getSelectedUnseqFiles().isEmpty() && baseSelector.getSelectedSeqFiles().isEmpty()) {
         ub = mid;
       } else {
-        lastSelectedSeqFiles = selectedSeqFiles;
-        lastSelectedUnseqFiles = selectedUnseqFiles;
-        lastTotalMemoryCost = totalCost;
+        lastSelectedSeqFiles = baseSelector.getSelectedSeqFiles();
+        lastSelectedUnseqFiles = baseSelector.getSelectedUnseqFiles();
+        lastTotalMemoryCost = baseSelector.getTotalCost();
         lb = mid;
       }
     }
-    selectedUnseqFiles = lastSelectedUnseqFiles;
-    selectedSeqFiles = lastSelectedSeqFiles;
     concurrentMergeNum = lb;
     totalCost = lastTotalMemoryCost;
   }

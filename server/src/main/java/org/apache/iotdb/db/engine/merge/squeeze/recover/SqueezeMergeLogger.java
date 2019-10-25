@@ -32,7 +32,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 /**
  * MergeLogger records the progress of a merge in file "merge.log" as text lines.
  */
-public class MergeLogger {
+public class SqueezeMergeLogger {
 
   public static final String MERGE_LOG_NAME = "merge.log.squeeze";
 
@@ -42,7 +42,7 @@ public class MergeLogger {
 
   private BufferedWriter logStream;
 
-  public MergeLogger(String storageGroupDir) throws IOException {
+  public SqueezeMergeLogger(String storageGroupDir) throws IOException {
     logStream = new BufferedWriter(new FileWriter(SystemFileFactory.INSTANCE.getFile(storageGroupDir,
       MERGE_LOG_NAME), true));
   }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge;
+package org.apache.iotdb.db.engine.merge.inplace;
 
 import static org.junit.Assert.assertEquals;
 
@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.Collections;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.merge.MergeTest;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.modification.Deletion;

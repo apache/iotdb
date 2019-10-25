@@ -56,7 +56,7 @@ public class MergeManager implements IService {
     return INSTANCE;
   }
 
-  public void submitMainTask(InplaceMergeTask mergeTask) {
+  public void submitMainTask(Callable mergeTask) {
     mergeTaskPool.submit(mergeTask);
   }
 

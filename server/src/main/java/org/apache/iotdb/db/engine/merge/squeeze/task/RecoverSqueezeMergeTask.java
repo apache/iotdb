@@ -24,11 +24,12 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.merge.IRecoverMergeTask;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.squeeze.recover.LogAnalyzer;
 import org.apache.iotdb.db.engine.merge.squeeze.recover.LogAnalyzer.Status;
-import org.apache.iotdb.db.engine.merge.squeeze.recover.MergeLogger;
+import org.apache.iotdb.db.engine.merge.squeeze.recover.SqueezeMergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
@@ -38,7 +39,7 @@ import org.slf4j.LoggerFactory;
  * RecoverMergeTask is an extension of MergeTask, which resumes the last merge progress by
  * scanning merge.log using LogAnalyzer and continue the unfinished merge.
  */
-public class RecoverSqueezeMergeTask extends SqueezeMergeTask {
+public class RecoverSqueezeMergeTask extends SqueezeMergeTask implements IRecoverMergeTask {
 
   private static final Logger logger = LoggerFactory.getLogger(RecoverSqueezeMergeTask.class);
 
@@ -49,8 +50,9 @@ public class RecoverSqueezeMergeTask extends SqueezeMergeTask {
         1, storageGroupName);
   }
 
-  public void recoverMerge() throws IOException {
-    File logFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME);
+  // continueMerge does not work for squeeze strategy
+  public void recoverMerge(boolean continueMerge) throws IOException {
+    File logFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, SqueezeMergeLogger.MERGE_LOG_NAME);
     if (!logFile.exists()) {
       logger.info("{} no merge.log, merge recovery ends", taskName);
       return;

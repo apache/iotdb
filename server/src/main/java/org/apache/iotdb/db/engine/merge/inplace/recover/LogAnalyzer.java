@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.merge.inplace.recover;
 
-import static org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger.*;
+import static org.apache.iotdb.db.engine.merge.inplace.recover.InplaceMergeLogger.*;
 
 import java.io.BufferedReader;
 import java.io.File;

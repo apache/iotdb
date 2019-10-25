@@ -29,11 +29,12 @@ import java.util.List;
 import java.util.Map.Entry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.merge.IRecoverMergeTask;
+import org.apache.iotdb.db.engine.merge.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
 import org.apache.iotdb.db.engine.merge.inplace.recover.LogAnalyzer;
 import org.apache.iotdb.db.engine.merge.inplace.recover.LogAnalyzer.Status;
-import org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger;
-import org.apache.iotdb.db.engine.merge.inplace.selector.MaxSeriesMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.utils.MergeUtils;
@@ -47,7 +48,7 @@ import org.slf4j.LoggerFactory;
  * RecoverMergeTask is an extension of MergeTask, which resumes the last merge progress by
  * scanning merge.log using LogAnalyzer and continue the unfinished merge.
  */
-public class RecoverInplaceMergeTask extends InplaceMergeTask {
+public class RecoverInplaceMergeTask extends InplaceMergeTask implements IRecoverMergeTask {
 
   private static final Logger logger = LoggerFactory.getLogger(RecoverInplaceMergeTask.class);
 
@@ -61,7 +62,7 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask {
   }
 
   public void recoverMerge(boolean continueMerge) throws IOException, MetadataErrorException {
-    File logFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME);
+    File logFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, InplaceMergeLogger.MERGE_LOG_NAME);
     if (!logFile.exists()) {
       logger.info("{} no merge.log, merge recovery ends", taskName);
       return;
@@ -133,7 +134,7 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask {
   }
 
   private void resumeMergeProgress() throws IOException {
-    mergeLogger = new MergeLogger(storageGroupSysDir);
+    mergeLogger = new InplaceMergeLogger(storageGroupSysDir);
     truncateFiles();
     recoverChunkCounts();
   }

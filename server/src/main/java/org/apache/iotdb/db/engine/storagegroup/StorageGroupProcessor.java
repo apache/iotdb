@@ -35,19 +35,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.merge.IRecoverMergeTask;
+import org.apache.iotdb.db.engine.merge.inplace.recover.InplaceMergeLogger;
+import org.apache.iotdb.db.engine.merge.MergeFileStrategy;
+import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
+import org.apache.iotdb.db.engine.merge.inplace.task.RecoverInplaceMergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.inplace.selector.MaxFileMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.inplace.selector.MaxSeriesMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.inplace.selector.MergeFileStrategy;
-import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
-import org.apache.iotdb.db.engine.merge.inplace.task.RecoverInplaceMergeTask;
+import org.apache.iotdb.db.engine.merge.squeeze.recover.SqueezeMergeLogger;
+import org.apache.iotdb.db.engine.merge.squeeze.task.RecoverSqueezeMergeTask;
+import org.apache.iotdb.db.engine.merge.squeeze.task.SqueezeMergeTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -207,7 +211,7 @@ public class StorageGroupProcessor {
   }
 
   private void recover() throws ProcessorException {
-    logger.info("recover Storage Group  {}", storageGroupName);
+    logger.info("recover Storage Group {}", storageGroupName);
 
     try {
       // collect TsFiles from sequential and unsequential data directory
@@ -223,11 +227,22 @@ public class StorageGroupProcessor {
       if (mergingMods.exists()) {
         mergingModification = new ModificationFile(mergingMods.getPath());
       }
-      RecoverInplaceMergeTask recoverMergeTask = new RecoverInplaceMergeTask(seqTsFiles, unseqTsFiles,
-          storageGroupSysDir.getPath(), this::mergeEndAction, taskName,
-          IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(), storageGroupName);
-      logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
-      recoverMergeTask.recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
+
+      Class cls = judgeMergeStrategy();
+      if (cls != null) {
+        IRecoverMergeTask recoverMergeTask;
+        if (cls == InplaceMergeTask.class) {
+          recoverMergeTask = new RecoverInplaceMergeTask(seqTsFiles, unseqTsFiles,
+              storageGroupSysDir.getPath(), this::mergeEndAction, taskName,
+              IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(), storageGroupName);
+        } else {
+          recoverMergeTask = new RecoverSqueezeMergeTask(seqTsFiles, unseqTsFiles,
+              storageGroupSysDir.getPath(), this::mergeEndAction, taskName, storageGroupName);
+        }
+        logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
+        recoverMergeTask.recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
+      }
+
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
         mergingMods.delete();
       }
@@ -239,6 +254,20 @@ public class StorageGroupProcessor {
       latestTimeForEachDevice.putAll(resource.getEndTimeMap());
       latestFlushedTimeForEachDevice.putAll(resource.getEndTimeMap());
     }
+  }
+
+  private Class judgeMergeStrategy() {
+    File inPlaceLogFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir,
+        InplaceMergeLogger.MERGE_LOG_NAME);
+    if (inPlaceLogFile.exists()) {
+      return InplaceMergeTask.class;
+    }
+    File squeezeLogFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir,
+        SqueezeMergeLogger.MERGE_LOG_NAME);
+    if (squeezeLogFile.exists()) {
+      return SqueezeMergeTask.class;
+    }
+    return null;
   }
 
   private List<TsFileResource> getAllFiles(List<String> folders) {
@@ -863,10 +892,14 @@ public class StorageGroupProcessor {
 
       long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
       MergeResource mergeResource = new MergeResource(sequenceFileList, unSequenceFileList);
-      IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
+
+      // TODO: choose a better strategy accordingly
+      MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
+
+      IMergeFileSelector fileSelector = strategy.getFileSelector(mergeResource, budget);
       try {
-        List[] mergeFiles = fileSelector.select();
-        if (mergeFiles.length == 0) {
+        fileSelector.select();
+        if (fileSelector.getSelectedSeqFiles().isEmpty() && fileSelector.getSelectedUnseqFiles().isEmpty()) {
           logger.info("{} cannot select merge candidates under the budget {}", storageGroupName,
               budget);
           return;
@@ -878,13 +911,15 @@ public class StorageGroupProcessor {
         // cached during selection
         mergeResource.setCacheDeviceMeta(true);
 
-        InplaceMergeTask mergeTask = new InplaceMergeTask(mergeResource, storageGroupSysDir.getPath(),
-            this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum(), storageGroupName);
+        Callable<Void> mergeTask = strategy.getMergeTask(mergeResource, storageGroupSysDir.getPath(),
+            this::mergeEndAction, taskName, fileSelector.getConcurrentMergeNum(),
+            storageGroupName , fullMerge);
         mergingModification = new ModificationFile(storageGroupSysDir + File.separator + MERGING_MODIFICAITON_FILE_NAME);
         MergeManager.getINSTANCE().submitMainTask(mergeTask);
         if (logger.isInfoEnabled()) {
           logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
-              storageGroupName, taskName, mergeFiles[0].size(), mergeFiles[1].size());
+              storageGroupName, taskName, mergeResource.getSeqFiles().size(),
+              mergeResource.getUnseqFiles().size());
         }
         isMerging = true;
         mergeStartTime = System.currentTimeMillis();
@@ -894,18 +929,6 @@ public class StorageGroupProcessor {
       }
     } finally {
       writeUnlock();
-    }
-  }
-
-  private IMergeFileSelector getMergeFileSelector(long budget, MergeResource resource) {
-    MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
-    switch (strategy) {
-      case MAX_FILE_NUM:
-        return new MaxFileMergeFileSelector(resource, budget);
-      case MAX_SERIES_NUM:
-        return new MaxSeriesMergeFileSelector(resource, budget);
-      default:
-        throw new UnsupportedOperationException("Unknown MergeFileStrategy " + strategy);
     }
   }
 
