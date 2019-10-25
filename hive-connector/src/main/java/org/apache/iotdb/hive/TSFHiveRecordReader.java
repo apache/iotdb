@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -45,7 +45,7 @@ public class TSFHiveRecordReader implements RecordReader<NullWritable, MapWritab
   private static final Logger logger = LoggerFactory.getLogger(TSFHiveRecordReader.class);
 
   /**
-   * all
+   * all datasets corresponding to one specific split
    */
   private List<QueryDataSet> dataSetList = new ArrayList<>();
   /**
@@ -56,7 +56,7 @@ public class TSFHiveRecordReader implements RecordReader<NullWritable, MapWritab
   /**
    * The index of QueryDataSet that is currently processed
    */
-  private  int currentIndex = 0;
+  private int currentIndex = 0;
   private boolean isReadDeviceId;
   private boolean isReadTime;
   private TsFileSequenceReader reader;
