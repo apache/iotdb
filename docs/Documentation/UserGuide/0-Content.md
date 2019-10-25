@@ -18,8 +18,10 @@
     under the License.
 
 -->
-# QuickStart
-* QuickStart
+# Chapter 0: QuickStart
+* 1-QuickStart
+* 2-Frequently asked questions
+* 3-Reference
 # Chapter 1: Overview
 * 1-What is IoTDB
 * 2-Architecture
