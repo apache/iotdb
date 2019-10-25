@@ -328,24 +328,27 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setDataType(getSeriesType(req.getColumnPath()).toString());
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
-        case "COUNT_TIMESERIES":
         case "ALL_COLUMNS":
           resp.setColumnsList(getPaths(req.getColumnPath()));
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
+        case "COUNT_TIMESERIES":
+          resp.setTimeseriesNum(getPaths(req.getColumnPath()).size());
+          status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+          break;
         case "COUNT_NODES":
-          resp.setNodesList(getNodesList(req.getNodeLevel()));
+          resp.setNodesList(getNodesList(req.getColumnPath(), req.getNodeLevel()));
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
         case "COUNT_NODE_TIMESERIES":
-          resp.setNodeTimeseriesNum(getNodeTimeseriesNum(getNodesList(req.getNodeLevel())));
+          resp.setNodeTimeseriesNum(getNodeTimeseriesNum(getNodesList(req.getColumnPath(), req.getNodeLevel())));
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
         default:
           status = getStatus(TSStatusCode.FETCH_METADATA_ERROR, req.getType());
           break;
       }
-    } catch (PathErrorException | MetadataErrorException | OutOfMemoryError e) {
+    } catch (PathErrorException | MetadataErrorException | OutOfMemoryError | SQLException e) {
       logger
           .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()),
               e);
@@ -367,15 +370,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return nodeColumnsNum;
   }
 
-  private List<String> getNodesList(int level) throws PathErrorException {
-    return MManager.getInstance().getNodesList(level);
+  private List<String> getNodesList(String schemaPattern, int level) throws PathErrorException, SQLException {
+    return MManager.getInstance().getNodesList(schemaPattern, level);
   }
 
   private Set<String> getAllStorageGroups() throws PathErrorException {
     return MManager.getInstance().getAllStorageGroup();
   }
 
-  private Set<String> getAllDevices() throws PathErrorException {
+  private Set<String> getAllDevices() throws PathErrorException, SQLException {
     return MManager.getInstance().getAllDevices();
   }
 
