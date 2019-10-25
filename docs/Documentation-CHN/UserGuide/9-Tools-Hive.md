@@ -51,7 +51,7 @@ TsFile的Hive连接器实现了对Hive读取外部Tsfile类型的文件格式的
 
 |Hadoop Version |Hive Version | Java Version | TsFile |
 |-------------  |------------ | ------------ |------------ |
-| `2.7.3`       |    `2.3.6`  | `1.8`        | `0.8.0-SNAPSHOT`|
+| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.8.0-SNAPSHOT`|
 
 > 注意：关于如何下载和使用Tsfile, 请参考以下链接: <https://github.com/apache/incubator-iotdb/tree/master/tsfile>。
 
@@ -85,13 +85,21 @@ Added resources: [/Users/hive/incubator-iotdb/hive-connector/target/hive-connect
 
 ## 创建Tsfile-backed的Hive表
 
+首先，你需要创建一个以你想要分析的设备的全路径名命名的数据库。考虑到设备名中可能有`.`，而hive的数据库名是不能包含`.`的，所以我们在创建数据库时，需要手动把设备名中的`.`用`/`代替。
+例如，你有一个名称为`root.baic2.WWS.leftfrontdoor.plc1`的设备，你应该创建一个名为`root/baic2/WWS/leftfrontdoor/plc1`的数据库。
+
+```
+CREATE DATABASE `root/baic2/WWS/leftfrontdoor/plc1`;
+use `root/baic2/WWS/leftfrontdoor/plc1`;
+```
+
 为了创建一个Tsfile-backed的表，需要将`serde`指定为`org.apache.iotdb.hive.TsFileSerDe`，
 将`inputformat`指定为`org.apache.iotdb.hive.TSFHiveInputFormat`，
 将`outputformat`指定为`org.apache.iotdb.hive.TSFHiveOutputFormat`。
 
 同时要提供一个只包含两个字段的Schema，这两个字段分别是`time_stamp`和`sensor_id`。
 `time_stamp`代表的是时间序列的时间值，`sensor_id`是你想要从tsfile文件中提取出来分析的传感器名称，比如说`sensor_1`。
-表的名字必须是这个传感器所属的设备的名称。
+表的名字可以是hive所支持的任何表名。
 
 最后需要提供一个路径供hive-connector从其中拉取最新的数据。
 
@@ -100,21 +108,21 @@ Added resources: [/Users/hive/incubator-iotdb/hive-connector/target/hive-connect
 例如：
 
 ```
-CREATE EXTERNAL TABLE IF NOT EXISTS device_1(
+CREATE EXTERNAL TABLE IF NOT EXISTS only_sensor_1(
   time_stamp BIGINT,
   sensor_1 BIGINT)
 ROW FORMAT SERDE 'org.apache.iotdb.hive.TsFileSerDe'
 STORED AS
   INPUTFORMAT 'org.apache.iotdb.hive.TSFHiveInputFormat'
   OUTPUTFORMAT 'org.apache.iotdb.hive.TSFHiveOutputFormat'
-LOCATION '/Users/hive/tsfile/data/';
+LOCATION '/data/data/sequence/root.baic2.WWS.leftfrontdoor/';
 ```
 
-在这个例子里，我们从`/Users/hive/tsfile/data/`中拉取`device_1.sensor_1`的数据。
+在这个例子里，我们从`/data/data/sequence/root.baic2.WWS.leftfrontdoor/`中拉取`root.baic2.WWS.leftfrontdoor.plc1.sensor_1`的数据。
 这个表可能产生如下描述：
 
 ```
-hive> describe device_1;
+hive> describe only_sensor_1;
 OK
 time_stamp          	bigint              	from deserializer
 sensor_1            	bigint              	from deserializer
@@ -132,7 +140,7 @@ Time taken: 0.053 seconds, Fetched: 2 row(s)
 hive> set hive.input.format=org.apache.hadoop.hive.ql.io.HiveInputFormat;
 ```
 
-现在，我们已经在hive中有了一个名为`device_1`的外部表。
+现在，我们已经在hive中有了一个名为`only_sensor_1`的外部表。
 我们可以使用HQL做任何查询来分析其中的数据。
 
 例如:
@@ -140,7 +148,7 @@ hive> set hive.input.format=org.apache.hadoop.hive.ql.io.HiveInputFormat;
 ### 选择查询语句示例
 
 ```
-hive> select * from device_1 limit 10;
+hive> select * from only_sensor_1 limit 10;
 OK
 1	1000000
 2	1000001
@@ -158,7 +166,7 @@ Time taken: 1.464 seconds, Fetched: 10 row(s)
 ### 聚合查询语句示例
 
 ```
-hive> select count(*) from device_1;
+hive> select count(*) from only_sensor_1;
 WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
 Query ID = jackietien_20191016202416_d1e3e233-d367-4453-b39a-2aac9327a3b6
 Total jobs = 1
@@ -185,5 +193,3 @@ Time taken: 11.334 seconds, Fetched: 1 row(s)
 ## 后续工作
 
 我们现在仅支持查询操作，写操作的支持还在开发中...
-
-并且，现在的hive-connector仅支持hive 2.x.x，对于hive 3.x.x的支持正在开发中，很快即将发布...

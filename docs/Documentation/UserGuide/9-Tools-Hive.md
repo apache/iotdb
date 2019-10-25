@@ -50,7 +50,7 @@ With this connector, you can
 
 |Hadoop Version |Hive Version | Java Version | TsFile |
 |-------------  |------------ | ------------ |------------ |
-| `2.7.3`       |    `2.3.6`  | `1.8`        | `0.8.0-SNAPSHOT`|
+| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.8.0-SNAPSHOT`|
 
 > Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
 
@@ -84,6 +84,15 @@ Added resources: [/Users/hive/incubator-iotdb/hive-connector/target/hive-connect
 
 ## Creating Tsfile-backed Hive tables
 
+First of all, you should create a database named as the `device_id`.
+Considering there may be `.` in the device_id, but the hive database name can't contains `.`, so we need to manually replace all `.` in the device_id with `/`.
+For example, if you have a device_id named `root.baic2.WWS.leftfrontdoor.plc1`, you should create a `root/baic2/WWS/leftfrontdoor/plc1` database instead.
+
+```
+CREATE DATABASE `root/baic2/WWS/leftfrontdoor/plc1`;
+use `root/baic2/WWS/leftfrontdoor/plc1`;
+```
+
 To create a Tsfile-backed table, specify the `serde` as `org.apache.iotdb.hive.TsFileSerDe`, 
 specify the `inputformat` as `org.apache.iotdb.hive.TSFHiveInputFormat`, 
 and the `outputformat` as `org.apache.iotdb.hive.TSFHiveOutputFormat`.
@@ -91,7 +100,7 @@ and the `outputformat` as `org.apache.iotdb.hive.TSFHiveOutputFormat`.
 Also provide a schema which only contains two fields: `time_stamp` and `sensor_id` for the table. 
 `time_stamp` is the time value of the time series 
 and `sensor_id` is the name of the sensor you want to extract from the tsfile to hive such as `sensor_1`. 
-The name of the table must be the device name that the sensor belongs to.
+The name of the table can be any valid tables names in hive.
 
 Also provide a location from which hive-connector will pull the most current data for the table.
 
@@ -100,16 +109,16 @@ The location can be a specific directory or a specific file.
 For example:
 
 ```
-CREATE EXTERNAL TABLE IF NOT EXISTS device_1(
+CREATE EXTERNAL TABLE IF NOT EXISTS only_sensor_1(
   time_stamp BIGINT,
   sensor_1 BIGINT)
 ROW FORMAT SERDE 'org.apache.iotdb.hive.TsFileSerDe'
 STORED AS
   INPUTFORMAT 'org.apache.iotdb.hive.TSFHiveInputFormat'
   OUTPUTFORMAT 'org.apache.iotdb.hive.TSFHiveOutputFormat'
-LOCATION '/Users/hive/tsfile/data/';
+LOCATION '/data/data/sequence/root.baic2.WWS.leftfrontdoor/';
 ```
-In this example we're pulling the data of `device_1.sensor_1` from the directory of `/Users/hive/tsfile/data/`. 
+In this example we're pulling the data of `root.baic2.WWS.leftfrontdoor.plc1.sensor_1` from the directory of `/data/data/sequence/root.baic2.WWS.leftfrontdoor/`. 
 This table might result in a description as below:
 
 ```
@@ -129,7 +138,7 @@ Before we do any queries, we should set the `hive.input.format` in hive by execu
 hive> set hive.input.format=org.apache.hadoop.hive.ql.io.HiveInputFormat;
 ```
 
-Now, we already have an external table named `device_1` in hive. 
+Now, we already have an external table named `root/baic2/WWS/leftfrontdoor/plc1.only_sensor_1` in hive. 
 We can use any query operations through HQL to analyse it.
 
 For example:
@@ -137,7 +146,7 @@ For example:
 ### Select Clause Example
 
 ```
-hive> select * from device_1 limit 10;
+hive> select * from only_sensor_1 limit 10;
 OK
 1	1000000
 2	1000001
@@ -155,7 +164,7 @@ Time taken: 1.464 seconds, Fetched: 10 row(s)
 ### Aggregate Clause Example
 
 ```
-hive> select count(*) from device_1;
+hive> select count(*) from only_sensor_1;
 WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
 Query ID = jackietien_20191016202416_d1e3e233-d367-4453-b39a-2aac9327a3b6
 Total jobs = 1
@@ -183,7 +192,4 @@ Time taken: 11.334 seconds, Fetched: 1 row(s)
 
 We're currently only supporting read operation.
 Writing tables to Tsfiles are under development.
-
-Also, we're currently only supporting hive 2.x.x and have found it reliable and flexible. 
-We'll be working on developing another one to support hive 3.x.x and it is coming soon.
 
