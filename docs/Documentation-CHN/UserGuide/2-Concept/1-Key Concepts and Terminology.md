@@ -92,7 +92,11 @@ LayerName: Identifier | STAR
 
 * 时间戳
 
-时间戳是一个数据到来的时间点。IoTDB时间戳分为两种类型，一种为LONG类型，一种为DATETIME类型（包含DATETIME-INPUT, DATETIME-DISPLAY两个小类）。
+时间戳是一个数据到来的时间点，其中包括绝对时间戳和相对时间戳。
+
+* 绝对时间戳
+
+IOTDB中绝对时间戳分为二种，一种为LONG类型，一种为DATETIME类型（包含DATETIME-INPUT, DATETIME-DISPLAY两个小类）。
 
 在用户在输入时间戳时，可以使用LONG类型的时间戳或DATETIME-INPUT类型的时间戳，其中DATETIME-INPUT类型的时间戳支持格式如表所示：
 
@@ -165,6 +169,42 @@ IoTDB在显示时间戳时可以支持LONG类型以及DATETIME-DISPLAY类型，�
 | ''|	single quote|	literal	|'|
 
 </center>
+
+* 相对时间戳
+  
+  相对时间是指与服务器时间```now()```和```DATETIME```类型时间相差一定时间间隔的时间。
+  形式化定义为：
+  ```
+  Duration = (Digit+ ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS'))+
+  RelativeTime = (now() | DATETIME) ((+|-) Duration)+
+        
+  ```
+  
+  <center>**The syntax of the duration unit**
+  
+  |Symbol|Meaning|Presentation|Examples|
+  |:---:|:---:|:---:|:---:|
+  |y|year|1y=365 days|1y|
+  |mo|month|1mo=30 days|1mo|
+  |w|week|1w=7 days|1w|
+  |d|day|1d=1 day|1d|
+  |||||
+  |h|hour|1h=3600 seconds|1h|
+  |m|minute|1m=60 seconds|1m|
+  |s|second|1s=1 second|1s|
+  |||||
+  |ms|millisecond|1ms=1000_000 nanoseconds|1ms|
+  |us|microsecond|1us=1000 nanoseconds|1us|
+  |ns|nanosecond|1ns=1 nanosecond|1ns|  
+  
+  </center>
+  
+  例子：
+  ```
+  now() - 1d2h //比服务器时间早1天2小时的时间
+  now() - 1w //比服务器时间早1周的时间
+  ```
+  > 注意：'+'和'—'的左右两边必须有空格 
 
 * 值
 
