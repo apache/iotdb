@@ -19,53 +19,35 @@
 
 package org.apache.iotdb.db.engine.merge.squeeze.recover;
 
-import static org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger.STR_ALL_TS_END;
-import static org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger.STR_END;
-import static org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger.STR_MERGE_END;
-import static org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger.STR_MERGE_START;
-import static org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger.STR_SEQ_FILES;
-import static org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger.STR_START;
-import static org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger.STR_TIMESERIES;
-import static org.apache.iotdb.db.engine.merge.inplace.recover.MergeLogger.STR_UNSEQ_FILES;
+
+import static org.apache.iotdb.db.engine.merge.squeeze.recover.MergeLogger.STR_ALL_TS_END;
+import static org.apache.iotdb.db.engine.merge.squeeze.recover.MergeLogger.STR_SEQ_FILES;
+import static org.apache.iotdb.db.engine.merge.squeeze.recover.MergeLogger.STR_UNSEQ_FILES;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.merge.inplace.task.MergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * LogAnalyzer scans the "merge.log" file and recovers information such as files of last merge,
- * the last available positions of each file and how many timeseries and files have been merged.
- * An example of merging 1 seqFile and 1 unseqFile containing 3 series is:
+ * whether the new file is generated.
+ * An example of merging 1 seqFile and 1 unseqFile is:
  * seqFiles
  * server/0seq.tsfile
  * unseqFiles
  * server/0unseq.tsfile
  * merge start
- * start root.mergeTest.device0.sensor0
- * server/0seq.tsfile.merge 338
- * end
- * start root.mergeTest.device0.sensor1
- * server/0seq.tsfile.merge 664
- * end
  * all ts end
- * server/0seq.tsfile 145462
- * end
+ * server/0seq.tsfile.merge
  * merge end
  */
 public class LogAnalyzer {
@@ -76,23 +58,16 @@ public class LogAnalyzer {
   private MergeResource resource;
   private String taskName;
   private File logFile;
-  private String storageGroupName;
 
-  private Map<File, Long> fileLastPositions = new HashMap<>();
-  private Map<File, Long> tempFileLastPositions = new HashMap<>();
-
-  private List<Path> mergedPaths = new ArrayList<>();
-  private List<Path> unmergedPaths;
-  private List<TsFileResource> unmergedFiles;
   private String currLine;
 
+  private TsFileResource newResource;
   private Status status;
 
-  public LogAnalyzer(MergeResource resource, String taskName, File logFile, String storageGroupName) {
+  public LogAnalyzer(MergeResource resource, String taskName, File logFile) {
     this.resource = resource;
     this.taskName = taskName;
     this.logFile = logFile;
-    this.storageGroupName = storageGroupName;
   }
 
   /**
@@ -101,7 +76,7 @@ public class LogAnalyzer {
    * @return a Status indicating the completed stage of the last merge.
    * @throws IOException
    */
-  public Status analyze() throws IOException, MetadataErrorException {
+  public Status analyze() throws IOException {
     status = Status.NONE;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
       currLine = bufferedReader.readLine();
@@ -110,15 +85,7 @@ public class LogAnalyzer {
 
         analyzeUnseqFiles(bufferedReader);
 
-        List<String> storageGroupPaths = MManager.getInstance().getPaths(storageGroupName + ".*");
-        unmergedPaths = new ArrayList<>();
-        for (String path : storageGroupPaths) {
-          unmergedPaths.add(new Path(path));
-        }
-
-        analyzeMergedSeries(bufferedReader, unmergedPaths);
-
-        analyzeMergedFiles(bufferedReader);
+        analyzeMergedFile(bufferedReader);
       }
     }
     return status;
@@ -159,7 +126,7 @@ public class LogAnalyzer {
     long startTime = System.currentTimeMillis();
     List<TsFileResource> mergeUnseqFiles = new ArrayList<>();
     while ((currLine = bufferedReader.readLine()) != null) {
-      if (currLine.equals(STR_TIMESERIES)) {
+      if (currLine.equals(STR_ALL_TS_END)) {
         break;
       }
       Iterator<TsFileResource> iterator = resource.getUnseqFiles().iterator();
@@ -180,124 +147,28 @@ public class LogAnalyzer {
     resource.setUnseqFiles(mergeUnseqFiles);
   }
 
-  private void analyzeMergedSeries(BufferedReader bufferedReader, List<Path> unmergedPaths) throws IOException {
-    if (!STR_MERGE_START.equals(currLine)) {
-      return;
-    }
 
-    status = Status.MERGE_START;
-    for (TsFileResource seqFile : resource.getSeqFiles()) {
-      File mergeFile = SystemFileFactory.INSTANCE.getFile(seqFile.getFile().getPath() + MergeTask.MERGE_SUFFIX);
-      fileLastPositions.put(mergeFile, 0L);
-    }
-
-    List<Path> currTSList = new ArrayList<>();
-    long startTime = System.currentTimeMillis();
-    while ((currLine = bufferedReader.readLine()) != null) {
-      if (STR_ALL_TS_END.equals(currLine)) {
-        break;
-      }
-      if (currLine.contains(STR_START)) {
-        // a TS starts to merge
-        String[] splits = currLine.split(" ");
-        for (int i = 1; i < splits.length; i ++) {
-          currTSList.add(new Path(splits[i]));
-        }
-        tempFileLastPositions.clear();
-      } else if (!currLine.contains(STR_END)) {
-        // file position
-        String[] splits = currLine.split(" ");
-        File file = SystemFileFactory.INSTANCE.getFile(splits[0]);
-        Long position = Long.parseLong(splits[1]);
-        tempFileLastPositions.put(file, position);
-      } else {
-        // a TS ends merging
-        unmergedPaths.removeAll(currTSList);
-        for (Entry<File, Long> entry : tempFileLastPositions.entrySet()) {
-          fileLastPositions.put(entry.getKey(), entry.getValue());
-        }
-        mergedPaths.addAll(currTSList);
-      }
-    }
-    tempFileLastPositions = null;
-    if (logger.isDebugEnabled()) {
-      logger.debug("{} found {} series have already been merged after {}ms", taskName,
-          mergedPaths.size(), (System.currentTimeMillis() - startTime));
-    }
-  }
-
-  private void analyzeMergedFiles(BufferedReader bufferedReader) throws IOException {
+  private void analyzeMergedFile(BufferedReader bufferedReader) throws IOException {
     if (!STR_ALL_TS_END.equals(currLine)) {
       return;
     }
 
-    status = Status.ALL_TS_MERGED;
-    unmergedFiles = resource.getSeqFiles();
+    currLine = bufferedReader.readLine();
+    if (currLine != null) {
+      status = Status.ALL_TS_MERGED;
+      File newFile = FSFactoryProducer.getFSFactory().getFile(currLine);
+      newResource = new TsFileResource(newFile);
+      newResource.deSerialize();
 
-    File currFile = null;
-    long startTime = System.currentTimeMillis();
-    int mergedCnt = 0;
-    while ((currLine = bufferedReader.readLine()) != null) {
-      if (STR_MERGE_END.equals(currLine)) {
-        status = Status.MERGE_END;
-        break;
-      }
-      if (!currLine.contains(STR_END)) {
-        String[] splits = currLine.split(" ");
-        currFile = SystemFileFactory.INSTANCE.getFile(splits[0]);
-        Long lastPost = Long.parseLong(splits[1]);
-        fileLastPositions.put(currFile, lastPost);
-      } else {
-        fileLastPositions.remove(currFile);
-        String seqFilePath = currFile.getAbsolutePath().replace(MergeTask.MERGE_SUFFIX, "");
-        Iterator<TsFileResource> unmergedFileIter = unmergedFiles.iterator();
-        while (unmergedFileIter.hasNext()) {
-          TsFileResource seqFile = unmergedFileIter.next();
-          if (seqFile.getFile().getAbsolutePath().equals(seqFilePath)) {
-            mergedCnt ++;
-            unmergedFileIter.remove();
-            break;
-          }
-        }
+      if (logger.isDebugEnabled()) {
+        logger.debug("{} found files have already been merged into {}", taskName,
+            newFile.getPath());
       }
     }
-    if (logger.isDebugEnabled()) {
-      logger.debug("{} found {} files have already been merged after {}ms", taskName,
-          mergedCnt, (System.currentTimeMillis() - startTime));
-    }
   }
 
-  public List<Path> getUnmergedPaths() {
-    return unmergedPaths;
-  }
-
-  public void setUnmergedPaths(List<Path> unmergedPaths) {
-    this.unmergedPaths = unmergedPaths;
-  }
-
-  public List<TsFileResource> getUnmergedFiles() {
-    return unmergedFiles;
-  }
-
-  public void setUnmergedFiles(
-      List<TsFileResource> unmergedFiles) {
-    this.unmergedFiles = unmergedFiles;
-  }
-
-  public List<Path> getMergedPaths() {
-    return mergedPaths;
-  }
-
-  public void setMergedPaths(List<Path> mergedPaths) {
-    this.mergedPaths = mergedPaths;
-  }
-
-  public Map<File, Long> getFileLastPositions() {
-    return fileLastPositions;
-  }
-
-  public void setFileLastPositions(Map<File, Long> fileLastPositions) {
-    this.fileLastPositions = fileLastPositions;
+  public TsFileResource getNewResource() {
+    return newResource;
   }
 
   public enum Status {
@@ -305,9 +176,7 @@ public class LogAnalyzer {
     NONE,
     // at least the files and timeseries to be merged are known
     MERGE_START,
-    // all the timeseries have been merged(merged chunks are generated)
-    ALL_TS_MERGED,
-    // all the merge files are merged with the origin files and the task is almost done
-    MERGE_END
+    // all the timeseries have been merged(new file is generated)
+    ALL_TS_MERGED
   }
 }

@@ -34,7 +34,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
  */
 public class MergeLogger {
 
-  public static final String MERGE_LOG_NAME = "merge.log";
+  public static final String MERGE_LOG_NAME = "merge.log.inplace";
 
   static final String STR_SEQ_FILES = "seqFiles";
   static final String STR_UNSEQ_FILES = "unseqFiles";

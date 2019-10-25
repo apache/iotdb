@@ -131,7 +131,6 @@ class MergeSeriesTask {
       logger.info("{} all series are merged after {}ms", taskName,
           System.currentTimeMillis() - startTime);
     }
-    mergeLogger.logAllTsEnd();
 
     return newResource;
   }
@@ -186,15 +185,10 @@ class MergeSeriesTask {
 
   private void createNewFileWriter() throws IOException {
     // use the minimum version as the version of the new file
-    long currFileVersion = Long.MAX_VALUE;
-    File parent = null;
-    for (TsFileResource seqFile : resource.getSeqFiles()) {
-      long fileVersion =
-          Long.parseLong(seqFile.getFile().getName()
-              .replace(TSFILE_SUFFIX, "").split(TSFILE_SEPARATOR)[1]);
-      currFileVersion = Math.min(currFileVersion, fileVersion);
-      parent = parent == null ? seqFile.getFile().getParentFile() : parent;
-    }
+    long currFileVersion =
+        Long.parseLong(
+            resource.getSeqFiles().get(0).getFile().getName().replace(TSFILE_SUFFIX, "").split(TSFILE_SEPARATOR)[1]);
+    File parent = resource.getSeqFiles().get(0).getFile().getParentFile();
     File newFile = FSFactoryProducer.getFSFactory().getFile(parent,
         System.currentTimeMillis() + TSFILE_SEPARATOR + currFileVersion + TSFILE_SUFFIX + MERGE_SUFFIX);
     newFileWriter = new RestorableTsFileIOWriter(newFile);

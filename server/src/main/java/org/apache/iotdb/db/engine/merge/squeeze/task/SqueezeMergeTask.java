@@ -23,20 +23,20 @@ import org.slf4j.LoggerFactory;
 
 public class SqueezeMergeTask implements Callable<Void> {
 
-  static final String MERGE_SUFFIX = ".merge";
+  static final String MERGE_SUFFIX = ".merge.squeeze";
   private static final Logger logger = LoggerFactory.getLogger(SqueezeMergeTask.class);
 
-  private MergeResource resource;
-  private String storageGroupSysDir;
-  private String storageGroupName;
+  MergeResource resource;
+  String storageGroupSysDir;
+  String storageGroupName;
   private MergeLogger mergeLogger;
   private MergeContext mergeContext = new MergeContext();
 
-  private MergeCallback callback;
-  private int concurrentMergeSeriesNum;
-  private String taskName;
+  MergeCallback callback;
+  int concurrentMergeSeriesNum;
+  String taskName;
 
-  private TsFileResource newResource;
+  TsFileResource newResource;
 
   public SqueezeMergeTask(MergeResource mergeResource, String storageGroupSysDir, MergeCallback callback,
       String taskName, int concurrentMergeSeriesNum, String storageGroupName) {
@@ -87,8 +87,6 @@ public class SqueezeMergeTask implements Callable<Void> {
       unmergedSeries.add(new Path(path));
     }
 
-    mergeLogger.logMergeStart();
-
     MergeSeriesTask mergeChunkTask = new MergeSeriesTask(mergeContext, taskName, mergeLogger, resource
         ,unmergedSeries, concurrentMergeSeriesNum);
     newResource = mergeChunkTask.mergeSeries();
@@ -98,17 +96,16 @@ public class SqueezeMergeTask implements Callable<Void> {
       double elapsedTime = (double) (System.currentTimeMillis() - startTime) / 1000.0;
       double byteRate = totalFileSize / elapsedTime / 1024 / 1024;
       double seriesRate = unmergedSeries.size() / elapsedTime;
-      double chunkRate = mergeContext.getTotalChunkWritten() / elapsedTime;
       double fileRate =
           (resource.getSeqFiles().size() + resource.getUnseqFiles().size()) / elapsedTime;
       double ptRate = mergeContext.getTotalPointWritten() / elapsedTime;
-      logger.info("{} ends after {}s, byteRate: {}MB/s, seriesRate {}/s, chunkRate: {}/s, "
+      logger.info("{} ends after {}s, byteRate: {}MB/s, seriesRate {}/s, "
               + "fileRate: {}/s, ptRate: {}/s",
-          taskName, elapsedTime, byteRate, seriesRate, chunkRate, fileRate, ptRate);
+          taskName, elapsedTime, byteRate, seriesRate, fileRate, ptRate);
     }
   }
 
-  private void cleanUp(boolean executeCallback) throws IOException {
+  void cleanUp(boolean executeCallback) throws IOException {
     logger.info("{} is cleaning up", taskName);
 
     resource.clear();
@@ -116,11 +113,6 @@ public class SqueezeMergeTask implements Callable<Void> {
 
     if (mergeLogger != null) {
       mergeLogger.close();
-    }
-
-    for (TsFileResource seqFile : resource.getSeqFiles()) {
-      File mergeFile = FSFactoryProducer.getFSFactory().getFile(seqFile.getFile().getPath() + MERGE_SUFFIX);
-      mergeFile.delete();
     }
 
     File logFile = FSFactoryProducer.getFSFactory().getFile(storageGroupSysDir,

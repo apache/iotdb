@@ -27,7 +27,7 @@ import java.util.Collections;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.inplace.task.MergeTask;
+import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -60,9 +60,9 @@ public class MergeTaskTest extends MergeTest {
 
   @Test
   public void testMerge() throws Exception {
-    MergeTask mergeTask =
-        new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(), (k, v
-            , l) -> {}, "test", false, 1, MERGE_TEST_SG);
+    InplaceMergeTask mergeTask =
+        new InplaceMergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(), (k, v
+            , l, n) -> {}, "test", false, 1, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -81,8 +81,9 @@ public class MergeTaskTest extends MergeTest {
 
   @Test
   public void testFullMerge() throws Exception {
-    MergeTask mergeTask =
-        new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(), (k, v, l) -> {}, "test",
+    InplaceMergeTask mergeTask =
+        new InplaceMergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath()
+            , (k, v, l, n) -> {}, "test",
             true, 1, MERGE_TEST_SG);
     mergeTask.call();
 
@@ -103,8 +104,9 @@ public class MergeTaskTest extends MergeTest {
   @Test
   public void testChunkNumThreshold() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(Integer.MAX_VALUE);
-    MergeTask mergeTask =
-        new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(), (k, v, l) -> {}, "test",
+    InplaceMergeTask mergeTask =
+        new InplaceMergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath()
+            , (k, v, l, n) -> {}, "test",
             false, 1, MERGE_TEST_SG);
     mergeTask.call();
 
@@ -124,9 +126,9 @@ public class MergeTaskTest extends MergeTest {
 
   @Test
   public void testPartialMerge1() throws Exception {
-    MergeTask mergeTask =
-        new MergeTask(new MergeResource(seqResources, unseqResources.subList(0, 1)), tempSGDir.getPath(),
-            (k, v, l) -> {}, "test", false, 1, MERGE_TEST_SG);
+    InplaceMergeTask mergeTask =
+        new InplaceMergeTask(new MergeResource(seqResources, unseqResources.subList(0, 1)), tempSGDir.getPath(),
+            (k, v, l, n) -> {}, "test", false, 1, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -149,9 +151,9 @@ public class MergeTaskTest extends MergeTest {
 
   @Test
   public void testPartialMerge2() throws Exception {
-    MergeTask mergeTask =
-        new MergeTask(new MergeResource(seqResources, unseqResources.subList(5, 6)), tempSGDir.getPath(),
-            (k, v, l) -> {}, "test", false, 1, MERGE_TEST_SG);
+    InplaceMergeTask mergeTask =
+        new InplaceMergeTask(new MergeResource(seqResources, unseqResources.subList(5, 6)), tempSGDir.getPath(),
+            (k, v, l, n) -> {}, "test", false, 1, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -170,9 +172,9 @@ public class MergeTaskTest extends MergeTest {
 
   @Test
   public void testPartialMerge3() throws Exception {
-    MergeTask mergeTask =
-        new MergeTask(new MergeResource(seqResources, unseqResources.subList(0, 5)), tempSGDir.getPath(),
-            (k, v, l) -> {}, "test", false, 1, MERGE_TEST_SG);
+    InplaceMergeTask mergeTask =
+        new InplaceMergeTask(new MergeResource(seqResources, unseqResources.subList(0, 5)), tempSGDir.getPath(),
+            (k, v, l, n) -> {}, "test", false, 1, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -200,9 +202,9 @@ public class MergeTaskTest extends MergeTest {
     seqResources.get(0).getModFile().close();
 
 
-    MergeTask mergeTask =
-        new MergeTask(new MergeResource(seqResources, unseqResources.subList(0, 1)), tempSGDir.getPath(),
-            (k, v, l) -> {
+    InplaceMergeTask mergeTask =
+        new InplaceMergeTask(new MergeResource(seqResources, unseqResources.subList(0, 1)), tempSGDir.getPath(),
+            (k, v, l, n) -> {
               try {
                 seqResources.get(0).removeModFile();
               } catch (IOException e) {

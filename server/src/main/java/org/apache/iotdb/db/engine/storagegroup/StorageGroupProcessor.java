@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static org.apache.iotdb.db.engine.merge.inplace.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
@@ -46,8 +46,8 @@ import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.inplace.selector.MaxFileMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.inplace.selector.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.inplace.selector.MergeFileStrategy;
-import org.apache.iotdb.db.engine.merge.inplace.task.MergeTask;
-import org.apache.iotdb.db.engine.merge.inplace.task.RecoverMergeTask;
+import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
+import org.apache.iotdb.db.engine.merge.inplace.task.RecoverInplaceMergeTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -223,7 +223,7 @@ public class StorageGroupProcessor {
       if (mergingMods.exists()) {
         mergingModification = new ModificationFile(mergingMods.getPath());
       }
-      RecoverMergeTask recoverMergeTask = new RecoverMergeTask(seqTsFiles, unseqTsFiles,
+      RecoverInplaceMergeTask recoverMergeTask = new RecoverInplaceMergeTask(seqTsFiles, unseqTsFiles,
           storageGroupSysDir.getPath(), this::mergeEndAction, taskName,
           IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(), storageGroupName);
       logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
@@ -878,7 +878,7 @@ public class StorageGroupProcessor {
         // cached during selection
         mergeResource.setCacheDeviceMeta(true);
 
-        MergeTask mergeTask = new MergeTask(mergeResource, storageGroupSysDir.getPath(),
+        InplaceMergeTask mergeTask = new InplaceMergeTask(mergeResource, storageGroupSysDir.getPath(),
             this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum(), storageGroupName);
         mergingModification = new ModificationFile(storageGroupSysDir + File.separator + MERGING_MODIFICAITON_FILE_NAME);
         MergeManager.getINSTANCE().submitMainTask(mergeTask);
@@ -962,7 +962,7 @@ public class StorageGroupProcessor {
     }
     // block new queries and insertions to prevent the seqFiles from changing
     writeLock();
-    mergeLock.writeLock().lock();;
+    mergeLock.writeLock().lock();
     try {
       removeUnseqFiles(unseqFiles);
       // insert the new file into a proper place
@@ -1025,8 +1025,21 @@ public class StorageGroupProcessor {
 
     if (unseqFiles.isEmpty()) {
       // merge runtime exception arose, just end this merge
-      isMerging = false;
-      logger.info("{} a merge task abnormally ends", storageGroupName);
+      mergeLock.writeLock().lock();
+      try {
+        if (mergingModification != null) {
+          logger.debug("{} is updating the merged file's modification file", storageGroupName);
+          mergingModification.remove();
+          mergingModification = null;
+        }
+      } catch (IOException e) {
+        logger.error("{} cannot remove merge modifications after merge abnormally ends",
+            storageGroupName, e);
+      } finally {
+        isMerging = false;
+        logger.info("{} a merge task abnormally ends", storageGroupName);
+        mergeLock.writeLock().unlock();
+      }
       return;
     }
 

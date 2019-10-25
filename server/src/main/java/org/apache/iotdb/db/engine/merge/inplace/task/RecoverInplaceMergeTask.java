@@ -47,13 +47,13 @@ import org.slf4j.LoggerFactory;
  * RecoverMergeTask is an extension of MergeTask, which resumes the last merge progress by
  * scanning merge.log using LogAnalyzer and continue the unfinished merge.
  */
-public class RecoverMergeTask extends MergeTask {
+public class RecoverInplaceMergeTask extends InplaceMergeTask {
 
-  private static final Logger logger = LoggerFactory.getLogger(RecoverMergeTask.class);
+  private static final Logger logger = LoggerFactory.getLogger(RecoverInplaceMergeTask.class);
 
   private LogAnalyzer analyzer;
 
-  public RecoverMergeTask(List<TsFileResource> seqFiles,
+  public RecoverInplaceMergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupSysDir,
       MergeCallback callback, String taskName,
       boolean fullMerge, String storageGroupName) {
@@ -160,9 +160,8 @@ public class RecoverMergeTask extends MergeTask {
       long maxChunkNum = chunkNums[1];
       long fileMetaSize = MergeUtils.getFileMetaSize(seqFile, resource.getFileReader(seqFile));
       long newSingleSeriesSeqReadCost =  fileMetaSize * maxChunkNum / totalChunkNum;
-      singleSeriesSeqReadCost = newSingleSeriesSeqReadCost > singleSeriesSeqReadCost ?
-          newSingleSeriesSeqReadCost : singleSeriesSeqReadCost;
-      maxSeqReadCost = fileMetaSize > maxSeqReadCost ? fileMetaSize : maxSeqReadCost;
+      singleSeriesSeqReadCost = Math.max(newSingleSeriesSeqReadCost, singleSeriesSeqReadCost);
+      maxSeqReadCost = Math.max(fileMetaSize, maxSeqReadCost);
       seqWriteCost += fileMetaSize;
     }
 
@@ -171,10 +170,8 @@ public class RecoverMergeTask extends MergeTask {
     int ub = MaxSeriesMergeFileSelector.MAX_SERIES_NUM;
     int mid = (lb + ub) / 2;
     while (mid != lb) {
-      long unseqCost = singleSeriesUnseqCost * mid < maxUnseqCost ? singleSeriesUnseqCost * mid :
-          maxUnseqCost;
-      long seqReadCos = singleSeriesSeqReadCost * mid < maxSeqReadCost ?
-          singleSeriesSeqReadCost * mid : maxSeqReadCost;
+      long unseqCost = Math.min(singleSeriesUnseqCost * mid, maxUnseqCost);
+      long seqReadCos = Math.min(singleSeriesSeqReadCost * mid, maxSeqReadCost);
       long totalCost = unseqCost + seqReadCos + seqWriteCost;
       if (totalCost <= memBudget) {
         lb = mid;

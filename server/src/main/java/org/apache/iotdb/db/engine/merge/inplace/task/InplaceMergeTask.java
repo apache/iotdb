@@ -47,10 +47,10 @@ import org.slf4j.LoggerFactory;
  *        chunks in the seqFiles into temp files and replace the seqFiles with the temp files.
  *        3. remove unseqFiles
  */
-public class MergeTask implements Callable<Void> {
+public class InplaceMergeTask implements Callable<Void> {
 
-  public static final String MERGE_SUFFIX = ".merge";
-  private static final Logger logger = LoggerFactory.getLogger(MergeTask.class);
+  public static final String MERGE_SUFFIX = ".merge.inplace";
+  private static final Logger logger = LoggerFactory.getLogger(InplaceMergeTask.class);
 
   MergeResource resource;
   String storageGroupSysDir;
@@ -63,7 +63,7 @@ public class MergeTask implements Callable<Void> {
   String taskName;
   boolean fullMerge;
 
-  MergeTask(List<TsFileResource> seqFiles,
+  InplaceMergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupSysDir, MergeCallback callback,
       String taskName, boolean fullMerge, String storageGroupName) {
     this.resource = new MergeResource(seqFiles, unseqFiles);
@@ -75,7 +75,7 @@ public class MergeTask implements Callable<Void> {
     this.storageGroupName = storageGroupName;
   }
 
-  public MergeTask(MergeResource mergeResource, String storageGroupSysDir, MergeCallback callback,
+  public InplaceMergeTask(MergeResource mergeResource, String storageGroupSysDir, MergeCallback callback,
       String taskName, boolean fullMerge, int concurrentMergeSeriesNum, String storageGroupName) {
     this.resource = mergeResource;
     this.storageGroupSysDir = storageGroupSysDir;

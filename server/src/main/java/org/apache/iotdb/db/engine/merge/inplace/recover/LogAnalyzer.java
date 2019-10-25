@@ -30,7 +30,7 @@ import java.util.Map.Entry;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.inplace.task.MergeTask;
+import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -176,7 +176,7 @@ public class LogAnalyzer {
 
     status = Status.MERGE_START;
     for (TsFileResource seqFile : resource.getSeqFiles()) {
-      File mergeFile = SystemFileFactory.INSTANCE.getFile(seqFile.getFile().getPath() + MergeTask.MERGE_SUFFIX);
+      File mergeFile = SystemFileFactory.INSTANCE.getFile(seqFile.getFile().getPath() + InplaceMergeTask.MERGE_SUFFIX);
       fileLastPositions.put(mergeFile, 0L);
     }
 
@@ -238,7 +238,7 @@ public class LogAnalyzer {
         fileLastPositions.put(currFile, lastPost);
       } else {
         fileLastPositions.remove(currFile);
-        String seqFilePath = currFile.getAbsolutePath().replace(MergeTask.MERGE_SUFFIX, "");
+        String seqFilePath = currFile.getAbsolutePath().replace(InplaceMergeTask.MERGE_SUFFIX, "");
         Iterator<TsFileResource> unmergedFileIter = unmergedFiles.iterator();
         while (unmergedFileIter.hasNext()) {
           TsFileResource seqFile = unmergedFileIter.next();
