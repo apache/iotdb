@@ -32,6 +32,7 @@ import java.util.Optional;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.NotCompatibleException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
@@ -70,6 +71,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   private ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
   private int totalChunkNum;
   private TsFileMetaData tsFileMetaData;
+  private EndianType endianType = EndianType.BIG_ENDIAN;
 
   private boolean cacheDeviceMetadata = false;
   private Map<TsDeviceMetadataIndex, TsDeviceMetadata> deviceMetadataMap;
@@ -95,6 +97,9 @@ public class TsFileSequenceReader implements AutoCloseable {
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
     this.file = file;
     tsFileInput = FSFactoryProducer.getFileInputFactory().getTsFileInput(file);
+    // old version number of TsFile using little endian starts with "v"
+    this.endianType = this.readVersionNumber().startsWith("v") 
+        ? EndianType.LITTLE_ENDIAN : EndianType.BIG_ENDIAN;
     try {
       if (loadMetadataSize) {
         loadMetadataSize();
@@ -183,7 +188,6 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public String readTailMagic() throws IOException {
     long totalSize = tsFileInput.size();
-
     ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.getBytes().length);
     tsFileInput.read(magicStringBytes, totalSize - TSFileConfig.MAGIC_STRING.getBytes().length);
     magicStringBytes.flip();
@@ -231,11 +235,11 @@ public class TsFileSequenceReader implements AutoCloseable {
     tsFileInput.read(versionNumberBytes, TSFileConfig.MAGIC_STRING.getBytes().length);
     versionNumberBytes.flip();
     String versionNumberString = new String(versionNumberBytes.array());
-    if(!versionNumberString.equals(TSFileConfig.VERSION_NUMBER)) {
-      throw new NotCompatibleException("TsFile isn't compatible. " + TSFileConfig.MAGIC_STRING +
-          TSFileConfig.VERSION_NUMBER + " is expected.");
-    }
     return versionNumberString;
+  }
+  
+  public EndianType getEndianType() {
+    return this.endianType;
   }
 
   /**
@@ -380,7 +384,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), false);
     ByteBuffer buffer = readChunk(metaData.getOffsetOfChunkHeader() + header.getSerializedSize(),
         header.getDataSize());
-    return new Chunk(header, buffer, metaData.getDeletedAt());
+    return new Chunk(header, buffer, metaData.getDeletedAt(), endianType);
   }
 
   /**
