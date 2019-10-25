@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read;
 
+import static org.junit.Assert.fail;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -149,8 +151,9 @@ public class ReadOnlyTsFileTest {
     QueryExpression queryExpression = QueryExpression.create(paths, expression);
     try {
       QueryDataSet queryDataSet = tsFile.query(queryExpression);
+      fail();
     } catch (IOException e) {
-      Assert.assertNotNull(e.getMessage(), "No measurement path : dr");
+      Assert.assertEquals(e.getMessage(), "No device path : dr");
     }
   }
 
