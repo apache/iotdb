@@ -51,7 +51,7 @@ TsFile的Hive连接器实现了对Hive读取外部Tsfile类型的文件格式的
 
 |Hadoop Version |Hive Version | Java Version | TsFile |
 |-------------  |------------ | ------------ |------------ |
-| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.8.0-SNAPSHOT`|
+| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.9.0-SNAPSHOT`|
 
 > 注意：关于如何下载和使用Tsfile, 请参考以下链接: <https://github.com/apache/incubator-iotdb/tree/master/tsfile>。
 
@@ -96,6 +96,7 @@ Added resources: [/Users/hive/incubator-iotdb/hive-connector/target/hive-connect
 需要提供一个路径供hive-connector从其中拉取最新的数据。
 
 这个路径必须是一个指定的文件夹，这个文件夹可以在你的本地文件系统上，也可以在HDFS上，如果你启动了Hadoop的话。
+如果是本地文件系统，要以这样的形式`file:///data/data/sequence/root.baic2.WWS.leftfrontdoor/`
 
 最后需要在`TBLPROPERTIES`里指明`device_id`
 

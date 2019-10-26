@@ -31,7 +31,7 @@
 	- Querying from Tsfile-backed Hive tables
 	    - Select Clause Example
 	    - Aggregate Clause Example
-	- What's next
+	- What's Next
 		
 <!-- /TOC -->
 # TsFile-Hive-Connector User Guide
@@ -50,7 +50,7 @@ With this connector, you can
 
 |Hadoop Version |Hive Version | Java Version | TsFile |
 |-------------  |------------ | ------------ |------------ |
-| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.8.0-SNAPSHOT`|
+| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.9.0-SNAPSHOT`|
 
 > Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
 
@@ -96,6 +96,7 @@ The name of the table can be any valid tables names in hive.
 Also provide a location from which hive-connector will pull the most current data for the table.
 
 The location must be a specific directory, it can be on your local file system or HDFS if you have set up Hadoop.
+If it is in your local file system, the location should look like `file:///data/data/sequence/root.baic2.WWS.leftfrontdoor/`
 
 At last, you should set the `device_id` in `TBLPROPERTIES` to the device name you want to analyze.
 
@@ -182,8 +183,8 @@ OK
 Time taken: 11.334 seconds, Fetched: 1 row(s)
 ```
 
-## What's next
+## What's Next
 
 We're currently only supporting read operation.
-Writing tables to Tsfiles are under development.
+Writing tables to Tsfiles is under development.
 
