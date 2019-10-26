@@ -20,43 +20,44 @@
 -->
 
 <!-- TOC -->
-## Outline
+## 概要
 
-- TsFile-Hive-Connector User Guide
-	- About TsFile-Hive-Connector
-	- System Requirements
-	- Data Type Correspondence
-	- Add Dependency For Hive
-	- Creating Tsfile-backed Hive tables
-	- Querying from Tsfile-backed Hive tables
-	    - Select Clause Example
-	    - Aggregate Clause Example
-	- What's Next
+- TsFile的Hive连接器使用手册
+	- 什么是TsFile的Hive连接器
+	- 系统环境要求
+	- 数据类型对应关系
+	- 为Hive添加依赖jar包
+	- 创建Tsfile-backed的Hive表
+	- 从Tsfile-backed的Hive表中查询
+	    - 选择查询语句示例
+	    - 聚合查询语句示例
+	- 后续工作
 		
 <!-- /TOC -->
-# TsFile-Hive-Connector User Guide
+# TsFile的Hive连接器使用手册
 
-## About TsFile-Hive-Connector
+## 什么是TsFile的Hive连接器
 
-TsFile-Hive-Connector implements the support of Hive for external data sources of Tsfile type. This enables users to operate Tsfile by Hive.
+TsFile的Hive连接器实现了对Hive读取外部Tsfile类型的文件格式的支持，
+使用户能够通过Hive操作Tsfile。
 
-With this connector, you can
-* Load a single TsFile, from either the local file system or hdfs, into hive
-* Load all files in a specific directory, from either the local file system or hdfs, into hive
-* Query the tsfile through HQL.
-* As of now, the write operation is not supported in hive-connector. So, insert operation in HQL is not allowed while operating tsfile through hive.
+有了这个连接器，用户可以
+* 将单个Tsfile文件加载进Hive，不论文件是存储在本地文件系统或者是HDFS中
+* 将某个特定目录下的所有文件加载进Hive，不论文件是存储在本地文件系统或者是HDFS中
+* 使用HQL查询tsfile
+* 到现在为止, 写操作在hive-connector中还没有被支持. 所以, HQL中的insert操作是不被允许的
 
-## System Requirements
+## 系统环境要求
 
 |Hadoop Version |Hive Version | Java Version | TsFile |
 |-------------  |------------ | ------------ |------------ |
 | `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.9.0-SNAPSHOT`|
 
-> Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
+> 注意：关于如何下载和使用Tsfile, 请参考以下链接: <https://github.com/apache/incubator-iotdb/tree/master/tsfile>。
 
-## Data Type Correspondence
+## 数据类型对应关系
 
-| TsFile data type | Hive field type |
+| TsFile 数据类型   | Hive 数据类型 |
 | ---------------- | --------------- |
 | BOOLEAN          | Boolean         |
 | INT32            | INT             |
@@ -66,13 +67,13 @@ With this connector, you can
 | TEXT      	   | STRING          |
 
 
-## Add Dependency For Hive
+## 为Hive添加依赖jar包
 
-To use hive-connector in hive, we should add the hive-connector jar into hive.
+为了在Hive中使用Tsfile的hive连接器，我们需要把hive连接器的jar导入进hive。
 
-After downloading the code of iotdb from <https://github.com/apache/incubator-iotdb>, you can use the command of `mvn clean package -pl hive-connector -am -Dmaven.test.skip=true` to get a `hive-connector-X.X.X-SNAPSHOT-jar-with-dependencies.jar`.
+从 <https://github.com/apache/incubator-iotdb>下载完iotdb后, 你可以使用 `mvn clean package -pl hive-connector -am -Dmaven.test.skip=true`命令得到一个 `hive-connector-X.X.X-SNAPSHOT-jar-with-dependencies.jar`。
 
-Then in hive, use the command of `add jar XXX` to add the dependency. For example:
+然后在hive的命令行中，使用`add jar XXX`命令添加依赖。例如:
 
 ```
 hive> add jar /Users/hive/incubator-iotdb/hive-connector/target/hive-connector-0.9.0-SNAPSHOT-jar-with-dependencies.jar;
@@ -82,29 +83,28 @@ Added resources: [/Users/hive/incubator-iotdb/hive-connector/target/hive-connect
 ```
 
 
-## Creating Tsfile-backed Hive tables
+## 创建Tsfile-backed的Hive表
 
-To create a Tsfile-backed table, specify the `serde` as `org.apache.iotdb.hive.TsFileSerDe`, 
-specify the `inputformat` as `org.apache.iotdb.hive.TSFHiveInputFormat`, 
-and the `outputformat` as `org.apache.iotdb.hive.TSFHiveOutputFormat`.
- 
-Also provide a schema which only contains two fields: `time_stamp` and `sensor_id` for the table. 
-`time_stamp` is the time value of the time series 
-and `sensor_id` is the name of the sensor you want to extract from the tsfile to hive such as `sensor_1`. 
-The name of the table can be any valid tables names in hive.
+为了创建一个Tsfile-backed的表，需要将`serde`指定为`org.apache.iotdb.hive.TsFileSerDe`，
+将`inputformat`指定为`org.apache.iotdb.hive.TSFHiveInputFormat`，
+将`outputformat`指定为`org.apache.iotdb.hive.TSFHiveOutputFormat`。
 
-Also provide a location from which hive-connector will pull the most current data for the table.
+同时要提供一个只包含两个字段的Schema，这两个字段分别是`time_stamp`和`sensor_id`。
+`time_stamp`代表的是时间序列的时间值，`sensor_id`是你想要从tsfile文件中提取出来分析的传感器名称，比如说`sensor_1`。
+表的名字可以是hive所支持的任何表名。
 
-The location must be a specific directory, it can be on your local file system or HDFS if you have set up Hadoop.
-If it is in your local file system, the location should look like `file:///data/data/sequence/root.baic2.WWS.leftfrontdoor/`
+需要提供一个路径供hive-connector从其中拉取最新的数据。
 
-At last, you should set the `device_id` in `TBLPROPERTIES` to the device name you want to analyze.
+这个路径必须是一个指定的文件夹，这个文件夹可以在你的本地文件系统上，也可以在HDFS上，如果你启动了Hadoop的话。
+如果是本地文件系统，要以这样的形式`file:///data/data/sequence/root.baic2.WWS.leftfrontdoor/`
 
-For example:
+最后需要在`TBLPROPERTIES`里指明`device_id`
+
+例如：
 
 ```
 CREATE EXTERNAL TABLE IF NOT EXISTS only_sensor_1(
-  time_stamp BIGINT,
+  time_stamp TIMESTAMP,
   sensor_1 BIGINT)
 ROW FORMAT SERDE 'org.apache.iotdb.hive.TsFileSerDe'
 STORED AS
@@ -113,32 +113,35 @@ STORED AS
 LOCATION '/data/data/sequence/root.baic2.WWS.leftfrontdoor/'
 TBLPROPERTIES ('device_id'='root.baic2.WWS.leftfrontdoor.plc1');
 ```
-In this example we're pulling the data of `root.baic2.WWS.leftfrontdoor.plc1.sensor_1` from the directory of `/data/data/sequence/root.baic2.WWS.leftfrontdoor/`. 
-This table might result in a description as below:
+
+在这个例子里，我们从`/data/data/sequence/root.baic2.WWS.leftfrontdoor/`中拉取`root.baic2.WWS.leftfrontdoor.plc1.sensor_1`的数据。
+这个表可能产生如下描述：
 
 ```
 hive> describe only_sensor_1;
 OK
-time_stamp          	bigint              	from deserializer
+time_stamp          	timestamp              	from deserializer
 sensor_1            	bigint              	from deserializer
 Time taken: 0.053 seconds, Fetched: 2 row(s)
 ```
-At this point, the Tsfile-backed table can be worked with in Hive like any other table.
 
-## Querying from Tsfile-backed Hive tables
+到目前为止, Tsfile-backed的表已经可以像hive中其他表一样被操作了。
 
-Before we do any queries, we should set the `hive.input.format` in hive by executing the following command.
+
+## 从Tsfile-backed的Hive表中查询
+
+在做任何查询之前，我们需要通过如下命令，在hive中设置`hive.input.format`：
 
 ```
 hive> set hive.input.format=org.apache.hadoop.hive.ql.io.HiveInputFormat;
 ```
 
-Now, we already have an external table named `only_sensor_1` in hive. 
-We can use any query operations through HQL to analyse it.
+现在，我们已经在hive中有了一个名为`only_sensor_1`的外部表。
+我们可以使用HQL做任何查询来分析其中的数据。
 
-For example:
+例如:
 
-### Select Clause Example
+### 选择查询语句示例
 
 ```
 hive> select * from only_sensor_1 limit 10;
@@ -156,7 +159,7 @@ OK
 Time taken: 1.464 seconds, Fetched: 10 row(s)
 ```
 
-### Aggregate Clause Example
+### 聚合查询语句示例
 
 ```
 hive> select count(*) from only_sensor_1;
@@ -183,8 +186,6 @@ OK
 Time taken: 11.334 seconds, Fetched: 1 row(s)
 ```
 
-## What's Next
+## 后续工作
 
-We're currently only supporting read operation.
-Writing tables to Tsfiles is under development.
-
+我们现在仅支持查询操作，写操作的支持还在开发中...
