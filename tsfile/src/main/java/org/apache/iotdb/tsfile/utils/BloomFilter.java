@@ -38,6 +38,7 @@ public class BloomFilter {
     for (int i = 0; i < hashFunctionSize; i++) {
       func[i] = new HashFunction(size, SEEDS[i]);
     }
+
     bits = BitSet.valueOf(bytes);
   }
 
@@ -48,6 +49,7 @@ public class BloomFilter {
     for (int i = 0; i < hashFunctionSize; i++) {
       func[i] = new HashFunction(size, SEEDS[i]);
     }
+    
     bits = new BitSet(size);
   }
 
