@@ -19,6 +19,5 @@
 
 -->
 # 第10章: 生态集成
-# TsFile Spark 连接器
 
 Coming Soon.
