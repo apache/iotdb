@@ -65,14 +65,14 @@ public class TsFileExecutor implements QueryExecutor {
       for (Path path : queryExpression.getSelectedSeries()) {
         if (bloomFilter.contains(path.getFullPath())) {
           filteredSeriesPath.add(path);
+        } else {
+          // If one path is not contains in this tsfile, return empty set
+          LOG.debug(
+              "This tsfile not contains paths " + path
+                  + " which specified in selected series, return empty dataset");
+          return new DataSetWithoutTimeGenerator(Collections.emptyList(), Collections.emptyList(),
+              Collections.emptyList());
         }
-      }
-      if (filteredSeriesPath.isEmpty()) {
-        // return an empty QueryDataSet
-        LOG.debug(
-            "This tsfile not contains all paths which specified in selected series, return empty dataset");
-        return new DataSetWithoutTimeGenerator(Collections.emptyList(), Collections.emptyList(),
-            Collections.emptyList());
       }
     }
     queryExpression.setSelectSeries(filteredSeriesPath);
