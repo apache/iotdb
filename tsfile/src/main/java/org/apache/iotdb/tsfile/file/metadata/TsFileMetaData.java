@@ -64,10 +64,6 @@ public class TsFileMetaData {
   // bloom filter
   private BloomFilter bloomFilter;
 
-  public BloomFilter getBloomFilter() {
-    return bloomFilter;
-  }
-
   public TsFileMetaData() {
     //do nothing
   }
@@ -123,7 +119,7 @@ public class TsFileMetaData {
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(inputStream);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(inputStream);
     // read bloom filter
-    if(!ReadWriteIOUtils.checkIfMagicString(inputStream)){
+    if (!ReadWriteIOUtils.checkIfMagicString(inputStream)) {
       byte[] bytes = ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream);
       int filterSize = ReadWriteIOUtils.readInt(inputStream);
       int hashFunctionSize = ReadWriteIOUtils.readInt(inputStream);
@@ -173,7 +169,7 @@ public class TsFileMetaData {
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
     // read bloom filter
-    if(buffer.hasRemaining()){
+    if (buffer.hasRemaining()) {
       byte[] bytes = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer).array();
       int filterSize = ReadWriteIOUtils.readInt(buffer);
       int hashFunctionSize = ReadWriteIOUtils.readInt(buffer);
@@ -181,6 +177,10 @@ public class TsFileMetaData {
     }
 
     return fileMetaData;
+  }
+
+  public BloomFilter getBloomFilter() {
+    return bloomFilter;
   }
 
   /**
@@ -276,7 +276,6 @@ public class TsFileMetaData {
     byteLen += ReadWriteIOUtils.write(totalChunkNum, outputStream);
     byteLen += ReadWriteIOUtils.write(invalidChunkNum, outputStream);
 
-
     return byteLen;
   }
 
@@ -286,7 +285,8 @@ public class TsFileMetaData {
    * @param outputStream -output stream to determine byte length
    * @return -byte length
    */
-  public int serializeBloomFilter(OutputStream outputStream, List<ChunkGroupMetaData> chunkGroupMetaDataList)
+  public int serializeBloomFilter(OutputStream outputStream,
+      List<ChunkGroupMetaData> chunkGroupMetaDataList)
       throws IOException {
     int byteLen = 0;
     BloomFilter filter = buildBloomFilter(chunkGroupMetaDataList);
@@ -319,12 +319,14 @@ public class TsFileMetaData {
 
   /**
    * build bloom filter
+   *
    * @return bloom filter
    */
   private BloomFilter buildBloomFilter(List<ChunkGroupMetaData> chunkGroupMetaDataList) {
     BloomFilter bloomFilter = BloomFilter
-        .getEmptyBloomFilter(TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(), chunkGroupMetaDataList.size());
-    for(String path : getAllPath(chunkGroupMetaDataList)){
+        .getEmptyBloomFilter(TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(),
+            chunkGroupMetaDataList.size());
+    for (String path : getAllPath(chunkGroupMetaDataList)) {
       bloomFilter.add(path);
     }
     return bloomFilter;

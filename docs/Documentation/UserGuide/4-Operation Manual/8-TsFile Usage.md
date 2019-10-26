@@ -626,7 +626,7 @@ Bloom filter check whether a given time series might in the tsfile before load m
 If you want to learn more about its mechanism, you can refer to: [wiki page of bloom filter](https://en.wikipedia.org/wiki/Bloom_filter).
 
 #### configuration 
-you can control the false positive rate of bloom filter by following parameter in the config file.
+you can control the false positive rate of bloom filter by the following parameter in the config file config file `tsfile-format.properties` which located at `/server/src/assembly/resources/conf` directory
 ```
 # The acceptable error rate of bloom filter, should be in [0.01, 0.1]
 
