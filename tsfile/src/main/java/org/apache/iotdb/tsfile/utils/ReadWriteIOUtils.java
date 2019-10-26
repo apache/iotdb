@@ -471,7 +471,7 @@ public class ReadWriteIOUtils {
   /**
    * read string from byteBuffer with user define length.
    */
-  public static String readStringWithoutLength(ByteBuffer buffer, int length) {
+  public static String readStringWithLength(ByteBuffer buffer, int length) {
     byte[] bytes = new byte[length];
     buffer.get(bytes, 0, length);
     return new String(bytes, 0, length);

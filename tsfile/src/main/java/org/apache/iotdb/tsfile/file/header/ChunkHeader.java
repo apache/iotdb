@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
 public class ChunkHeader {
@@ -59,24 +58,36 @@ public class ChunkHeader {
   public ChunkHeader(String measurementID, int dataSize, TSDataType dataType,
       CompressionType compressionType,
       TSEncoding encoding, int numOfPages) {
-    this(measurementID, dataSize, dataType, compressionType, encoding, numOfPages, 0);
+    this(measurementID, dataSize, getSerializedSize(measurementID), dataType, compressionType,
+        encoding, numOfPages, 0);
+  }
+
+  public ChunkHeader(String measurementID, int dataSize, int headerSize, TSDataType dataType,
+      CompressionType compressionType, TSEncoding encoding, int numOfPages) {
+    this(measurementID, dataSize, headerSize, dataType, compressionType, encoding, numOfPages, 0);
   }
 
   private ChunkHeader(String measurementID, int dataSize, TSDataType dataType,
-      CompressionType compressionType,
-      TSEncoding encoding, int numOfPages, long maxTombstoneTime) {
+      CompressionType compressionType, TSEncoding encoding, int numOfPages, long maxTombstoneTime) {
+    this(measurementID, dataSize, getSerializedSize(measurementID), dataType, compressionType,
+        encoding, numOfPages, maxTombstoneTime);
+  }
+
+  private ChunkHeader(String measurementID, int dataSize, int headerSize, TSDataType dataType,
+      CompressionType compressionType, TSEncoding encoding, int numOfPages, long maxTombstoneTime) {
     this.measurementID = measurementID;
     this.dataSize = dataSize;
     this.dataType = dataType;
     this.compressionType = compressionType;
     this.numOfPages = numOfPages;
     this.encodingType = encoding;
-    this.serializedSize = getSerializedSize(measurementID);
+    this.serializedSize = headerSize;
     this.maxTombstoneTime = maxTombstoneTime;
   }
 
   public static int getSerializedSize(String measurementID) {
-      return Byte.BYTES + Integer.BYTES + getSerializedSize(measurementID.getBytes(TSFileConfig.STRING_CHARSET).length);
+    return Byte.BYTES + Integer.BYTES + getSerializedSize(
+        measurementID.getBytes(TSFileConfig.STRING_CHARSET).length);
   }
 
   private static int getSerializedSize(int measurementIdLength) {
@@ -110,61 +121,39 @@ public class ChunkHeader {
   }
 
   /**
-   * deserialize from ByteBuffer.
-   *
-   * @param byteBuffer ByteBuffer
-   * @param markerRead read marker (boolean type)
-   * @return CHUNK_HEADER object
-   * @throws IOException IOException
-   */
-  public static ChunkHeader deserializeFrom(ByteBuffer byteBuffer, boolean markerRead)
-      throws IOException {
-    if (!markerRead) {
-      byte marker = byteBuffer.get();
-      if (marker != MARKER) {
-        MetaMarker.handleUnexpectedMarker(marker);
-      }
-    }
-
-    String measurementID = ReadWriteIOUtils.readString(byteBuffer);
-    return deserializePartFrom(measurementID, byteBuffer);
-  }
-
-  /**
    * deserialize from TsFileInput.
    *
    * @param input TsFileInput
    * @param offset offset
+   * @param chunkHeaderSize the size of chunk's header
    * @param markerRead read marker (boolean type)
    * @return CHUNK_HEADER object
    * @throws IOException IOException
    */
-  public static ChunkHeader deserializeFrom(TsFileInput input, long offset, boolean markerRead)
+  public static ChunkHeader deserializeFrom(TsFileInput input, long offset, int chunkHeaderSize,
+      boolean markerRead)
       throws IOException {
     long offsetVar = offset;
     if (!markerRead) {
       offsetVar++;
     }
-    ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+
+    // read chunk header from input to buffer
+    ByteBuffer buffer = ByteBuffer.allocate(chunkHeaderSize);
     input.read(buffer, offsetVar);
     buffer.flip();
-    int size = buffer.getInt();
-    offsetVar += Integer.BYTES;
-    buffer = ByteBuffer.allocate(getSerializedSize(size));
-    ReadWriteIOUtils.readAsPossible(input, offsetVar, buffer);
-    buffer.flip();
-    String measurementID = ReadWriteIOUtils.readStringWithoutLength(buffer, size);
-    return deserializePartFrom(measurementID, buffer);
-  }
 
-  private static ChunkHeader deserializePartFrom(String measurementID, ByteBuffer buffer) throws UnsupportedEncodingException {
+    // read measurementID
+    int size = buffer.getInt();
+    String measurementID = ReadWriteIOUtils.readStringWithLength(buffer, size);
     int dataSize = ReadWriteIOUtils.readInt(buffer);
     TSDataType dataType = TSDataType.deserialize(ReadWriteIOUtils.readShort(buffer));
     int numOfPages = ReadWriteIOUtils.readInt(buffer);
     CompressionType type = ReadWriteIOUtils.readCompressionType(buffer);
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(buffer);
     long maxTombstoneTime = ReadWriteIOUtils.readLong(buffer);
-    return new ChunkHeader(measurementID, dataSize, dataType, type, encoding, numOfPages,
+    return new ChunkHeader(measurementID, dataSize, chunkHeaderSize, dataType, type, encoding,
+        numOfPages,
         maxTombstoneTime);
   }
 

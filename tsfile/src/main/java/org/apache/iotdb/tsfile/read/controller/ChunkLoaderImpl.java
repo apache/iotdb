@@ -59,7 +59,7 @@ public class ChunkLoaderImpl implements IChunkLoader {
   @Override
   public Chunk getChunk(ChunkMetaData chunkMetaData) throws IOException {
     Chunk chunk = chunkCache.get(chunkMetaData);
-    return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt());
+    return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
   }
 
   @Override
