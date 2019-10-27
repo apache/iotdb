@@ -323,10 +323,11 @@ public class TsFileMetaData {
    * @return bloom filter
    */
   private BloomFilter buildBloomFilter(List<ChunkGroupMetaData> chunkGroupMetaDataList) {
+    List<String> paths = getAllPath(chunkGroupMetaDataList);
     BloomFilter bloomFilter = BloomFilter
         .getEmptyBloomFilter(TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(),
-            chunkGroupMetaDataList.size());
-    for (String path : getAllPath(chunkGroupMetaDataList)) {
+            paths.size());
+    for (String path : paths) {
       bloomFilter.add(path);
     }
     return bloomFilter;
