@@ -1016,7 +1016,7 @@ public class LogicalGenerator {
   /**
    * function for parsing time format.
    */
-  private long parseTimeFormat(String timestampStr) throws LogicalOperatorException {
+  long parseTimeFormat(String timestampStr) throws LogicalOperatorException {
     if (timestampStr == null || timestampStr.trim().equals("")) {
       throw new LogicalOperatorException("input timestamp cannot be empty");
     }
