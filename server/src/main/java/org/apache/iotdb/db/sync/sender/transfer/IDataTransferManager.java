@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Set;
 import org.apache.iotdb.db.exception.SyncConnectionException;
+import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
 import org.apache.thrift.TException;
 
 /**
@@ -93,7 +94,7 @@ public interface IDataTransferManager {
    * @param toBeSyncFiles list of new tsfile names
    */
   void syncDataFilesInOneGroup(String sgName, Set<File> toBeSyncFiles)
-      throws SyncConnectionException, IOException;
+      throws SyncConnectionException, IOException, SyncDeviceOwnerConflictException;
 
   /**
    * Stop sync process

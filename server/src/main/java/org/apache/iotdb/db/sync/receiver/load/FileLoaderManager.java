@@ -18,12 +18,25 @@
  */
 package org.apache.iotdb.db.sync.receiver.load;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
+import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,18 +53,118 @@ public class FileLoaderManager {
 
   private ExecutorService loadTaskRunnerPool;
 
+  private Map<String, String> deviceOwnerMap = new HashMap<>();
+
+  private File deviceOwnerFile;
+
+  private File deviceOwnerTmpFile;
+
   private FileLoaderManager() {
+    File deviceOwnerMapDir = new File(IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
+        SyncConstant.SYNC_NAME);
+    deviceOwnerFile = new File(deviceOwnerMapDir, SyncConstant.DEVICE_OWNER_FILE_NAME);
+    deviceOwnerTmpFile = new File(deviceOwnerMapDir, SyncConstant.DEVICE_OWNER_TMP_FILE_NAME);
+    try {
+      recoverDeviceOwnerMap();
+    } catch (IOException | ClassNotFoundException e) {
+      LOGGER.error("Can not recover device owner map from file {}",
+          new File(deviceOwnerMapDir, SyncConstant.DEVICE_OWNER_FILE_NAME).getAbsolutePath());
+    }
   }
 
   public static FileLoaderManager getInstance() {
     return FileLoaderManagerHolder.INSTANCE;
   }
 
-  public void addFileLoader(String senderName, IFileLoader fileLoader){
+  private void recoverDeviceOwnerMap() throws IOException, ClassNotFoundException {
+    if (deviceOwnerTmpFile.exists()) {
+      deviceOwnerFile.delete();
+      FileUtils.moveFile(deviceOwnerTmpFile, deviceOwnerFile);
+    }
+    if (deviceOwnerFile.exists()) {
+      deSerializeDeviceOwnerMap(deviceOwnerFile);
+    }
+  }
+
+  /**
+   * Check whether there have conflicts about the device owner. If there have conflicts, reject the
+   * sync process of the sg. Otherwise, update the device owners and deserialize.
+   *
+   * @param tsFileResource tsfile resource
+   */
+  public synchronized void checkAndUpdateDeviceOwner(TsFileResource tsFileResource)
+      throws SyncDeviceOwnerConflictException, IOException {
+    String curOwner = tsFileResource.getFile().getParentFile().getParentFile().getParentFile()
+        .getName();
+    Set<String> deviceSet = tsFileResource.getStartTimeMap().keySet();
+    checkDeviceConflict(curOwner, deviceSet);
+    updateDeviceOwner(curOwner, deviceSet);
+  }
+
+  /**
+   * Check whether there have conflicts about the device owner.
+   *
+   * @param curOwner sender name that want to be owner.
+   * @param deviceSet device set
+   */
+  private void checkDeviceConflict(String curOwner, Set<String> deviceSet)
+      throws SyncDeviceOwnerConflictException {
+    for (String device : deviceSet) {
+      if (deviceOwnerMap.containsKey(device) && !deviceOwnerMap.get(device).equals(curOwner)) {
+        throw new SyncDeviceOwnerConflictException(String
+            .format("Device: %s, correct owner: %s, conflict owner: %s", device,
+                deviceOwnerMap.get(device), curOwner));
+      }
+    }
+  }
+
+  /**
+   * Update the device owners and deserialize.
+   *
+   * @param curOwner sender name that want to be owner.
+   * @param deviceSet device set.
+   */
+  private void updateDeviceOwner(String curOwner, Set<String> deviceSet) throws IOException {
+    boolean modify = false;
+    for (String device : deviceSet) {
+      if (!deviceOwnerMap.containsKey(device)) {
+        deviceOwnerMap.put(device, curOwner);
+        modify = true;
+      }
+    }
+    if (modify) {
+      serializeDeviceOwnerMap(deviceOwnerTmpFile);
+      deviceOwnerFile.delete();
+      FileUtils.moveFile(deviceOwnerTmpFile, deviceOwnerFile);
+    }
+  }
+
+  private void deSerializeDeviceOwnerMap(File deviceOwnerFile)
+      throws IOException, ClassNotFoundException {
+    try (ObjectInputStream deviceOwnerInput = new ObjectInputStream(
+        new FileInputStream(deviceOwnerFile))) {
+      deviceOwnerMap = (Map<String, String>) deviceOwnerInput.readObject();
+    }
+  }
+
+  private void serializeDeviceOwnerMap(File deviceOwnerFile) throws IOException {
+    if (!deviceOwnerFile.getParentFile().exists()) {
+      deviceOwnerFile.getParentFile().mkdirs();
+    }
+    if (!deviceOwnerFile.exists()) {
+      deviceOwnerFile.createNewFile();
+    }
+    try (ObjectOutputStream deviceOwnerOutput = new ObjectOutputStream(
+        new FileOutputStream(deviceOwnerFile, false))) {
+      deviceOwnerOutput.writeObject(deviceOwnerMap);
+    }
+  }
+
+  public void addFileLoader(String senderName, IFileLoader fileLoader) {
     fileLoaderMap.put(senderName, fileLoader);
   }
 
-  public void removeFileLoader(String senderName){
+  public void removeFileLoader(String senderName) {
     fileLoaderMap.remove(senderName);
   }
 
@@ -59,11 +172,11 @@ public class FileLoaderManager {
     return fileLoaderMap.get(senderName);
   }
 
-  public boolean containsFileLoader(String senderName){
+  public boolean containsFileLoader(String senderName) {
     return fileLoaderMap.containsKey(senderName);
   }
 
-  public void addLoadTaskRunner(Runnable taskRunner){
+  public void addLoadTaskRunner(Runnable taskRunner) {
     loadTaskRunnerPool.submit(taskRunner);
   }
 
@@ -72,7 +185,8 @@ public class FileLoaderManager {
       fileLoaderMap = new ConcurrentHashMap<>();
     }
     if (loadTaskRunnerPool == null) {
-      loadTaskRunnerPool = IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.LOAD_TSFILE.getName());
+      loadTaskRunnerPool = IoTDBThreadPoolFactory
+          .newCachedThreadPool(ThreadName.LOAD_TSFILE.getName());
     }
   }
 

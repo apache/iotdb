@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.sender.conf;
+package org.apache.iotdb.db.sync.conf;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -131,7 +131,7 @@ public class SyncSenderConfig {
   }
 
   public List<String> getStorageGroupList() {
-    return storageGroupList;
+    return new ArrayList<>(storageGroupList);
   }
 
   public void setStorageGroupList(List<String> storageGroupList) {

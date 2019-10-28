@@ -35,14 +35,15 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.receiver.load.FileLoader;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
 import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogAnalyzer;
 import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogger;
-import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SyncUtils;
 import org.apache.iotdb.service.sync.thrift.ResultStatus;
@@ -112,7 +113,8 @@ public class SyncServiceImpl implements SyncService.Iface {
       initPath();
       currentSG.remove();
       FileLoader.createFileLoader(senderName.get(), syncFolderPath.get());
-      syncLog.set(new SyncReceiverLogger(new File(syncFolderPath.get(), SyncConstant.SYNC_LOG_NAME)));
+      syncLog
+          .set(new SyncReceiverLogger(new File(syncFolderPath.get(), SyncConstant.SYNC_LOG_NAME)));
       return getSuccessResult();
     } catch (DiskSpaceInsufficientException | IOException e) {
       logger.error("Can not receiver data from sender", e);
@@ -216,12 +218,17 @@ public class SyncServiceImpl implements SyncService.Iface {
       if (!md5OfSender.equals(md5OfReceiver)) {
         currentFile.get().delete();
         currentFileWriter.set(new FileOutputStream(currentFile.get()).getChannel());
+        return getErrorResult(String
+            .format("MD5 of the sender is differ from MD5 of the receiver of the file %s.",
+                currentFile.get().getAbsolutePath()));
       } else {
         if (currentFile.get().getName().endsWith(MetadataConstant.METADATA_LOG)) {
           loadMetadata();
         } else {
           if (!currentFile.get().getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
             logger.info("Receiver has received {} successfully.", currentFile.get());
+            FileLoaderManager.getInstance().checkAndUpdateDeviceOwner(
+                new TsFileResource(new File(currentFile.get() + TsFileResource.RESOURCE_SUFFIX)));
             syncLog.get().finishSyncTsfile(currentFile.get());
             FileLoaderManager.getInstance().getFileLoader(senderName.get())
                 .addTsfile(currentFile.get());
@@ -233,8 +240,13 @@ public class SyncServiceImpl implements SyncService.Iface {
       return getErrorResult(String
           .format("Can not check data MD5 for file %s because %s", currentFile.get().getName(),
               e.getMessage()));
+    } catch (SyncDeviceOwnerConflictException e) {
+      logger.error("Device owner has conflicts, skip all other tsfiles in the sg {}.", currentSG.get());
+      return new ResultStatus(false, String
+          .format("Device owner has conflicts, skip all other tsfiles in the same sg %s because %s",
+              currentSG.get(), e.getMessage()), -2);
     }
-    return new ResultStatus(true, null, md5OfReceiver);
+    return new ResultStatus(true, md5OfReceiver, 1);
   }
 
   private void loadMetadata() {
@@ -282,11 +294,11 @@ public class SyncServiceImpl implements SyncService.Iface {
   }
 
   private ResultStatus getSuccessResult() {
-    return new ResultStatus(true, null, null);
+    return new ResultStatus(true, null, 1);
   }
 
   private ResultStatus getErrorResult(String errorMsg) {
-    return new ResultStatus(false, errorMsg, null);
+    return new ResultStatus(false, errorMsg, -1);
   }
 
 }

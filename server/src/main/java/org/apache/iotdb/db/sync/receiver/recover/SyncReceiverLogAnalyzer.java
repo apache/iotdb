@@ -29,7 +29,7 @@ import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
 import org.apache.iotdb.db.sync.receiver.load.LoadLogger;
 import org.apache.iotdb.db.sync.receiver.load.LoadType;
-import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
+import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

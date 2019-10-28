@@ -25,11 +25,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.math.BigInteger;
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
 import java.net.Socket;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileLock;
 import java.nio.file.FileSystems;
@@ -37,7 +33,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -51,10 +46,11 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.SyncConnectionException;
+import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
-import org.apache.iotdb.db.sync.sender.conf.SyncSenderConfig;
-import org.apache.iotdb.db.sync.sender.conf.SyncSenderDescriptor;
+import org.apache.iotdb.db.sync.conf.SyncConstant;
+import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
+import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
 import org.apache.iotdb.db.sync.sender.manage.ISyncFileManager;
 import org.apache.iotdb.db.sync.sender.manage.SyncFileManager;
 import org.apache.iotdb.db.sync.sender.recover.ISyncSenderLogger;
@@ -287,7 +283,7 @@ public class DataTransferManager implements IDataTransferManager {
           .check(socket.getLocalAddress().getHostAddress(), getOrCreateUUID(config.getUuidPath()));
       if (!status.success) {
         throw new SyncConnectionException(
-            "The receiver rejected the synchronization task because " + status.errorMsg);
+            "The receiver rejected the synchronization task because " + status.msg);
       }
     } catch (Exception e) {
       logger.error("Cannot confirm identity with the receiver.");
@@ -373,7 +369,7 @@ public class DataTransferManager implements IDataTransferManager {
           bos.reset();
           ResultStatus status = serviceClient.syncData(buffToSend);
           if (!status.success) {
-            logger.error("Receiver failed to receive metadata because {}, retry.", status.errorMsg);
+            logger.error("Receiver failed to receive metadata because {}, retry.", status.msg);
             return false;
           }
           cntLine = 0;
@@ -385,7 +381,7 @@ public class DataTransferManager implements IDataTransferManager {
         bos.reset();
         ResultStatus status = serviceClient.syncData(buffToSend);
         if (!status.success) {
-          logger.error("Receiver failed to receive metadata because {}, retry.", status.errorMsg);
+          logger.error("Receiver failed to receive metadata because {}, retry.", status.msg);
           return false;
         }
       }
@@ -454,7 +450,7 @@ public class DataTransferManager implements IDataTransferManager {
         try {
           ResultStatus status = serviceClient.init(sgName);
           if (!status.success) {
-            throw new SyncConnectionException("Unable init receiver because " + status.errorMsg);
+            throw new SyncConnectionException("Unable init receiver because " + status.msg);
           }
         } catch (TException | SyncConnectionException e) {
           throw new SyncConnectionException("Unable to connect to receiver", e);
@@ -462,7 +458,15 @@ public class DataTransferManager implements IDataTransferManager {
         logger.info("Sync process starts to transfer data of storage group {}", sgName);
         syncDeletedFilesNameInOneGroup(sgName,
             deletedFilesMap.getOrDefault(sgName, new HashSet<>()));
-        syncDataFilesInOneGroup(sgName, toBeSyncedFilesMap.getOrDefault(sgName, new HashSet<>()));
+        try {
+          syncDataFilesInOneGroup(sgName, toBeSyncedFilesMap.getOrDefault(sgName, new HashSet<>()));
+        } catch (SyncDeviceOwnerConflictException e) {
+          deletedFilesMap.remove(sgName);
+          toBeSyncedFilesMap.remove(sgName);
+          storageGroups.remove(sgName);
+          config.setStorageGroupList(storageGroups);
+          logger.error("Skip the data files of the storage group {}", sgName, e);
+        }
       }
 
     } catch (SyncConnectionException e) {
@@ -500,7 +504,7 @@ public class DataTransferManager implements IDataTransferManager {
 
   @Override
   public void syncDataFilesInOneGroup(String sgName, Set<File> toBeSyncFiles)
-      throws SyncConnectionException, IOException {
+      throws SyncConnectionException, IOException, SyncDeviceOwnerConflictException {
     if (toBeSyncFiles.isEmpty()) {
       logger.info("There has no new tsfiles to be synced in storage group {}", sgName);
       return;
@@ -551,7 +555,8 @@ public class DataTransferManager implements IDataTransferManager {
   /**
    * Transfer data of a tsfile to the receiver.
    */
-  private void syncSingleFile(File snapshotFile) throws SyncConnectionException {
+  private void syncSingleFile(File snapshotFile)
+      throws SyncConnectionException, SyncDeviceOwnerConflictException {
     try {
       int retryCount = 0;
       MessageDigest md = MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME);
@@ -575,9 +580,12 @@ public class DataTransferManager implements IDataTransferManager {
             ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
             bos.reset();
             ResultStatus status = serviceClient.syncData(buffToSend);
+            if(status.errorCode == -2){
+              throw new SyncDeviceOwnerConflictException(status.msg);
+            }
             if (!status.success) {
               logger.info("Receiver failed to receive data from {} because {}, retry.",
-                  status.errorMsg, snapshotFile.getAbsoluteFile());
+                  status.msg, snapshotFile.getAbsoluteFile());
               continue outer;
             }
           }

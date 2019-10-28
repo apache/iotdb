@@ -43,7 +43,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
+import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;

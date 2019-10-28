@@ -46,7 +46,7 @@ import org.apache.iotdb.db.sync.receiver.load.FileLoader;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderTest;
 import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
-import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
+import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;

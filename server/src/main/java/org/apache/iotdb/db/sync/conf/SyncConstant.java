@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.sender.conf;
+package org.apache.iotdb.db.sync.conf;
 
 public class SyncConstant {
 
@@ -24,6 +24,8 @@ public class SyncConstant {
   }
 
   public static final String CONFIG_NAME = "iotdb-sync-client.properties";
+
+  public static final String SYNC_NAME = "sync";
 
   public static final String SYNC_SENDER = "sync-sender";
 
@@ -69,5 +71,9 @@ public class SyncConstant {
   public static final String RECEIVER_DATA_FOLDER_NAME = "data";
 
   public static final String LOAD_LOG_NAME = "load.log";
+
+  public static final String DEVICE_OWNER_FILE_NAME = "device_owner";
+
+  public static final String DEVICE_OWNER_TMP_FILE_NAME = "device_owner.tmp";
 
 }

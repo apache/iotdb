@@ -20,7 +20,6 @@ package org.apache.iotdb.db.sync.receiver.load;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -29,8 +28,9 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
+import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
@@ -138,10 +138,13 @@ public class FileLoader implements IFileLoader {
       LOGGER.info("Tsfile {} doesn't exist.", newTsFile.getAbsolutePath());
       return;
     }
-    TsFileResource tsFileResource = new TsFileResource(new File(newTsFile.getAbsolutePath()));
+    TsFileResource tsFileResource = new TsFileResource(newTsFile);
     checkTsFileResource(tsFileResource);
     try {
+      FileLoaderManager.getInstance().checkAndUpdateDeviceOwner(tsFileResource);
       StorageEngine.getInstance().loadNewTsFile(tsFileResource);
+    } catch (SyncDeviceOwnerConflictException e) {
+      LOGGER.error("Device owner has conflicts, so skip the loading file", e);
     } catch (TsFileProcessorException | StorageEngineException e) {
       LOGGER.error("Can not load new tsfile {}", newTsFile.getAbsolutePath(), e);
       throw new IOException(e);

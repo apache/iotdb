@@ -24,8 +24,8 @@ typedef i64 long
 
 struct ResultStatus{
   bool success,
-  string errorMsg,
-  string msg
+  string msg,
+  i32 errorCode
 }
 
 service SyncService{

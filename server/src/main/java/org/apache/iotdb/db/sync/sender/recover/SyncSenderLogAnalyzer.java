@@ -27,7 +27,7 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.sync.sender.conf.SyncConstant;
+import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
