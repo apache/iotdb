@@ -114,7 +114,7 @@ public abstract class MergeTest {
     }
   }
 
-  private void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
+  void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
       File file = SystemFileFactory.INSTANCE.getFile("seq" + i + "-" + i + ".tsfile");
       TsFileResource tsFileResource = new TsFileResource(file);
@@ -144,7 +144,7 @@ public abstract class MergeTest {
     FileReaderManager.getInstance().stop();
   }
 
-  private void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
+  void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
       long valueOffset)
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
