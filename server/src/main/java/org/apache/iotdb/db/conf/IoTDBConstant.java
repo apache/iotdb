@@ -65,13 +65,11 @@ public class IoTDBConstant {
   public static final String USER = "User";
   public static final String PRIVILEGE = "Privilege";
 
-<<<<<<< HEAD
   // data folder name
   public static final String SEQUENCE_FLODER_NAME = "sequence";
   public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
   public static final String TSFILE_NAME_SEPARATOR = "-";
-=======
+
   public static final int MEMTABLE_NUM_IN_EACH_STORAGE_GROUP = 4;
->>>>>>> master
 
 }
