@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSType;
  * TSFileConfig is a configure class. Every variables is public and has default value.
  */
 public class TSFileConfig {
+
   // Memory configuration
   public static final int RLE_MIN_REPEATED_NUM = 8;
   public static final int RLE_MAX_REPEATED_NUM = 0x7FFF;
@@ -297,7 +298,7 @@ public class TSFileConfig {
 
 
   public FSType getTSFileStorageFs() {
-      return this.TSFileStorageFs;
+    return this.TSFileStorageFs;
   }
 
   public void setTSFileStorageFs(String TSFileStorageFs) {
