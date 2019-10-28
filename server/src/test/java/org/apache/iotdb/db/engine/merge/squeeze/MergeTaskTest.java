@@ -29,7 +29,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.MergeTest;
 import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.squeeze.task.SqueezeMergeTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -61,22 +63,27 @@ public class MergeTaskTest extends MergeTest {
 
   @Test
   public void testMerge() throws Exception {
-    InplaceMergeTask mergeTask =
-        new InplaceMergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(), (k, v
-            , l, n) -> {}, "test", false, 1, MERGE_TEST_SG);
+    TsFileResource[] newResource = new TsFileResource[1];
+    SqueezeMergeTask mergeTask =
+        new SqueezeMergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(), (k, v
+            , l, n) -> {newResource[0] = n;}, "test", 1, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
-        Collections.singletonList(seqResources.get(0)),
+        Collections.singletonList(newResource[0]),
         null, context);
+    int cnt = 0;
     while (tsFilesReader.hasNext()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
+        System.out.println(batchData.getTimeByIndex(i) + " " + batchData.getDoubleByIndex(i));
         assertEquals(batchData.getTimeByIndex(i) + 20000.0, batchData.getDoubleByIndex(i), 0.001);
+        cnt++;
       }
     }
+    assertEquals(2000, cnt);
     tsFilesReader.close();
   }
 

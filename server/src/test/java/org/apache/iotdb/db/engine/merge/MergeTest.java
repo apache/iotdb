@@ -49,23 +49,23 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 
-abstract class MergeTest {
+public abstract class MergeTest {
 
-  static final String MERGE_TEST_SG = "root.mergeTest";
+  protected static final String MERGE_TEST_SG = "root.mergeTest";
 
-  int seqFileNum = 5;
-  int unseqFileNum = 5;
-  int measurementNum = 10;
-  int deviceNum = 10;
-  long ptNum = 100;
-  long flushInterval = 20;
-  TSEncoding encoding = TSEncoding.PLAIN;
+  protected int seqFileNum = 5;
+  protected int unseqFileNum = 5;
+  protected int measurementNum = 10;
+  protected int deviceNum = 10;
+  protected long ptNum = 100;
+  protected long flushInterval = 20;
+  protected TSEncoding encoding = TSEncoding.PLAIN;
 
-  String[] deviceIds;
-  MeasurementSchema[] measurementSchemas;
+  protected String[] deviceIds;
+  protected MeasurementSchema[] measurementSchemas;
 
-  List<TsFileResource> seqResources = new ArrayList<>();
-  List<TsFileResource> unseqResources = new ArrayList<>();
+  protected List<TsFileResource> seqResources = new ArrayList<>();
+  protected List<TsFileResource> unseqResources = new ArrayList<>();
 
   private int prevMergeChunkThreshold;
 
@@ -116,18 +116,18 @@ abstract class MergeTest {
 
   private void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
-      File file = SystemFileFactory.INSTANCE.getFile(i + "seq.tsfile");
+      File file = SystemFileFactory.INSTANCE.getFile("seq" + i + "-" + i + ".tsfile");
       TsFileResource tsFileResource = new TsFileResource(file);
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
     }
     for (int i = 0; i < unseqFileNum; i++) {
-      File file = SystemFileFactory.INSTANCE.getFile(i + "unseq.tsfile");
+      File file = SystemFileFactory.INSTANCE.getFile("unseq" + i + "-" + i + ".tsfile");
       TsFileResource tsFileResource = new TsFileResource(file);
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
-    File file = SystemFileFactory.INSTANCE.getFile(unseqFileNum + "unseq.tsfile");
+    File file = SystemFileFactory.INSTANCE.getFile("unseq" + unseqFileNum + "-" + unseqFileNum + ".tsfile");
     TsFileResource tsFileResource = new TsFileResource(file);
     unseqResources.add(tsFileResource);
     prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);

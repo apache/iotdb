@@ -104,9 +104,8 @@ class MergeSeriesTask {
       logger.info("{} starts to merge {} series", taskName, unmergedSeries.size());
     }
     long startTime = System.currentTimeMillis();
-    for (TsFileResource seqFile : resource.getSeqFiles()) {
-      mergeContext.getUnmergedChunkStartTimes().put(seqFile, new HashMap<>());
-    }
+
+    createNewFileWriter();
     // merge each series and write data into each seqFile's corresponding temp merge file
     List<List<Path>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
     for (List<Path> pathList : devicePaths) {
@@ -155,8 +154,6 @@ class MergeSeriesTask {
       }
     }
 
-    createNewFileWriter();
-
     // merge data of the current paths in each seq file
     for (int i = 0; i < resource.getSeqFiles().size(); i ++) {
       pathsMergeOneFile(i, unseqReaders);
@@ -172,6 +169,7 @@ class MergeSeriesTask {
       chunkWriter.writeToFileWriter(newFileWriter);
     }
     newFileWriter.endChunkGroup(0);
+    currDevice = null;
   }
 
   private void writeRemainingUnseq(IChunkWriter chunkWriter,
