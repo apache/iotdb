@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.db.engine.merge.MergeFileStrategy;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -301,6 +302,9 @@ public class IoTDBDescriptor {
       TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
       TSFileDescriptor.getInstance().getConfig().setHdfsIp(properties.getProperty("hdfs_ip"));
       TSFileDescriptor.getInstance().getConfig().setHdfsPort(properties.getProperty("hdfs_port"));
+
+      conf.setMergeFileStrategy(MergeFileStrategy.valueOf(properties.getProperty(
+          "merge_file_strategy", conf.getMergeFileStrategy().name())));
 
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);

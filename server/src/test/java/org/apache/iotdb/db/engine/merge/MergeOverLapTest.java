@@ -142,6 +142,7 @@ public class MergeOverLapTest extends MergeTest {
             (k, v, l, n) -> newResource[0] = n, "test", 1, MERGE_TEST_SG);
     mergeTask.call();
     check(newResource[0], 5000);
+    newResource[0].remove();
   }
 
 
