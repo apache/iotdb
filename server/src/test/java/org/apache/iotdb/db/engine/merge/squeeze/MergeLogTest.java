@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.inplace;
+package org.apache.iotdb.db.engine.merge.squeeze;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -30,7 +30,7 @@ import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.merge.MergeTest;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
+import org.apache.iotdb.db.engine.merge.squeeze.task.SqueezeMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -59,9 +59,9 @@ public class MergeLogTest extends MergeTest {
 
   @Test
   public void testMergeLog() throws Exception {
-    InplaceMergeTask mergeTask =
-        new InplaceMergeTask(new MergeResource(seqResources.subList(0, 1), unseqResources.subList(0, 1)),
-            tempSGDir.getPath(), this::testCallBack, "test", false, 1, MERGE_TEST_SG);
+    SqueezeMergeTask mergeTask =
+        new SqueezeMergeTask(new MergeResource(seqResources.subList(0, 1), unseqResources.subList(0, 1)),
+            tempSGDir.getPath(), this::testCallBack, "test", 1, MERGE_TEST_SG);
     mergeTask.call();
   }
 
@@ -78,7 +78,8 @@ public class MergeLogTest extends MergeTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertEquals(309, lineCnt);
+    assertEquals(6, lineCnt);
+    newFile.remove();
   }
 
 }

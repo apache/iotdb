@@ -90,7 +90,7 @@ public abstract class BaseFileSelector implements IMergeFileSelector{
     }
   }
 
-  public void select(boolean useTightBound) throws IOException {
+  protected void selectByUnseq(boolean useTightBound) throws IOException {
     seqSelectedNum = 0;
     selectedSeqFiles = new ArrayList<>();
     selectedUnseqFiles = new ArrayList<>();
@@ -127,7 +127,7 @@ public abstract class BaseFileSelector implements IMergeFileSelector{
 
   protected abstract void updateCost(long newCost, TsFileResource unseqFile);
 
-  private long calculateMetadataSize(TsFileResource seqFile) throws IOException {
+  protected long calculateMetadataSize(TsFileResource seqFile) throws IOException {
     Long cost = fileMetaSizeMap.get(seqFile);
     if (cost == null) {
       cost = MergeUtils.getFileMetaSize(seqFile, resource.getFileReader(seqFile));
@@ -154,7 +154,7 @@ public abstract class BaseFileSelector implements IMergeFileSelector{
 
   // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
   // its proportion to all series to get a maximum estimation
-  private long calculateTightSeqMemoryCost(TsFileResource seqFile) throws IOException {
+  protected long calculateTightSeqMemoryCost(TsFileResource seqFile) throws IOException {
     long singleSeriesCost = calculateTightFileMemoryCost(seqFile, this::calculateMetadataSize);
     long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
     long maxCost = calculateMetadataSize(seqFile);
@@ -174,18 +174,18 @@ public abstract class BaseFileSelector implements IMergeFileSelector{
       IFileQueryMemMeasurement unseqMeasurement,
       IFileQueryMemMeasurement seqMeasurement, long startTime, long timeLimit) throws IOException {
     long cost = 0;
-    Long fileCost = unseqMeasurement.measure(tmpSelectedUnseqFile);
-    cost += fileCost;
+    Long fileReadCost = unseqMeasurement.measure(tmpSelectedUnseqFile);
+    cost += fileReadCost;
 
     for (Integer seqFileIdx : tmpSelectedSeqIterable) {
       TsFileResource seqFile = resource.getSeqFiles().get(seqFileIdx);
-      fileCost = seqMeasurement.measure(seqFile);
-      if (fileCost > tempMaxSeqFileCost) {
+      fileReadCost = seqMeasurement.measure(seqFile);
+      if (fileReadCost > tempMaxSeqFileCost) {
         // memory used when read data from a seq file:
         // only one file will be read at the same time, so only the largest one is recorded here
         cost -= tempMaxSeqFileCost;
-        cost += fileCost;
-        tempMaxSeqFileCost = fileCost;
+        cost += fileReadCost;
+        tempMaxSeqFileCost = fileReadCost;
       }
       // memory used to cache the metadata before the new file is closed
       // but writing data into a new file may generate the same amount of metadata in memory

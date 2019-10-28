@@ -37,7 +37,7 @@ public class MaxSeriesMergeFileSelector<T extends IMergeFileSelector> implements
   private T baseSelector;
   private MergeResource resource;
 
-  public static final int MAX_SERIES_NUM = 10240;
+  public static final int MAX_SERIES_NUM = 256;
   private static final Logger logger = LoggerFactory.getLogger(
       MaxSeriesMergeFileSelector.class);
 
@@ -133,12 +133,19 @@ public class MaxSeriesMergeFileSelector<T extends IMergeFileSelector> implements
       }
       baseSelector.setConcurrentMergeNum(mid);
       baseSelector.select(false);
-      if (baseSelector.getSelectedUnseqFiles().isEmpty() && baseSelector.getSelectedSeqFiles().isEmpty()) {
+      if (baseSelector.getSelectedUnseqFiles().size() + baseSelector.getSelectedSeqFiles().size() <= 1) {
         baseSelector.select(true);
       }
-      if (baseSelector.getSelectedUnseqFiles().isEmpty() && baseSelector.getSelectedSeqFiles().isEmpty()) {
+      if (baseSelector.getSelectedUnseqFiles().size() + baseSelector.getSelectedSeqFiles().size() <= 1) {
+        // did not find candidates, lower concurrent merge number and retry
+        ub = mid;
+      } else if (baseSelector.getSelectedUnseqFiles().size() == 0 && lastSelectedUnseqFiles != null
+          && lastSelectedUnseqFiles.size() > 0) {
+        // found candidates with no unseq files while the previous result has unseq files
+        // take the previous results because we try to merge at least one unseq file
         ub = mid;
       } else {
+        // found candidates, record them and try to find a higher concurrent number
         lastSelectedSeqFiles = baseSelector.getSelectedSeqFiles();
         lastSelectedUnseqFiles = baseSelector.getSelectedUnseqFiles();
         lastTotalMemoryCost = baseSelector.getTotalCost();

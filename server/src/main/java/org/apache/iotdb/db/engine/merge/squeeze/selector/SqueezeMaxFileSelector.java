@@ -62,10 +62,76 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
   }
 
   public void select(boolean useTightBound) throws IOException {
-    super.select(useTightBound);
-    for (int i = firstOverlapIdx; i < lastOverlapIdx; i++) {
+    super.selectByUnseq(useTightBound);
+
+    if (firstOverlapIdx <= lastOverlapIdx) {
+      // selectByUnseq has found candidates, check if we can extend the selection
+      extendCurrentSelection(useTightBound);
+    } else {
+      // try selecting only seq files as candidates
+      selectBySeq(useTightBound);
+    }
+    for (int i = firstOverlapIdx; i <= lastOverlapIdx; i++) {
       selectedSeqFiles.add(resource.getSeqFiles().get(i));
     }
+  }
+
+  private void selectBySeq(boolean useTightBound) throws IOException {
+    for (int i = 0; i < resource.getSeqFiles().size() - 1; i ++) {
+      // try to find candidates starting from i
+      TsFileResource seqFile = resource.getSeqFiles().get(i);
+      long fileCost = calculateSeqFileCost(seqFile, useTightBound);
+      if (fileCost < memoryBudget) {
+        firstOverlapIdx = i;
+        lastOverlapIdx = i;
+        totalCost = fileCost;
+        extendCurrentSelection(useTightBound);
+        if (lastOverlapIdx > firstOverlapIdx) {
+          // if candidates starting from i are found, return
+          return;
+        } else {
+          totalCost = 0;
+          firstOverlapIdx = Integer.MAX_VALUE;
+          lastOverlapIdx = Integer.MIN_VALUE;
+        }
+      }
+    }
+  }
+
+  // if we have selected seqFiles[3] to seqFiles[6], check if we can add seqFiles[7] into the
+  // selection without exceeding the budget
+  private void extendCurrentSelection(boolean useTightBound) throws IOException {
+    for (int i = lastOverlapIdx + 1; i < resource.getSeqFiles().size(); i++) {
+      TsFileResource seqFile = resource.getSeqFiles().get(i);
+      long fileCost = calculateSeqFileCost(seqFile, useTightBound);
+
+      if (fileCost + totalCost < memoryBudget) {
+        maxSeqFileCost = tempMaxSeqFileCost;
+        totalCost += fileCost;
+        lastOverlapIdx++;
+      } else {
+        tempMaxSeqFileCost = maxSeqFileCost;
+        break;
+      }
+    }
+  }
+
+  private long calculateSeqFileCost(TsFileResource seqFile, boolean useTightBound)
+      throws IOException {
+    long fileCost = 0;
+    long fileReadCost = useTightBound ? calculateTightSeqMemoryCost(seqFile) :
+        calculateMetadataSize(seqFile);
+    if (fileReadCost > tempMaxSeqFileCost) {
+      // memory used when read data from a seq file:
+      // only one file will be read at the same time, so only the largest one is recorded here
+      fileCost -= tempMaxSeqFileCost;
+      fileCost += fileReadCost;
+      tempMaxSeqFileCost = fileReadCost;
+    }
+    // memory used to cache the metadata before the new file is closed
+    // but writing data into a new file may generate the same amount of metadata in memory
+    fileCost += calculateMetadataSize(seqFile);
+    return fileCost;
   }
 
   protected void updateCost(long newCost, TsFileResource unseqFile) {

@@ -26,6 +26,8 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.merge.MergeFileStrategy;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -37,7 +39,6 @@ public class IoTDBMergeTest {
 
   private static IoTDB daemon;
 
-  @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
 
@@ -47,14 +48,12 @@ public class IoTDBMergeTest {
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
 
-  @After
   public void tearDown() throws Exception {
     daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
-  @Test
-  public void test() throws SQLException {
+  private void doTest() throws SQLException {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -91,6 +90,17 @@ public class IoTDBMergeTest {
         }
         assertEquals((i + 1) * 10, cnt);
       }
+    }
+  }
+
+  @Test
+  public void test() throws Exception {
+    for (MergeFileStrategy strategy : MergeFileStrategy.values()) {
+      IoTDBDescriptor.getInstance().getConfig().setMergeFileStrategy(strategy);
+      System.out.println("Testing merge strategy: " + strategy);
+      setUp();
+      doTest();
+      tearDown();
     }
   }
 

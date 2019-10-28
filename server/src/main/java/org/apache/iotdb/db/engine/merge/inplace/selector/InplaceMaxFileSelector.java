@@ -53,7 +53,7 @@ public class InplaceMaxFileSelector extends BaseFileSelector {
   public void select(boolean useTightBound) throws IOException {
     tmpSelectedSeqFiles = new HashSet<>();
     seqSelected = new boolean[resource.getSeqFiles().size()];
-    super.select(useTightBound);
+    super.selectByUnseq(useTightBound);
   }
 
   @Override

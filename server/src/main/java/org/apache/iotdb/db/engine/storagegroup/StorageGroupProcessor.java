@@ -899,7 +899,7 @@ public class StorageGroupProcessor {
       IMergeFileSelector fileSelector = strategy.getFileSelector(mergeResource, budget);
       try {
         fileSelector.select();
-        if (fileSelector.getSelectedSeqFiles().isEmpty() && fileSelector.getSelectedUnseqFiles().isEmpty()) {
+        if (fileSelector.getSelectedSeqFiles().size() + fileSelector.getSelectedUnseqFiles().size() <= 1) {
           logger.info("{} cannot select merge candidates under the budget {}", storageGroupName,
               budget);
           return;

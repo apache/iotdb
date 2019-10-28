@@ -15,7 +15,6 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
 
 package org.apache.iotdb.db.engine.merge;
@@ -25,12 +24,15 @@ import static org.junit.Assert.assertEquals;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.concurrent.Callable;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
+import org.apache.iotdb.db.engine.merge.squeeze.task.SqueezeMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MetadataErrorException;
+import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
@@ -50,7 +52,8 @@ public class MergeOverLapTest extends MergeTest {
   private File tempSGDir;
 
   @Before
-  public void setUp() throws IOException, WriteProcessException, MetadataErrorException {
+  public void setUp()
+      throws IOException, WriteProcessException, MetadataErrorException, PathErrorException {
     ptNum = 1000;
     super.setUp();
     tempSGDir = new File("tempSG");
@@ -64,26 +67,26 @@ public class MergeOverLapTest extends MergeTest {
   }
 
   @Override
-  void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
+  protected void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
-      File file = SystemFileFactory.INSTANCE.getFile(i + "seq.tsfile");
+      File file = SystemFileFactory.INSTANCE.getFile("seq" + i + "-" + i + ".tsfile");
       TsFileResource tsFileResource = new TsFileResource(file);
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
     }
     for (int i = 0; i < unseqFileNum; i++) {
-      File file = SystemFileFactory.INSTANCE.getFile(i + "unseq.tsfile");
+      File file = SystemFileFactory.INSTANCE.getFile("unseq" + i + "-" + i + ".tsfile");
       TsFileResource tsFileResource = new TsFileResource(file);
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
-    File file = SystemFileFactory.INSTANCE.getFile(unseqFileNum + "unseq.tsfile");
+    File file = SystemFileFactory.INSTANCE.getFile("unseq" + unseqFileNum + "-" + unseqFileNum + ".tsfile");
     TsFileResource tsFileResource = new TsFileResource(file);
     unseqResources.add(tsFileResource);
     prepareUnseqFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
   }
 
-  void prepareUnseqFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
+  private void prepareUnseqFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
       long valueOffset)
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
@@ -122,16 +125,31 @@ public class MergeOverLapTest extends MergeTest {
   }
 
   @Test
-  public void testFullMerge() throws Exception {
-    MergeTask mergeTask =
-        new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(), (k, v, l) -> {}, "test",
+  public void testInplaceFullMerge() throws Exception {
+    Callable mergeTask =
+        new InplaceMergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(),
+            (k, v, l, n) -> {}, "test",
             true, 1, MERGE_TEST_SG);
     mergeTask.call();
+    check(seqResources.get(0), 1000);
+  }
 
+  @Test
+  public void testSqueezeFullMerge() throws Exception {
+    TsFileResource[] newResource = new TsFileResource[1];
+    Callable mergeTask =
+        new SqueezeMergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(),
+            (k, v, l, n) -> newResource[0] = n, "test", 1, MERGE_TEST_SG);
+    mergeTask.call();
+    check(newResource[0], 5000);
+  }
+
+
+  private void check(TsFileResource mergedFile, long expected) throws IOException {
     QueryContext context = new QueryContext();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
-        Collections.singletonList(seqResources.get(0)),
+        Collections.singletonList(mergedFile),
         null, context);
     int cnt = 0;
     try {
@@ -142,7 +160,7 @@ public class MergeOverLapTest extends MergeTest {
           assertEquals(batchData.getTimeByIndex(i) + 20000.0, batchData.getDoubleByIndex(i), 0.001);
         }
       }
-      assertEquals(1000, cnt);
+      assertEquals(expected, cnt);
     } finally {
       tsFilesReader.close();
     }
