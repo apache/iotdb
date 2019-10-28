@@ -512,7 +512,7 @@ public class DataTransferManager implements IDataTransferManager {
       cnt++;
       try {
         File snapshotFile = makeFileSnapshot(tsfile);
-        // firstly sync .restore file, then sync tsfile
+        // firstly sync .resource file, then sync tsfile
         syncSingleFile(new File(snapshotFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
         syncSingleFile(snapshotFile);
         lastLocalFilesMap.get(sgName).add(tsfile);
