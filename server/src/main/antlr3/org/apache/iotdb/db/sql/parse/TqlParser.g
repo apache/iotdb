@@ -102,6 +102,8 @@ tokens{
     TOK_PROPERTY_VALUE;
     TOK_GROUPBY_DEVICE;
     TOK_SELECT_INDEX;
+    TOK_DATE_EXPR;
+    TOK_DURATION;
 }
 
 @header{
@@ -383,7 +385,7 @@ insertColumnSpec
     ;
 
 insertValuesSpec
-    : LR_BRACKET date (COMMA constant)* RR_BRACKET -> ^(TOK_INSERT_VALUES date constant*)
+    : LR_BRACKET dateFormat (COMMA constant)* RR_BRACKET -> ^(TOK_INSERT_VALUES dateFormat constant*)
     | LR_BRACKET INT (COMMA constant)* RR_BRACKET -> ^(TOK_INSERT_VALUES INT constant*)
     ;
 
@@ -457,7 +459,7 @@ comparisonOperator
     ;
 
 constant
-    : date -> ^(TOK_CONSTANT date)
+    : dateExpr=dateExpression -> ^(TOK_DATE_EXPR $dateExpr)
     | ID -> ^(TOK_CONSTANT ID)
     | MINUS? realLiteral -> ^(TOK_CONSTANT MINUS? realLiteral)
     | MINUS? INT -> ^(TOK_CONSTANT MINUS? INT)
@@ -507,20 +509,28 @@ groupByDeviceClause
     -> ^(TOK_GROUPBY_DEVICE)
     ;
 
-date
-    : DATETIME -> ^(TOK_DATETIME DATETIME)
+dateFormat
+    : datetime=DATETIME -> ^(TOK_DATETIME $datetime)
     | K_NOW LR_BRACKET RR_BRACKET -> ^(TOK_DATETIME K_NOW)
+    ;
+
+durationExpr
+    : duration=DURATION -> ^(TOK_DURATION $duration)
+    ;
+
+dateExpression
+    : dateFormat ((PLUS^ | MINUS^) durationExpr)*
     ;
 
 groupByClause
     : K_GROUP K_BY LR_BRACKET
-      INT ID (COMMA timeValue)?
+      durationExpr (COMMA timeValue)?
       COMMA timeInterval (COMMA timeInterval)* RR_BRACKET
-      -> ^(TOK_GROUPBY ^(TOK_TIMEUNIT INT ID) ^(TOK_TIMEORIGIN timeValue)? ^(TOK_TIMEINTERVAL timeInterval+))
+      -> ^(TOK_GROUPBY durationExpr ^(TOK_TIMEORIGIN timeValue)? ^(TOK_TIMEINTERVAL timeInterval+))
     ;
 
 timeValue
-    : date
+    : dateFormat
     | INT
     ;
 
@@ -542,13 +552,13 @@ typeClause
     ;
 
 previousClause
-    : K_PREVIOUS (COMMA INT ID)?
-    -> ^(TOK_PREVIOUS ^(TOK_TIMEUNIT INT ID)?)
+    : K_PREVIOUS (COMMA durationExpr)?
+    -> ^(TOK_PREVIOUS durationExpr?)
     ;
 
 linearClause
-    : K_LINEAR (COMMA previousTimeValue = INT previousTimeUnit = ID COMMA behindTimeValue = INT behindTimeUnit = ID)?
-    -> ^(TOK_LINEAR (^(TOK_TIMEUNIT $previousTimeValue $previousTimeUnit) ^(TOK_TIMEUNIT $behindTimeValue $behindTimeUnit))?)
+    : K_LINEAR (COMMA aheadDuration=durationExpr COMMA behindDuration=durationExpr)?
+    -> ^(TOK_LINEAR ($aheadDuration $behindDuration)?)
     ;
 
 dataType

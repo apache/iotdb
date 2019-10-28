@@ -106,7 +106,7 @@ public class ChunkGroupFooter {
     buffer = ByteBuffer.allocate(getSerializedSize(size));
     ReadWriteIOUtils.readAsPossible(input, offsetVar, buffer);
     buffer.flip();
-    String deviceID = ReadWriteIOUtils.readStringWithoutLength(buffer, size);
+    String deviceID = ReadWriteIOUtils.readStringWithLength(buffer, size);
     long dataSize = ReadWriteIOUtils.readLong(buffer);
     int numOfChunks = ReadWriteIOUtils.readInt(buffer);
     return new ChunkGroupFooter(deviceID, dataSize, numOfChunks);

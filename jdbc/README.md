@@ -87,49 +87,63 @@ import org.apache.iotdb.jdbc.IoTDBSQLException;
     //Create time series
     //Different data type has different encoding methods. Here use INT32 as an example
     try {
-      statement.execute("CREATE TIMESERIES root.demo.s0 WITH DATATYPE=INT32,ENCODING=RLE;");
+      statement.execute("CREATE TIMESERIES root.demo.d0.s0 WITH DATATYPE=INT32,ENCODING=RLE;");
     }catch (IoTDBSQLException e){
       System.out.println(e.getMessage());
     }
     //Show time series
-    statement.execute("SHOW TIMESERIES root.demo");
+    statement.execute("SHOW TIMESERIES root.demo.d0");
+    outputResult(statement.getResultSet());
+    //Show devices
+    statement.execute("SHOW DEVICES");
+    outputResult(statement.getResultSet());
+    //Count time series by given prefix
+    statement.execute("COUNT TIMESERIES root.demo.d0");
+    outputResult(statement.getResultSet());
+    //Count nodes at the given level (level count from root and start with 0) of 
+    //the specified path prefix
+    statement.execute("COUNT NODES root.demo LEVEL=2");
+    outputResult(statement.getResultSet());
+    //Count timeseries at the given level (level count from root and start with 0) group
+    //by each node under the spceified path prefix
+    statement.execute("COUNT TIMESERIES root.demo GROUP BY LEVEL=2");
     outputResult(statement.getResultSet());
 
     //Execute insert statements in batch
-    statement.addBatch("insert into root.demo(timestamp,s0) values(1,1);");
-    statement.addBatch("insert into root.demo(timestamp,s0) values(1,1);");
-    statement.addBatch("insert into root.demo(timestamp,s0) values(2,15);");
-    statement.addBatch("insert into root.demo(timestamp,s0) values(2,17);");
-    statement.addBatch("insert into root.demo(timestamp,s0) values(4,12);");
+    statement.addBatch("insert into root.demo.d0(timestamp,s0) values(1,1);");
+    statement.addBatch("insert into root.demo.d0(timestamp,s0) values(1,1);");
+    statement.addBatch("insert into root.demo.d0(timestamp,s0) values(2,15);");
+    statement.addBatch("insert into root.demo.d0(timestamp,s0) values(2,17);");
+    statement.addBatch("insert into root.demo.d0(timestamp,s0) values(4,12);");
     statement.executeBatch();
     statement.clearBatch();
 
     //Full query statement
-    String sql = "select * from root.demo";
+    String sql = "select * from root.demo.d0";
     ResultSet resultSet = statement.executeQuery(sql);
     System.out.println("sql: " + sql);
     outputResult(resultSet);
 
     //Exact query statement
-    sql = "select s0 from root.demo where time = 4;";
+    sql = "select s0 from root.demo.d0 where time = 4;";
     resultSet= statement.executeQuery(sql);
     System.out.println("sql: " + sql);
     outputResult(resultSet);
 
     //Time range query
-    sql = "select s0 from root.demo where time >= 2 and time < 5;";
+    sql = "select s0 from root.demo.d0 where time >= 2 and time < 5;";
     resultSet = statement.executeQuery(sql);
     System.out.println("sql: " + sql);
     outputResult(resultSet);
 
     //Aggregate query
-    sql = "select count(s0) from root.demo;";
+    sql = "select count(s0) from root.demo.d0;";
     resultSet = statement.executeQuery(sql);
     System.out.println("sql: " + sql);
     outputResult(resultSet);
 
     //Delete time series
-    statement.execute("delete timeseries root.demo.s0");
+    statement.execute("delete timeseries root.demo.d0.s0");
 
     //close connection
     statement.close();
