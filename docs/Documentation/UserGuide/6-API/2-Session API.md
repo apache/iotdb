@@ -44,7 +44,7 @@ In root directory:
 <dependencies>
     <dependency>
       <groupId>org.apache.iotdb</groupId>
-      <artifactId>iotdb-client</artifactId>
+      <artifactId>iotdb-session</artifactId>
       <version>0.9.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
@@ -57,44 +57,55 @@ Here we show the commonly used interfaces and their parameters in the Session:
 
 #### Run the Session
 
-* Initialize Session
+* Initialize a Session
+
   	Session(String host, int port)
+
   	Session(String host, String port, String username, String password)
+
   	Session(String host, int port, String username, String password)
 
-* Open Session
+* Open a Session
+
   ​	Session.open()
 
-* Close Session
+* Close a Session
+
   ​	Session.close()
 
 #### Operate the Session
 
-* Set a storage group
+* Set storage group
 
   ​	TSStatus setStorageGroup(String storageGroupId)
 
 * Delete one or several storage groups
 
   ​	TSStatus deleteStorageGroup(String storageGroup)
+  
   	TSStatus deleteStorageGroups(List<String> storageGroups)
 
-* Create a timeseries under a existing storage group
+* Create one timeseries under a existing storage group
+
   ​	TSStatus createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
 
 * Delete one or several timeseries
+
   ​	TSStatus deleteTimeseries(String path)
+  
   	TSStatus deleteTimeseries(List<String> paths)
 
 * Delete one or several timeseries before a certain timestamp
+
   ​	TSStatus deleteData(String path, long time)
+  
   	TSStatus deleteData(List<String> paths, long time)
 
-* Insert data in existing timeseries
+* Insert data into existing timeseries
 
   ​	TSStatus insert(String deviceId, long time, List<String> measurements, List<String> values)
 
-* Batch insertion of timeseries
+* Batch insertion into timeseries
 
   ​	TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch)
 

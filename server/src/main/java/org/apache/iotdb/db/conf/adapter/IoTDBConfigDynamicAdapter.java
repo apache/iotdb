@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf.adapter;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -213,14 +214,14 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   @Override
   public void addOrDeleteStorageGroup(int diff) throws ConfigAdjusterException {
     totalStorageGroup += diff;
-    maxMemTableNum += 4 * diff;
+    maxMemTableNum += IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP * diff;
     if(!CONFIG.isEnableParameterAdapter()){
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
       return;
     }
     if (!tryToAdaptParameters()) {
       totalStorageGroup -= diff;
-      maxMemTableNum -= 4 * diff;
+      maxMemTableNum -= IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP * diff;
       throw new ConfigAdjusterException(
           "The IoTDB system load is too large to create storage group.");
     }

@@ -96,6 +96,38 @@ Eg: IoTDB > SHOW STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
+* Count Timeseries Statement
+
+```
+COUNT TIMESERIES <Path>
+Eg: IoTDB > COUNT TIMESERIES root
+Eg: IoTDB > COUNT TIMESERIES root.ln
+Eg: IoTDB > COUNT TIMESERIES root.ln.*.*.status
+Eg: IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
+Note: The path can be prefix path, star path or timeseries path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+```
+COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>
+Eg: IoTDB > COUNT TIMESERIES root GROUP BY LEVEL=1
+Eg: IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
+Eg: IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=3
+Note: The path can be prefix path or timeseries path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+* Count Nodes Statement
+
+```
+COUNT NODES <Path> LEVEL=<INTEGER>
+Eg: IoTDB > COUNT NODES root LEVEL=2
+Eg: IoTDB > COUNT NODES root.ln LEVEL=2
+Eg: IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
+Note: The path can be prefix path or timeseries path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
 ### Data Management Statement
 
 * Insert Record Statement
@@ -149,6 +181,7 @@ TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
 SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
 Eg. IoTDB > SELECT * FROM root
+Eg. IoTDB > SELECT * FROM root where time > now() - 5m
 Eg. IoTDB > SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MIN_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MAX_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature > 24
@@ -157,6 +190,7 @@ Eg. IoTDB > SELECT MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.w
 Note: the statement needs to satisfy this constraint: <Path>(SelectClause) + <PrefixPath>(FromClause) = <Timeseries>
 Note: If the <SensorExpr>(WhereClause) is started with <Path> and not with ROOT, the statement needs to satisfy this constraint: <PrefixPath>(FromClause) + <Path>(SensorExpr) = <Timeseries>
 Note: In Version 0.7.0, if <WhereClause> includes `OR`, time filter can not be used.
+Note: There must be a space on both sides of the plus and minus operator appearing in the time expression 
 ```
 
 * Group By Statement

@@ -95,7 +95,11 @@ When `*` appears in the middle of the path, it represents `*` itself, i.e., a la
 
 * Timestamp
 
-The timestamp is the time point at which data is produced. IoTDB timestamps are divided into two types: LONG and DATETIME (including DATETIME-INPUT and DATETIME-DISPLAY). When a user inputs a timestamp, he can use a LONG type timestamp or a DATETIME-INPUT type timestamp, and the supported formats of the DATETIME-INPUT type timestamp are shown in the table below:
+The timestamp is the time point at which data is produced. It includes absolute timestamps and relative timestamps
+
+* Absolute timestamp
+
+Absolute timestamps in IoTDB are divided into two types: LONG and DATETIME (including DATETIME-INPUT and DATETIME-DISPLAY). When a user inputs a timestamp, he can use a LONG type timestamp or a DATETIME-INPUT type timestamp, and the supported formats of the DATETIME-INPUT type timestamp are shown in the table below:
 
 <center>**Supported formats of DATETIME-INPUT type timestamp**
 
@@ -166,6 +170,43 @@ IoTDB can support LONG types and DATETIME-DISPLAY types when displaying timestam
 | ''|	single quote|	literal	|'|
 
 </center>
+
+* Relative timestamp
+
+Relative time refers to the time relative to the server time ```now()``` and ```DATETIME``` time.
+
+ Syntax:
+ ```
+  Duration = (Digit+ ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS'))+
+  RelativeTime = (now() | DATETIME) ((+|-) Duration)+
+        
+  ```
+  
+  <center>**The syntax of the duration unit**
+  
+  |Symbol|Meaning|Presentation|Examples|
+  |:---:|:---:|:---:|:---:|
+  |y|year|1y=365 days|1y|
+  |mo|month|1mo=30 days|1mo|
+  |w|week|1w=7 days|1w|
+  |d|day|1d=1 day|1d|
+  |||||
+  |h|hour|1h=3600 seconds|1h|
+  |m|minute|1m=60 seconds|1m|
+  |s|second|1s=1 second|1s|
+  |||||
+  |ms|millisecond|1ms=1000_000 nanoseconds|1ms|
+  |us|microsecond|1us=1000 nanoseconds|1us|
+  |ns|nanosecond|1ns=1 nanosecond|1ns|  
+  
+  </center>
+  
+  eg：
+  ```
+  now() - 1d2h //1 day and 2 hours earlier than the current server time
+  now() - 1w //1 week earlier than the current server time
+  ```
+  > Note：There must be spaces on the left and right of '+' and '-'.
 
 * Value
 
