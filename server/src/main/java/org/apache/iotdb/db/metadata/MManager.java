@@ -31,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.sql.SQLException;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -839,7 +840,7 @@ public class MManager {
    *
    * @return A HashSet instance which stores all devices info
    */
-  public Set<String> getAllDevices() {
+  public Set<String> getAllDevices() throws SQLException {
 
     lock.readLock().lock();
     try {
@@ -854,11 +855,11 @@ public class MManager {
    *
    * @return A List instance which stores all node at given level
    */
-  public List<String> getNodesList(int nodeLevel) {
+  public List<String> getNodesList(String prefixPath, int nodeLevel) throws SQLException {
 
     lock.readLock().lock();
     try {
-      return mgraph.getNodesList(nodeLevel);
+      return mgraph.getNodesList(prefixPath, nodeLevel);
     } finally {
       lock.readLock().unlock();
     }

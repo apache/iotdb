@@ -22,9 +22,11 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import java.io.Serializable;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,6 +34,7 @@ import java.util.Stack;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.StorageGroupException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -732,7 +735,29 @@ public class MTree implements Serializable {
    * @return a list contains all distinct devices
    */
   Set<String> getAllDevices() {
-    return new HashSet<>(getNodesList(3));
+    HashSet<String> devices = new HashSet<>();
+    MNode node;
+    if ((node = getRoot()) != null) {
+      findDevices(node, SQLConstant.ROOT, devices);
+    }
+    return new LinkedHashSet<>(devices);
+  }
+
+  private void findDevices(MNode node, String path, HashSet<String> res) {
+    if (node == null) {
+      return;
+    }
+    if (node.isLeaf()) {
+      res.add(path);
+      return;
+    }
+    for (MNode child : node.getChildren().values()) {
+      if (child.isLeaf()) {
+        res.add(path);
+      } else {
+        findDevices(child, path + "." + child.toString(), res);
+      }
+    }
   }
 
   /**
@@ -740,11 +765,23 @@ public class MTree implements Serializable {
    *
    * @return a list contains all nodes at the given level
    */
-  List<String> getNodesList(int nodeLevel) {
+  List<String> getNodesList(String schemaPattern, int nodeLevel) throws SQLException {
     List<String> res = new ArrayList<>();
-    MNode rootNode;
-    if ((rootNode = getRoot()) != null) {
-      findNodes(rootNode, "root", res, nodeLevel);
+    String[] nodes = schemaPattern.split("\\.");
+    MNode node;
+    if ((node = getRoot()) != null) {
+      if (nodes[0].equals("root")) {
+        for (int i = 1; i < nodes.length; i++) {
+          if (node.getChild(nodes[i]) != null) {
+            node = node.getChild(nodes[i]);
+          } else {
+            throw new SQLException(nodes[i - 1] + " does not have the child node " + nodes[i]);
+          }
+        }
+        findNodes(node, schemaPattern, res, nodeLevel - (nodes.length - 1));
+      } else {
+        throw new SQLException("Incorrect root node " + nodes[0] + " selected");
+      }
     }
     return res;
   }
@@ -753,7 +790,7 @@ public class MTree implements Serializable {
     if (node == null) {
       return;
     }
-    if (targetLevel == 1) {
+    if (targetLevel == 0) {
       res.add(path);
       return;
     }

@@ -48,18 +48,20 @@ import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
-import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -120,12 +122,13 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       case REVOKE_WATERMARK_EMBEDDING:
         return operateWatermarkEmbedding(((DataAuthPlan) plan).getUsers(), false);
       case DELETE_TIMESERIES:
+        return deleteTimeSeries((DeleteTimeSeriesPlan) plan);
       case CREATE_TIMESERIES:
+        return createTimeSeries((CreateTimeSeriesPlan) plan);
       case SET_STORAGE_GROUP:
+        return setStorageGroup((SetStorageGroupPlan) plan);
       case DELETE_STORAGE_GROUP:
-      case METADATA:
-        MetadataPlan metadata = (MetadataPlan) plan;
-        return operateMetadata(metadata);
+        return deleteStorageGroup((DeleteStorageGroupPlan) plan);  
       case PROPERTY:
         PropertyPlan property = (PropertyPlan) plan;
         return operateProperty(property);
@@ -405,43 +408,56 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
     return true;
   }
-
-  private boolean operateMetadata(MetadataPlan metadataPlan) throws ProcessorException {
-    MetadataOperator.NamespaceType namespaceType = metadataPlan.getNamespaceType();
-    Path path = metadataPlan.getPath();
-    TSDataType dataType = metadataPlan.getDataType();
-    CompressionType compressor = metadataPlan.getCompressor();
-    TSEncoding encoding = metadataPlan.getEncoding();
-    Map<String, String> props = metadataPlan.getProps();
-    List<Path> deletePathList = metadataPlan.getDeletePathList();
+  
+  private boolean createTimeSeries(CreateTimeSeriesPlan createTimeSeriesPlan) throws ProcessorException {
+    Path path = createTimeSeriesPlan.getPath();
+    TSDataType dataType = createTimeSeriesPlan.getDataType();
+    CompressionType compressor = createTimeSeriesPlan.getCompressor();
+    TSEncoding encoding = createTimeSeriesPlan.getEncoding();
+    Map<String, String> props = createTimeSeriesPlan.getProps();
     try {
-      switch (namespaceType) {
-        case ADD_PATH:
-          boolean result = mManager.addPathToMTree(path, dataType, encoding, compressor, props);
-          if (result) {
-            storageEngine.addTimeSeries(path, dataType, encoding, compressor, props);
-          }
-          break;
-        case DELETE_PATH:
-          deleteDataOfTimeSeries(deletePathList);
-          Set<String> emptyStorageGroups = mManager.deletePaths(deletePathList);
-          for (String deleteStorageGroup : emptyStorageGroups) {
-            storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
-          }
-          break;
-        case SET_STORAGE_GROUP:
-          mManager.setStorageGroupToMTree(path.getFullPath());
-          break;
-        case DELETE_STORAGE_GROUP:
-          mManager.deleteStorageGroupsFromMTree(deletePathList);
-          for (Path storageGroupPath : deletePathList) {
-            storageEngine.deleteStorageGroup(storageGroupPath.getFullPath());
-          }
-          break;
-        default:
-          throw new ProcessorException("unknown namespace type:" + namespaceType);
+      boolean result = mManager.addPathToMTree(path, dataType, encoding, compressor, props);
+      if (result) {
+        storageEngine.addTimeSeries(path, dataType, encoding, compressor, props);
       }
     } catch (StorageEngineException | MetadataErrorException | PathErrorException e) {
+      throw new ProcessorException(e);
+    }
+    return true;
+  }
+  
+  private boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws ProcessorException {
+    List<Path> deletePathList = deleteTimeSeriesPlan.getPaths();
+    try {
+      deleteDataOfTimeSeries(deletePathList);
+      Set<String> emptyStorageGroups = mManager.deletePaths(deletePathList);
+      for (String deleteStorageGroup : emptyStorageGroups) {
+        storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
+      }
+    } catch (MetadataErrorException e) {
+      throw new ProcessorException(e);
+    }
+    return true;
+  }
+  
+  private boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) throws ProcessorException {
+    Path path = setStorageGroupPlan.getPath();
+    try {
+      mManager.setStorageGroupToMTree(path.getFullPath());
+    } catch (MetadataErrorException e) {
+      throw new ProcessorException(e);
+    }
+    return true;
+  }
+  
+  private boolean deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan) throws ProcessorException {
+    List<Path> deletePathList = deleteStorageGroupPlan.getPaths();
+    try {
+      mManager.deleteStorageGroupsFromMTree(deletePathList);
+      for (Path storageGroupPath : deletePathList) {
+        storageEngine.deleteStorageGroup(storageGroupPath.getFullPath());
+      }
+    } catch (MetadataErrorException e) {
       throw new ProcessorException(e);
     }
     return true;

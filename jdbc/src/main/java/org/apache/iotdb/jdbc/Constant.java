@@ -47,8 +47,9 @@ public class Constant {
   public static final String CATALOG_TIMESERIES = "ts";
   public static final String CATALOG_STORAGE_GROUP = "sg";
   public static final String CATALOG_DEVICES = "devices";
+
   static final String COUNT_TIMESERIES = "cntts";
-  static final String COUNT_NODE_TIMESERIES = "cnttsbg";
+  static final String COUNT_NODE_TIMESERIES = "cntnodets";
   static final String COUNT_NODES = "cntnode";
 
   static final String METHOD_NOT_SUPPORTED = "Method not supported";

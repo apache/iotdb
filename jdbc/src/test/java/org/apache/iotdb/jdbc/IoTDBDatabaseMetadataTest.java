@@ -123,7 +123,7 @@ public class IoTDBDatabaseMetadataTest {
     columnList.add("root.vehicle.d0.s1");
     columnList.add("root.vehicle.d0.s2");
 
-    when(fetchMetadataResp.getColumnsList()).thenReturn(columnList);
+    when(fetchMetadataResp.getTimeseriesNum()).thenReturn(columnList.size());
 
     String standard = "count,\n" + "3,\n";
     try {

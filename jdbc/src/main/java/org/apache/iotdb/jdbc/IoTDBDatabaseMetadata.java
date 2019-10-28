@@ -143,7 +143,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           } catch (IoTDBRPCException e) {
             throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
           }
-          return new IoTDBMetadataResultSet(resp.getColumnsList().size(), MetadataType.COUNT_TIMESERIES);
+          return new IoTDBMetadataResultSet(resp.getTimeseriesNum(), MetadataType.COUNT_TIMESERIES);
         } catch (TException e) {
           throw new TException("Connection error when fetching timeseries metadata", e);
         }
@@ -156,13 +156,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   ResultSet getNodes(String catalog, String schemaPattern, String columnPattern,
       String devicePattern, int nodeLevel) throws SQLException {
     try {
-      return getNodesFunc(catalog, nodeLevel);
+      return getNodesFunc(catalog, schemaPattern, nodeLevel);
     } catch (TException e) {
       boolean flag = connection.reconnect();
       this.client = connection.client;
       if (flag) {
         try {
-          return getNodesFunc(catalog, nodeLevel);
+          return getNodesFunc(catalog, schemaPattern, nodeLevel);
         } catch (TException e2) {
           throw new SQLException(String.format("Fail to get columns catalog=%s, schemaPattern=%s,"
                   + " columnPattern=%s, devicePattern=%s, nodeLevel=%s after reconnecting."
@@ -179,12 +179,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     }
   }
 
-  private ResultSet getNodesFunc(String catalog, int nodeLevel) throws TException, SQLException {
+  private ResultSet getNodesFunc(String catalog, String schemaPattern, int nodeLevel) throws TException, SQLException {
     TSFetchMetadataReq req;
     switch (catalog) {
       case Constant.COUNT_NODES:
         req = new TSFetchMetadataReq(Constant.GLOBAL_COUNT_NODES_REQ);
         req.setNodeLevel(nodeLevel);
+        req.setColumnPath(schemaPattern);
         try {
           TSFetchMetadataResp resp = client.fetchMetadata(req);
           try {
@@ -199,6 +200,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       case Constant.COUNT_NODE_TIMESERIES:
         req = new TSFetchMetadataReq(Constant.GLOBAL_COUNT_NODE_TIMESERIES_REQ);
         req.setNodeLevel(nodeLevel);
+        req.setColumnPath(schemaPattern);
         try {
           TSFetchMetadataResp resp = client.fetchMetadata(req);
           try {
