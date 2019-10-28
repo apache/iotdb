@@ -111,7 +111,6 @@ public class StorageEngine implements IService {
 
   @Override
   public void start() {
-    // nothing to be done
     ttlCheckThread = Executors.newSingleThreadScheduledExecutor();
     ttlCheckThread.scheduleAtFixedRate(this::checkTTL, TTL_CHECK_INTERVAL, TTL_CHECK_INTERVAL
     ,TimeUnit.MILLISECONDS);

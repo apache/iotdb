@@ -64,7 +64,7 @@ public class MergeResource {
   private Map<String, MeasurementSchema> measurementSchemaMap = new HashMap<>();
   private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
 
-  private long fileTimeBound = Long.MAX_VALUE;
+  private long timeLowerBound = Long.MIN_VALUE;
 
   private boolean cacheDeviceMeta = false;
 
@@ -76,12 +76,12 @@ public class MergeResource {
   }
 
   private boolean filterResource(TsFileResource res) {
-    return res.isClosed() && !res.isDeleted() && res.stillLives(fileTimeBound);
+    return res.isClosed() && !res.isDeleted() && res.stillLives(timeLowerBound);
   }
 
   public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
       long timeBound) {
-    fileTimeBound = timeBound;
+    timeLowerBound = timeBound;
     this.seqFiles =
         seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
     this.unseqFiles =

@@ -646,6 +646,7 @@ Eg.1 SHOW ALL TTL
 This example will show TTLs of all storage groups.
 Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
 This example will show TTLs of the specified 3 groups.
+Notice: storage groups without TTL will show a "null"
 ```
 
 Notice: When you set TTL to some storage groups, data out of the TTL will be made invisible

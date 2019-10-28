@@ -205,8 +205,8 @@ public class MGraph implements Serializable {
     throw new PathErrorException(TIME_SERIES_INCORRECT + rootName);
   }
 
-  List<MNode> getAllStorageGroups() {
-    return mtree.getAllStorageGroups();
+  List<MNode> getAllStorageGroupNodes() {
+    return mtree.getAllStorageGroupNodes();
   }
 
   /**
@@ -263,7 +263,7 @@ public class MGraph implements Serializable {
     return new Metadata(deviceIdMap);
   }
 
-  List<String> getAllStorageGroupList() {
+  List<String> getAllStorageGroupNames() {
     return mtree.getAllStorageGroupList();
   }
 
@@ -399,7 +399,7 @@ public class MGraph implements Serializable {
    */
   Map<String, Integer> countSeriesNumberInEachStorageGroup() throws PathErrorException {
     Map<String, Integer> res = new HashMap<>();
-    List<String> storageGroups = this.getAllStorageGroupList();
+    List<String> storageGroups = this.getAllStorageGroupNames();
     for (String sg : storageGroups) {
       MNode node = mtree.getNode(sg);
       res.put(sg, node.getLeafCount());

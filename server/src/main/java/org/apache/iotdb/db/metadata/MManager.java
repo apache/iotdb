@@ -990,7 +990,7 @@ public class MManager {
 
     lock.readLock().lock();
     try {
-      return mgraph.getAllStorageGroupList();
+      return mgraph.getAllStorageGroupNames();
     } finally {
       lock.readLock().unlock();
     }
@@ -1002,7 +1002,7 @@ public class MManager {
   public List<MNode> getAllStorageGroups() {
     lock.readLock().lock();
     try {
-      return mgraph.getAllStorageGroups();
+      return mgraph.getAllStorageGroupNodes();
     } finally {
       lock.readLock().unlock();
     }

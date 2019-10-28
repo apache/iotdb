@@ -606,7 +606,7 @@ public class MTree implements Serializable {
    * @return all storage groups' MNodes
    * @throws PathErrorException
    */
-  List<MNode> getAllStorageGroups() {
+  List<MNode> getAllStorageGroupNodes() {
     List<MNode> ret = new ArrayList<>();
     Stack<MNode> nodeStack = new Stack<>();
     nodeStack.add(getRoot());

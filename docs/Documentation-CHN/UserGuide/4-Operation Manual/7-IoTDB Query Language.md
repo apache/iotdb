@@ -539,6 +539,7 @@ Eg.1 SHOW ALL TTL
 这个例子会给出所有存储组的TTL。
 Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
 这个例子会显示指定的三个存储组的TTL。
+注意: 没有设置TTL的存储组的TTL将显示为null。
 ```
 
 注意：当您对某个存储组设置TTL的时候，超过TTL范围的数据将会立即不可见。但由于数据文件可能混合包含处在TTL范围内

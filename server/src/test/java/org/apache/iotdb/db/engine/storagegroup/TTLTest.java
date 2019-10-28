@@ -283,7 +283,7 @@ public class TTLTest {
     QueryDataSet queryDataSet = executor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     RowRecord rowRecord = queryDataSet.next();
     assertEquals(sg2, rowRecord.getFields().get(0).getStringValue());
-    assertEquals(Long.MAX_VALUE, rowRecord.getFields().get(1).getLongV());
+    assertEquals("null", rowRecord.getFields().get(1).getStringValue());
 
     rowRecord = queryDataSet.next();
     assertEquals(sg1, rowRecord.getFields().get(0).getStringValue());

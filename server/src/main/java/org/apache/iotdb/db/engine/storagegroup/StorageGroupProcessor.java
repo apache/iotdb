@@ -620,25 +620,25 @@ public class StorageGroupProcessor {
       logger.debug("{}: TTL not set, ignore the check", storageGroupName);
       return;
     }
-    long timeBound = System.currentTimeMillis() - dataTTL;
+    long timeLowerBound = System.currentTimeMillis() - dataTTL;
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: TTL removing files before {}", storageGroupName, new Date(timeBound));
+      logger.debug("{}: TTL removing files before {}", storageGroupName, new Date(timeLowerBound));
     }
     // copy to avoid concurrent modification of deletion
     List<TsFileResource> seqFiles = new ArrayList<>(sequenceFileList);
     List<TsFileResource> unseqFiles = new ArrayList<>(unSequenceFileList);
 
     for (TsFileResource tsFileResource : seqFiles) {
-      checkFileTTL(tsFileResource, timeBound, true);
+      checkFileTTL(tsFileResource, timeLowerBound, true);
     }
     for (TsFileResource tsFileResource : unseqFiles) {
-      checkFileTTL(tsFileResource, timeBound, false);
+      checkFileTTL(tsFileResource, timeLowerBound, false);
     }
   }
 
-  private void checkFileTTL(TsFileResource resource, long timeBound, boolean isSeq) {
+  private void checkFileTTL(TsFileResource resource, long timeLowerBound, boolean isSeq) {
     if (resource.isMerging() || !resource.isClosed()
-        || !resource.isDeleted() && resource.stillLives(timeBound)) {
+        || !resource.isDeleted() && resource.stillLives(timeLowerBound)) {
       return;
     }
 
@@ -656,7 +656,10 @@ public class StorageGroupProcessor {
         try {
           // physical removal
           resource.remove();
-          logger.info("Removed a file {} by ttl ({}ms)", resource.getFile().getPath(), dataTTL);
+          if (logger.isInfoEnabled()) {
+            logger.info("Removed a file {} before {} by ttl ({}ms)", resource.getFile().getPath(),
+                new Date(timeLowerBound), dataTTL);
+          }
           if (isSeq) {
             sequenceFileList.remove(resource);
           } else {
@@ -962,8 +965,8 @@ public class StorageGroupProcessor {
       }
 
       long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
-      long timeBound = System.currentTimeMillis() - dataTTL;
-      MergeResource mergeResource = new MergeResource(sequenceFileList, unSequenceFileList, timeBound);
+      long timeLowerBound = System.currentTimeMillis() - dataTTL;
+      MergeResource mergeResource = new MergeResource(sequenceFileList, unSequenceFileList, timeLowerBound);
 
       IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
       try {
