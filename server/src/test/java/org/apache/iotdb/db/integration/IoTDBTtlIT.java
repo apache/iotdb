@@ -150,24 +150,24 @@ public class IoTDBTtlIT {
       statement.execute("SET STORAGE GROUP TO root.group2");
 
       String result = doQuery(statement, "SHOW ALL TTL", 2);
-      assertEquals("root.group2,9223372036854775807\n"
-          + "root.group1,9223372036854775807\n", result);
+      assertEquals("root.group2,null\n"
+          + "root.group1,null\n", result);
       result = doQuery(statement, "SHOW TTL ON root.group1", 2);
-      assertEquals("root.group1,9223372036854775807\n", result);
+      assertEquals("root.group1,null\n", result);
 
       statement.execute("SET TTL TO root.group1 10000");
       result = doQuery(statement, "SHOW ALL TTL", 2);
-      assertEquals("root.group2,9223372036854775807\n"
+      assertEquals("root.group2,null\n"
           + "root.group1,10000\n", result);
       result = doQuery(statement, "SHOW TTL ON root.group1", 2);
       assertEquals("root.group1,10000\n", result);
 
       statement.execute("UNSET TTL TO root.group1");
       result = doQuery(statement, "SHOW ALL TTL", 2);
-      assertEquals("root.group2,9223372036854775807\n"
-          + "root.group1,9223372036854775807\n", result);
+      assertEquals("root.group2,null\n"
+          + "root.group1,null\n", result);
       result = doQuery(statement, "SHOW TTL ON root.group1", 2);
-      assertEquals("root.group1,9223372036854775807\n", result);
+      assertEquals("root.group1,null\n", result);
     }
   }
 

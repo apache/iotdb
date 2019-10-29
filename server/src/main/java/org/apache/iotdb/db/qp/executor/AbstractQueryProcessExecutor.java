@@ -94,11 +94,13 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       }
       RowRecord rowRecord = new RowRecord(i++);
       Field sg = new Field(TSDataType.TEXT);
-      Field ttl = new Field(TSDataType.INT64);
+      Field ttl;
       sg.setBinaryV(new Binary(sgName));
       if (mNode.getDataTTL() != Long.MAX_VALUE) {
+        ttl = new Field(TSDataType.INT64);
         ttl.setLongV(mNode.getDataTTL());
       } else {
+        ttl = new Field(null);
         ttl.setNull();
       }
       rowRecord.addField(sg);
