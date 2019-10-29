@@ -16,33 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.tsfile;
+package org.apache.iotdb.hive;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-
-import java.io.File;
-
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 
-/**
- * An example of writing data with RowBatch to TsFile
- */
-public class TsFileWriteWithRowBatch {
+public class TsFileTestHelper {
 
-  public static void main(String[] args) {
+
+  private static final Logger logger = LoggerFactory.getLogger(TsFileTestHelper.class);
+
+  public static boolean deleteTsFile(String filePath) {
+    File file = new File(filePath);
+    return file.delete();
+  }
+
+  public static void writeTsFile(String filePath) {
+
     try {
-      String path = "test.tsfile";
-      File f = FSFactoryProducer.getFSFactory().getFile(path);
-      if (f.exists()) {
-        f.delete();
+      File file = new File(filePath);
+
+      if (file.exists()) {
+        file.delete();
       }
 
       Schema schema = new Schema();
@@ -59,7 +65,7 @@ public class TsFileWriteWithRowBatch {
       }
 
       // add measurements into TSFileWriter
-      TsFileWriter tsFileWriter = new TsFileWriter(f, schema);
+      TsFileWriter tsFileWriter = new TsFileWriter(file, schema);
 
       // construct the row batch
       RowBatch rowBatch = schema.createRowBatch("device_1");
@@ -95,5 +101,17 @@ public class TsFileWriteWithRowBatch {
       e.printStackTrace();
       System.out.println(e.getMessage());
     }
+  }
+
+  public static void main(String[] args) throws FileNotFoundException, IOException {
+    String filePath = "test.tsfile";
+    File file = new File(filePath);
+    if (file.exists()) {
+      file.delete();
+    }
+    writeTsFile(filePath);
+    TsFileSequenceReader reader = new TsFileSequenceReader(filePath);
+    logger.info("Get file meta data: {}", reader.readFileMetadata());
+    reader.close();
   }
 }

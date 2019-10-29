@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.hadoop;
+package org.apache.iotdb.hadoop.tsfile;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DataInputBuffer;
@@ -77,13 +77,9 @@ public class TSFInputSplitTest {
       // assert
       assertEquals(wInputSplit.getPath(), rInputSplit.getPath());
       assertThat(wInputSplit.getChunkGroupInfoList(), is(rInputSplit.getChunkGroupInfoList()));
-      try {
-        assertEquals(wInputSplit.getLength(), rInputSplit.getLength());
-        assertArrayEquals(wInputSplit.getLocations(), rInputSplit.getLocations());
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+
+      assertEquals(wInputSplit.getLength(), rInputSplit.getLength());
+      assertArrayEquals(wInputSplit.getLocations(), rInputSplit.getLocations());
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
