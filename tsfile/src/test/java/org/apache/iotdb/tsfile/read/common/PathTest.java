@@ -86,13 +86,4 @@ public class PathTest {
     testPath(Path.addPrefixPath(desc, head), "d.e.a.b", "c", "d.e.a.b.\"c\"");
     testPath(Path.mergePath(desc, head1), "a.b", "c", "a.b.\"c\"");
   }
-
-  @Test
-  public void temp() {
-    Path src = new Path("a.b.c");
-    String s = "hai \" hello\"";
-    String[] ss = s.split("\"");
-    System.out.println(ss.length);
-    System.out.println(Arrays.toString(ss));
-  }
 }
