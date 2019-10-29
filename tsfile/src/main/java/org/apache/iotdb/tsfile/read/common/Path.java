@@ -103,16 +103,11 @@ public class Path implements Serializable {
       } else {
         subStrs = pathSc.split("\'");
       }
-      if (subStrs.length < 2) {
-        device = "";
-        fullPath = measurement = subStrs[1];
-      } else {
-        device = subStrs[0];
-        if (!device.trim().equals("")) {
-          device = device.substring(0, subStrs[0].length() - 1);
-        }
-        measurement = subStrs[1];
+      device = subStrs[0];
+      if (!device.trim().equals("")) {
+        device = device.substring(0, subStrs[0].length() - 1);
       }
+      measurement = subStrs[1];
       fullPath = pathSc;
     } else {
       StringContainer sc = new StringContainer(pathSc.split(TsFileConstant.PATH_SEPARATER_NO_REGEX), TsFileConstant.PATH_SEPARATOR);
