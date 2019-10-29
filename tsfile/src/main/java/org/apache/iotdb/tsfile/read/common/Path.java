@@ -121,10 +121,10 @@ public class Path implements Serializable {
   }
 
   public static Path mergePath(Path prefix, Path suffix) {
-    if(suffix.fullPath == "") {
+    if(suffix.fullPath.equals("")) {
       return prefix;
     }
-    else if(prefix.fullPath == "") {
+    else if(prefix.fullPath.equals("")) {
       return suffix;
     }
     StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
