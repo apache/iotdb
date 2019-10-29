@@ -149,9 +149,9 @@ public class ReadOnlyTsFileTest {
     QueryExpression queryExpression = QueryExpression.create(paths, expression);
     try {
       QueryDataSet queryDataSet = tsFile.query(queryExpression);
-      Assert.assertFalse(queryDataSet.hasNext());
+      Assert.fail();
     } catch (IOException e) {
-      Assert.assertEquals(e.getMessage(), "No device path : dr");
+      Assert.assertEquals("select path: dr.s1 not in this tsfile", e.getMessage());
     }
   }
 

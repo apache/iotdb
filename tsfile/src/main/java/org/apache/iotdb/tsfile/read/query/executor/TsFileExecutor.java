@@ -66,17 +66,12 @@ public class TsFileExecutor implements QueryExecutor {
         if (bloomFilter.contains(path.getFullPath())) {
           filteredSeriesPath.add(path);
         } else {
-          // If one path is not contains in this tsfile, return empty set
-          LOG.debug(
-              "This tsfile not contains paths " + path
-                  + " which specified in selected series, return empty dataset");
-          return new DataSetWithoutTimeGenerator(Collections.emptyList(), Collections.emptyList(),
-              Collections.emptyList());
+          throw new IOException("select path: " + path + " not in this tsfile");
         }
       }
     }
+
     queryExpression.setSelectSeries(filteredSeriesPath);
-    //
     metadataQuerier.loadChunkMetaDatas(queryExpression.getSelectedSeries());
     if (queryExpression.hasQueryFilter()) {
       try {
