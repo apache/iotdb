@@ -75,7 +75,7 @@ Linux系统与MacOS系统启动命令如下：
 ```
 * 以20个存储组，共10w条时间序列，存储组中最大时间序列数为50000为例：
 ```
-  Shell >$IOTDB_HOME/bin/memory-tool.sh calmem -sg 20 -ts 100000 -tsm -50000
+  Shell >$IOTDB_HOME/bin/memory-tool.sh calmem -sg 20 -ts 100000 -mts -50000
 ```
 
 Windows系统启动命令如下：
@@ -85,6 +85,6 @@ Windows系统启动命令如下：
 ```
 * 以20个存储组，共10w条时间序列，存储组中最大时间序列数为50000为例：
 ```
-  Shell >$IOTDB_HOME\bin\memory-tool.bat calmem -sg 20 -ts 100000 -tsm -50000
+  Shell >$IOTDB_HOME\bin\memory-tool.bat calmem -sg 20 -ts 100000 -mts -50000
 ```
 

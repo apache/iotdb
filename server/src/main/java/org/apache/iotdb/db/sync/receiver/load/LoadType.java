@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -16,29 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.test;
+package org.apache.iotdb.db.sync.receiver.load;
 
-public class Utils {
-
-  public static String getType(String properties) {
-    return properties.split(",")[0];
-  }
-
-  public static String getEncode(String properties) {
-    return properties.split(",")[1];
-  }
-
-  private Utils() {
-    throw new IllegalStateException("Utility class");
-  }
-
-  public static String getPath(String timeseries) {
-    int lastPointIndex = timeseries.lastIndexOf('.');
-    return timeseries.substring(0, lastPointIndex);
-  }
-
-  public static String getSensor(String timeseries) {
-    int lastPointIndex = timeseries.lastIndexOf('.');
-    return timeseries.substring(lastPointIndex + 1);
-  }
+public enum LoadType {
+    DELETE, ADD, NONE
 }

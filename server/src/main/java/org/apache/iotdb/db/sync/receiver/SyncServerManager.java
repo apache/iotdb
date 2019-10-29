@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.sync.receiver;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
@@ -27,6 +28,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
+import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogAnalyzer;
+import org.apache.iotdb.db.sync.receiver.transfer.SyncServiceImpl;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.service.sync.thrift.SyncService.Processor;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -46,13 +50,15 @@ import org.slf4j.LoggerFactory;
 public class SyncServerManager implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(SyncServerManager.class);
-  private Thread syncServerThread;
+
   private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+
+  private Thread syncServerThread;
 
   private SyncServerManager() {
   }
 
-  public static final SyncServerManager getInstance() {
+  public static SyncServerManager getInstance() {
     return ServerManagerHolder.INSTANCE;
   }
 
@@ -63,6 +69,12 @@ public class SyncServerManager implements IService {
   public void start() throws StartupException {
     if (!conf.isSyncEnable()) {
       return;
+    }
+    FileLoaderManager.getInstance().start();
+    try {
+      SyncReceiverLogAnalyzer.getInstance().recoverAll();
+    } catch (IOException e) {
+      logger.error("Can not recover receiver sync state", e);
     }
     if (conf.getIpWhiteList() == null) {
       logger.error(
@@ -82,6 +94,7 @@ public class SyncServerManager implements IService {
   @Override
   public void stop() {
     if (conf.isSyncEnable()) {
+      FileLoaderManager.getInstance().stop();
       ((SyncServiceThread) syncServerThread).close();
     }
   }

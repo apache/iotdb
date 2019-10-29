@@ -18,31 +18,43 @@
  */
 package org.apache.iotdb.db.sync.conf;
 
-public class Constans {
+public class SyncConstant {
 
-  private Constans() {
+  private SyncConstant() {
   }
 
   public static final String CONFIG_NAME = "iotdb-sync-client.properties";
-  public static final String SYNC_CLIENT = "sync-client";
-  public static final String SYNC_SERVER = "sync-server";
 
-  public static final String LOCK_FILE_NAME = "sync-lock";
-  public static final String UUID_FILE_NAME = "uuid.txt";
-  public static final String LAST_LOCAL_FILE_NAME = "last_local_files.txt";
-  public static final String DATA_SNAPSHOT_NAME = "data-snapshot";
+  public static final String SYNC_NAME = "sync";
 
-  public static final String BACK_UP_DIRECTORY_NAME = "backup";
+  public static final String SYNC_SENDER = "sync-sender";
+
+  public static final String SYNC_RECEIVER = "sync-receiver";
+
+  public static final String MESSAGE_DIGIT_NAME = "MD5";
+
+  public static final String SYNC_DIR_NAME_SEPARATOR = "_";
 
   /**
-   * Split data file , block size at each transmission
+   * Split data file, block size at each transmission
    **/
   public static final int DATA_CHUNK_SIZE = 64 * 1024 * 1024;
 
-  /**
-   * Max try when syncing the same file to receiver fails.
-   */
-  public static final int MAX_SYNC_FILE_TRY = 10;
+  // sender section
+
+  public static final String LOCK_FILE_NAME = "sync_lock";
+
+  public static final String UUID_FILE_NAME = "uuid.txt";
+
+  public static final String SCHEMA_POS_FILE_NAME = "sync_schema_pos";
+
+  public static final String LAST_LOCAL_FILE_NAME = "last_local_files.txt";
+
+  public static final String CURRENT_LOCAL_FILE_NAME = "current_local_files.txt";
+
+  public static final String DATA_SNAPSHOT_NAME = "snapshot";
+
+  public static final String SYNC_LOG_NAME = "sync.log";
 
   private static final SyncSenderConfig CONFIG = SyncSenderDescriptor.getInstance().getConfig();
 
@@ -53,5 +65,15 @@ public class Constans {
   public static final long SYNC_PROCESS_PERIOD = CONFIG.getSyncPeriodInSecond();
 
   public static final long SYNC_MONITOR_PERIOD = CONFIG.getSyncPeriodInSecond();
+
+  // receiver section
+
+  public static final String RECEIVER_DATA_FOLDER_NAME = "data";
+
+  public static final String LOAD_LOG_NAME = "load.log";
+
+  public static final String DEVICE_OWNER_FILE_NAME = "device_owner";
+
+  public static final String DEVICE_OWNER_TMP_FILE_NAME = "device_owner.tmp";
 
 }
