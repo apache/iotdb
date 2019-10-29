@@ -240,12 +240,6 @@ public class IoTDBConfig {
    * Set the language version when loading file including error information, default value is "EN"
    */
   private String languageVersion = "EN";
-  /**
-   * Choose a postBack strategy of merging historical data: 1. It's more likely to update historical
-   * data, choose "true". 2. It's more likely not to update historical data or you don't know
-   * exactly, choose "false".
-   */
-  private boolean updateHistoricalDataPossibility = false;
 
   private String ipWhiteList = "0.0.0.0/0";
   /**
@@ -707,14 +701,6 @@ public class IoTDBConfig {
 
   void setLanguageVersion(String languageVersion) {
     this.languageVersion = languageVersion;
-  }
-
-  public boolean isUpdateHistoricalDataPossibility() {
-    return updateHistoricalDataPossibility;
-  }
-
-  void setUpdateHistoricalDataPossibility(boolean updateHistoricalDataPossibility) {
-    this.updateHistoricalDataPossibility = updateHistoricalDataPossibility;
   }
 
   public String getBaseDir() {

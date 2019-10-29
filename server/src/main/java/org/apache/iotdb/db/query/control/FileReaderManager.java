@@ -86,6 +86,19 @@ public class FileReaderManager implements IService {
     return FileReaderManagerHelper.INSTANCE;
   }
 
+  public synchronized void closeFileAndRemoveReader(TsFileResource seqFile) throws IOException {
+    closedReferenceMap.remove(seqFile);
+    TsFileSequenceReader reader = closedFileReaderMap.remove(seqFile);
+    if (reader != null) {
+      reader.close();
+    }
+    unclosedReferenceMap.remove(seqFile);
+    reader = unclosedFileReaderMap.remove(seqFile);
+    if (reader != null) {
+      reader.close();
+    }
+  }
+
   private void clearUnUsedFilesInFixTime() {
 
     long examinePeriod = IoTDBDescriptor.getInstance().getConfig().getCacheFileReaderClearPeriod();

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageEngineFailureException;
 import org.apache.iotdb.db.exception.StorageGroupException;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
@@ -144,8 +146,7 @@ public class StorageEngine implements IService {
     return ServiceType.STORAGE_ENGINE_SERVICE;
   }
 
-
-  private StorageGroupProcessor getProcessor(String path) throws StorageEngineException {
+  public StorageGroupProcessor getProcessor(String path) throws StorageEngineException {
     String storageGroupName = "";
     try {
       storageGroupName = MManager.getInstance().getStorageGroupNameByPath(path);
@@ -374,4 +375,14 @@ public class StorageEngine implements IService {
       processor.deleteFolder(systemDir);
     }
   }
+
+  public void loadNewTsFile(TsFileResource newTsFileResource)
+      throws TsFileProcessorException, StorageEngineException {
+    getProcessor(newTsFileResource.getFile().getParentFile().getName()).loadNewTsFile(newTsFileResource);
+  }
+
+  public void deleteTsfile(File deletedTsfile) throws StorageEngineException {
+    getProcessor(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
+  }
+
 }

@@ -23,9 +23,11 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,8 +40,8 @@ public class SyncSenderDescriptor {
     loadProps();
   }
 
-  public static final SyncSenderDescriptor getInstance() {
-    return PostBackDescriptorHolder.INSTANCE;
+  public static SyncSenderDescriptor getInstance() {
+    return SyncSenderDescriptorHolder.INSTANCE;
   }
 
   public SyncSenderConfig getConfig() {
@@ -54,22 +56,21 @@ public class SyncSenderDescriptor {
    * load an properties file and set sync config variables
    */
   private void loadProps() {
-    conf.init();
     InputStream inputStream;
     String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     if (url == null) {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
       if (url != null) {
         url = url + File.separatorChar + "conf" + File.separatorChar
-            + Constans.CONFIG_NAME;
+            + SyncConstant.CONFIG_NAME;
       } else {
         logger.warn(
             "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file {}, use default configuration",
-            Constans.CONFIG_NAME);
+            SyncConstant.CONFIG_NAME);
         return;
       }
     } else {
-      url += (File.separatorChar + Constans.CONFIG_NAME);
+      url += (File.separatorChar + SyncConstant.CONFIG_NAME);
     }
 
     try {
@@ -90,42 +91,30 @@ public class SyncSenderDescriptor {
       conf.setSyncPeriodInSecond(Integer.parseInt(properties
           .getProperty("sync_period_in_second",
               Integer.toString(conf.getSyncPeriodInSecond()))));
-      conf.setSchemaPath(properties.getProperty("iotdb_schema_directory", conf.getSchemaPath()));
-      conf.setDataDirectory(
-          properties.getProperty("iotdb_bufferWrite_directory", conf.getDataDirectory()));
-      String dataDirectory = conf.getDataDirectory();
-      if (dataDirectory.length() > 0
-          && dataDirectory.charAt(dataDirectory.length() - 1) != File.separatorChar) {
-        dataDirectory += File.separatorChar;
+      String storageGroups = properties.getProperty("sync_storage_groups", null);
+      if (storageGroups != null) {
+        String[] splits = storageGroups.split(",");
+        List<String> storageGroupList = new ArrayList<>();
+        Arrays.stream(splits).forEach(sg -> storageGroupList.add(sg.trim()));
+        conf.setStorageGroupList(storageGroupList);
       }
-      conf.setUuidPath(
-          dataDirectory + Constans.SYNC_CLIENT + File.separatorChar + Constans.UUID_FILE_NAME);
-      conf.setLastFileInfo(
-          dataDirectory + Constans.SYNC_CLIENT + File.separatorChar
-              + Constans.LAST_LOCAL_FILE_NAME);
-      String[] sequenceFileDirectory = conf.getSeqFileDirectory();
-      String[] snapshots = new String[conf.getSeqFileDirectory().length];
-      for (int i = 0; i < conf.getSeqFileDirectory().length; i++) {
-        sequenceFileDirectory[i] = FilePathUtils.regularizePath(sequenceFileDirectory[i]);
-        snapshots[i] = sequenceFileDirectory[i] + Constans.SYNC_CLIENT + File.separatorChar
-            + Constans.DATA_SNAPSHOT_NAME + File.separatorChar;
-      }
-      conf.setSeqFileDirectory(sequenceFileDirectory);
-      conf.setSnapshotPaths(snapshots);
+      conf.setMaxNumOfSyncFileRetry(Integer
+          .parseInt(properties.getProperty("max_number_of_sync_file_retry",
+              Integer.toString(conf.getMaxNumOfSyncFileRetry()))));
     } catch (IOException e) {
-      logger.warn("Cannot load config file because {}, use default configuration", e);
+      logger.warn("Cannot load sync config file, use default sync configuration.", e);
     } catch (Exception e) {
-      logger.warn("Error format in config file because {}, use default configuration", e);
+      logger.warn("Error format in sync config file, use default sync configuration.", e);
     } finally {
       try {
         inputStream.close();
       } catch (IOException e) {
-        logger.error("Fail to close sync config file input stream because ", e);
+        logger.error("Fail to close sync config file input stream.", e);
       }
     }
   }
 
-  private static class PostBackDescriptorHolder {
+  private static class SyncSenderDescriptorHolder {
 
     private static final SyncSenderDescriptor INSTANCE = new SyncSenderDescriptor();
   }

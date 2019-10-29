@@ -86,7 +86,7 @@ public class MManager {
   private MManager() {
 
     schemaDir =
-        IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "schema";
+        IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
 
     File systemFolder = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!systemFolder.exists()) {
@@ -200,7 +200,7 @@ public class MManager {
     }
   }
 
-  private void operation(String cmd)
+  public void operation(String cmd)
       throws PathErrorException, IOException, MetadataErrorException {
     //see addPathToMTree() to get the detailed format of the cmd
     String[] args = cmd.trim().split(",");
