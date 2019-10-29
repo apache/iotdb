@@ -69,7 +69,7 @@ public class Path implements Serializable {
     }
     this.device = device;
     this.measurement = measurement;
-    this.fullPath = device + TsFileConstant.PATH_SEPARATOR + (measurement.contains(TsFileConstant.PATH_SEPARATOR) ? "\"" + measurement + "\"": measurement);
+    this.fullPath = device + TsFileConstant.PATH_SEPARATOR + (measurement.contains(TsFileConstant.PATH_SEPARATOR) ? "\"" + measurement + "\"" : measurement);
   }
 
   /**
@@ -80,8 +80,15 @@ public class Path implements Serializable {
    */
   private void init(String pathSc) {
     pathSc = pathSc.trim();
-    int i = pathSc.length() - pathSc.replace("\"", "").length();
-    int j = pathSc.length() - pathSc.replace("\'", "").length();
+    int i = 0;
+    int j = 0;
+    for (char c : pathSc.toCharArray()) {
+      if (c == '\"') {
+        i++;
+      } else if (c == '\'') {
+        j++;
+      }
+    }
     if ((i != 2 && i != 0) || (j != 2 && j != 0)) {
       throw new IllegalArgumentException("input pathSc single/double quotes error, not in pair or more than one pair!");
     }
@@ -96,13 +103,13 @@ public class Path implements Serializable {
       } else {
         subStrs = pathSc.split("\'");
       }
-      if(subStrs.length < 2){
+      if (subStrs.length < 2) {
         device = "";
         fullPath = measurement = subStrs[1];
-      }else {
+      } else {
         device = subStrs[0];
-        if(!device.trim().equals("")){
-          device = device.substring(0, subStrs[0].length()-1);
+        if (!device.trim().equals("")) {
+          device = device.substring(0, subStrs[0].length() - 1);
         }
         measurement = subStrs[1];
       }
@@ -121,10 +128,9 @@ public class Path implements Serializable {
   }
 
   public static Path mergePath(Path prefix, Path suffix) {
-    if(suffix.fullPath.equals("")) {
+    if (suffix.fullPath.equals("")) {
       return prefix;
-    }
-    else if(prefix.fullPath.equals("")) {
+    } else if (prefix.fullPath.equals("")) {
       return suffix;
     }
     StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
@@ -141,7 +147,7 @@ public class Path implements Serializable {
    * @return if this path start with prefix
    */
   public static Path addPrefixPath(Path src, String prefix) {
-    if(prefix == ""){
+    if (prefix == "") {
       return src;
     }
     StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
