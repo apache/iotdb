@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.utils;
 
 import java.util.BitSet;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 public class BloomFilter {
 
@@ -61,8 +62,8 @@ public class BloomFilter {
    * @return empty bloom
    */
   public static BloomFilter getEmptyBloomFilter(double errorPercent, int numOfString) {
-    errorPercent = Math.max(errorPercent, 0.01);
-    errorPercent = Math.min(errorPercent, 0.1);
+    errorPercent = Math.max(errorPercent, TSFileConfig.MIN_BLOOM_FILTER_ERROR_RATE);
+    errorPercent = Math.min(errorPercent, TSFileConfig.MAX_BLOOM_FILTER_ERROR_RATE);
 
     double ln2 = Math.log(2);
     int size = (int) (-numOfString * Math.log(errorPercent) / ln2 / ln2) + 1;

@@ -54,6 +54,12 @@ public class TSFileConfig {
   public static final String VERSION_NUMBER = "000001";
 
   /**
+   * Bloom filter constrain
+   */
+  public static final double MIN_BLOOM_FILTER_ERROR_RATE = 0.01;
+  public static final double MAX_BLOOM_FILTER_ERROR_RATE = 0.1;
+
+  /**
    * The default grow size of class BatchData.
    */
   public static final int DYNAMIC_DATA_SIZE = 1000;
@@ -296,7 +302,6 @@ public class TSFileConfig {
    */
   private double bloomFilterErrorRate = 0.05;
 
-
   public TSFileConfig() {
 
   }
@@ -333,4 +338,5 @@ public class TSFileConfig {
   public void setHdfsPort(String hdfsPort) {
     this.hdfsPort = hdfsPort;
   }
+
 }

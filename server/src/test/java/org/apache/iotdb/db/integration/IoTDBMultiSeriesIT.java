@@ -153,7 +153,6 @@ public class IoTDBMultiSeriesIT {
       statement.execute("flush");
       statement.execute("merge");
 
-
       // buffwrite data, unsealed file
       for (int time = 100000; time < 101000; time++) {
 

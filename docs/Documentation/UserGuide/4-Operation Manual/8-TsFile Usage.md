@@ -622,14 +622,14 @@ TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 
 ## Bloom filter
 
-Bloom filter check whether a given time series might in the tsfile before load metadata. This can improve the performance of loading metadata and skip tsfile that doesn't contains specified time series.
+Bloom filter checks whether a given time series is in the tsfile before loading metadata. This can improve the performance of loading metadata and skip the tsfile that doesn't contain specified time series.
 If you want to learn more about its mechanism, you can refer to: [wiki page of bloom filter](https://en.wikipedia.org/wiki/Bloom_filter).
 
 #### configuration 
-you can control the false positive rate of bloom filter by the following parameter in the config file config file `tsfile-format.properties` which located at `/server/src/assembly/resources/conf` directory
+you can control the false positive rate of bloom filter by the following parameter in the config file `tsfile-format.properties` which located at `/server/src/assembly/resources/conf` directory
 ```
-# The acceptable error rate of bloom filter, should be in [0.01, 0.1]
+# The acceptable error rate of bloom filter, should be in [0.01, 0.1], default is 0.05
 
-bloom_filter_error_rate
+bloom_filter_error_rate=0.05
 ```
 

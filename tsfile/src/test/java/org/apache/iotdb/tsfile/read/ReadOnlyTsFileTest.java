@@ -149,7 +149,7 @@ public class ReadOnlyTsFileTest {
     QueryExpression queryExpression = QueryExpression.create(paths, expression);
     try {
       QueryDataSet queryDataSet = tsFile.query(queryExpression);
-      Assert.assertEquals(false, queryDataSet.hasNext());
+      Assert.assertFalse(queryDataSet.hasNext());
     } catch (IOException e) {
       Assert.assertEquals(e.getMessage(), "No device path : dr");
     }
