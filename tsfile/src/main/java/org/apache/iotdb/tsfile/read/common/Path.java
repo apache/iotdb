@@ -18,12 +18,10 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import com.sun.org.apache.xerces.internal.impl.xs.util.XSInputSource;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 import java.io.Serializable;
-import java.util.Arrays;
 
 /**
  * This class define an Object named Path to represent a series in IoTDB. AndExpression in batch read, this definition
