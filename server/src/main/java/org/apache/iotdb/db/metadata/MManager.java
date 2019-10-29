@@ -1070,7 +1070,7 @@ public class MManager {
   /**
    * function for getting leaf node path in the next level of given seriesPath.
    */
-  List<String> getLeafNodePathInNextLevel(String path) throws PathErrorException {
+  public List<String> getLeafNodePathInNextLevel(String path) throws PathErrorException {
     lock.readLock().lock();
     try {
       return mgraph.getLeafNodePathInNextLevel(path);

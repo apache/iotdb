@@ -133,6 +133,21 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         } catch (TException e) {
           throw new TException("Conncetion error when fetching timeseries metadata", e);
         }
+      case Constant.CATALOG_LEAF_PATH:
+        req = new TSFetchMetadataReq(Constant.GLOBAL_SHOW_LEAF_PATH_REQ);
+        req.setColumnPath(schemaPattern);
+        try {
+          TSFetchMetadataResp resp = client.fetchMetadata(req);
+          try {
+            RpcUtils.verifySuccess(resp.getStatus());
+          } catch (IoTDBRPCException e) {
+            throw new IoTDBSQLException(e.getMessage());
+          }
+          List<String> showLeafPathList = resp.getLeafPath();
+          return new IoTDBMetadataResultSet(showLeafPathList, MetadataType.LEAF_PATH);
+        } catch (TException e) {
+          throw new TException("Conncetion error when fetching leaf path", e);
+        }  
       case Constant.COUNT_TIMESERIES:
         req = new TSFetchMetadataReq(Constant.GLOBAL_COUNT_TIMESERIES_REQ);
         req.setColumnPath(schemaPattern);

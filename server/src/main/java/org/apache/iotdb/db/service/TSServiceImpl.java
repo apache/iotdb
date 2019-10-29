@@ -302,6 +302,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return new TSFetchMetadataResp(status);
     }
     TSFetchMetadataResp resp = new TSFetchMetadataResp();
+    System.out.println(req.getType());
+    System.out.println(req.getType());
     try {
       switch (req.getType()) {
         case "SHOW_TIMESERIES":
@@ -313,6 +315,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         case "SHOW_STORAGE_GROUP":
           Set<String> storageGroups = getAllStorageGroups();
           resp.setStorageGroups(storageGroups);
+          status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+          break;
+        case "SHOW_LEAF_PATH":
+          path = req.getColumnPath();
+          List<String> leafPathList = getLeafPath(path);
+          resp.setLeafPath(leafPathList);
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
         case "METADATA_IN_JSON":
@@ -386,6 +394,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private List<List<String>> getTimeSeriesForPath(String path)
       throws PathErrorException {
     return MManager.getInstance().getShowTimeseriesPath(path);
+  }
+  
+  private List<String> getLeafPath(String path) throws PathErrorException {
+    return MManager.getInstance().getLeafNodePathInNextLevel(path);
   }
 
   private String getMetadataInString() {
@@ -551,7 +563,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return getTSExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
       }
       String statement = req.getStatement();
-
       if (execAdminCommand(statement)) {
         return getTSExecuteStatementResp(
             getStatus(TSStatusCode.SUCCESS_STATUS, "ADMIN_COMMAND_SUCCESS"));
@@ -584,7 +595,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS,
             "Execute set consistency level successfully"));
       }
-
       PhysicalPlan physicalPlan;
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {

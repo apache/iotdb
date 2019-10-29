@@ -53,6 +53,8 @@ public class IoTDBStatement implements Statement {
   private static final String COUNT_TIMESERIES_COMMAND_LOWERCASE = "count timeseries";
   private static final String COUNT_NODES_COMMAND_LOWERCASE = "count nodes";
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
+  
+  private static final String SHOW_LEAF_PATH_COMMAND_LOWERCASE = "show leaf path";
 
   ZoneId zoneId;
   private ResultSet resultSet = null;
@@ -232,6 +234,8 @@ public class IoTDBStatement implements Statement {
    */
   private boolean executeSQL(String sql) throws TException, SQLException {
     isCancelled = false;
+    System.out.println(sql + "  xxx");
+    System.out.println(sql + "  xxx");
     String sqlToLowerCase = sql.toLowerCase().trim();
     if (sqlToLowerCase.startsWith(SHOW_TIMESERIES_COMMAND_LOWERCASE)) {
       if (sqlToLowerCase.equals(SHOW_TIMESERIES_COMMAND_LOWERCASE)) {
@@ -248,7 +252,23 @@ public class IoTDBStatement implements Statement {
           resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, path, null, null);
           return true;
         }
-      }
+      } 
+    } else if (sqlToLowerCase.startsWith(SHOW_LEAF_PATH_COMMAND_LOWERCASE)) {
+      if (sqlToLowerCase.equals(SHOW_LEAF_PATH_COMMAND_LOWERCASE)) {
+        DatabaseMetaData databaseMetaData = connection.getMetaData();
+        resultSet = databaseMetaData.getColumns(Constant.CATALOG_LEAF_PATH, "root", null, null);
+        return true;
+      } else {
+        String[] cmdSplited = sql.split("\\s+");
+        if (cmdSplited.length != 4) {
+          throw new SQLException("Error format of \'SHOW LEAF PATH <PATH>\'");
+        } else {
+          String path = cmdSplited[3];
+          DatabaseMetaData databaseMetaData = connection.getMetaData();
+          resultSet = databaseMetaData.getColumns(Constant.CATALOG_LEAF_PATH, path, null, null);
+          return true;
+        }
+      }    
     } else if (sqlToLowerCase.equals(SHOW_STORAGE_GROUP_COMMAND_LOWERCASE)) {
       DatabaseMetaData databaseMetaData = connection.getMetaData();
       resultSet = databaseMetaData.getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null);
