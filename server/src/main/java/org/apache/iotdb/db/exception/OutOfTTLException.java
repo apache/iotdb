@@ -25,8 +25,8 @@ import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 
 public class OutOfTTLException extends QueryProcessorException {
 
-  public OutOfTTLException(long insertionTime, long timeBound) {
+  public OutOfTTLException(long insertionTime, long timeLowerBound) {
     super(String.format("Insertion time [%s] is less than ttl time bound [%s]",
-        new Date(insertionTime), new Date(timeBound)));
+        new Date(insertionTime), new Date(timeLowerBound)));
   }
 }

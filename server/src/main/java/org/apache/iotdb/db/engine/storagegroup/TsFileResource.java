@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TsFileResource {
 
+  // tsfile
   private File file;
 
   public static final String RESOURCE_SUFFIX = ".resource";
@@ -288,16 +289,15 @@ public class TsFileResource {
 
   /**
    * check if any of the device lives over the given time bound
-   * @param timeBound
-   * @return
+   * @param timeLowerBound
    */
-  public boolean stillLives(long timeBound) {
-    if (timeBound == Long.MAX_VALUE) {
+  public boolean stillLives(long timeLowerBound) {
+    if (timeLowerBound == Long.MAX_VALUE) {
       return true;
     }
     for (long endTime : endTimeMap.values()) {
       // the file cannot be deleted if any device still lives
-      if (endTime >= timeBound) {
+      if (endTime >= timeLowerBound) {
         return true;
       }
     }

@@ -80,8 +80,8 @@ public class MergeResource {
   }
 
   public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
-      long timeBound) {
-    timeLowerBound = timeBound;
+      long timeLowerBound) {
+    this.timeLowerBound = timeLowerBound;
     this.seqFiles =
         seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
     this.unseqFiles =
