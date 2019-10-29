@@ -81,32 +81,11 @@ public class MGraph implements Serializable {
    */
   public void addPathToMTree(String path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) throws PathErrorException {
-    String[] nodes = getNodeNames(path);
+    String[] nodes = MetaUtils.getNodeNames(path, DOUB_SEPARATOR);
     if (nodes.length == 0) {
       throw new PathErrorException("Timeseries is null");
     }
     mtree.addTimeseriesPath(path, dataType, encoding, compressor, props);
-  }
-  private String[] getNodeNames(String path) {
-    String[] nodeNames;
-    path = path.trim();
-    if(path.contains("\"") || path.contains("\'")){
-      String[] deviceAndMeasurement;
-      if(path.contains("\"")){
-        deviceAndMeasurement = path.split("\"");
-      }else {
-        deviceAndMeasurement = path.split("\'");
-      }
-      String device = deviceAndMeasurement[0];
-      String measurement = deviceAndMeasurement[1];
-      int nodeNumber = device.split(DOUB_SEPARATOR).length + 1;
-      nodeNames = new String[nodeNumber];
-      System.arraycopy(device.split(DOUB_SEPARATOR), 0, nodeNames, 0, nodeNumber - 1);
-      nodeNames[nodeNumber - 1] = measurement;
-    }else{
-      nodeNames = path.split(DOUB_SEPARATOR);
-    }
-    return nodeNames;
   }
 
   /**
@@ -120,11 +99,11 @@ public class MGraph implements Serializable {
    * Add a seriesPath to {@code PTree}.
    */
   void addPathToPTree(String path) throws PathErrorException {
-    String[] nodes = getNodeNames(path);
+    String[] nodes = MetaUtils.getNodeNames(path, DOUB_SEPARATOR);
     if (nodes.length == 0) {
       throw new PathErrorException("Timeseries is null.");
     }
-    String rootName = getNodeNames(path)[0];
+    String rootName = MetaUtils.getNodeNames(path, DOUB_SEPARATOR)[0];
     if (ptreeMap.containsKey(rootName)) {
       PTree ptree = ptreeMap.get(rootName);
       ptree.addPath(path);
@@ -139,11 +118,11 @@ public class MGraph implements Serializable {
    * @param path a seriesPath belongs to MTree or PTree
    */
   String deletePath(String path) throws PathErrorException {
-    String[] nodes = getNodeNames(path);
+    String[] nodes = MetaUtils.getNodeNames(path, DOUB_SEPARATOR);
     if (nodes.length == 0) {
       throw new PathErrorException("Timeseries is null");
     }
-    String rootName = getNodeNames(path)[0];
+    String rootName = MetaUtils.getNodeNames(path, DOUB_SEPARATOR)[0];
     if (mtree.getRoot().getName().equals(rootName)) {
       return mtree.deletePath(path);
     } else if (ptreeMap.containsKey(rootName)) {
@@ -159,7 +138,7 @@ public class MGraph implements Serializable {
    * Link a {@code MNode} to a {@code PNode} in current PTree.
    */
   void linkMNodeToPTree(String path, String mpath) throws PathErrorException {
-    String ptreeName = getNodeNames(path)[0];
+    String ptreeName = MetaUtils.getNodeNames(path, DOUB_SEPARATOR)[0];
     if (!ptreeMap.containsKey(ptreeName)) {
       throw new PathErrorException("Error: PTree Path Not Correct. Path: " + path);
     } else {
@@ -171,7 +150,7 @@ public class MGraph implements Serializable {
    * Unlink a {@code MNode} from a {@code PNode} in current PTree.
    */
   void unlinkMNodeFromPTree(String path, String mpath) throws PathErrorException {
-    String ptreeName = getNodeNames(path)[0];
+    String ptreeName = MetaUtils.getNodeNames(path, DOUB_SEPARATOR)[0];
     if (!ptreeMap.containsKey(ptreeName)) {
       throw new PathErrorException("Error: PTree Path Not Correct. Path: " + path);
     } else {
@@ -216,7 +195,7 @@ public class MGraph implements Serializable {
    */
   HashMap<String, ArrayList<String>> getAllPathGroupByFilename(String path)
       throws PathErrorException {
-    String rootName = getNodeNames(path)[0];
+    String rootName = MetaUtils.getNodeNames(path, DOUB_SEPARATOR)[0];
     if (mtree.getRoot().getName().equals(rootName)) {
       return mtree.getAllPath(path);
     } else if (ptreeMap.containsKey(rootName)) {
@@ -230,7 +209,7 @@ public class MGraph implements Serializable {
    * function for getting all timeseries paths under the given seriesPath.
    */
   List<List<String>> getShowTimeseriesPath(String path) throws PathErrorException {
-    String rootName = getNodeNames(path)[0];
+    String rootName = MetaUtils.getNodeNames(path, DOUB_SEPARATOR)[0];
     if (mtree.getRoot().getName().equals(rootName)) {
       return mtree.getShowTimeseriesPath(path);
     } else if (ptreeMap.containsKey(rootName)) {
