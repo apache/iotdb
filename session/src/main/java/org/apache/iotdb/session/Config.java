@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,9 +18,15 @@
  */
 package org.apache.iotdb.session;
 
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_ROOT;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+
 public class Config {
 
   public static final String DEFAULT_USER = "user";
   public static final String DEFAULT_PASSWORD = "password";
+
+  public static final String PATH_MATCHER =
+      PATH_ROOT + "([" + PATH_SEPARATOR + "](([a-zA-Z_][a-zA-Z0-9_-]*)|([+-]?[0-9]+)))+";
 
 }

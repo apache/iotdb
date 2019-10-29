@@ -22,10 +22,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategy;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,14 +46,16 @@ public class DirectoryManager {
     sequenceFileFolders =
         new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
     for (int i = 0; i < sequenceFileFolders.size(); i++) {
-      sequenceFileFolders.set(i, sequenceFileFolders.get(i) + File.separator + "sequence");
+      sequenceFileFolders
+          .set(i, sequenceFileFolders.get(i) + File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME);
     }
     mkDataDirs(sequenceFileFolders);
 
     unsequenceFileFolders =
         new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
     for (int i = 0; i < unsequenceFileFolders.size(); i++) {
-      unsequenceFileFolders.set(i, unsequenceFileFolders.get(i) + File.separator + "unsequence");
+      unsequenceFileFolders.set(i,
+          unsequenceFileFolders.get(i) + File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME);
     }
     mkDataDirs(unsequenceFileFolders);
 
@@ -75,7 +78,7 @@ public class DirectoryManager {
 
   private void mkDataDirs(List<String> folders) {
     for (String folder : folders) {
-      File file = TSFileFactory.INSTANCE.getFile(folder);
+      File file = FSFactoryProducer.getFSFactory().getFile(folder);
       if (file.mkdirs()) {
         logger.info("folder {} doesn't exist, create it", file.getPath());
       } else {
@@ -121,6 +124,7 @@ public class DirectoryManager {
   }
 
   private static class DirectoriesHolder {
+
     private static final DirectoryManager INSTANCE = new DirectoryManager();
   }
 

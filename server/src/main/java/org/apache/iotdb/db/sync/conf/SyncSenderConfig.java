@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,104 +19,51 @@
 package org.apache.iotdb.db.sync.conf;
 
 import java.io.File;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.utils.FilePathUtils;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SyncSenderConfig {
-
-  private String[] seqFileDirectory = IoTDBDescriptor.getInstance().getConfig()
-      .getDataDirs();
-
-  private String dataDirectory = IoTDBDescriptor.getInstance().getConfig().getBaseDir();
-
-  private String lockFilePath;
-
-  private String uuidPath;
-
-  private String lastFileInfo;
-
-  private String[] snapshotPaths;
-
-  private String schemaPath;
 
   private String serverIp = "127.0.0.1";
 
   private int serverPort = 5555;
 
-  private int syncPeriodInSecond = 10;
+  private int syncPeriodInSecond = 600;
+
+  private String senderFolderPath;
+
+  private String lockFilePath;
+
+  private String uuidPath;
+
+  private String lastFileInfoPath;
+
+  private String snapshotPath;
 
   /**
-   * Init path
+   * The maximum number of retry when syncing a file to receiver fails.
    */
-  public void init() {
-    schemaPath = IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + MetadataConstant.METADATA_LOG;
-    if (dataDirectory.length() > 0
-        && dataDirectory.charAt(dataDirectory.length() - 1) != File.separatorChar) {
-      dataDirectory += File.separatorChar;
+  private int maxNumOfSyncFileRetry = 5;
+
+  /**
+   * Storage groups which participate in sync process
+   */
+  private List<String> storageGroupList = new ArrayList<>();
+
+  /**
+   * Update paths based on data directory
+   */
+  public void update(String dataDirectory) {
+    senderFolderPath =
+        dataDirectory + File.separatorChar + SyncConstant.SYNC_SENDER + File.separatorChar +
+            getSyncReceiverName();
+    lockFilePath = senderFolderPath + File.separatorChar + SyncConstant.LOCK_FILE_NAME;
+    uuidPath = senderFolderPath + File.separatorChar + SyncConstant.UUID_FILE_NAME;
+    lastFileInfoPath = senderFolderPath + File.separatorChar + SyncConstant.LAST_LOCAL_FILE_NAME;
+    snapshotPath = senderFolderPath + File.separatorChar + SyncConstant.DATA_SNAPSHOT_NAME;
+    if (!new File(snapshotPath).exists()) {
+      new File(snapshotPath).mkdirs();
     }
-    lockFilePath =
-        dataDirectory + Constans.SYNC_CLIENT + File.separatorChar + Constans.LOCK_FILE_NAME;
-    uuidPath = dataDirectory + Constans.SYNC_CLIENT + File.separatorChar + Constans.UUID_FILE_NAME;
-    lastFileInfo =
-        dataDirectory + Constans.SYNC_CLIENT + File.separatorChar + Constans.LAST_LOCAL_FILE_NAME;
-    snapshotPaths = new String[seqFileDirectory.length];
-    for (int i = 0; i < seqFileDirectory.length; i++) {
-      seqFileDirectory[i] = new File(seqFileDirectory[i]).getAbsolutePath();
-      seqFileDirectory[i] = FilePathUtils.regularizePath(seqFileDirectory[i]);
-      snapshotPaths[i] = seqFileDirectory[i] + Constans.SYNC_CLIENT + File.separatorChar
-          + Constans.DATA_SNAPSHOT_NAME
-          + File.separatorChar;
-    }
-
-  }
-
-  public String[] getSeqFileDirectory() {
-    return seqFileDirectory;
-  }
-
-  public void setSeqFileDirectory(String[] seqFileDirectory) {
-    this.seqFileDirectory = seqFileDirectory;
-  }
-
-  public String getDataDirectory() {
-    return dataDirectory;
-  }
-
-  public void setDataDirectory(String dataDirectory) {
-    this.dataDirectory = dataDirectory;
-  }
-
-  public String getUuidPath() {
-    return uuidPath;
-  }
-
-  public void setUuidPath(String uuidPath) {
-    this.uuidPath = uuidPath;
-  }
-
-  public String getLastFileInfo() {
-    return lastFileInfo;
-  }
-
-  public void setLastFileInfo(String lastFileInfo) {
-    this.lastFileInfo = lastFileInfo;
-  }
-
-  public String[] getSnapshotPaths() {
-    return snapshotPaths;
-  }
-
-  public void setSnapshotPaths(String[] snapshotPaths) {
-    this.snapshotPaths = snapshotPaths;
-  }
-
-  public String getSchemaPath() {
-    return schemaPath;
-  }
-
-  public void setSchemaPath(String schemaPath) {
-    this.schemaPath = schemaPath;
   }
 
   public String getServerIp() {
@@ -143,11 +90,59 @@ public class SyncSenderConfig {
     this.syncPeriodInSecond = syncPeriodInSecond;
   }
 
+  public String getSenderFolderPath() {
+    return senderFolderPath;
+  }
+
+  public void setSenderFolderPath(String senderFolderPath) {
+    this.senderFolderPath = senderFolderPath;
+  }
+
   public String getLockFilePath() {
     return lockFilePath;
   }
 
   public void setLockFilePath(String lockFilePath) {
     this.lockFilePath = lockFilePath;
+  }
+
+  public String getLastFileInfoPath() {
+    return lastFileInfoPath;
+  }
+
+  public void setLastFileInfoPath(String lastFileInfoPath) {
+    this.lastFileInfoPath = lastFileInfoPath;
+  }
+
+  public String getSnapshotPath() {
+    return snapshotPath;
+  }
+
+  public void setSnapshotPath(String snapshotPath) {
+    this.snapshotPath = snapshotPath;
+  }
+
+  public String getUuidPath() {
+    return uuidPath;
+  }
+
+  public String getSyncReceiverName() {
+    return serverIp + SyncConstant.SYNC_DIR_NAME_SEPARATOR + serverPort;
+  }
+
+  public List<String> getStorageGroupList() {
+    return new ArrayList<>(storageGroupList);
+  }
+
+  public void setStorageGroupList(List<String> storageGroupList) {
+    this.storageGroupList = storageGroupList;
+  }
+
+  public int getMaxNumOfSyncFileRetry() {
+    return maxNumOfSyncFileRetry;
+  }
+
+  public void setMaxNumOfSyncFileRetry(int maxNumOfSyncFileRetry) {
+    this.maxNumOfSyncFileRetry = maxNumOfSyncFileRetry;
   }
 }
