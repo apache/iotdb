@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+
 import java.io.Serializable;
 import java.sql.SQLException;
 import java.util.*;
@@ -43,7 +44,7 @@ public class MTree implements Serializable {
   private static final long serialVersionUID = -4200394435237291964L;
   private static final String DOUB_SEPARATOR = "\\.";
   private static final String NO_CHILD_ERROR = "Timeseries is not correct. Node[%s] "
-      + "doesn't have child named:%s";
+          + "doesn't have child named:%s";
   private static final String NOT_LEAF_NODE = "Timeseries %s is not the leaf node";
   private static final String SERIES_NOT_CORRECT = "Timeseries %s is not correct";
   private static final String NOT_SERIES_PATH = "The prefix of the seriesPath %s is not one storage group seriesPath";
@@ -61,19 +62,19 @@ public class MTree implements Serializable {
    * this is just for compatibility
    */
   void addTimeseriesPath(String timeseriesPath, String dataType, String encoding)
-      throws PathErrorException {
+          throws PathErrorException {
     TSDataType tsDataType = TSDataType.valueOf(dataType);
     TSEncoding tsEncoding = TSEncoding.valueOf(encoding);
     CompressionType compressionType = CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
     addTimeseriesPath(timeseriesPath, tsDataType, tsEncoding, compressionType,
-        Collections.emptyMap());
+            Collections.emptyMap());
   }
 
   /**
    * function for adding timeseries.It should check whether seriesPath exists.
    */
   void addTimeseriesPath(String timeseriesPath, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressor, Map<String, String> props) throws PathErrorException {
+                         CompressionType compressor, Map<String, String> props) throws PathErrorException {
     String[] nodeNames = MetaUtils.getNodeNames(timeseriesPath, DOUB_SEPARATOR);
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new PathErrorException(String.format("Timeseries %s is not right.", timeseriesPath));
@@ -88,8 +89,8 @@ public class MTree implements Serializable {
     leaf.setDataFileName(levelPath);
     if (cur.isLeaf()) {
       throw new PathErrorException(
-          String.format("The Node [%s] is left node, the timeseries %s can't be created",
-              cur.getName(), timeseriesPath));
+              String.format("The Node [%s] is left node, the timeseries %s can't be created",
+                      cur.getName(), timeseriesPath));
     }
     cur.addChild(nodeNames[nodeNames.length - 1], leaf);
   }
@@ -124,8 +125,8 @@ public class MTree implements Serializable {
       if (!cur.hasChild(nodeName)) {
         if (cur.isLeaf()) {
           throw new PathErrorException(
-              String.format("The Node [%s] is left node, the timeseries %s can't be created",
-                  cur.getName(), String.join(",", nodeNames)));
+                  String.format("The Node [%s] is left node, the timeseries %s can't be created",
+                          cur.getName(), String.join(",", nodeNames)));
         }
         cur.addChild(nodeName, new MNode(nodeName, cur, false));
       }
@@ -207,7 +208,7 @@ public class MTree implements Serializable {
     MNode cur = root;
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new StorageGroupException(
-          String.format("The storage group can't be set to the %s node", path));
+              String.format("The storage group can't be set to the %s node", path));
     }
     int i = 1;
     while (i < nodeNames.length - 1) {
@@ -219,7 +220,7 @@ public class MTree implements Serializable {
         // before set storage group should check the seriesPath exist or not
         // throw exception
         throw new StorageGroupException(
-            String.format("The prefix of %s has been set to the storage group.", path));
+                String.format("The prefix of %s has been set to the storage group.", path));
       }
       cur = cur.getChild(nodeNames[i]);
       i++;
@@ -229,8 +230,8 @@ public class MTree implements Serializable {
       cur.addChild(nodeNames[i], new MNode(nodeNames[i], cur, false));
     } else {
       throw new StorageGroupException(
-          String.format("The seriesPath of %s already exist, it can't be set to the storage group",
-              path));
+              String.format("The seriesPath of %s already exist, it can't be set to the storage group",
+                      path));
     }
     cur = cur.getChild(nodeNames[i]);
     cur.setStorageGroup(true);
@@ -252,6 +253,7 @@ public class MTree implements Serializable {
 
   /**
    * Check whether the input path is storage group or not
+   *
    * @param path input path
    * @return if it is storage group, return true. Else return false
    * @apiNote :for cluster
@@ -281,7 +283,7 @@ public class MTree implements Serializable {
   private void checkStorageGroup(MNode node) throws StorageGroupException {
     if (node.getDataFileName() != null) {
       throw new StorageGroupException(
-          String.format("The storage group %s has been set", node.getDataFileName()));
+              String.format("The storage group %s has been set", node.getDataFileName()));
     }
     if (node.getChildren() == null) {
       return;
@@ -305,7 +307,7 @@ public class MTree implements Serializable {
    * Delete one seriesPath from current Metadata Tree.
    *
    * @param path Format: root.node.(node)* Notice: Path must be a complete Path from root to leaf
-   * node.
+   *             node.
    */
   String deletePath(String path) throws PathErrorException {
     String[] nodes = MetaUtils.getNodeNames(path, DOUB_SEPARATOR);
@@ -317,7 +319,7 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodes.length; i++) {
       if (!cur.hasChild(nodes[i])) {
         throw new PathErrorException(
-            String.format(NO_CHILD_ERROR,cur.getName(),nodes[i]));
+                String.format(NO_CHILD_ERROR, cur.getName(), nodes[i]));
       }
       cur = cur.getChild(nodes[i]);
     }
@@ -386,7 +388,7 @@ public class MTree implements Serializable {
   }
 
   MeasurementSchema getSchemaForOnePathWithCheck(MNode node, String path)
-      throws PathErrorException {
+          throws PathErrorException {
     MNode leaf = getLeafByPathWithCheck(node, path);
     return leaf.getSchema();
   }
@@ -432,7 +434,7 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodes.length; i++) {
       if (!cur.hasChild(nodes[i])) {
         throw new PathErrorException(
-            String.format(NO_CHILD_ERROR,cur.getName(),nodes[i]));
+                String.format(NO_CHILD_ERROR, cur.getName(), nodes[i]));
       }
       cur = cur.getChild(nodes[i]);
     }
@@ -452,7 +454,7 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodes.length; i++) {
       if (!cur.hasChild(nodes[i])) {
         throw new PathErrorException(
-            String.format(NO_CHILD_ERROR,cur.getName(),nodes[i]));
+                String.format(NO_CHILD_ERROR, cur.getName(), nodes[i]));
       }
       cur = cur.getChild(nodes[i]);
     }
@@ -514,7 +516,7 @@ public class MTree implements Serializable {
     String[] nodes = MetaUtils.getNodeNames(path, DOUB_SEPARATOR);
     if (nodes.length < 2) {
       throw new PathErrorException(
-          String.format("Timeseries %s must have two or more nodes", path));
+              String.format("Timeseries %s must have two or more nodes", path));
     }
     return nodes[0] + "." + nodes[1];
   }
@@ -548,7 +550,7 @@ public class MTree implements Serializable {
     for (String node1 : nodes) {
       if (!cur.hasChild(node1)) {
         throw new PathErrorException(
-            String.format(NO_CHILD_ERROR, cur.getName(), node1));
+                String.format(NO_CHILD_ERROR, cur.getName(), node1));
       }
       cur = cur.getChild(node1);
     }
@@ -596,10 +598,11 @@ public class MTree implements Serializable {
 
   /**
    * Recursively find all fileName according to a specific path
+   *
    * @apiNote :for cluster
    */
   private void findFileName(MNode node, String[] nodes, int idx, String parent,
-      ArrayList<String> paths) {
+                            ArrayList<String> paths) {
     if (node.isStorageGroup()) {
       paths.add(node.getDataFileName());
       return;
@@ -730,10 +733,10 @@ public class MTree implements Serializable {
   int getFileCountForOneType(String path) throws PathErrorException {
     String[] nodes = MetaUtils.getNodeNames(path, DOUB_SEPARATOR);
     if (nodes.length != 2 || !nodes[0].equals(getRoot().getName()) || !getRoot()
-        .hasChild(nodes[1])) {
+            .hasChild(nodes[1])) {
       throw new PathErrorException(
-          "Timeseries must be " + getRoot().getName()
-              + ". X (X is one of the nodes of root's children)");
+              "Timeseries must be " + getRoot().getName()
+                      + ". X (X is one of the nodes of root's children)");
     }
     return getFileCountForOneNode(getRoot().getChild(nodes[1]));
   }
@@ -896,10 +899,10 @@ public class MTree implements Serializable {
   ArrayList<MeasurementSchema> getSchemaForOneType(String path) throws PathErrorException {
     String[] nodes = MetaUtils.getNodeNames(path, DOUB_SEPARATOR);
     if (nodes.length != 2 || !nodes[0].equals(getRoot().getName()) || !getRoot()
-        .hasChild(nodes[1])) {
+            .hasChild(nodes[1])) {
       throw new PathErrorException(
-          "Timeseries must be " + getRoot().getName()
-              + ". X (X is one of the nodes of root's children)");
+              "Timeseries must be " + getRoot().getName()
+                      + ". X (X is one of the nodes of root's children)");
     }
     HashMap<String, MeasurementSchema> leafMap = new HashMap<>();
     putLeafToLeafMap(getRoot().getChild(nodes[1]), leafMap);
@@ -909,7 +912,7 @@ public class MTree implements Serializable {
   /**
    * Get all ColumnSchemas for the storage group seriesPath.
    *
-   * @return ArrayList<  ColumnSchema  > The list of the schema
+   * @return ArrayList<ColumnSchema> The list of the schema
    */
   ArrayList<MeasurementSchema> getSchemaForOneStorageGroup(String path) {
 
@@ -961,14 +964,14 @@ public class MTree implements Serializable {
   }
 
   private void findPath(MNode node, String[] nodes, int idx, String parent,
-      HashMap<String, ArrayList<String>> paths) {
+                        HashMap<String, ArrayList<String>> paths) {
     if (node.isLeaf()) {
       if (nodes.length <= idx) {
         String fileName = node.getDataFileName();
         String nodeName;
-        if(node.getName().contains(TsFileConstant.PATH_SEPARATOR)){
+        if (node.getName().contains(TsFileConstant.PATH_SEPARATOR)) {
           nodeName = "\"" + node + "\"";
-        }else{
+        } else {
           nodeName = "" + node;
         }
         String nodePath = parent + nodeName;
@@ -998,7 +1001,7 @@ public class MTree implements Serializable {
    * Iterate through MTree to fetch metadata info of all leaf nodes under the given seriesPath
    */
   private void findPath(MNode node, String[] nodes, int idx, String parent,
-      List<List<String>> res) {
+                        List<List<String>> res) {
     if (node.isLeaf()) {
       if (nodes.length <= idx) {
         String nodePath = parent + node;
@@ -1031,7 +1034,7 @@ public class MTree implements Serializable {
   }
 
   private void putAPath(HashMap<String, ArrayList<String>> paths, String fileName,
-      String nodePath) {
+                        String nodePath) {
     if (paths.containsKey(fileName)) {
       paths.get(fileName).add(nodePath);
     } else {
