@@ -32,7 +32,7 @@ import static org.apache.iotdb.db.integration.Constant.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class IoTDBQuotedPathT {
+public class IoTDBQuotedPathIT {
   private IoTDB daemon;
 
   @Before
