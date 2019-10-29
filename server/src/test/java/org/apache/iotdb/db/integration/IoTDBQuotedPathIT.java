@@ -104,7 +104,7 @@ public class IoTDBQuotedPathIT {
           cnt++;
         }
       }
-      for (int i = 0; i < ans.size(); i++) {
+      for (int i = 0; i < exp.length; i++) {
         assertEquals(exp[i], ans.get(i));
       }
       statement.execute("DELETE FROM root.ln.wf01.wt01.\"status.2.3\" WHERE time < 1509465600001");
