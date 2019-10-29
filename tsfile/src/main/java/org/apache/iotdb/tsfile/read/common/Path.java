@@ -163,61 +163,6 @@ public class Path implements Serializable {
     return addPrefixPath(src, prefix.fullPath);
   }
 
-//  /**
-//   * replace prefix of descPrefix with given parameter {@code srcPrefix}. If the level of the path constructed by
-//   * {@code srcPrefix} is larger than {@code descPrefix}, return {@code
-//   * srcPrefix} directly.
-//   *
-//   * @param srcPrefix
-//   *            the prefix to replace descPrefix
-//   * @param descPrefix
-//   *            to be replaced
-//   * @return If the level of the path constructed by {@code srcPrefix} is larger than {@code descPrefix}, return
-//   *         {@code srcPrefix} directly.
-//   */
-//  public static Path replace(String srcPrefix, Path descPrefix) {
-//    if ("".equals(srcPrefix) || descPrefix.startWith(srcPrefix)) {
-//      return descPrefix;
-//    }
-//    int prefixSize = srcPrefix.split(TsFileConstant.PATH_SEPARATER_NO_REGEX).length;
-//    String[] descArray = descPrefix.fullPath.split(TsFileConstant.PATH_SEPARATER_NO_REGEX);
-//    if (descArray.length <= prefixSize) {
-//      return new Path(srcPrefix);
-//    }
-//    StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
-//    sc.addTail(srcPrefix);
-//    for (int i = prefixSize; i < descArray.length; i++) {
-//      sc.addTail(descArray[i]);
-//    }
-//    return new Path(sc);
-//  }
-
-//  /**
-//   * replace prefix of {@code descPrefix} with given parameter {@code srcPrefix}. If the level of {@code srcPrefix} is
-//   * larger than {@code descPrefix}, return {@code srcPrefix} directly.
-//   *
-//   * @param srcPrefix
-//   *            the prefix to replace descPrefix
-//   * @param descPrefix
-//   *            to be replaced
-//   * @return If the level of {@code srcPrefix} is larger than {@code descPrefix}, return {@code srcPrefix} directly.
-//   */
-//  public static Path replace(Path srcPrefix, Path descPrefix) {
-//    return replace(srcPrefix.fullPath, descPrefix);
-//  }
-
-//  private void init(String[] splitedPathArray) {
-//    StringContainer sc = new StringContainer(splitedPathArray, TsFileConstant.PATH_SEPARATOR);
-//    if (sc.size() <= 1) {
-//      device = "";
-//      fullPath = measurement = sc.toString();
-//    } else {
-//      device = sc.getSubStringContainer(0, -2).toString();
-//      measurement = sc.getSubString(-1);
-//      fullPath = sc.toString();
-//    }
-//  }
-
   public String getFullPath() {
     return fullPath;
   }

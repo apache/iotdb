@@ -87,19 +87,6 @@ public class PathTest {
     testPath(Path.mergePath(desc, head1), "a.b", "c", "a.b.\"c\"");
   }
 
-  //  @Test
-//  public void replace() throws Exception {
-//    Path src = new Path("a.b.c");
-//    Path rep1 = new Path("");
-//    Path rep2 = new Path("d");
-//    Path rep3 = new Path("d.e.f");
-//    Path rep4 = new Path("d.e.f.g");
-//    testPath(Path.replace(rep1, src), "a.b", "c", "a.b.c");
-//    testPath(Path.replace(rep2, src), "d.b", "c", "d.b.c");
-//    testPath(Path.replace(rep3, src), "d.e", "f", "d.e.f");
-//    testPath(Path.replace(rep4, src), "d.e.f", "g", "d.e.f.g");
-//  }
-
   @Test
   public void temp() {
     Path src = new Path("a.b.c");
