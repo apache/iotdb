@@ -103,7 +103,7 @@ public class MGraph implements Serializable {
     if (nodes.length == 0) {
       throw new PathErrorException("Timeseries is null.");
     }
-    String rootName = MetaUtils.getNodeNames(path, DOUB_SEPARATOR)[0];
+    String rootName = nodes[0];
     if (ptreeMap.containsKey(rootName)) {
       PTree ptree = ptreeMap.get(rootName);
       ptree.addPath(path);
@@ -122,7 +122,7 @@ public class MGraph implements Serializable {
     if (nodes.length == 0) {
       throw new PathErrorException("Timeseries is null");
     }
-    String rootName = MetaUtils.getNodeNames(path, DOUB_SEPARATOR)[0];
+    String rootName = nodes[0];
     if (mtree.getRoot().getName().equals(rootName)) {
       return mtree.deletePath(path);
     } else if (ptreeMap.containsKey(rootName)) {

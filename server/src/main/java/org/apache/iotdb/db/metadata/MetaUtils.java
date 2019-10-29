@@ -15,9 +15,10 @@ public class MetaUtils {
       }
       String device = deviceAndMeasurement[0];
       String measurement = deviceAndMeasurement[1];
-      int nodeNumber = device.split(separator).length + 1;
+      String[] deviceNodeName = device.split(separator);
+      int nodeNumber = deviceNodeName.length + 1;
       nodeNames = new String[nodeNumber];
-      System.arraycopy(device.split(separator), 0, nodeNames, 0, nodeNumber - 1);
+      System.arraycopy(deviceNodeName, 0, nodeNames, 0, nodeNumber - 1);
       nodeNames[nodeNumber - 1] = measurement;
     }else{
       nodeNames = path.split(separator);
