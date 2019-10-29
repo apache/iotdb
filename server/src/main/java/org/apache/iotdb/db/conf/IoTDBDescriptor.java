@@ -20,6 +20,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,6 +117,9 @@ public class IoTDBDescriptor {
             + " use default value");
       }
 
+      conf.setMetricsPort(Integer.parseInt(properties.getProperty("metrics_port",
+          Integer.toString(conf.getMetricsPort()))));
+      
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
 
       conf.setRpcThriftCompressionEnable(Boolean.parseBoolean(properties.getProperty("rpc_thrift_compression_enable",
@@ -195,9 +199,6 @@ public class IoTDBDescriptor {
           .parseInt(properties.getProperty("sync_server_port",
               Integer.toString(conf.getSyncServerPort())).trim()));
 
-      conf.setUpdateHistoricalDataPossibility(Boolean.parseBoolean(
-          properties.getProperty("update_historical_data_possibility",
-              Boolean.toString(conf.isSyncEnable()))));
       conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
 
       conf.setConcurrentFlushThread(Integer
@@ -274,11 +275,27 @@ public class IoTDBDescriptor {
       conf.setWatermarkMethod(
           properties.getProperty("watermark_method", conf.getWatermarkMethod()));
 
+      conf.setAutoCreateSchemaEnabled(Boolean.parseBoolean(properties.getProperty("enable_auto_create_schema",
+          Boolean.toString(conf.isAutoCreateSchemaEnabled()).trim())));
+      conf.setDefaultStorageGroupLevel(Integer.parseInt(properties.getProperty("default_storage_group_level",
+          Integer.toString(conf.getDefaultStorageGroupLevel()))));
+      conf.setDefaultBooleanEncoding(
+          properties.getProperty("default_boolean_encoding", conf.getDefaultBooleanEncoding().toString()));
+      conf.setDefaultLongEncoding(
+          properties.getProperty("default_long_encoding", conf.getDefaultLongEncoding().toString()));
+      conf.setDefaultDoubleEncoding(
+          properties.getProperty("default_double_encoding", conf.getDefaultDoubleEncoding().toString()));
+      conf.setDefaultStringEncoding(
+          properties.getProperty("default_string_encoding", conf.getDefaultStringEncoding().toString()));
+
       conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
       conf.setTsFileStorageFs(properties.getProperty("tsfile_storage_fs"));
       conf.setHdfsIp(properties.getProperty("hdfs_ip"));
       conf.setHdfsPort(properties.getProperty("hdfs_port"));
+
+      conf.setDefaultTTL(Long.parseLong(properties.getProperty("default_ttl",
+          String.valueOf(conf.getDefaultTTL()))));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));

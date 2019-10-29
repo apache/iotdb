@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -41,7 +42,7 @@ import org.junit.Test;
 public class ChunkGroupMetaDataTest {
 
   public static final String DELTA_OBJECT_UID = "delta-3312";
-  final static String PATH = "target/outputChunkGroup.tsfile";
+  private final static String PATH = "target/outputChunkGroup.tsfile";
   private static String testDataFile;
 
   @BeforeClass
@@ -64,6 +65,7 @@ public class ChunkGroupMetaDataTest {
   @Test
   public void testOffset() throws IOException {
     TsFileSequenceReader reader = new TsFileSequenceReader(testDataFile);
+    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length);
     TsFileMetaData metaData = reader.readFileMetadata();
     List<Pair<Long, Long>> offsetList = new ArrayList<>();
     long startOffset = reader.position();

@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -31,6 +27,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * TSFileMetaData collects all metadata info and saves in its data structure.
@@ -43,12 +42,7 @@ public class TsFileMetaData {
    * TSFile schema for this file. This schema contains metadata for all the measurements.
    */
   private Map<String, MeasurementSchema> measurementSchema = new HashMap<>();
-
-  /**
-   * Version of this file.
-   */
-  private int currentVersion;
-
+  
   /**
    * String for application that wrote this file. This should be in the format [Application] version
    * [App Version](build [App Build Hash]). e.g. impala version 1.0 (build SHA-1_hash_code)
@@ -69,13 +63,11 @@ public class TsFileMetaData {
    * construct function for TsFileMetaData.
    *
    * @param measurementSchema - time series info list
-   * @param currentVersion - current version
    */
   public TsFileMetaData(Map<String, TsDeviceMetadataIndex> deviceMap,
-      Map<String, MeasurementSchema> measurementSchema, int currentVersion) {
+      Map<String, MeasurementSchema> measurementSchema) {
     this.deviceIndexMap = deviceMap;
     this.measurementSchema = measurementSchema;
-    this.currentVersion = currentVersion;
   }
 
   /**
@@ -111,8 +103,6 @@ public class TsFileMetaData {
         fileMetaData.measurementSchema.put(key, value);
       }
     }
-
-    fileMetaData.currentVersion = ReadWriteIOUtils.readInt(inputStream);
 
     if (ReadWriteIOUtils.readIsNull(inputStream)) {
       fileMetaData.createdBy = ReadWriteIOUtils.readString(inputStream);
@@ -157,8 +147,6 @@ public class TsFileMetaData {
       }
     }
 
-    fileMetaData.currentVersion = ReadWriteIOUtils.readInt(buffer);
-
     if (ReadWriteIOUtils.readIsNull(buffer)) {
       fileMetaData.createdBy = ReadWriteIOUtils.readString(buffer);
     }
@@ -180,16 +168,7 @@ public class TsFileMetaData {
   @Override
   public String toString() {
     return "TsFileMetaData{" + "deviceIndexMap=" + deviceIndexMap + ", measurementSchema="
-        + measurementSchema
-        + ", CURRENT_VERSION=" + currentVersion + ", createdBy='" + createdBy + '\'' + '}';
-  }
-
-  public int getCurrentVersion() {
-    return currentVersion;
-  }
-
-  public void setCurrentVersion(int currentVersion) {
-    this.currentVersion = currentVersion;
+        + measurementSchema + ", createdBy='" + createdBy + '\'' + '}';
   }
 
   public String getCreatedBy() {
@@ -212,8 +191,11 @@ public class TsFileMetaData {
     return this.deviceIndexMap.containsKey(deltaObjUid);
   }
 
-  public TsDeviceMetadataIndex getDeviceMetadataIndex(String deltaObjUid) {
-    return this.deviceIndexMap.get(deltaObjUid);
+  public TsDeviceMetadataIndex getDeviceMetadataIndex(String deviceUid) throws IOException {
+    if (!this.deviceIndexMap.containsKey(deviceUid)) {
+      throw new IOException("No device path : " + deviceUid);
+    }
+    return this.deviceIndexMap.get(deviceUid);
   }
 
   public boolean containsMeasurement(String measurement) {
@@ -259,8 +241,6 @@ public class TsFileMetaData {
       byteLen += entry.getValue().serializeTo(outputStream);
     }
 
-    byteLen += ReadWriteIOUtils.write(currentVersion, outputStream);
-
     byteLen += ReadWriteIOUtils.writeIsNull(createdBy, outputStream);
     if (createdBy != null) {
       byteLen += ReadWriteIOUtils.write(createdBy, outputStream);
@@ -292,8 +272,6 @@ public class TsFileMetaData {
       byteLen += ReadWriteIOUtils.write(entry.getKey(), buffer);
       byteLen += entry.getValue().serializeTo(buffer);
     }
-
-    byteLen += ReadWriteIOUtils.write(currentVersion, buffer);
 
     byteLen += ReadWriteIOUtils.writeIsNull(createdBy, buffer);
     if (createdBy != null) {
