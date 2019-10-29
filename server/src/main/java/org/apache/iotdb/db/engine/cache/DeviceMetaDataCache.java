@@ -65,9 +65,6 @@ public class DeviceMetaDataCache {
   private long chunkMetaDataSize = 0;
 
   private DeviceMetaDataCache(long memoryThreshold) {
-    if (!cacheEnable) {
-      return;
-    }
     lruCache = new LRULinkedHashMap<String, List<ChunkMetaData>>(memoryThreshold, true) {
       @Override
       protected long calEntrySize(String key, List<ChunkMetaData> value) {

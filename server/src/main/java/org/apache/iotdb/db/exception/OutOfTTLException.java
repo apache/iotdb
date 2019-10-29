@@ -15,27 +15,18 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.jdbc;
+package org.apache.iotdb.db.exception;
 
-import java.sql.SQLException;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import java.util.Date;
+import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 
-public class IoTDBSQLException extends SQLException {
+public class OutOfTTLException extends QueryProcessorException {
 
-  private static final long serialVersionUID = -3306001287342258977L;
-
-  public IoTDBSQLException(String reason) {
-    super(reason);
+  public OutOfTTLException(long insertionTime, long timeLowerBound) {
+    super(String.format("Insertion time [%s] is less than ttl time bound [%s]",
+        new Date(insertionTime), new Date(timeLowerBound)));
   }
-
-  public IoTDBSQLException(String reason, TSStatus status) {
-    super(reason, status.sqlState, status.statusType.code);
-  }
-
-  public IoTDBSQLException(Throwable cause) {
-    super(cause);
-  }
-
 }

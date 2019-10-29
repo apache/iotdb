@@ -87,17 +87,7 @@ public class DirectoryManager {
       }
     }
   }
-
-  // only used by test
-  public String getSequenceFolderForTest() {
-    return sequenceFileFolders.get(0);
-  }
-
-  // only used by test
-  public void setSequenceFolderForTest(String path) {
-    sequenceFileFolders.set(0, path);
-  }
-
+  
   public String getNextFolderForSequenceFile() throws DiskSpaceInsufficientException {
     return getSequenceFileFolder(getNextFolderIndexForSequenceFile());
   }

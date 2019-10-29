@@ -15,27 +15,14 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.jdbc;
+package org.apache.iotdb.db.exception;
 
-import java.sql.SQLException;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+public class NotStorageGroupException extends PathErrorException {
 
-public class IoTDBSQLException extends SQLException {
-
-  private static final long serialVersionUID = -3306001287342258977L;
-
-  public IoTDBSQLException(String reason) {
-    super(reason);
+  public NotStorageGroupException(String path) {
+    super(String.format("%s is not a storage group", path));
   }
-
-  public IoTDBSQLException(String reason, TSStatus status) {
-    super(reason, status.sqlState, status.statusType.code);
-  }
-
-  public IoTDBSQLException(Throwable cause) {
-    super(cause);
-  }
-
 }

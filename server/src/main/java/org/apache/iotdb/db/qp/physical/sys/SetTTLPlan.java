@@ -15,39 +15,51 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.db.query.dataset;
+package org.apache.iotdb.db.qp.physical.sys;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-public class AuthDataSet extends QueryDataSet {
+public class SetTTLPlan extends PhysicalPlan {
 
-  private List<RowRecord> records = new ArrayList<>();
-  private int index = 0;
+  private String storageGroup;
+  private long dataTTL;
 
-  public AuthDataSet(List<Path> paths,
-      List<TSDataType> dataTypes) {
-    super(paths, dataTypes);
+  public SetTTLPlan(String storageGroup, long dataTTL) {
+    // set TTL
+    super(false, OperatorType.TTL);
+    this.storageGroup = storageGroup;
+    this.dataTTL = dataTTL;
+  }
+
+  public SetTTLPlan(String storageGroup) {
+    // unset TTL
+    this(storageGroup, Long.MAX_VALUE);
   }
 
   @Override
-  public boolean hasNext() throws IOException {
-    return index < records.size();
+  public List<Path> getPaths() {
+    return null;
   }
 
-  @Override
-  public RowRecord next() {
-    return records.get(index++);
+  public String getStorageGroup() {
+    return storageGroup;
   }
 
-  public void putRecord(RowRecord newRecord) {
-    records.add(newRecord);
+  public void setStorageGroup(String storageGroup) {
+    this.storageGroup = storageGroup;
+  }
+
+  public long getDataTTL() {
+    return dataTTL;
+  }
+
+  public void setDataTTL(long dataTTL) {
+    this.dataTTL = dataTTL;
   }
 }

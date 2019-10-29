@@ -64,25 +64,26 @@ public class SeriesReaderWithoutValueFilter implements IPointReader {
    * Constructor function.
    *
    * @param seriesPath the path of the series data
-   * @param filter filter condition
+   * @param timeFilter time filter condition
    * @param context query context
    * @param pushdownUnseq True to push down the filter on the unsequence TsFile resource; False not
    * to.
    */
-  protected SeriesReaderWithoutValueFilter(Path seriesPath, Filter filter, QueryContext context,
+  protected SeriesReaderWithoutValueFilter(Path seriesPath, Filter timeFilter, QueryContext context,
       boolean pushdownUnseq) throws StorageEngineException, IOException {
     QueryDataSource queryDataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(seriesPath, context);
+    timeFilter = queryDataSource.updateTimeFilter(timeFilter);
 
     // reader for sequence resources
     IBatchReader seqResourceIterateReader = new SeqResourceIterateReader(
-        queryDataSource.getSeriesPath(), queryDataSource.getSeqResources(), filter, context);
+        queryDataSource.getSeriesPath(), queryDataSource.getSeqResources(), timeFilter, context);
 
     // reader for unsequence resources
     IPointReader unseqResourceMergeReader;
     if (pushdownUnseq) {
       unseqResourceMergeReader = new UnseqResourceMergeReader(seriesPath,
-          queryDataSource.getUnseqResources(), context, filter);
+          queryDataSource.getUnseqResources(), context, timeFilter);
     } else {
       unseqResourceMergeReader = new UnseqResourceMergeReader(seriesPath,
           queryDataSource.getUnseqResources(), context, null);

@@ -102,6 +102,9 @@ tokens{
     TOK_PROPERTY_VALUE;
     TOK_GROUPBY_DEVICE;
     TOK_SELECT_INDEX;
+    TOK_TTL;
+    TOK_UNSET;
+    TOK_SHOW;
     TOK_DATE_EXPR;
     TOK_DURATION;
 }
@@ -166,6 +169,8 @@ static {
 	tokenNameMap.put("K_DISABLE", "DISABLE");
 	tokenNameMap.put("K_ALL", "ALL");
 	tokenNameMap.put("K_LIST", "LIST");
+	tokenNameMap.put("K_TTL", "TTL");
+	tokenNameMap.put("K_UNSET", "UNSET");
 	// Operators
 	tokenNameMap.put("DOT", ".");
 	tokenNameMap.put("COLON", ":");
@@ -295,6 +300,7 @@ ddlStatement
     | dropIndex
     | mergeStatement
     | listStatement
+    | ttlStatement
     ;
 
 administrationStatement
@@ -744,4 +750,40 @@ revokeWatermarkEmbedding
 rootOrId
     : K_ROOT
     | ID
+    ;
+
+/*
+****
+*************
+TTL
+*************
+****
+*/
+
+ttlStatement
+    :
+    setTTLStatement
+    | unsetTTLStatement
+    | showTTLStatement
+    ;
+
+setTTLStatement
+    :
+    K_SET K_TTL K_TO path=prefixPath time=INT
+    -> ^(TOK_TTL TOK_SET $path $time)
+    ;
+
+unsetTTLStatement
+    :
+     K_UNSET K_TTL K_TO path=prefixPath
+    -> ^(TOK_TTL TOK_UNSET $path)
+    ;
+
+showTTLStatement
+    :
+    K_SHOW K_TTL K_ON prefixPath (COMMA prefixPath)*
+    -> ^(TOK_TTL TOK_SHOW prefixPath+)
+    |
+    K_SHOW K_ALL K_TTL
+    -> ^(TOK_TTL TOK_SHOW)
     ;

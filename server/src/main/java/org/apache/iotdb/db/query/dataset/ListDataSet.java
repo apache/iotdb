@@ -17,25 +17,37 @@
  * under the License.
  */
 
-package org.apache.iotdb.jdbc;
+package org.apache.iotdb.db.query.dataset;
 
-import java.sql.SQLException;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-public class IoTDBSQLException extends SQLException {
+public class ListDataSet extends QueryDataSet {
 
-  private static final long serialVersionUID = -3306001287342258977L;
+  private List<RowRecord> records = new ArrayList<>();
+  private int index = 0;
 
-  public IoTDBSQLException(String reason) {
-    super(reason);
+  public ListDataSet(List<Path> paths,
+      List<TSDataType> dataTypes) {
+    super(paths, dataTypes);
   }
 
-  public IoTDBSQLException(String reason, TSStatus status) {
-    super(reason, status.sqlState, status.statusType.code);
+  @Override
+  public boolean hasNext() throws IOException {
+    return index < records.size();
   }
 
-  public IoTDBSQLException(Throwable cause) {
-    super(cause);
+  @Override
+  public RowRecord next() {
+    return records.get(index++);
   }
 
+  public void putRecord(RowRecord newRecord) {
+    records.add(newRecord);
+  }
 }

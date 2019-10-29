@@ -15,27 +15,36 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.jdbc;
+package org.apache.iotdb.db.qp.logical.sys;
 
-import java.sql.SQLException;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.qp.logical.RootOperator;
 
-public class IoTDBSQLException extends SQLException {
+public class SetTTLOperator extends RootOperator {
 
-  private static final long serialVersionUID = -3306001287342258977L;
+  private String storageGroup;
+  private long dataTTL;
 
-  public IoTDBSQLException(String reason) {
-    super(reason);
+  public SetTTLOperator(int tokenIntType) {
+    super(tokenIntType);
+    this.operatorType = OperatorType.TTL;
   }
 
-  public IoTDBSQLException(String reason, TSStatus status) {
-    super(reason, status.sqlState, status.statusType.code);
+  public String getStorageGroup() {
+    return storageGroup;
   }
 
-  public IoTDBSQLException(Throwable cause) {
-    super(cause);
+  public void setStorageGroup(String storageGroup) {
+    this.storageGroup = storageGroup;
   }
 
+  public long getDataTTL() {
+    return dataTTL;
+  }
+
+  public void setDataTTL(long dataTTL) {
+    this.dataTTL = dataTTL;
+  }
 }

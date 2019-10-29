@@ -39,7 +39,7 @@ public class UnSealedTsFileReaderTest extends ReaderTestHelper {
     QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context,
         null);
     TsFileResource resource = queryDataSource.getSeqResources().get(0);
-    Assert.assertEquals(false, resource.isClosed());
+    Assert.assertFalse(resource.isClosed());
     UnSealedTsFileIterateReader reader = new UnSealedTsFileIterateReader(resource, null, false);
     long time = 999;
     while (reader.hasNext()) {
@@ -58,7 +58,7 @@ public class UnSealedTsFileReaderTest extends ReaderTestHelper {
     QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context,
         null);
     TsFileResource resource = queryDataSource.getSeqResources().get(0);
-    Assert.assertEquals(false, resource.isClosed());
+    Assert.assertFalse(resource.isClosed());
     UnSealedTsFileReaderByTimestamp reader = new UnSealedTsFileReaderByTimestamp(
         resource);
 
@@ -74,13 +74,13 @@ public class UnSealedTsFileReaderTest extends ReaderTestHelper {
       Assert.assertEquals(time, value);
 
     }
-    Assert.assertEquals(true, reader.hasNext());
+    Assert.assertTrue(reader.hasNext());
 
     for (int time = 3050; time <= 3080; time += 10) {
       Integer value = (Integer) reader.getValueInTimestamp(time);
-      Assert.assertEquals(null, value);
+      Assert.assertNull(value);
     }
-    Assert.assertEquals(false, reader.hasNext());
+    Assert.assertFalse(reader.hasNext());
   }
 
 

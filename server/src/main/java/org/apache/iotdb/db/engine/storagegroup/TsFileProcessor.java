@@ -586,13 +586,14 @@ public class TsFileProcessor {
           continue;
         }
         ReadOnlyMemChunk memChunk = flushingMemTable
-            .query(deviceId, measurementId, dataType, props);
+            .query(deviceId, measurementId, dataType, props, context.getQueryTimeLowerBound());
         if (memChunk != null) {
           memSeriesLazyMerger.addMemSeries(memChunk);
         }
       }
       if (workMemTable != null) {
-        ReadOnlyMemChunk memChunk = workMemTable.query(deviceId, measurementId, dataType, props);
+        ReadOnlyMemChunk memChunk = workMemTable.query(deviceId, measurementId, dataType, props,
+            context.getQueryTimeLowerBound());
         if (memChunk != null) {
           memSeriesLazyMerger.addMemSeries(memChunk);
         }
@@ -610,6 +611,8 @@ public class TsFileProcessor {
           .getVisibleMetadataList(deviceId, measurementId, dataType);
       QueryUtils.modifyChunkMetaData(chunkMetaDataList,
           modifications);
+
+      chunkMetaDataList.removeIf(context::chunkNotSatisfy);
 
       return new Pair<>(timeValuePairSorter, chunkMetaDataList);
     } finally {
