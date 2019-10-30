@@ -19,6 +19,18 @@
 
 package org.apache.iotdb.db.engine.merge.manage;
 
+import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -36,24 +48,12 @@ import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
 
 /**
  * MergeResource manages files and caches of readers, writers, MeasurementSchemas and
  * modifications to avoid unnecessary object creations and file openings.
  */
 public class MergeResource {
-
-  private static final Logger logger = LoggerFactory.getLogger(MergeResource.class);
 
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> unseqFiles;
@@ -64,12 +64,28 @@ public class MergeResource {
   private Map<String, MeasurementSchema> measurementSchemaMap = new HashMap<>();
   private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
 
+  private long timeLowerBound = Long.MIN_VALUE;
+
   private boolean cacheDeviceMeta = false;
 
   public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    this.seqFiles = seqFiles.stream().filter(TsFileResource::isClosed).collect(Collectors.toList());
+    this.seqFiles =
+        seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
     this.unseqFiles =
-        unseqFiles.stream().filter(TsFileResource::isClosed).collect(Collectors.toList());
+        unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
+  }
+
+  private boolean filterResource(TsFileResource res) {
+    return res.isClosed() && !res.isDeleted() && res.stillLives(timeLowerBound);
+  }
+
+  public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
+      long timeLowerBound) {
+    this.timeLowerBound = timeLowerBound;
+    this.seqFiles =
+        seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
+    this.unseqFiles =
+        unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
   }
 
   public void clear() throws IOException {
@@ -228,10 +244,6 @@ public class MergeResource {
   public void setUnseqFiles(
       List<TsFileResource> unseqFiles) {
     this.unseqFiles = unseqFiles;
-  }
-
-  public Map<String, MeasurementSchema> getMeasurementSchemaMap() {
-    return measurementSchemaMap;
   }
 
   public void removeOutdatedSeqReaders() throws IOException {

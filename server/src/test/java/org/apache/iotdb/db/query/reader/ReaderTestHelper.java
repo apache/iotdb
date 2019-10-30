@@ -34,7 +34,7 @@ import org.junit.Before;
 
 public abstract class ReaderTestHelper {
 
-  protected String storageGroup = "storage_group1";
+  private String storageGroup = "storage_group1";
   protected String deviceId = "root.vehicle.d0";
   protected String measurementId = "s0";
   protected StorageGroupProcessor storageGroupProcessor;

@@ -36,25 +36,19 @@ public class PTree implements Serializable {
   private String name;
   private String space = "    ";
 
-  public PTree(String name, MTree mTree) {
+  PTree(String name, MTree mTree) {
     this.setRoot(new PNode(name, null, false));
     this.setName(name);
-    this.setmTree(mTree);
-  }
-
-  public PTree(String name, PNode root, MTree mTree) {
-    this.setName(name);
-    this.setRoot(root);
     this.setmTree(mTree);
   }
 
   /**
    * Add a seriesPath to current PTree
    *
-   * @return The count of new added {@code PNode}
+   * @return The count of new added {@code PNode} TODO: unused
    * @throws PathErrorException
    */
-  public int addPath(String path) throws PathErrorException {
+  int addPath(String path) throws PathErrorException {
     int addCount = 0;
     if (getRoot() == null) {
       throw new PathErrorException("Root Node is null, Please initialize root first");
@@ -88,7 +82,7 @@ public class PTree implements Serializable {
    *
    * @throws PathErrorException
    */
-  public void deletePath(String path) throws PathErrorException {
+  void deletePath(String path) throws PathErrorException {
     String[] nodes = path.split("\\.");
     if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
       throw new PathErrorException("Path not correct. Path:" + path);
@@ -109,7 +103,7 @@ public class PTree implements Serializable {
    *
    * @throws PathErrorException
    */
-  public void linkMNode(String pTreePath, String mTreePath) throws PathErrorException {
+  void linkMNode(String pTreePath, String mTreePath) throws PathErrorException {
     List<String> paths = mTree.getAllPathInList(mTreePath);
     String[] nodes = pTreePath.trim().split("\\.");
     PNode leaf = getLeaf(getRoot(), nodes, 0);
@@ -123,7 +117,7 @@ public class PTree implements Serializable {
    *
    * @throws PathErrorException
    */
-  public void unlinkMNode(String pTreePath, String mTreePath) throws PathErrorException {
+  void unlinkMNode(String pTreePath, String mTreePath) throws PathErrorException {
     List<String> paths = mTree.getAllPathInList(mTreePath);
     String[] nodes = pTreePath.trim().split("\\.");
     PNode leaf = getLeaf(getRoot(), nodes, 0);
@@ -157,24 +151,24 @@ public class PTree implements Serializable {
    * @return Paths will be separated by the {@code MNode.dataFileName} in the HashMap
    * @throws PathErrorException
    */
-  public HashMap<String, ArrayList<String>> getAllLinkedPath(String path)
+  HashMap<String, List<String>> getAllLinkedPath(String path)
       throws PathErrorException {
     String[] nodes = path.trim().split("\\.");
     PNode leaf = getLeaf(getRoot(), nodes, 0);
-    HashMap<String, ArrayList<String>> res = new HashMap<>();
+    HashMap<String, List<String>> res = new HashMap<>();
 
     for (String MPath : leaf.getLinkedMTreePathMap().keySet()) {
-      HashMap<String, ArrayList<String>> tr = getmTree().getAllPath(MPath);
+      HashMap<String, List<String>> tr = getmTree().getAllPath(MPath);
       mergePathRes(res, tr);
     }
     return res;
   }
 
-  private void mergePathRes(HashMap<String, ArrayList<String>> res,
-      HashMap<String, ArrayList<String>> tr) {
+  private void mergePathRes(HashMap<String, List<String>> res,
+      HashMap<String, List<String>> tr) {
     for (String key : tr.keySet()) {
       if (!res.containsKey(key)) {
-        res.put(key, new ArrayList<String>());
+        res.put(key, new ArrayList<>());
       }
       for (String p : tr.get(key)) {
         if (!res.get(key).contains(p)) {
@@ -190,41 +184,41 @@ public class PTree implements Serializable {
   }
 
   private String pNodeToString(PNode node, int tab) {
-    String s = "";
+    StringBuilder s = new StringBuilder();
     for (int i = 0; i < tab; i++) {
-      s += space;
+      s.append(space);
     }
-    s += node.getName();
+    s.append(node.getName());
     if (!node.isLeaf() && node.getChildren().size() > 0) {
-      s += ":{\n";
+      s.append(":{\n");
       int first = 0;
       for (PNode child : node.getChildren().values()) {
         if (first == 0) {
           first = 1;
         } else {
-          s += ",\n";
+          s.append(",\n");
         }
-        s += pNodeToString(child, tab + 1);
+        s.append(pNodeToString(child, tab + 1));
       }
-      s += "\n";
+      s.append("\n");
       for (int i = 0; i < tab; i++) {
-        s += space;
+        s.append(space);
       }
-      s += "}";
+      s.append("}");
     } else if (node.isLeaf()) {
-      s += ":{\n";
-      String[] linkedPaths = new String[node.getLinkedMTreePathMap().values().size()];
-      linkedPaths = node.getLinkedMTreePathMap().values().toArray(linkedPaths);
+      s.append(":{\n");
+      String[] linkedPaths = node.getLinkedMTreePathMap().values().stream().map(
+          Object::toString).toArray(String[]::new);
       for (int i = 0; i < linkedPaths.length; i++) {
         if (i != linkedPaths.length - 1) {
-          s += getTabs(tab + 1) + linkedPaths[i] + ",\n";
+          s.append(getTabs(tab + 1)).append(linkedPaths[i]).append(",\n");
         } else {
-          s += getTabs(tab + 1) + linkedPaths[i] + "\n";
+          s.append(getTabs(tab + 1)).append(linkedPaths[i]).append("\n");
         }
       }
-      s += getTabs(tab) + "}";
+      s.append(getTabs(tab)).append("}");
     }
-    return s;
+    return s.toString();
   }
 
   private String getTabs(int count) {
@@ -243,11 +237,11 @@ public class PTree implements Serializable {
     this.name = name;
   }
 
-  public MTree getmTree() {
+  private MTree getmTree() {
     return mTree;
   }
 
-  public void setmTree(MTree mTree) {
+  private void setmTree(MTree mTree) {
     this.mTree = mTree;
   }
 
