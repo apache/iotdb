@@ -91,7 +91,7 @@ public class MGraph implements Serializable {
   /**
    * Add a deviceId to Metadata Tree.
    */
-  public MNode addDeviceIdToMTree(String deviceId) throws PathErrorException {
+  MNode addDeviceIdToMTree(String deviceId) throws PathErrorException {
     return mtree.addDeviceId(deviceId);
   }
 
@@ -193,7 +193,7 @@ public class MGraph implements Serializable {
    *
    * @return A HashMap whose Keys are separated by the storage file name.
    */
-  HashMap<String, ArrayList<String>> getAllPathGroupByFilename(String path)
+  HashMap<String, List<String>> getAllPathGroupByStorageGroup(String path)
       throws PathErrorException {
     String rootName = MetaUtils.getNodeNames(path, DOUB_SEPARATOR)[0];
     if (mtree.getRoot().getName().equals(rootName)) {
@@ -203,6 +203,10 @@ public class MGraph implements Serializable {
       return ptree.getAllLinkedPath(path);
     }
     throw new PathErrorException(TIME_SERIES_INCORRECT + rootName);
+  }
+
+  List<MNode> getAllStorageGroupNodes() {
+    return mtree.getAllStorageGroupNodes();
   }
 
   /**
@@ -259,8 +263,8 @@ public class MGraph implements Serializable {
     return new Metadata(deviceIdMap);
   }
 
-  Set<String> getAllStorageGroup() {
-    return mtree.getAllStorageGroup();
+  List<String> getAllStorageGroupNames() {
+    return mtree.getAllStorageGroupList();
   }
 
   Set<String> getAllDevices() throws SQLException {
@@ -324,14 +328,14 @@ public class MGraph implements Serializable {
     return mtree.getStorageGroupNameByPath(node, path);
   }
 
-  boolean checkFileNameByPath(String path) {
+  boolean checkStorageGroupByPath(String path) {
     return mtree.checkFileNameByPath(path);
   }
 
   /**
    * Get all file names for given seriesPath
    */
-  List<String> getAllFileNamesByPath(String path) throws PathErrorException {
+  List<String> getAllStorageGroupNamesByPath(String path) throws PathErrorException {
     return mtree.getAllFileNamesByPath(path);
   }
 
@@ -347,20 +351,11 @@ public class MGraph implements Serializable {
   }
 
   MNode getNodeByPath(String path) throws PathErrorException {
-    return mtree.getNodeByPath(path);
+    return mtree.getNode(path);
   }
 
   MNode getNodeByPathWithCheck(String path) throws PathErrorException, StorageGroupException {
-    return mtree.getNodeByPathWithFileLevelCheck(path);
-  }
-
-  /**
-   * Extract the deviceId from given seriesPath.
-   *
-   * @return String represents the deviceId
-   */
-  public String getDeviceTypeByPath(String path) throws PathErrorException {
-    return mtree.getDeviceTypeByPath(path);
+      return mtree.getNodeByPathWithStorageGroupCheck(path);
   }
 
   /**
@@ -395,8 +390,8 @@ public class MGraph implements Serializable {
   /**
    * combine multiple metadata in string format
    */
-  static String combineMetadataInStrings(String[] metadatas) {
-    return MTree.combineMetadataInStrings(metadatas);
+  static String combineMetadataInStrings(String[] metadataArray) {
+    return MTree.combineMetadataInStrings(metadataArray);
   }
 
   /**
@@ -404,9 +399,9 @@ public class MGraph implements Serializable {
    */
   Map<String, Integer> countSeriesNumberInEachStorageGroup() throws PathErrorException {
     Map<String, Integer> res = new HashMap<>();
-    Set<String> storageGroups = this.getAllStorageGroup();
+    List<String> storageGroups = this.getAllStorageGroupNames();
     for (String sg : storageGroups) {
-      MNode node = mtree.getNodeByPath(sg);
+      MNode node = mtree.getNode(sg);
       res.put(sg, node.getLeafCount());
     }
     return res;

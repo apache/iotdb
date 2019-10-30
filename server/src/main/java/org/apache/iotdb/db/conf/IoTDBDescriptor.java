@@ -199,9 +199,6 @@ public class IoTDBDescriptor {
           .parseInt(properties.getProperty("sync_server_port",
               Integer.toString(conf.getSyncServerPort())).trim()));
 
-      conf.setUpdateHistoricalDataPossibility(Boolean.parseBoolean(
-          properties.getProperty("update_historical_data_possibility",
-              Boolean.toString(conf.isSyncEnable()))));
       conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
 
       conf.setConcurrentFlushThread(Integer
@@ -296,6 +293,9 @@ public class IoTDBDescriptor {
       conf.setTsFileStorageFs(properties.getProperty("tsfile_storage_fs"));
       conf.setHdfsIp(properties.getProperty("hdfs_ip"));
       conf.setHdfsPort(properties.getProperty("hdfs_port"));
+
+      conf.setDefaultTTL(Long.parseLong(properties.getProperty("default_ttl",
+          String.valueOf(conf.getDefaultTTL()))));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));

@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -385,7 +386,8 @@ public class Session {
 
   private void checkPathValidity(String path) throws IoTDBSessionException {
     if (!Pattern.matches(PATH_MATCHER, path)) {
-      throw new IoTDBSessionException(String.format("Path %s is invalid", path));
+      throw new IoTDBSessionException(
+          String.format("Path [%s] is invalid", StringEscapeUtils.escapeJava(path)));
     }
   }
 

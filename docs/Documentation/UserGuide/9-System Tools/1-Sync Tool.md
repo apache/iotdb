@@ -23,6 +23,22 @@
 
 ## Data Import
 
+<!-- TOC -->
+
+- [Chapter 8: System Tools](#chapter-8-system-tools)
+    - [Data Import](#data-import)
+- [Introduction](#introduction)
+- [Application Scenario](#application-scenario)
+- [Configuration](#configuration)
+    - [Sync Receiver](#sync-receiver)
+    - [Sync Sender](#sync-sender)
+- [Usage](#usage)
+    - [Start Sync Receiver](#start-sync-receiver)
+    - [Stop Sync Receiver](#stop-sync-receiver)
+    - [Start Sync Sender](#start-sync-sender)
+    - [Stop Sync Sender](#stop-sync-sender)
+
+<!-- /TOC -->
 # Introduction
 The Sync Tool is an IoTDB suite tool that periodically uploads persistent tsfiles from the sender disk to the receiver and loads them.
 
@@ -33,6 +49,13 @@ On the receiver side of the sync, the sync module is embedded in the engine of I
 The sync tool has a many-to-one sender-receiver mode - that is, one sync receiver can receive data from multiple sync senders simultaneously while one sync sender can only send data to one sync receiver.
 
 > Note: Before using the sync tool, the client and server need to be configured separately. The configuration is detailed in Sections Configuration.
+# Application Scenario
+In the case of a factory application, there are usually multiple sub-factories and multiple general(main) factories. Each sub-factory uses an IoTDB instance to collect data, and then synchronize the data to the general factory for backup or analysis. A general factory can receive data from multiple sub-factories and a sub-factory can also synchronize data to multiple general factories. In this scenario, each IoTDB instance manages different devices. 
+      
+In the sync module, each sub-factory is a sender, a general factory is a receiver, and senders periodically synchronizes the data to receivers. In the above application scenario, the data of one device can only be collected by one sender, so there is no device overlap between the data synchronized by multiple senders. Otherwise, the application scenario of the sync module is not satisfied.
+
+When there is an abnormal scenario, namely, two or more senders synchronize the data of the same device (whose storage group is set as root.sg) to the same receiver, the root.sg data of the sender containing the device data received later by the receiver will be rejected. Example: the engine 1 synchronizes the storage groups root.sg1 and root.sg2 to the receiver, and the engine 2 synchronizes the storage groups root.sg2 and root.sg3 to the receiver. All of them include the time series root.sg2.d0.s0. 
+If the receiver receives the data of root.sg2.d0.s0 of the sender 1 first, the receiver will reject the data of root.sg2 of the sender 2.
 # Configuration
 ## Sync Receiver
 The parameter configuration of the sync receiver is located in the configuration file `iotdb-engine.properties` of IoTDB, and its directory is `$IOTDB_HOME/conf/iotdb-engine.properties`. In this configuration file, there are four parameters related to the sync receiver. The configuration instructions are as follows:
@@ -74,31 +97,6 @@ The parameter configuration of the sync receiver is located in the configuration
    <tr>
       <td>Default</td>
       <td>0.0.0.0/0</td>
-   </tr>
-   <tr>
-      <td>Modalities for Entry into Force after Modification</td>
-      <td>Restart receiver</td>
-   </tr>
-</table>
-
-<table>
-   <tr>
-      <td colspan="2">parameter: update_historical_data_possibility</td>
-   </tr>
-   <tr>
-      <td width="30%">Description</td>
-      <td>The processing strategy chosen by the sync receiver when merging the sync data.<br/>
-        1. If the sync data accounts for more than 50% of the update of the historical data (compared with the latest timestamp of the local storage group data),then it is recommended this parameter be set to TRUE, which has a greater impact on the write performance and reduce CPU usage.<br/>
-        2. If the sync data accounts for less than 50% of the update of the historical data (compared with the latest timestamp of the local storage group data),then it is recommended this parameter be set to FALSE,which has little impact on the write performance and takes up a large amount of CPU power.<br/>
-</td>
-   </tr>
-   <tr>
-      <td>Type</td>
-      <td>Boolean</td>
-   </tr>
-   <tr>
-      <td>Default</td>
-      <td>false</td>
    </tr>
    <tr>
       <td>Modalities for Entry into Force after Modification</td>
@@ -216,15 +214,19 @@ The parameters of the sync sender are configured in a separate configuration fil
 
 <table>
    <tr>
-      <td colspan="2">parameter: iotdb_bufferWrite_directory</td>
+      <td colspan="2">parameter: sync_storage_groups</td>
    </tr>
    <tr>
-      <td width="30%">Description</td>
-      <td>The absolute path of the buffer write data (tsfile file) directory of the IoTDB at the sender, such as: $IOTDB_HOME/data/data/settled (if the user does not set the data path manually, the path is the default path of IoTDB engine). This parameter is not valid by default, and is set manually when the user needs it. This parameter needs to be guaranteed to belong to the same IoTDB as the parameter iotdb_schema_directory.</td>
+      <td width="20%">Description</td>
+      <td>This parameter represents storage groups that participate in the synchronization task, which distinguishes each storage group by comma. If the list is empty, it means that all storage groups participate in synchronization. By default, it is an empty list.</td>
    </tr>
    <tr>
       <td>Type</td>
       <td>String</td>
+   </tr>
+   <tr>
+      <td>Example</td>
+      <td>root.sg1, root.sg2</td>
    </tr>
    <tr>
       <td>Modalities for Entry into Force after Modification</td>
@@ -232,10 +234,33 @@ The parameters of the sync sender are configured in a separate configuration fil
    </tr>
 </table>
 
+<table>
+   <tr>
+      <td colspan="2">parameter: max_number_of_sync_file_retry</td>
+   </tr>
+   <tr>
+      <td width="20%">Description</td>
+      <td>The maximum number of retry when syncing a file to receiver fails.</td>
+   </tr>
+   <tr>
+      <td>Type</td>
+      <td>Int : [0,2147483647]</td>
+   </tr>
+   <tr>
+      <td>Example</td>
+      <td>5</td>
+   </tr>
+   <tr>
+      <td>Modalities for Entry into Force after Modification</td>
+      <td>Restart client</td>
+   </tr>
+</table>
+
+
 # Usage
 ## Start Sync Receiver
 1. Set up parameters of sync receiver. For example:
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494502-daaa4380-8ebf-11e9-8bce-363e2433005a.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/64172919-a32cb100-ce88-11e9-821c-33369bff6d34.png">
 2. Start IoTDB engine, and the sync receiver will start at the same time, and the LOG log will start with the sentence `IoTDB: start SYNC ServerService successfully` indicating the successful start of the return receiver.
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494513-df6ef780-8ebf-11e9-83e1-ee8ae64b76d0.png">
 
@@ -244,7 +269,7 @@ Stop IoTDB and the sync receiver will be closed at the same time.
 
 ## Start Sync Sender
 1. Set up parameters of sync sender. For example:
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494559-f9a8d580-8ebf-11e9-875e-355199c1a1e9.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/64172668-15e95c80-ce88-11e9-9700-dff7daf06bb7.png">
 2. Start sync sender
 Users can use the scripts under the ```$IOTDB_HOME/bin``` folder to start the sync sender.
 For Linux and Mac OS X users:

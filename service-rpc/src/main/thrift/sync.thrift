@@ -22,17 +22,19 @@ typedef i32 int
 typedef i16 short
 typedef i64 long
 
-enum SyncDataStatus {
-  SUCCESS_STATUS,
-  FINISH_STATUS,
-  PROCESSING_STATUS
+struct ResultStatus{
+  bool success,
+  string msg,
+  i32 errorCode
 }
 
 service SyncService{
-	bool checkIdentity(1:string uuid, 2:string address)
-	string syncSchema(1:string md5, 2:binary buff, 3:SyncDataStatus status)
-	string syncData(1:string md5, 2:list<string> filename, 3:binary buff, 4:SyncDataStatus status)
-	bool load()
-	void cleanUp()
-	bool init(1:string storageGroupName)
+	ResultStatus check(1:string address, 2:string uuid)
+	ResultStatus startSync();
+	ResultStatus init(1:string storageGroupName)
+	ResultStatus syncDeletedFileName(1:string fileName)
+	ResultStatus initSyncData(1:string filename)
+	ResultStatus syncData(1:binary buff)
+	ResultStatus checkDataMD5(1:string md5)
+	ResultStatus endSync()
 }

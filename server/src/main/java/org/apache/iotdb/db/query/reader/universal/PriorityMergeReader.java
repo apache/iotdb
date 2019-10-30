@@ -76,7 +76,7 @@ public class PriorityMergeReader implements IPointReader {
   }
 
   @Override
-  public TimeValuePair current() {
+  public TimeValuePair current() throws IOException {
     return heap.peek().timeValuePair;
   }
 
