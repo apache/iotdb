@@ -18,38 +18,44 @@
     under the License.
 
 -->
-# Chapter 0: QuickStart
+# Chapter 0: Get Started
 * 1-QuickStart 
 * 2-Frequently asked questions 
-* 3-Reference 
+* 3-Publication
+
 # Chapter 1: Overview
 * 1-What is IoTDB 
 * 2-Architecture 
 * 3-Scenario 
 * 4-Features 
+
 # Chapter 2: Concept
 * 1-Data Modal and Terminology 
 * 2-Data Type 
 * 3-Encoding 
 * 4-Compression 
+
 # Chapter 3: Server
 * 1-Download 
 * 2-Single Node Setup 
 * 3-Cluster Setup 
 * 4-Config Manual 
 * 5-Docker Image 
+
 # Chapter 4: Client
 * 1-Command Line Interface(CLI) 
 * 2-Programming - JDBC 
 * 3-Programming - Session 
 * 4-Programming - Other Language 
 * 5-Programming - TsFile API (TimeSeries File Format) 
+
 # Chapter 5: Operation Manual
 * 1-DDL (Data Definition Language) 
 * 2-DML (Data Manipulation Languange) 
 * 3-Account Management Statements 
 * 4-SQL Reference 
 * 8-TsFile Usage 
+
 # Chapter 6: System Tools
 * 1-Sync Tool 
 * 2-Memory Estimation Tool 
@@ -58,12 +64,14 @@
 * 5-Log Visualizer 
 * 6-Query History Visualization Tool 
 * 7-Monitor and Log Tools 
+
 # Chapter 7: Ecosystem Integration
 * 1-Grafana 
 * 2-TsFile Hadoop Connector 
 * 3-TsFile Spark Connector 
 * 4-Spark IoTDB Connector 
 * 5-Tsfile Hive Connector 
+
 # Chapter 8: System Design (Developer)
 * 1-Hierarchy 
 * 2-Files 
