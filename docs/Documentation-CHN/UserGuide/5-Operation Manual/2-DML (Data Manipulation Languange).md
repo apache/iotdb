@@ -1,0 +1,222 @@
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+
+# 第5章 IoTDB操作指南
+## DML (数据操作语言)
+## 数据接入
+
+IoTDB为用户提供多种插入实时数据的方式，例如在[Cli/Shell工具](/#/Documents/progress/chap4/sec1)中直接输入插入数据的INSERT语句，或使用Java API（标准[Java JDBC](/#/Documents/progress/chap4/sec2)接口）单条或批量执行插入数据的INSERT语句。
+
+本节主要为您介绍实时数据接入的INSERT语句在场景中的实际使用示例，有关INSERT SQL语句的详细语法请参见本文[INSERT语句](/#/Documents/progress/chap5/sec4)节。
+
+### 使用INSERT语句
+使用INSERT语句可以向指定的已经创建的一条或多条时间序列中插入数据。对于每一条数据，均由一个时间戳类型的时间戳和一个数值或布尔值、字符串类型的传感器采集值组成。
+
+在本节的场景实例下，以其中的两个时间序列`root.ln.wf02.wt02.status`和`root.ln.wf02.wt02.hardware`为例 ，它们的数据类型分别为BOOLEAN和TEXT。
+
+单列数据插入示例代码如下：
+```
+IoTDB > insert into root.ln.wf02.wt02(timestamp,status) values(1,true)
+IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1, "v1")
+```
+
+以上示例代码将长整型的timestamp以及值为true的数据插入到时间序列`root.ln.wf02.wt02.status`中和将长整型的timestamp以及值为”v1”的数据插入到时间序列`root.ln.wf02.wt02.hardware`中。执行成功后会返回执行时间，代表数据插入已完成。 
+
+> 注意：在IoTDB中，TEXT类型的数据单双引号都可以来表示,上面的插入语句是用的是双引号表示TEXT类型数据，下面的示例将使用单引号表示TEXT类型数据。
+
+INSERT语句还可以支持在同一个时间点下多列数据的插入，同时向2时间点插入上述两个时间序列的值，多列数据插入示例代码如下：
+
+```
+IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (2, false, 'v2')
+```
+
+插入数据后我们可以使用SELECT语句简单查询已插入的数据。
+
+```
+IoTDB > select * from root.ln.wf02 where time < 3
+```
+
+结果如图所示。由查询结果可以看出，单列、多列数据的插入操作正确执行。
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51605021-c2ee1500-1f48-11e9-8f6b-ba9b48875a41.png"></center>
+
+### INSERT语句的错误处理
+
+若用户向一个不存在的时间序列中插入数据，例如执行以下命令：
+
+```
+IoTDB > insert into root.ln.wf02.wt02(timestamp, temperature) values(1,"v1")
+```
+
+由于`root.ln.wf02.wt02. temperature`时间序列不存在，系统将会返回以下ERROR告知该Timeseries路径不存在：
+
+```
+Msg: Current deviceId[root.ln.wf02.wt02] does not contains measurement:temperature
+```
+若用户插入的数据类型与该Timeseries对应的数据类型不一致，例如执行以下命令：
+```
+IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1,100)
+```
+系统将会返回以下ERROR告知数据类型有误：
+```
+error: The TEXT data type should be covered by " or '
+```
+
+## 数据查询
+### 时间切片查询
+
+本节主要介绍时间切片查询的相关示例，主要使用的是[IoTDB SELECT语句](/#/Documents/progress/chap4/sec7)。同时，您也可以使用[Java JDBC](/#/Documents/progress/chap6/sec1)标准接口来执行相关的查询语句。
+
+#### 根据一个时间区间选择一列数据
+
+SQL语句为：
+
+```
+select temperature from root.ln.wf01.wt01 where time < 2017-11-01T00:08:00.000
+```
+其含义为：
+
+被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:00.000”（此处可以使用多种时间格式，详情可参看[2.1节](/#/Documents/progress/chap2/sec1)）时间点以前的所有温度传感器的值。
+
+该SQL语句的执行结果如下：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/23614968/61280074-da1c0a00-a7e9-11e9-8eb8-3809428043a8.png"></center>
+
+#### 根据一个时间区间选择多列数据
+
+SQL语句为：
+
+```
+select status, temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000;
+```
+其含义为：
+
+被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为供电状态（status）和温度传感器（temperature）；该语句要求选择出“2017-11-01T00:05:00.000”至“2017-11-01T00:12:00.000”之间的所选时间序列的值。
+
+该SQL语句的执行结果如下：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/23614968/61280328-40a12800-a7ea-11e9-85b9-3b8db67673a3.png"></center>
+
+#### 按照多个时间区间选择同一设备的多列数据
+
+IoTDB支持在一次查询中指定多个时间区间条件，用户可以根据需求随意组合时间区间条件。例如，
+
+SQL语句为：
+
+```
+select status,temperature from root.ln.wf01.wt01 where (time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000) or (time >= 2017-11-01T16:35:00.000 and time <= 2017-11-01T16:37:00.000);
+```
+其含义为：
+
+被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为“供电状态（status）”和“温度传感器（temperature）”；该语句指定了两个不同的时间区间，分别为“2017-11-01T00:05:00.000至2017-11-01T00:12:00.000”和“2017-11-01T16:35:00.000至2017-11-01T16:37:00.000”；该语句要求选择出满足任一时间区间的被选时间序列的值。
+
+该SQL语句的执行结果如下：
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/23614968/61280449-780fd480-a7ea-11e9-8ed0-70fa9dfda80f.png"></center>
+
+
+#### 按照多个时间区间选择不同设备的多列数据
+
+该系统支持在一次查询中选择任意列的数据，也就是说，被选择的列可以来源于不同的设备。例如，SQL语句为：
+
+```
+select wf01.wt01.status,wf02.wt02.hardware from root.ln where (time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000) or (time >= 2017-11-01T16:35:00.000 and time <= 2017-11-01T16:37:00.000);
+```
+其含义为：
+
+被选择的时间序列为“ln集团wf01子站wt01设备的供电状态”以及“ln集团wf02子站wt02设备的硬件版本”；该语句指定了两个时间区间，分别为“2017-11-01T00:05:00.000至2017-11-01T00:12:00.000”和“2017-11-01T16:35:00.000至2017-11-01T16:37:00.000”；该语句要求选择出满足任意时间区间的被选时间序列的值。
+
+该SQL语句的执行结果如下：
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577450-dcfe0800-1ef4-11e9-9399-4ba2b2b7fb73.jpg"></center>
+
+### 降频聚合查询
+
+本章节主要介绍降频聚合查询的相关示例，主要使用的是IoTDB SELECT语句的[GROUP BY子句](/#/Documents/progress/chap5/sec4)，该子句是IoTDB中用于根据用户给定划分条件对结果集进行划分，并对已划分的结果集进行聚合计算的语句。IoTDB支持根据时间间隔对结果集进行划分，默认结果按照时间升序排列。同时，您也可以使用Java JDBC标准接口来执行相关的查询语句。
+
+GROUP BY语句为用户提供三类指定参数：
+
+* 参数1：划分时间轴的时间间隔参数
+* 参数2：时间轴划分原点参数（可选参数）
+* 参数3：时间轴显示时间窗参数（一个或多个）
+
+## 数据维护
+
+<!-- > 
+
+### 数据更新
+
+用户使用[UPDATE语句](/#/Documents/0.8.0/chap5/sec1)可以更新指定的时间序列中一段时间的数据。在更新数据时，用户可以选择需要更新的一个时间序列（0.8.0版本暂不支持多个时间序列的更新）并指定更新某个时间点或时间段的数据（0.8.0版本必须有时间过滤条件）。
+
+在JAVA编程环境中，您可以使用[JDBC API](/#/Documents/0.8.0/chap6/sec1)单条或批量执行UPDATE语句。
+
+#### 单传感器时间序列值更新
+
+以测控ln集团wf02子站wt02设备供电状态为例，存在这样的使用场景：
+
+当数据接入并分析后，发现从2017-11-01 15:54:00到2017-11-01 16:00:00内的供电状态为true，但实际供电状态存在异常。需要将这段时间状态更新为false。进行此操作的SQL语句为：
+
+```
+update root.ln.wf02 SET wt02.status = false where time <=2017-11-01T16:00:00 and time >= 2017-11-01T15:54:00
+```
+需要注意的是，当更新数据类型与实际类型不符时，IoTDB会给出相应的错误提示：
+```
+IoTDB> update root.ln.wf02 set wt02.status = 1205 where time < now()
+error: The BOOLEAN data type should be true/TRUE or false/FALSE
+```
+当更新的列不存在时，IoTDB给出没有存在的路径的错误提示：
+```
+IoTDB> update root.ln.wf02 set wt02.sta = false where time < now()
+Msg: do not select any existing series
+```
+-->
+
+### 数据删除
+
+用户使用[DELETE语句](/#/Documents/progress/chap5/sec4)可以删除指定的时间序列中符合时间删除条件的数据。在删除数据时，用户可以选择需要删除的一个或多个时间序列、时间序列的前缀、时间序列带*路径对某时间之前的数据进行删除（当前版本暂不支持删除某一闭时间区间范围内的数据）。
+
+在JAVA编程环境中，您可以使用JDBC API单条或批量执行UPDATE语句。
+
+#### 单传感器时间序列值删除
+
+以测控ln集团为例，存在这样的使用场景：
+
+wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态出现多段错误，且无法分析其正确数据，错误数据影响了与其他设备的关联分析。此时，需要将此时间段前的数据删除。进行此操作的SQL语句为：
+
+```
+delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
+```
+
+#### 多传感器时间序列值删除    
+
+当ln集团wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的[前缀路径或带`*`路径](/#/Documents/progress/chap2/sec1)进行删除操作，进行此操作的SQL语句为：
+
+```
+delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
+```
+或
+
+```
+delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
+```
+
+需要注意的是，当删除的路径不存在时，IoTDB会提示路径不存在，无法删除数据，如下所示。
+```
+IoTDB> delete from root.ln.wf03.wt02.status where time < now()
+Msg: TimeSeries does not exist and its data cannot be deleted
+```
