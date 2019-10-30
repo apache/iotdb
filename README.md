@@ -71,6 +71,8 @@ For the latest information about IoTDB, please visit our [IoTDB official website
     - Run import shell
     - Error data file
  - Usage of export-csv.sh
+    - Run export shell
+    - Input query
 
 <!-- /TOC -->
 
@@ -356,7 +358,7 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 > $IOTDB_CLI_HOME\tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format>]
 ```
 
-### input query
+### Input query
 
 ```
 select * from root.fit.d1
