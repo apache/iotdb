@@ -96,7 +96,7 @@ public class LogReplayerTest {
 
       for (int i = 0; i < 5; i++) {
         ReadOnlyMemChunk chunk = memTable.query("device" + i, "sensor" + i, TSDataType.INT64,
-            Collections.emptyMap());
+            Collections.emptyMap(), Long.MIN_VALUE);
         Iterator<TimeValuePair> iterator = chunk.getIterator();
         if (i == 0) {
           assertFalse(iterator.hasNext());

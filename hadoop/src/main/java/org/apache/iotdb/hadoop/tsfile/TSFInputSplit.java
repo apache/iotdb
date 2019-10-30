@@ -20,7 +20,7 @@ package org.apache.iotdb.hadoop.tsfile;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Writable;
-import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.hadoop.mapred.FileSplit;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 
@@ -38,7 +38,7 @@ import java.util.Objects;
  * Each <code>InputSplit</code> will be processed by individual
  * <code>Mapper</code> task.
  */
-public class TSFInputSplit extends InputSplit implements Writable {
+public class TSFInputSplit extends FileSplit implements Writable, org.apache.hadoop.mapred.InputSplit {
 
   private Path path;
 
@@ -49,10 +49,11 @@ public class TSFInputSplit extends InputSplit implements Writable {
   private List<ChunkGroupInfo> chunkGroupInfoList;
 
   public TSFInputSplit() {
-
+    super();
   }
 
   public TSFInputSplit(Path path, String[] hosts, long length, List<ChunkGroupInfo> chunkGroupInfoList) {
+    super(path, 0, length, hosts);
     this.path = path;
     this.hosts = hosts;
     this.length = length;
@@ -74,12 +75,12 @@ public class TSFInputSplit extends InputSplit implements Writable {
   }
 
   @Override
-  public long getLength() throws IOException, InterruptedException {
+  public long getLength() {
     return this.length;
   }
 
   @Override
-  public String[] getLocations() throws IOException, InterruptedException {
+  public String[] getLocations() throws IOException {
     return this.hosts;
   }
 

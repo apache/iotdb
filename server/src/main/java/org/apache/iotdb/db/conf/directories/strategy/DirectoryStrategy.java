@@ -35,7 +35,7 @@ public abstract class DirectoryStrategy {
   /**
    * All the folders of data files, should be init once the subclass is created.
    */
-  protected List<String> folders;
+  List<String> folders;
 
   /**
    * To init folders. Do not recommend to overwrite.
@@ -66,23 +66,4 @@ public abstract class DirectoryStrategy {
    */
   public abstract int nextFolderIndex() throws DiskSpaceInsufficientException;
 
-  /**
-   * Return the actual string value of a folder by its index.
-   *
-   * @param index the index of the folder
-   * @return the string value of the folder
-   */
-  public String getTsFileFolder(int index) {
-    return folders.get(index);
-  }
-
-  // only used by test
-  public String getFolderForTest() {
-    return getTsFileFolder(0);
-  }
-
-  // only used by test
-  public void setFolderForTest(String path) {
-    folders.set(0, path);
-  }
 }

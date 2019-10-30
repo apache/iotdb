@@ -94,7 +94,7 @@ public abstract class PhysicalPlan {
     if (valueLen == NULL_VALUE_LEN) {
       return null;
     }
-    return ReadWriteIOUtils.readStringWithoutLength(buffer, valueLen);
+    return ReadWriteIOUtils.readStringWithLength(buffer, valueLen);
   }
 
   public static class Factory {

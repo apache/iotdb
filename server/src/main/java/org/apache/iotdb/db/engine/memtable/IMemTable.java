@@ -58,7 +58,7 @@ public interface IMemTable {
   void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes) throws QueryProcessorException;
 
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      Map<String, String> props);
+      Map<String, String> props, long timeLowerBound);
 
   /**
    * putBack all the memory resources.

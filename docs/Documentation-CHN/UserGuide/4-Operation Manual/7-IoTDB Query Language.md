@@ -88,6 +88,38 @@ Eg: IoTDB > SHOW STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
+* 显示指定路径下时间序列数语句
+
+```
+COUNT TIMESERIES <Path>
+Eg: IoTDB > COUNT TIMESERIES root
+Eg: IoTDB > COUNT TIMESERIES root.ln
+Eg: IoTDB > COUNT TIMESERIES root.ln.*.*.status
+Eg: IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
+Note: The path can be prefix path, star path or timeseries path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+```
+COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>
+Eg: IoTDB > COUNT TIMESERIES root GROUP BY LEVEL=1
+Eg: IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
+Eg: IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=3
+Note: The path can be prefix path or timeseries path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+* 显示指定路径下特定层级的节点数语句
+
+```
+COUNT NODES <Path> LEVEL=<INTEGER>
+Eg: IoTDB > COUNT NODES root LEVEL=2
+Eg: IoTDB > COUNT NODES root.ln LEVEL=2
+Eg: IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
+Note: The path can be prefix path or timeseries path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
 ### 数据管理语句
 
 * 插入记录语句
@@ -141,6 +173,7 @@ TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
 SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
 Eg. IoTDB > SELECT * FROM root
+Eg. IoTDB > SELECT * FROM root where time > now() - 5m
 Eg. IoTDB > SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MIN_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MAX_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature > 24
@@ -149,6 +182,7 @@ Eg. IoTDB > SELECT MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.w
 Note: the statement needs to satisfy this constraint: <Path>(SelectClause) + <PrefixPath>(FromClause) = <Timeseries>
 Note: If the <SensorExpr>(WhereClause) is started with <Path> and not with ROOT, the statement needs to satisfy this constraint: <PrefixPath>(FromClause) + <Path>(SensorExpr) = <Timeseries>
 Note: In Version 0.7.0, if <WhereClause> includes `OR`, time filter can not be used.
+Note: There must be a space on both sides of the plus and minus operator appearing in the time expression 
 ```
 
 * Group By语句
@@ -475,6 +509,44 @@ SELECT SUM(Path) (COMMA SUM(Path))* FROM <FromClause> [WHERE <WhereClause>]?
 Eg. SELECT SUM(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
+
+### TTL
+IoTDB支持对存储组级别设置数据存活时间（TTL），这使得IoTDB可以定期、自动地删除一定时间之前的数据。合理使用TTL
+可以帮助您控制IoTDB占用的总磁盘空间以避免出现磁盘写满等异常。并且，随着文件数量的增多，查询性能往往随之下降,
+内存占用也会有所提高。及时地删除一些较老的文件有助于使查询性能维持在一个较高的水平和减少内存资源的占用。
+IoTDB中的TTL操作通可以由以下的语句进行实现：
+
+* 设置 TTL
+```
+SET TTL TO StorageGroupName TTLTime
+Eg. SET TTL TO root.group1 3600000
+这个例子展示了如何使得root.group1这个存储组只保留近一个小时的数据，一个小时前的数据会被删除或者进入不可见状态。
+注意: TTLTime 应是毫秒时间戳。一旦TTL被设置，超过TTL时间范围的写入将被拒绝。
+```
+
+* 取消 TTL
+```
+UNSET TTL TO StorageGroupName
+Eg. UNSET TTL TO root.group1
+这个例子展示了如何取消存储组root.group1的TTL，这将使得该存储组接受任意时刻的数据。
+```
+
+* 显示 TTL
+```
+SHOW ALL TTL
+SHOW TTL ON StorageGroupNames
+Eg.1 SHOW ALL TTL
+这个例子会给出所有存储组的TTL。
+Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
+这个例子会显示指定的三个存储组的TTL。
+注意: 没有设置TTL的存储组的TTL将显示为null。
+```
+
+注意：当您对某个存储组设置TTL的时候，超过TTL范围的数据将会立即不可见。但由于数据文件可能混合包含处在TTL范围内
+与范围外的数据，同时数据文件可能正在接受查询，数据文件的物理删除不会立即进行。如果你在此时取消或者调大TTL，
+一部分之前不可见的数据可能重新可见，而那些已经被物理删除的数据则将永久丢失。也就是说，TTL操作不会原子性地删除
+对应的数据。因此我们不推荐您频繁修改TTL，除非您能接受该操作带来的一定程度的不可预知性。
+
 ## 参考
 
 ### 关键字
@@ -589,3 +661,4 @@ eg. root.ln.wf01.wt01.*
 eg. *.wt01.*
 eg. *
 ```
+

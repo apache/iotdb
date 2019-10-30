@@ -18,8 +18,69 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
+import static org.apache.iotdb.db.qp.constant.SQLConstant.LESSTHAN;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.LESSTHANOREQUALTO;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_AND;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_EQ;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_GT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_GTE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_LT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_LTE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_NEQ;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_NOT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_OR;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_ADD;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_AGGREGATE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_ALL;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_ALTER;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_CREATE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DATETIME;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DELETE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DROP;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_FILL;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_FROM;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_GRANT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_GRANT_WATERMARK_EMBEDDING;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_GROUPBY;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_GROUPBY_DEVICE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_INSERT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LABEL;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LIMIT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LINEAR;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LINK;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LIST;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LOAD;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PATH;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PREVIOUS;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PRIVILEGES;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PROPERTY;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_QUERY;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_REVOKE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_REVOKE_WATERMARK_EMBEDDING;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_ROLE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_ROOT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SELECT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SET;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SHOW;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SLIMIT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SOFFSET;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_STORAGEGROUP;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_TIMESERIES;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_TTL;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_UNLINK;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_UNSET;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_UPDATE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_USER;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_WHERE;
+
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.antlr.runtime.Token;
-import org.apache.iotdb.db.exception.ArgsErrorException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
@@ -28,8 +89,25 @@ import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.constant.TqlParserConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
-import org.apache.iotdb.db.qp.logical.crud.*;
-import org.apache.iotdb.db.qp.logical.sys.*;
+import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
+import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.qp.logical.crud.FromOperator;
+import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.qp.logical.crud.UpdateOperator;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
+import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
+import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
@@ -45,19 +123,13 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
-import java.time.ZoneId;
-import java.util.*;
-
-import static org.apache.iotdb.db.qp.constant.SQLConstant.LESSTHAN;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.LESSTHANOREQUALTO;
-
 /**
  * This class receives an AstNode and transform it to an operator which is a logical plan.
  */
 public class LogicalGenerator {
 
   private static final String ERR_INCORRECT_AUTHOR_COMMAND = "illegal ast tree in grant author "
-          + "command, please check you SQL statement";
+      + "command, please check you SQL statement";
 
   private RootOperator initializedOperator = null;
   private ZoneId zoneId;
@@ -67,7 +139,7 @@ public class LogicalGenerator {
   }
 
   public RootOperator getLogicalPlan(AstNode astNode)
-          throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+      throws QueryProcessorException, MetadataErrorException {
     analyze(astNode);
     return initializedOperator;
   }
@@ -76,49 +148,48 @@ public class LogicalGenerator {
    * input an astNode parsing by {@code antlr} and analyze it.
    *
    * @throws QueryProcessorException exception in query process
-   * @throws ArgsErrorException args error
    */
   private void analyze(AstNode astNode)
-          throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+      throws QueryProcessorException, MetadataErrorException {
     Token token = astNode.getToken();
     if (token == null) {
       throw new QueryProcessorException("given token is null");
     }
     int tokenIntType = token.getType();
     switch (tokenIntType) {
-      case TqlParser.TOK_INSERT:
+      case TOK_INSERT:
         analyzeInsert(astNode);
         return;
-      case TqlParser.TOK_SELECT:
+      case TOK_SELECT:
         analyzeSelectedPath(astNode);
         return;
-      case TqlParser.TOK_FROM:
+      case TOK_FROM:
         analyzeFrom(astNode);
         return;
-      case TqlParser.TOK_WHERE:
+      case TOK_WHERE:
         analyzeWhere(astNode);
         return;
-      case TqlParser.TOK_GROUPBY:
+      case TOK_GROUPBY:
         analyzeGroupBy(astNode);
         return;
-      case TqlParser.TOK_FILL:
+      case TOK_FILL:
         analyzeFill(astNode);
         return;
-      case TqlParser.TOK_ALTER:
+      case TOK_ALTER:
         analyzeAuthorAlter(astNode);
         return;
-      case TqlParser.TOK_UPDATE:
+      case TOK_UPDATE:
         analyzeUpdate(astNode);
         return;
-      case TqlParser.TOK_DELETE:
+      case TOK_DELETE:
         switch (astNode.getChild(0).getType()) {
-          case TqlParser.TOK_TIMESERIES:
+          case TOK_TIMESERIES:
             analyzeMetadataDelete(astNode);
             break;
-          case TqlParser.TOK_LABEL:
+          case TOK_LABEL:
             analyzePropertyDeleteLabel(astNode);
             break;
-          case TqlParser.TOK_STORAGEGROUP:
+          case TOK_STORAGEGROUP:
             analyzeMetaDataDeleteFileLevel(astNode);
             break;
           default:
@@ -126,78 +197,81 @@ public class LogicalGenerator {
             break;
         }
         return;
-      case TqlParser.TOK_SET:
+      case TOK_SET:
         analyzeMetadataSetFileLevel(astNode);
         return;
-      case TqlParser.TOK_ADD:
+      case TOK_ADD:
         analyzePropertyAddLabel(astNode);
         return;
-      case TqlParser.TOK_LINK:
+      case TOK_LINK:
         analyzePropertyLink(astNode);
         return;
-      case TqlParser.TOK_UNLINK:
+      case TOK_UNLINK:
         analyzePropertyUnLink(astNode);
         return;
-      case TqlParser.TOK_CREATE:
+      case TOK_CREATE:
         switch (astNode.getChild(0).getType()) {
-          case TqlParser.TOK_USER:
-          case TqlParser.TOK_ROLE:
+          case TOK_USER:
+          case TOK_ROLE:
             analyzeAuthorCreate(astNode);
             break;
-          case TqlParser.TOK_PATH:
+          case TOK_PATH:
             analyzeMetadataCreate(astNode);
             break;
-          case TqlParser.TOK_PROPERTY:
+          case TOK_PROPERTY:
             analyzePropertyCreate(astNode);
             break;
           default:
             break;
         }
         return;
-      case TqlParser.TOK_DROP:
+      case TOK_DROP:
         switch (astNode.getChild(0).getType()) {
-          case TqlParser.TOK_USER:
-          case TqlParser.TOK_ROLE:
+          case TOK_USER:
+          case TOK_ROLE:
             analyzeAuthorDrop(astNode);
             break;
           default:
             break;
         }
         return;
-      case TqlParser.TOK_GRANT:
+      case TOK_GRANT:
         analyzeAuthorGrant(astNode);
         return;
-      case TqlParser.TOK_GRANT_WATERMARK_EMBEDDING:
+      case TOK_GRANT_WATERMARK_EMBEDDING:
         analyzeWatermarkEmbedding(astNode, SQLConstant.TOK_GRANT_WATERMARK_EMBEDDING);
         return;
-      case TqlParser.TOK_REVOKE_WATERMARK_EMBEDDING:
+      case TOK_REVOKE_WATERMARK_EMBEDDING:
         analyzeWatermarkEmbedding(astNode, SQLConstant.TOK_REVOKE_WATERMARK_EMBEDDING);
         return;
-      case TqlParser.TOK_REVOKE:
+      case TOK_REVOKE:
         analyzeAuthorRevoke(astNode);
         return;
-      case TqlParser.TOK_LOAD:
+      case TOK_LOAD:
         analyzeDataLoad(astNode);
         return;
-      case TqlParser.TOK_QUERY:
+      case TOK_QUERY:
         // for TqlParser.TOK_QUERY might appear in both query and insert
         // command. Thus, do
         // nothing and call analyze() with children nodes recursively.
         initializedOperator = new QueryOperator(SQLConstant.TOK_QUERY);
         break;
-      case TqlParser.TOK_LIST:
+      case TOK_LIST:
         analyzeList(astNode);
         return;
-      case TqlParser.TOK_LIMIT:
+      case TOK_LIMIT:
         analyzeLimit(astNode);
         return;
-      case TqlParser.TOK_SLIMIT:
+      case TOK_SLIMIT:
         analyzeSlimit(astNode);
         return;
-      case TqlParser.TOK_SOFFSET:
+      case TOK_SOFFSET:
         analyzeSoffset(astNode);
         return;
-      case TqlParser.TOK_GROUPBY_DEVICE:
+      case TOK_TTL:
+        analyzeTTL(astNode);
+        return;
+      case TOK_GROUPBY_DEVICE:
         ((QueryOperator) initializedOperator).setGroupByDevice(true);
         return;
       default:
@@ -206,6 +280,49 @@ public class LogicalGenerator {
     for (Node node : astNode.getChildren()) {
       analyze((AstNode) node);
     }
+  }
+
+  private void analyzeTTL(AstNode astNode) throws QueryProcessorException {
+    int tokenType = astNode.getChild(0).getToken().getType();
+    switch (tokenType) {
+      case TOK_SET:
+        analyzeSetTTL(astNode);
+        break;
+      case TOK_UNSET:
+        analyzeUnsetTTL(astNode);
+        break;
+      case TOK_SHOW:
+        analyzeShowTTL(astNode);
+        break;
+      default:
+        throw new QueryProcessorException("Not supported TSParser type in TTL:" + tokenType);
+    }
+  }
+
+  private void analyzeSetTTL(AstNode astNode) {
+    String path = parsePath(astNode.getChild(1)).getFullPath();
+    long dataTTL;
+    dataTTL = Long.parseLong(astNode.getChild(2).getText());
+    SetTTLOperator operator = new SetTTLOperator(SQLConstant.TOK_SET);
+    initializedOperator = operator;
+    operator.setStorageGroup(path);
+    operator.setDataTTL(dataTTL);
+  }
+
+  private void analyzeUnsetTTL(AstNode astNode) {
+    String path = parsePath(astNode.getChild(1)).getFullPath();
+    SetTTLOperator operator = new SetTTLOperator(SQLConstant.TOK_UNSET);
+    initializedOperator = operator;
+    operator.setStorageGroup(path);
+  }
+
+  private void analyzeShowTTL(AstNode astNode) {
+    List<String> storageGroups = new ArrayList<>();
+    for (int i = 1; i < astNode.getChildCount(); i ++) {
+      Path path = parsePath(astNode.getChild(i));
+      storageGroups.add(path.getFullPath());
+    }
+    initializedOperator = new ShowTTLOperator(storageGroups);
   }
 
   private void analyzeSlimit(AstNode astNode) throws LogicalOperatorException {
@@ -220,7 +337,7 @@ public class LogicalGenerator {
       // seriesLimit is ensured to be a non negative integer after the lexical examination,
       // and seriesLimit is further required to be a positive integer here.
       throw new LogicalOperatorException(
-              "SLIMIT <SN>: SN must be a positive integer and can not be zero.");
+          "SLIMIT <SN>: SN must be a positive integer and can not be zero.");
     }
     ((QueryOperator) initializedOperator).setSeriesLimit(seriesLimit);
   }
@@ -230,7 +347,7 @@ public class LogicalGenerator {
     try {
       // NOTE seriesOffset is ensured to be a non negative integer after the lexical examination.
       ((QueryOperator) initializedOperator)
-              .setSeriesOffset(Integer.parseInt(unit.getText().trim()));
+          .setSeriesOffset(Integer.parseInt(unit.getText().trim()));
     } catch (NumberFormatException e) {
       throw new LogicalOperatorException("SOFFSET <SOFFSETValue>: SOFFSETValue should be Int32.");
     }
@@ -248,7 +365,7 @@ public class LogicalGenerator {
       // rowsLimit is ensured to be a non negative integer after the lexical examination,
       // and rowsLimit is further required to be a positive integer here.
       throw new LogicalOperatorException(
-              "LIMIT <N>: N must be a positive integer and can not be zero.");
+          "LIMIT <N>: N must be a positive integer and can not be zero.");
     }
   }
 
@@ -265,62 +382,62 @@ public class LogicalGenerator {
 
   private void analyzeSimpleList(AstNode astNode) {
     int tokenType = astNode.getChild(0).getType();
-    if (tokenType == TqlParser.TOK_USER) {
+    if (tokenType == TOK_USER) {
       // list all users
       initializedOperator = new AuthorOperator(SQLConstant.TOK_LIST,
-              AuthorOperator.AuthorType.LIST_USER);
+          AuthorOperator.AuthorType.LIST_USER);
     } else if (tokenType == TqlParser.TOK_ROLE) {
       // list all roles
       initializedOperator = new AuthorOperator(SQLConstant.TOK_LIST,
-              AuthorOperator.AuthorType.LIST_ROLE);
+          AuthorOperator.AuthorType.LIST_ROLE);
     }
   }
 
   private void analyzeComplexList(AstNode astNode) {
     int tokenType = astNode.getChild(1).getType();
-    if (tokenType == TqlParser.TOK_USER) {
+    if (tokenType == TOK_USER) {
       // list user privileges on seriesPath
       AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-              AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
+          AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
       initializedOperator = operator;
       operator.setUserName(astNode.getChild(1).getChild(0).getText());
       operator.setNodeNameList(parsePath(astNode.getChild(2)));
-    } else if (tokenType == TqlParser.TOK_ROLE) {
+    } else if (tokenType == TOK_ROLE) {
       // list role privileges on seriesPath
       AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-              AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
+          AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
       initializedOperator = operator;
       operator.setRoleName(astNode.getChild(1).getChild(0).getText());
       operator.setNodeNameList(parsePath(astNode.getChild(2)));
-    } else if (tokenType == TqlParser.TOK_ALL) {
+    } else if (tokenType == TOK_ALL) {
       tokenType = astNode.getChild(0).getType();
-      if (tokenType == TqlParser.TOK_PRIVILEGES) {
+      if (tokenType == TOK_PRIVILEGES) {
         tokenType = astNode.getChild(2).getType();
-        if (tokenType == TqlParser.TOK_USER) {
+        if (tokenType == TOK_USER) {
           // list all privileges of a user
           AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-                  AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
+              AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
           initializedOperator = operator;
           operator.setUserName(astNode.getChild(2).getChild(0).getText());
-        } else if (tokenType == TqlParser.TOK_ROLE) {
+        } else if (tokenType == TOK_ROLE) {
           // list all privileges of a role
           AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-                  AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
+              AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
           initializedOperator = operator;
           operator.setRoleName(astNode.getChild(2).getChild(0).getText());
         }
       } else {
         tokenType = astNode.getChild(2).getType();
-        if (tokenType == TqlParser.TOK_USER) {
+        if (tokenType == TOK_USER) {
           // list all roles of a user
           AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-                  AuthorOperator.AuthorType.LIST_USER_ROLES);
+              AuthorOperator.AuthorType.LIST_USER_ROLES);
           initializedOperator = operator;
           operator.setUserName(astNode.getChild(2).getChild(0).getText());
-        } else if (tokenType == TqlParser.TOK_ROLE) {
+        } else if (tokenType == TOK_ROLE) {
           // list all users of a role
           AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-                  AuthorOperator.AuthorType.LIST_ROLE_USERS);
+              AuthorOperator.AuthorType.LIST_ROLE_USERS);
           initializedOperator = operator;
           operator.setRoleName(astNode.getChild(2).getChild(0).getText());
         }
@@ -331,14 +448,14 @@ public class LogicalGenerator {
 
   private void analyzePropertyCreate(AstNode astNode) {
     PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_CREATE,
-            PropertyOperator.PropertyType.ADD_TREE);
+        PropertyOperator.PropertyType.ADD_TREE);
     propertyOperator.setPropertyPath(new Path(astNode.getChild(0).getChild(0).getText()));
     initializedOperator = propertyOperator;
   }
 
   private void analyzePropertyAddLabel(AstNode astNode) {
     PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_ADD_LABEL,
-            PropertyOperator.PropertyType.ADD_PROPERTY_LABEL);
+        PropertyOperator.PropertyType.ADD_PROPERTY_LABEL);
     Path propertyLabel = parsePropertyAndLabel(astNode, 0);
     propertyOperator.setPropertyPath(propertyLabel);
     initializedOperator = propertyOperator;
@@ -346,7 +463,7 @@ public class LogicalGenerator {
 
   private void analyzePropertyDeleteLabel(AstNode astNode) {
     PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_DELETE_LABEL,
-            PropertyOperator.PropertyType.DELETE_PROPERTY_LABEL);
+        PropertyOperator.PropertyType.DELETE_PROPERTY_LABEL);
     Path propertyLabel = parsePropertyAndLabel(astNode, 0);
     propertyOperator.setPropertyPath(propertyLabel);
     initializedOperator = propertyOperator;
@@ -360,7 +477,7 @@ public class LogicalGenerator {
 
   private void analyzePropertyLink(AstNode astNode) {
     PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_LINK,
-            PropertyOperator.PropertyType.ADD_PROPERTY_TO_METADATA);
+        PropertyOperator.PropertyType.ADD_PROPERTY_TO_METADATA);
     Path metaPath = parsePath(astNode.getChild(0));
     propertyOperator.setMetadataPath(metaPath);
     Path propertyLabel = parsePropertyAndLabel(astNode, 1);
@@ -370,7 +487,7 @@ public class LogicalGenerator {
 
   private void analyzePropertyUnLink(AstNode astNode) {
     PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_UNLINK,
-            PropertyOperator.PropertyType.DEL_PROPERTY_FROM_METADATA);
+        PropertyOperator.PropertyType.DEL_PROPERTY_FROM_METADATA);
     Path metaPath = parsePath(astNode.getChild(0));
     propertyOperator.setMetadataPath(metaPath);
     Path propertyLabel = parsePropertyAndLabel(astNode, 1);
@@ -398,14 +515,13 @@ public class LogicalGenerator {
       AstNode node = paramNode.getChild(offset++);
       props.put(node.getChild(0).getText().toLowerCase(), cascadeChildrenText(node.getChild(1)));
     }
-    MetadataOperator metadataOperator = new MetadataOperator(SQLConstant.TOK_METADATA_CREATE,
-            MetadataOperator.NamespaceType.ADD_PATH);
-    metadataOperator.setPath(series);
-    metadataOperator.setDataType(TSDataType.valueOf(dataType));
-    metadataOperator.setEncoding(TSEncoding.valueOf(encodingType));
-    metadataOperator.setProps(props);
-    metadataOperator.setCompressor(CompressionType.valueOf(compressor));
-    initializedOperator = metadataOperator;
+    CreateTimeSeriesOperator createTimeSeriesOperator = new CreateTimeSeriesOperator(SQLConstant.TOK_METADATA_CREATE);
+    createTimeSeriesOperator.setPath(series);
+    createTimeSeriesOperator.setDataType(TSDataType.valueOf(dataType));
+    createTimeSeriesOperator.setEncoding(TSEncoding.valueOf(encodingType));
+    createTimeSeriesOperator.setProps(props);
+    createTimeSeriesOperator.setCompressor(CompressionType.valueOf(compressor));
+    initializedOperator = createTimeSeriesOperator;
   }
 
   private void analyzeMetadataDelete(AstNode astNode) {
@@ -413,31 +529,28 @@ public class LogicalGenerator {
     for (int i = 0; i < astNode.getChild(0).getChildCount(); i++) {
       deletePaths.add(parsePath(astNode.getChild(0).getChild(i)));
     }
-    MetadataOperator metadataOperator = new MetadataOperator(SQLConstant.TOK_METADATA_DELETE,
-            MetadataOperator.NamespaceType.DELETE_PATH);
-    metadataOperator.setDeletePathList(deletePaths);
-    initializedOperator = metadataOperator;
+    DeleteTimeSeriesOperator deleteTimeSeriesOperator = new DeleteTimeSeriesOperator(SQLConstant.TOK_METADATA_DELETE);
+    deleteTimeSeriesOperator.setDeletePathList(deletePaths);
+    initializedOperator = deleteTimeSeriesOperator;
   }
 
   private void analyzeMetadataSetFileLevel(AstNode astNode) {
-    MetadataOperator metadataOperator = new MetadataOperator(
-            SQLConstant.TOK_METADATA_SET_FILE_LEVEL,
-            MetadataOperator.NamespaceType.SET_STORAGE_GROUP);
+    SetStorageGroupOperator setStorageGroupOperator = new SetStorageGroupOperator(
+            SQLConstant.TOK_METADATA_SET_FILE_LEVEL);
     Path path = parsePath(astNode.getChild(0).getChild(0));
-    metadataOperator.setPath(path);
-    initializedOperator = metadataOperator;
+    setStorageGroupOperator.setPath(path);
+    initializedOperator = setStorageGroupOperator;
   }
 
-  private void analyzeMetaDataDeleteFileLevel(AstNode astNode){
+  private void analyzeMetaDataDeleteFileLevel(AstNode astNode) {
     List<Path> deletePaths = new ArrayList<>();
     for (int i = 0; i < astNode.getChild(0).getChildCount(); i++) {
       deletePaths.add(parsePath(astNode.getChild(0).getChild(i)));
     }
-    MetadataOperator metadataOperator = new MetadataOperator(
-            SQLConstant.TOK_METADATA_DELETE_FILE_LEVEL,
-            MetadataOperator.NamespaceType.DELETE_STORAGE_GROUP);
-    metadataOperator.setDeletePathList(deletePaths);
-    initializedOperator = metadataOperator;
+    DeleteStorageGroupOperator deleteStorageGroupOperator = new DeleteStorageGroupOperator(
+            SQLConstant.TOK_METADATA_DELETE_FILE_LEVEL);
+    deleteStorageGroupOperator.setDeletePathList(deletePaths);
+    initializedOperator = deleteStorageGroupOperator;
   }
 
   private void analyzeInsert(AstNode astNode) throws QueryProcessorException {
@@ -447,19 +560,19 @@ public class LogicalGenerator {
     long timestamp;
     try {
       AstNode timeValue = astNode.getChild(2).getChild(0);
-      if (timeValue.getType() == TqlParser.TOK_DATETIME) {
-        timestamp = Long.valueOf(parseTokenTime(timeValue));
+      if (timeValue.getType() == TOK_DATETIME) {
+        timestamp = parseTimeFormat(cascadeChildrenText(timeValue));
       } else {
-        timestamp = Long.valueOf(astNode.getChild(2).getChild(0).getText());
+        timestamp = Long.parseLong(astNode.getChild(2).getChild(0).getText());
       }
     } catch (NumberFormatException e) {
       throw new LogicalOperatorException(
-              "need a long value in insert clause, but given:" + astNode.getChild(2).getChild(0)
-                      .getText());
+          "need a long value in insert clause, but given:" + astNode.getChild(2).getChild(0)
+              .getText());
     }
     if (astNode.getChild(1).getChildCount() != astNode.getChild(2).getChildCount()) {
       throw new QueryProcessorException(
-              "number of measurement is NOT EQUAL TO the number of values");
+          "number of measurement is NOT EQUAL TO the number of values");
     }
     insertOp.setTime(timestamp);
     String[] measurementList = new String[astNode.getChild(1).getChildCount() - 1];
@@ -483,10 +596,10 @@ public class LogicalGenerator {
     }
     UpdateOperator updateOp = new UpdateOperator(SQLConstant.TOK_UPDATE);
     initializedOperator = updateOp;
-    FromOperator fromOp = new FromOperator(TqlParser.TOK_FROM);
+    FromOperator fromOp = new FromOperator(TOK_FROM);
     fromOp.addPrefixTablePath(parsePath(astNode.getChild(0)));
     updateOp.setFromOperator(fromOp);
-    SelectOperator selectOp = new SelectOperator(TqlParser.TOK_SELECT);
+    SelectOperator selectOp = new SelectOperator(TOK_SELECT);
     selectOp.addSelectPath(parsePath(astNode.getChild(1).getChild(0)));
     updateOp.setSelectOperator(selectOp);
     updateOp.setValue(astNode.getChild(1).getChild(1).getText());
@@ -494,23 +607,23 @@ public class LogicalGenerator {
   }
 
   private void analyzeDelete(AstNode astNode) throws LogicalOperatorException {
-    initializedOperator = new DeleteOperator(SQLConstant.TOK_DELETE);
+    initializedOperator = new DeleteDataOperator(SQLConstant.TOK_DELETE);
     SelectOperator selectOp = new SelectOperator(TqlParser.TOK_SELECT);
     int selChildCount = astNode.getChildCount() - 1;
     for (int i = 0; i < selChildCount; i++) {
       AstNode child = astNode.getChild(i);
-      if (child.getType() != TqlParser.TOK_PATH) {
+      if (child.getType() != TOK_PATH) {
         throw new LogicalOperatorException(
-                "children FROM clause except last one must all be seriesPath like root.a.b, actual:"
-                        + child.getText());
+            "children FROM clause except last one must all be seriesPath like root.a.b, actual:"
+                + child.getText());
       }
       Path tablePath = parsePath(child);
       selectOp.addSelectPath(tablePath);
     }
     ((SFWOperator) initializedOperator).setSelectOperator(selectOp);
     analyzeWhere(astNode.getChild(selChildCount));
-    long deleteTime = parseDeleteTimeFilter((DeleteOperator) initializedOperator);
-    ((DeleteOperator) initializedOperator).setTime(deleteTime);
+    long deleteTime = parseDeleteTimeFilter((DeleteDataOperator) initializedOperator);
+    ((DeleteDataOperator) initializedOperator).setTime(deleteTime);
   }
 
   /**
@@ -518,16 +631,16 @@ public class LogicalGenerator {
    *
    * @param operator delete logical plan
    */
-  private long parseDeleteTimeFilter(DeleteOperator operator) throws LogicalOperatorException {
+  private long parseDeleteTimeFilter(DeleteDataOperator operator) throws LogicalOperatorException {
     FilterOperator filterOperator = operator.getFilterOperator();
     if (!(filterOperator.isLeaf())) {
       throw new LogicalOperatorException(
-              "For delete command, where clause must be like : time < XXX or time <= XXX");
+          "For delete command, where clause must be like : time < XXX or time <= XXX");
     }
     if (filterOperator.getTokenIntType() != LESSTHAN
-            && filterOperator.getTokenIntType() != LESSTHANOREQUALTO) {
+        && filterOperator.getTokenIntType() != LESSTHANOREQUALTO) {
       throw new LogicalOperatorException(
-              "For delete command, where clause must be like : time < XXX or time <= XXX");
+          "For delete command, where clause must be like : time < XXX or time <= XXX");
     }
     long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());
     if (filterOperator.getTokenIntType() == LESSTHAN) {
@@ -541,9 +654,9 @@ public class LogicalGenerator {
     FromOperator from = new FromOperator(SQLConstant.TOK_FROM);
     for (int i = 0; i < selChildCount; i++) {
       AstNode child = node.getChild(i);
-      if (child.getType() != TqlParser.TOK_PATH) {
+      if (child.getType() != TOK_PATH) {
         throw new LogicalOperatorException(
-                "children FROM clause must all be seriesPath like root.a.b, actual:" + child.getText());
+            "children FROM clause must all be seriesPath like root.a.b, actual:" + child.getText());
       }
       Path tablePath = parsePath(child);
       from.addPrefixTablePath(tablePath);
@@ -553,12 +666,12 @@ public class LogicalGenerator {
 
   private void analyzeSelectedPath(AstNode astNode) throws LogicalOperatorException {
     int tokenIntType = astNode.getType();
-    SelectOperator selectOp = new SelectOperator(TqlParser.TOK_SELECT);
-    if (tokenIntType == TqlParser.TOK_SELECT) {
+    SelectOperator selectOp = new SelectOperator(TOK_SELECT);
+    if (tokenIntType == TOK_SELECT) {
       int selChildCount = astNode.getChildCount();
       for (int i = 0; i < selChildCount; i++) {
         AstNode child = astNode.getChild(i);
-        if (child.getChild(0).getType() == TqlParser.TOK_AGGREGATE) {
+        if (child.getChild(0).getType() == TOK_AGGREGATE) {
           AstNode cluster = child.getChild(0);
           AstNode pathChild = cluster.getChild(0);
           Path selectPath = parsePath(pathChild);
@@ -569,24 +682,24 @@ public class LogicalGenerator {
           selectOp.addSelectPath(selectPath);
         }
       }
-    } else if (tokenIntType == TqlParser.TOK_PATH) {
+    } else if (tokenIntType == TOK_PATH) {
       Path selectPath = parsePath(astNode);
       selectOp.addSelectPath(selectPath);
     } else {
       throw new LogicalOperatorException(
-              "children SELECT clause must all be seriesPath like root.a.b, actual:" + astNode.dump());
+          "children SELECT clause must all be seriesPath like root.a.b, actual:" + astNode.dump());
     }
     ((SFWOperator) initializedOperator).setSelectOperator(selectOp);
   }
 
   private void analyzeWhere(AstNode astNode) throws LogicalOperatorException {
-    if (astNode.getType() != TqlParser.TOK_WHERE) {
+    if (astNode.getType() != TOK_WHERE) {
       throw new LogicalOperatorException(
-              "given node is not WHERE! please check whether SQL statement is correct.");
+          "given node is not WHERE! please check whether SQL statement is correct.");
     }
     if (astNode.getChildCount() != 1) {
       throw new LogicalOperatorException("where clause has" + astNode.getChildCount()
-              + " child, please check whether SQL grammar is correct.");
+          + " child, please check whether SQL grammar is correct.");
     }
     FilterOperator whereOp = new FilterOperator(SQLConstant.TOK_WHERE);
     AstNode child = astNode.getChild(0);
@@ -595,13 +708,13 @@ public class LogicalGenerator {
   }
 
   private void analyzeWhere(AstNode ast, int tokenIntType, FilterOperator filterOp)
-          throws LogicalOperatorException {
+      throws LogicalOperatorException {
     int childCount = ast.getChildCount();
     switch (tokenIntType) {
-      case TqlParser.OPERATOR_NOT:
+      case OPERATOR_NOT:
         if (childCount != 1) {
           throw new LogicalOperatorException(
-                  "parsing where clause failed: NOT operator requries one param");
+              "parsing where clause failed: NOT operator requires one param");
         }
         FilterOperator notOp = new FilterOperator(SQLConstant.KW_NOT);
         filterOp.addChildOperator(notOp);
@@ -609,14 +722,14 @@ public class LogicalGenerator {
         int childNodeTokenType = childAstNode.getToken().getType();
         analyzeWhere(childAstNode, childNodeTokenType, notOp);
         break;
-      case TqlParser.OPERATOR_AND:
-      case TqlParser.OPERATOR_OR:
+      case OPERATOR_AND:
+      case OPERATOR_OR:
         if (childCount != 2) {
           throw new LogicalOperatorException(
-                  "parsing where clause failed! node has " + childCount + " paramter.");
+              "parsing where clause failed! node has " + childCount + " parameter.");
         }
         FilterOperator binaryOp = new FilterOperator(
-                TqlParserConstant.getTSTokenIntType(tokenIntType));
+            TqlParserConstant.getTSTokenIntType(tokenIntType));
         filterOp.addChildOperator(binaryOp);
         for (int i = 0; i < childCount; i++) {
           childAstNode = ast.getChild(i);
@@ -624,17 +737,17 @@ public class LogicalGenerator {
           analyzeWhere(childAstNode, childNodeTokenType, binaryOp);
         }
         break;
-      case TqlParser.OPERATOR_LT:
-      case TqlParser.OPERATOR_LTE:
-      case TqlParser.OPERATOR_EQ:
+      case OPERATOR_LT:
+      case OPERATOR_LTE:
+      case OPERATOR_EQ:
 //      case TqlParser.EQUAL_NS:
-      case TqlParser.OPERATOR_GT:
-      case TqlParser.OPERATOR_GTE:
-      case TqlParser.OPERATOR_NEQ:
+      case OPERATOR_GT:
+      case OPERATOR_GTE:
+      case OPERATOR_NEQ:
         Pair<Path, String> pair = parseLeafNode(ast);
         BasicFunctionOperator basic = new BasicFunctionOperator(
-                TqlParserConstant.getTSTokenIntType(tokenIntType),
-                pair.left, pair.right);
+            TqlParserConstant.getTSTokenIntType(tokenIntType),
+            pair.left, pair.right);
         filterOp.addChildOperator(basic);
         break;
       default:
@@ -647,14 +760,13 @@ public class LogicalGenerator {
 
     if (selectOp.getSuffixPaths().size() != selectOp.getAggregations().size()) {
       throw new LogicalOperatorException(
-              "Group by must bind each seriesPath with an aggregation function");
+          "Group by must bind each seriesPath with an aggregation function");
     }
     ((QueryOperator) initializedOperator).setGroupBy(true);
     int childCount = astNode.getChildCount();
 
     // parse timeUnit
-    AstNode unit = astNode.getChild(0);
-    long value = parseTimeUnit(unit);
+    long value = parseTokenTime(astNode.getChild(0));
     ((QueryOperator) initializedOperator).setUnit(value);
 
     // parse show intervals
@@ -667,16 +779,16 @@ public class LogicalGenerator {
     for (int i = 0; i < intervalCount; i++) {
       intervalNode = intervalsNode.getChild(i);
       AstNode startNode = intervalNode.getChild(0);
-      if (startNode.getType() == TqlParser.TOK_DATETIME) {
-        startTime = Long.valueOf(parseTokenTime(startNode));
+      if (startNode.getType() == TOK_DATETIME) {
+        startTime = parseTokenTime(startNode);
       } else {
-        startTime = Long.valueOf(startNode.getText());
+        startTime = Long.parseLong(startNode.getText());
       }
       AstNode endNode = intervalNode.getChild(1);
-      if (endNode.getType() == TqlParser.TOK_DATETIME) {
-        endTime = Long.valueOf(parseTokenTime(endNode));
+      if (endNode.getType() == TOK_DATETIME) {
+        endTime = parseTokenTime(endNode);
       } else {
-        endTime = Long.valueOf(endNode.getText());
+        endTime = Long.parseLong(endNode.getText());
       }
       intervals.add(new Pair<>(startTime, endTime));
     }
@@ -687,10 +799,10 @@ public class LogicalGenerator {
     long originTime;
     if (childCount == 3) {
       AstNode originNode = astNode.getChild(1).getChild(0);
-      if (originNode.getType() == TqlParser.TOK_DATETIME) {
-        originTime = Long.valueOf(parseTokenTime(originNode));
+      if (originNode.getType() == TOK_DATETIME) {
+        originTime = parseTokenTime(originNode);
       } else {
-        originTime = Long.valueOf(originNode.getText());
+        originTime = Long.parseLong(originNode.getText());
       }
     } else {
       originTime = parseTimeFormat(SQLConstant.START_TIME_STR);
@@ -717,8 +829,8 @@ public class LogicalGenerator {
       TSDataType dataType = parseTypeNode(childNode.getChild(0));
       AstNode fillTypeNode = childNode.getChild(1);
       switch (fillTypeNode.getType()) {
-        case TqlParser.TOK_LINEAR:
-          checkTypeFill(dataType, TqlParser.TOK_LINEAR);
+        case TOK_LINEAR:
+          checkTypeFill(dataType, TOK_LINEAR);
           if (fillTypeNode.getChildCount() == 2) {
             long beforeRange = parseTimeUnit(fillTypeNode.getChild(0));
             long afterRange = parseTimeUnit(fillTypeNode.getChild(1));
@@ -727,11 +839,11 @@ public class LogicalGenerator {
             fillTypes.put(dataType, new LinearFill(-1, -1));
           } else {
             throw new LogicalOperatorException(
-                    "Linear fill type must have 0 or 2 valid time ranges");
+                "Linear fill type must have 0 or 2 valid time ranges");
           }
           break;
-        case TqlParser.TOK_PREVIOUS:
-          checkTypeFill(dataType, TqlParser.TOK_PREVIOUS);
+        case TOK_PREVIOUS:
+          checkTypeFill(dataType, TOK_PREVIOUS);
           if (fillTypeNode.getChildCount() == 1) {
             long preRange = parseTimeUnit(fillTypeNode.getChild(0));
             fillTypes.put(dataType, new PreviousFill(preRange));
@@ -739,7 +851,7 @@ public class LogicalGenerator {
             fillTypes.put(dataType, new PreviousFill(-1));
           } else {
             throw new LogicalOperatorException(
-                    "Previous fill type must have 0 or 1 valid time range");
+                "Previous fill type must have 0 or 1 valid time range");
           }
           break;
         default:
@@ -757,18 +869,18 @@ public class LogicalGenerator {
       case INT64:
       case FLOAT:
       case DOUBLE:
-        if (type != TqlParser.TOK_LINEAR && type != TqlParser.TOK_PREVIOUS) {
+        if (type != TOK_LINEAR && type != TOK_PREVIOUS) {
           throw new LogicalOperatorException(
-                  String.format("type %s cannot use %s fill function", dataType,
-                          TqlParser.tokenNames[type]));
+              String.format("type %s cannot use %s fill function", dataType,
+                  TqlParser.tokenNames[type]));
         }
         return;
       case BOOLEAN:
       case TEXT:
-        if (type != TqlParser.TOK_PREVIOUS) {
+        if (type != TOK_PREVIOUS) {
           throw new LogicalOperatorException(
-                  String.format("type %s cannot use %s fill function", dataType,
-                          TqlParser.tokenNames[type]));
+              String.format("type %s cannot use %s fill function", dataType,
+                  TqlParser.tokenNames[type]));
         }
         return;
       default:
@@ -800,24 +912,9 @@ public class LogicalGenerator {
   }
 
   private long parseTimeUnit(AstNode node) throws LogicalOperatorException {
-    long timeInterval = Long.parseLong(node.getChild(0).getText());
+    long timeInterval = parseTokenDuration(node);
     if (timeInterval <= 0) {
       throw new LogicalOperatorException("Interval must more than 0.");
-    }
-    String granu = node.getChild(1).getText();
-    switch (granu) {
-      case "w":
-        timeInterval *= 7;
-      case "d":
-        timeInterval *= 24;
-      case "h":
-        timeInterval *= 60;
-      case "m":
-        timeInterval *= 60;
-      case "s":
-        timeInterval *= 1000;
-      default:
-        break;
     }
     return timeInterval;
   }
@@ -825,35 +922,93 @@ public class LogicalGenerator {
   private Pair<Path, String> parseLeafNode(AstNode node) throws LogicalOperatorException {
     if (node.getChildCount() != 2) {
       throw new LogicalOperatorException(
-              "error format in SQL statement, please check whether SQL statement is correct.");
+          "error format in SQL statement, please check whether SQL statement is correct.");
     }
     AstNode col = node.getChild(0);
-    if (col.getType() != TqlParser.TOK_PATH) {
+    if (col.getType() != TOK_PATH) {
       throw new LogicalOperatorException(
-              "error format in SQL statement, please check whether SQL statement is correct.");
+          "error format in SQL statement, please check whether SQL statement is correct.");
     }
     Path seriesPath = parsePath(col);
     AstNode rightKey = node.getChild(1);
     String seriesValue;
-    if(rightKey.getChild(0).getType() == TqlParser.TOK_DATETIME){
+    if (rightKey.getChild(0).getType() == TqlParser.TOK_DATETIME) {
       if (!seriesPath.equals(SQLConstant.RESERVED_TIME)) {
         throw new LogicalOperatorException("Date can only be used to time");
       }
-      seriesValue = parseTokenTime(rightKey.getChild(0));
-    }else{
+      seriesValue = parseTokenTime(rightKey.getChild(0)) + "";
+    } else if (rightKey.getType() == TqlParser.TOK_DATE_EXPR) {
+      seriesValue = parseTokenDataExpression(rightKey.getChild(0)) + "";
+    } else {
       seriesValue = cascadeChildrenText(rightKey);
     }
     return new Pair<>(seriesPath, seriesValue);
   }
 
-  private String parseTokenTime(AstNode astNode) throws LogicalOperatorException {
-    return parseTimeFormat(cascadeChildrenText(astNode)) + "";
+  /**
+   * parse time expression, which is addition and subtraction expression of duration time, now() or
+   * DataTimeFormat time.
+   * <p>
+   * eg. now() + 1d - 2h
+   * </p>
+   */
+  private Long parseTokenDataExpression(AstNode astNode) throws LogicalOperatorException {
+    if (astNode.getType() == TqlParser.PLUS) {
+      return parseTokenDataExpression(astNode.getChild(0)) + parseTokenDataExpression(
+          astNode.getChild(1));
+    } else if (astNode.getType() == TqlParser.MINUS) {
+      return parseTokenDataExpression(astNode.getChild(0)) - parseTokenDataExpression(
+          astNode.getChild(1));
+    } else {
+      return parseTokenTime(astNode);
+    }
+  }
+
+  /**
+   * parse a time token, which can be duration time or now() or DataTimeFormat time.
+   */
+  private Long parseTokenTime(AstNode astNode) throws LogicalOperatorException {
+    if (astNode.getType() == TqlParser.TOK_DURATION) {
+      return parseTokenDuration(astNode);
+    }
+    return parseTimeFormat(cascadeChildrenText((astNode)));
+  }
+
+  /**
+   * parse duration node to time value.
+   * @param astNode represent duration string like: 12d8m9ns, 1y1mo, etc.
+   * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
+   */
+  private Long parseTokenDuration(AstNode astNode) {
+    String durationStr = cascadeChildrenText(astNode);
+    String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+
+    long total = 0;
+    long tmp = 0;
+    for (int i = 0; i < durationStr.length(); i++) {
+      char ch = durationStr.charAt(i);
+      if (Character.isDigit(ch)) {
+        tmp *= 10;
+        tmp += (ch - '0');
+      } else {
+        String unit = durationStr.charAt(i) + "";
+        // This is to identify units with two letters.
+        if (i + 1 < durationStr.length() && !Character.isDigit(durationStr.charAt(i + 1))) {
+          i++;
+          unit += durationStr.charAt(i);
+        }
+        total += DatetimeUtils
+            .convertDurationStrToLong(tmp, unit.toLowerCase(), timestampPrecision);
+        tmp = 0;
+      }
+    }
+    return total;
   }
 
   private String cascadeChildrenText(AstNode astNode) {
     StringContainer sc = new StringContainer();
-    for(Node n : astNode.getChildren()){
-      sc.addTail(((AstNode)n).getText());
+    for (Node n : astNode.getChildren()) {
+      sc.addTail(((AstNode) n).getText());
     }
     return sc.toString();
   }
@@ -861,7 +1016,7 @@ public class LogicalGenerator {
   /**
    * function for parsing time format.
    */
-  public long parseTimeFormat(String timestampStr) throws LogicalOperatorException {
+  long parseTimeFormat(String timestampStr) throws LogicalOperatorException {
     if (timestampStr == null || timestampStr.trim().equals("")) {
       throw new LogicalOperatorException("input timestamp cannot be empty");
     }
@@ -872,9 +1027,9 @@ public class LogicalGenerator {
       return DatetimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
     } catch (Exception e) {
       throw new LogicalOperatorException(String
-              .format("Input time format %s error. "
-                      + "Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or "
-                      + "refer to user document for more info.", timestampStr));
+          .format("Input time format %s error. "
+              + "Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or "
+              + "refer to user document for more info.", timestampStr));
     }
   }
 
@@ -882,7 +1037,7 @@ public class LogicalGenerator {
     int childCount = node.getChildCount();
     String[] path;
 
-    if (childCount == 1 && node.getChild(0).getType() == TqlParser.TOK_ROOT) {
+    if (childCount == 1 && node.getChild(0).getType() == TOK_ROOT) {
       AstNode childNode = node.getChild(0);
       childCount = childNode.getChildCount();
       path = new String[childCount + 1];
@@ -901,7 +1056,7 @@ public class LogicalGenerator {
 
   private String removeStringQuote(String src) throws IllegalASTFormatException {
     if (src.length() < 3 || src.charAt(0) != '\'' || src.charAt(src.length() - 1) != '\'') {
-      throw new IllegalASTFormatException("error format for string with quoto:" + src);
+      throw new IllegalASTFormatException("error format for string with quote:" + src);
     }
     return src.substring(1, src.length() - 1);
   }
@@ -917,7 +1072,7 @@ public class LogicalGenerator {
     }
     String csvPath = astNode.getChild(0).getText();
     if (csvPath.length() < 3 || csvPath.charAt(0) != '\''
-            || csvPath.charAt(csvPath.length() - 1) != '\'') {
+        || csvPath.charAt(csvPath.length() - 1) != '\'') {
       throw new IllegalASTFormatException("data load: error format csvPath:" + csvPath);
     }
     StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
@@ -928,8 +1083,8 @@ public class LogicalGenerator {
       sc.addTail(pathNode);
     }
     initializedOperator = new LoadDataOperator(SQLConstant.TOK_DATALOAD,
-            csvPath.substring(1, csvPath.length() - 1),
-            sc.toString());
+        csvPath.substring(1, csvPath.length() - 1),
+        sc.toString());
   }
 
   private void analyzeAuthorCreate(AstNode astNode) throws IllegalASTFormatException {
@@ -938,17 +1093,17 @@ public class LogicalGenerator {
     if (childCount == 2) {
       // create user
       authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_CREATE,
-              AuthorOperator.AuthorType.CREATE_USER);
+          AuthorOperator.AuthorType.CREATE_USER);
       authorOperator.setUserName(astNode.getChild(0).getChild(0).getText());
       authorOperator.setPassWord(removeStringQuote(astNode.getChild(1).getChild(0).getText()));
     } else if (childCount == 1) {
       // create role
       authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_CREATE,
-              AuthorOperator.AuthorType.CREATE_ROLE);
+          AuthorOperator.AuthorType.CREATE_ROLE);
       authorOperator.setRoleName(astNode.getChild(0).getChild(0).getText());
     } else {
       throw new IllegalASTFormatException(
-              ERR_INCORRECT_AUTHOR_COMMAND);
+          ERR_INCORRECT_AUTHOR_COMMAND);
     }
     initializedOperator = authorOperator;
   }
@@ -958,17 +1113,17 @@ public class LogicalGenerator {
     AuthorOperator authorOperator;
     if (childCount == 1) {
       authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_UPDATE_USER,
-              AuthorOperator.AuthorType.UPDATE_USER);
+          AuthorOperator.AuthorType.UPDATE_USER);
       AstNode user = astNode.getChild(0);
       if (user.getChildCount() != 2) {
         throw new IllegalASTFormatException(
-                "illegal ast tree in update password command, please check you SQL statement");
+            "illegal ast tree in update password command, please check you SQL statement");
       }
       authorOperator.setUserName(user.getChild(0).getText());
       authorOperator.setNewPassword(removeStringQuote(user.getChild(1).getText()));
     } else {
       throw new IllegalASTFormatException(
-              "illegal ast tree in update password command, please check you SQL statement");
+          "illegal ast tree in update password command, please check you SQL statement");
     }
     initializedOperator = authorOperator;
   }
@@ -979,23 +1134,23 @@ public class LogicalGenerator {
     if (childCount == 1) {
       // drop user or role
       switch (astNode.getChild(0).getType()) {
-        case TqlParser.TOK_USER:
+        case TOK_USER:
           authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_DROP,
-                  AuthorOperator.AuthorType.DROP_USER);
+              AuthorOperator.AuthorType.DROP_USER);
           authorOperator.setUserName(astNode.getChild(0).getChild(0).getText());
           break;
-        case TqlParser.TOK_ROLE:
+        case TOK_ROLE:
           authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_DROP,
-                  AuthorOperator.AuthorType.DROP_ROLE);
+              AuthorOperator.AuthorType.DROP_ROLE);
           authorOperator.setRoleName(astNode.getChild(0).getChild(0).getText());
           break;
         default:
           throw new IllegalASTFormatException(
-                  ERR_INCORRECT_AUTHOR_COMMAND);
+              ERR_INCORRECT_AUTHOR_COMMAND);
       }
     } else {
       throw new IllegalASTFormatException(
-              ERR_INCORRECT_AUTHOR_COMMAND);
+          ERR_INCORRECT_AUTHOR_COMMAND);
     }
     initializedOperator = authorOperator;
   }
@@ -1017,7 +1172,7 @@ public class LogicalGenerator {
     if (childCount == 2) {
       // grant role to user
       authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT,
-              AuthorOperator.AuthorType.GRANT_ROLE_TO_USER);
+          AuthorOperator.AuthorType.GRANT_ROLE_TO_USER);
       authorOperator.setRoleName(astNode.getChild(0).getChild(0).getText());
       authorOperator.setUserName(astNode.getChild(1).getChild(0).getText());
     } else if (childCount == 3) {
@@ -1027,27 +1182,27 @@ public class LogicalGenerator {
         privileges[i] = removeStringQuote(privilegesNode.getChild(i).getText());
       }
       Path nodePath = parsePath(astNode.getChild(2));
-      if (astNode.getChild(0).getType() == TqlParser.TOK_USER) {
+      if (astNode.getChild(0).getType() == TOK_USER) {
         // grant user
         authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT,
-                AuthorOperator.AuthorType.GRANT_USER);
+            AuthorOperator.AuthorType.GRANT_USER);
         authorOperator.setUserName(astNode.getChild(0).getChild(0).getText());
         authorOperator.setPrivilegeList(privileges);
         authorOperator.setNodeNameList(nodePath);
-      } else if (astNode.getChild(0).getType() == TqlParser.TOK_ROLE) {
+      } else if (astNode.getChild(0).getType() == TOK_ROLE) {
         // grant role
         authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT,
-                AuthorOperator.AuthorType.GRANT_ROLE);
+            AuthorOperator.AuthorType.GRANT_ROLE);
         authorOperator.setRoleName(astNode.getChild(0).getChild(0).getText());
         authorOperator.setPrivilegeList(privileges);
         authorOperator.setNodeNameList(nodePath);
       } else {
         throw new IllegalASTFormatException(
-                ERR_INCORRECT_AUTHOR_COMMAND);
+            ERR_INCORRECT_AUTHOR_COMMAND);
       }
     } else {
       throw new IllegalASTFormatException(
-              ERR_INCORRECT_AUTHOR_COMMAND);
+          ERR_INCORRECT_AUTHOR_COMMAND);
     }
     initializedOperator = authorOperator;
   }
@@ -1058,7 +1213,7 @@ public class LogicalGenerator {
     if (childCount == 2) {
       // revoke role to user
       authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_REVOKE,
-              AuthorOperator.AuthorType.REVOKE_ROLE_FROM_USER);
+          AuthorOperator.AuthorType.REVOKE_ROLE_FROM_USER);
       authorOperator.setRoleName(astNode.getChild(0).getChild(0).getText());
       authorOperator.setUserName(astNode.getChild(1).getChild(0).getText());
     } else if (childCount == 3) {
@@ -1068,33 +1223,33 @@ public class LogicalGenerator {
         privileges[i] = removeStringQuote(privilegesNode.getChild(i).getText());
       }
       Path nodePath = parsePath(astNode.getChild(2));
-      if (astNode.getChild(0).getType() == TqlParser.TOK_USER) {
+      if (astNode.getChild(0).getType() == TOK_USER) {
         // revoke user
         authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_REVOKE,
-                AuthorOperator.AuthorType.REVOKE_USER);
+            AuthorOperator.AuthorType.REVOKE_USER);
         authorOperator.setUserName(astNode.getChild(0).getChild(0).getText());
         authorOperator.setPrivilegeList(privileges);
         authorOperator.setNodeNameList(nodePath);
-      } else if (astNode.getChild(0).getType() == TqlParser.TOK_ROLE) {
+      } else if (astNode.getChild(0).getType() == TOK_ROLE) {
         // revoke role
         authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_REVOKE,
-                AuthorOperator.AuthorType.REVOKE_ROLE);
+            AuthorOperator.AuthorType.REVOKE_ROLE);
         authorOperator.setRoleName(astNode.getChild(0).getChild(0).getText());
         authorOperator.setPrivilegeList(privileges);
         authorOperator.setNodeNameList(nodePath);
       } else {
         throw new IllegalASTFormatException(
-                ERR_INCORRECT_AUTHOR_COMMAND);
+            ERR_INCORRECT_AUTHOR_COMMAND);
       }
     } else {
       throw new IllegalASTFormatException(
-              ERR_INCORRECT_AUTHOR_COMMAND);
+          ERR_INCORRECT_AUTHOR_COMMAND);
     }
     initializedOperator = authorOperator;
   }
 
   private void checkMetadataArgs(String dataType, String encoding, String compressor)
-          throws MetadataErrorException {
+      throws MetadataErrorException {
 //    final String rle = "RLE";
 //    final String plain = "PLAIN";
 //    final String ts2Diff = "TS_2DIFF";
@@ -1132,7 +1287,7 @@ public class LogicalGenerator {
   }
 
   private void checkDataTypeEncoding(TSDataType tsDataType, TSEncoding tsEncoding)
-          throws MetadataErrorException {
+      throws MetadataErrorException {
     boolean throwExp = false;
     switch (tsDataType) {
       case BOOLEAN:
@@ -1143,14 +1298,14 @@ public class LogicalGenerator {
       case INT32:
       case INT64:
         if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN)
-                || tsEncoding.equals(TSEncoding.TS_2DIFF))) {
+            || tsEncoding.equals(TSEncoding.TS_2DIFF))) {
           throwExp = true;
         }
         break;
       case FLOAT:
       case DOUBLE:
         if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN)
-                || tsEncoding.equals(TSEncoding.TS_2DIFF) || tsEncoding.equals(TSEncoding.GORILLA))) {
+            || tsEncoding.equals(TSEncoding.TS_2DIFF) || tsEncoding.equals(TSEncoding.GORILLA))) {
           throwExp = true;
         }
         break;
@@ -1164,7 +1319,7 @@ public class LogicalGenerator {
     }
     if (throwExp) {
       throw new MetadataErrorException(
-              String.format("encoding %s does not support %s", tsEncoding, tsDataType));
+          String.format("encoding %s does not support %s", tsEncoding, tsDataType));
     }
   }
 }

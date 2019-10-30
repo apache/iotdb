@@ -96,6 +96,38 @@ Eg: IoTDB > SHOW STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
+* Count Timeseries Statement
+
+```
+COUNT TIMESERIES <Path>
+Eg: IoTDB > COUNT TIMESERIES root
+Eg: IoTDB > COUNT TIMESERIES root.ln
+Eg: IoTDB > COUNT TIMESERIES root.ln.*.*.status
+Eg: IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
+Note: The path can be prefix path, star path or timeseries path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+```
+COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>
+Eg: IoTDB > COUNT TIMESERIES root GROUP BY LEVEL=1
+Eg: IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
+Eg: IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=3
+Note: The path can be prefix path or timeseries path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+* Count Nodes Statement
+
+```
+COUNT NODES <Path> LEVEL=<INTEGER>
+Eg: IoTDB > COUNT NODES root LEVEL=2
+Eg: IoTDB > COUNT NODES root.ln LEVEL=2
+Eg: IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
+Note: The path can be prefix path or timeseries path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
 ### Data Management Statement
 
 * Insert Record Statement
@@ -149,6 +181,7 @@ TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
 SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
 Eg. IoTDB > SELECT * FROM root
+Eg. IoTDB > SELECT * FROM root where time > now() - 5m
 Eg. IoTDB > SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MIN_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MAX_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature > 24
@@ -157,6 +190,7 @@ Eg. IoTDB > SELECT MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.w
 Note: the statement needs to satisfy this constraint: <Path>(SelectClause) + <PrefixPath>(FromClause) = <Timeseries>
 Note: If the <SensorExpr>(WhereClause) is started with <Path> and not with ROOT, the statement needs to satisfy this constraint: <PrefixPath>(FromClause) + <Path>(SensorExpr) = <Timeseries>
 Note: In Version 0.7.0, if <WhereClause> includes `OR`, time filter can not be used.
+Note: There must be a space on both sides of the plus and minus operator appearing in the time expression 
 ```
 
 * Group By Statement
@@ -577,6 +611,52 @@ SELECT SUM(Path) (COMMA SUM(Path))* FROM <FromClause> [WHERE <WhereClause>]?
 Eg. SELECT SUM(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
+
+### TTL
+IoTDB supports storage-level TTL settings, which means it is able to delete old data
+automatically and periodically. The benefit of using TTL is that hopefully you can control the 
+total disk space usage and prevent the machine from running out of disks. Moreover, the query
+performance may downgrade as the total number of files goes up and the memory usage also increase
+as there are more files. Timely removing such files helps to keep at a high query performance
+level and reduce memory usage. The TTL operations in IoTDB are supported by the following three
+statements:
+
+* Set TTL
+```
+SET TTL TO StorageGroupName TTLTime
+Eg. SET TTL TO root.group1 3600000
+This example means that for data in root.group1, only that of the latest 1 hour will remain, the
+older one is removed or made invisible. 
+Note: TTLTime should be millisecond timestamp. When TTL is set, insertions that fall
+out of TTL will be rejected.
+```
+
+* Unset TTL
+```
+UNSET TTL TO StorageGroupName
+Eg. UNSET TTL TO root.group1
+This example means that data of all time will be accepted in this group. 
+```
+
+* Show TTL
+```
+SHOW ALL TTL
+SHOW TTL ON StorageGroupNames
+Eg.1 SHOW ALL TTL
+This example will show TTLs of all storage groups.
+Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
+This example will show TTLs of the specified 3 groups.
+Notice: storage groups without TTL will show a "null"
+```
+
+Notice: When you set TTL to some storage groups, data out of the TTL will be made invisible
+immediately, but because the data files may contain both out-dated and living data or the data files may
+be being used by queries, the physical removal of data is stale. If you increase or unset TTL
+just after setting it previously, some previously invisible data may be seen again, but the
+physically removed one is lost forever. In other words, different from delete statement, the
+atomicity of data deletion is not guaranteed for efficiency concerns. So we recommend that you do
+not change the TTL once it is set or at least do not reset it frequently, unless you are determined 
+to suffer the unpredictability. 
 
 ## Reference
 

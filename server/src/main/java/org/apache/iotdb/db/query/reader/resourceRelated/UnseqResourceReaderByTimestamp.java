@@ -67,7 +67,7 @@ public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimesta
           QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
         }
       } else {
-        metaDataList = tsFileResource.getChunkMetaDatas();
+        metaDataList = tsFileResource.getChunkMetaDataList();
       }
 
       ChunkLoaderImpl chunkLoader = null;

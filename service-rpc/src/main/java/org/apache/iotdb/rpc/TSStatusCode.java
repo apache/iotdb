@@ -27,10 +27,12 @@ public enum TSStatusCode {
   UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR(302, "Unsupported fetch metadata operation"),
   FETCH_METADATA_ERROR(303, "Failed to fetch metadata"),
   CHECK_FILE_LEVEL_ERROR(304, "Meet error while checking file level"),
+  OUT_OF_TTL_ERROR(305, "timestamp falls out of TTL"),
   EXECUTE_STATEMENT_ERROR(400, "Execute statement error"),
   SQL_PARSE_ERROR(401, "Meet error while parsing SQL"),
   GENERATE_TIME_ZONE_ERROR(402, "Meet error while generating time zone"),
   SET_TIME_ZONE_ERROR(403, "Meet error while setting time zone"),
+  NOT_A_STORAGE_GROUP_ERROR(404, "Given path is not a storage group"),
   INTERNAL_SERVER_ERROR(500, "Internal server error"),
   WRONG_LOGIN_PASSWORD_ERROR(600,  "Username or password is wrong"),
   NOT_LOGIN_ERROR(601, "Has not logged in"),
@@ -40,7 +42,7 @@ public enum TSStatusCode {
   private int statusCode;
   private String statusMessage;
 
-  private TSStatusCode(int statusCode, String statusMessage) {
+  TSStatusCode(int statusCode, String statusMessage) {
     this.statusCode = statusCode;
     this.statusMessage = statusMessage;
   }
