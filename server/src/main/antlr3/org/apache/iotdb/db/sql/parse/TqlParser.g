@@ -386,8 +386,8 @@ deleteStatement
     ;
 
 insertColumnSpec
-    : LR_BRACKET K_TIMESTAMP (COMMA ID)* RR_BRACKET
-    -> ^(TOK_INSERT_COLUMNS TOK_TIME ID*)
+    : LR_BRACKET K_TIMESTAMP (COMMA nodeNameWithoutStar)* RR_BRACKET
+    -> ^(TOK_INSERT_COLUMNS TOK_TIME nodeNameWithoutStar*)
     ;
 
 insertValuesSpec
