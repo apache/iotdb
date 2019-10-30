@@ -67,6 +67,7 @@ For the latest information about IoTDB, please visit our [IoTDB official website
  - Only build client
  - Usage of import-csv.sh
     - Create metadata
+    - An Example of import csv file
     - Run import shell
     - Error data file
  - Usage of export-csv.sh
@@ -322,6 +323,15 @@ CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE;
 CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 ```
 
+### An Example of import csv file
+
+```
+Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
+1,100,'hello',200,300,400
+2,500,'world',600,700,800
+3,900,'IoTDB',1000,1100,1200
+```
+
 ### Run import shell
 ```
 # Unix/OS X
@@ -340,8 +350,14 @@ CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 ### Run export shell
 ```
 # Unix/OS X
-> $IOTDB_CLI_HOME/tools/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
+> $IOTDB_CLI_HOME/tools/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format>]
 
 # Windows
-> $IOTDB_CLI_HOME\tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
+> $IOTDB_CLI_HOME\tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format>]
+```
+
+### input query
+
+```
+select * from root.fit.d1
 ```
