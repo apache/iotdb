@@ -142,7 +142,7 @@ public class Path implements Serializable {
    * @return if this path start with prefix
    */
   public static Path addPrefixPath(Path src, String prefix) {
-    if (prefix == "") {
+    if (prefix.equals("")) {
       return src;
     }
     StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
