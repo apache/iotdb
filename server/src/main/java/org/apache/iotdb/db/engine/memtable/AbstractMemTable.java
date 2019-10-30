@@ -83,9 +83,9 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void insert(InsertPlan insertPlan) throws QueryProcessorException {
     try {
-      for (int i = 0; i < insertPlan.getValues().length; i++) {
+      for (int i = 0; i < insertPlan.getStringValues().length; i++) {
         write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
-            insertPlan.getDataTypes()[i], insertPlan.getTime(), insertPlan.getValues()[i]);
+            insertPlan.getDataTypes()[i], insertPlan.getTime(), insertPlan.getObjectValues()[i]);
       }
       long recordSizeInByte = MemUtils.getRecordSize(insertPlan);
       memSize += recordSizeInByte;
@@ -108,9 +108,9 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void write(String deviceId, String measurement, TSDataType dataType, long insertTime,
-      String insertValue) {
+      Object objectValue) {
     IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, dataType);
-    memSeries.write(insertTime, insertValue);
+    memSeries.write(insertTime, objectValue);
   }
 
   @Override

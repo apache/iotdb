@@ -140,12 +140,12 @@ TSFInputFormat将tsfile中的数据以多个`MapWritable`记录的形式返回�
   public static class TSReducer extends Reducer<Text, DoubleWritable, Text, DoubleWritable> {
 
     @Override
-    protected void reduce(Text key, Iterable<DoubleWritable> values,
+    protected void reduce(Text key, Iterable<DoubleWritable> stringValues,
         Reducer<Text, DoubleWritable, Text, DoubleWritable>.Context context)
         throws IOException, InterruptedException {
 
       double sum = 0;
-      for (DoubleWritable value : values) {
+      for (DoubleWritable value : stringValues) {
         sum = sum + value.get();
       }
       context.write(key, new DoubleWritable(sum));
@@ -191,13 +191,13 @@ TSFInputFormat将tsfile中的数据以多个`MapWritable`记录的形式返回�
     public static class TSReducer extends Reducer<Text, MapWritable, NullWritable, HDFSTSRecord> {
 
         @Override
-        protected void reduce(Text key, Iterable<MapWritable> values,
+        protected void reduce(Text key, Iterable<MapWritable> stringValues,
                               Reducer<Text, MapWritable, NullWritable, HDFSTSRecord>.Context context) throws IOException, InterruptedException {
             long sensor1_value_sum = 0;
             long sensor2_value_sum = 0;
             double sensor3_value_sum = 0;
             long num = 0;
-            for (MapWritable value : values) {
+            for (MapWritable value : stringValues) {
                 num++;
                 sensor1_value_sum += ((LongWritable)value.get(new Text("sensor_1"))).get();
                 sensor2_value_sum += ((LongWritable)value.get(new Text("sensor_2"))).get();

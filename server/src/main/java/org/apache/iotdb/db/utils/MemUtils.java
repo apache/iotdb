@@ -47,7 +47,7 @@ public class MemUtils {
    */
   public static long getRecordSize(InsertPlan insertPlan) {
     long memSize = 0;
-    for (int i = 0; i < insertPlan.getValues().length; i++) {
+    for (int i = 0; i < insertPlan.getStringValues().length; i++) {
       switch (insertPlan.getDataTypes()[i]) {
         case INT32:
           memSize += 8L + 4L; break;
@@ -60,7 +60,7 @@ public class MemUtils {
         case BOOLEAN:
           memSize += 8L + 1L; break;
         case TEXT:
-          memSize += 8L + insertPlan.getValues()[i].length(); break;
+          memSize += 8L + insertPlan.getStringValues()[i].length(); break;
         default:
           memSize += 8L + 8L;
       }

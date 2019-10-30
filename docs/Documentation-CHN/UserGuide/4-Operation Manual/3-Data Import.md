@@ -39,8 +39,8 @@ IoTDB为用户提供多种插入实时数据的方式，例如在[Cli/Shell工�
 
 单列数据插入示例代码如下：
 ```
-IoTDB > insert into root.ln.wf02.wt02(timestamp,status) values(1,true)
-IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1, "v1")
+IoTDB > insert into root.ln.wf02.wt02(timestamp,status) stringValues(1,true)
+IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) stringValues(1, "v1")
 ```
 
 以上示例代码将长整型的timestamp以及值为true的数据插入到时间序列`root.ln.wf02.wt02.status`中和将长整型的timestamp以及值为”v1”的数据插入到时间序列`root.ln.wf02.wt02.hardware`中。执行成功后会返回执行时间，代表数据插入已完成。 
@@ -67,7 +67,7 @@ IoTDB > select * from root.ln.wf02 where time < 3
 若用户向一个不存在的时间序列中插入数据，例如执行以下命令：
 
 ```
-IoTDB > insert into root.ln.wf02.wt02(timestamp, temperature) values(1,"v1")
+IoTDB > insert into root.ln.wf02.wt02(timestamp, temperature) stringValues(1,"v1")
 ```
 
 由于`root.ln.wf02.wt02. temperature`时间序列不存在，系统将会返回以下ERROR告知该Timeseries路径不存在：
@@ -77,7 +77,7 @@ Msg: Current deviceId[root.ln.wf02.wt02] does not contains measurement:temperatu
 ```
 若用户插入的数据类型与该Timeseries对应的数据类型不一致，例如执行以下命令：
 ```
-IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1,100)
+IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) stringValues(1,100)
 ```
 系统将会返回以下ERROR告知数据类型有误：
 ```

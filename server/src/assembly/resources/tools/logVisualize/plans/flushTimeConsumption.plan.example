@@ -28,7 +28,7 @@ content_pattern=Storage group (.*) memtable (.*) flushing a memtable has finishe
 
 # the following 3 properties are all one-based, if there are more than one measurements or tags, use
 # comma to separate the positions
-# the position of the groups in the pattern that will be plotted as values, must be real values.
+# the position of the groups in the pattern that will be plotted as stringValues, must be real stringValues.
 # The number of measurements should be the same as the legends'. Each measurement will be plotted
 # as a chart. If this is unset, a scatter plot will be drawn instead of a timeseries plot.
 measurement_positions=3

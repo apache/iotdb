@@ -39,15 +39,15 @@ In the scenario of this section, take two timeseries `root.ln.wf02.wt02.status` 
 
 The sample code for single column data insertion is as follows:
 ```
-IoTDB > insert into root.ln.wf02.wt02(timestamp,status) values(1,true)
-IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1, "v1")
+IoTDB > insert into root.ln.wf02.wt02(timestamp,status) stringValues(1,true)
+IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) stringValues(1, "v1")
 ```
 
 The above example code inserts the long integer timestamp and the value "true" into the timeseries `root.ln.wf02.wt02.status` and inserts the long integer timestamp and the value "v1" into the timeseries `root.ln.wf02.wt02.hardware`. When the execution is successful, cost time is shown to indicate that the data insertion has been completed.
 
 > Note: In IoTDB, TEXT type data can be represented by single and double quotation marks. The insertion statement above uses double quotation marks for TEXT type data. The following example will use single quotation marks for TEXT type data.
 
-The INSERT statement can also support the insertion of multi-column data at the same time point.  The sample code of  inserting the values of the two timeseries at the same time point '2' is as follows:
+The INSERT statement can also support the insertion of multi-column data at the same time point.  The sample code of  inserting the stringValues of the two timeseries at the same time point '2' is as follows:
 
 ```
 IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (2, false, 'v2')
@@ -67,7 +67,7 @@ The result is shown below. From the query results, it can be seen that the inser
 If the user inserts data into a non-existent timeseries, for example, execute the following commands:
 
 ```
-IoTDB > insert into root.ln.wf02.wt02(timestamp, temperature) values(1,"v1")
+IoTDB > insert into root.ln.wf02.wt02(timestamp, temperature) stringValues(1,"v1")
 ```
 
 Because `root.ln.wf02.wt02. temperature` does not exist, the system will return the following ERROR information:
@@ -78,7 +78,7 @@ Msg: Current deviceId[root.ln.wf02.wt02] does not contains measurement:temperatu
 If the data type inserted by the user is inconsistent with the corresponding data type of the timeseries, for example, execute the following command:
 
 ```
-IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1,100)
+IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) stringValues(1,100)
 ```
 The system will return the following ERROR information:
 

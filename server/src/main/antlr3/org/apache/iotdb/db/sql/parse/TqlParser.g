@@ -191,7 +191,7 @@ static {
 }
 
 public static Collection<String> getKeywords() {
-    return tokenNameMap.values();
+    return tokenNameMap.stringValues();
 }
 
 private static String getTokenName(String token) {

@@ -63,7 +63,7 @@ As can be seen from the result shown below, the two users have been created:
 At this point, although two users have been created, they do not have any priviledges, so they can not operate on the database. For example, we use ln_write_user to write data in the database, the SQL statement is:
 
 ```
-INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
+INSERT INTO root.ln.wf01.wt01(timestamp,status) stringValues(1509465600000,true)
 ```
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
@@ -74,7 +74,7 @@ Now, we grant the two users write priviledges to the corresponding storage group
 ```
 GRANT USER ln_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.ln
 GRANT USER sgcc_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.sgcc
-INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
+INSERT INTO root.ln.wf01.wt01(timestamp, status) stringValues(1509465600000, true)
 ```
 The execution result is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578942-33ba1080-1efa-11e9-891c-09d69791aff1.jpg"></center>

@@ -119,11 +119,11 @@ public class JDBCExample {
     
 
     //Execute insert statements in batch
-    statement.addBatch("insert into root.demo(timestamp,s0) values(1,1);");
-    statement.addBatch("insert into root.demo(timestamp,s0) values(1,1);");
-    statement.addBatch("insert into root.demo(timestamp,s0) values(2,15);");
-    statement.addBatch("insert into root.demo(timestamp,s0) values(2,17);");
-    statement.addBatch("insert into root.demo(timestamp,s0) values(4,12);");
+    statement.addBatch("insert into root.demo(timestamp,s0) stringValues(1,1);");
+    statement.addBatch("insert into root.demo(timestamp,s0) stringValues(1,1);");
+    statement.addBatch("insert into root.demo(timestamp,s0) stringValues(2,15);");
+    statement.addBatch("insert into root.demo(timestamp,s0) stringValues(2,17);");
+    statement.addBatch("insert into root.demo(timestamp,s0) stringValues(4,12);");
     statement.executeBatch();
     statement.clearBatch();
 

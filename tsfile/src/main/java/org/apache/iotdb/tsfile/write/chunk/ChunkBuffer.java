@@ -166,8 +166,8 @@ public class ChunkBuffer {
    */
   public long writeAllPagesOfSeriesToTsFile(TsFileIOWriter writer, Statistics<?> statistics)
       throws IOException {
-    if (minTimestamp == Long.MIN_VALUE) {
-      LOG.error("Write page error, {}, minTime:{}, maxTime:{}", schema, minTimestamp, maxTimestamp);
+    if (totalValueCount == 0) {
+      return 0;
     }
 
     // start to write this column chunk

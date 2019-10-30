@@ -135,7 +135,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 ```
 INSERT INTO <PrefixPath> LPAREN TIMESTAMP COMMA <Sensor> [COMMA <Sensor>]* RPAREN VALUES LPAREN <TimeValue>, <PointValue> [COMMA <PointValue>]* RPAREN
 Sensor : Identifier
-Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
+Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) stringValues(1509465600000,true)
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false)
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,temperature) VALUES(2017-11-01T00:17:00.000+08:00,24.22028)
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp, status, temperature) VALUES (1509466680000, false, 20.060787);
@@ -522,7 +522,7 @@ Eg: IoTDB > UPDATE USER tempuser SET PASSWORD newpwd;
 
 * COUNT
 
-The COUNT function returns the value number of timeseries(one or more) non-null values selected by the SELECT statement. The result is a signed 64-bit integer. If there are no matching rows, COUNT () returns 0.
+The COUNT function returns the value number of timeseries(one or more) non-null stringValues selected by the SELECT statement. The result is a signed 64-bit integer. If there are no matching rows, COUNT () returns 0.
 
 ```
 SELECT COUNT(Path) (COMMA COUNT(Path))* FROM <FromClause> [WHERE <WhereClause>]?

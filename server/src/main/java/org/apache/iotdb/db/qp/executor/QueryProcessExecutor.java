@@ -195,21 +195,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   @Override
   public boolean update(Path path, long startTime, long endTime, String value)
       throws ProcessorException {
-    String deviceId = path.getDevice();
-    String measurementId = path.getMeasurement();
-    try {
-      String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
-      if (!mManager.pathExist(fullPath)) {
-        throw new ProcessorException(String.format("Time series %s does not exist.", fullPath));
-      }
-      mManager.getStorageGroupNameByPath(fullPath);
-      TSDataType dataType = mManager.getSeriesType(fullPath);
-      value = checkValue(dataType, value);
-      storageEngine.update(deviceId, measurementId, startTime, endTime, dataType, value);
-      return true;
-    } catch (PathErrorException | StorageGroupException e) {
-      throw new ProcessorException(e);
-    }
+    return false;
   }
 
   @Override
@@ -236,11 +222,14 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
       MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
-      String[] values = insertPlan.getValues();
+      String[] strValues = insertPlan.getStringValues();
+      Object[] objValues = new Object[strValues.length];
       TSDataType[] dataTypes = new TSDataType[measurementList.length];
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
       for (int i = 0; i < measurementList.length; i++) {
+
+        // check if timeseries exists
         if (!node.hasChild(measurementList[i])) {
           if (!conf.isAutoCreateSchemaEnabled()) {
             throw new ProcessorException(
@@ -248,7 +237,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
                     deviceId, measurementList[i]));
           }
           try {
-            addPathToMTree(deviceId, measurementList[i], values[i]);
+            addPathToMTree(deviceId, measurementList[i], strValues[i]);
           } catch (MetadataErrorException e) {
             if (!e.getMessage().contains("already exist")) {
               throw e;
@@ -263,9 +252,12 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         }
 
         dataTypes[i] = measurementNode.getSchema().getType();
-        values[i] = checkValue(dataTypes[i], values[i]);
+
+        // parse data type
+        objValues[i] = parseValue(dataTypes[i], strValues[i]);
       }
       insertPlan.setDataTypes(dataTypes);
+      insertPlan.setObjectValues(objValues);
       return storageEngine.insert(insertPlan);
 
     } catch (PathErrorException | StorageEngineException | MetadataErrorException | CacheException e) {
@@ -284,6 +276,8 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
       for (int i = 0; i < measurementList.length; i++) {
+
+        // check if timeseries exists
         if (!node.hasChild(measurementList[i])) {
           if (!conf.isAutoCreateSchemaEnabled()) {
             throw new ProcessorException(
@@ -297,6 +291,14 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         if (!measurementNode.isLeaf()) {
           throw new ProcessorException(
               String.format("Current Path is not leaf node. %s.%s", deviceId, measurementList[i]));
+        }
+
+        // check data type
+        if (measurementNode.getSchema().getType() != batchInsertPlan.getDataTypes()[i]) {
+          throw new ProcessorException(String
+              .format("Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
+                  measurementList[i], batchInsertPlan.getDataTypes()[i],
+                  measurementNode.getSchema().getType()));
         }
       }
       return storageEngine.insertBatch(batchInsertPlan);
@@ -312,26 +314,41 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   }
 
 
-  private static String checkValue(TSDataType dataType, String value) throws ProcessorException {
-    if (dataType == TSDataType.BOOLEAN) {
-      value = value.toLowerCase();
-      if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value)) {
-        value = "false";
-      } else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value)) {
-        value = "true";
-      } else if (!SQLConstant.BOOLEN_TRUE.equals(value) && !SQLConstant.BOOLEN_FALSE
-          .equals(value)) {
-        throw new ProcessorException("The BOOLEAN data type should be true/TRUE or false/FALSE");
+  private static Object parseValue(TSDataType dataType, String value) throws ProcessorException {
+    try {
+      switch (dataType) {
+        case BOOLEAN:
+          value = value.toLowerCase();
+          if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value)) {
+            return false;
+          } else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value)) {
+            return true;
+          } else if (!SQLConstant.BOOLEN_TRUE.equals(value) && !SQLConstant.BOOLEN_FALSE
+              .equals(value)) {
+            throw new ProcessorException(
+                "The BOOLEAN data type should be true/TRUE or false/FALSE");
+          }
+        case INT32:
+          return Integer.parseInt(value);
+        case INT64:
+          return Long.parseLong(value);
+        case FLOAT:
+          return Float.parseFloat(value);
+        case DOUBLE:
+          return Double.parseDouble(value);
+        case TEXT:
+          if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
+              || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
+            return new Binary(value.substring(1, value.length() - 1));
+          } else {
+            throw new ProcessorException("The TEXT data type should be covered by \" or '");
+          }
+        default:
+          throw new ProcessorException("Unsupported data type:" + dataType);
       }
-    } else if (dataType == TSDataType.TEXT) {
-      if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
-          || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
-        value = value.substring(1, value.length() - 1);
-      } else {
-        throw new ProcessorException("The TEXT data type should be covered by \" or '");
-      }
+    } catch (NumberFormatException e) {
+      throw new ProcessorException(e);
     }
-    return value;
   }
 
 

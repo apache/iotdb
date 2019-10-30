@@ -26,6 +26,7 @@ import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -35,19 +36,21 @@ public class InsertPlan extends PhysicalPlan {
   private String deviceId;
   private String[] measurements;
   private TSDataType[] dataTypes;
-  private String[] values;
+  private String[] stringValues;
+  private Object[] objectValues;
   private long time;
 
   public InsertPlan() {
     super(false, OperatorType.INSERT);
   }
 
+  @TestOnly
   public InsertPlan(String deviceId, long insertTime, String measurement, String insertValue) {
     super(false, OperatorType.INSERT);
     this.time = insertTime;
     this.deviceId = deviceId;
     this.measurements = new String[] {measurement};
-    this.values = new String[] {insertValue};
+    this.stringValues = new String[] {insertValue};
   }
 
   public InsertPlan(TSRecord tsRecord) {
@@ -56,11 +59,12 @@ public class InsertPlan extends PhysicalPlan {
     this.time = tsRecord.time;
     this.measurements = new String[tsRecord.dataPointList.size()];
     this.dataTypes = new TSDataType[tsRecord.dataPointList.size()];
-    this.values = new String[tsRecord.dataPointList.size()];
+    this.stringValues = new String[tsRecord.dataPointList.size()];
+    this.objectValues = new Object[tsRecord.dataPointList.size()];
     for (int i = 0; i < tsRecord.dataPointList.size(); i++) {
       measurements[i] = tsRecord.dataPointList.get(i).getMeasurementId();
       dataTypes[i] = tsRecord.dataPointList.get(i).getType();
-      values[i] = tsRecord.dataPointList.get(i).getValue().toString();
+      stringValues[i] = tsRecord.dataPointList.get(i).getValue().toString();
     }
   }
 
@@ -70,7 +74,7 @@ public class InsertPlan extends PhysicalPlan {
     this.time = insertTime;
     this.deviceId = deviceId;
     this.measurements = measurementList;
-    this.values = insertValues;
+    this.stringValues = insertValues;
   }
 
   public long getTime() {
@@ -115,12 +119,20 @@ public class InsertPlan extends PhysicalPlan {
     this.measurements = measurements;
   }
 
-  public String[] getValues() {
-    return this.values;
+  public String[] getStringValues() {
+    return this.stringValues;
   }
 
-  public void setValues(String[] values) {
-    this.values = values;
+  public void setStringValues(String[] stringValues) {
+    this.stringValues = stringValues;
+  }
+
+  public Object[] getObjectValues() {
+    return objectValues;
+  }
+
+  public void setObjectValues(Object[] objectValues) {
+    this.objectValues = objectValues;
   }
 
   @Override
@@ -134,7 +146,7 @@ public class InsertPlan extends PhysicalPlan {
     InsertPlan that = (InsertPlan) o;
     return time == that.time && Objects.equals(deviceId, that.deviceId)
         && Arrays.equals(measurements, that.measurements)
-        && Arrays.equals(values, that.values);
+        && Arrays.equals(stringValues, that.stringValues);
   }
 
   @Override
@@ -155,8 +167,8 @@ public class InsertPlan extends PhysicalPlan {
       putString(buffer, m);
     }
 
-    buffer.putInt(values.length);
-    for (String m : values) {
+    buffer.putInt(stringValues.length);
+    for (String m : stringValues) {
       putString(buffer, m);
     }
   }
@@ -173,9 +185,9 @@ public class InsertPlan extends PhysicalPlan {
     }
 
     int valueSize = buffer.getInt();
-    this.values = new String[valueSize];
+    this.stringValues = new String[valueSize];
     for (int i = 0; i < valueSize; i++) {
-      values[i] = readString(buffer);
+      stringValues[i] = readString(buffer);
     }
   }
 

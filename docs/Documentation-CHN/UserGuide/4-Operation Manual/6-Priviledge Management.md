@@ -70,7 +70,7 @@ LIST USER
 此时，虽然两个用户已经创建，但是他们不具有任何权限，因此他们并不能对数据库进行操作，例如我们使用ln_write_user用户对数据库中的数据进行写入，SQL语句为：
 
 ```
-INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
+INSERT INTO root.ln.wf01.wt01(timestamp,status) stringValues(1509465600000,true)
 ```
 此时，系统不允许用户进行此操作，会提示错误，如图：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51597609-9af5b600-1f36-11e9-9460-8ab185eb4735.png"></center>
@@ -79,7 +79,7 @@ INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 ```
 GRANT USER ln_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.ln
 GRANT USER sgcc_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.sgcc
-INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
+INSERT INTO root.ln.wf01.wt01(timestamp, status) stringValues(1509465600000, true)
 ```
 执行状态如图所示：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578942-33ba1080-1efa-11e9-891c-09d69791aff1.jpg"></center>

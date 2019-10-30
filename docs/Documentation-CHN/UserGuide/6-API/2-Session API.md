@@ -93,7 +93,7 @@
 
 * 插入时序数据
 
-  ​	TSStatus insert(String deviceId, long time, List<String> measurements, List<String> values)
+  ​	TSStatus insert(String deviceId, long time, List<String> measurements, List<String> stringValues)
 
 * 批量插入时序数据
 

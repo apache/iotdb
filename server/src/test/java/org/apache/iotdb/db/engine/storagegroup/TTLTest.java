@@ -124,7 +124,7 @@ public class TTLTest {
     insertPlan.setDeviceId(sg1);
     insertPlan.setTime(System.currentTimeMillis());
     insertPlan.setMeasurements(new String[]{"s1"});
-    insertPlan.setValues(new String[]{"1"});
+    insertPlan.setStringValues(new String[]{"1"});
     insertPlan.setDataTypes(new TSDataType[]{TSDataType.INT64});
 
     // ok without ttl
@@ -149,7 +149,7 @@ public class TTLTest {
     insertPlan.setDeviceId(sg1);
     insertPlan.setTime(System.currentTimeMillis());
     insertPlan.setMeasurements(new String[]{"s1"});
-    insertPlan.setValues(new String[]{"1"});
+    insertPlan.setStringValues(new String[]{"1"});
     insertPlan.setDataTypes(new TSDataType[]{TSDataType.INT64});
 
     long initTime = System.currentTimeMillis();
