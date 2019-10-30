@@ -223,7 +223,6 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       String deviceId = insertPlan.getDeviceId();
       MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
       String[] strValues = insertPlan.getStringValues();
-      Object[] objValues = new Object[strValues.length];
       TSDataType[] dataTypes = new TSDataType[measurementList.length];
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
@@ -252,12 +251,8 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         }
 
         dataTypes[i] = measurementNode.getSchema().getType();
-
-        // parse data type
-        objValues[i] = parseValue(dataTypes[i], strValues[i]);
       }
       insertPlan.setDataTypes(dataTypes);
-      insertPlan.setObjectValues(objValues);
       return storageEngine.insert(insertPlan);
 
     } catch (PathErrorException | StorageEngineException | MetadataErrorException | CacheException e) {
@@ -312,45 +307,6 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   public List<String> getAllPaths(String originPath) throws MetadataErrorException {
     return MManager.getInstance().getPaths(originPath);
   }
-
-
-  private static Object parseValue(TSDataType dataType, String value) throws ProcessorException {
-    try {
-      switch (dataType) {
-        case BOOLEAN:
-          value = value.toLowerCase();
-          if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value)) {
-            return false;
-          } else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value)) {
-            return true;
-          } else if (!SQLConstant.BOOLEN_TRUE.equals(value) && !SQLConstant.BOOLEN_FALSE
-              .equals(value)) {
-            throw new ProcessorException(
-                "The BOOLEAN data type should be true/TRUE or false/FALSE");
-          }
-        case INT32:
-          return Integer.parseInt(value);
-        case INT64:
-          return Long.parseLong(value);
-        case FLOAT:
-          return Float.parseFloat(value);
-        case DOUBLE:
-          return Double.parseDouble(value);
-        case TEXT:
-          if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
-              || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
-            return new Binary(value.substring(1, value.length() - 1));
-          } else {
-            throw new ProcessorException("The TEXT data type should be covered by \" or '");
-          }
-        default:
-          throw new ProcessorException("Unsupported data type:" + dataType);
-      }
-    } catch (NumberFormatException e) {
-      throw new ProcessorException(e);
-    }
-  }
-
 
   private boolean operateAuthor(AuthorPlan author) throws ProcessorException {
     AuthorOperator.AuthorType authorType = author.getAuthorType();

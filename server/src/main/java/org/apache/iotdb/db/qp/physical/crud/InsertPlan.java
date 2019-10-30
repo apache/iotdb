@@ -37,7 +37,6 @@ public class InsertPlan extends PhysicalPlan {
   private String[] measurements;
   private TSDataType[] dataTypes;
   private String[] stringValues;
-  private Object[] objectValues;
   private long time;
 
   public InsertPlan() {
@@ -60,7 +59,6 @@ public class InsertPlan extends PhysicalPlan {
     this.measurements = new String[tsRecord.dataPointList.size()];
     this.dataTypes = new TSDataType[tsRecord.dataPointList.size()];
     this.stringValues = new String[tsRecord.dataPointList.size()];
-    this.objectValues = new Object[tsRecord.dataPointList.size()];
     for (int i = 0; i < tsRecord.dataPointList.size(); i++) {
       measurements[i] = tsRecord.dataPointList.get(i).getMeasurementId();
       dataTypes[i] = tsRecord.dataPointList.get(i).getType();
@@ -125,14 +123,6 @@ public class InsertPlan extends PhysicalPlan {
 
   public void setStringValues(String[] stringValues) {
     this.stringValues = stringValues;
-  }
-
-  public Object[] getObjectValues() {
-    return objectValues;
-  }
-
-  public void setObjectValues(Object[] objectValues) {
-    this.objectValues = objectValues;
   }
 
   @Override
