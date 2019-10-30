@@ -114,12 +114,12 @@ abstract class MergeTest {
     }
   }
 
-  private void prepareFiles(int seqFileNum, int unseqFileNum)
+  void prepareFiles(int seqFileNum, int unseqFileNum)
       throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
       File file = new File(
           i + "seq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
-              + i
+              + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
               + ".tsfile");
       TsFileResource tsFileResource = new TsFileResource(file);
       seqResources.add(tsFileResource);
@@ -129,14 +129,14 @@ abstract class MergeTest {
       File file = new File(
           i + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR
               + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
-              + i
+              + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
               + ".tsfile");
       TsFileResource tsFileResource = new TsFileResource(file);
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
     File file = new File(unseqFileNum + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
-        + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum + ".tsfile");
+        + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0 + ".tsfile");
     TsFileResource tsFileResource = new TsFileResource(file);
     unseqResources.add(tsFileResource);
     prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
