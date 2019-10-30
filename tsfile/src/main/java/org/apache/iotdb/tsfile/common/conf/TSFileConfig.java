@@ -50,7 +50,7 @@ public class TSFileConfig {
   public static final int BYTE_SIZE_PER_CHAR = 4;
   public static final String STRING_ENCODING = "UTF-8";
   public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
-  public static final String CONFIG_FILE_NAME = "tsfile-format.properties";
+  public static final String CONFIG_FILE_NAME = "iotdb-engine.properties";
   public static final String MAGIC_STRING = "TsFile";
   public static final String VERSION_NUMBER = "000001";
 

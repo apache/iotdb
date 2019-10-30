@@ -63,5 +63,8 @@ IF "%BIT_VERSION%" == "64-Bit" (
 	set IOTDB_HEAP_OPTS=-Xmx512M -Xms512M
 )
 
+@REM You can put your env variable here
+@REM set JAVA_HOME=%JAVA_HOME%
+
 :end_config_setting
 echo If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).

@@ -20,7 +20,6 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -301,6 +300,32 @@ public class IoTDBDescriptor {
       TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
       TSFileDescriptor.getInstance().getConfig().setHdfsIp(properties.getProperty("hdfs_ip"));
       TSFileDescriptor.getInstance().getConfig().setHdfsPort(properties.getProperty("hdfs_port"));
+
+      // set tsfile-format config
+      TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(Integer
+          .parseInt(properties.getProperty("group_size_in_byte",
+              Integer.toString(TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte()))));
+      TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(Integer
+          .parseInt(properties.getProperty("page_size_in_byte",
+              Integer.toString(TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()))));
+      if (TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() > TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte()) {
+        logger.warn("page_size is greater than group size, will set it as the same with group size");
+        TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte());
+      }
+      TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(Integer
+          .parseInt(properties.getProperty("max_number_of_points_in_page",
+              Integer.toString(TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage()))));
+      TSFileDescriptor.getInstance().getConfig().setTimeSeriesDataType(properties
+          .getProperty("time_series_data_type", TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType()));
+      TSFileDescriptor.getInstance().getConfig().setMaxStringLength(Integer
+          .parseInt(properties.getProperty("max_string_length",
+              Integer.toString(TSFileDescriptor.getInstance().getConfig().getMaxStringLength()))));
+      TSFileDescriptor.getInstance().getConfig().setFloatPrecision(Integer
+          .parseInt(properties
+              .getProperty("float_precision", Integer.toString(TSFileDescriptor.getInstance().getConfig().getFloatPrecision()))));
+      TSFileDescriptor.getInstance().getConfig().setTimeEncoder(properties.getProperty("time_encoder", TSFileDescriptor.getInstance().getConfig().getTimeEncoder()));
+      TSFileDescriptor.getInstance().getConfig().setValueEncoder(properties.getProperty("value_encoder", TSFileDescriptor.getInstance().getConfig().getValueEncoder()));
+      TSFileDescriptor.getInstance().getConfig().setCompressor(properties.getProperty("compressor", TSFileDescriptor.getInstance().getConfig().getCompressor()));
 
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);
