@@ -334,9 +334,9 @@ When the fill method is not specified, each data type bears its own default fill
 
 ### Row and Column Control over Query Results
 
-IoTDB provides [LIMIT/SLIMIT](/#/Documents/progress/chap5/sec1) clause and [OFFSET/SOFFSET](/#/Documents/progress/chap5/sec1) clause in order to make users have more control over query results. The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
+IoTDB provides [LIMIT/SLIMIT](/#/Documents/progress/chap5/sec4) clause and [OFFSET/SOFFSET](/#/Documents/progress/chap5/sec4) clause in order to make users have more control over query results. The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
 
-This chapter mainly introduces related examples of row and column control of query results. You can also use the [Java JDBC](/#/Documents/progress/chap6/sec1) standard interface to execute queries.
+This chapter mainly introduces related examples of row and column control of query results. You can also use the [Java JDBC](/#/Documents/progress/chap4/sec2) standard interface to execute queries.
 
 #### Row Control over Query Results
 By using LIMIT and OFFSET clauses, users can control the query results in a row-related manner. We will demonstrate how to use LIMIT and OFFSET clauses through the following examples.

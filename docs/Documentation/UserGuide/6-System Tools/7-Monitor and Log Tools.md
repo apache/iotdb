@@ -431,7 +431,7 @@ IoTDB allows users to configure IoTDB system logs (such as log output level) by 
 
 The default log configuration file is named logback.xml. The user can modify the configuration of the system running log by adding or changing the xml tree node parameters. It should be noted that the configuration of the system log using the log configuration file does not take effect immediately after the modification, instead, it will take effect after restarting the system. The usage of logback.xml is just as usual.
 
-At the same time, in order to facilitate the debugging of the system by the developers and DBAs, we provide several JMX interface to dynamically modify the log configuration, and configure the Log module of the system in real time without restarting the system. For detailed usage, see [Dynamic System Log Configuration](/#/Documents/progress/chap5/sec4) section.
+At the same time, in order to facilitate the debugging of the system by the developers and DBAs, we provide several JMX interface to dynamically modify the log configuration, and configure the Log module of the system in real time without restarting the system. For detailed usage, see [Dynamic System Log Configuration](/#/Documents/progress/chap8/sec2) section.
 
 ### Dynamic System Log Configuration
 
