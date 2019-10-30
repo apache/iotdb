@@ -128,7 +128,7 @@ public class PhysicalPlanTest {
         plan.toString());
   }
 
-  // TODO uncomment these code when implement aggregation and fill function
+  // TODO uncomment these code when implement aggregation and deserialize function
 
   @Test
   public void testAggregation()
@@ -222,7 +222,7 @@ public class PhysicalPlanTest {
     try {
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     } catch (Exception e) {
-      assertEquals("Only \"=\" can be used in fill function", e.getMessage().toString());
+      assertEquals("Only \"=\" can be used in deserialize function", e.getMessage().toString());
     }
   }
 

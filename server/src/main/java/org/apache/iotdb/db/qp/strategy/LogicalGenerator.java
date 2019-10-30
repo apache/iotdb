@@ -811,7 +811,7 @@ public class LogicalGenerator {
   }
 
   /**
-   * analyze fill type clause.
+   * analyze deserialize type clause.
    *
    * <P>PreviousClause : PREVIOUS COMMA < ValidPreviousTime > LinearClause : LINEAR COMMA <
    * ValidPreviousTime > COMMA < ValidBehindTime >
@@ -819,7 +819,7 @@ public class LogicalGenerator {
   private void analyzeFill(AstNode node) throws LogicalOperatorException {
     FilterOperator filterOperator = ((SFWOperator) initializedOperator).getFilterOperator();
     if (!filterOperator.isLeaf() || filterOperator.getTokenIntType() != SQLConstant.EQUAL) {
-      throw new LogicalOperatorException("Only \"=\" can be used in fill function");
+      throw new LogicalOperatorException("Only \"=\" can be used in deserialize function");
     }
 
     Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
@@ -839,7 +839,7 @@ public class LogicalGenerator {
             fillTypes.put(dataType, new LinearFill(-1, -1));
           } else {
             throw new LogicalOperatorException(
-                "Linear fill type must have 0 or 2 valid time ranges");
+                "Linear deserialize type must have 0 or 2 valid time ranges");
           }
           break;
         case TOK_PREVIOUS:
@@ -851,7 +851,7 @@ public class LogicalGenerator {
             fillTypes.put(dataType, new PreviousFill(-1));
           } else {
             throw new LogicalOperatorException(
-                "Previous fill type must have 0 or 1 valid time range");
+                "Previous deserialize type must have 0 or 1 valid time range");
           }
           break;
         default:
@@ -871,7 +871,7 @@ public class LogicalGenerator {
       case DOUBLE:
         if (type != TOK_LINEAR && type != TOK_PREVIOUS) {
           throw new LogicalOperatorException(
-              String.format("type %s cannot use %s fill function", dataType,
+              String.format("type %s cannot use %s deserialize function", dataType,
                   TqlParser.tokenNames[type]));
         }
         return;
@@ -879,7 +879,7 @@ public class LogicalGenerator {
       case TEXT:
         if (type != TOK_PREVIOUS) {
           throw new LogicalOperatorException(
-              String.format("type %s cannot use %s fill function", dataType,
+              String.format("type %s cannot use %s deserialize function", dataType,
                   TqlParser.tokenNames[type]));
         }
         return;
@@ -907,7 +907,7 @@ public class LogicalGenerator {
       case "text":
         return TSDataType.TEXT;
       default:
-        throw new LogicalOperatorException("not a valid fill type : " + type);
+        throw new LogicalOperatorException("not a valid deserialize type : " + type);
     }
   }
 

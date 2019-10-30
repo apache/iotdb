@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
  * high-cost GC. In new design, we try to reuse ChunkBuffer objects by ChunkBufferPool, referring to
  * {@linkplain MemTablePool}.
  */
+@Deprecated
 public class ChunkBufferPool {
 
   private static final Logger logger = LoggerFactory.getLogger(ChunkBufferPool.class);

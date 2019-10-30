@@ -254,7 +254,7 @@ public class PhysicalGenerator {
   // multiQueryPlan.setOrigin(queryOperator.getOrigin());
   // multiQueryPlan.setIntervals(queryOperator.getIntervals());
   // return multiQueryPlan;
-  // } else if (queryOperator.isFill()) { // old fill query
+  // } else if (queryOperator.isFill()) { // old deserialize query
   // multiQueryPlan.setType(MultiQueryPlan.QueryType.FILL);
   // FilterOperator timeFilter = queryOperator.getFilterOperator();
   // if (!timeFilter.isSingle())

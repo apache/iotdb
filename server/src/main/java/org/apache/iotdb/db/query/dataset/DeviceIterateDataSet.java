@@ -63,7 +63,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
   private long origin;
   private List<Pair<Long, Long>> intervals;
 
-  // fill parameters
+  // deserialize parameters
   private long queryTime;
   private Map<TSDataType, IFill> fillType;
 
