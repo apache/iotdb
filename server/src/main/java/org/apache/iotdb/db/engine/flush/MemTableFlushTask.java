@@ -19,7 +19,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
-import org.apache.iotdb.db.engine.memtable.ChunkBufferPool;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.exception.FlushRunTimeException;
@@ -205,7 +204,6 @@ public class MemTableFlushTask {
             } else if (ioMessage instanceof IChunkWriter) {
               ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
               chunkWriter.writeToFileWriter(MemTableFlushTask.this.writer);
-              ChunkBufferPool.getInstance().putBack(chunkWriter.getChunkBuffer());
             } else {
               EndChunkGroupIoTask endGroupTask = (EndChunkGroupIoTask) ioMessage;
               writer.endChunkGroup(endGroupTask.version);
