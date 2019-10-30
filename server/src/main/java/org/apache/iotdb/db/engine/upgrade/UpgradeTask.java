@@ -41,20 +41,21 @@ public class UpgradeTask implements Runnable {
       upgradeResource.getWriteQueryLock().readLock().lock();
       String tsfilePathBefore = upgradeResource.getFile().getAbsolutePath();
       String tsfilePathAfter =
-          upgradeResource.getFile().getParentFile().getParent() + "/tmp/tmp_" + upgradeResource
+          upgradeResource.getFile().getParentFile().getParent() + File.separator + "tmp"
+              + File.separator + "tmp_" + upgradeResource
               .getFile().getName();
       try {
         UpgradeTool.upgradeOneTsfile(tsfilePathBefore, tsfilePathAfter);
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.error("generate upgrade file failed, the file to be upgraded:{}", tsfilePathBefore);
       } finally {
         upgradeResource.getWriteQueryLock().readLock().unlock();
       }
       upgradeResource.getWriteQueryLock().writeLock().lock();
       try {
         String tmpTsfilePath =
-            upgradeResource.getFile().getParentFile().getAbsolutePath() + "/tmp_" + upgradeResource
-                .getFile().getName();
+            upgradeResource.getFile().getParentFile().getAbsolutePath() + File.separator + "tmp_"
+                + upgradeResource.getFile().getName();
         FileUtils.copyFile(new File(tsfilePathAfter), new File(tmpTsfilePath));
         new File(tsfilePathBefore).delete();
         new File(tsfilePathAfter).delete();

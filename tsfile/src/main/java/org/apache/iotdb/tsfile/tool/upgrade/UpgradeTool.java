@@ -21,8 +21,11 @@ package org.apache.iotdb.tsfile.tool.upgrade;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,13 +41,13 @@ public class UpgradeTool {
    */
   public static void updateTsfiles(String dir, String upgradeDir) throws IOException {
     //Traverse to find all tsfiles
-    File file = new File(dir);
-    List<File> tmp = new ArrayList<>();
+    File file = FSFactoryProducer.getFSFactory().getFile(dir);
+    Queue<File> tmp = new LinkedList<>();
     tmp.add(file);
     List<String> tsfiles = new ArrayList<>();
     if (file.exists()) {
       while (!tmp.isEmpty()) {
-        File tmp_file = tmp.remove(0);
+        File tmp_file = ((LinkedList<File>) tmp).pollFirst();
         File[] files = tmp_file.listFiles();
         for (File file2 : files) {
           if (file2.isDirectory()) {
@@ -54,7 +57,7 @@ public class UpgradeTool {
               tsfiles.add(file2.getAbsolutePath());
             }
             if (file2.getName().endsWith(".resource")){
-              File newFileName = new File(file2.getAbsoluteFile().toString().replace(dir, upgradeDir));
+              File newFileName = FSFactoryProducer.getFSFactory().getFile(file2.getAbsoluteFile().toString().replace(dir, upgradeDir));
               if (!newFileName.getParentFile().exists()){
                 newFileName.getParentFile().mkdirs();
               }
@@ -85,8 +88,8 @@ public class UpgradeTool {
   public static void main(String[] args) throws IOException {
     List<String> tsfileDirs = new ArrayList<>();
     List<String> tsfileDirsUpdate = new ArrayList<>();
-    tsfileDirs.add("/Users/tianyu/incubator-iotdb/data/data/sequence/root.group_9");
-    tsfileDirsUpdate.add("/Users/tianyu/incubator-iotdb/data/data/sequence/root.group_10");
+    tsfileDirs.add("/Users/tianyu/2019秋季学期/incubator-iotdb/data/data/sequence/root.group_10");
+    tsfileDirsUpdate.add("/Users/tianyu/2019秋季学期/incubator-iotdb/data/data/sequence/root.group_8");
     for (int i = 0; i < tsfileDirs.size(); i++) {
       updateTsfiles(tsfileDirs.get(i), tsfileDirsUpdate.get(i));
     }

@@ -178,6 +178,7 @@ public class StorageEngine implements IService {
 
   /**
    * insert a BatchInsertPlan to a storage group
+   *
    * @return result of each row
    */
   public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws StorageEngineException {
@@ -289,6 +290,14 @@ public class StorageEngine implements IService {
     return Collections.emptyList();
   }
 
+  public int countUpgradeFiles() {
+    int totalUpgradeFileNum = 0;
+    for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
+      totalUpgradeFileNum += storageGroupProcessor.countUpgradeFiles();
+    }
+    return totalUpgradeFileNum;
+  }
+
   /**
    * upgrade all storage groups.
    *
@@ -296,7 +305,8 @@ public class StorageEngine implements IService {
    */
   public void upgradeAll() throws StorageEngineException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-      throw new StorageEngineException("Current system mode is read only, does not support merge");
+      throw new StorageEngineException(
+          "Current system mode is read only, does not support file upgrade");
     }
     for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
       storageGroupProcessor.upgrade();
@@ -363,7 +373,7 @@ public class StorageEngine implements IService {
   public void deleteStorageGroup(String storageGroupName) {
     deleteAllDataFilesInOneStorageGroup(storageGroupName);
     StorageGroupProcessor processor = processorMap.remove(storageGroupName);
-    if(processor != null) {
+    if (processor != null) {
       processor.deleteFolder(systemDir);
     }
   }

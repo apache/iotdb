@@ -67,6 +67,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.JobFileManager;
+import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
@@ -844,6 +845,22 @@ public class StorageGroupProcessor {
     synchronized (closeStorageGroupCondition) {
       closeStorageGroupCondition.notifyAll();
     }
+  }
+
+
+  public int countUpgradeFiles() {
+    int cntUpgradeFileNum = 0;
+    for (TsFileResource seqTsFileResource : sequenceFileList) {
+      if (UpgradeUtils.isNeedUpgrade(seqTsFileResource)) {
+        cntUpgradeFileNum += 1;
+      }
+    }
+    for (TsFileResource unseqTsFileResource : unSequenceFileList) {
+      if (UpgradeUtils.isNeedUpgrade(unseqTsFileResource)) {
+        cntUpgradeFileNum += 1;
+      }
+    }
+    return cntUpgradeFileNum;
   }
 
 

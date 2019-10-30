@@ -44,6 +44,7 @@ import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
@@ -67,8 +68,8 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the file to get the
-   * file metadata size.Then the reader will skip the first TSFileConfig.MAGIC_STRING.length() bytes
-   * of the file for preparing reading real data.
+   * file metadata size.Then the reader will skip the first TSFileConfig.OLD_MAGIC_STRING.length()
+   * bytes of the file for preparing reading real data.
    *
    * @param file the data file
    * @throws IOException If some I/O error occurs
@@ -117,17 +118,13 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
       metadataSize.flip();
       // read file metadata size and position
       fileMetadataSize = ReadWriteIOUtils.readInt(metadataSize);
-      fileMetadataPos =
-          tsFileInput.size() - TSFileConfig.OLD_MAGIC_STRING.length() - Integer.BYTES
-              - fileMetadataSize;
+      fileMetadataPos = tsFileInput.size() - TSFileConfig.OLD_MAGIC_STRING.length() - Integer.BYTES
+          - fileMetadataSize;
     }
     // skip the magic header
     position(TSFileConfig.OLD_MAGIC_STRING.length());
   }
 
-  /**
-   * this function does not modify the position of the file reader.
-   */
   public String readTailMagic() throws IOException {
     long totalSize = tsFileInput.size();
 
@@ -201,9 +198,8 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
         fileMetaData.getMeasurementSchema().put(key, value);
       }
     }
-
+    // skip the current version of file metadata
     ReadWriteIOUtils.readInt(buffer);
-//    fileMetaData.setCurrentVersion(ReadWriteIOUtils.readInt(buffer));
 
     if (ReadWriteIOUtils.readIsNull(buffer)) {
       fileMetaData.setCreatedBy(ReadWriteIOUtils.readString(buffer));
@@ -306,24 +302,10 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
   }
 
   /**
-   * notice, the target bytebuffer are not flipped.
-   */
-  public int readRaw(long position, int length, ByteBuffer target) throws IOException {
-    return ReadWriteIOUtils
-        .readAsPossible(tsFileInput, target, position, length);
-  }
-
-  /**
-   * Self Check the file and return the position before where the data is safe.
+   * upgrade file and return the boolean value whether upgrade task completes
    */
   public boolean upgradeFile(String updateFileName) throws IOException {
-    File checkFile = new File(this.file);
-    File updateFile = new File(updateFileName);
-    if (!updateFile.getParentFile().exists()) {
-      updateFile.getParentFile().mkdirs();
-    }
-    updateFile.createNewFile();
-    TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(updateFile);
+    File checkFile = FSFactoryProducer.getFSFactory().getFile(this.file);
     long fileSize;
     if (!checkFile.exists()) {
       logger.error("the file to be updated does not exist, file path: {}", checkFile.getPath());
@@ -331,7 +313,13 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
     } else {
       fileSize = checkFile.length();
     }
-    //缓存
+    File updateFile = FSFactoryProducer.getFSFactory().getFile(updateFileName);
+    if (!updateFile.getParentFile().exists()) {
+      updateFile.getParentFile().mkdirs();
+    }
+    updateFile.createNewFile();
+    TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(updateFile);
+
     List<ChunkHeader> chunkHeaders = new ArrayList<>();
     List<List<PageHeader>> pageHeadersList = new ArrayList<>();
     List<List<ByteBuffer>> pagesList = new ArrayList<>();
@@ -339,7 +327,7 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
 
     String magic = readHeadMagic(true);
     if (!magic.equals(TSFileConfig.OLD_MAGIC_STRING)) {
-      logger.error("the file's MAGIC STRING is correct, file path: {}", checkFile.getPath());
+      logger.error("the file's MAGIC STRING is incorrect, file path: {}", checkFile.getPath());
       return false;
     }
 
@@ -457,22 +445,19 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
               List<PageHeader> pageHeaderList = pageHeadersList.get(i);
               List<ByteBuffer> pageList = pagesList.get(i);
 
-              try {
-                new ChunkBuffer(schema.getMeasurementSchema(chunkHeader.getMeasurementID()));
-              } catch (Exception e) {
-                //break;
-                continue;
-              }
-              ChunkBuffer chunkBuffer = new ChunkBuffer(
-                  schema.getMeasurementSchema(chunkHeader.getMeasurementID()));
-              for (int j = 0; j < pageHeaderList.size(); j++) {
-//                pageList.set(j, rewrite(pageList.get(j)));
-                if (encodingType.equals(TSEncoding.PLAIN)) {
-                  pageList.set(j, rewrite(pageList.get(j), tsDataType));
+              if (schema.getMeasurementSchema(chunkHeader.getMeasurementID()) != null) {
+                ChunkBuffer chunkBuffer = new ChunkBuffer(
+                    schema.getMeasurementSchema(chunkHeader.getMeasurementID()));
+                for (int j = 0; j < pageHeaderList.size(); j++) {
+                  if (encodingType.equals(TSEncoding.PLAIN)) {
+                    pageList.set(j, rewrite(pageList.get(j), tsDataType));
+                  }
+                  chunkBuffer
+                      .writePageHeaderAndDataIntoBuff(pageList.get(j), pageHeaderList.get(j));
                 }
-                chunkBuffer.writePageHeaderAndDataIntoBuff(pageList.get(j), pageHeaderList.get(j));
+                chunkBuffer
+                    .writeAllPagesOfSeriesToTsFile(tsFileIOWriter, chunkStatisticsList.get(i));
               }
-              chunkBuffer.writeAllPagesOfSeriesToTsFile(tsFileIOWriter, chunkStatisticsList.get(i));
             }
             tsFileIOWriter.endChunkGroup(currentChunkGroup.getVersion());
             chunkStatisticsList.clear();
@@ -520,7 +505,6 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
 
     modifiedPage.put(page.get(0));
     modifiedPage.put(timeBuffer);
-//    timeBuffer.clear();
     modifiedPage.order(ByteOrder.BIG_ENDIAN);
     switch (tsDataType) {
       case BOOLEAN:

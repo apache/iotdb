@@ -36,6 +36,7 @@ public class UpgradeSevice implements IService {
   private static final UpgradeSevice INSTANCE = new UpgradeSevice();
   private ExecutorService upgradeThreadPool;
   private AtomicInteger threadCnt = new AtomicInteger();
+  private static int cntUpgradeFileNum;
 
 
   private UpgradeSevice() {
@@ -53,6 +54,7 @@ public class UpgradeSevice implements IService {
     }
     upgradeThreadPool = Executors.newFixedThreadPool(updateThreadNum,
         r -> new Thread(r, "UpgradeThread-" + threadCnt.getAndIncrement()));
+    countUpgradeFiles();
     upgradeAll();
   }
 
@@ -76,6 +78,10 @@ public class UpgradeSevice implements IService {
 
   public void submitUpgradeTask(UpgradeTask upgradeTask) {
     upgradeThreadPool.submit(upgradeTask);
+  }
+
+  private static void countUpgradeFiles() {
+    cntUpgradeFileNum = StorageEngine.getInstance().countUpgradeFiles();
   }
 
   private static void upgradeAll() {

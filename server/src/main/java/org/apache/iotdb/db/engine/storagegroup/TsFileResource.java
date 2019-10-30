@@ -238,10 +238,9 @@ public class TsFileResource {
     return writeQueryLock;
   }
 
-  public void doUpgrade(){
+  public void doUpgrade() {
     if (UpgradeUtils.isNeedUpgrade(this)) {
-      UpgradeTask upgradeTask = new UpgradeTask(this);
-      UpgradeSevice.getINSTANCE().submitUpgradeTask(upgradeTask);
+      UpgradeSevice.getINSTANCE().submitUpgradeTask(new UpgradeTask(this));
     }
   }
 

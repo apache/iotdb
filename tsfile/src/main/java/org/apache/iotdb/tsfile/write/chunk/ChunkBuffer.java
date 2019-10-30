@@ -171,7 +171,7 @@ public class ChunkBuffer {
     }
     this.maxTimestamp = header.getMaxTimestamp();
 
-    // write the page header to IOWriter
+    // write the page header to pageBuffer
     try {
       LOG.debug("start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
       header.serializeTo(pageBuffer);
