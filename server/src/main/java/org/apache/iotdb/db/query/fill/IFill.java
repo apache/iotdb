@@ -71,7 +71,7 @@ public abstract class IFill {
   }
 
   private Filter constructFilter(long beforeRange) {
-    // if the deserialize time range is not set, beforeRange will be set to -1.
+    // if the fill time range is not set, beforeRange will be set to -1.
     if (beforeRange == -1) {
       return null;
     }

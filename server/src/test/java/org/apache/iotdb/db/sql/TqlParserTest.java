@@ -1105,7 +1105,7 @@ public class TqlParserTest {
             "TOK_TYPE", "float", "TOK_PREVIOUS", "TOK_DURATION", "11h"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator.generateAST(
-        "select s1 " + "FROM root.vehicle.d1 " + "WHERE time = 1234567 deserialize(float[previous, 11h])");
+        "select s1 " + "FROM root.vehicle.d1 " + "WHERE time = 1234567 fill(float[previous, 11h])");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -1127,7 +1127,7 @@ public class TqlParserTest {
             "TOK_TYPE", "float", "TOK_PREVIOUS"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator
-        .generateAST("select s1 FROM root.vehicle.d1 WHERE time = 1234567 deserialize(float[previous])");
+        .generateAST("select s1 FROM root.vehicle.d1 WHERE time = 1234567 fill(float[previous])");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -1150,7 +1150,7 @@ public class TqlParserTest {
             "123d"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator.generateAST(
-        "select s1 FROM root.vehicle.d1 WHERE time = 1234567 deserialize(boolean[linear, 31s, 123d])");
+        "select s1 FROM root.vehicle.d1 WHERE time = 1234567 fill(boolean[linear, 31s, 123d])");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -1172,7 +1172,7 @@ public class TqlParserTest {
             "TOK_TYPE", "boolean", "TOK_LINEAR"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator
-        .generateAST("select s1 FROM root.vehicle.d1 WHERE time = 1234567 deserialize(boolean[linear])");
+        .generateAST("select s1 FROM root.vehicle.d1 WHERE time = 1234567 fill(boolean[linear])");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -1197,7 +1197,7 @@ public class TqlParserTest {
             "TOK_PREVIOUS", "TOK_TIMEUNIT", "66", "w"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator.generateAST(
-        "select s1,s2 FROM root.vehicle.d1 WHERE time = 1234567 deserialize(int[linear, 5ms, 7d], float[previous], boolean[linear], text[previous, 66w])");
+        "select s1,s2 FROM root.vehicle.d1 WHERE time = 1234567 fill(int[linear, 5ms, 7d], float[previous], boolean[linear], text[previous, 66w])");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -1458,7 +1458,7 @@ public class TqlParserTest {
                 "50"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator.generateAST(
-        "select * " + "FROM root.vehicle.d1 " + "WHERE time = 1234567 deserialize(float[previous, 11h])"
+        "select * " + "FROM root.vehicle.d1 " + "WHERE time = 1234567 fill(float[previous, 11h])"
             + "slimit 15 " + "soffset 50");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);

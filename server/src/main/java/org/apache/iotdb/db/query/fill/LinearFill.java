@@ -142,7 +142,7 @@ public class LinearFill extends IFill {
         beforePair.setValue(TsPrimitiveType.getByType(TSDataType.DOUBLE, fillDoubleValue));
         break;
       default:
-        throw new UnSupportedFillTypeException("Unsupported linear deserialize data type : " + dataType);
+        throw new UnSupportedFillTypeException("Unsupported linear fill data type : " + dataType);
 
     }
     beforePair.setTimestamp(queryTime);

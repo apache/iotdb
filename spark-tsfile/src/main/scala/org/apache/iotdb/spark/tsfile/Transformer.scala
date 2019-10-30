@@ -87,7 +87,7 @@ object Transformer {
           query += ", `" + device_name + "." + m + "` as " + m
         }
         else {
-          // deserialize null column
+          // fill null column
           query += ", NULL as " + m
         }
       }

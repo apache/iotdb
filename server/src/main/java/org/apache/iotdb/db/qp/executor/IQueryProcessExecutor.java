@@ -73,7 +73,7 @@ public interface IQueryProcessExecutor {
       throws ProcessorException, IOException, PathErrorException, StorageEngineException, QueryFilterOptimizationException;
 
   /**
-   * process deserialize plan of qp layer, construct queryDataSet.
+   * process fill plan of qp layer, construct queryDataSet.
    */
   QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
       QueryContext context)

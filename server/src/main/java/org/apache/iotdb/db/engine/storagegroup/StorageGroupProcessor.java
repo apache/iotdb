@@ -788,7 +788,7 @@ public class StorageGroupProcessor {
 
   /**
    * @param tsFileResources includes sealed and unsealed tsfile resources
-   * @return deserialize unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
+   * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
    */
   private List<TsFileResource> getFileReSourceListForQuery(List<TsFileResource> tsFileResources,
       String deviceId, String measurementId, QueryContext context) {

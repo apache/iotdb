@@ -135,17 +135,6 @@ public class PhysicalGenerator {
         return new InsertPlan(paths.get(0).getFullPath(), insert.getTime(),
             insert.getMeasurementList(),
             insert.getValueList());
-      // case UPDATE:
-      // UpdateOperator update = (UpdateOperator) operator;
-      // UpdatePlan updatePlan = new UpdatePlan();
-      // updatePlan.setValue(update.getValue());
-      // paths = update.getSelectedPaths();
-      // if (paths.size() > 1) {
-      // throw new LogicalOperatorException("update command, must have and only have one seriesPath:" + paths);
-      // }
-      // updatePlan.setPath(paths.get(0));
-      // parseUpdateTimeFilter(update, updatePlan);
-      // return updatePlan;
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query);
@@ -167,108 +156,6 @@ public class PhysicalGenerator {
     }
   }
 
-  // /**
-  // * for update command, time should have start and end time range.
-  // *
-  // * @param updateOperator update logical plan
-  // */
-  // private void parseUpdateTimeFilter(UpdateOperator updateOperator, UpdatePlan plan) throws
-  // LogicalOperatorException {
-  // List<Pair<Long, Long>> intervals = extractTimeIntervals(updateOperator.getFilterOperator());
-  // plan.addIntervals(intervals);
-  // if (plan.getIntervals().isEmpty()) {
-  // throw new LogicalOperatorException("For update command, time filter is invalid");
-  // }
-  // }
-
-  // /**
-  // * extract time intervals from filterOperator
-  // *
-  // * @return valid time intervals
-  // * @throws LogicalOperatorException
-  // */
-  // private List<Pair<Long, Long>> extractTimeIntervals(FilterOperator filterOperator) throws
-  // LogicalOperatorException {
-  // List<Pair<Long, Long>> intervals = new ArrayList<>();
-  // if (!filterOperator.isSingle() || !filterOperator.getSinglePath().equals(RESERVED_TIME)) {
-  // throw new LogicalOperatorException("filter Operator must be a time filter");
-  // }
-  // // transfer the filter operator to FilterExpression
-  // IExpression timeFilter;
-  // try {
-  // timeFilter = filterOperator.transformToExpression(executor);
-  // } catch (QueryProcessorException e) {
-  // e.printStackTrace();
-  // throw new LogicalOperatorException(e.getMessage());
-  // }
-  // LongFilterVerifier filterVerifier = (LongFilterVerifier) FilterVerifier.create(TSDataType.INT64);
-  // LongInterval longInterval = filterVerifier.getInterval((SingleSeriesFilterExpression) timeFilter);
-  // long startTime;
-  // long endTime;
-  // for (int i = 0; i < longInterval.count; i = i + 2) {
-  // if (longInterval.flag[i]) {
-  // startTime = longInterval.v[i];
-  // } else {
-  // startTime = longInterval.v[i] + 1;
-  // }
-  // if (longInterval.flag[i + 1]) {
-  // endTime = longInterval.v[i + 1];
-  // } else {
-  // endTime = longInterval.v[i + 1] - 1;
-  // }
-  // if ((startTime <= 0 && startTime != Long.MIN_VALUE) || endTime <= 0) {
-  // throw new LogicalOperatorException("start and end time must be greater than 0.");
-  // }
-  // if (startTime == Long.MIN_VALUE) {
-  // startTime = 1;
-  // }
-  //
-  // if (endTime >= startTime)
-  // intervals.add(new Pair<>(startTime, endTime));
-  // }
-  // return intervals;
-  // }
-
-  // private PhysicalPlan transformQuery(QueryOperator queryOperator) throws QueryProcessorException,
-  // ProcessorException {
-  //
-  // List<Path> paths = queryOperator.getSelectedPaths();
-  // List<String> aggregations = queryOperator.getSelectOperator().getAggregations();
-  // ArrayList<SingleQueryPlan> subPlans = new ArrayList<>();
-  //
-  // FilterOperator filterOperator = queryOperator.getFilterOperator();
-  // if (filterOperator == null) {
-  // subPlans.add(new SingleQueryPlan(paths, null, null, null, executor, null));
-  // } else {
-  // List<FilterOperator> parts = splitFilter(filterOperator);
-  // for (FilterOperator filter : parts) {
-  // SingleQueryPlan plan = constructSelectPlan(filter, paths, executor);
-  // subPlans.add(plan);
-  // }
-  // }
-  // MultiQueryPlan multiQueryPlan = new MultiQueryPlan(subPlans, aggregations);
-  //
-  // if (queryOperator.isGroupBy()) { //old group by
-  // multiQueryPlan.setType(MultiQueryPlan.QueryType.GROUPBY);
-  // multiQueryPlan.setUnit(queryOperator.getUnit());
-  // multiQueryPlan.setOrigin(queryOperator.getOrigin());
-  // multiQueryPlan.setIntervals(queryOperator.getIntervals());
-  // return multiQueryPlan;
-  // } else if (queryOperator.isFill()) { // old deserialize query
-  // multiQueryPlan.setType(MultiQueryPlan.QueryType.FILL);
-  // FilterOperator timeFilter = queryOperator.getFilterOperator();
-  // if (!timeFilter.isSingle())
-  // throw new QueryProcessorException("Slice query must select a single time point");
-  // long time = Long.parseLong(((BasicFunctionOperator) timeFilter).getValue());
-  // multiQueryPlan.setQueryTime(time);
-  // multiQueryPlan.setFillType(queryOperator.getFillTypes());
-  // return multiQueryPlan;
-  // } else if (queryOperator.hasAggregation()) { //old aggregation
-  // return multiQueryPlan;
-  // } else { //ordinary query
-  // return transformQuery(queryOperator);
-  // }
-  // }
 
   private PhysicalPlan transformQuery(QueryOperator queryOperator)
       throws QueryProcessorException {
@@ -424,70 +311,6 @@ public class PhysicalGenerator {
     return queryPlan;
   }
 
-  // private SingleQueryPlan constructSelectPlan(FilterOperator filterOperator, List<Path> paths,
-  // AbstractQueryProcessExecutor conf) throws QueryProcessorException {
-  // FilterOperator timeFilter = null;
-  // FilterOperator freqFilter = null;
-  // FilterOperator valueFilter = null;
-  // List<FilterOperator> singleFilterList;
-  // if (filterOperator.isSingle()) {
-  // singleFilterList = new ArrayList<>();
-  // singleFilterList.add(filterOperator);
-  // } else if (filterOperator.getTokenIntType() == KW_AND) {
-  // // now it has been dealt with merge optimizer, thus all nodes with
-  // // same seriesPath have been merged to one node
-  // singleFilterList = filterOperator.getChildren();
-  // } else {
-  // throw new GeneratePhysicalPlanException("for one task, filter cannot be OR if it's not single");
-  // }
-  // List<FilterOperator> valueList = new ArrayList<>();
-  // for (FilterOperator child : singleFilterList) {
-  // if (!child.isSingle()) {
-  // throw new GeneratePhysicalPlanException(
-  // "in format:[(a) and () and ()] or [] or [], a is not single! a:" + child);
-  // }
-  // switch (child.getSinglePath().toString()) {
-  // case RESERVED_TIME:
-  // if (timeFilter != null) {
-  // throw new GeneratePhysicalPlanException("time filter has been specified more than once");
-  // }
-  // timeFilter = child;
-  // break;
-  // case RESERVED_FREQ:
-  // if (freqFilter != null) {
-  // throw new GeneratePhysicalPlanException("freq filter has been specified more than once");
-  // }
-  // freqFilter = child;
-  // break;
-  // default:
-  // valueList.add(child);
-  // break;
-  // }
-  // }
-  // if (valueList.size() == 1) {
-  // valueFilter = valueList.get(0);
-  // } else if (valueList.size() > 1) {
-  // valueFilter = new FilterOperator(KW_AND, false);
-  // valueFilter.setChildren(valueList);
-  // }
-  //
-  // return new SingleQueryPlan(paths, timeFilter, freqFilter, valueFilter, conf, null);
-  // }
-
-  // /**
-  // * split filter operator to a list of filter with relation of "or" each
-  // * other.
-  // */
-  // private List<FilterOperator> splitFilter(FilterOperator filterOperator) {
-  // List<FilterOperator> ret = new ArrayList<>();
-  // if (filterOperator.isSingle() || filterOperator.getTokenIntType() != KW_OR) {
-  // // single or leaf(BasicFunction)
-  // ret.add(filterOperator);
-  // return ret;
-  // }
-  // // a list of partion linked with or
-  // return filterOperator.getChildren();
-  // }
 
   private List<String> slimitTrimColumn(List<String> columnList, int seriesLimit, int seriesOffset)
       throws QueryProcessorException {

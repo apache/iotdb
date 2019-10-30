@@ -193,7 +193,7 @@ public class FloatTVList extends TVList {
         size += inputRemaining;
         break;
       } else {
-        // the remaining inputs cannot fit the last array, deserialize the last array and create a new
+        // the remaining inputs cannot fit the last array, fill the last array and create a new
         // one and enter the next loop
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, internalRemaining);

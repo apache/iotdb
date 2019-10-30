@@ -66,7 +66,7 @@ public interface IEngineQueryRouter {
       throws ProcessorException, QueryFilterOptimizationException, StorageEngineException,
       PathErrorException, IOException;
   /**
-   * Execute deserialize query.
+   * Execute fill query.
    *
    * @param fillPaths select path list
    * @param queryTime timestamp
