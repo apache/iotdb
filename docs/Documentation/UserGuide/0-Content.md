@@ -19,6 +19,7 @@
 
 -->
 
+
 # Chapter 0: Get Started
 * 1-QuickStart
 * 2-Frequently asked questions
@@ -69,4 +70,3 @@
 * 2-Files
 * 3-Writing Data on HDFS
 * 4-Shared Nothing Cluster
-
