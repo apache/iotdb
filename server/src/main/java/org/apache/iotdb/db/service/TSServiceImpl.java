@@ -581,10 +581,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS,
             "Execute set consistency level successfully"));
       }
-
-      if(statement.startsWith("SELECT * FROM")){ // TODO to remove
-        System.out.println();
-      }
+      
       PhysicalPlan physicalPlan;
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
