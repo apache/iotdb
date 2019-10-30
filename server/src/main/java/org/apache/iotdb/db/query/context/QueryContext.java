@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 
 /**
  * QueryContext contains the shared information with in a query.
@@ -44,6 +45,8 @@ public class QueryContext {
   private Map<String, List<Modification>> fileModCache = new HashMap<>();
 
   private long jobId;
+
+  private long queryTimeLowerBound = Long.MIN_VALUE;
 
   public QueryContext() {
   }
@@ -87,4 +90,15 @@ public class QueryContext {
     return jobId;
   }
 
+  public long getQueryTimeLowerBound() {
+    return queryTimeLowerBound;
+  }
+
+  public void setQueryTimeLowerBound(long queryTimeLowerBound) {
+    this.queryTimeLowerBound = queryTimeLowerBound;
+  }
+
+  public boolean chunkNotSatisfy(ChunkMetaData chunkMetaData) {
+    return chunkMetaData.getEndTime() < queryTimeLowerBound;
+  }
 }

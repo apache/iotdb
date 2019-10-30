@@ -21,13 +21,14 @@
 
 # Chapter 9: System Tools
 
-# Memory Estimation Tool
+## Memory Estimation Tool
 
-# Introduction
+### Introduction
 This tool calculates the minimum memory for writing to meet specific workload through a number of parameters input by users. (Memory in IoTDB is divided into three parts: write memory, read memory and reserve memory. Write memory is used for data write allocation. The ratio of the three can be set in the configuration file) The unit of result is in GB.
 
-# Input parameters
+### Input parameters
 When using this tool, the parameters needed to be input are as follows:
+
 <table>
    <tr>
       <td>Parameter</td>
@@ -58,9 +59,9 @@ When using this tool, the parameters needed to be input are as follows:
 
 In memory estimation, if the calculation takes a long time, the tool will show the running progress below, which is convenient for users to master the progress.
 
-# Usage
+### Usage
 
-Users can use the tool using scripts under the ``IOTDB_HOME/bin`folder.
+Users can use the tool using scripts under the `IOTDB_HOME/bin`folder.
 For Linux and Mac OS X users:
 * Assume that there are 20 storage groups, 10w timeseries and timeseries are evenly distributed in the storage groups:
 ```
@@ -68,7 +69,7 @@ For Linux and Mac OS X users:
 ```
 * Assume that there are 20 storage groups, 10w timeseries and maximum timeseries number among storage groups is 50000:
 ```
-  Shell >$IOTDB_HOME/bin/memory-tool.sh calmem -sg 20 -ts 100000 -tsm -50000
+  Shell >$IOTDB_HOME/bin/memory-tool.sh calmem -sg 20 -ts 100000 -mts -50000
 ```
 
 For Windows users:
@@ -78,6 +79,6 @@ For Windows users:
 ```
 * Assume that there are 20 storage groups, 10w timeseries and maximum timeseries number among storage groups is 50000:
 ```
-  Shell >$IOTDB_HOME\bin\memory-tool.bat calmem -sg 20 -ts 100000 -tsm -50000
+  Shell >$IOTDB_HOME\bin\memory-tool.bat calmem -sg 20 -ts 100000 -mts -50000
 ```
 

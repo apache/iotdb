@@ -48,19 +48,22 @@ import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
-import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.AuthDataSet;
+import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
@@ -119,18 +122,31 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       case REVOKE_WATERMARK_EMBEDDING:
         return operateWatermarkEmbedding(((DataAuthPlan) plan).getUsers(), false);
       case DELETE_TIMESERIES:
+        return deleteTimeSeries((DeleteTimeSeriesPlan) plan);
       case CREATE_TIMESERIES:
+        return createTimeSeries((CreateTimeSeriesPlan) plan);
       case SET_STORAGE_GROUP:
+        return setStorageGroup((SetStorageGroupPlan) plan);
       case DELETE_STORAGE_GROUP:
-      case METADATA:
-        MetadataPlan metadata = (MetadataPlan) plan;
-        return operateMetadata(metadata);
+        return deleteStorageGroup((DeleteStorageGroupPlan) plan);  
       case PROPERTY:
         PropertyPlan property = (PropertyPlan) plan;
         return operateProperty(property);
+      case TTL:
+        operateTTL((SetTTLPlan) plan);
+        return true;
       default:
         throw new UnsupportedOperationException(
-            String.format("operation %s does not support", plan.getOperatorType()));
+            String.format("operation %s is not supported", plan.getOperatorType()));
+    }
+  }
+
+  private void operateTTL(SetTTLPlan plan) throws ProcessorException {
+    try {
+      MManager.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
+      StorageEngine.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
+    } catch (PathErrorException | IOException | StorageEngineException e) {
+      throw new ProcessorException(e);
     }
   }
 
@@ -247,7 +263,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       return storageEngine.insert(insertPlan);
 
     } catch (PathErrorException | StorageEngineException | MetadataErrorException | CacheException e) {
-      throw new ProcessorException(e.getMessage());
+      throw new ProcessorException(e);
     }
   }
 
@@ -256,6 +272,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       String[] measurementList = batchInsertPlan.getMeasurements();
       String deviceId = batchInsertPlan.getDeviceId();
+
       MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
       Object[] values;
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
@@ -391,43 +408,56 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
     return true;
   }
-
-  private boolean operateMetadata(MetadataPlan metadataPlan) throws ProcessorException {
-    MetadataOperator.NamespaceType namespaceType = metadataPlan.getNamespaceType();
-    Path path = metadataPlan.getPath();
-    TSDataType dataType = metadataPlan.getDataType();
-    CompressionType compressor = metadataPlan.getCompressor();
-    TSEncoding encoding = metadataPlan.getEncoding();
-    Map<String, String> props = metadataPlan.getProps();
-    List<Path> deletePathList = metadataPlan.getDeletePathList();
+  
+  private boolean createTimeSeries(CreateTimeSeriesPlan createTimeSeriesPlan) throws ProcessorException {
+    Path path = createTimeSeriesPlan.getPath();
+    TSDataType dataType = createTimeSeriesPlan.getDataType();
+    CompressionType compressor = createTimeSeriesPlan.getCompressor();
+    TSEncoding encoding = createTimeSeriesPlan.getEncoding();
+    Map<String, String> props = createTimeSeriesPlan.getProps();
     try {
-      switch (namespaceType) {
-        case ADD_PATH:
-          boolean result = mManager.addPathToMTree(path, dataType, encoding, compressor, props);
-          if (result) {
-            storageEngine.addTimeSeries(path, dataType, encoding, compressor, props);
-          }
-          break;
-        case DELETE_PATH:
-          deleteDataOfTimeSeries(deletePathList);
-          Set<String> emptyStorageGroups = mManager.deletePaths(deletePathList);
-          for (String deleteStorageGroup : emptyStorageGroups) {
-            storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
-          }
-          break;
-        case SET_STORAGE_GROUP:
-          mManager.setStorageGroupToMTree(path.getFullPath());
-          break;
-        case DELETE_STORAGE_GROUP:
-          mManager.deleteStorageGroupsFromMTree(deletePathList);
-          for (Path storageGroupPath : deletePathList) {
-            storageEngine.deleteStorageGroup(storageGroupPath.getFullPath());
-          }
-          break;
-        default:
-          throw new ProcessorException("unknown namespace type:" + namespaceType);
+      boolean result = mManager.addPathToMTree(path, dataType, encoding, compressor, props);
+      if (result) {
+        storageEngine.addTimeSeries(path, dataType, encoding, compressor, props);
       }
     } catch (StorageEngineException | MetadataErrorException | PathErrorException e) {
+      throw new ProcessorException(e);
+    }
+    return true;
+  }
+  
+  private boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws ProcessorException {
+    List<Path> deletePathList = deleteTimeSeriesPlan.getPaths();
+    try {
+      deleteDataOfTimeSeries(deletePathList);
+      Set<String> emptyStorageGroups = mManager.deletePaths(deletePathList);
+      for (String deleteStorageGroup : emptyStorageGroups) {
+        storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
+      }
+    } catch (MetadataErrorException e) {
+      throw new ProcessorException(e);
+    }
+    return true;
+  }
+  
+  private boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) throws ProcessorException {
+    Path path = setStorageGroupPlan.getPath();
+    try {
+      mManager.setStorageGroupToMTree(path.getFullPath());
+    } catch (MetadataErrorException e) {
+      throw new ProcessorException(e);
+    }
+    return true;
+  }
+  
+  private boolean deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan) throws ProcessorException {
+    List<Path> deletePathList = deleteStorageGroupPlan.getPaths();
+    try {
+      mManager.deleteStorageGroupsFromMTree(deletePathList);
+      for (Path storageGroupPath : deletePathList) {
+        storageEngine.deleteStorageGroup(storageGroupPath.getFullPath());
+      }
+    } catch (MetadataErrorException e) {
       throw new ProcessorException(e);
     }
     return true;
@@ -491,7 +521,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       throw new ProcessorException(e);
     }
 
-    AuthDataSet dataSet;
+    ListDataSet dataSet;
 
     try {
       switch (authorType) {
@@ -522,13 +552,13 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return dataSet;
   }
 
-  private AuthDataSet executeListRole(IAuthorizer authorizer) {
+  private ListDataSet executeListRole(IAuthorizer authorizer) {
     int index = 0;
     List<Path> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
     headerList.add(new Path(ROLE));
     typeList.add(TSDataType.TEXT);
-    AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+    ListDataSet dataSet = new ListDataSet(headerList, typeList);
     List<String> roleList = authorizer.listAllRoles();
     for (String role : roleList) {
       RowRecord record = new RowRecord(index++);
@@ -540,14 +570,14 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return dataSet;
   }
 
-  private AuthDataSet executeListUser(IAuthorizer authorizer) {
+  private ListDataSet executeListUser(IAuthorizer authorizer) {
     List<String> userList = authorizer.listAllUsers();
     List<Path> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
     headerList.add(new Path(USER));
     typeList.add(TSDataType.TEXT);
     int index = 0;
-    AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+    ListDataSet dataSet = new ListDataSet(headerList, typeList);
     for (String user : userList) {
       RowRecord record = new RowRecord(index++);
       Field field = new Field(TSDataType.TEXT);
@@ -558,7 +588,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return dataSet;
   }
 
-  private AuthDataSet executeListRoleUsers(IAuthorizer authorizer, String roleName)
+  private ListDataSet executeListRoleUsers(IAuthorizer authorizer, String roleName)
       throws AuthException {
     Role role = authorizer.getRole(roleName);
     if (role == null) {
@@ -568,7 +598,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     List<TSDataType> typeList = new ArrayList<>();
     headerList.add(new Path(USER));
     typeList.add(TSDataType.TEXT);
-    AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+    ListDataSet dataSet = new ListDataSet(headerList, typeList);
     List<String> userList = authorizer.listAllUsers();
     int index = 0;
     for (String userN : userList) {
@@ -584,7 +614,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return dataSet;
   }
 
-  private AuthDataSet executeListUserRoles(IAuthorizer authorizer, String userName)
+  private ListDataSet executeListUserRoles(IAuthorizer authorizer, String userName)
       throws AuthException {
     User user = authorizer.getUser(userName);
     if (user != null) {
@@ -592,7 +622,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       List<TSDataType> typeList = new ArrayList<>();
       headerList.add(new Path(ROLE));
       typeList.add(TSDataType.TEXT);
-      AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+      ListDataSet dataSet = new ListDataSet(headerList, typeList);
       int index = 0;
       for (String roleN : user.getRoleList()) {
         RowRecord record = new RowRecord(index++);
@@ -607,7 +637,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
   }
 
-  private AuthDataSet executeListRolePrivileges(IAuthorizer authorizer, String roleName, Path path)
+  private ListDataSet executeListRolePrivileges(IAuthorizer authorizer, String roleName, Path path)
       throws AuthException {
     Role role = authorizer.getRole(roleName);
     if (role != null) {
@@ -615,7 +645,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       List<TSDataType> typeList = new ArrayList<>();
       headerList.add(new Path(PRIVILEGE));
       typeList.add(TSDataType.TEXT);
-      AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+      ListDataSet dataSet = new ListDataSet(headerList, typeList);
       int index = 0;
       for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
         if (path == null || AuthUtils
@@ -633,7 +663,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
   }
 
-  private AuthDataSet executeListUserPrivileges(IAuthorizer authorizer, String userName, Path path)
+  private ListDataSet executeListUserPrivileges(IAuthorizer authorizer, String userName, Path path)
       throws AuthException {
     User user = authorizer.getUser(userName);
     if (user == null) {
@@ -645,7 +675,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     headerList.add(new Path(PRIVILEGE));
     typeList.add(TSDataType.TEXT);
     typeList.add(TSDataType.TEXT);
-    AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+    ListDataSet dataSet = new ListDataSet(headerList, typeList);
     int index = 0;
     for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
       if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {

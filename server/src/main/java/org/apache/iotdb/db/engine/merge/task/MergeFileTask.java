@@ -19,17 +19,22 @@
 
 package org.apache.iotdb.db.engine.merge.task;
 
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -115,6 +120,8 @@ class MergeFileTask {
     try {
       TsFileMetaDataCache.getInstance().remove(seqFile);
       DeviceMetaDataCache.getInstance().remove(seqFile);
+      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile);
+
       resource.removeFileReader(seqFile);
       TsFileIOWriter oldFileWriter;
       try {
@@ -148,6 +155,13 @@ class MergeFileTask {
       logger.debug("{} moved merged chunks of {} to the old file", taskName, seqFile);
 
       newFileWriter.getFile().delete();
+
+      File nextMergeVersionFile = getNextMergeVersionFile(seqFile.getFile());
+      FileUtils.moveFile(seqFile.getFile(), nextMergeVersionFile);
+      FileUtils
+          .moveFile(new File(seqFile.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+              new File(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
+      seqFile.setFile(nextMergeVersionFile);
     } finally {
       seqFile.getWriteQueryLock().writeLock().unlock();
     }
@@ -208,11 +222,27 @@ class MergeFileTask {
       resource.removeFileReader(seqFile);
       TsFileMetaDataCache.getInstance().remove(seqFile);
       DeviceMetaDataCache.getInstance().remove(seqFile);
+      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile);
       seqFile.getFile().delete();
-      FileUtils.moveFile(fileWriter.getFile(), seqFile.getFile());
+
+      File nextMergeVersionFile = getNextMergeVersionFile(seqFile.getFile());
+      FileUtils.moveFile(fileWriter.getFile(), nextMergeVersionFile);
+      FileUtils
+          .moveFile(new File(seqFile.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+              new File(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
+      seqFile.setFile(nextMergeVersionFile);
     } finally {
       seqFile.getWriteQueryLock().writeLock().unlock();
     }
+  }
+
+  private File getNextMergeVersionFile(File seqFile) {
+    String[] splits = seqFile.getName().replace(TSFILE_SUFFIX, "")
+        .split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
+    int mergeVersion = Integer.parseInt(splits[2]) + 1;
+    return new File(seqFile.getParentFile(),
+        splits[0] + IoTDBConstant.TSFILE_NAME_SEPARATOR + splits[1]
+            + IoTDBConstant.TSFILE_NAME_SEPARATOR + mergeVersion + TSFILE_SUFFIX);
   }
 
   private long writeUnmergedChunks(List<Long> chunkStartTimes,

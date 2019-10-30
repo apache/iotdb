@@ -18,45 +18,57 @@
     under the License.
 
 -->
-
+# Chapter 0: QuickStart
+* 1-QuickStart
+* 2-Frequently asked questions
+* 3-Reference
 # Chapter 1: Overview
 * 1-What is IoTDB
 * 2-Architecture
 * 3-Scenario
 * 4-Features
-# Chapter 2: Concept Key Concepts and Terminology
+# Chapter 2: Concept
 * 1-Key Concepts and Terminology
 * 2-Data Type 
 * 3-Encoding 
 * 4-Compression 
-# Chapter 3: Operation Manual
-* 1-Sample Data
+# Chapter 3: Deployment
+* 1-Deployment
+* 2-Configuration
+* 3-Build and use IoTDB by Dockerfile
+* 4-TsFile library Intallation
+# Chapter 4: Operation Manual
+* 1-Cli Shell Tool
 * 2-Data Model Selection
 * 3-Data Import
 * 4-Data Query
 * 5-Data Maintenance
 * 6-Priviledge Management
-# Chapter 4: Deployment and Management
-* 1-Deployment
-* 2-Configuration
-* 3-System Monitor
-* 4-Performance Monitor
-* 5-System log
-* 6-Data Management
-* 7-Build and use IoTDB by Dockerfile
-# Chapter 5: IoTDB SQL Documentation
-* 1-IoTDB Query Statement
-* 2-Reference
-# Chapter 6: JDBC API
+* 7-IoTDB Query Language
+* 8-TsFile Usage
+# Chapter 5: Management
+* 1-System Monitor
+* 2-Performance Monitor
+* 3-System log
+* 4-Data Management
+# Chapter 6: API
 * 1-JDBC API
-* 2-Status Code
-# Chapter 7: Session API
-* 1-Session API
-# Chapter 8: TsFile
-* 1-Installation
-* 2-Usage
-* 3-Hierarchy
+* 2-Session API
+* 3-Python API
+# Chapter 7: System Design
+* 1-Hierarchy
+# Chapter 8: Distributed Architecture
+* 1-Shared Storage Architecture
+* 2-Shared Nothing Architecture
 # Chapter 9: System Tools
-* 1-Sync
+* 1-Sync Tool
 * 2-Memory Estimation Tool
 * 3-JMX Tool
+* 4-Watermark Tool
+* 5-Log Visualizer
+* 6-Query History Visualization Tool
+# Chapter 10: Ecosystem Integration
+* 1-Grafana
+* 2-TsFile Hadoop Connector
+* 3-TsFile Spark Connector
+* 4-Spark IoTDB Connector

@@ -36,15 +36,20 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.DeleteOperator;
+import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
+import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
-import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -52,11 +57,16 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
-import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -93,21 +103,26 @@ public class PhysicalGenerator {
       case LOADDATA:
         LoadDataOperator loadData = (LoadDataOperator) operator;
         return new LoadDataPlan(loadData.getInputFilePath(), loadData.getMeasureType());
-      case SET_STORAGE_GROUP:
-      case DELETE_STORAGE_GROUP:
-      case CREATE_TIMESERIES:
-      case DELETE_TIMESERIES:
       case METADATA:
-        MetadataOperator metadata = (MetadataOperator) operator;
-        return new MetadataPlan(metadata.getNamespaceType(), metadata.getPath(),
-            metadata.getDataType(), metadata.getCompressor(),
-            metadata.getEncoding(), metadata.getProps(), metadata.getDeletePathList());
+      case SET_STORAGE_GROUP:
+        SetStorageGroupOperator setStorageGroup = (SetStorageGroupOperator) operator;
+        return new SetStorageGroupPlan(setStorageGroup.getPath());
+      case DELETE_STORAGE_GROUP:
+        DeleteStorageGroupOperator deleteStorageGroup = (DeleteStorageGroupOperator) operator;
+        return new DeleteStorageGroupPlan(deleteStorageGroup.getDeletePathList());
+      case CREATE_TIMESERIES:
+        CreateTimeSeriesOperator addPath = (CreateTimeSeriesOperator) operator;
+        return new CreateTimeSeriesPlan(addPath.getPath(), addPath.getDataType(),
+            addPath.getEncoding(), addPath.getCompressor(), addPath.getProps());
+      case DELETE_TIMESERIES:
+        DeleteTimeSeriesOperator deletePath = (DeleteTimeSeriesOperator) operator;
+        return new DeleteTimeSeriesPlan(deletePath.getDeletePathList());
       case PROPERTY:
         PropertyOperator property = (PropertyOperator) operator;
         return new PropertyPlan(property.getPropertyType(), property.getPropertyPath(),
             property.getMetadataPath());
       case DELETE:
-        DeleteOperator delete = (DeleteOperator) operator;
+        DeleteDataOperator delete = (DeleteDataOperator) operator;
         paths = delete.getSelectedPaths();
         return new DeletePlan(delete.getTime(), paths);
       case INSERT:
@@ -134,6 +149,19 @@ public class PhysicalGenerator {
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query);
+      case TTL:
+        switch (operator.getTokenIntType()) {
+          case SQLConstant.TOK_SET:
+            SetTTLOperator setTTLOperator = (SetTTLOperator) operator;
+            return new SetTTLPlan(setTTLOperator.getStorageGroup(), setTTLOperator.getDataTTL());
+          case SQLConstant.TOK_UNSET:
+            SetTTLOperator unsetTTLOperator = (SetTTLOperator) operator;
+            return new SetTTLPlan(unsetTTLOperator.getStorageGroup());
+          case SQLConstant.TOK_SHOW:
+            ShowTTLOperator showTTLOperator = (ShowTTLOperator) operator;
+            return new ShowTTLPlan(showTTLOperator.getStorageGroups());
+        }
+
       default:
         throw new LogicalOperatorException("not supported operator type: " + operator.getType());
     }

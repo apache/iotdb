@@ -32,6 +32,7 @@ import java.util.Optional;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.NotCompatibleException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
@@ -70,6 +71,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   private ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
   private int totalChunkNum;
   private TsFileMetaData tsFileMetaData;
+  private EndianType endianType = EndianType.BIG_ENDIAN;
 
   private boolean cacheDeviceMetadata = false;
   private Map<TsDeviceMetadataIndex, TsDeviceMetadata> deviceMetadataMap;
@@ -95,6 +97,9 @@ public class TsFileSequenceReader implements AutoCloseable {
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
     this.file = file;
     tsFileInput = FSFactoryProducer.getFileInputFactory().getTsFileInput(file);
+    // old version number of TsFile using little endian starts with "v"
+    this.endianType = this.readVersionNumber().startsWith("v") 
+        ? EndianType.LITTLE_ENDIAN : EndianType.BIG_ENDIAN;
     try {
       if (loadMetadataSize) {
         loadMetadataSize();
@@ -183,7 +188,6 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public String readTailMagic() throws IOException {
     long totalSize = tsFileInput.size();
-
     ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.getBytes().length);
     tsFileInput.read(magicStringBytes, totalSize - TSFileConfig.MAGIC_STRING.getBytes().length);
     magicStringBytes.flip();
@@ -239,6 +243,10 @@ public class TsFileSequenceReader implements AutoCloseable {
           TSFileConfig.VERSION_NUMBER + " is expected.");
     }
     return versionNumberString;
+  }
+  
+  public EndianType getEndianType() {
+    return this.endianType;
   }
 
   /**
@@ -336,10 +344,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * read the chunk's header.
    *
    * @param position the file offset of this chunk's header
+   * @param chunkHeaderSize the size of chunk's header
    * @param markerRead true if the offset does not contains the marker , otherwise false
    */
-  private ChunkHeader readChunkHeader(long position, boolean markerRead) throws IOException {
-    return ChunkHeader.deserializeFrom(tsFileInput, position, markerRead);
+  private ChunkHeader readChunkHeader(long position, int chunkHeaderSize, boolean markerRead)
+      throws IOException {
+    return ChunkHeader.deserializeFrom(tsFileInput, position, chunkHeaderSize, markerRead);
   }
 
   /**
@@ -380,10 +390,11 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return -chunk
    */
   public Chunk readMemChunk(ChunkMetaData metaData) throws IOException {
-    ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), false);
+    int chunkHeadSize = ChunkHeader.getSerializedSize(metaData.getMeasurementUid());
+    ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), chunkHeadSize, false);
     ByteBuffer buffer = readChunk(metaData.getOffsetOfChunkHeader() + header.getSerializedSize(),
         header.getDataSize());
-    return new Chunk(header, buffer, metaData.getDeletedAt());
+    return new Chunk(header, buffer, metaData.getDeletedAt(), endianType);
   }
 
   /**

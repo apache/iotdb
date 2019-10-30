@@ -60,12 +60,13 @@ public class TsFileProcessorTest {
   private String measurementId = "s0";
   private TSDataType dataType = TSDataType.INT32;
   private Map<String, String> props = Collections.emptyMap();
-  private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
+  private QueryContext context;
 
   @Before
   public void setUp() throws Exception {
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
+    context = EnvironmentUtils.TEST_QUERY_CONTEXT;
   }
 
   @After

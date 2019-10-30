@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
 public class IoTDBConfig {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
-  public static final String CONFIG_NAME = "iotdb-engine.properties";
+  static final String CONFIG_NAME = "iotdb-engine.properties";
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
@@ -240,12 +240,6 @@ public class IoTDBConfig {
    * Set the language version when loading file including error information, default value is "EN"
    */
   private String languageVersion = "EN";
-  /**
-   * Choose a postBack strategy of merging historical data: 1. It's more likely to update historical
-   * data, choose "true". 2. It's more likely not to update historical data or you don't know
-   * exactly, choose "false".
-   */
-  private boolean updateHistoricalDataPossibility = false;
 
   private String ipWhiteList = "0.0.0.0/0";
   /**
@@ -401,6 +395,13 @@ public class IoTDBConfig {
    * Default HDFS port is 9000
    */
   private String hdfsPort = "9000";
+
+  /**
+   * default TTL for storage groups that are not set TTL by statements, in ms
+   * Notice: if this property is changed, previous created storage group which are not set TTL will
+   * also be affected.
+   */
+  private long defaultTTL = Long.MAX_VALUE;
 
   public IoTDBConfig() {
     // empty constructor
@@ -705,14 +706,6 @@ public class IoTDBConfig {
 
   void setLanguageVersion(String languageVersion) {
     this.languageVersion = languageVersion;
-  }
-
-  public boolean isUpdateHistoricalDataPossibility() {
-    return updateHistoricalDataPossibility;
-  }
-
-  void setUpdateHistoricalDataPossibility(boolean updateHistoricalDataPossibility) {
-    this.updateHistoricalDataPossibility = updateHistoricalDataPossibility;
   }
 
   public String getBaseDir() {
@@ -1105,12 +1098,19 @@ public class IoTDBConfig {
     this.hdfsPort = hdfsPort;
   }
 
-
   public int getUpgradeThreadNum() {
     return upgradeThreadNum;
   }
 
   public void setUpgradeThreadNum(int upgradeThreadNum) {
     this.upgradeThreadNum = upgradeThreadNum;
+  }
+
+  public long getDefaultTTL() {
+    return defaultTTL;
+  }
+
+  public void setDefaultTTL(long defaultTTL) {
+    this.defaultTTL = defaultTTL;
   }
 }
