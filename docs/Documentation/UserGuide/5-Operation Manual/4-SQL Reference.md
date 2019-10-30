@@ -19,7 +19,7 @@
 
 -->
 # Chapter 5: Operation Manual
-# IoTDB SQL Reference
+
 In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a SQL-like query language for interacting with IoTDB, the query language can be devided into 4 major parts:
 
 * Schema Statement: statements about schema management are all listed in this section.
@@ -29,7 +29,7 @@ In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a S
 
 All of these statements are write in IoTDB's own syntax, for details about the syntax composition, please check the `Reference` section.
 
-## IoTDB Query Statement
+## SQL Reference
 
 
 ### Schema Statement
