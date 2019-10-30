@@ -247,7 +247,13 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
                 String.format("Current deviceId[%s] does not contain measurement:%s",
                     deviceId, measurementList[i]));
           }
-          addPathToMTree(deviceId, measurementList[i], values[i]);
+          try {
+            addPathToMTree(deviceId, measurementList[i], values[i]);
+          } catch (MetadataErrorException e) {
+            if (!e.getMessage().contains("already exist")) {
+              throw e;
+            }
+          }
         }
         MNode measurementNode = node.getChild(measurementList[i]);
         if (!measurementNode.isLeaf()) {

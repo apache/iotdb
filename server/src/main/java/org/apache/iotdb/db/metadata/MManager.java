@@ -292,15 +292,14 @@ public class MManager {
    * measurement should be registered to the StorageEngine too)
    */
   @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
-  public synchronized boolean addPathToMTree(Path path, TSDataType dataType, TSEncoding encoding,
+  public boolean addPathToMTree(Path path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props)
       throws MetadataErrorException, PathErrorException {
     lock.writeLock().lock();
     try {
-      // double check
       if (pathExist(path.getFullPath())) {
-        logger.debug("Timeseries {} already exists", path.getFullPath());
-        return true;
+        throw new MetadataErrorException(
+            String.format("Timeseries %s already exist", path.getFullPath()));
       }
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
       if (!checkStorageGroupByPath(path.getFullPath())) {
