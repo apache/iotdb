@@ -82,7 +82,7 @@ error: The TEXT data type should be covered by " or '
 ## 数据查询
 ### 时间切片查询
 
-本节主要介绍时间切片查询的相关示例，主要使用的是[IoTDB SELECT语句](/#/Documents/progress/chap4/sec7)。同时，您也可以使用[Java JDBC](/#/Documents/progress/chap6/sec1)标准接口来执行相关的查询语句。
+本节主要介绍时间切片查询的相关示例，主要使用的是[IoTDB SELECT语句](/#/Documents/progress/chap5/sec4)。同时，您也可以使用[Java JDBC](/#/Documents/progress/chap4/sec2)标准接口来执行相关的查询语句。
 
 #### 根据一个时间区间选择一列数据
 
