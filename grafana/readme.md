@@ -28,22 +28,21 @@ This project provides a connector which reads data from iotdb and sends to grafa
 ## Grafana installation
 
 Download url: https://grafana.com/grafana/download
+
 version >= 4.4.1
 
-### Install data source plugin
-plugin name: simple-json-datasource
-Download url: https://github.com/grafana/simple-json-datasource
-
-After downloading this plugin, you can use the grafana-cli tool to install SimpleJson from the commandline:
-> grafana-cli plugins install grafana-simple-json-datasource
-
-Alternatively, you can manually download the .zip file and unpack it into your grafana plugins directory.
-
-* `{grafana-install-directory}\data\plugin\` (Windows)
-* `/var/lib/grafana/plugins` (Linux)
-
-### Start Grafana
 Grafana will auto start after installing, or you can run `sudo service grafana-server start`
+
+### Install data source plugin
+
+plugin name: simple-json-datasource (https://github.com/grafana/simple-json-datasource)
+
+Install SimpleJson plugin:
+
+```$xslt
+sudo grafana-cli plugins install grafana-simple-json-datasource
+sudo service grafana-server restart
+```
 
 ## IoTDB installation
 
