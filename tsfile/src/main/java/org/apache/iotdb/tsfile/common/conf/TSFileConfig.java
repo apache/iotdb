@@ -50,9 +50,15 @@ public class TSFileConfig {
   public static final int BYTE_SIZE_PER_CHAR = 4;
   public static final String STRING_ENCODING = "UTF-8";
   public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
-  public static final String CONFIG_FILE_NAME = "tsfile-format.properties";
+  public static final String CONFIG_FILE_NAME = "iotdb-engine.properties";
   public static final String MAGIC_STRING = "TsFile";
   public static final String VERSION_NUMBER = "000001";
+
+  /**
+   * Bloom filter constrain
+   */
+  public static final double MIN_BLOOM_FILTER_ERROR_RATE = 0.01;
+  public static final double MAX_BLOOM_FILTER_ERROR_RATE = 0.1;
 
   /**
    * The default grow size of class BatchData.
@@ -292,8 +298,21 @@ public class TSFileConfig {
    */
   private String hdfsPort = "9000";
 
+  /**
+   * The acceptable error rate of bloom filter
+   */
+  private double bloomFilterErrorRate = 0.05;
+
   public TSFileConfig() {
 
+  }
+
+  public double getBloomFilterErrorRate() {
+    return bloomFilterErrorRate;
+  }
+
+  public void setBloomFilterErrorRate(double bloomFilterErrorRate) {
+    this.bloomFilterErrorRate = bloomFilterErrorRate;
   }
 
 
@@ -320,4 +339,5 @@ public class TSFileConfig {
   public void setHdfsPort(String hdfsPort) {
     this.hdfsPort = hdfsPort;
   }
+
 }

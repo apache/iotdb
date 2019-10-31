@@ -18,13 +18,12 @@
  */
 package org.apache.iotdb.tsfile.write;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -38,10 +37,15 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.record.datapoint.*;
-import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -63,13 +67,15 @@ public class TsFileReadWriteTest {
   public void tearDown() throws Exception {
     f = new File(path);
     if (f.exists()) {
-      assertTrue(f.delete());;
+      assertTrue(f.delete());
+      ;
     }
   }
 
   @Test
   public void intTest() throws IOException, WriteProcessException {
-    writeDataByTSRecord(TSDataType.INT32, (i) -> new IntDataPoint("sensor_1", (int) i), TSEncoding.RLE);
+    writeDataByTSRecord(TSDataType.INT32, (i) -> new IntDataPoint("sensor_1", (int) i),
+        TSEncoding.RLE);
     readData((i, field, delta) -> assertEquals(i, field.getIntV()));
   }
 
@@ -81,13 +87,15 @@ public class TsFileReadWriteTest {
 
   @Test
   public void floatTest() throws IOException, WriteProcessException {
-    writeDataByTSRecord(TSDataType.FLOAT, (i) -> new FloatDataPoint("sensor_1", (float) i), TSEncoding.RLE);
+    writeDataByTSRecord(TSDataType.FLOAT, (i) -> new FloatDataPoint("sensor_1", (float) i),
+        TSEncoding.RLE);
     readData((i, field, delta) -> assertEquals(i, field.getFloatV(), delta));
   }
 
   @Test
   public void doubleTest() throws IOException, WriteProcessException {
-    writeDataByTSRecord(TSDataType.DOUBLE, (i) -> new DoubleDataPoint("sensor_1", (double) i), TSEncoding.RLE);
+    writeDataByTSRecord(TSDataType.DOUBLE, (i) -> new DoubleDataPoint("sensor_1", (double) i),
+        TSEncoding.RLE);
     readData((i, field, delta) -> assertEquals(i, field.getDoubleV(), delta));
   }
 
@@ -119,22 +127,30 @@ public class TsFileReadWriteTest {
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("device_1.sensor_2"));
     QueryExpression queryExpression = QueryExpression.create(paths, null);
-    QueryDataSet queryDataSet = readTsFile.query(queryExpression);
-    assertFalse(queryDataSet.hasNext());
-    reader.close();
+    try {
+      QueryDataSet queryDataSet = readTsFile.query(queryExpression);
+      Assert.fail();
+    } catch (IOException e) {
+      Assert.assertEquals("select path: device_1.sensor_2 not in this tsfile", e.getMessage());
+    } finally {
+      reader.close();
+    }
+
     assertTrue(f.delete());
   }
 
   @Test
   public void readMeasurementWithRegularEncodingTest() throws IOException, WriteProcessException {
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("REGULAR");
-    writeDataByTSRecord(TSDataType.INT64, (i) -> new LongDataPoint("sensor_1", i), TSEncoding.REGULAR);
+    writeDataByTSRecord(TSDataType.INT64, (i) -> new LongDataPoint("sensor_1", i),
+        TSEncoding.REGULAR);
     readData((i, field, delta) -> assertEquals(i, field.getLongV()));
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
   }
 
-  private void writeDataByTSRecord(TSDataType dataType, DataPointProxy proxy, TSEncoding encodingType)
-          throws IOException, WriteProcessException {
+  private void writeDataByTSRecord(TSDataType dataType, DataPointProxy proxy,
+      TSEncoding encodingType)
+      throws IOException, WriteProcessException {
     int floatCount = 1024 * 1024 * 13 + 1023;
     // add measurements into file schema
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
@@ -152,10 +168,10 @@ public class TsFileReadWriteTest {
   }
 
   private void writeDataByRowBatch()
-          throws IOException, WriteProcessException {
+      throws IOException, WriteProcessException {
     Schema schema = new Schema();
     schema.registerMeasurement(
-            new MeasurementSchema("sensor_1", TSDataType.INT64, TSEncoding.TS_2DIFF));
+        new MeasurementSchema("sensor_1", TSDataType.INT64, TSEncoding.TS_2DIFF));
     int rowNum = 1024 * 1024 * 13 + 1023;
     int sensorNum = 1;
     TsFileWriter tsFileWriter = new TsFileWriter(f, schema);
@@ -205,9 +221,12 @@ public class TsFileReadWriteTest {
   }
 
   private interface DataPointProxy {
+
     DataPoint generateOne(long value);
   }
+
   private interface ReadDataPointProxy {
+
     void assertEqualProxy(long i, Field field, double delta);
   }
 }
