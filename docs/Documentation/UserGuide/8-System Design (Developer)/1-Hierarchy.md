@@ -258,10 +258,6 @@ After the array of `ChunkGroupMetadata`, here is the last part of the metadata.
         	<tr><td>Current Version(3 for now)</td><td>int</td>
         	<tr><td>Author byte</td><td>byte</td>
         	<tr><td>Author(if author byte is 0x01)</td><td>String</td>
-          <tr><td>Bloom filter size</td><td>int</td>
-          <tr><td>Bloom filter bit vector</td><td>byte[Bloom filter size]</td>
-          <tr><td>Bloom filter capacity</td><td>int</td>
-          <tr><td>Bloom filter hash functions size</td><td>int</td>
         	<tr><td>File Metadata size(not including itself)</td><td>int</td>
         </table>
 </center>
