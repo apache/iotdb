@@ -103,7 +103,7 @@ Here we show the commonly used interfaces and their parameters in the Session:
 
 * Insert data into existing timeseries
 
-  ​	TSStatus insert(String deviceId, long time, List<String> measurements, List<String> stringValues)
+  ​	TSStatus insert(String deviceId, long time, List<String> measurements, List<String> values)
 
 * Batch insertion into timeseries
 

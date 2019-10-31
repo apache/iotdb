@@ -51,12 +51,12 @@ with three measurements named "sensor\_1", "sensor\_2" and "sensor\_3".
 </center>
 
 **One Line of Data**: In many industrial applications, a device normally contains more than one sensor and these sensors
- may have stringValues at a same timestamp, which is called one line of data. 
+ may have values at a same timestamp, which is called one line of data. 
 
 Formally, one line of data consists of a `device_id`, a timestamp which indicates the milliseconds since January 1,
  1970, 00:00:00, and several data pairs composed of `measurement_id` and corresponding `value`. All data pairs in one 
  line belong to this `device_id` and have the same timestamp. If one of the `measurements` does not have a `value` 
- in the `timestamp`, use a space instead(Actually, TsFile does not store null stringValues). Its format is shown as follow:
+ in the `timestamp`, use a space instead(Actually, TsFile does not store null values). Its format is shown as follow:
 
 ```
 device_id, timestamp, <measurement_id, value>...
@@ -195,7 +195,7 @@ You should install TsFile to your local maven repository.
 
 See reference: [Installation](./1-Installation.md)
 
-You could write a TsFile by constructing **TSRecord** if you have the **non-aligned** (e.g. not all sensors contain stringValues) time series data.
+You could write a TsFile by constructing **TSRecord** if you have the **non-aligned** (e.g. not all sensors contain values) time series data.
 
 A more thorough example can be found at `/example/tsfile/src/main/java/org/apache/iotdb/tsfile/TsFileWriteWithTSRecord.java`
 
@@ -289,7 +289,7 @@ public class TsFileWriteWithRowBatch {
 
       // the number of rows to include in the row batch
       int rowNum = 1000000;
-      // the number of stringValues to include in the row batch
+      // the number of values to include in the row batch
       int sensorNum = 10;
 
       // add measurements into file schema (all with INT64 data type)
@@ -305,7 +305,7 @@ public class TsFileWriteWithRowBatch {
       RowBatch rowBatch = schema.createRowBatch("device_1");
 
       long[] timestamps = rowBatch.timestamps;
-      Object[] stringValues = rowBatch.stringValues;
+      Object[] values = rowBatch.values;
 
       long timestamp = 1;
       long value = 1000000L;
@@ -314,7 +314,7 @@ public class TsFileWriteWithRowBatch {
         int row = rowBatch.batchSize++;
         timestamps[row] = timestamp++;
         for (int i = 0; i < sensorNum; i++) {
-          long[] sensor = (long[]) stringValues[i];
+          long[] sensor = (long[]) values[i];
           sensor[row] = value;
         }
         // write RowBatch to TsFile

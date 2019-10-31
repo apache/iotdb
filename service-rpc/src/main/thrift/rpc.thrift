@@ -157,7 +157,7 @@ struct TSCloseOperationReq {
 }
 
 struct TSQueryDataSet{
-   1: required binary stringValues
+   1: required binary values
    2: required i32 rowCount
 }
 
@@ -211,7 +211,7 @@ struct TSSetTimeZoneReq {
 struct TSInsertionReq {
     1: optional string deviceId
     2: optional list<string> measurements
-    3: optional list<string> stringValues
+    3: optional list<string> values
     4: optional i64 timestamp
     5: required i64 stmtId
 }
@@ -219,7 +219,7 @@ struct TSInsertionReq {
 struct TSBatchInsertionReq {
     1: required string deviceId
     2: required list<string> measurements
-    3: required binary stringValues
+    3: required binary values
     4: required binary timestamps
     5: required list<i32> types
     6: required i32 size
@@ -228,7 +228,7 @@ struct TSBatchInsertionReq {
 struct TSInsertReq {
     1: required string deviceId
     2: required list<string> measurements
-    3: required list<string> stringValues
+    3: required list<string> values
     4: required i64 timestamp
 }
 

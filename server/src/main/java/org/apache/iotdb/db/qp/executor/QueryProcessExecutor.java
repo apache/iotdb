@@ -222,7 +222,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
       MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
-      String[] strValues = insertPlan.getStringValues();
+      String[] strValues = insertPlan.getValues();
       TSDataType[] dataTypes = new TSDataType[measurementList.length];
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 

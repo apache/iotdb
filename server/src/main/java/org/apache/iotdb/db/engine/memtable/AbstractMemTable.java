@@ -26,7 +26,6 @@ import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
@@ -85,9 +84,9 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void insert(InsertPlan insertPlan) throws QueryProcessorException {
     try {
-      for (int i = 0; i < insertPlan.getStringValues().length; i++) {
+      for (int i = 0; i < insertPlan.getValues().length; i++) {
 
-        Object value = parseValue(insertPlan.getDataTypes()[i], insertPlan.getStringValues()[i]);
+        Object value = parseValue(insertPlan.getDataTypes()[i], insertPlan.getValues()[i]);
         write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
             insertPlan.getDataTypes()[i], insertPlan.getTime(), value);
       }

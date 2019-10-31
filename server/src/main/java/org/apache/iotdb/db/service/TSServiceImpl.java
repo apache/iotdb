@@ -1123,7 +1123,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
     }
     if (req.isSetValues()) {
-      plan.setStringValues(req.getValues().toArray(new String[0]));
+      plan.setValues(req.getValues().toArray(new String[0]));
     }
 
     try {
@@ -1146,7 +1146,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     plan.setDeviceId(req.getDeviceId());
     plan.setTime(req.getTimestamp());
     plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
-    plan.setStringValues(req.getValues().toArray(new String[0]));
+    plan.setValues(req.getValues().toArray(new String[0]));
 
     TSStatus status = checkAuthority(plan);
     if (status != null) {

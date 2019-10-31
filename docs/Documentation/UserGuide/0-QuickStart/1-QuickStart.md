@@ -201,8 +201,8 @@ Total timeseries number = 1
 Insert timeseries data is the basic operation of IoTDB, you can use ‘INSERT’ command to finish this. Before inserting you should assign the timestamp and the suffix path name:
 
 ```
-IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) stringValues(100,true);
-IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status,temperature) stringValues(200,false,20.71)
+IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(100,true);
+IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status,temperature) values(200,false,20.71)
 ```
 
 The data we’ve just inserted displays like this:

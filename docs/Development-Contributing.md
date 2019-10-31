@@ -131,7 +131,7 @@ Generally, IoTDB uses JIRA to track logical issues, including bugs and improveme
     2. Write a detailed description. For bug reports, this should ideally include a short reproduction of the problem. For new features, it may include a design document.
     3. Set the required fields:
         1. Issue Type. Generally, Bug, Improvement and New Feature are the only types used in IoTDB.
-        2. Priority. Set to Major or below; higher priorities are generally reserved for committers to set. The main exception is correctness or data-loss issues, which can be flagged as Blockers. JIRA tends to unfortunately conflate “size” and “importance” in its Priority field stringValues. Their meaning is rough:
+        2. Priority. Set to Major or below; higher priorities are generally reserved for committers to set. The main exception is correctness or data-loss issues, which can be flagged as Blockers. JIRA tends to unfortunately conflate “size” and “importance” in its Priority field values. Their meaning is rough:
             1. Blocker: pointless to release without this change as the release would be unusable to a large minority of users. Correctness and data loss issues should be considered Blockers.
             2. Critical: a large minority of users are missing important functionality without this, and/or a workaround is difficult
             3. Major: a small minority of users are missing important functionality without this, and there is a workaround

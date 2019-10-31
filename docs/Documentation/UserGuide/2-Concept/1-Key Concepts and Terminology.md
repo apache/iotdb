@@ -218,4 +218,4 @@ A data point is made up of a timestamp value pair (timestamp, value).
 
 * Column
 
-A column of data contains all stringValues belonging to a time series and the timestamps corresponding to these stringValues. When there are multiple columns of data, IoTDB merges the timestamps into multiple < timestamp-value > pairs (timestamp, value, value,...).
+A column of data contains all values belonging to a time series and the timestamps corresponding to these values. When there are multiple columns of data, IoTDB merges the timestamps into multiple < timestamp-value > pairs (timestamp, value, value,...).

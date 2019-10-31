@@ -36,7 +36,7 @@ public class InsertPlan extends PhysicalPlan {
   private String deviceId;
   private String[] measurements;
   private TSDataType[] dataTypes;
-  private String[] stringValues;
+  private String[] values;
   private long time;
 
   public InsertPlan() {
@@ -49,7 +49,7 @@ public class InsertPlan extends PhysicalPlan {
     this.time = insertTime;
     this.deviceId = deviceId;
     this.measurements = new String[] {measurement};
-    this.stringValues = new String[] {insertValue};
+    this.values = new String[] {insertValue};
   }
 
   public InsertPlan(TSRecord tsRecord) {
@@ -58,11 +58,11 @@ public class InsertPlan extends PhysicalPlan {
     this.time = tsRecord.time;
     this.measurements = new String[tsRecord.dataPointList.size()];
     this.dataTypes = new TSDataType[tsRecord.dataPointList.size()];
-    this.stringValues = new String[tsRecord.dataPointList.size()];
+    this.values = new String[tsRecord.dataPointList.size()];
     for (int i = 0; i < tsRecord.dataPointList.size(); i++) {
       measurements[i] = tsRecord.dataPointList.get(i).getMeasurementId();
       dataTypes[i] = tsRecord.dataPointList.get(i).getType();
-      stringValues[i] = tsRecord.dataPointList.get(i).getValue().toString();
+      values[i] = tsRecord.dataPointList.get(i).getValue().toString();
     }
   }
 
@@ -72,7 +72,7 @@ public class InsertPlan extends PhysicalPlan {
     this.time = insertTime;
     this.deviceId = deviceId;
     this.measurements = measurementList;
-    this.stringValues = insertValues;
+    this.values = insertValues;
   }
 
   public long getTime() {
@@ -117,12 +117,12 @@ public class InsertPlan extends PhysicalPlan {
     this.measurements = measurements;
   }
 
-  public String[] getStringValues() {
-    return this.stringValues;
+  public String[] getValues() {
+    return this.values;
   }
 
-  public void setStringValues(String[] stringValues) {
-    this.stringValues = stringValues;
+  public void setValues(String[] values) {
+    this.values = values;
   }
 
   @Override
@@ -136,7 +136,7 @@ public class InsertPlan extends PhysicalPlan {
     InsertPlan that = (InsertPlan) o;
     return time == that.time && Objects.equals(deviceId, that.deviceId)
         && Arrays.equals(measurements, that.measurements)
-        && Arrays.equals(stringValues, that.stringValues);
+        && Arrays.equals(values, that.values);
   }
 
   @Override
@@ -157,8 +157,8 @@ public class InsertPlan extends PhysicalPlan {
       putString(buffer, m);
     }
 
-    buffer.putInt(stringValues.length);
-    for (String m : stringValues) {
+    buffer.putInt(values.length);
+    for (String m : values) {
       putString(buffer, m);
     }
   }
@@ -175,9 +175,9 @@ public class InsertPlan extends PhysicalPlan {
     }
 
     int valueSize = buffer.getInt();
-    this.stringValues = new String[valueSize];
+    this.values = new String[valueSize];
     for (int i = 0; i < valueSize; i++) {
-      stringValues[i] = readString(buffer);
+      values[i] = readString(buffer);
     }
   }
 

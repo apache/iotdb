@@ -188,7 +188,7 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
       if (!demoMemDataBase.containsKey(strPath)) {
         demoMemDataBase.put(strPath, new TestSeries());
       }
-      demoMemDataBase.get(strPath).data.put(insertPlan.getTime(), Integer.valueOf(insertPlan.getStringValues()[i]));
+      demoMemDataBase.get(strPath).data.put(insertPlan.getTime(), Integer.valueOf(insertPlan.getValues()[i]));
       timeStampUnion.add(insertPlan.getTime());
     }
     return true;

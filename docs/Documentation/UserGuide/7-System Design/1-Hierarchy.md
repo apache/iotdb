@@ -122,7 +122,7 @@ PageHeader Structure
         	<tr><th>Member Description</th><th>Member Type</td></tr>
         	<tr><td>Data size before compressing</td><td>int</td>
         	<tr><td>Data size after compressing(if use SNAPPY)</td><td>int</td>
-        	<tr><td>Number of stringValues</td><td>int</td>
+        	<tr><td>Number of values</td><td>int</td>
         	<tr><td>Minimum time stamp</td><td>long</td>
         	<tr><td>Maximum time stamp</td><td>long</td>
         	<tr><td>Minimum value of the page</td><td>Type of the page</td>

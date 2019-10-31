@@ -224,13 +224,13 @@ Total timeseries number = 1
 接下来，我们使用INSERT语句向root.ln.wf01.wt01.status时间序列中插入数据，在插入数据时需要首先指定时间戳和路径后缀名称：
 
 ```
-IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) stringValues(100,true);
+IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(100,true);
 ```
 
 我们也可以向多个时间序列中同时插入数据，这些时间序列同属于一个时间戳：
 
 ```
-IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status,temperature) stringValues(200,false,20.71)
+IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status,temperature) values(200,false,20.71)
 ```
 
 最后，我们查询之前插入的数据。使用SELECT语句我们可以查询指定的时间序列的数据结果，SQL语句如下：
