@@ -20,27 +20,34 @@
 -->
 
 # Grafana安装
-Grafana下载地址：https://grafana.com/grafana/download
+
+Grafana 官网：https://grafana.com/grafana/download
 
 版本：4.4.1
 
-选择相应的操作系统下载并安装
+选择相应的操作系统下载并安装，安装后会自动启动，手动启动方式：
 
-# 数据源插件安装
-基于simple-json-datasource数据源插件连接IoTDB数据库。
+```$xslt
+sudo service grafana-server start
+```
 
-插件下载地址：https://github.com/grafana/simple-json-datasource
+# Simple-json-datasource 插件安装
 
-下载并解压，将文件放到Grafana的目录中：
-`data\plugin\`（Windows）或`/var/lib/grafana/plugins` (Linux)
+官网：https://github.com/grafana/simple-json-datasource
 
-# 启动Grafana
-启动 Grafana
+安装命令：
+
+```$xslt
+sudo grafana-cli plugins install grafana-simple-json-datasource
+sudo service grafana-server restart
+```
 
 # IoTDB安装
+
 参考：https://github.com/apache/incubator-iotdb
 
 # 后端数据源连接器安装
+
 下载源代码
 
 ```shell
