@@ -117,10 +117,6 @@ else
   IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/gc.log"
 fi
 
-if [ "$MAJOR_VERSION" -ne "8" ] && [ "$MAJOR_VERSION" -ne "11" ] ; then
-  echo "IoTDB only supports jdk8 or jdk11, please check your java version."
-  exit 1;
-fi
 
 
 calculate_heap_sizes
@@ -148,3 +144,6 @@ IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${MAX_HEAP_SIZE}"
 
 echo "Maximum memory allocation pool = ${MAX_HEAP_SIZE}B, initial memory allocation pool = ${HEAP_NEWSIZE}B"
 echo "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat)."
+
+# You can put your env variable here
+# export JAVA_HOME=$JAVA_HOME

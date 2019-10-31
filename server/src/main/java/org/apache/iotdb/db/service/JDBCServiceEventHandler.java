@@ -19,22 +19,17 @@
 package org.apache.iotdb.db.service;
 
 import java.util.concurrent.CountDownLatch;
-
-import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class JDBCServiceEventHandler implements TServerEventHandler {
 
-  private static final Logger logger = LoggerFactory.getLogger(JDBCServiceEventHandler.class);
   private TSServiceImpl serviceImpl;
   private CountDownLatch startLatch;
 
-  public JDBCServiceEventHandler(TSServiceImpl serviceImpl, CountDownLatch startLatch) {
+  JDBCServiceEventHandler(TSServiceImpl serviceImpl, CountDownLatch startLatch) {
     this.serviceImpl = serviceImpl;
     this.startLatch = startLatch;
   }
@@ -47,11 +42,7 @@ public class JDBCServiceEventHandler implements TServerEventHandler {
 
   @Override
   public void deleteContext(ServerContext arg0, TProtocol arg1, TProtocol arg2) {
-    try {
-      serviceImpl.handleClientExit();
-    } catch (TException e) {
-      logger.error("failed to clear client status", e);
-    }
+    serviceImpl.handleClientExit();
   }
 
   @Override

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.modification.io;
 
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,14 +57,14 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
 
   @Override
   public Collection<Modification> read() {
-    if (!TSFileFactory.INSTANCE.getFile(filePath).exists()) {
+    if (!FSFactoryProducer.getFSFactory().getFile(filePath).exists()) {
       logger.debug("No modification has been written to this file");
       return new ArrayList<>();
     }
 
     String line;
     List<Modification> modificationList = new ArrayList<>();
-    try(BufferedReader reader = TSFileFactory.INSTANCE.getBufferedReader(filePath)) {
+    try(BufferedReader reader = FSFactoryProducer.getFSFactory().getBufferedReader(filePath)) {
       while ((line = reader.readLine()) != null) {
         if (line.equals(ABORT_MARK) && !modificationList.isEmpty()) {
           modificationList.remove(modificationList.size() - 1);
@@ -90,7 +90,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
   @Override
   public void abort() throws IOException {
     if (writer == null) {
-      writer = TSFileFactory.INSTANCE.getBufferedWriter(filePath, true);
+      writer = FSFactoryProducer.getFSFactory().getBufferedWriter(filePath, true);
     }
     writer.write(ABORT_MARK);
     writer.newLine();
@@ -100,7 +100,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
   @Override
   public void write(Modification mod) throws IOException {
     if (writer == null) {
-      writer = TSFileFactory.INSTANCE.getBufferedWriter(filePath, true);
+      writer = FSFactoryProducer.getFSFactory().getBufferedWriter(filePath, true);
     }
     writer.write(encodeModification(mod));
     writer.newLine();

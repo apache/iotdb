@@ -22,12 +22,14 @@ import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.sync.test.RandomNum;
+import org.apache.iotdb.db.utils.RandomNum;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -39,11 +41,11 @@ import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
  */
 public class FileNodeManagerBenchmark {
 
-  private static int numOfWoker = 10;
+  private static int numOfWorker = 10;
   private static int numOfDevice = 10;
   private static int numOfMeasurement = 10;
   private static long numOfTotalLine = 10000000;
-  private static CountDownLatch latch = new CountDownLatch(numOfWoker);
+  private static CountDownLatch latch = new CountDownLatch(numOfWorker);
   private static AtomicLong atomicLong = new AtomicLong();
 
   private static String[] devices = new String[numOfDevice];
@@ -62,7 +64,8 @@ public class FileNodeManagerBenchmark {
     }
   }
 
-  private static void prepare() throws MetadataErrorException, PathErrorException, IOException {
+  private static void prepare()
+      throws MetadataErrorException, PathErrorException, IOException, StorageGroupException {
     MManager manager = MManager.getInstance();
     manager.setStorageGroupToMTree(prefix);
     for (String device : devices) {
@@ -79,16 +82,17 @@ public class FileNodeManagerBenchmark {
 
   public static void main(String[] args)
       throws InterruptedException, IOException, MetadataErrorException,
-      PathErrorException, StorageEngineException {
+      PathErrorException, StorageEngineException, StorageGroupException {
     tearDown();
     prepare();
     long startTime = System.currentTimeMillis();
-    for (int i = 0; i < numOfWoker; i++) {
-      Woker woker = new Woker();
-      woker.start();
+    for (int i = 0; i < numOfWorker; i++) {
+      Worker worker = new Worker();
+      worker.start();
     }
     latch.await();
     long endTime = System.currentTimeMillis();
+    System.out.println("Elapsed time: " + (endTime - startTime) + "ms");
     tearDown();
   }
 
@@ -100,7 +104,7 @@ public class FileNodeManagerBenchmark {
     return tsRecord;
   }
 
-  private static class Woker extends Thread {
+  private static class Worker extends Thread {
 
     @Override
     public void run() {
@@ -115,7 +119,7 @@ public class FileNodeManagerBenchmark {
           TSRecord tsRecord = getRecord(deltaObject, time);
           StorageEngine.getInstance().insert(new InsertPlan(tsRecord));
         }
-      } catch (StorageEngineException e) {
+      } catch (ProcessorException e) {
         e.printStackTrace();
       } finally {
         latch.countDown();

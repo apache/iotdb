@@ -67,7 +67,7 @@ public class UnSealedTsFileReaderByTimestamp implements IReaderByTimestamp {
         .get(unsealedTsFile, false);
     IChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
     unSealedTsFileDiskReaderByTs = new FileSeriesReaderByTimestamp(chunkLoader,
-        unsealedTsFile.getChunkMetaDatas());
+        unsealedTsFile.getChunkMetaDataList());
 
     unSealedTsFileDiskReaderEnded = false;
   }
