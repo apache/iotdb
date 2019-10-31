@@ -22,8 +22,6 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.sql.*;
@@ -38,7 +36,6 @@ public class IoTDBDeleteStorageGroupIT {
 
   private static IoTDB daemon;
 
-  @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     daemon = IoTDB.getInstance();
@@ -46,14 +43,14 @@ public class IoTDBDeleteStorageGroupIT {
     EnvironmentUtils.envSetUp();
   }
 
-  @AfterClass
   public static void tearDown() throws Exception {
     daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
   @Test
-  public void testDeleteStorageGroup() throws SQLException, ClassNotFoundException {
+  public void testDeleteStorageGroup() throws Exception {
+    setUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = DriverManager.
             getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -79,6 +76,7 @@ public class IoTDBDeleteStorageGroupIT {
     }
     assertEquals(expected.length, result.size());
     assertTrue(expectedList.containsAll(result));
+    tearDown();
   }
 
   /**
@@ -88,20 +86,28 @@ public class IoTDBDeleteStorageGroupIT {
    * @throws ClassNotFoundException
    */
   @Test(expected = IoTDBSQLException.class)
-  public void testDeleteStorageGroupWithStar() throws SQLException, ClassNotFoundException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = DriverManager.
-            getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-    Statement statement = connection.createStatement();
-    statement.execute("SET STORAGE GROUP TO root.ln1.wf01.wt01");
-    statement.execute("SET STORAGE GROUP TO root.ln1.wf01.wt02");
-    statement.execute("SET STORAGE GROUP TO root.ln1.wf02.wt03");
-    statement.execute("SET STORAGE GROUP TO root.ln1.wf02.wt04");
-    statement.execute("DELETE STORAGE GROUP root.ln1.wf02.*");
+  public void testDeleteStorageGroupWithStar() throws Exception {
+    try {
+      setUp();
+      Class.forName(Config.JDBC_DRIVER_NAME);
+      Connection connection = DriverManager.
+              getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      Statement statement = connection.createStatement();
+      statement.execute("SET STORAGE GROUP TO root.ln1.wf01.wt01");
+      statement.execute("SET STORAGE GROUP TO root.ln1.wf01.wt02");
+      statement.execute("SET STORAGE GROUP TO root.ln1.wf02.wt03");
+      statement.execute("SET STORAGE GROUP TO root.ln1.wf02.wt04");
+      statement.execute("DELETE STORAGE GROUP root.ln1.wf02.*");
+    } catch (Exception e) {
+      throw e;
+    } finally {
+      tearDown();
+    }
   }
 
   @Test
-  public void testDeleteMultipleStorageGroupWithQuote() throws ClassNotFoundException, SQLException {
+  public void testDeleteMultipleStorageGroupWithQuote() throws Exception {
+    setUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = DriverManager.
             getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -126,26 +132,43 @@ public class IoTDBDeleteStorageGroupIT {
     }
     assertEquals(expected.length, result.size());
     assertTrue(expectedList.containsAll(result));
+    tearDown();
   }
 
   @Test(expected = IoTDBSQLException.class)
-  public void testCreateTimeseriesInDeletedStorageGroup() throws ClassNotFoundException, SQLException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = DriverManager.
-            getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-    Statement statement = connection.createStatement();
-    statement.execute("SET STORAGE GROUP TO root.ln3.wf01.wt01");
-    statement.execute("DELETE STORAGE GROUP root.ln3.wf01.wt01");
-    statement.execute("CREATE TIMESERIES root.ln3.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+  public void testCreateTimeseriesInDeletedStorageGroup() throws Exception {
+    try {
+      setUp();
+      Class.forName(Config.JDBC_DRIVER_NAME);
+      Connection connection = DriverManager.
+              getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      Statement statement = connection.createStatement();
+      statement.execute("SET STORAGE GROUP TO root.ln3.wf01.wt01");
+      statement.execute("DELETE STORAGE GROUP root.ln3.wf01.wt01");
+      statement.execute("CREATE TIMESERIES root.ln3.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+    } catch (Exception e) {
+      throw e;
+    } finally {
+      tearDown();
+    }
+
+
   }
 
   @Test(expected = IoTDBSQLException.class)
-  public void deleteNonExistStorageGroup() throws ClassNotFoundException, SQLException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = DriverManager.
-            getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-    Statement statement = connection.createStatement();
-    statement.execute("SET STORAGE GROUP TO root.ln4.wf01.wt01");
-    statement.execute("DELETE STORAGE GROUP root.ln4.wf01.wt02");
+  public void deleteNonExistStorageGroup() throws Exception {
+    try {
+      setUp();
+      Class.forName(Config.JDBC_DRIVER_NAME);
+      Connection connection = DriverManager.
+              getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      Statement statement = connection.createStatement();
+      statement.execute("SET STORAGE GROUP TO root.ln4.wf01.wt01");
+      statement.execute("DELETE STORAGE GROUP root.ln4.wf01.wt02");
+    } catch (Exception e) {
+      throw e;
+    } finally {
+      tearDown();
+    }
   }
 }
