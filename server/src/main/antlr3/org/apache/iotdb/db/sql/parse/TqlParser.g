@@ -288,7 +288,7 @@ ddlStatement
     : createTimeseries
     | deleteTimeseries
     | setStorageGroup
-    | deleteStorageGroup // todo to implement
+    | deleteStorageGroup
     | createProperty
     | addLabel
     | deleteLabel
