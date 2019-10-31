@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -38,6 +39,10 @@ import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.merge.IMergePathSelector;
 import org.apache.iotdb.db.engine.merge.NaivePathSelector;
+import org.apache.iotdb.db.engine.merge.util.ChunkProvider;
+import org.apache.iotdb.db.engine.merge.util.DirectChunkProvider;
+import org.apache.iotdb.db.engine.merge.util.SharedMapChunkProvider;
+import org.apache.iotdb.db.engine.merge.util.SharedQueueChunkProvider;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -236,6 +241,7 @@ class MergeMultiChunkTask {
       idx++;
       ptWrittens[i] = 0;
     }
+    ChunkProvider provider = new DirectChunkProvider(reader);
 
     mergedChunkNum.set(0);
     unmergedChunkNum.set(0);
@@ -244,8 +250,8 @@ class MergeMultiChunkTask {
     for (int i = 0; i < mergeChunkSubTaskNum; i++) {
       int finalI = i;
       futures.add(MergeManager.getINSTANCE().submitChunkSubTask(() -> {
-        mergeChunkHeap(chunkMetaHeaps[finalI], ptWrittens, reader, mergeFileWriter, unseqReaders, currFile,
-            isLastFile);
+        mergeChunkHeap(chunkMetaHeaps[finalI], ptWrittens, provider, mergeFileWriter, unseqReaders,
+            currFile, isLastFile);
         return null;
       }));
     }
@@ -266,9 +272,10 @@ class MergeMultiChunkTask {
     return mergedChunkNum.get() > 0;
   }
 
-  private void mergeChunkHeap(PriorityQueue<MetaListEntry> chunkMetaHeap, int[] ptWrittens, TsFileSequenceReader reader,
-                              RestorableTsFileIOWriter mergeFileWriter, IPointReader[] unseqReaders, TsFileResource currFile,
-                              boolean isLastFile) throws IOException {
+  private void mergeChunkHeap(PriorityQueue<MetaListEntry> chunkMetaHeap, int[] ptWrittens,
+      ChunkProvider provider, RestorableTsFileIOWriter mergeFileWriter, IPointReader[] unseqReaders,
+      TsFileResource currFile,
+      boolean isLastFile) throws IOException {
     while (!chunkMetaHeap.isEmpty()) {
       MetaListEntry metaListEntry = chunkMetaHeap.poll();
       ChunkMetaData currMeta = metaListEntry.current();
@@ -280,12 +287,15 @@ class MergeMultiChunkTask {
 
       boolean chunkOverflowed = MergeUtils.isChunkOverflowed(currTimeValuePairs[pathIdx], currMeta);
       boolean chunkTooSmall = MergeUtils
-              .isChunkTooSmall(ptWrittens[pathIdx], currMeta, isLastChunk, minChunkPointNum);
+          .isChunkTooSmall(ptWrittens[pathIdx], currMeta, isLastChunk, minChunkPointNum);
 
       Chunk chunk;
-      synchronized (reader) {
-        chunk = reader.readMemChunk(currMeta);
+      try {
+        chunk = provider.require(currMeta);
+      } catch (InterruptedException e) {
+        throw new IOException("Interrupted when reading a chunk", e);
       }
+
       ptWrittens[pathIdx] = mergeChunkV2(currMeta, chunkOverflowed, chunkTooSmall, chunk,
               ptWrittens[pathIdx], pathIdx, mergeFileWriter, unseqReaders[pathIdx], chunkWriter,
               currFile);
@@ -377,6 +387,7 @@ class MergeMultiChunkTask {
       // the new chunk's size is large enough and it should be flushed
       synchronized (mergeFileWriter) {
         chunkWriter.writeToFileWriter(mergeFileWriter);
+        mergeContext.incTotalChunkWritten();
       }
       unclosedChunkPoint = 0;
     }

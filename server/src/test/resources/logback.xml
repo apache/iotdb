@@ -30,12 +30,12 @@
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>ERROR</level>
+            <level>INFO</level>
         </filter>
     </appender>
     <!--<logger name="org.apache.iotdb.db.utils.OpenFileNumUtil" level="debug" />-->
     <!--<logger name="org.apache.iotdb.db.utils.OpenFileNumUtilTest" level="debug" />-->
-    <root level="ERROR">
+    <root level="INFO">
         <appender-ref ref="stdout"/>
     </root>
 </configuration>
