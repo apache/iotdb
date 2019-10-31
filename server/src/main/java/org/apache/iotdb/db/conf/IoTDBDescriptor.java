@@ -18,14 +18,18 @@
  */
 package org.apache.iotdb.db.conf;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.time.ZoneId;
+import java.util.Properties;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.*;
-import java.time.ZoneId;
-import java.util.Properties;
 
 public class IoTDBDescriptor {
 
@@ -297,17 +301,28 @@ public class IoTDBDescriptor {
       conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
       conf.setTsFileStorageFs(properties.getProperty("tsfile_storage_fs"));
-      conf.setHdfsIp(properties.getProperty("hdfs_ip"));
+      conf.setHdfsIp(properties.getProperty("hdfs_ip").split(","));
       conf.setHdfsPort(properties.getProperty("hdfs_port"));
+      conf.setDfsNameServices(properties.getProperty("dfs_nameservices"));
+      conf.setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes").split(","));
+      conf.setDfsHaAutomaticFailoverEnabled(
+          Boolean.parseBoolean(properties.getProperty("dfs_ha_automatic_failover_enabled")));
+      conf.setDfsClientFailoverProxyProvider(
+          properties.getProperty("dfs_client_failover_proxy_provider"));
 
       conf.setDefaultTTL(Long.parseLong(properties.getProperty("default_ttl",
           String.valueOf(conf.getDefaultTTL()))));
 
       // At the same time, set TSFileConfig
-      TSFileDescriptor.getInstance().getConfig()
-          .setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
-      TSFileDescriptor.getInstance().getConfig().setHdfsIp(properties.getProperty("hdfs_ip"));
-      TSFileDescriptor.getInstance().getConfig().setHdfsPort(properties.getProperty("hdfs_port"));
+      TSFileConfig tsFileConfig =TSFileDescriptor.getInstance().getConfig();
+      tsFileConfig.setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
+      tsFileConfig.setHdfsIp(properties.getProperty("hdfs_ip").split(","));
+      tsFileConfig.setHdfsPort(properties.getProperty("hdfs_port"));tsFileConfig.setDfsNameServices(properties.getProperty("dfs_nameservices"));
+      tsFileConfig.setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes").split(","));
+      tsFileConfig.setDfsHaAutomaticFailoverEnabled(
+          Boolean.parseBoolean(properties.getProperty("dfs_ha_automatic_failover_enabled")));
+      tsFileConfig.setDfsClientFailoverProxyProvider(
+          properties.getProperty("dfs_client_failover_proxy_provider"));
 
       // set tsfile-format config
       TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(Integer

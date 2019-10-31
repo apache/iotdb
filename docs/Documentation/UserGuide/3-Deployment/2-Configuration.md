@@ -341,7 +341,7 @@ The detail of each variables are as follows:
 
 |Name| hdfs\_ip |
 |:---:|:---|
-|Description| IP of HDFS if Tsfile and related data files are stored in HDFS|
+|Description| IP of HDFS if Tsfile and related data files are stored in HDFS. **If there are more than one hdfs\_ip in configuration, Hadoop HA is used.**|
 |Type| String |
 |Default|localhost |
 |Effective|After restart system|
@@ -353,4 +353,40 @@ The detail of each variables are as follows:
 |Description| Port of HDFS if Tsfile and related data files are stored in HDFS|
 |Type| String |
 |Default|9000 |
+|Effective|After restart system|
+
+* dfs\_nameservices
+
+|Name| hdfs\_nameservices |
+|:---:|:---|
+|Description| Nameservices of HDFS HA if using Hadoop HA|
+|Type| String |
+|Default|hdfsnamespace |
+|Effective|After restart system|
+
+* dfs\_ha\_namenodes
+
+|Name| hdfs\_ha\_namenodes |
+|:---:|:---|
+|Description| Namenodes under DFS nameservices of HDFS HA if using Hadoop HA|
+|Type| String |
+|Default|nn1,nn2 |
+|Effective|After restart system|
+
+* dfs\_ha\_automatic\_failover\_enabled
+
+|Name| dfs\_ha\_automatic\_failover\_enabled |
+|:---:|:---|
+|Description| Whether using automatic failover if using Hadoop HA|
+|Type| Boolean |
+|Default|true |
+|Effective|After restart system|
+
+* dfs\_client\_failover\_proxy\_provider
+
+|Name| dfs\_client\_failover\_proxy\_provider |
+|:---:|:---|
+|Description| Proxy provider if using Hadoop HA and enabling automatic failover|
+|Type| String |
+|Default|org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider |
 |Effective|After restart system|
