@@ -108,7 +108,7 @@ public abstract class AbstractMemTable implements IMemTable {
             return true;
           } else {
             throw new QueryProcessorException(
-                "The BOOLEAN data type should be true/TRUE or false/FALSE");
+                "The BOOLEAN data type should be true/TRUE, false/FALSE or 0/1");
           }
         case INT32:
           return Integer.parseInt(value);
@@ -121,7 +121,11 @@ public abstract class AbstractMemTable implements IMemTable {
         case TEXT:
           if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
               || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
-            return new Binary(value.substring(1, value.length() - 1));
+            if (value.length() == 1) {
+              return new Binary(value);
+            } else {
+              return new Binary(value.substring(1, value.length() - 1));
+            }
           } else {
             throw new QueryProcessorException("The TEXT data type should be covered by \" or '");
           }

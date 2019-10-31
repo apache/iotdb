@@ -217,7 +217,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
 
   @Override
-  public synchronized boolean insert(InsertPlan insertPlan) throws ProcessorException {
+  public boolean insert(InsertPlan insertPlan) throws ProcessorException {
     try {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();

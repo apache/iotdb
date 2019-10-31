@@ -195,11 +195,17 @@ public class TsFileIOWriter {
         out.getPosition(), minTime, maxTime);
 
     // flush ChunkHeader to TsFileIOWriter
-    logger.debug("start series chunk:{}, file position {}", descriptor, out.getPosition());
+    if (logger.isDebugEnabled()) {
+      logger.debug("start series chunk:{}, file position {}", descriptor, out.getPosition());
+    }
+
     ChunkHeader header = new ChunkHeader(descriptor.getMeasurementId(), dataSize, tsDataType,
         compressionCodecName, encodingType, numOfPages);
     header.serializeTo(out.wrapAsStream());
-    logger.debug("finish series chunk:{} header, file position {}", header, out.getPosition());
+
+    if (logger.isDebugEnabled()) {
+      logger.debug("finish series chunk:{} header, file position {}", header, out.getPosition());
+    }
 
     // TODO add your statistics
     ByteBuffer[] statisticsArray = new ByteBuffer[StatisticType.getTotalTypeNum()];

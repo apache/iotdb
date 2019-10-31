@@ -282,7 +282,7 @@ public class MManager {
   }
 
   /**
-   * <p> Add one timeseries to metadata tree. Do nothing if already exists.
+   * <p> Add one timeseries to metadata tree.
    *
    * @param path the timeseries seriesPath
    * @param dataType the dateType {@code DataType} for the timeseries
@@ -338,9 +338,10 @@ public class MManager {
           isNewMeasurement = false;
           MeasurementSchema columnSchema = schemaMap.get(lastNode);
           if (!columnSchema.getType().equals(dataType)
-              || !columnSchema.getEncodingType().equals(encoding)) {
+              || !columnSchema.getEncodingType().equals(encoding)
+              || !columnSchema.getCompressor().equals(compressor)) {
             throw new MetadataErrorException(String.format(
-                "The resultDataType or encoding of the last node %s is conflicting "
+                "The resultDataType or encoding or compression of the last node %s is conflicting "
                     + "in the storage group %s", lastNode, fileNodePath));
           }
           try {

@@ -82,8 +82,8 @@ public class TsFileMetaData {
   /**
    * deserialize data from the inputStream.
    *
-   * @param inputStream -input stream use to deserialize
-   * @return -a instance of TsFileMetaData
+   * @param inputStream input stream used to deserialize
+   * @return an instance of TsFileMetaData
    */
   public static TsFileMetaData deserializeFrom(InputStream inputStream) throws IOException {
     TsFileMetaData fileMetaData = new TsFileMetaData();
