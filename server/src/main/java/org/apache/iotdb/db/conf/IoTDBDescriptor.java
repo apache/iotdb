@@ -118,11 +118,11 @@ public class IoTDBDescriptor {
 
       conf.setMetricsPort(Integer.parseInt(properties.getProperty("metrics_port",
           Integer.toString(conf.getMetricsPort()))));
-      
+
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
 
       conf.setRpcThriftCompressionEnable(Boolean.parseBoolean(properties.getProperty("rpc_thrift_compression_enable",
-              Boolean.toString(conf.isRpcThriftCompressionEnable()))));
+          Boolean.toString(conf.isRpcThriftCompressionEnable()))));
 
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
           Integer.toString(conf.getRpcPort()))));
@@ -234,12 +234,12 @@ public class IoTDBDescriptor {
           Integer.toString(conf.getMergeThreadNum()))));
       conf.setMergeChunkSubThreadNum(Integer.parseInt(properties.getProperty
           ("merge_chunk_subthread_num",
-          Integer.toString(conf.getMergeChunkSubThreadNum()))));
+              Integer.toString(conf.getMergeChunkSubThreadNum()))));
       conf.setContinueMergeAfterReboot(Boolean.parseBoolean(properties.getProperty(
           "continue_merge_after_reboot", Boolean.toString(conf.isContinueMergeAfterReboot()))));
       conf.setMergeFileSelectionTimeBudget(Long.parseLong(properties.getProperty
           ("merge_fileSelection_time_budget",
-          Long.toString(conf.getMergeFileSelectionTimeBudget()))));
+              Long.toString(conf.getMergeFileSelectionTimeBudget()))));
       conf.setMergeIntervalSec(Long.parseLong(properties.getProperty("merge_interval_sec",
           Long.toString(conf.getMergeIntervalSec()))));
       conf.setForceFullMerge(Boolean.parseBoolean(properties.getProperty("force_full_merge",
@@ -280,12 +280,16 @@ public class IoTDBDescriptor {
           Integer.toString(conf.getDefaultStorageGroupLevel()))));
       conf.setDefaultBooleanEncoding(
           properties.getProperty("default_boolean_encoding", conf.getDefaultBooleanEncoding().toString()));
-      conf.setDefaultLongEncoding(
-          properties.getProperty("default_long_encoding", conf.getDefaultLongEncoding().toString()));
+      conf.setDefaultInt32Encoding(
+          properties.getProperty("default_int32_encoding", conf.getDefaultInt32Encoding().toString()));
+      conf.setDefaultInt64Encoding(
+          properties.getProperty("default_int64_encoding", conf.getDefaultInt64Encoding().toString()));
+      conf.setDefaultFloatEncoding(
+          properties.getProperty("default_float_encoding", conf.getDefaultFloatEncoding().toString()));
       conf.setDefaultDoubleEncoding(
           properties.getProperty("default_double_encoding", conf.getDefaultDoubleEncoding().toString()));
-      conf.setDefaultStringEncoding(
-          properties.getProperty("default_string_encoding", conf.getDefaultStringEncoding().toString()));
+      conf.setDefaultTextEncoding(
+          properties.getProperty("default_text_encoding", conf.getDefaultTextEncoding().toString()));
 
       conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
