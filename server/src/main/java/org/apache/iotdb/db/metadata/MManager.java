@@ -1303,7 +1303,7 @@ public class MManager {
    */
   String getStorageGroupNameByAutoLevel(String fullPath, int level)
       throws PathErrorException {
-    String[] nodeNames = fullPath.trim().split(DOUB_SEPARATOR);
+    String[] nodeNames = MetaUtils.getNodeNames(fullPath, DOUB_SEPARATOR);
     StringBuilder storageGroupName = new StringBuilder(nodeNames[0]);
     if (nodeNames.length < level || !storageGroupName.toString().equals(ROOT_NAME)) {
       throw new PathErrorException(String.format("Timeseries %s is not right.", fullPath));
