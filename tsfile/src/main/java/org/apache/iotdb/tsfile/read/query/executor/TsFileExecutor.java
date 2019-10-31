@@ -47,7 +47,7 @@ import org.slf4j.LoggerFactory;
 
 public class TsFileExecutor implements QueryExecutor {
 
-  private static final Logger LOG = LoggerFactory.getLogger(TsFileExecutor.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileExecutor.class);
   private IMetadataQuerier metadataQuerier;
   private IChunkLoader chunkLoader;
 
@@ -65,8 +65,6 @@ public class TsFileExecutor implements QueryExecutor {
       for (Path path : queryExpression.getSelectedSeries()) {
         if (bloomFilter.contains(path.getFullPath())) {
           filteredSeriesPath.add(path);
-        } else {
-          throw new IOException("select path: " + path + " not in this tsfile");
         }
       }
     }
