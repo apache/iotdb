@@ -41,13 +41,16 @@ public class HDFSConfUtil {
       conf.set("dfs.nameservices", dfsNameservices);
       conf.set("dfs.ha.namenodes." + dfsNameservices, String.join(",", dfsHaNamenodes));
       for (int i = 0; i < dfsHaNamenodes.length; i++) {
-        conf.set("dfs.namenode.rpc-address." + dfsNameservices + "." + dfsHaNamenodes[i],
+        conf.set("dfs.namenode.rpc-address." + dfsNameservices + "." + dfsHaNamenodes[i].trim(),
             hdfsIps[i] + ":" + tsFileConfig.getHdfsPort());
       }
+      Boolean dfsHaAutomaticFailoverEnabled = tsFileConfig.isDfsHaAutomaticFailoverEnabled();
       conf.set("dfs.ha.automatic-failover.enabled",
-          String.valueOf(tsFileConfig.isDfsHaAutomaticFailoverEnabled()));
-      conf.set("dfs.client.failover.proxy.provider." + dfsNameservices,
-          tsFileConfig.getDfsClientFailoverProxyProvider());
+          String.valueOf(dfsHaAutomaticFailoverEnabled));
+      if (dfsHaAutomaticFailoverEnabled) {
+        conf.set("dfs.client.failover.proxy.provider." + dfsNameservices,
+            tsFileConfig.getDfsClientFailoverProxyProvider());
+      }
     }
 
     return conf;

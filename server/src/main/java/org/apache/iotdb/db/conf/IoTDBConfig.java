@@ -449,15 +449,14 @@ public class IoTDBConfig {
       addHomeDir(dirs, i);
     }
 
-    String[] hdfsIps = TSFileDescriptor.getInstance().getConfig().getHdfsIp();
-    String hdfsIp = hdfsIps[0];
-    if (hdfsIps.length > 1) {
-      hdfsIp = TSFileDescriptor.getInstance().getConfig().getDfsNameServices();
-    }
-
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
-      String hdfsDir =
-          "hdfs://" + hdfsIp + ":" + TSFileDescriptor.getInstance().getConfig().getHdfsPort();
+      String[] hdfsIps = TSFileDescriptor.getInstance().getConfig().getHdfsIp();
+      String hdfsDir = "hdfs://";
+      if (hdfsIps.length > 1) {
+        hdfsDir += TSFileDescriptor.getInstance().getConfig().getDfsNameServices();
+      } else {
+        hdfsDir += hdfsIps[0] + ":" + TSFileDescriptor.getInstance().getConfig().getHdfsPort();
+      }
       for (int i = 5; i < dirs.size(); i++) {
         String dir = dirs.get(i);
         dir = hdfsDir + File.separatorChar + dir;
