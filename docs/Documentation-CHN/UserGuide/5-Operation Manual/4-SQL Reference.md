@@ -134,6 +134,22 @@ Eg: IoTDB > SHOW DEVICES
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
+* 显示ROOT节点的子节点名称语句
+```
+SHOW CHILD PATHS
+Eg: IoTDB > SHOW CHILD PATHS
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+* 显示子节点名称语句
+```
+SHOW CHILD PATHS <Path>
+Eg: IoTDB > SHOW CHILD PATHS root
+Eg: IoTDB > SHOW CHILD PATHS root.ln
+Eg: IoTDB > SHOW CHILD PATHS root.ln.wf01
+Note: The path can only be prefix path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
 ### 数据管理语句
 
 * 插入记录语句

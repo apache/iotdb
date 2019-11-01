@@ -144,6 +144,22 @@ Eg: IoTDB > SHOW DEVICES
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
+* Show Child Paths of Root Statement
+```
+SHOW CHILD PATH
+Eg: IoTDB > SHOW CHILD PATHS
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+* Show Child Paths Statement
+```
+SHOW CHILD PATHS <Path>
+Eg: IoTDB > SHOW CHILD PATHS root
+Eg: IoTDB > SHOW CHILD PATHS root.ln
+Eg: IoTDB > SHOW CHILD PATHS root.ln.wf01
+Note: The path can only be prefix path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
 ### Data Management Statement
 
 * Insert Record Statement
