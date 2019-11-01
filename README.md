@@ -125,7 +125,7 @@ configuration files are under "conf" folder
   * system config module (`tsfile-format.properties`, `iotdb-engine.properties`)
   * log config module (`logback.xml`).
 
-For more, see [Chapter4: Deployment and Management](https://iotdb.apache.org/#/Documents/0.8.0/chap4/sec1) in detail.
+For more, see [Chapter3: Server](https://iotdb.apache.org/#/Documents/progress/chap3/sec1) and [Chapter4: Client](https://iotdb.apache.org/#/Documents/progress/chap4/sec1) in detail.
 
 ## Start
 
