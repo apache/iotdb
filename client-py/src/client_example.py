@@ -59,6 +59,55 @@ Compressor = {
 }
 
 
+def convertQueryDataSet(queryDataSet, dataTypeList):
+    bytes = queryDataSet.values
+    row_count = queryDataSet.rowCount
+    time_bytes = bytes[:8*row_count]
+    value_bytes = bytes[8*row_count:]
+    time_unpack_str = '>' + str(row_count) + 'q'
+    records = []
+    times = struct.unpack(time_unpack_str, time_bytes)
+    for i in range(row_count):
+        records.append([times[i]])
+
+    for i in range(len(dataTypeList)):
+        type = dataTypeList[i]
+        value_unpack_str = '>'
+        for j in range(row_count):
+            is_null = value_bytes[0]
+            value_bytes = value_bytes[1:]
+            if is_null == 1:
+                records[i].append('null')
+            else:
+                if type == 'BOOLEAN':
+                    value = value_bytes[0]
+                    value_bytes = value_bytes[1:]
+                    records[j].append(struct.unpack('>?', value))
+                elif type == 'INT32':
+                    value = value_bytes[:4]
+                    value_bytes = value_bytes[4:]
+                    records[j].append(struct.unpack('>i', value))
+                elif type == 'INT64':
+                    value = value_bytes[:8]
+                    value_bytes = value_bytes[8:]
+                    records[j].append(struct.unpack('>q', value))
+                elif type == 'FLOAT':
+                    value = value_bytes[:4]
+                    value_bytes = value_bytes[4:]
+                    records[j].append(struct.unpack('>f', value))
+                elif type == 'DOUBLE':
+                    value = value_bytes[:8]
+                    value_bytes = value_bytes[8:]
+                    records[j].append(struct.unpack('>d', value))
+                elif type == 'TEXT':
+                    size = value_bytes[:4]
+                    value_bytes = value_bytes[4:]
+                    size = struct.unpack('>i', size)
+                    records[j].append(value_bytes[:size])
+                    value_bytes = value_bytes[size:]
+    return records
+
+
 if __name__ == '__main__':
     ip = "localhost"
     port = "6667"
@@ -120,8 +169,8 @@ if __name__ == '__main__':
     dataSize = 3
     dataTypes = [TSDataType['INT64'], TSDataType['INT64'], TSDataType['INT64']]
     # the first 3 belong to 's1', the mid 3 belong to 's2', the last 3 belong to 's3'
-    values.extend(struct.pack('>qqqqqqqqq', 2, 3, 4, 22, 33, 44, 222, 333, 444))
-    times.extend(struct.pack('>qqq', 2, 3, 4))
+    values.extend(struct.pack('>9q', 2, 3, 4, 22, 33, 44, 222, 333, 444))
+    times.extend(struct.pack('>3q', 2, 3, 4))
     resp = client.insertBatch(TSBatchInsertionReq(deviceId, measurements, values, times,
                                                   dataTypes, dataSize))
     status = resp.status
@@ -139,13 +188,16 @@ if __name__ == '__main__':
     queryId = 1
     resp = client.executeQueryStatement(TSExecuteStatementReq(handle, stmt))
     # headers
+    dataTypeList = resp.dataTypeList
     print(resp.columns)
+    print(dataTypeList)
+
     stmtHandle = resp.operationHandle
     status = resp.status
     print(status.statusType)
     while True:
         rst = client.fetchResults(TSFetchResultsReq(stmt, fetchSize, queryId)).queryDataSet
-        records = rst.records
+        records = convertQueryDataSet(rst, dataTypeList)
         if len(records) == 0:
             break
         for record in records:
