@@ -123,7 +123,7 @@ PageHeader Structure
         	<tr><td>Maximum time stamp</td><td>long</td>
         	<tr><td>Minimum time stamp</td><td>long</td>
         	<tr><td>Maximum value of the page</td><td>Type of the page</td>
-          <tr><td>Minimum value of the page</td><td>Type of the page</td>
+          	<tr><td>Minimum value of the page</td><td>Type of the page</td>
         	<tr><td>First value of the page</td><td>Type of the page</td>
         	<tr><td>Sum of the Page</td><td>double</td>
         	<tr><td>Last value of the page</td><td>Type of the page</td>
@@ -250,9 +250,9 @@ ByteBuffer[] statistics = [
         	<tr><td>Number of measurements</td><td>int</td>
         	<tr><td>Pairs of measurement name and schema</td><td>String, MeasurementSchema pair</td>
         	<tr><td>Author byte</td><td>byte</td>
-        	<tr><td>Author(if author byte is 0x01)</td><td>String</td>
-          <tr><td>totalChunkNum</td><td>int</td>
-          <tr><td>invalidChunkNum</td><td>int</td>
+          	<tr><td>Author(if author byte is 0x01)</td><td>String</td>
+          	<tr><td>totalChunkNum</td><td>int</td>
+          	<tr><td>invalidChunkNum</td><td>int</td>
         	<tr><td>Bloom filter size</td><td>int</td>
         	<tr><td>Bloom filter bit vector</td><td>byte[Bloom filter size]</td>
         	<tr><td>Bloom filter capacity</td><td>int</td>
@@ -318,7 +318,7 @@ For Windows:
 For Linux or MacOs:
 
 ```
-.\print-tsfile-sketch.sh <path of your TsFileResource Directory>
+./print-tsfile-sketch.sh <path of your TsFileResource Directory>
 ```
 
 An example on Windows:
@@ -351,7 +351,7 @@ For Windows:
 For Linux or MacOs:
 
 ```
-.\print-tsfile-sketch.sh <path of your TsFile> (<path of the file for saving the output result>) 
+./print-tsfile-sketch.sh <path of your TsFile> (<path of the file for saving the output result>) 
 ```
 
 - Note that if `<path of the file for saving the output result>` is not set, the default path "TsFile_sketch_view.txt" will be used. 
