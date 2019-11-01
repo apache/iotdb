@@ -288,15 +288,21 @@ public class IoTDBDescriptor {
       conf.setDefaultBooleanEncoding(
           properties.getProperty("default_boolean_encoding",
               conf.getDefaultBooleanEncoding().toString()));
-      conf.setDefaultLongEncoding(
-          properties
-              .getProperty("default_long_encoding", conf.getDefaultLongEncoding().toString()));
+      conf.setDefaultInt32Encoding(
+          properties.getProperty("default_int32_encoding",
+              conf.getDefaultInt32Encoding().toString()));
+      conf.setDefaultInt64Encoding(
+          properties.getProperty("default_int64_encoding",
+              conf.getDefaultInt64Encoding().toString()));
+      conf.setDefaultFloatEncoding(
+          properties.getProperty("default_float_encoding",
+              conf.getDefaultFloatEncoding().toString()));
       conf.setDefaultDoubleEncoding(
-          properties
-              .getProperty("default_double_encoding", conf.getDefaultDoubleEncoding().toString()));
-      conf.setDefaultStringEncoding(
-          properties
-              .getProperty("default_string_encoding", conf.getDefaultStringEncoding().toString()));
+          properties.getProperty("default_double_encoding",
+              conf.getDefaultDoubleEncoding().toString()));
+      conf.setDefaultTextEncoding(
+          properties.getProperty("default_text_encoding",
+              conf.getDefaultTextEncoding().toString()));
 
       conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
