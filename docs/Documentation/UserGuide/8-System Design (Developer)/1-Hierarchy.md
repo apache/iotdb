@@ -77,7 +77,6 @@ Here is a graph about the TsFile structure.
 
 A TsFile begins with a 6-byte magic string (`TsFile`) and a 6-byte version number (`000001`).
 
-
 #### 1.2.2 Data
 
 The content of a TsFile file can be divided as two parts: data and metadata. There is a byte `0x02` as the marker between
@@ -123,7 +122,7 @@ PageHeader Structure
         	<tr><td>Maximum time stamp</td><td>long</td>
         	<tr><td>Minimum time stamp</td><td>long</td>
         	<tr><td>Maximum value of the page</td><td>Type of the page</td>
-          	<tr><td>Minimum value of the page</td><td>Type of the page</td>
+          <tr><td>Minimum value of the page</td><td>Type of the page</td>
         	<tr><td>First value of the page</td><td>Type of the page</td>
         	<tr><td>Sum of the Page</td><td>double</td>
         	<tr><td>Last value of the page</td><td>Type of the page</td>
@@ -250,9 +249,9 @@ ByteBuffer[] statistics = [
         	<tr><td>Number of measurements</td><td>int</td>
         	<tr><td>Pairs of measurement name and schema</td><td>String, MeasurementSchema pair</td>
         	<tr><td>Author byte</td><td>byte</td>
-          	<tr><td>Author(if author byte is 0x01)</td><td>String</td>
-          	<tr><td>totalChunkNum</td><td>int</td>
-          	<tr><td>invalidChunkNum</td><td>int</td>
+          <tr><td>Author(if author byte is 0x01)</td><td>String</td>
+          <tr><td>totalChunkNum</td><td>int</td>
+          <tr><td>invalidChunkNum</td><td>int</td>
         	<tr><td>Bloom filter size</td><td>int</td>
         	<tr><td>Bloom filter bit vector</td><td>byte[Bloom filter size]</td>
         	<tr><td>Bloom filter capacity</td><td>int</td>
@@ -294,10 +293,8 @@ Such as "max_point_number""2".
 
 After the TsFileMetaData, there is an int indicating the size of the TsFileMetaData.
 
-
 #### 1.2.4 Magic String
 A TsFile ends with a 6-byte magic string (`TsFile`).
-
 
 Congratulations! You have finished the journey of discovering TsFile.
 
@@ -325,9 +322,9 @@ An example on Windows:
 
 ```
 D:\incubator-iotdb\server\target\iotdb-server-0.9.0-SNAPSHOT\tools>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
-​````````````````````````
+ ````````````````````````
 Starting Printing the TsFileResources
-​````````````````````````
+ ````````````````````````
 12:31:59.861 [main] WARN org.apache.iotdb.db.conf.IoTDBDescriptor - Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file iotdb-engine.properties, use default configuration
 analyzing D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile ...
 device root.vehicle.d0, start time 3000 (1970-01-01T08:00:03+08:00[GMT+08:00]), end time 100999 (1970-01-01T08:01:40.999+08:00[GMT+08:00])
@@ -360,9 +357,9 @@ An example on Windows:
 
 ```$xslt
 D:\incubator-iotdb\server\target\iotdb-server-0.9.0-SNAPSHOT\tools>.\print-tsfile-sketch.bat D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
-​````````````````````````
+ ````````````````````````
 Starting Printing the TsFile Sketch
-​````````````````````````
+ ````````````````````````
 TsFile path:D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
 Sketch save path:TsFile_sketch_view.txt
 -------------------------------- TsFile Sketch --------------------------------
@@ -373,7 +370,7 @@ file length: 187382
             --------    -------
                    0|   [magic head] TsFile
                    6|   [version number] 000001
->>>>>>>>>>>>>>>>>>>>>   [Chunk Group] of root.vehicle.d0 begins at pos 12, ends at pos 186469, version:102, num of Chunks:6
+ >>>>>>>>>>>>>>>>>>>>   [Chunk Group] of root.vehicle.d0 begins at pos 12, ends at pos 186469, version:102, num of Chunks:6
                   12|   [Chunk] of s3, numOfPoints:10600, time range:[3000,13599], tsDataType:TEXT,
                         TsDigest:[min_value:A,max_value:E,first_value:A,last_value:E,sum_value:0.0]
                     |           [marker] 1
@@ -409,7 +406,7 @@ file length: 187382
                     |           [deviceID] root.vehicle.d0
                     |           [dataSize] 186425
                     |           [num of chunks] 6
-<<<<<<<<<<<<<<<<<<<<<   [Chunk Group] of root.vehicle.d0 ends
+ <<<<<<<<<<<<<<<<<<<<   [Chunk Group] of root.vehicle.d0 ends
               186469|   [marker] 2
               186470|   [TsDeviceMetadata] of root.vehicle.d0, startTime:3000, endTime:100999
                     |           [startTime] 3000
