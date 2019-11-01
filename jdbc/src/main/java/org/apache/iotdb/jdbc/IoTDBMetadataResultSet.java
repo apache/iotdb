@@ -34,6 +34,7 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   private static final String GET_STRING_TIMESERIES_NAME = "Timeseries";
   private static final String GET_STRING_DEVICES = "DEVICES";
   private static final String GET_STRING_TIMESERIES_STORAGE_GROUP = "Storage Group";
+  private static final String GET_STRING_CHILD_PATHS = "Child Paths";
 
   public static final String GET_STRING_TIMESERIES_DATATYPE = "DataType";
   private static final String GET_STRING_TIMESERIES_ENCODING = "Encoding";
@@ -42,6 +43,7 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   private String currentColumn;
   private String currentStorageGroup;
   private String currentDevice;
+  private String currentChildPath;
   private List<String> currentTimeseries;
   private List<String> timeseriesNumList;
   private List<String> nodesNumList;
@@ -79,6 +81,12 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         colCount = 1;
         showLabels = new String[]{"Device"};
         columnItr = devicesSet.iterator();
+        break;
+      case CHILD_PATHS:
+        Set<String> childPathsSet = (Set<String>) object;
+        colCount = 1;
+        showLabels = new String[]{"Child Paths"};
+        columnItr = childPathsSet.iterator();
         break;
       case TIMESERIES:
         List<List<String>> showTimeseriesList = (List<List<String>>) object;
@@ -251,6 +259,9 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         case DEVICES:
           currentDevice = (String) columnItr.next();
           break;
+        case CHILD_PATHS:
+          currentChildPath = (String) columnItr.next();
+          break;
         case COUNT_TIMESERIES:
           timeseriesNum = (String) columnItr.next();
           break;
@@ -316,6 +327,10 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         if (columnIndex == 1) {
           return getString(GET_STRING_DEVICES);
         }
+      case CHILD_PATHS:
+        if (columnIndex == 1) {
+          return getString(GET_STRING_CHILD_PATHS);
+        }
       case COUNT_TIMESERIES:
         if (columnIndex == 1) {
           return getString(GET_STRING_TIMESERIES_NUM);
@@ -351,6 +366,8 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         return currentColumn;
       case GET_STRING_DEVICES:
         return currentDevice;
+      case GET_STRING_CHILD_PATHS:
+        return currentChildPath;
       case GET_STRING_TIMESERIES_NUM:
         return timeseriesNum;
       case GET_STRING_NODES_NUM:
@@ -396,6 +413,7 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   }
 
   public enum MetadataType {
-    STORAGE_GROUP, TIMESERIES, COLUMN, DEVICES, COUNT_TIMESERIES, COUNT_NODES, COUNT_NODE_TIMESERIES
+    STORAGE_GROUP, TIMESERIES, COLUMN, DEVICES, CHILD_PATHS,
+    COUNT_TIMESERIES, COUNT_NODES, COUNT_NODE_TIMESERIES
   }
 }

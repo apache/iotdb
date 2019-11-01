@@ -1082,6 +1082,18 @@ public class MManager {
       lock.readLock().unlock();
     }
   }
+  
+  /**
+   * function for getting leaf node path in the next level of given seriesPath.
+   */
+  public Set<String> getChildNodePathInNextLevel(String path) throws PathErrorException {
+    lock.readLock().lock();
+    try {
+      return mgraph.getChildNodePathInNextLevel(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }  
 
   /**
    * Check whether the seriesPath given exists.
