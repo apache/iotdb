@@ -159,6 +159,9 @@ public class TsFileIOWriter {
    * end chunk and write some log.
    */
   public void endChunkGroup(long version) throws IOException {
+    if (currentChunkGroupMetaData == null || currentChunkGroupMetaData.getChunkMetaDataList().isEmpty()) {
+      return;
+    }
     long dataSize = out.getPosition() - currentChunkGroupMetaData.getStartOffsetOfChunkGroup();
     ChunkGroupFooter chunkGroupFooter = new ChunkGroupFooter(
         currentChunkGroupMetaData.getDeviceID(),
@@ -177,7 +180,7 @@ public class TsFileIOWriter {
    * @param descriptor - measurement of this time series
    * @param compressionCodecName - compression name of this time series
    * @param tsDataType - data type
-   * @param statistics - statistic of the whole series
+   * @param statistics - Chunk statistics
    * @param maxTime - maximum timestamp of the whole series in this stage
    * @param minTime - minimum timestamp of the whole series in this stage
    * @param dataSize - the serialized size of all pages
@@ -186,18 +189,23 @@ public class TsFileIOWriter {
    */
   public int startFlushChunk(MeasurementSchema descriptor, CompressionType compressionCodecName,
       TSDataType tsDataType, TSEncoding encodingType, Statistics<?> statistics, long maxTime,
-      long minTime,
-      int dataSize, int numOfPages) throws IOException {
-    logger.debug("start series chunk:{}, file position {}", descriptor, out.getPosition());
+      long minTime, int dataSize, int numOfPages) throws IOException {
 
     currentChunkMetaData = new ChunkMetaData(descriptor.getMeasurementId(), tsDataType,
         out.getPosition(), minTime, maxTime);
 
+    // flush ChunkHeader to TsFileIOWriter
+    if (logger.isDebugEnabled()) {
+      logger.debug("start series chunk:{}, file position {}", descriptor, out.getPosition());
+    }
+
     ChunkHeader header = new ChunkHeader(descriptor.getMeasurementId(), dataSize, tsDataType,
-        compressionCodecName,
-        encodingType, numOfPages);
+        compressionCodecName, encodingType, numOfPages);
     header.serializeTo(out.wrapAsStream());
-    logger.debug("finish series chunk:{} header, file position {}", header, out.getPosition());
+
+    if (logger.isDebugEnabled()) {
+      logger.debug("finish series chunk:{} header, file position {}", header, out.getPosition());
+    }
 
     // TODO add your statistics
     ByteBuffer[] statisticsArray = new ByteBuffer[StatisticType.getTotalTypeNum()];

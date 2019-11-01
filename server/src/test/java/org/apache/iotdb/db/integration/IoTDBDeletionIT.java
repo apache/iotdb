@@ -158,9 +158,9 @@ public class IoTDBDeletionIT {
           + "values(1509465600000,true)");
       statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false)");
 
-      statement.execute("delete from root.ln.wf01.wt01.status where time < NOW()");
+      statement.execute("delete from root.ln.wf01.wt01.status where time <= NOW()");
       statement.execute("flush");
-      statement.execute("delete from root.ln.wf01.wt01.status where time < NOW()");
+      statement.execute("delete from root.ln.wf01.wt01.status where time <= NOW()");
 
       try (ResultSet resultSet = statement.executeQuery("select status from root.ln.wf01.wt01")) {
         assertFalse(resultSet.next());

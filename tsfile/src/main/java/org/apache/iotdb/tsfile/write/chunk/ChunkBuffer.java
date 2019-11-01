@@ -69,23 +69,18 @@ public class ChunkBuffer {
     return numOfPages;
   }
 
-  public void setNumOfPages(int numOfPages) {
-    this.numOfPages = numOfPages;
-  }
-
   /**
    * write the page header and data into the PageWriter's output stream.
    *
    * @param data the data of the page
    * @param valueCount - the amount of values in that page
-   * @param statistics - the statistics for that page
+   * @param statistics - page statistics
    * @param maxTimestamp - timestamp maximum in given data
    * @param minTimestamp - timestamp minimum in given data
    * @return byte size of the page header and uncompressed data in the page body.
    */
   public int writePageHeaderAndDataIntoBuff(ByteBuffer data, int valueCount,
-      Statistics<?> statistics,
-      long maxTimestamp, long minTimestamp) throws PageException {
+      Statistics<?> statistics, long maxTimestamp, long minTimestamp) throws PageException {
     numOfPages++;
 
     // 1. update time statistics
@@ -171,8 +166,8 @@ public class ChunkBuffer {
    */
   public long writeAllPagesOfSeriesToTsFile(TsFileIOWriter writer, Statistics<?> statistics)
       throws IOException {
-    if (minTimestamp == Long.MIN_VALUE) {
-      LOG.error("Write page error, {}, minTime:{}, maxTime:{}", schema, minTimestamp, maxTimestamp);
+    if (totalValueCount == 0) {
+      return 0;
     }
 
     // start to write this column chunk
