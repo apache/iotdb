@@ -129,9 +129,8 @@ public class TsFileReadWriteTest {
     QueryExpression queryExpression = QueryExpression.create(paths, null);
     try {
       QueryDataSet queryDataSet = readTsFile.query(queryExpression);
-      Assert.fail();
     } catch (IOException e) {
-      Assert.assertEquals("select path: device_1.sensor_2 not in this tsfile", e.getMessage());
+      Assert.fail();
     } finally {
       reader.close();
     }

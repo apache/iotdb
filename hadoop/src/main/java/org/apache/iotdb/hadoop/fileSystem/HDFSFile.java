@@ -39,6 +39,8 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,10 +76,7 @@ public class HDFSFile extends File {
   }
 
   private void setConfAndGetFS() {
-    Configuration conf = new Configuration();
-    conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
-    conf.set("dfs.client.block.write.replace-datanode-on-failure.policy", "NEVER");
-    conf.set("dfs.client.block.write.replace-datanode-on-failure.enable", "true");
+    Configuration conf = HDFSConfUtil.setConf(new Configuration());
     try {
       fs = hdfsPath.getFileSystem(conf);
     } catch (IOException e) {

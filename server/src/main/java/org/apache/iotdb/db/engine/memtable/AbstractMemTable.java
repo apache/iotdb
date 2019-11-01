@@ -27,11 +27,13 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class AbstractMemTable implements IMemTable {
 
@@ -79,17 +81,58 @@ public abstract class AbstractMemTable implements IMemTable {
 
   protected abstract IWritableMemChunk genMemSeries(TSDataType dataType);
 
-
   @Override
   public void insert(InsertPlan insertPlan) throws QueryProcessorException {
     try {
       for (int i = 0; i < insertPlan.getValues().length; i++) {
+
+        Object value = parseValue(insertPlan.getDataTypes()[i], insertPlan.getValues()[i]);
         write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
-            insertPlan.getDataTypes()[i], insertPlan.getTime(), insertPlan.getValues()[i]);
+            insertPlan.getDataTypes()[i], insertPlan.getTime(), value);
       }
       long recordSizeInByte = MemUtils.getRecordSize(insertPlan);
       memSize += recordSizeInByte;
     } catch (RuntimeException e) {
+      throw new QueryProcessorException(e);
+    }
+  }
+
+  private static Object parseValue(TSDataType dataType, String value) throws QueryProcessorException {
+    try {
+      switch (dataType) {
+        case BOOLEAN:
+          value = value.toLowerCase();
+          if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEN_FALSE.equals(value)) {
+            return false;
+          } else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEN_TRUE.equals(value)) {
+            return true;
+          } else {
+            throw new QueryProcessorException(
+                "The BOOLEAN data type should be true/TRUE, false/FALSE or 0/1");
+          }
+        case INT32:
+          return Integer.parseInt(value);
+        case INT64:
+          return Long.parseLong(value);
+        case FLOAT:
+          return Float.parseFloat(value);
+        case DOUBLE:
+          return Double.parseDouble(value);
+        case TEXT:
+          if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
+              || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
+            if (value.length() == 1) {
+              return new Binary(value);
+            } else {
+              return new Binary(value.substring(1, value.length() - 1));
+            }
+          } else {
+            throw new QueryProcessorException("The TEXT data type should be covered by \" or '");
+          }
+        default:
+          throw new QueryProcessorException("Unsupported data type:" + dataType);
+      }
+    } catch (NumberFormatException e) {
       throw new QueryProcessorException(e);
     }
   }
@@ -108,9 +151,9 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void write(String deviceId, String measurement, TSDataType dataType, long insertTime,
-      String insertValue) {
+      Object objectValue) {
     IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, dataType);
-    memSeries.write(insertTime, insertValue);
+    memSeries.write(insertTime, objectValue);
   }
 
   @Override

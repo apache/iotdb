@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.integration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.sql.Connection;
@@ -72,111 +73,112 @@ public class IoTDBAuthorizationIT {
   @Test
   public void allPrivilegesTest() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection adminCon = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-    Statement adminStmt = adminCon.createStatement();
+    try (Connection adminCon = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER tempuser 'temppw'");
+      boolean caught = false;
 
-    adminStmt.execute("CREATE USER tempuser 'temppw'");
-    Connection userCon = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser",
-            "temppw");
-    Statement userStmt = userCon.createStatement();
+      Connection userCon = DriverManager
+          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser",
+              "temppw");
+      Statement userStmt = userCon.createStatement();
 
-    boolean caught = false;
-    try {
+      try {
+        userStmt.execute("SET STORAGE GROUP TO root.a");
+      } catch (SQLException e) {
+        caught = true;
+      }
+      assertTrue(caught);
+
+      caught = false;
+      try {
+        userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
+      } catch (SQLException e) {
+        caught = true;
+      }
+      assertTrue(caught);
+
+      caught = false;
+      try {
+        userStmt.execute("INSERT INTO root.a(timestamp, b) VALUES (100, 100)");
+      } catch (SQLException e) {
+        caught = true;
+      }
+      assertTrue(caught);
+
+      caught = false;
+      try {
+        userStmt.execute("SELECT * from root.a");
+      } catch (SQLException e) {
+        caught = true;
+      }
+      assertTrue(caught);
+
+      caught = false;
+      try {
+        userStmt.execute("GRANT USER tempuser PRIVILEGES 'CREATE_TIMESERIES' ON root.a");
+      } catch (SQLException e) {
+        caught = true;
+      }
+      assertTrue(caught);
+
+      adminStmt.execute("GRANT USER tempuser PRIVILEGES 'ALL' ON root");
+
       userStmt.execute("SET STORAGE GROUP TO root.a");
-    } catch (SQLException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-
-    caught = false;
-    try {
       userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
-    } catch (SQLException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-
-    caught = false;
-    try {
       userStmt.execute("INSERT INTO root.a(timestamp, b) VALUES (100, 100)");
-    } catch (SQLException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-
-    caught = false;
-    try {
       userStmt.execute("SELECT * from root.a");
-    } catch (SQLException e) {
-      caught = true;
+      userStmt.execute("GRANT USER tempuser PRIVILEGES 'SET_STORAGE_GROUP' ON root.a");
+      userStmt.execute("GRANT USER tempuser PRIVILEGES 'CREATE_TIMESERIES' ON root.b.b");
+
+      adminStmt.execute("REVOKE USER tempuser PRIVILEGES 'ALL' ON root");
+
+      caught = false;
+      try {
+        userStmt.execute("SET STORAGE GROUP TO root.b");
+      } catch (SQLException e) {
+        caught = true;
+      }
+      assertTrue(caught);
+
+      caught = false;
+      try {
+        userStmt.execute("CREATE TIMESERIES root.b.b WITH DATATYPE=INT32,ENCODING=PLAIN");
+      } catch (SQLException e) {
+        caught = true;
+      }
+      assertTrue(caught);
+
+      caught = false;
+      try {
+        userStmt.execute("INSERT INTO root.b(timestamp, b) VALUES (100, 100)");
+      } catch (SQLException e) {
+        caught = true;
+      }
+      assertTrue(caught);
+
+      caught = false;
+      try {
+        userStmt.execute("SELECT * from root.b");
+      } catch (SQLException e) {
+        caught = true;
+      }
+      assertTrue(caught);
+
+      caught = false;
+      try {
+        userStmt.execute("GRANT USER tempuser PRIVILEGES \"CREATE_TIMESERIES\" ON root.a");
+      } catch (SQLException e) {
+        caught = true;
+      }
+      assertTrue(caught);
+
+      adminStmt.close();
+      userStmt.close();
+      adminCon.close();
+      userCon.close();
     }
-    assertTrue(caught);
-
-    caught = false;
-    try {
-      userStmt.execute("GRANT USER tempuser PRIVILEGES 'CREATE_TIMESERIES' ON root.a");
-    } catch (SQLException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-
-    adminStmt.execute("GRANT USER tempuser PRIVILEGES 'ALL' ON root");
-
-    userStmt.execute("SET STORAGE GROUP TO root.a");
-    userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
-    userStmt.execute("INSERT INTO root.a(timestamp, b) VALUES (100, 100)");
-    userStmt.execute("SELECT * from root.a");
-    userStmt.execute("GRANT USER tempuser PRIVILEGES 'SET_STORAGE_GROUP' ON root.a");
-    userStmt.execute("GRANT USER tempuser PRIVILEGES 'CREATE_TIMESERIES' ON root.b.b");
-
-    adminStmt.execute("REVOKE USER tempuser PRIVILEGES 'ALL' ON root");
-
-    caught = false;
-    try {
-      userStmt.execute("SET STORAGE GROUP TO root.b");
-    } catch (SQLException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-
-    caught = false;
-    try {
-      userStmt.execute("CREATE TIMESERIES root.b.b WITH DATATYPE=INT32,ENCODING=PLAIN");
-    } catch (SQLException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-
-    caught = false;
-    try {
-      userStmt.execute("INSERT INTO root.b(timestamp, b) VALUES (100, 100)");
-    } catch (SQLException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-
-    caught = false;
-    try {
-      userStmt.execute("SELECT * from root.b");
-    } catch (SQLException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-
-    caught = false;
-    try {
-      userStmt.execute("GRANT USER tempuser PRIVILEGES \"CREATE_TIMESERIES\" ON root.a");
-    } catch (SQLException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-
-    adminStmt.close();
-    userStmt.close();
-    adminCon.close();
-    userCon.close();
   }
 
   @Test

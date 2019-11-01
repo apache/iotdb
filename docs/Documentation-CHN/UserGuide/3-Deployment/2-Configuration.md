@@ -306,7 +306,7 @@
 
 |名字| hdfs\_ip |
 |:---:|:---|
-|描述| 在Tsfile和相关数据文件存储到HDFS的情况下用于配置HDFS的IP|
+|描述| 在Tsfile和相关数据文件存储到HDFS的情况下用于配置HDFS的IP。**如果配置了多于1个hdfs\_ip，则表明启用了Hadoop HA**|
 |类型| String |
 |默认值|localhost |
 |改后生效方式|重启服务器生效|
@@ -318,4 +318,40 @@
 |描述| 在Tsfile和相关数据文件存储到HDFS的情况下用于配置HDFS的端口|
 |类型| String |
 |默认值|9000 |
+|改后生效方式|重启服务器生效|
+
+* dfs\_nameservices
+
+|名字| hdfs\_nameservices |
+|:---:|:---|
+|描述| 在使用Hadoop HA的情况下用于配置HDFS的nameservices|
+|类型| String |
+|默认值|hdfsnamespace |
+|改后生效方式|重启服务器生效|
+
+* dfs\_ha\_namenodes
+
+|名字| hdfs\_ha\_namenodes |
+|:---:|:---|
+|描述| 在使用Hadoop HA的情况下用于配置HDFS的nameservices下的namenodes|
+|类型| String |
+|默认值|nn1,nn2 |
+|改后生效方式|重启服务器生效|
+
+* dfs\_ha\_automatic\_failover\_enabled
+
+|名字| dfs\_ha\_automatic\_failover\_enabled |
+|:---:|:---|
+|描述| 在使用Hadoop HA的情况下用于配置是否使用失败自动切换|
+|类型| Boolean |
+|默认值|true |
+|改后生效方式|重启服务器生效|
+
+* dfs\_client\_failover\_proxy\_provider
+
+|名字| dfs\_client\_failover\_proxy\_provider |
+|:---:|:---|
+|描述| 在使用Hadoop HA且使用失败自动切换的情况下配置失败自动切换的实现方式|
+|类型| String |
+|默认值|org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider |
 |改后生效方式|重启服务器生效|

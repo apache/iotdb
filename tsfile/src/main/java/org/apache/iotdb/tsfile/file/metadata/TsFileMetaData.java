@@ -82,8 +82,8 @@ public class TsFileMetaData {
   /**
    * deserialize data from the inputStream.
    *
-   * @param inputStream -input stream use to deserialize
-   * @return -a instance of TsFileMetaData
+   * @param inputStream input stream used to deserialize
+   * @return an instance of TsFileMetaData
    */
   public static TsFileMetaData deserializeFrom(InputStream inputStream) throws IOException {
     TsFileMetaData fileMetaData = new TsFileMetaData();
@@ -218,10 +218,7 @@ public class TsFileMetaData {
     return this.deviceIndexMap.containsKey(deltaObjUid);
   }
 
-  public TsDeviceMetadataIndex getDeviceMetadataIndex(String deviceUid) throws IOException {
-    if (!this.deviceIndexMap.containsKey(deviceUid)) {
-      throw new IOException("No device path : " + deviceUid);
-    }
+  public TsDeviceMetadataIndex getDeviceMetadataIndex(String deviceUid) {
     return this.deviceIndexMap.get(deviceUid);
   }
 

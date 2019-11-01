@@ -53,7 +53,7 @@ public class PTree implements Serializable {
     if (getRoot() == null) {
       throw new PathErrorException("Root Node is null, Please initialize root first");
     }
-    String[] nodes = path.trim().split("\\.");
+    String[] nodes = MetaUtils.getNodeNames(path, "\\.");
     if (nodes.length <= 1 || !nodes[0].equals(getRoot().getName())) {
       throw new PathErrorException("Input seriesPath not exist. Path: " + path);
     }
@@ -83,7 +83,7 @@ public class PTree implements Serializable {
    * @throws PathErrorException
    */
   void deletePath(String path) throws PathErrorException {
-    String[] nodes = path.split("\\.");
+    String[] nodes = MetaUtils.getNodeNames(path, "\\.");
     if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
       throw new PathErrorException("Path not correct. Path:" + path);
     }
@@ -105,7 +105,7 @@ public class PTree implements Serializable {
    */
   void linkMNode(String pTreePath, String mTreePath) throws PathErrorException {
     List<String> paths = mTree.getAllPathInList(mTreePath);
-    String[] nodes = pTreePath.trim().split("\\.");
+    String[] nodes = MetaUtils.getNodeNames(pTreePath, "\\.");
     PNode leaf = getLeaf(getRoot(), nodes, 0);
     for (String p : paths) {
       leaf.linkMPath(p);
@@ -119,7 +119,7 @@ public class PTree implements Serializable {
    */
   void unlinkMNode(String pTreePath, String mTreePath) throws PathErrorException {
     List<String> paths = mTree.getAllPathInList(mTreePath);
-    String[] nodes = pTreePath.trim().split("\\.");
+    String[] nodes = MetaUtils.getNodeNames(pTreePath, "\\.");
     PNode leaf = getLeaf(getRoot(), nodes, 0);
     for (String p : paths) {
       leaf.unlinkMPath(p);
@@ -153,7 +153,7 @@ public class PTree implements Serializable {
    */
   HashMap<String, List<String>> getAllLinkedPath(String path)
       throws PathErrorException {
-    String[] nodes = path.trim().split("\\.");
+    String[] nodes = MetaUtils.getNodeNames(path, "\\.");
     PNode leaf = getLeaf(getRoot(), nodes, 0);
     HashMap<String, List<String>> res = new HashMap<>();
 

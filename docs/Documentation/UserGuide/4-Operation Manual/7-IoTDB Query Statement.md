@@ -41,6 +41,16 @@ SET STORAGE GROUP TO <PrefixPath>
 Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
 Note: PrefixPath can not include `*`
 ```
+
+* Delete Storage Group
+
+```
+DELETE STORAGE GROUP <PrefixPath> [COMMA <PrefixPath>]*
+Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
+Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
+Note: PrefixPath can not include `*`
+```
+
 * Create Timeseries Statement
 
 ```
@@ -359,8 +369,8 @@ For example, "select s0,s0,s1 from root.sg.* group by device" is not equal to "s
 ```
 CREATE USER <userName> <password>;  
 userName:=identifier  
-password:=identifier
-Eg: IoTDB > CREATE USER thulab pwd;
+password:=string
+Eg: IoTDB > CREATE USER thulab 'pwd';
 ```
 
 * Delete User
@@ -509,13 +519,13 @@ roleName:=identifier
 Eg: IoTDB > LIST ALL USER OF ROLE roleuser;
 ```
 
-* Update Password
+* Alter Password
 
 ```
-UPDATE USER <username> SET PASSWORD <password>;
+ALTER USER <username> SET PASSWORD <password>;
 roleName:=identifier
-password:=identifier
-Eg: IoTDB > UPDATE USER tempuser SET PASSWORD newpwd;
+password:=string
+Eg: IoTDB > UPDATE USER tempuser SET PASSWORD 'newpwd';
 ```
 
 ### Functions

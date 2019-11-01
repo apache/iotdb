@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.write.chunk;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -43,81 +42,75 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   private static final Logger LOG = LoggerFactory.getLogger(ChunkWriterImpl.class);
 
-  // initial value for this.valueCountInOnePageForNextCheck
-  private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 1500;
+  private MeasurementSchema measurementSchema;
 
-  private final TSDataType dataType;
   /**
    * help to encode data of this series.
    */
   private final ChunkBuffer chunkBuffer;
-  /**
-   * page size threshold.
-   */
-  private final long psThres;
-  private final int pageCountUpperBound;
+
   /**
    * value writer to encode data.
    */
-  private PageWriter dataPageWriter;
+  private PageWriter pageWriter;
+
+  /**
+   * page size threshold.
+   */
+  private final long pageSizeThreshold;
+
+  private final int maxNumberOfPointsInPage;
+
+  // initial value for this.valueCountInOnePageForNextCheck
+  private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 1500;
 
   /**
    * value count in a page. It will be reset after calling {@code writePageHeaderAndDataIntoBuff()}
    */
   private int valueCountInOnePage;
   private int valueCountInOnePageForNextCheck;
-  /**
-   * statistic on a page. It will be reset after calling {@code writePageHeaderAndDataIntoBuff()}
-   */
-  private Statistics<?> pageStatistics;
+
   /**
    * statistic on a stage. It will be reset after calling {@code writeAllPagesOfSeriesToTsFile()}
    */
   private Statistics<?> chunkStatistics;
-  // time of the latest written time value pair
-  private long time;
-  private long minTimestamp = Long.MIN_VALUE;
-
-  private MeasurementSchema measurementSchema;
 
   /**
-   * constructor of ChunkWriterImpl.
-   *
-   * @param chunkBuffer chunk in buffer
-   * @param pageSizeThreshold page size threshold
+   * statistic on a page. It will be reset after calling {@code writePageHeaderAndDataIntoBuff()}
    */
-  public ChunkWriterImpl(ChunkBuffer chunkBuffer, int pageSizeThreshold) {
-    this.measurementSchema = chunkBuffer.getSchema();
-    this.dataType = measurementSchema.getType();
-    this.chunkBuffer = chunkBuffer;
-    this.psThres = pageSizeThreshold;
+  private Statistics<?> pageStatistics;
 
+  // time of the latest written time value pair, we assume data is written in time order
+  private long maxTimestamp;
+  private long minTimestamp = Long.MIN_VALUE;
+
+  /**
+   * @param schema schema of this measurement
+   */
+  public ChunkWriterImpl(MeasurementSchema schema) {
+    this.measurementSchema = schema;
+    this.chunkBuffer = new ChunkBuffer(measurementSchema);
+
+    this.pageSizeThreshold = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    this.maxNumberOfPointsInPage = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
     // initial check of memory usage. So that we have enough data to make an initial prediction
     this.valueCountInOnePageForNextCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
 
     // init statistics for this series and page
-    this.chunkStatistics = Statistics.getStatsByType(dataType);
-    resetPageStatistics();
+    this.chunkStatistics = Statistics.getStatsByType(measurementSchema.getType());
+    this.pageStatistics = Statistics.getStatsByType(measurementSchema.getType());
 
-    this.dataPageWriter = new PageWriter();
-    this.pageCountUpperBound = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+    this.pageWriter = new PageWriter();
 
-    this.dataPageWriter.setTimeEncoder(measurementSchema.getTimeEncoder());
-    this.dataPageWriter.setValueEncoder(measurementSchema.getValueEncoder());
-  }
-
-  /**
-   * reset statistics of page by dataType of this measurement.
-   */
-  private void resetPageStatistics() {
-    this.pageStatistics = Statistics.getStatsByType(dataType);
+    this.pageWriter.setTimeEncoder(measurementSchema.getTimeEncoder());
+    this.pageWriter.setValueEncoder(measurementSchema.getValueEncoder());
   }
 
   @Override
   public void write(long time, long value) {
-    this.time = time;
+    this.maxTimestamp = time;
     ++valueCountInOnePage;
-    dataPageWriter.write(time, value);
+    pageWriter.write(time, value);
     pageStatistics.updateStats(value);
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = time;
@@ -127,9 +120,9 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long time, int value) {
-    this.time = time;
+    this.maxTimestamp = time;
     ++valueCountInOnePage;
-    dataPageWriter.write(time, value);
+    pageWriter.write(time, value);
     pageStatistics.updateStats(value);
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = time;
@@ -139,9 +132,9 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long time, boolean value) {
-    this.time = time;
+    this.maxTimestamp = time;
     ++valueCountInOnePage;
-    dataPageWriter.write(time, value);
+    pageWriter.write(time, value);
     pageStatistics.updateStats(value);
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = time;
@@ -151,9 +144,9 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long time, float value) {
-    this.time = time;
+    this.maxTimestamp = time;
     ++valueCountInOnePage;
-    dataPageWriter.write(time, value);
+    pageWriter.write(time, value);
     pageStatistics.updateStats(value);
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = time;
@@ -163,9 +156,9 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long time, double value) {
-    this.time = time;
+    this.maxTimestamp = time;
     ++valueCountInOnePage;
-    dataPageWriter.write(time, value);
+    pageWriter.write(time, value);
     pageStatistics.updateStats(value);
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = time;
@@ -175,9 +168,9 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long time, BigDecimal value) {
-    this.time = time;
+    this.maxTimestamp = time;
     ++valueCountInOnePage;
-    dataPageWriter.write(time, value);
+    pageWriter.write(time, value);
     pageStatistics.updateStats(value);
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = time;
@@ -187,9 +180,9 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long time, Binary value) {
-    this.time = time;
+    this.maxTimestamp = time;
     ++valueCountInOnePage;
-    dataPageWriter.write(time, value);
+    pageWriter.write(time, value);
     pageStatistics.updateStats(value);
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = time;
@@ -199,84 +192,84 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long[] timestamps, int[] values, int batchSize) {
-    this.time = timestamps[batchSize - 1];
+    this.maxTimestamp = timestamps[batchSize - 1];
     valueCountInOnePage += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
-    dataPageWriter.write(timestamps, values, batchSize);
+    pageWriter.write(timestamps, values, batchSize);
     pageStatistics.updateStats(values);
     checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
   public void write(long[] timestamps, long[] values, int batchSize) {
-    this.time = timestamps[batchSize - 1];
+    this.maxTimestamp = timestamps[batchSize - 1];
     valueCountInOnePage += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
-    dataPageWriter.write(timestamps, values, batchSize);
+    pageWriter.write(timestamps, values, batchSize);
     pageStatistics.updateStats(values);
     checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
   public void write(long[] timestamps, boolean[] values, int batchSize) {
-    this.time = timestamps[batchSize - 1];
+    this.maxTimestamp = timestamps[batchSize - 1];
     valueCountInOnePage += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
-    dataPageWriter.write(timestamps, values, batchSize);
+    pageWriter.write(timestamps, values, batchSize);
     pageStatistics.updateStats(values);
     checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
   public void write(long[] timestamps, float[] values, int batchSize) {
-    this.time = timestamps[batchSize - 1];
+    this.maxTimestamp = timestamps[batchSize - 1];
     valueCountInOnePage += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
-    dataPageWriter.write(timestamps, values, batchSize);
+    pageWriter.write(timestamps, values, batchSize);
     pageStatistics.updateStats(values);
     checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
   public void write(long[] timestamps, double[] values, int batchSize) {
-    this.time = timestamps[batchSize - 1];
+    this.maxTimestamp = timestamps[batchSize - 1];
     valueCountInOnePage += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
-    dataPageWriter.write(timestamps, values, batchSize);
+    pageWriter.write(timestamps, values, batchSize);
     pageStatistics.updateStats(values);
     checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
   public void write(long[] timestamps, BigDecimal[] values, int batchSize) {
-    this.time = timestamps[batchSize - 1];
+    this.maxTimestamp = timestamps[batchSize - 1];
     valueCountInOnePage += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
-    dataPageWriter.write(timestamps, values, batchSize);
+    pageWriter.write(timestamps, values, batchSize);
     pageStatistics.updateStats(values);
     checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
   public void write(long[] timestamps, Binary[] values, int batchSize) {
-    this.time = timestamps[batchSize - 1];
+    this.maxTimestamp = timestamps[batchSize - 1];
     valueCountInOnePage += batchSize;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
-    dataPageWriter.write(timestamps, values, batchSize);
+    pageWriter.write(timestamps, values, batchSize);
     pageStatistics.updateStats(values);
     checkPageSizeAndMayOpenANewPage();
   }
@@ -286,31 +279,24 @@ public class ChunkWriterImpl implements IChunkWriter {
    * OutputStream.
    */
   private void checkPageSizeAndMayOpenANewPage() {
-    if (valueCountInOnePage == pageCountUpperBound) {
+    if (valueCountInOnePage == maxNumberOfPointsInPage) {
       LOG.debug("current line count reaches the upper bound, write page {}", measurementSchema);
       writePage();
-    } else if (valueCountInOnePage
-        >= valueCountInOnePageForNextCheck) { // need to check memory size
+    } else if (valueCountInOnePage >= valueCountInOnePageForNextCheck) { // need to check memory size
       // not checking the memory used for every value
-      long currentColumnSize = dataPageWriter.estimateMaxMemSize();
-      if (currentColumnSize > psThres) { // memory size exceeds threshold
+      long currentPageSize = pageWriter.estimateMaxMemSize();
+      if (currentPageSize > pageSizeThreshold) { // memory size exceeds threshold
         // we will write the current page
         LOG.debug(
-            "enough size, write page {}, psThres:{}, currentColumnSize:{}, valueCountInOnePage:{}",
-            measurementSchema.getMeasurementId(), psThres, currentColumnSize, valueCountInOnePage);
+            "enough size, write page {}, pageSizeThreshold:{}, currentPateSize:{}, valueCountInOnePage:{}",
+            measurementSchema.getMeasurementId(), pageSizeThreshold, currentPageSize, valueCountInOnePage);
         writePage();
         valueCountInOnePageForNextCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
       } else {
         // reset the valueCountInOnePageForNextCheck for the next page
-        valueCountInOnePageForNextCheck = (int) (((float) psThres / currentColumnSize)
+        valueCountInOnePageForNextCheck = (int) (((float) pageSizeThreshold / currentPageSize)
             * valueCountInOnePage);
-        LOG.debug(
-            "not enough size. {}, psThres:{}, currentColumnSize:{},  now valueCountInOnePage: {}, "
-                + "change to {}",
-            measurementSchema.getMeasurementId(), psThres, currentColumnSize, valueCountInOnePage,
-            valueCountInOnePageForNextCheck);
       }
-
     }
   }
 
@@ -319,14 +305,13 @@ public class ChunkWriterImpl implements IChunkWriter {
    */
   private void writePage() {
     try {
-      chunkBuffer.writePageHeaderAndDataIntoBuff(dataPageWriter.getUncompressedBytes(),
-          valueCountInOnePage,
-          pageStatistics, time, minTimestamp);
+      chunkBuffer.writePageHeaderAndDataIntoBuff(pageWriter.getUncompressedBytes(),
+          valueCountInOnePage, pageStatistics, maxTimestamp, minTimestamp);
 
       // update statistics of this series
       this.chunkStatistics.mergeStatistics(this.pageStatistics);
     } catch (IOException e) {
-      LOG.error("meet error in dataPageWriter.getUncompressedBytes(),ignore this page:", e);
+      LOG.error("meet error in pageWriter.getUncompressedBytes(),ignore this page:", e);
     } catch (PageException e) {
       LOG.error(
           "meet error in chunkBuffer.writePageHeaderAndDataIntoBuff, ignore this page:", e);
@@ -334,8 +319,8 @@ public class ChunkWriterImpl implements IChunkWriter {
       // clear start time stamp for next initializing
       minTimestamp = Long.MIN_VALUE;
       valueCountInOnePage = 0;
-      dataPageWriter.reset();
-      resetPageStatistics();
+      pageWriter.reset();
+      this.pageStatistics = Statistics.getStatsByType(measurementSchema.getType());
     }
   }
 
@@ -345,12 +330,12 @@ public class ChunkWriterImpl implements IChunkWriter {
     chunkBuffer.writeAllPagesOfSeriesToTsFile(tsfileWriter, chunkStatistics);
     chunkBuffer.reset();
     // reset series_statistics
-    this.chunkStatistics = Statistics.getStatsByType(dataType);
+    this.chunkStatistics = Statistics.getStatsByType(measurementSchema.getType());
   }
 
   @Override
   public long estimateMaxSeriesMemSize() {
-    return dataPageWriter.estimateMaxMemSize() + chunkBuffer.estimateMaxPageMemSize();
+    return pageWriter.estimateMaxMemSize() + chunkBuffer.estimateMaxPageMemSize();
   }
 
   @Override
@@ -378,6 +363,6 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public TSDataType getDataType() {
-    return dataType;
+    return measurementSchema.getType();
   }
 }
