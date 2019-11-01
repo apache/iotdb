@@ -21,10 +21,14 @@ package org.apache.iotdb.db.engine;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -32,7 +36,7 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.MetadataErrorException;
+import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageEngineFailureException;
@@ -40,6 +44,7 @@ import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -59,6 +64,7 @@ public class StorageEngine implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final long TTL_CHECK_INTERVAL = 60 * 1000;
 
   /**
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
@@ -77,6 +83,8 @@ public class StorageEngine implements IService {
     return INSTANCE;
   }
 
+  private ScheduledExecutorService ttlCheckThread;
+
   private StorageEngine() {
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
     // create systemDir
@@ -86,17 +94,18 @@ public class StorageEngine implements IService {
       throw new StorageEngineFailureException("create system directory failed!");
     }
 
-    /**
+    /*
      * recover all storage group processors.
      */
     try {
-      List<String> storageGroups = MManager.getInstance().getAllStorageGroupNames();
-      for (String storageGroup : storageGroups) {
-        StorageGroupProcessor processor = new StorageGroupProcessor(systemDir, storageGroup);
-        logger.info("Storage Group Processor {} is recovered successfully", storageGroup);
-        processorMap.put(storageGroup, processor);
+      List<MNode> sgNodes = MManager.getInstance().getAllStorageGroups();
+      for (MNode storageGroup : sgNodes) {
+        StorageGroupProcessor processor = new StorageGroupProcessor(systemDir, storageGroup.getFullPath());
+        processor.setDataTTL(storageGroup.getDataTTL());
+        logger.info("Storage Group Processor {} is recovered successfully", storageGroup.getFullPath());
+        processorMap.put(storageGroup.getFullPath(), processor);
       }
-    } catch (ProcessorException | MetadataErrorException e) {
+    } catch (ProcessorException e) {
       logger.error("init a storage group processor failed. ", e);
       throw new StorageEngineFailureException(e);
     }
@@ -104,12 +113,32 @@ public class StorageEngine implements IService {
 
   @Override
   public void start() {
-    // nothing to be done
+    ttlCheckThread = Executors.newSingleThreadScheduledExecutor();
+    ttlCheckThread.scheduleAtFixedRate(this::checkTTL, TTL_CHECK_INTERVAL, TTL_CHECK_INTERVAL
+    ,TimeUnit.MILLISECONDS);
+  }
+
+  private void checkTTL() {
+    try {
+      for (StorageGroupProcessor processor : processorMap.values()) {
+        processor.checkFilesTTL();
+      }
+    } catch (ConcurrentModificationException e) {
+      // ignore
+    } catch (Exception e) {
+      logger.error("An error occurred when checking TTL", e);
+    }
   }
 
   @Override
   public void stop() {
     syncCloseAllProcessor();
+    ttlCheckThread.shutdownNow();
+    try {
+      ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      logger.warn("TTL check thread still doesn't exit after 30s");
+    }
   }
 
   @Override
@@ -131,12 +160,13 @@ public class StorageEngine implements IService {
             logger.info("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroupName, Thread.currentThread().getId());
             processor = new StorageGroupProcessor(systemDir, storageGroupName);
+            processor.setDataTTL(MManager.getInstance().getNodeByPathWithCheck(storageGroupName).getDataTTL());
             processorMap.put(storageGroupName, processor);
           }
         }
       }
       return processor;
-    } catch (StorageGroupException | ProcessorException e) {
+    } catch (StorageGroupException | ProcessorException | PathErrorException e) {
       logger.error("Fail to get StorageGroupProcessor {}", storageGroupName, e);
       throw new StorageEngineException(e);
     }
@@ -157,7 +187,7 @@ public class StorageEngine implements IService {
    * @param insertPlan physical plan of insertion
    * @return true if and only if this insertion succeeds
    */
-  public boolean insert(InsertPlan insertPlan) throws StorageEngineException {
+  public boolean insert(InsertPlan insertPlan) throws ProcessorException {
 
     StorageGroupProcessor storageGroupProcessor;
     try {
@@ -166,14 +196,14 @@ public class StorageEngine implements IService {
       logger.warn("get StorageGroupProcessor of device {} failed, because {}",
           insertPlan.getDeviceId(),
           e.getMessage(), e);
-      throw new StorageEngineException(e);
+      throw new ProcessorException(e);
     }
 
     // TODO monitor: update statistics
     try {
       return storageGroupProcessor.insert(insertPlan);
     } catch (QueryProcessorException e) {
-      throw new StorageEngineException(e.getMessage());
+      throw new ProcessorException(e);
     }
   }
 
@@ -197,15 +227,6 @@ public class StorageEngine implements IService {
       return storageGroupProcessor.insertBatch(batchInsertPlan);
     } catch (QueryProcessorException e) {
       throw new StorageEngineException(e);
-    }
-  }
-
-  /**
-   * only for unit test
-   */
-  public void asyncFlushAndSealAllFiles() {
-    for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
-      storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
     }
   }
 
@@ -278,7 +299,7 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * get all overlap tsfiles which are conflict with the appendFile.
+   * get all overlap TsFiles which are conflict with the appendFile.
    *
    * @param storageGroupName the seriesPath of storage group
    * @param appendFile the appended tsfile information
@@ -336,15 +357,15 @@ public class StorageEngine implements IService {
    */
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
-    try {
-      for (String storageGroup : MManager.getInstance().getAllStorageGroupNames()) {
-        this.deleteAllDataFilesInOneStorageGroup(storageGroup);
-      }
-    } catch (MetadataErrorException e) {
-      logger.error("delete storage groups failed.", e);
-      return false;
+    for (String storageGroup : MManager.getInstance().getAllStorageGroupNames()) {
+      this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
     return true;
+  }
+
+  public void setTTL(String storageGroup, long dataTTL) throws StorageEngineException {
+    StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroup);
+    storageGroupProcessor.setDataTTL(dataTTL);
   }
 
   public void deleteStorageGroup(String storageGroupName) {

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.hadoop;
+package org.apache.iotdb.hadoop.tsfile;
 
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.InputSplit;
@@ -24,9 +24,6 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl;
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
-import org.apache.iotdb.hadoop.tsfile.TSFHadoopException;
-import org.apache.iotdb.hadoop.tsfile.TSFInputFormat;
-import org.apache.iotdb.hadoop.tsfile.TSFRecordReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.junit.After;
 import org.junit.Before;
@@ -81,6 +78,7 @@ public class TSFHadoopTest {
     //
     // deviceid
     //
+
     TSFInputFormat.setReadDeviceId(job, true);
     assertTrue(TSFInputFormat.getReadDeviceId(job.getConfiguration()));
 

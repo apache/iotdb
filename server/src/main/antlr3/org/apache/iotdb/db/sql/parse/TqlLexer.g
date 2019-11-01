@@ -265,6 +265,14 @@ K_WATERMARK_EMBEDDING
     : W A T E R M A R K '_' E M B E D D I N G
     ;
 
+K_TTL
+    : T T L
+    ;
+
+K_UNSET
+    : U N S E T
+    ;
+
 //************** logical operator***********
 OPERATOR_AND
     : A N D

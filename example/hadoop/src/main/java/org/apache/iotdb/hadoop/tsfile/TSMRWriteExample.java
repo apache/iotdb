@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.hadoop;
+package org.apache.iotdb.hadoop.tsfile;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -25,9 +25,6 @@ import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.iotdb.hadoop.tsfile.TSFHadoopException;
-import org.apache.iotdb.hadoop.tsfile.TSFInputFormat;
-import org.apache.iotdb.hadoop.tsfile.TSFOutputFormat;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
@@ -141,7 +138,7 @@ public class TSMRWriteExample {
                 throws IOException, InterruptedException {
 
             Text deltaObjectId = (Text) value.get(new Text("device_id"));
-            long timestamp = ((LongWritable)value.get(new Text("timestamp"))).get();
+            long timestamp = ((LongWritable)value.get(new Text("time_stamp"))).get();
             if (timestamp % 100000 == 0) {
                 context.write(deltaObjectId, new MapWritable(value));
             }

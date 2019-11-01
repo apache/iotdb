@@ -158,6 +158,10 @@ public class MergeTask implements Callable<Void> {
     for (TsFileResource seqFile : resource.getSeqFiles()) {
       File mergeFile = new File(seqFile.getFile().getPath() + MERGE_SUFFIX);
       mergeFile.delete();
+      seqFile.setMerging(false);
+    }
+    for (TsFileResource unseqFile : resource.getUnseqFiles()) {
+      unseqFile.setMerging(false);
     }
 
     File logFile = new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME);

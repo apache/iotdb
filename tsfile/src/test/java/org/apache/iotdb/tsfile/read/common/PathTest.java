@@ -23,6 +23,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import java.util.Arrays;
+
 public class PathTest {
 
   private void testPath(Path path, String device, String measurement, String full) {
@@ -39,11 +41,18 @@ public class PathTest {
     testPath(path, "", "c", "c");
     path = new Path("");
     testPath(path, "", "", "");
+    // with quote;
+    path = new Path("root.d1.r1.\"x1.x2.x3\"");
+    testPath(path, "root.d1.r1", "x1.x2.x3", "root.d1.r1.\"x1.x2.x3\"");
   }
 
   @Test
   public void startWith() throws Exception {
     Path path = new Path("a.b.c");
+    assertTrue(path.startWith(new Path("")));
+    assertTrue(path.startWith(new Path("a")));
+    assertTrue(path.startWith(new Path("a.b.c")));
+    path = new Path("a.b.c.\"d.e.f\"");
     assertTrue(path.startWith(new Path("")));
     assertTrue(path.startWith(new Path("a")));
     assertTrue(path.startWith(new Path("a.b.c")));
@@ -54,8 +63,10 @@ public class PathTest {
     Path prefix = new Path("a.b.c");
     Path suffix = new Path("d.e");
     Path suffix1 = new Path("");
+    Path suffix2 = new Path("d.\"e.f\"");
     testPath(Path.mergePath(prefix, suffix), "a.b.c.d", "e", "a.b.c.d.e");
     testPath(Path.mergePath(prefix, suffix1), "a.b", "c", "a.b.c");
+    testPath(Path.mergePath(prefix, suffix2), "a.b.c.d", "e.f", "a.b.c.d.\"e.f\"");
   }
 
   @Test
@@ -68,16 +79,11 @@ public class PathTest {
   }
 
   @Test
-  public void replace() throws Exception {
-    Path src = new Path("a.b.c");
-    Path rep1 = new Path("");
-    Path rep2 = new Path("d");
-    Path rep3 = new Path("d.e.f");
-    Path rep4 = new Path("d.e.f.g");
-    testPath(Path.replace(rep1, src), "a.b", "c", "a.b.c");
-    testPath(Path.replace(rep2, src), "d.b", "c", "d.b.c");
-    testPath(Path.replace(rep3, src), "d.e", "f", "d.e.f");
-    testPath(Path.replace(rep4, src), "d.e.f", "g", "d.e.f.g");
+  public void addHeadPathWithQuote() {
+    Path desc = new Path("a.b.\"c\"");
+    Path head = new Path("d.e");
+    Path head1 = new Path("");
+    testPath(Path.addPrefixPath(desc, head), "d.e.a.b", "c", "d.e.a.b.\"c\"");
+    testPath(Path.mergePath(desc, head1), "a.b", "c", "a.b.\"c\"");
   }
-
 }

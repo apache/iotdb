@@ -61,9 +61,12 @@ public class IoTDBConstant {
 
   public static final String SHOW_DYNAMIC_PARAMETERS = "show\\s+dynamic\\s+parameters";
 
-  public static final String ROLE = "Role";
-  public static final String USER = "User";
-  public static final String PRIVILEGE = "Privilege";
+  public static final String ROLE = "role";
+  public static final String USER = "user";
+  public static final String PRIVILEGE = "privilege";
+
+  public static final String STORAGE_GROUP = "storage group";
+  public static final String TTL = "ttl";
 
   // data folder name
   public static final String SEQUENCE_FLODER_NAME = "sequence";

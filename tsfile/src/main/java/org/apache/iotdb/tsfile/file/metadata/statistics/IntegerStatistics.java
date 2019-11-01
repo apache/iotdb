@@ -187,7 +187,7 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
-  void fill(InputStream inputStream) throws IOException {
+  void deserialize(InputStream inputStream) throws IOException {
     this.min = ReadWriteIOUtils.readInt(inputStream);
     this.max = ReadWriteIOUtils.readInt(inputStream);
     this.first = ReadWriteIOUtils.readInt(inputStream);
@@ -196,7 +196,7 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
-  void fill(ByteBuffer byteBuffer) throws IOException {
+  void deserialize(ByteBuffer byteBuffer) throws IOException {
     this.min = ReadWriteIOUtils.readInt(byteBuffer);
     this.max = ReadWriteIOUtils.readInt(byteBuffer);
     this.first = ReadWriteIOUtils.readInt(byteBuffer);

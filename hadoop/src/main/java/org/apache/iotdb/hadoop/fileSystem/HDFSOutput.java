@@ -55,10 +55,7 @@ public class HDFSOutput implements TsFileOutput {
 
   public HDFSOutput(Path path, Configuration configuration, boolean overwrite)
       throws IOException {
-    fs = path.getFileSystem(configuration);
-    configuration.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
-    configuration.set("dfs.client.block.write.replace-datanode-on-failure.policy", "NEVER");
-    configuration.set("dfs.client.block.write.replace-datanode-on-failure.enable", "true");
+    fs = path.getFileSystem(HDFSConfUtil.setConf(configuration));
     fsDataOutputStream = fs.exists(path) ? fs.append(path) : fs.create(path, overwrite);
     this.path = path;
   }

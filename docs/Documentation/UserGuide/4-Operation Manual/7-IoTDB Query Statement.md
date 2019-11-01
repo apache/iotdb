@@ -41,6 +41,16 @@ SET STORAGE GROUP TO <PrefixPath>
 Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
 Note: PrefixPath can not include `*`
 ```
+
+* Delete Storage Group
+
+```
+DELETE STORAGE GROUP <PrefixPath> [COMMA <PrefixPath>]*
+Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
+Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
+Note: PrefixPath can not include `*`
+```
+
 * Create Timeseries Statement
 
 ```
@@ -359,8 +369,8 @@ For example, "select s0,s0,s1 from root.sg.* group by device" is not equal to "s
 ```
 CREATE USER <userName> <password>;  
 userName:=identifier  
-password:=identifier
-Eg: IoTDB > CREATE USER thulab pwd;
+password:=string
+Eg: IoTDB > CREATE USER thulab 'pwd';
 ```
 
 * Delete User
@@ -509,13 +519,13 @@ roleName:=identifier
 Eg: IoTDB > LIST ALL USER OF ROLE roleuser;
 ```
 
-* Update Password
+* Alter Password
 
 ```
-UPDATE USER <username> SET PASSWORD <password>;
+ALTER USER <username> SET PASSWORD <password>;
 roleName:=identifier
-password:=identifier
-Eg: IoTDB > UPDATE USER tempuser SET PASSWORD newpwd;
+password:=string
+Eg: IoTDB > UPDATE USER tempuser SET PASSWORD 'newpwd';
 ```
 
 ### Functions
@@ -611,6 +621,52 @@ SELECT SUM(Path) (COMMA SUM(Path))* FROM <FromClause> [WHERE <WhereClause>]?
 Eg. SELECT SUM(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
+
+### TTL
+IoTDB supports storage-level TTL settings, which means it is able to delete old data
+automatically and periodically. The benefit of using TTL is that hopefully you can control the 
+total disk space usage and prevent the machine from running out of disks. Moreover, the query
+performance may downgrade as the total number of files goes up and the memory usage also increase
+as there are more files. Timely removing such files helps to keep at a high query performance
+level and reduce memory usage. The TTL operations in IoTDB are supported by the following three
+statements:
+
+* Set TTL
+```
+SET TTL TO StorageGroupName TTLTime
+Eg. SET TTL TO root.group1 3600000
+This example means that for data in root.group1, only that of the latest 1 hour will remain, the
+older one is removed or made invisible. 
+Note: TTLTime should be millisecond timestamp. When TTL is set, insertions that fall
+out of TTL will be rejected.
+```
+
+* Unset TTL
+```
+UNSET TTL TO StorageGroupName
+Eg. UNSET TTL TO root.group1
+This example means that data of all time will be accepted in this group. 
+```
+
+* Show TTL
+```
+SHOW ALL TTL
+SHOW TTL ON StorageGroupNames
+Eg.1 SHOW ALL TTL
+This example will show TTLs of all storage groups.
+Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
+This example will show TTLs of the specified 3 groups.
+Notice: storage groups without TTL will show a "null"
+```
+
+Notice: When you set TTL to some storage groups, data out of the TTL will be made invisible
+immediately, but because the data files may contain both out-dated and living data or the data files may
+be being used by queries, the physical removal of data is stale. If you increase or unset TTL
+just after setting it previously, some previously invisible data may be seen again, but the
+physically removed one is lost forever. In other words, different from delete statement, the
+atomicity of data deletion is not guaranteed for efficiency concerns. So we recommend that you do
+not change the TTL once it is set or at least do not reset it frequently, unless you are determined 
+to suffer the unpredictability. 
 
 ## Reference
 

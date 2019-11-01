@@ -19,29 +19,15 @@
 
 package org.apache.iotdb.tsfile.common.conf;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.util.Properties;
-import java.util.Set;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.utils.Loader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
- * TSFileDescriptor is used to load TSFileConfig and provide configure information.
+ * TSFileDescriptor is used to create a singleton TSFileConfig.
  */
 public class TSFileDescriptor {
 
-  private static final Logger logger = LoggerFactory.getLogger(TSFileDescriptor.class);
   private TSFileConfig conf = new TSFileConfig();
 
   private TSFileDescriptor() {
-    loadProps();
+
   }
 
   public static final TSFileDescriptor getInstance() {
@@ -50,96 +36,6 @@ public class TSFileDescriptor {
 
   public TSFileConfig getConfig() {
     return conf;
-  }
-
-  private void multiplicityWarning(String resource, ClassLoader classLoader) {
-    try {
-      Set<URL> urlSet = Loader.getResources(resource, classLoader);
-      if (urlSet != null && urlSet.size() > 1) {
-        logger.warn("Resource [{}] occurs multiple times on the classpath", resource);
-        for (URL url : urlSet) {
-          logger.warn("Resource [{}] occurs at [{}]", resource, url);
-        }
-      }
-    } catch (IOException e) {
-      logger.error("Failed to get url list for {}", resource);
-    }
-  }
-
-  private static URL getResource(String filename, ClassLoader classLoader) {
-    return Loader.getResource(filename, classLoader);
-  }
-
-  /**
-   * load an .properties file and set TSFileConfig variables
-   */
-  private void loadProps() {
-    InputStream inputStream;
-    String url = System.getProperty(TsFileConstant.TSFILE_CONF, null);
-    if (url == null) {
-      url = System.getProperty(TsFileConstant.TSFILE_HOME, null);
-      if (url != null) {
-        url = url + File.separator + "conf" + File.separator + TSFileConfig.CONFIG_FILE_NAME;
-      } else {
-        ClassLoader classLoader = Loader.getClassLoaderOfObject(this);
-        URL u = getResource(TSFileConfig.CONFIG_FILE_NAME, classLoader);
-        if (u == null) {
-          logger.warn("Failed to find config file {} at classpath, use default configuration",
-              TSFileConfig.CONFIG_FILE_NAME);
-          return;
-        } else {
-          multiplicityWarning(TSFileConfig.CONFIG_FILE_NAME, classLoader);
-          url = u.getFile();
-        }
-      }
-    }
-    try {
-      inputStream = new FileInputStream(new File(url));
-    } catch (FileNotFoundException e) {
-      logger.warn("Fail to find config file {}", url);
-      return;
-    }
-
-    logger.info("Start to read config file {}", url);
-    Properties properties = new Properties();
-    try {
-      properties.load(inputStream);
-      conf.setGroupSizeInByte(Integer
-          .parseInt(properties.getProperty("group_size_in_byte",
-                  Integer.toString(conf.getGroupSizeInByte()))));
-      conf.setPageSizeInByte(Integer
-          .parseInt(properties.getProperty("page_size_in_byte",
-              Integer.toString(conf.getPageSizeInByte()))));
-      if (conf.getPageSizeInByte() > conf.getGroupSizeInByte()) {
-        logger.warn("page_size is greater than group size, will set it as the same with group size");
-        conf.setPageSizeInByte(conf.getGroupSizeInByte());
-      }
-      conf.setMaxNumberOfPointsInPage(Integer
-          .parseInt(properties.getProperty("max_number_of_points_in_page",
-                  Integer.toString(conf.getMaxNumberOfPointsInPage()))));
-      conf.setTimeSeriesDataType(properties
-          .getProperty("time_series_data_type", conf.getTimeSeriesDataType()));
-      conf.setMaxStringLength(Integer
-          .parseInt(properties.getProperty("max_string_length",
-              Integer.toString(conf.getMaxStringLength()))));
-      conf.setFloatPrecision(Integer
-          .parseInt(properties
-              .getProperty("float_precision", Integer.toString(conf.getFloatPrecision()))));
-      conf.setTimeEncoder(properties.getProperty("time_encoder", conf.getTimeEncoder()));
-      conf.setValueEncoder(properties.getProperty("value_encoder", conf.getValueEncoder()));
-      conf.setCompressor(properties.getProperty("compressor", conf.getCompressor()));
-    } catch (IOException e) {
-      logger.warn("Cannot load config file, use default configuration", e);
-    } catch (Exception e) {
-      logger.error("Loading settings {} failed", url, e);
-    } finally {
-      try {
-        inputStream.close();
-      } catch (IOException e) {
-        logger.error("Failed to close stream for loading config", e);
-      }
-
-    }
   }
 
   private static class TsfileDescriptorHolder {

@@ -194,7 +194,7 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  void fill(InputStream inputStream) throws IOException {
+  void deserialize(InputStream inputStream) throws IOException {
     this.min = ReadWriteIOUtils.readLong(inputStream);
     this.max = ReadWriteIOUtils.readLong(inputStream);
     this.first = ReadWriteIOUtils.readLong(inputStream);
@@ -203,7 +203,7 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  void fill(ByteBuffer byteBuffer) throws IOException {
+  void deserialize(ByteBuffer byteBuffer) throws IOException {
     this.min = ReadWriteIOUtils.readLong(byteBuffer);
     this.max = ReadWriteIOUtils.readLong(byteBuffer);
     this.first = ReadWriteIOUtils.readLong(byteBuffer);

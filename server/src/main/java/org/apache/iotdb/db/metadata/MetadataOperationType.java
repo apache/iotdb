@@ -34,5 +34,6 @@ public class MetadataOperationType {
   public static final String UNLINK_MNODE_FROM_PTREE = "7";
   public static final String ADD_INDEX_TO_PATH = "8";
   public static final String DELETE_INDEX_FROM_PATH = "9";
-  public static final String DELETE_STORAGE_GROUP_FROM_MTREE = "10";
+  public static final String SET_TTL = "10";
+  public static final String DELETE_STORAGE_GROUP_FROM_MTREE = "11";
 }

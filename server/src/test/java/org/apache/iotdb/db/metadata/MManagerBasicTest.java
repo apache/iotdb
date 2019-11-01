@@ -137,7 +137,7 @@ public class MManagerBasicTest {
     }
 
     assertFalse(manager.pathExist("root.laptop.d2"));
-    assertFalse(manager.checkFileNameByPath("root.laptop.d2"));
+    assertFalse(manager.checkStorageGroupByPath("root.laptop.d2"));
 
     try {
       manager.deletePaths(Collections.singletonList(new Path("root.laptop.d1.s0")));
@@ -301,12 +301,12 @@ public class MManagerBasicTest {
       List<String> list = new ArrayList<>();
 
       list.add("root.laptop.d1");
-      assertEquals(list, manager.getAllFileNamesByPath("root.laptop.d1.s1"));
-      assertEquals(list, manager.getAllFileNamesByPath("root.laptop.d1"));
+      assertEquals(list, manager.getAllStorageGroupNamesByPath("root.laptop.d1.s1"));
+      assertEquals(list, manager.getAllStorageGroupNamesByPath("root.laptop.d1"));
 
       list.add("root.laptop.d2");
-      assertEquals(list, manager.getAllFileNamesByPath("root.laptop"));
-      assertEquals(list, manager.getAllFileNamesByPath("root"));
+      assertEquals(list, manager.getAllStorageGroupNamesByPath("root.laptop"));
+      assertEquals(list, manager.getAllStorageGroupNamesByPath("root"));
     } catch (MetadataErrorException | PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -318,23 +318,23 @@ public class MManagerBasicTest {
     MManager manager = MManager.getInstance();
 
     try {
-      assertTrue(manager.getAllPathGroupByFileName("root").keySet().isEmpty());
-      assertTrue(manager.getAllFileNamesByPath("root.vehicle").isEmpty());
-      assertTrue(manager.getAllFileNamesByPath("root.vehicle.device").isEmpty());
-      assertTrue(manager.getAllFileNamesByPath("root.vehicle.device.sensor").isEmpty());
+      assertTrue(manager.getAllPathGroupByStorageGroup("root").keySet().isEmpty());
+      assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle").isEmpty());
+      assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle.device").isEmpty());
+      assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle.device.sensor").isEmpty());
 
       manager.setStorageGroupToMTree("root.vehicle");
-      assertFalse(manager.getAllFileNamesByPath("root.vehicle").isEmpty());
-      assertFalse(manager.getAllFileNamesByPath("root.vehicle.device").isEmpty());
-      assertFalse(manager.getAllFileNamesByPath("root.vehicle.device.sensor").isEmpty());
-      assertTrue(manager.getAllFileNamesByPath("root.vehicle1").isEmpty());
-      assertTrue(manager.getAllFileNamesByPath("root.vehicle1.device").isEmpty());
+      assertFalse(manager.getAllStorageGroupNamesByPath("root.vehicle").isEmpty());
+      assertFalse(manager.getAllStorageGroupNamesByPath("root.vehicle.device").isEmpty());
+      assertFalse(manager.getAllStorageGroupNamesByPath("root.vehicle.device.sensor").isEmpty());
+      assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle1").isEmpty());
+      assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle1.device").isEmpty());
 
       manager.setStorageGroupToMTree("root.vehicle1.device");
-      assertTrue(manager.getAllFileNamesByPath("root.vehicle1.device1").isEmpty());
-      assertTrue(manager.getAllFileNamesByPath("root.vehicle1.device2").isEmpty());
-      assertTrue(manager.getAllFileNamesByPath("root.vehicle1.device3").isEmpty());
-      assertFalse(manager.getAllFileNamesByPath("root.vehicle1.device").isEmpty());
+      assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle1.device1").isEmpty());
+      assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle1.device2").isEmpty());
+      assertTrue(manager.getAllStorageGroupNamesByPath("root.vehicle1.device3").isEmpty());
+      assertFalse(manager.getAllStorageGroupNamesByPath("root.vehicle1.device").isEmpty());
     } catch (MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());

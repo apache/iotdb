@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
 public class IoTDBConfig {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
-  public static final String CONFIG_NAME = "iotdb-engine.properties";
+  static final String CONFIG_NAME = "iotdb-engine.properties";
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
@@ -391,6 +391,33 @@ public class IoTDBConfig {
    */
   private String hdfsPort = "9000";
 
+  /**
+   * Default DFS NameServices is hdfsnamespace
+   */
+  private String dfsNameServices = "hdfsnamespace";
+
+  /**
+   * Default DFS HA name nodes are nn1 and nn2
+   */
+  private String dfsHaNamenodes = "nn1,nn2";
+
+  /**
+   * Default DFS HA automatic failover is enabled
+   */
+  private boolean dfsHaAutomaticFailoverEnabled = true;
+
+  /**
+   * Default DFS client failover proxy provider is "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider"
+   */
+  private String dfsClientFailoverProxyProvider = "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider";
+
+  /**
+   * default TTL for storage groups that are not set TTL by statements, in ms
+   * Notice: if this property is changed, previous created storage group which are not set TTL will
+   * also be affected.
+   */
+  private long defaultTTL = Long.MAX_VALUE;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -423,8 +450,13 @@ public class IoTDBConfig {
     }
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
-      String hdfsDir = "hdfs://" + TSFileDescriptor.getInstance().getConfig().getHdfsIp() + ":"
-          + TSFileDescriptor.getInstance().getConfig().getHdfsPort();
+      String[] hdfsIps = TSFileDescriptor.getInstance().getConfig().getHdfsIp();
+      String hdfsDir = "hdfs://";
+      if (hdfsIps.length > 1) {
+        hdfsDir += TSFileDescriptor.getInstance().getConfig().getDfsNameServices();
+      } else {
+        hdfsDir += hdfsIps[0] + ":" + TSFileDescriptor.getInstance().getConfig().getHdfsPort();
+      }
       for (int i = 5; i < dirs.size(); i++) {
         String dir = dirs.get(i);
         dir = hdfsDir + File.separatorChar + dir;
@@ -487,7 +519,7 @@ public class IoTDBConfig {
   public void setMetricsPort(int metricsPort) {
     this.metricsPort = metricsPort;
   }
-  
+
   public String getRpcAddress() {
     return rpcAddress;
   }
@@ -896,6 +928,7 @@ public class IoTDBConfig {
   public void setMergeFileSelectionTimeBudget(long mergeFileSelectionTimeBudget) {
     this.mergeFileSelectionTimeBudget = mergeFileSelectionTimeBudget;
   }
+
   public boolean isRpcThriftCompressionEnable() {
     return rpcThriftCompressionEnable;
   }
@@ -1070,12 +1103,12 @@ public class IoTDBConfig {
     this.tsFileStorageFs = FSType.valueOf(tsFileStorageFs);
   }
 
-  public String getHdfsIp() {
-    return hdfsIp;
+  public String[] getHdfsIp() {
+    return hdfsIp.split(",");
   }
 
-  public void setHdfsIp(String hdfsIp) {
-    this.hdfsIp = hdfsIp;
+  public void setHdfsIp(String[] hdfsIp) {
+    this.hdfsIp = String.join(",", hdfsIp);
   }
 
   public String getHdfsPort() {
@@ -1084,5 +1117,45 @@ public class IoTDBConfig {
 
   public void setHdfsPort(String hdfsPort) {
     this.hdfsPort = hdfsPort;
+  }
+
+  public String getDfsNameServices() {
+    return dfsNameServices;
+  }
+
+  public void setDfsNameServices(String dfsNameServices) {
+    this.dfsNameServices = dfsNameServices;
+  }
+
+  public String[] getDfsHaNamenodes() {
+    return dfsHaNamenodes.split(",");
+  }
+
+  public void setDfsHaNamenodes(String[] dfsHaNamenodes) {
+    this.dfsHaNamenodes = String.join(",", dfsHaNamenodes);
+  }
+
+  public boolean isDfsHaAutomaticFailoverEnabled() {
+    return dfsHaAutomaticFailoverEnabled;
+  }
+
+  public void setDfsHaAutomaticFailoverEnabled(boolean dfsHaAutomaticFailoverEnabled) {
+    this.dfsHaAutomaticFailoverEnabled = dfsHaAutomaticFailoverEnabled;
+  }
+
+  public String getDfsClientFailoverProxyProvider() {
+    return dfsClientFailoverProxyProvider;
+  }
+
+  public void setDfsClientFailoverProxyProvider(String dfsClientFailoverProxyProvider) {
+    this.dfsClientFailoverProxyProvider = dfsClientFailoverProxyProvider;
+  }
+
+  public long getDefaultTTL() {
+    return defaultTTL;
+  }
+
+  public void setDefaultTTL(long defaultTTL) {
+    this.defaultTTL = defaultTTL;
   }
 }
