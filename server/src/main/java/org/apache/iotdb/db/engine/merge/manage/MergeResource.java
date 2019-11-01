@@ -151,6 +151,16 @@ public class MergeResource {
     return ret;
   }
 
+  public IPointReader[] getUnseqReadersV2(List<Path> paths) throws IOException {
+    List<Chunk>[] pathChunks = MergeUtils.collectUnseqChunksV2(paths, unseqFiles, this);
+    IPointReader[] ret = new IPointReader[paths.size()];
+    for (int i = 0; i < paths.size(); i++) {
+      TSDataType dataType = getSchema(paths.get(i).getMeasurement()).getType();
+      ret[i] = new CachedUnseqResourceMergeReader(pathChunks[i], dataType);
+    }
+    return ret;
+  }
+
   /**
    * Construct the a new or get an existing ChunkWriter of a measurement. Different timeseries of
    * the same measurement shares the same instance.

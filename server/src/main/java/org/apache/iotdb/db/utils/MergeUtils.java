@@ -196,6 +196,26 @@ public class MergeUtils {
     return ret;
   }
 
+  public static List<Chunk>[] collectUnseqChunksV2(List<Path> paths,
+      List<TsFileResource> unseqResources, MergeResource mergeResource) throws IOException {
+    List<Chunk>[] ret = new List[paths.size()];
+    for (int i = 0; i < paths.size(); i++) {
+      ret[i] = new ArrayList<>();
+    }
+    PriorityQueue<MetaListEntry> chunkMetaHeap = new PriorityQueue<>();
+
+    for (TsFileResource tsFileResource : unseqResources) {
+
+      TsFileSequenceReader tsFileReader = mergeResource.getFileReader(tsFileResource);
+      // prepare metaDataList
+      buildMetaHeap(paths, tsFileReader, mergeResource, tsFileResource, chunkMetaHeap);
+
+      // read chunks order by their position
+      collectUnseqChunks(chunkMetaHeap, tsFileReader, ret);
+    }
+    return ret;
+  }
+
   private static void buildMetaHeap(List<Path> paths, TsFileSequenceReader tsFileReader,
       MergeResource resource, TsFileResource tsFileResource, PriorityQueue<MetaListEntry> chunkMetaHeap)
       throws IOException {
@@ -217,9 +237,9 @@ public class MergeUtils {
       }
     }
   }
-
   private static void collectUnseqChunks(PriorityQueue<MetaListEntry> chunkMetaHeap,
       TsFileSequenceReader tsFileReader, List<Chunk>[] ret) throws IOException {
+
     while (!chunkMetaHeap.isEmpty()) {
       MetaListEntry metaListEntry = chunkMetaHeap.poll();
       ChunkMetaData currMeta = metaListEntry.current();

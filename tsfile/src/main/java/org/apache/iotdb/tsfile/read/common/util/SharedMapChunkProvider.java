@@ -19,13 +19,10 @@
  *
  */
 
-package org.apache.iotdb.db.engine.merge.util;
+package org.apache.iotdb.tsfile.read.common.util;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;

@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -39,10 +38,8 @@ import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.merge.IMergePathSelector;
 import org.apache.iotdb.db.engine.merge.NaivePathSelector;
-import org.apache.iotdb.db.engine.merge.util.ChunkProvider;
-import org.apache.iotdb.db.engine.merge.util.DirectChunkProvider;
-import org.apache.iotdb.db.engine.merge.util.SharedMapChunkProvider;
-import org.apache.iotdb.db.engine.merge.util.SharedQueueChunkProvider;
+import org.apache.iotdb.tsfile.read.common.util.ChunkProvider;
+import org.apache.iotdb.tsfile.read.common.util.SharedMapChunkProvider;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -241,7 +238,8 @@ class MergeMultiChunkTask {
       idx++;
       ptWrittens[i] = 0;
     }
-    ChunkProvider provider = new DirectChunkProvider(reader);
+//    ChunkProvider provider = new DirectChunkProvider(reader);
+    ChunkProvider provider = new SharedMapChunkProvider(seqChunkMeta, reader);
 
     mergedChunkNum.set(0);
     unmergedChunkNum.set(0);

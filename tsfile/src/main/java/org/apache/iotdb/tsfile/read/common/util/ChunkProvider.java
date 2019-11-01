@@ -17,30 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.util;
+package org.apache.iotdb.tsfile.read.common.util;
 
 import java.io.IOException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 
-/**
- * DirectChunkProvider directly read the desired Chunk from a TsFileSequenceReader, using
- * synchronized to provide thread safety.
- * This class is for experiments in comparison with SharedQueueChunkProvider.
- */
-public class DirectChunkProvider implements ChunkProvider {
+public interface ChunkProvider {
 
-  private TsFileSequenceReader reader;
-
-  public DirectChunkProvider(TsFileSequenceReader reader) {
-    this.reader = reader;
-  }
-
-  @Override
-  public Chunk require(ChunkMetaData metaData) throws IOException {
-    synchronized (reader) {
-      return reader.readMemChunk(metaData);
-    }
-  }
+  /**
+   * Require a chunk corresponding meta from this provider. This method will block until
+   * the chunk is read.
+   * @param metaData
+   * @return
+   * @throws InterruptedException
+   */
+  Chunk require(ChunkMetaData metaData) throws InterruptedException, IOException;
 }

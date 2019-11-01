@@ -27,7 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.MergeTest;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
-import org.apache.iotdb.db.engine.merge.util.ChunkProviderExecutor;
+import org.apache.iotdb.tsfile.read.common.util.ChunkProviderExecutor;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
@@ -41,6 +41,7 @@ public class MergePerfTest extends MergeTest {
     tempSGDir.mkdirs();
     setUp();
     System.out.println("Files prepared.");
+    Thread.sleep(3000);
 
     long timeConsumption = System.currentTimeMillis();
     MergeResource resource = new MergeResource(seqResources, unseqResources);
@@ -64,7 +65,7 @@ public class MergePerfTest extends MergeTest {
 
     perfTest.seqFileNum = 5;
     perfTest.unseqFileNum = 5;
-    perfTest.measurementNum = 10000;
+    perfTest.measurementNum = 2000;
     perfTest.deviceNum = 1;
     perfTest.ptNum = 5000;
     perfTest.flushInterval = 1000;

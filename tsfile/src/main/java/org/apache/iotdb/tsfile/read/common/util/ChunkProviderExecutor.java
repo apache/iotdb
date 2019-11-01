@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.util;
+package org.apache.iotdb.tsfile.read.common.util;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;

@@ -26,12 +26,16 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
  */
 public class Chunk {
 
-  private ChunkHeader chunkHeader;
-  private ByteBuffer chunkData;
+  ChunkHeader chunkHeader;
+  ByteBuffer chunkData;
   /**
    * All data with timestamp <= deletedAt are considered deleted.
    */
-  private long deletedAt;
+  long deletedAt;
+
+  Chunk() {
+
+  }
 
   public Chunk(ChunkHeader header, ByteBuffer buffer, long deletedAt) {
     this.chunkHeader = header;
