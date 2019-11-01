@@ -577,7 +577,11 @@ public class LogicalGenerator {
     insertOp.setTime(timestamp);
     String[] measurementList = new String[astNode.getChild(1).getChildCount() - 1];
     for (int i = 1; i < astNode.getChild(1).getChildCount(); i++) {
-      measurementList[i - 1] = astNode.getChild(1).getChild(i).getText();
+      String measurement = astNode.getChild(1).getChild(i).getText();
+      if(measurement.contains("\"") || measurement.contains("\'")){
+        measurement = measurement.substring(1, measurement.length()-1);
+      }
+      measurementList[i - 1] = measurement;
     }
     insertOp.setMeasurementList(measurementList);
 
