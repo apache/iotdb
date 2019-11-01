@@ -50,7 +50,7 @@ public class PrimitiveMemTableTest {
     WritableMemChunk series = new WritableMemChunk(dataType, TVList.newList(dataType));
     int count = 1000;
     for (int i = 0; i < count; i++) {
-      series.write(i, String.valueOf(i));
+      series.write(i, i);
     }
     Iterator<TimeValuePair> it = series.getSortedTimeValuePairList().iterator();
     int i = 0;
@@ -74,10 +74,10 @@ public class PrimitiveMemTableTest {
     int dataSize = 10000;
     for (int i = 0; i < dataSize; i++) {
       memTable.write(deviceId, measurementId[0], TSDataType.INT32, dataSize - i - 1,
-          String.valueOf(i + 10));
+          i + 10);
     }
     for (int i = 0; i < dataSize; i++) {
-      memTable.write(deviceId, measurementId[0], TSDataType.INT32, i, String.valueOf(i));
+      memTable.write(deviceId, measurementId[0], TSDataType.INT32, i, i);
     }
     Iterator<TimeValuePair> tvPair = memTable
         .query(deviceId, measurementId[0], TSDataType.INT32, Collections.emptyMap(), Long.MIN_VALUE)
@@ -95,7 +95,7 @@ public class PrimitiveMemTableTest {
 
     for (int i = 0; i < ret.length; i++) {
       memTable.write(deviceId, sensorId, dataType, ret[i].getTimestamp(),
-          ret[i].getValue().getStringValue());
+          ret[i].getValue().getValue());
     }
     Iterator<TimeValuePair> tvPair = memTable
         .query(deviceId, sensorId, dataType, Collections.emptyMap(), Long.MIN_VALUE)

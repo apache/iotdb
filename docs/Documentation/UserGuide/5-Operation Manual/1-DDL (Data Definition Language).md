@@ -1,0 +1,137 @@
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+
+# Chapter 5: Operation Manual
+# DDL (Data Definition Language)
+
+### Create Storage Group
+According to the storage model we can set up the corresponding storage group. The SQL statements for creating storage groups are as follows:
+
+```
+IoTDB > set storage group to root.ln
+IoTDB > set storage group to root.sgcc
+```
+
+We can thus create two storage groups using the above two SQL statements.
+
+It is worth noting that when the path itself or the parent/child layer of the path is already set as a storage group, the path is then not allowed to be set as a storage group. For example, it is not feasible to set `root.ln.wf01` as a storage group when there exist two storage groups `root.ln` and `root.sgcc`. The system will give the corresponding error prompt as shown below:
+
+```
+IoTDB> set storage group to root.ln.wf01
+Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.exception.PathErrorException: The prefix of root.ln.wf01 has been set to the storage group.
+```
+
+### Show Storage Group
+After the storage group is created, we can use the [SHOW STORAGE GROUP](/#/Documents/progress/chap5/sec4) statement to view all the storage groups. The SQL statement is as follows:
+
+```
+IoTDB> show storage group
+```
+
+The result is as follows:
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577338-84c70600-1ef4-11e9-9dab-605b32c02836.jpg"></center>
+
+
+### Create Timeseries
+According to the storage model selected before, we can create corresponding timeseries in the two storage groups respectively. The SQL statements for creating timeseries are as follows:
+
+```
+IoTDB > create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN
+IoTDB > create timeseries root.ln.wf01.wt01.temperature with datatype=FLOAT,encoding=RLE
+IoTDB > create timeseries root.ln.wf02.wt02.hardware with datatype=TEXT,encoding=PLAIN
+IoTDB > create timeseries root.ln.wf02.wt02.status with datatype=BOOLEAN,encoding=PLAIN
+IoTDB > create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encoding=PLAIN
+IoTDB > create timeseries root.sgcc.wf03.wt01.temperature with datatype=FLOAT,encoding=RLE
+```
+
+It is worth noting that when in the CRATE TIMESERIES statement the encoding method conflicts with the data type, the system will give the corresponding error prompt as shown below:
+
+```
+IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=TS_2DIFF
+error: encoding TS_2DIFF does not support BOOLEAN
+```
+
+Please refer to [Encoding](/#/Documents/progress/chap2/sec3) for correspondence between data type and encoding.
+
+### Show Timeseries
+
+Currently, IoTDB supports two ways of viewing timeseries:
+
+* SHOW TIMESERIES statement presents all timeseries information in JSON form 
+* SHOW TIMESERIES <`Path`> statement returns all timeseries information and the total number of timeseries under the given <`Path`>  in tabular form. timeseries information includes: timeseries path, storage group it belongs to, data type, encoding type.  <`Path`> needs to be a prefix path or a path with star or a timeseries path. SQL statements are as follows:
+
+```
+IoTDB> show timeseries root
+IoTDB> show timeseries root.ln
+```
+
+The results are shown below respectly:
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577347-8db7d780-1ef4-11e9-91d6-764e58c10e94.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577359-97413f80-1ef4-11e9-8c10-53b291fc10a5.jpg"></center>
+
+It is worth noting that when the queried path does not exist, the system will return no timeseries.  
+
+### Count Timeseries
+IoTDB are able to use `COUNT TIMESERIES<Path>` to count the amount of timeseries in the path. SQL statements are as follows:
+```
+IoTDB > COUNT TIMESERIES root
+IoTDB > COUNT TIMESERIES root.ln
+IoTDB > COUNT TIMESERIES root.ln.*.*.status
+IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
+```
+
+### Delete Timeseries
+To delete the timeseries we created before, we are able to use `DELETE TimeSeries <PrefixPath>` statement.
+
+The usage are as follows:
+```
+IoTDB> delete timeseries root.ln.wf01.wt01.status
+IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
+IoTDB> delete timeseries root.ln.wf02*
+```
+
+### Show Devices
+IoTDB supports users to check the devices using  `SHOW DEVICES` statement.
+SQL statement is as follows:
+```
+IoTDB> show devices
+```
+
+## TTL
+IoTDB supports storage-level TTL settings, which means it is able to delete old data automatically and periodically. The benefit of using TTL is that hopefully you can control the total disk space usage and prevent the machine from running out of disks. Moreover, the query performance may downgrade as the total number of files goes up and the memory usage also increase as there are more files. Timely removing such files helps to keep at a high query performance level and reduce memory usage.
+
+### Set TTL
+The SQL Statement for setting TTL is as follow:
+```
+IoTDB> set ttl to root.ln 3600000
+```
+This example means that for data in `root.ln`, only that of the latest 1 hour will remain, the older one is removed or made invisible.
+
+### Unset TTL
+
+To unset TTL, we can use follwing SQL statement:
+```
+IoTDB> unset ttl to root.ln
+```
+After unset TTL, all data will be accepted in `root.ln`
+
+

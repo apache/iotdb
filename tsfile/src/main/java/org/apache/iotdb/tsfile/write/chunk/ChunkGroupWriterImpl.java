@@ -57,8 +57,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
   @Override
   public void tryToAddSeriesWriter(MeasurementSchema schema, int pageSizeThreshold) {
     if (!chunkWriters.containsKey(schema.getMeasurementId())) {
-      ChunkBuffer chunkBuffer = new ChunkBuffer(schema);
-      IChunkWriter seriesWriter = new ChunkWriterImpl(chunkBuffer, pageSizeThreshold);
+      IChunkWriter seriesWriter = new ChunkWriterImpl(schema);
       this.chunkWriters.put(schema.getMeasurementId(), seriesWriter);
     }
   }

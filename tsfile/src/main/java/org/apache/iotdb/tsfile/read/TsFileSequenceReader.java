@@ -270,6 +270,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    * this function does not modify the position of the file reader.
    */
   public TsDeviceMetadata readTsDeviceMetaData(TsDeviceMetadataIndex index) throws IOException {
+    if (index == null) {
+      return null;
+    }
     TsDeviceMetadata deviceMetadata = null;
     if (cacheDeviceMetadata) {
       deviceMetadata = deviceMetadataMap.get(index);

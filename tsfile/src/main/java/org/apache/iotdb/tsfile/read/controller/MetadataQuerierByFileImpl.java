@@ -109,6 +109,10 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       TsDeviceMetadataIndex index = fileMetaData.getDeviceMetadataIndex(selectedDevice);
       TsDeviceMetadata tsDeviceMetadata = tsFileReader.readTsDeviceMetaData(index);
 
+      if (tsDeviceMetadata == null) {
+        continue;
+      }
+
       // d1
       for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata
           .getChunkGroupMetaDataList()) {
