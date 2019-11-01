@@ -189,6 +189,10 @@ K_METADATA
     : M E T A D A T A
     ;
 
+K_VERSION
+    : V E R S I O N
+    ;
+
 K_DESCRIBE
     : D E S C R I B E
     ;

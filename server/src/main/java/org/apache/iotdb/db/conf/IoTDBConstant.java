@@ -20,59 +20,59 @@ package org.apache.iotdb.db.conf;
 
 public class IoTDBConstant {
 
-  private IoTDBConstant() {
-  }
+    private IoTDBConstant() {
+    }
 
-  public static final String ENV_FILE_NAME = "iotdb-env";
-  public static final String IOTDB_CONF = "IOTDB_CONF";
-  public static final String GLOBAL_DB_NAME = "IoTDB";
-  public static final String VERSION = "0.9.0-SNAPSHOT";
-  public static final String REMOTE_JMX_PORT_NAME = "com.sun.management.jmxremote.port";
-  public static final String IOTDB_LOCAL_JMX_PORT_NAME = "iotdb.jmx.local.port";
-  public static final String IOTDB_REMOTE_JMX_PORT_NAME = "iotdb.jmx.remote.port";
-  public static final String SERVER_RMI_ID = "java.rmi.server.randomIDs";
-  public static final String RMI_SERVER_HOST_NAME = "java.rmi.server.hostname";
-  public static final String JMX_REMOTE_RMI_PORT = "com.sun.management.jmxremote.rmi.port";
-  public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
-  public static final String JMX_TYPE = "type";
+    public static final String ENV_FILE_NAME = "iotdb-env";
+    public static final String IOTDB_CONF = "IOTDB_CONF";
+    public static final String GLOBAL_DB_NAME = "IoTDB";
+    public static final String VERSION = "0.9.0-SNAPSHOT";
+    public static final String REMOTE_JMX_PORT_NAME = "com.sun.management.jmxremote.port";
+    public static final String IOTDB_LOCAL_JMX_PORT_NAME = "iotdb.jmx.local.port";
+    public static final String IOTDB_REMOTE_JMX_PORT_NAME = "iotdb.jmx.remote.port";
+    public static final String SERVER_RMI_ID = "java.rmi.server.randomIDs";
+    public static final String RMI_SERVER_HOST_NAME = "java.rmi.server.hostname";
+    public static final String JMX_REMOTE_RMI_PORT = "com.sun.management.jmxremote.rmi.port";
+    public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
+    public static final String JMX_TYPE = "type";
 
-  public static final long GB = 1024 * 1024 * 1024L;
-  public static final long MB = 1024 * 1024L;
-  public static final long KB = 1024L;
+    public static final long GB = 1024 * 1024 * 1024L;
+    public static final long MB = 1024 * 1024L;
+    public static final long KB = 1024L;
 
-  public static final String IOTDB_HOME = "IOTDB_HOME";
+    public static final String IOTDB_HOME = "IOTDB_HOME";
 
-  public static final String SEQFILE_LOG_NODE_SUFFIX = "-seq";
-  public static final String UNSEQFILE_LOG_NODE_SUFFIX = "-unseq";
+    public static final String SEQFILE_LOG_NODE_SUFFIX = "-seq";
+    public static final String UNSEQFILE_LOG_NODE_SUFFIX = "-unseq";
 
-  public static final String PATH_ROOT = "root";
-  public static final char PATH_SEPARATOR = '.';
-  public static final String ADMIN_NAME = "root";
-  public static final String ADMIN_PW = "root";
-  public static final String PROFILE_SUFFIX = ".profile";
-  public static final String MAX_TIME = "max_time";
-  public static final String MIN_TIME = "min_time";
-  public static final int MIN_SUPPORTED_JDK_VERSION = 8;
+    public static final String PATH_ROOT = "root";
+    public static final char PATH_SEPARATOR = '.';
+    public static final String ADMIN_NAME = "root";
+    public static final String ADMIN_PW = "root";
+    public static final String PROFILE_SUFFIX = ".profile";
+    public static final String MAX_TIME = "max_time";
+    public static final String MIN_TIME = "min_time";
+    public static final int MIN_SUPPORTED_JDK_VERSION = 8;
 
-  // for cluster, set read consistency level
-  public static final String SET_READ_CONSISTENCY_LEVEL_PATTERN = "set\\s+read.*level.*";
+    // for cluster, set read consistency level
+    public static final String SET_READ_CONSISTENCY_LEVEL_PATTERN = "set\\s+read.*level.*";
 
-  public static final String SHOW_FLUSH_TASK_INFO = "show\\s+flush\\s+task\\s+info";
+    public static final String SHOW_FLUSH_TASK_INFO = "show\\s+flush\\s+task\\s+info";
 
-  public static final String SHOW_DYNAMIC_PARAMETERS = "show\\s+dynamic\\s+parameters";
+    public static final String SHOW_DYNAMIC_PARAMETERS = "show\\s+dynamic\\s+parameters";
 
-  public static final String ROLE = "role";
-  public static final String USER = "user";
-  public static final String PRIVILEGE = "privilege";
+    public static final String ROLE = "role";
+    public static final String USER = "user";
+    public static final String PRIVILEGE = "privilege";
 
-  public static final String STORAGE_GROUP = "storage group";
-  public static final String TTL = "ttl";
+    public static final String STORAGE_GROUP = "storage group";
+    public static final String TTL = "ttl";
 
-  // data folder name
-  public static final String SEQUENCE_FLODER_NAME = "sequence";
-  public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
-  public static final String TSFILE_NAME_SEPARATOR = "-";
+    // data folder name
+    public static final String SEQUENCE_FLODER_NAME = "sequence";
+    public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
+    public static final String TSFILE_NAME_SEPARATOR = "-";
 
-  public static final int MEMTABLE_NUM_IN_EACH_STORAGE_GROUP = 4;
+    public static final int MEMTABLE_NUM_IN_EACH_STORAGE_GROUP = 4;
 
 }

@@ -107,6 +107,7 @@ tokens{
     TOK_SHOW;
     TOK_DATE_EXPR;
     TOK_DURATION;
+    TOK_SHOW_VERSION;
 }
 
 @header{
@@ -301,6 +302,7 @@ ddlStatement
     | mergeStatement
     | listStatement
     | ttlStatement
+    | showVersion
     ;
 
 administrationStatement
@@ -631,6 +633,11 @@ unlinkPath
 showMetadata
     : K_SHOW K_METADATA
     -> ^(TOK_SHOW_METADATA)
+    ;
+
+showVersion
+    : K_SHOW K_VERSION
+    -> ^(TOK_SHOW_VERSION)
     ;
 
 describePath

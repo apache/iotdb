@@ -50,136 +50,134 @@ import java.time.ZoneId;
  */
 public class QueryProcessor {
 
-  private IQueryProcessExecutor executor;
+    private IQueryProcessExecutor executor;
 
-  public QueryProcessor(IQueryProcessExecutor executor) {
-    this.executor = executor;
-  }
-
-  public IQueryProcessExecutor getExecutor() {
-    return executor;
-  }
-
-  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
-      throws QueryProcessorException, ArgsErrorException,
-      MetadataErrorException {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    return parseSQLToPhysicalPlan(sqlStr, config.getZoneID());
-  }
-
-  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
-      throws QueryProcessorException, ArgsErrorException,
-      MetadataErrorException {
-    AstNode astNode = parseSQLToAST(sqlStr);
-    Operator operator = parseASTToOperator(astNode, zoneId);
-    operator = logicalOptimize(operator, executor);
-    PhysicalGenerator physicalGenerator = new PhysicalGenerator(executor);
-    PhysicalPlan qp = physicalGenerator.transformToPhysicalPlan(operator);
-    return qp;
-  }
-
-  /**
-   * Convert ast tree to Operator which type maybe {@code SFWOperator} or {@code AuthorOperator}
-   *
-   * @param astNode
-   *            - input ast tree
-   * @return - RootOperator has four subclass:Query/Insert/Delete/Update/Author
-   * @throws QueryProcessorException
-   *             exception in converting sql to operator
-   * @throws ArgsErrorException
-   */
-  private RootOperator parseASTToOperator(AstNode astNode, ZoneId zoneId)
-      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
-    LogicalGenerator generator = new LogicalGenerator(zoneId);
-    return generator.getLogicalPlan(astNode);
-  }
-
-  /**
-   * Given a SQL statement and generate an ast tree
-   *
-   * @param sqlStr
-   *            input sql command
-   * @return ast tree
-   * @throws IllegalASTFormatException
-   *             exception in sql parsing
-   */
-  private AstNode parseSQLToAST(String sqlStr) throws IllegalASTFormatException {
-    AstNode astTree;
-    // parse string to ASTTree
-    try {
-      astTree = ParseGenerator.generateAST(sqlStr);
-    } catch (ParseException e) {
-      // e.printStackTrace();
-      throw new IllegalASTFormatException(
-          "parsing error,statement: " + sqlStr, e);
+    public QueryProcessor(IQueryProcessExecutor executor) {
+        this.executor = executor;
     }
-    return ParseUtils.findRootNonNullToken(astTree);
-  }
 
-  /**
-   * given an unoptimized logical operator tree and return a optimized result.
-   *
-   * @param operator
-   *            unoptimized logical operator
-   * @param executor
-   * @return optimized logical operator
-   * @throws LogicalOptimizeException
-   *             exception in logical optimizing
-   */
-  private Operator logicalOptimize(Operator operator, IQueryProcessExecutor executor)
-      throws LogicalOperatorException {
-    switch (operator.getType()) {
-      case AUTHOR:
-      case METADATA:
-      case SET_STORAGE_GROUP:
-      case DELETE_STORAGE_GROUP:
-      case CREATE_TIMESERIES:
-      case DELETE_TIMESERIES:
-      case PROPERTY:
-      case LOADDATA:
-      case INSERT:
-      case INDEX:
-      case INDEXQUERY:
-      case GRANT_WATERMARK_EMBEDDING:
-      case REVOKE_WATERMARK_EMBEDDING:
-      case TTL:
-        return operator;
-      case QUERY:
-      case UPDATE:
-      case DELETE:
-        SFWOperator root = (SFWOperator) operator;
-        return optimizeSFWOperator(root, executor);
-      default:
-        throw new LogicalOperatorException("unknown operator type:" + operator.getType());
+    public IQueryProcessExecutor getExecutor() {
+        return executor;
     }
-  }
 
-  /**
-   * given an unoptimized select-from-where operator and return an optimized result.
-   *
-   * @param root
-   *            unoptimized select-from-where operator
-   * @param executor
-   * @return optimized select-from-where operator
-   * @throws LogicalOptimizeException
-   *             exception in SFW optimizing
-   */
-  private SFWOperator optimizeSFWOperator(SFWOperator root, IQueryProcessExecutor executor)
-      throws LogicalOperatorException {
-    ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer(executor);
-    root = (SFWOperator) concatPathOptimizer.transform(root);
-    FilterOperator filter = root.getFilterOperator();
-    if (filter == null) {
-      return root;
+    public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
+            throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+        IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+        return parseSQLToPhysicalPlan(sqlStr, config.getZoneID());
     }
-    RemoveNotOptimizer removeNot = new RemoveNotOptimizer();
-    filter = removeNot.optimize(filter);
-    DnfFilterOptimizer dnf = new DnfFilterOptimizer();
-    filter = dnf.optimize(filter);
-    MergeSingleFilterOptimizer merge = new MergeSingleFilterOptimizer();
-    filter = merge.optimize(filter);
-    root.setFilterOperator(filter);
-    return root;
-  }
+
+    public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
+            throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+        AstNode astNode = parseSQLToAST(sqlStr);
+        Operator operator = parseASTToOperator(astNode, zoneId);
+        operator = logicalOptimize(operator, executor);
+        PhysicalGenerator physicalGenerator = new PhysicalGenerator(executor);
+        PhysicalPlan qp = physicalGenerator.transformToPhysicalPlan(operator);
+        return qp;
+    }
+
+    /**
+     * Convert ast tree to Operator which type maybe {@code SFWOperator} or {@code AuthorOperator}
+     *
+     * @param astNode
+     *            - input ast tree
+     * @return - RootOperator has four subclass:Query/Insert/Delete/Update/Author
+     * @throws QueryProcessorException
+     *             exception in converting sql to operator
+     * @throws ArgsErrorException
+     */
+    private RootOperator parseASTToOperator(AstNode astNode, ZoneId zoneId)
+            throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+        LogicalGenerator generator = new LogicalGenerator(zoneId);
+        return generator.getLogicalPlan(astNode);
+    }
+
+    /**
+     * Given a SQL statement and generate an ast tree
+     *
+     * @param sqlStr
+     *            input sql command
+     * @return ast tree
+     * @throws IllegalASTFormatException
+     *             exception in sql parsing
+     */
+    private AstNode parseSQLToAST(String sqlStr) throws IllegalASTFormatException {
+        AstNode astTree;
+        // parse string to ASTTree
+        try {
+            astTree = ParseGenerator.generateAST(sqlStr);
+        } catch (ParseException e) {
+            // e.printStackTrace();
+            throw new IllegalASTFormatException("parsing error,statement: " + sqlStr, e);
+        }
+        return ParseUtils.findRootNonNullToken(astTree);
+    }
+
+    /**
+     * given an unoptimized logical operator tree and return a optimized result.
+     *
+     * @param operator
+     *            unoptimized logical operator
+     * @param executor
+     * @return optimized logical operator
+     * @throws LogicalOptimizeException
+     *             exception in logical optimizing
+     */
+    private Operator logicalOptimize(Operator operator, IQueryProcessExecutor executor)
+            throws LogicalOperatorException {
+        switch (operator.getType()) {
+        case AUTHOR:
+        case METADATA:
+        case SET_STORAGE_GROUP:
+        case DELETE_STORAGE_GROUP:
+        case CREATE_TIMESERIES:
+        case DELETE_TIMESERIES:
+        case PROPERTY:
+        case LOADDATA:
+        case INSERT:
+        case INDEX:
+        case INDEXQUERY:
+        case GRANT_WATERMARK_EMBEDDING:
+        case REVOKE_WATERMARK_EMBEDDING:
+        case TTL:
+        case VERSION:
+            return operator;
+        case QUERY:
+        case UPDATE:
+        case DELETE:
+            SFWOperator root = (SFWOperator) operator;
+            return optimizeSFWOperator(root, executor);
+        default:
+            throw new LogicalOperatorException("unknown operator type:" + operator.getType());
+        }
+    }
+
+    /**
+     * given an unoptimized select-from-where operator and return an optimized result.
+     *
+     * @param root
+     *            unoptimized select-from-where operator
+     * @param executor
+     * @return optimized select-from-where operator
+     * @throws LogicalOptimizeException
+     *             exception in SFW optimizing
+     */
+    private SFWOperator optimizeSFWOperator(SFWOperator root, IQueryProcessExecutor executor)
+            throws LogicalOperatorException {
+        ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer(executor);
+        root = (SFWOperator) concatPathOptimizer.transform(root);
+        FilterOperator filter = root.getFilterOperator();
+        if (filter == null) {
+            return root;
+        }
+        RemoveNotOptimizer removeNot = new RemoveNotOptimizer();
+        filter = removeNot.optimize(filter);
+        DnfFilterOptimizer dnf = new DnfFilterOptimizer();
+        filter = dnf.optimize(filter);
+        MergeSingleFilterOptimizer merge = new MergeSingleFilterOptimizer();
+        filter = merge.optimize(filter);
+        root.setFilterOperator(filter);
+        return root;
+    }
 
 }
