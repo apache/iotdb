@@ -147,6 +147,20 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         } catch (TException e) {
           throw new TException("Connection error when fetching timeseries metadata", e);
         }
+      case Constant.CATALOG_VERSION:
+        req = new TSFetchMetadataReq(Constant.GLOBAL_VERSION);
+        req.setColumnPath(schemaPattern);
+        try {
+          TSFetchMetadataResp resp = client.fetchMetadata(req);
+          try {
+            RpcUtils.verifySuccess(resp.getStatus());
+          } catch (IoTDBRPCException e) {
+            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
+          }
+          return new IoTDBMetadataResultSet(resp.getVersion(), MetadataType.VERSION);
+        } catch (TException e) {
+          throw new TException("Connection error when fetching timeseries metadata", e);
+        }
       default:
         throw new SQLException(catalog + " is not supported. Please refer to the user guide"
             + " for more details.");
@@ -336,7 +350,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public String getDatabaseProductVersion() {
-    return Constant.GLOBAL_DB_VERSION;
+    return Constant.GLOBAL_VERSION;
   }
 
   @Override

@@ -346,6 +346,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setNodeTimeseriesNum(getNodeTimeseriesNum(getNodesList(req.getColumnPath(), req.getNodeLevel())));
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
+        case "VERSION":
+          resp.setVersion(getVersion());
+          status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+          break;
         default:
           status = getStatus(TSStatusCode.FETCH_METADATA_ERROR, req.getType());
           break;
@@ -382,6 +386,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private Set<String> getAllDevices() throws SQLException {
     return MManager.getInstance().getAllDevices();
+  }
+
+  private String getVersion() throws SQLException {
+    return IoTDBConstant.VERSION;
   }
 
   private List<List<String>> getTimeSeriesForPath(String path)
