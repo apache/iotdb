@@ -302,24 +302,34 @@ public class IoTDBConfig {
   private int defaultStorageGroupLevel = 2;
 
   /**
-   * Boolean encoding when creating schema automatically is enabled
+   * BOOLEAN encoding when creating schema automatically is enabled
    */
   private TSEncoding defaultBooleanEncoding = TSEncoding.RLE;
 
   /**
-   * Long encoding when creating schema automatically is enabled
+   * INT32 encoding when creating schema automatically is enabled
    */
-  private TSEncoding defaultLongEncoding = TSEncoding.RLE;
+  private TSEncoding defaultInt32Encoding = TSEncoding.RLE;
 
   /**
-   * Double encoding when creating schema automatically is enabled
+   * INT64 encoding when creating schema automatically is enabled
+   */
+  private TSEncoding defaultInt64Encoding = TSEncoding.RLE;
+
+  /**
+   * FLOAT encoding when creating schema automatically is enabled
+   */
+  private TSEncoding defaultFloatEncoding = TSEncoding.GORILLA;
+
+  /**
+   * DOUBLE encoding when creating schema automatically is enabled
    */
   private TSEncoding defaultDoubleEncoding = TSEncoding.GORILLA;
 
   /**
-   * String encoding when creating schema automatically is enabled
+   * TEXT encoding when creating schema automatically is enabled
    */
-  private TSEncoding defaultStringEncoding = TSEncoding.PLAIN;
+  private TSEncoding defaultTextEncoding = TSEncoding.PLAIN;
 
   /**
    * How much memory (in byte) can be used by a single merge task.
@@ -1051,16 +1061,40 @@ public class IoTDBConfig {
     this.defaultBooleanEncoding = TSEncoding.valueOf(defaultBooleanEncoding);
   }
 
-  public TSEncoding getDefaultLongEncoding() {
-    return defaultLongEncoding;
+  public TSEncoding getDefaultInt32Encoding() {
+    return defaultInt32Encoding;
   }
 
-  public void setDefaultLongEncoding(TSEncoding defaultLongEncoding) {
-    this.defaultLongEncoding = defaultLongEncoding;
+  public void setDefaultInt32Encoding(TSEncoding defaultInt32Encoding) {
+    this.defaultInt32Encoding = defaultInt32Encoding;
   }
 
-  public void setDefaultLongEncoding(String defaultLongEncoding) {
-    this.defaultLongEncoding = TSEncoding.valueOf(defaultLongEncoding);
+  public void setDefaultInt32Encoding(String defaultInt32Encoding) {
+    this.defaultInt32Encoding = TSEncoding.valueOf(defaultInt32Encoding);
+  }
+
+  public TSEncoding getDefaultInt64Encoding() {
+    return defaultInt64Encoding;
+  }
+
+  public void setDefaultInt64Encoding(TSEncoding defaultInt64Encoding) {
+    this.defaultInt64Encoding = defaultInt64Encoding;
+  }
+
+  public void setDefaultInt64Encoding(String defaultInt64Encoding) {
+    this.defaultInt64Encoding = TSEncoding.valueOf(defaultInt64Encoding);
+  }
+
+  public TSEncoding getDefaultFloatEncoding() {
+    return defaultFloatEncoding;
+  }
+
+  public void setDefaultFloatEncoding(TSEncoding defaultFloatEncoding) {
+    this.defaultFloatEncoding = defaultFloatEncoding;
+  }
+
+  public void setDefaultFloatEncoding(String defaultFloatEncoding) {
+    this.defaultFloatEncoding = TSEncoding.valueOf(defaultFloatEncoding);
   }
 
   public TSEncoding getDefaultDoubleEncoding() {
@@ -1075,16 +1109,16 @@ public class IoTDBConfig {
     this.defaultDoubleEncoding = TSEncoding.valueOf(defaultDoubleEncoding);
   }
 
-  public TSEncoding getDefaultStringEncoding() {
-    return defaultStringEncoding;
+  public TSEncoding getDefaultTextEncoding() {
+    return defaultTextEncoding;
   }
 
-  public void setDefaultStringEncoding(TSEncoding defaultStringEncoding) {
-    this.defaultStringEncoding = defaultStringEncoding;
+  public void setDefaultTextEncoding(TSEncoding defaultTextEncoding) {
+    this.defaultTextEncoding = defaultTextEncoding;
   }
 
-  public void setDefaultStringEncoding(String defaultStringEncoding) {
-    this.defaultStringEncoding = TSEncoding.valueOf(defaultStringEncoding);
+  public void setDefaultTextEncoding(String defaultTextEncoding) {
+    this.defaultTextEncoding = TSEncoding.valueOf(defaultTextEncoding);
   }
 
   public FSType getSystemFileStorageFs() {

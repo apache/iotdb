@@ -195,7 +195,7 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  void fill(InputStream inputStream) throws IOException {
+  void deserialize(InputStream inputStream) throws IOException {
     this.min = new Binary(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream));
     this.max = new Binary(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream));
     this.first = new Binary(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream));
@@ -204,7 +204,7 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  void fill(ByteBuffer byteBuffer) throws IOException {
+  void deserialize(ByteBuffer byteBuffer) throws IOException {
     this.min = new Binary(
         ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(byteBuffer).array());
     this.max = new Binary(
@@ -217,11 +217,11 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  protected void fill(TsFileInput input, long offset) throws IOException {
+  protected void deserialize(TsFileInput input, long offset) throws IOException {
     int size = getSerializedSize();
     ByteBuffer buffer = ByteBuffer.allocate(size);
     ReadWriteIOUtils.readAsPossible(input, offset, buffer);
     buffer.flip();
-    fill(buffer);
+    deserialize(buffer);
   }
 }

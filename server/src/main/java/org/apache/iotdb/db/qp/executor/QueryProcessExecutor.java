@@ -70,6 +70,7 @@ import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -195,21 +196,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   @Override
   public boolean update(Path path, long startTime, long endTime, String value)
       throws ProcessorException {
-    String deviceId = path.getDevice();
-    String measurementId = path.getMeasurement();
-    try {
-      String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
-      if (!mManager.pathExist(fullPath)) {
-        throw new ProcessorException(String.format("Time series %s does not exist.", fullPath));
-      }
-      mManager.getStorageGroupNameByPath(fullPath);
-      TSDataType dataType = mManager.getSeriesType(fullPath);
-      value = checkValue(dataType, value);
-      storageEngine.update(deviceId, measurementId, startTime, endTime, dataType, value);
-      return true;
-    } catch (PathErrorException | StorageGroupException e) {
-      throw new ProcessorException(e);
-    }
+    return false;
   }
 
   @Override
@@ -236,18 +223,26 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
       MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
-      String[] values = insertPlan.getValues();
+      String[] strValues = insertPlan.getValues();
       TSDataType[] dataTypes = new TSDataType[measurementList.length];
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
       for (int i = 0; i < measurementList.length; i++) {
+
+        // check if timeseries exists
         if (!node.hasChild(measurementList[i])) {
           if (!conf.isAutoCreateSchemaEnabled()) {
             throw new ProcessorException(
                 String.format("Current deviceId[%s] does not contain measurement:%s",
                     deviceId, measurementList[i]));
           }
-          addPathToMTree(deviceId, measurementList[i], values[i]);
+          try {
+            addPathToMTree(deviceId, measurementList[i], strValues[i]);
+          } catch (MetadataErrorException e) {
+            if (!e.getMessage().contains("already exist")) {
+              throw e;
+            }
+          }
         }
         MNode measurementNode = node.getChild(measurementList[i]);
         if (!measurementNode.isLeaf()) {
@@ -257,7 +252,6 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         }
 
         dataTypes[i] = measurementNode.getSchema().getType();
-        values[i] = checkValue(dataTypes[i], values[i]);
       }
       insertPlan.setDataTypes(dataTypes);
       return storageEngine.insert(insertPlan);
@@ -272,25 +266,33 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       String[] measurementList = batchInsertPlan.getMeasurements();
       String deviceId = batchInsertPlan.getDeviceId();
-
       MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
-      Object[] values;
+      TSDataType[] dataTypes = batchInsertPlan.getDataTypes();
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
       for (int i = 0; i < measurementList.length; i++) {
+
+        // check if timeseries exists
         if (!node.hasChild(measurementList[i])) {
           if (!conf.isAutoCreateSchemaEnabled()) {
             throw new ProcessorException(
                 String.format("Current deviceId[%s] does not contain measurement:%s",
                     deviceId, measurementList[i]));
           }
-          values = collectFirstElements(batchInsertPlan.getColumns());
-          addPathToMTree(deviceId, measurementList[i], values[i]);
+          addPathToMTree(deviceId, measurementList[i], dataTypes[i]);
         }
         MNode measurementNode = node.getChild(measurementList[i]);
         if (!measurementNode.isLeaf()) {
           throw new ProcessorException(
               String.format("Current Path is not leaf node. %s.%s", deviceId, measurementList[i]));
+        }
+
+        // check data type
+        if (measurementNode.getSchema().getType() != batchInsertPlan.getDataTypes()[i]) {
+          throw new ProcessorException(String
+              .format("Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
+                  measurementList[i], batchInsertPlan.getDataTypes()[i],
+                  measurementNode.getSchema().getType()));
         }
       }
       return storageEngine.insertBatch(batchInsertPlan);
@@ -304,30 +306,6 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   public List<String> getAllPaths(String originPath) throws MetadataErrorException {
     return MManager.getInstance().getPaths(originPath);
   }
-
-
-  private static String checkValue(TSDataType dataType, String value) throws ProcessorException {
-    if (dataType == TSDataType.BOOLEAN) {
-      value = value.toLowerCase();
-      if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value)) {
-        value = "false";
-      } else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value)) {
-        value = "true";
-      } else if (!SQLConstant.BOOLEN_TRUE.equals(value) && !SQLConstant.BOOLEN_FALSE
-          .equals(value)) {
-        throw new ProcessorException("The BOOLEAN data type should be true/TRUE or false/FALSE");
-      }
-    } else if (dataType == TSDataType.TEXT) {
-      if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
-          || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
-        value = value.substring(1, value.length() - 1);
-      } else {
-        throw new ProcessorException("The TEXT data type should be covered by \" or '");
-      }
-    }
-    return value;
-  }
-
 
   private boolean operateAuthor(AuthorPlan author) throws ProcessorException {
     AuthorOperator.AuthorType authorType = author.getAuthorType();
@@ -713,19 +691,24 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   /**
    * Add a seriesPath to MTree
    */
-  private void addPathToMTree(String deviceId, String measurementId, Object value)
+  private void addPathToMTree(String deviceId, String measurementId, TSDataType dataType)
       throws PathErrorException, MetadataErrorException, StorageEngineException {
     String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
-    TSDataType predictedDataType = TypeInferenceUtils.getPredictedDataType(value);
-    TSEncoding defaultEncoding = getDefaultEncoding(predictedDataType);
+    TSEncoding defaultEncoding = getDefaultEncoding(dataType);
     CompressionType defaultCompressor =
         CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
     boolean result = mManager.addPathToMTree(
-        fullPath, predictedDataType, defaultEncoding, defaultCompressor, Collections.emptyMap());
+        fullPath, dataType, defaultEncoding, defaultCompressor, Collections.emptyMap());
     if (result) {
       storageEngine.addTimeSeries(
-          new Path(fullPath), predictedDataType, defaultEncoding, defaultCompressor, Collections.emptyMap());
+          new Path(fullPath), dataType, defaultEncoding, defaultCompressor, Collections.emptyMap());
     }
+  }
+
+  private void addPathToMTree(String deviceId, String measurementId, Object value)
+      throws PathErrorException, MetadataErrorException, StorageEngineException {
+    TSDataType predictedDataType = TypeInferenceUtils.getPredictedDataType(value);
+    addPathToMTree(deviceId, measurementId, predictedDataType);
   }
 
   /**
@@ -736,23 +719,19 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     switch (dataType) {
       case BOOLEAN:
         return conf.getDefaultBooleanEncoding();
+      case INT32:
+        return conf.getDefaultInt32Encoding();
       case INT64:
-        return conf.getDefaultLongEncoding();
+        return conf.getDefaultInt64Encoding();
+      case FLOAT:
+        return conf.getDefaultFloatEncoding();
       case DOUBLE:
         return conf.getDefaultDoubleEncoding();
+      case TEXT:
+        return conf.getDefaultTextEncoding();
       default:
-        return conf.getDefaultStringEncoding();
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", dataType.toString()));
     }
-  }
-
-  /**
-   * Collect the first element of columns of an array of arrays
-   */
-  private Object[] collectFirstElements(Object[] values) {
-    Object[] firstElements = new Object[values.length];
-    for (int i = 0; i < values.length; i++) {
-      firstElements[i] = ((Object[]) values[i])[0];
-    }
-    return firstElements;
   }
 }

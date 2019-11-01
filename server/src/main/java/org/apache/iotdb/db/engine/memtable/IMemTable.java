@@ -39,7 +39,7 @@ public interface IMemTable {
   Map<String, Map<String, IWritableMemChunk>> getMemTableMap();
 
   void write(String deviceId, String measurement, TSDataType dataType,
-      long insertTime, String insertValue);
+      long insertTime, Object objectValue);
 
   void write(BatchInsertPlan batchInsertPlan, List<Integer> indexes);
 

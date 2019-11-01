@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read;
 
+import static org.junit.Assert.fail;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -149,9 +151,8 @@ public class ReadOnlyTsFileTest {
     QueryExpression queryExpression = QueryExpression.create(paths, expression);
     try {
       QueryDataSet queryDataSet = tsFile.query(queryExpression);
-      Assert.fail();
-    } catch (IOException e) {
-      Assert.assertEquals("select path: dr.s1 not in this tsfile", e.getMessage());
+    } catch (Exception e) {
+      fail();
     }
   }
 
