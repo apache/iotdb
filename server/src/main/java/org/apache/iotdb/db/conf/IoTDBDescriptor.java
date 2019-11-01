@@ -320,14 +320,14 @@ public class IoTDBDescriptor {
           String.valueOf(conf.getDefaultTTL()))));
 
       // At the same time, set TSFileConfig
-      TSFileConfig tsFileConfig =TSFileDescriptor.getInstance().getConfig();
-      tsFileConfig.setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
-      tsFileConfig.setHdfsIp(properties.getProperty("hdfs_ip").split(","));
-      tsFileConfig.setHdfsPort(properties.getProperty("hdfs_port"));tsFileConfig.setDfsNameServices(properties.getProperty("dfs_nameservices"));
-      tsFileConfig.setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes").split(","));
-      tsFileConfig.setDfsHaAutomaticFailoverEnabled(
+      TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
+      TSFileDescriptor.getInstance().getConfig().setHdfsIp(properties.getProperty("hdfs_ip").split(","));
+      TSFileDescriptor.getInstance().getConfig().setHdfsPort(properties.getProperty("hdfs_port"));
+      TSFileDescriptor.getInstance().getConfig().setDfsNameServices(properties.getProperty("dfs_nameservices"));
+      TSFileDescriptor.getInstance().getConfig().setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes").split(","));
+      TSFileDescriptor.getInstance().getConfig().setDfsHaAutomaticFailoverEnabled(
           Boolean.parseBoolean(properties.getProperty("dfs_ha_automatic_failover_enabled")));
-      tsFileConfig.setDfsClientFailoverProxyProvider(
+      TSFileDescriptor.getInstance().getConfig().setDfsClientFailoverProxyProvider(
           properties.getProperty("dfs_client_failover_proxy_provider"));
 
       // set tsfile-format config
