@@ -19,13 +19,13 @@
 
 -->
 
-# Chapter 8: System Design (Developer)
+# Chapter 7: System Design
 
-## TsFile Hierarchy
+## 1. TsFile Design
 
-  Here is a brief introduction of the structure of a TsFile file.
+  This is an introduction to the design details of TsFile.
 
-## Variable Storage
+### 1.1 Variable Storage
 
 - **Big Endian**
        
@@ -67,28 +67,25 @@
   - 3: last_value
   - 4: sum_value
 
-## TsFile Overview
+### 1.2 TsFile Overview
 
 Here is a graph about the TsFile structure.
 
 ![TsFile Breakdown](https://user-images.githubusercontent.com/40447846/61616997-6fad1300-ac9c-11e9-9c17-46785ebfbc88.png)
 
-## Magic String
+#### 1.2.1 Magic String and Version Number
 
-There is a 12 bytes magic string:
+A TsFile begins with a 6-byte magic string (`TsFile`) and a 6-byte version number (`000001`).
 
-`TsFilev0.8.0`
 
-It is in both the beginning and end of a TsFile file as signature.
-
-## Data
+#### 1.2.2 Data
 
 The content of a TsFile file can be divided as two parts: data and metadata. There is a byte `0x02` as the marker between
 data and metadata.
 
-The data section is an array of `ChunkGroup`, each ChuckGroup represents a *device*.
+The data section is an array of `ChunkGroup`, each ChunkGroup represents a *device*.
 
-#### ChuckGroup
+##### ChunkGroup
 
 The `ChunkGroup` has an array of `Chunk`, a following byte `0x00` as the marker, and a `ChunkFooter`.
 
@@ -96,7 +93,7 @@ The `ChunkGroup` has an array of `Chunk`, a following byte `0x00` as the marker,
 
 A `Chunk` represents a *sensor*. There is a byte `0x01` as the marker, following a `ChunkHeader` and an array of `Page`.
 
-###### ChunkHeader
+##### ChunkHeader
 
 <center>
         <table style="text-align:center">
@@ -111,7 +108,7 @@ A `Chunk` represents a *sensor*. There is a byte `0x01` as the marker, following
         </table>
 </center>
 
-###### Page
+##### Page
 
 A `Page` represents some data in a `Chunk`. It contains a `PageHeader` and the actual data (The encoded time-value pair).
 
@@ -123,30 +120,30 @@ PageHeader Structure
         	<tr><td>Data size before compressing</td><td>int</td>
         	<tr><td>Data size after compressing(if use SNAPPY)</td><td>int</td>
         	<tr><td>Number of values</td><td>int</td>
-        	<tr><td>Minimum time stamp</td><td>long</td>
         	<tr><td>Maximum time stamp</td><td>long</td>
-        	<tr><td>Minimum value of the page</td><td>Type of the page</td>
+        	<tr><td>Minimum time stamp</td><td>long</td>
         	<tr><td>Maximum value of the page</td><td>Type of the page</td>
+          <tr><td>Minimum value of the page</td><td>Type of the page</td>
         	<tr><td>First value of the page</td><td>Type of the page</td>
-        	<tr><td>Last value of the page</td><td>Type of the page</td>
         	<tr><td>Sum of the Page</td><td>double</td>
+        	<tr><td>Last value of the page</td><td>Type of the page</td>
         </table>
 </center>
 
-###### ChunkGroupFooter
+##### ChunkGroupFooter
 
 <center>
         <table style="text-align:center">
         	<tr><th>Member Description</th><th>Member Type</td></tr>
-        	<tr><td>Deviceid</td><td>String</td>
+        	<tr><td>DeviceId</td><td>String</td>
         	<tr><td>Data size of the ChunkGroup</td><td>long</td>
         	<tr><td>Number of chunks</td><td>int</td>
         </table>
 </center>
 
-## Metadata
+#### 1.2.3  Metadata
 
-### TsDeviceMetaData
+##### 1.2.3.1 TsDeviceMetaData
 
 The first part of metadata is `TsDeviceMetaData` 
 
@@ -156,43 +153,40 @@ The first part of metadata is `TsDeviceMetaData`
         	<tr><td>Start time</td><td>long</td>
         	<tr><td>End time</td><td>long</td>
         	<tr><td>Number of chunk groups</td><td>int</td>
+        	<tr><td>List of ChunkGroupMetaData</td><td>list</td>
         </table>
 </center>
 
-Then there is an array of `ChunkGroupMetaData` after `TsDeviceMetaData`
-
-### ChunkGroupMetaData
+###### ChunkGroupMetaData
 
 <center>
         <table style="text-align:center">
         	<tr><th>Member Description</th><th>Member Type</td></tr>
-        	<tr><td>Deviceid</td><td>String</td>
+        	<tr><td>DeviceId</td><td>String</td>
         	<tr><td>Start offset of the ChunkGroup</td><td>long</td>
         	<tr><td>End offset of the ChunkGroup</td><td>long</td>
         	<tr><td>Version</td><td>long</td>
         	<tr><td>Number of ChunkMetaData</td><td>int</td>
+        	<tr><td>List of ChunkMetaData</td><td>list</td>
         </table>
 </center>
 
-Then there is an array of `ChunkMetadata` for each `ChunkGroupMetadata`
-
-##### ChunkMetaData
+###### ChunkMetaData
 
 <center>
         <table style="text-align:center">
         	<tr><th>Member Description</th><th>Member Type</td></tr>
-        	<tr><td>Measurementid</td><td>String</td>
+        	<tr><td>MeasurementId</td><td>String</td>
         	<tr><td>Start offset of ChunkHeader</td><td>long</td>
         	<tr><td>Number of data points</td><td>long</td>
         	<tr><td>Start time</td><td>long</td>
         	<tr><td>End time</td><td>long</td>
         	<tr><td>Data type</td><td>short</td>
-        	<tr><td>Number of statistics</td><td>int</td>
         	<tr><td>The statistics of this chunk</td><td>TsDigest</td>
         </table>
 </center>
 
-###### TsDigest (updated on 2019/8/27)
+###### TsDigest
 
 Right now there are five statistics: `min_value, max_value, first_value, last_value, sum_value`.
 
@@ -244,47 +238,47 @@ ByteBuffer[] statistics = [
 ]
 ```
 
-#### File Metadata
+##### 1.2.3.2 TsFileMetaData
 
-After the array of `ChunkGroupMetadata`, here is the last part of the metadata.
+`TsFileMetaData` follows after `TsDeviceMetadatas`.
 
 <center>
         <table style="text-align:center">
         	<tr><th>Member Description</th><th>Member Type</td></tr>
-        	<tr><td>Number of Devices</td><td>int</td>
-        	<tr><td>Array of DeviceIndexMetadata</td><td>DeviceIndexMetadata</td>
-        	<tr><td>Number of Measurements</td><td>int</td>
-        	<tr><td>Array of Measurement name and schema</td><td>String, MeasurementSchema pair</td>
-        	<tr><td>Current Version(3 for now)</td><td>int</td>
+        	<tr><td>Number of devices</td><td>int</td>
+        	<tr><td>Pairs of device name and deviceMetadataIndex</td><td>String, TsDeviceMetadataIndex pair</td>
+        	<tr><td>Number of measurements</td><td>int</td>
+        	<tr><td>Pairs of measurement name and schema</td><td>String, MeasurementSchema pair</td>
         	<tr><td>Author byte</td><td>byte</td>
-        	<tr><td>Author(if author byte is 0x01)</td><td>String</td>
+          <tr><td>Author(if author byte is 0x01)</td><td>String</td>
+          <tr><td>totalChunkNum</td><td>int</td>
+          <tr><td>invalidChunkNum</td><td>int</td>
         	<tr><td>Bloom filter size</td><td>int</td>
         	<tr><td>Bloom filter bit vector</td><td>byte[Bloom filter size]</td>
         	<tr><td>Bloom filter capacity</td><td>int</td>
         	<tr><td>Bloom filter hash functions size</td><td>int</td>
-        	<tr><td>File Metadata size(not including itself)</td><td>int</td>
         </table>
 </center>
 
-##### DeviceIndexMetadata
+###### TsDeviceMetadataIndex
 
 <center>
         <table style="text-align:center">
         	<tr><th>Member Description</th><th>Member Type</td></tr>
-        	<tr><td>Deviceid</td><td>String</td>
-        	<tr><td>Start offset of ChunkGroupMetaData(Or TsDeviceMetaData if it's the first one)</td><td>long</td>
+        	<tr><td>DeviceId</td><td>String</td>
+        	<tr><td>Start offset of TsDeviceMetaData</td><td>long</td>
         	<tr><td>length</td><td>int</td>
         	<tr><td>Start time</td><td>long</td>
         	<tr><td>End time</td><td>long</td>
         </table>
 </center>
 
-##### MeasurementSchema
+###### MeasurementSchema
 
 <center>
         <table style="text-align:center">
-            <tr><th>Member Description</th><th>Member Type</td></tr>
-        	<tr><td>Measurementid</td><td>String</td></tr>
+          <tr><th>Member Description</th><th>Member Type</td></tr>
+        	<tr><td>MeasurementId</td><td>String</td></tr>
         	<tr><td>Data type</td><td>short</td>
         	<tr><td>Encoding</td><td>short</td>
         	<tr><td>Compressor</td><td>short</td>
@@ -296,92 +290,154 @@ If size of props is greater than 0, there is an array of <String, String> pair a
 
 Such as "max_point_number""2".
 
-## Done
+##### 1.2.3.3 TsFileMetadataSize
 
-After the `FileMetaData`, there will be another Magic String and you have finished the journey of discovering TsFile!
+After the TsFileMetaData, there is an int indicating the size of the TsFileMetaData.
 
-You can also use /tsfile/example/TsFileSequenceRead to read and validate a TsFile.
 
-## TsFile Sketch Tool
-`org.apache.iotdb.tsfile.TsFileSketchTool` under the example/tsfile module is a tool to help you dive into the physical storage layout of a specific TsFile.  
+#### 1.2.4 Magic String
+A TsFile ends with a 6-byte magic string (`TsFile`).
 
-Command:   
-java -cp `<path of tsfile-example-0.9.0-SNAPSHOT.jar>` 
-`<path of tsfile-0.9.0-SNAPSHOT-jar-with-dependencies.jar>` 
-`org.apache.iotdb.tsfile.TsFileSketchTool`
-`<path of your TsFile>` (`<path of the file for saving the output result>`) 
 
-Note: 
-- if `<path of the file for saving the output result>` is not set, 
-the default path "TsFile_sketch_view.txt" will be used. 
+Congratulations! You have finished the journey of discovering TsFile.
 
-Command example:
+### 1.3 Tool Set
+
+#### 1.3.1 TsFileResource Print Tool
+
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.9.0-SNAPSHOT\tools` directory.
+
+Command:
+
+For Windows:
+
 ```
-java -cp tsfile-example-0.9.0-SNAPSHOT.jar;D:\incubator-iotdb\tsfile\target\tsfile-0.9.0-SNAPSHOT-jar-with-dependencies.jar org.apache.iotdb.tsfile.TsFileSketchTool D:\1567769299010-101.tsfile
+.\print-tsfile-sketch.bat <path of your TsFileResource Directory>
 ```
 
-An example output result:
+For Linux or MacOs:
+
+```
+./print-tsfile-sketch.sh <path of your TsFileResource Directory>
+```
+
+An example on Windows:
+
+```
+D:\incubator-iotdb\server\target\iotdb-server-0.9.0-SNAPSHOT\tools>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
+​````````````````````````
+Starting Printing the TsFileResources
+​````````````````````````
+12:31:59.861 [main] WARN org.apache.iotdb.db.conf.IoTDBDescriptor - Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file iotdb-engine.properties, use default configuration
+analyzing D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile ...
+device root.vehicle.d0, start time 3000 (1970-01-01T08:00:03+08:00[GMT+08:00]), end time 100999 (1970-01-01T08:01:40.999+08:00[GMT+08:00])
+analyzing the resource file finished.
+```
+
+#### 1.3.2 TsFile Sketch Tool
+
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.9.0-SNAPSHOT\tools` directory.
+
+Command:
+
+For Windows:
+
+```
+.\print-tsfile-sketch.bat <path of your TsFile> (<path of the file for saving the output result>) 
+```
+
+- Note that if `<path of the file for saving the output result>` is not set, the default path "TsFile_sketch_view.txt" will be used. 
+
+For Linux or MacOs:
+
+```
+./print-tsfile-sketch.sh <path of your TsFile> (<path of the file for saving the output result>) 
+```
+
+- Note that if `<path of the file for saving the output result>` is not set, the default path "TsFile_sketch_view.txt" will be used. 
+
+An example on Windows:
+
 ```$xslt
+D:\incubator-iotdb\server\target\iotdb-server-0.9.0-SNAPSHOT\tools>.\print-tsfile-sketch.bat D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
+​````````````````````````
+Starting Printing the TsFile Sketch
+​````````````````````````
+TsFile path:D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
+Sketch save path:TsFile_sketch_view.txt
 -------------------------------- TsFile Sketch --------------------------------
-file path: D:\1568815495311-101.tsfile
-file length: 1959
+file path: D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
+file length: 187382
 
-            POSITION|	CONTENT
-            -------- 	-------
-                   0|	[magic head] TsFilev0.8.0
->>>>>>>>>>>>>>>>>>>>>	[Chunk Group] of root.vehicle.d1 begins at pos 12, ends at pos 164, version:0, num of Chunks:1
-                  12|	[Chunk] of s0, numOfPoints:2, time range:[1,1000], tsDataType:INT32, 
-                     	TsDigest:[min_value:888,max_value:999,first_value:999,last_value:888,sum_value:1887.0]
-                    |		[marker] 1
-                    |		[ChunkHeader]
-                    |		num of pages: 1
-                    |	[marker] 0
-                    |	[Chunk Group Footer]
-<<<<<<<<<<<<<<<<<<<<<	[Chunk Group] of root.vehicle.d1 ends
->>>>>>>>>>>>>>>>>>>>>	[Chunk Group] of root.vehicle.d0 begins at pos 164, ends at pos 989, version:0, num of Chunks:5
-                 164|	[Chunk] of s3, numOfPoints:6, time range:[60,946684800000], tsDataType:TEXT, 
-                     	TsDigest:[min_value:aaaaa,max_value:good,first_value:aaaaa,last_value:good,sum_value:0.0]
-                    |		[marker] 1
-                    |		[ChunkHeader]
-                    |		num of pages: 1
-                 366|	[Chunk] of s4, numOfPoints:1, time range:[100,100], tsDataType:BOOLEAN, 
-                     	TsDigest:[min_value:true,max_value:true,first_value:true,last_value:true,sum_value:0.0]
-                    |		[marker] 1
-                    |		[ChunkHeader]
-                    |		num of pages: 1
-                 461|	[Chunk] of s0, numOfPoints:11, time range:[1,1000], tsDataType:INT32, 
-                     	TsDigest:[min_value:80,max_value:22222,first_value:101,last_value:22222,sum_value:42988.0]
-                    |		[marker] 1
-                    |		[ChunkHeader]
-                    |		num of pages: 1
-                 614|	[Chunk] of s1, numOfPoints:11, time range:[1,946684800000], tsDataType:INT64, 
-                     	TsDigest:[min_value:100,max_value:55555,first_value:1101,last_value:100,sum_value:147922.0]
-                    |		[marker] 1
-                    |		[ChunkHeader]
-                    |		num of pages: 1
-                 822|	[Chunk] of s2, numOfPoints:6, time range:[2,1000], tsDataType:FLOAT, 
-                     	TsDigest:[min_value:2.22,max_value:1000.11,first_value:2.22,last_value:1000.11,sum_value:1031.2099850177765]
-                    |		[marker] 1
-                    |		[ChunkHeader]
-                    |		num of pages: 1
-                    |	[marker] 0
-                    |	[Chunk Group Footer]
-<<<<<<<<<<<<<<<<<<<<<	[Chunk Group] of root.vehicle.d0 ends
-                 989|	[marker] 2
-                 990|	[TsDeviceMetadata] of root.vehicle.d0, startTime:1, endTime:946684800000
-                    |		num of ChunkGroupMetaData: 1
-                1553|	[TsDeviceMetadata] of root.vehicle.d1, startTime:1, endTime:1000
-                    |		num of ChunkGroupMetaData: 1
-                1718|	[TsFileMetaData]
-                    |		num of TsDeviceMetadataIndex: 2
-                    |		num of measurementSchema: 5
-                1943|	[TsFileMetaDataSize] 225
-                1947|	[magic tail] TsFilev0.8.0
-                1959|	END of TsFile
+            POSITION|   CONTENT
+            --------    -------
+                   0|   [magic head] TsFile
+                   6|   [version number] 000001
+|||||||||||||||||||||   [Chunk Group] of root.vehicle.d0 begins at pos 12, ends at pos 186469, version:102, num of Chunks:6
+                  12|   [Chunk] of s3, numOfPoints:10600, time range:[3000,13599], tsDataType:TEXT,
+                        TsDigest:[min_value:A,max_value:E,first_value:A,last_value:E,sum_value:0.0]
+                    |           [marker] 1
+                    |           [ChunkHeader]
+                    |           11 pages
+               55718|   [Chunk] of s4, numOfPoints:10600, time range:[3000,13599], tsDataType:BOOLEAN,
+                        TsDigest:[min_value:false,max_value:true,first_value:true,last_value:false,sum_value:0.0]
+                    |           [marker] 1
+                    |           [ChunkHeader]
+                    |           11 pages
+               68848|   [Chunk] of s5, numOfPoints:10600, time range:[3000,13599], tsDataType:DOUBLE,
+                        TsDigest:[min_value:3000.0,max_value:13599.0,first_value:3000.0,last_value:13599.0,sum_value:8.79747E7]
+                    |           [marker] 1
+                    |           [ChunkHeader]
+                    |           11 pages
+               98474|   [Chunk] of s0, numOfPoints:21900, time range:[3000,100999], tsDataType:INT32,
+                        TsDigest:[min_value:0,max_value:99,first_value:0,last_value:19,sum_value:889750.0]
+                    |           [marker] 1
+                    |           [ChunkHeader]
+                    |           22 pages
+              123369|   [Chunk] of s1, numOfPoints:21900, time range:[3000,100999], tsDataType:INT64,
+                        TsDigest:[min_value:0,max_value:39,first_value:8,last_value:19,sum_value:300386.0]
+                    |           [marker] 1
+                    |           [ChunkHeader]
+                    |           22 pages
+              144741|   [Chunk] of s2, numOfPoints:21900, time range:[3000,100999], tsDataType:FLOAT,
+                        TsDigest:[min_value:0.0,max_value:122.0,first_value:8.0,last_value:52.0,sum_value:778581.0]
+                    |           [marker] 1
+                    |           [ChunkHeader]
+                    |           22 pages
+              186437|   [Chunk Group Footer]
+                    |           [marker] 0
+                    |           [deviceID] root.vehicle.d0
+                    |           [dataSize] 186425
+                    |           [num of chunks] 6
+|||||||||||||||||||||   [Chunk Group] of root.vehicle.d0 ends
+              186469|   [marker] 2
+              186470|   [TsDeviceMetadata] of root.vehicle.d0, startTime:3000, endTime:100999
+                    |           [startTime] 3000tfi
+                    |           [endTime] 100999
+                    |           [num of ChunkGroupMetaData] 1
+                    |           1 ChunkGroupMetaData
+              187133|   [TsFileMetaData]
+                    |           [num of devices] 1
+                    |           1 key&TsDeviceMetadataIndex
+                    |           [num of measurements] 6
+                    |           6 key&measurementSchema
+                    |           [createBy isNotNull] false
+                    |           [totalChunkNum] 6
+                    |           [invalidChunkNum] 0
+                    |           [bloom filter bit vector byte array length] 31
+                    |           [bloom filter bit vector byte array]
+                    |           [bloom filter number of bits] 256
+                    |           [bloom filter number of hash functions] 5
+              187372|   [TsFileMetaDataSize] 239
+              187376|   [magic tail] TsFile
+              187382|   END of TsFile
 
 ---------------------------------- TsFile Sketch End ----------------------------------
 ```
 
-## A TsFile Visualization Example (v0.8.0)
-![A TsFile Visualization Example v0.8.0](https://user-images.githubusercontent.com/33376433/65209576-2bd36000-dacb-11e9-9e43-49e0dd01274e.png)
+#### 1.3.3 TsFileSequenceRead
+You can also use `example/tsfile/org/apache/iotdb/tsfile/TsFileSequenceRead` to sequentially print a TsFile's content.
 
+### 1.4 A TsFile Visualization Example (v0.8.0)
+
+![A TsFile Visualization Example v0.8.0](https://user-images.githubusercontent.com/33376433/65209576-2bd36000-dacb-11e9-9e43-49e0dd01274e.png)
