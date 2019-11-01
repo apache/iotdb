@@ -236,13 +236,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         .allocate(TSFileConfig.VERSION_NUMBER.getBytes().length);
     tsFileInput.read(versionNumberBytes, TSFileConfig.MAGIC_STRING.getBytes().length);
     versionNumberBytes.flip();
-    String versionNumberString = new String(versionNumberBytes.array());
-    if (!versionNumberString.equals(TSFileConfig.VERSION_NUMBER) && !versionNumberString
-        .equals(TSFileConfig.OLD_VERSION)) {
-      throw new NotCompatibleException("TsFile isn't compatible. " + TSFileConfig.MAGIC_STRING +
-          TSFileConfig.VERSION_NUMBER + " is expected.");
-    }
-    return versionNumberString;
+    return new String(versionNumberBytes.array());
   }
   
   public EndianType getEndianType() {
