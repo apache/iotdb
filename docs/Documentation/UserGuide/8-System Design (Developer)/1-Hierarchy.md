@@ -246,7 +246,7 @@ ByteBuffer[] statistics = [
         <table style="text-align:center">
         	<tr><th>Member Description</th><th>Member Type</td></tr>
         	<tr><td>Number of devices</td><td>int</td>
-        	<tr><td>Pairs of device name and deviceMetadataIndex</td><td>String, TsDeviceMetadataIndex pair</td>
+        	<tr><td>Pairs of device name and device metadata index</td><td>String, TsDeviceMetadataIndex pair</td>
         	<tr><td>Number of measurements</td><td>int</td>
         	<tr><td>Pairs of measurement name and schema</td><td>String, MeasurementSchema pair</td>
         	<tr><td>Author byte</td><td>byte</td>
