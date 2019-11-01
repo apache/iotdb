@@ -33,6 +33,15 @@ SET STORAGE GROUP TO <PrefixPath>
 Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
 Note: PrefixPath can not include `*`
 ```
+* 删除存储组
+
+```
+DELETE STORAGE GROUP <PrefixPath> [COMMA <PrefixPath>]*
+Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
+Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
+Note: PrefixPath can not include `*`
+```
+
 * 创建时间序列语句
 
 ```
@@ -274,8 +283,8 @@ Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
 ```
 CREATE USER <userName> <password>;  
 userName:=identifier  
-password:=identifier
-Eg: IoTDB > CREATE USER thulab pwd;
+password:=string
+Eg: IoTDB > CREATE USER thulab 'pwd';
 ```
 
 * 删除用户
@@ -427,10 +436,10 @@ Eg: IoTDB > LIST ALL USER OF ROLE roleuser;
 * 更新密码 
 
 ```
-UPDATE USER <username> SET PASSWORD <password>;
+ALTER USER <username> SET PASSWORD <password>;
 roleName:=identifier
-password:=identifier
-Eg: IoTDB > UPDATE USER tempuser SET PASSWORD newpwd;
+password:=string
+Eg: IoTDB > UPDATE USER tempuser SET PASSWORD 'newpwd';
 ```
 
 ### 功能

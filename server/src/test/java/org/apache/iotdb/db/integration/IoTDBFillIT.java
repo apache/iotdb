@@ -33,7 +33,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class IOTDBFillIT {
+public class IoTDBFillIT {
 
   private static IoTDB daemon;
 
