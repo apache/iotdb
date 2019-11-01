@@ -72,7 +72,6 @@ def convertQueryDataSet(queryDataSet, dataTypeList):
 
     for i in range(len(dataTypeList)):
         type = dataTypeList[i]
-        value_unpack_str = '>'
         for j in range(row_count):
             is_null = value_bytes[0]
             value_bytes = value_bytes[1:]
