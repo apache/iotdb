@@ -107,10 +107,10 @@ Here is the command for starting the Cli:
 
 ```
 # Unix/OS X
-> sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
 
 # Windows
-> sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 
 The command line client is interactive so if everything is ready you should see the welcome logo and statements:
