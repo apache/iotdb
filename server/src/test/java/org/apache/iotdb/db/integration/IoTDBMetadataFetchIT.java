@@ -86,7 +86,7 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
-  public void showTimeseriesTest1() throws ClassNotFoundException, SQLException {
+  public void showTimeseriesTest() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -191,13 +191,35 @@ public class IoTDBMetadataFetchIT {
       showTimeseriesPath2();
       showStorageGroup();
       showTimeseriesInJson();
-      showVersion();
 
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
       if (connection != null) {
+        connection.close();
+      }
+    }
+  }
+
+  @Test
+  public void showVersion() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      String sql = "show version";
+      try {
+        boolean hasResultSet = statement.execute(sql);
+        if(hasResultSet) {
+          try(ResultSet resultSet = statement.getResultSet()) {
+            ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+            Assert.assertEquals(resultSetMetaData.getColumnLabel(1), IoTDBConstant.VERSION);
+          }
+        }
+      } catch (Exception e) {
+        fail(e.getMessage());
+      } finally {
         connection.close();
       }
     }
@@ -362,19 +384,4 @@ public class IoTDBMetadataFetchIT {
 
     Assert.assertEquals(standard, metadataInJson);
   }
-
-  /**
-   * show metadata in json
-   */
-  private void showVersion() {
-    try(ResultSet resultSet = databaseMetaData
-    .getColumns(Constant.CATALOG_VERSION, null, null, null)) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      String version = resultSetMetaData.getColumnLabel(1);
-      Assert.assertEquals(IoTDBConstant.VERSION, version);
-    } catch (SQLException e) {
-      Assert.fail(e.getMessage());
-    }
-  }
-
 }
