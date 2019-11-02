@@ -71,7 +71,7 @@ public class Utils {
     params.setHost(DomainAndPort[0]);
     params.setPort(Integer.parseInt(DomainAndPort[1]));
     if (!isUrlLegal) {
-      throw new IoTDBURLException("Error url format, url should be jdbc:iotdb://domain:port/ or jdbc:iotdb://domain:port");
+      throw new IoTDBURLException("Error url format, url should be jdbc:iotdb://domain|ip:port/ or jdbc:iotdb://domain|ip:port");
     }
 
     if (info.containsKey(Config.AUTH_USER)) {
