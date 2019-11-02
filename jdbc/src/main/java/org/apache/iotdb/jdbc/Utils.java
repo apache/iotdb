@@ -47,17 +47,31 @@ public class Utils {
     if (url.trim().equalsIgnoreCase(Config.IOTDB_URL_PREFIX)) {
       return params;
     }
-
-    Pattern pattern = Pattern.compile("([^;]*):([^;]*)/");
-    Matcher matcher = pattern.matcher(url.substring(Config.IOTDB_URL_PREFIX.length()));
     boolean isUrlLegal = false;
-    while (matcher.find()) {
-      params.setHost(matcher.group(1));
-      params.setPort(Integer.parseInt(matcher.group(2)));
+    Pattern pattern = Pattern.compile("^"
+        + "(((?!-)[A-Za-z0-9-]{1,63}(?<!-)\\.)+[A-Za-z]{2,6}" // Domain name
+        + "|"
+        + "localhost" // localhost
+        + "|"
+        + "([0-9]{1,3}\\.){3})[0-9]{1,3}" // Ip
+        + ":"
+        + "[0-9]{1,5}" // Port
+        + "/?$");
+    String subURL = url.substring(Config.IOTDB_URL_PREFIX.length());
+    Matcher matcher = pattern.matcher(subURL);
+    if(matcher.matches()) {
       isUrlLegal = true;
     }
+    String[] DomainAndPort;
+    if(subURL.contains("/")) {
+      DomainAndPort = subURL.substring(0, subURL.length()-1).split(":");
+    } else {
+      DomainAndPort = subURL.split(":");
+    }
+    params.setHost(DomainAndPort[0]);
+    params.setPort(Integer.parseInt(DomainAndPort[1]));
     if (!isUrlLegal) {
-      throw new IoTDBURLException("Error url format, url should be jdbc:iotdb://ip:port/");
+      throw new IoTDBURLException("Error url format, url should be jdbc:iotdb://domain:port/ or jdbc:iotdb://domain:port");
     }
 
     if (info.containsKey(Config.AUTH_USER)) {
