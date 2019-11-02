@@ -59,44 +59,44 @@ public class UtilsTest {
     String userName = "test";
     String userPwd = "test";
     String host1 = "localhost";
-    int port1 = 6667;
+    int port = 6667;
     Properties properties = new Properties();
     properties.setProperty(Config.AUTH_USER, userName);
     properties.setProperty(Config.AUTH_PASSWORD, userPwd);
     IoTDBConnectionParams params = Utils
-        .parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host1, port1),
+        .parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host1, port),
             properties);
     assertEquals(params.getHost(), host1);
-    assertEquals(params.getPort(), port1);
+    assertEquals(params.getPort(), port);
     assertEquals(params.getUsername(), userName);
     assertEquals(params.getPassword(), userPwd);
 
     //don't contain / in the end of url
-    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host1, port1),
+    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host1, port),
             properties);
     assertEquals(params.getHost(), host1);
-    assertEquals(params.getPort(), port1);
+    assertEquals(params.getPort(), port);
 
     //use a domain
     String host2 = "google.com";
-    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host2, port1),
+    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host2, port),
         properties);
     assertEquals(params.getHost(), host2);
-    assertEquals(params.getPort(), port1);
+    assertEquals(params.getPort(), port);
 
     //use a different domain
     String host3 = "www.google.com";
-    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host3, port1),
+    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host3, port),
         properties);
     assertEquals(params.getHost(), host3);
-    assertEquals(params.getPort(), port1);
+    assertEquals(params.getPort(), port);
 
     //use a ip
     String host4 = "1.2.3.4";
-    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host4, port1),
+    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host4, port),
         properties);
     assertEquals(params.getHost(), host4);
-    assertEquals(params.getPort(), port1);
+    assertEquals(params.getPort(), port);
   }
 
   @Test(expected = NumberFormatException.class)
