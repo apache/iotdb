@@ -27,6 +27,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -190,6 +191,7 @@ public class IoTDBMetadataFetchIT {
       showTimeseriesPath2();
       showStorageGroup();
       showTimeseriesInJson();
+      showVersion();
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -307,7 +309,7 @@ public class IoTDBMetadataFetchIT {
     String standard = "Storage Group,\n" + "root.ln.wf01.wt01,\n";
 
     try (ResultSet resultSet = databaseMetaData
-        .getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null);) {
+        .getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null)) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
@@ -360,4 +362,19 @@ public class IoTDBMetadataFetchIT {
 
     Assert.assertEquals(standard, metadataInJson);
   }
+
+  /**
+   * show metadata in json
+   */
+  private void showVersion() {
+    try(ResultSet resultSet = databaseMetaData
+    .getColumns(Constant.CATALOG_VERSION, null, null, null)) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      String version = resultSetMetaData.getColumnLabel(1);
+      Assert.assertEquals(IoTDBConstant.VERSION, version);
+    } catch (SQLException e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
 }

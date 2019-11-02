@@ -349,8 +349,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public String getDatabaseProductVersion() {
-    return Constant.GLOBAL_VERSION;
+  public String getDatabaseProductVersion() throws SQLException {
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
