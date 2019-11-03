@@ -68,14 +68,12 @@ public class QueryProcessor {
   }
 
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
-      throws QueryProcessorException, ArgsErrorException,
-      MetadataErrorException {
+      throws QueryProcessorException, MetadataErrorException {
     AstNode astNode = parseSQLToAST(sqlStr);
     Operator operator = parseASTToOperator(astNode, zoneId);
     operator = logicalOptimize(operator, executor);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator(executor);
-    PhysicalPlan qp = physicalGenerator.transformToPhysicalPlan(operator);
-    return qp;
+    return physicalGenerator.transformToPhysicalPlan(operator);
   }
 
   /**
@@ -86,10 +84,9 @@ public class QueryProcessor {
    * @return - RootOperator has four subclass:Query/Insert/Delete/Update/Author
    * @throws QueryProcessorException
    *             exception in converting sql to operator
-   * @throws ArgsErrorException
    */
   private RootOperator parseASTToOperator(AstNode astNode, ZoneId zoneId)
-      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+      throws QueryProcessorException, MetadataErrorException {
     LogicalGenerator generator = new LogicalGenerator(zoneId);
     return generator.getLogicalPlan(astNode);
   }
@@ -111,7 +108,7 @@ public class QueryProcessor {
     } catch (ParseException e) {
       // e.printStackTrace();
       throw new IllegalASTFormatException(
-          "parsing error,statement: " + sqlStr, e);
+          "parsing error,statement: " + sqlStr + " .message:" + e.getMessage());
     }
     return ParseUtils.findRootNonNullToken(astTree);
   }

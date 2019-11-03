@@ -53,7 +53,6 @@ import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
-import org.apache.iotdb.db.exception.ArgsErrorException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.NotStorageGroupException;
 import org.apache.iotdb.db.exception.OutOfTTLException;
@@ -62,7 +61,6 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.QueryInBatchStmtException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupException;
-import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
@@ -75,12 +73,12 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
@@ -278,7 +276,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @param statusType status type
    */
   private TSStatus getStatus(TSStatusCode statusType) {
-    TSStatusType statusCodeAndMessage = new TSStatusType(statusType.getStatusCode(), statusType.getStatusMessage());
+    TSStatusType statusCodeAndMessage = new TSStatusType(statusType.getStatusCode(), "");
     return new TSStatus(statusCodeAndMessage);
   }
 
@@ -289,8 +287,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @param appendMessage appending message
    */
   private TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
-    TSStatusType statusCodeAndMessage = new TSStatusType(statusType.getStatusCode(),
-            statusType.getStatusMessage() + ": " + appendMessage);
+    TSStatusType statusCodeAndMessage = new TSStatusType(statusType.getStatusCode(), appendMessage);
     return new TSStatus(statusCodeAndMessage);
   }
 
@@ -343,7 +340,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
         case "COUNT_NODE_TIMESERIES":
-          resp.setNodeTimeseriesNum(getNodeTimeseriesNum(getNodesList(req.getColumnPath(), req.getNodeLevel())));
+          resp.setNodeTimeseriesNum(
+              getNodeTimeseriesNum(getNodesList(req.getColumnPath(), req.getNodeLevel())));
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
         default:
@@ -581,13 +579,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS,
             "Execute set consistency level successfully"));
       }
-      
+
       PhysicalPlan physicalPlan;
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
         resp = executeQueryStatement(statement, physicalPlan);
         long endTime = System.currentTimeMillis();
-        sqlArgument = new SqlArgument(resp,physicalPlan,statement,startTime,endTime);
+        sqlArgument = new SqlArgument(resp, physicalPlan, statement, startTime, endTime);
         sqlArgumentsList.add(sqlArgument);
         if (sqlArgumentsList.size() > MAX_SIZE) {
           for (int i = 0; i < DELETE_SIZE; i++) {
@@ -598,14 +596,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       } else {
         return executeUpdateStatement(physicalPlan);
       }
-    } catch (IllegalASTFormatException e) {
-      logger.debug("meet error while parsing SQL to physical plan: ", e);
+    } catch (MetadataErrorException e) {
+      logger.error("check metadata error: ", e);
+      return getTSExecuteStatementResp(getStatus(TSStatusCode.FETCH_METADATA_ERROR,
+          "Check metadata error: " + e.getMessage()));
+    } catch (SQLException | QueryProcessorException e) {
+      logger.error("meet error while parsing SQL to physical plan: ", e);
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR,
           "Statement format is not right: " + e.getMessage()));
-    } catch (Exception e) {
-      logger.info("meet error while executing statement: {}", req.getStatement(), e);
-      return getTSExecuteStatementResp(
-          getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()));
+    } catch (StorageEngineException e) {
+      logger.error("meet error while parsing SQL to physical plan: ", e);
+      return getTSExecuteStatementResp(getStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR,
+          e.getMessage()));
     }
   }
 
@@ -653,7 +655,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       TSExecuteStatementResp resp;
       if (plan instanceof AuthorPlan) {
         resp = executeAuthQuery(plan);
-      } else if(plan instanceof ShowTTLPlan) {
+      } else if (plan instanceof ShowTTLPlan) {
         resp = executeShowTTL();
       } else {
         resp = executeDataQuery(plan);
@@ -689,7 +691,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     PhysicalPlan physicalPlan;
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-    } catch (QueryProcessorException | ArgsErrorException | MetadataErrorException e) {
+    } catch (QueryProcessorException | MetadataErrorException e) {
       logger.error("meet error while parsing SQL to physical plan!", e);
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     }
@@ -991,7 +993,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     PhysicalPlan physicalPlan;
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-    } catch (QueryProcessorException | ArgsErrorException | MetadataErrorException e) {
+    } catch (QueryProcessorException | MetadataErrorException e) {
       logger.error("meet error while parsing SQL to physical plan!", e);
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     }
