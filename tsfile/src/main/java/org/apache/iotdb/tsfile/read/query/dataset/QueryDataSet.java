@@ -64,12 +64,11 @@ public abstract class QueryDataSet {
   }
 
   protected Field getField(Object value, TSDataType dataType) {
-    Field field = new Field(dataType);
-
     if (value == null) {
       return new Field(null);
     }
 
+    Field field = new Field(dataType);
     switch (dataType) {
       case DOUBLE:
         field.setDoubleV((double) value);

@@ -132,14 +132,11 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
         } else {
           timeHeapPut(data.currentTime());
         }
-
+        record.addField(field);
       } else {
-        field = new Field(null);
+        record.addField(new Field(null));
       }
-
-      record.addField(field);
     }
-
     return record;
   }
 
