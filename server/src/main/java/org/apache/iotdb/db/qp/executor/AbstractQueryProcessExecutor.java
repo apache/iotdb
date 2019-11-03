@@ -101,7 +101,6 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
         ttl.setLongV(mNode.getDataTTL());
       } else {
         ttl = new Field(null);
-        ttl.setNull();
       }
       rowRecord.addField(sg);
       rowRecord.addField(ttl);

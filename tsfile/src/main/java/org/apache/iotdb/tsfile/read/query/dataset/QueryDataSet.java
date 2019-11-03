@@ -67,8 +67,7 @@ public abstract class QueryDataSet {
     Field field = new Field(dataType);
 
     if (value == null) {
-      field.setNull();
-      return field;
+      return new Field(null);
     }
 
     switch (dataType) {
