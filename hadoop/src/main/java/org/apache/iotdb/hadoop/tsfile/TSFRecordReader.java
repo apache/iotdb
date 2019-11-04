@@ -191,7 +191,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
   public static void readFieldsValue(MapWritable mapWritable, List<Field> fields, List<String> measurementIds) throws InterruptedException {
     int index = 0;
     for (Field field : fields) {
-      if (field.isNull()) {
+      if (field.getDataType() == null) {
         logger.info("Current value is null");
         mapWritable.put(new Text(measurementIds.get(index)), NullWritable.get());
       } else {
