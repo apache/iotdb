@@ -32,7 +32,7 @@ import java.util.*;
 
 public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
-  private static final int CHUNK_METADATA_CACHE_SIZE = 100000;
+  private static final int CHUNK_METADATA_CACHE_SIZE = 10000;
 
   private TsFileMetaData fileMetaData;
 
