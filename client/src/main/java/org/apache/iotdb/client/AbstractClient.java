@@ -90,7 +90,7 @@ public abstract class AbstractClient {
   private static final String DEFAULT_TIME_FORMAT = "default";
   private static String timeFormat = DEFAULT_TIME_FORMAT;
   static int maxPrintRowCount = 1000;
-  private static int fetchSize = 10000;
+  private static int fetchSize = maxPrintRowCount;
   static int maxTimeLength = ISO_DATETIME_LEN;
   static int maxValueLength = 15;
   private static int deviceColumnLength = 20; // for GROUP_BY_DEVICE sql
@@ -203,7 +203,7 @@ public abstract class AbstractClient {
     }
 
     // Output values
-    while (res.next()) {
+    while (cnt < maxPrintRowCount && res.next()) {
       printRow(printTimestamp, colCount, resultSetMetaData, isShow, res, zoneId);
       cnt++;
       if (!printToConsole && cnt % 10000 == 0) {
