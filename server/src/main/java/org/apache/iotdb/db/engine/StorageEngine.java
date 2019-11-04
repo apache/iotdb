@@ -26,6 +26,7 @@ import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -67,7 +68,7 @@ import org.slf4j.LoggerFactory;
 
 public class StorageEngine implements IService {
 
-  private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
+  private final Logger logger;
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000;
 
@@ -95,6 +96,7 @@ public class StorageEngine implements IService {
   private ScheduledExecutorService ttlCheckThread;
 
   private StorageEngine() {
+    logger = LoggerFactory.getLogger(StorageEngine.class);
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
     // create systemDir
     try {
@@ -109,22 +111,19 @@ public class StorageEngine implements IService {
     List<MNode> sgNodes = MManager.getInstance().getAllStorageGroups();
     List<Future> futures = new ArrayList<>();
     for (MNode storageGroup : sgNodes) {
-      futures.add(recoveryThreadPool.submit(() -> {
-        try {
+      futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
           StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,storageGroup.getFullPath());
           processor.setDataTTL(storageGroup.getDataTTL());
           processorMap.put(storageGroup.getFullPath(), processor);
           logger.info("Storage Group Processor {} is recovered successfully",storageGroup.getFullPath());
-        } catch (ProcessorException e) {
-          logger.error("Storage Group Processor {} is recovered failed!",storageGroup.getFullPath(), e);
-        }
+        return null;
       }));
     }
     for (Future future: futures) {
       try {
         future.get();
       } catch (Exception e) {
-        throw new StorageEngineFailureException("StorageEngine failed to recover.");
+        throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
       }
     }
   }
@@ -152,6 +151,7 @@ public class StorageEngine implements IService {
   public void stop() {
     syncCloseAllProcessor();
     ttlCheckThread.shutdownNow();
+    recoveryThreadPool.shutdownNow();
     try {
       ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
