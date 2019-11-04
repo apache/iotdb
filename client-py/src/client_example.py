@@ -76,7 +76,7 @@ def convertQueryDataSet(queryDataSet, dataTypeList):
             is_null = value_bytes[0]
             value_bytes = value_bytes[1:]
             if is_null == 1:
-                records[i].append('null')
+                records[j].append('null')
             else:
                 if type == 'BOOLEAN':
                     value = value_bytes[0]
