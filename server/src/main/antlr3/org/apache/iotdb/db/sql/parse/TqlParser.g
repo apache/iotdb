@@ -180,6 +180,8 @@ static {
 	tokenNameMap.put("RR_BRACKET", ")");
 	tokenNameMap.put("LS_BRACKET", "[");
 	tokenNameMap.put("RS_BRACKET", "]");
+	tokenNameMap.put("L_BRACKET", "{");
+	tokenNameMap.put("R_BRACKET", "}");
 	tokenNameMap.put("OPERATOR_EQ", "=");
 	tokenNameMap.put("OPERATOR_NEQ", "<>");
 	// tokenNameMap.put("EQUAL_NS", "<=>");
@@ -407,7 +409,7 @@ functionCall
     ;
 
 suffixPath
-    : nodeName (DOT nodeName)*
+    : nodeName | nodeNames (DOT nodeName | nodeNames)*
     -> ^(TOK_PATH nodeName+)
     ;
 
@@ -418,13 +420,17 @@ nodeName
     | STRING_LITERAL
     ;
 
+nodeNames
+    : L_BRACKET nodeName (COMMA nodeName)* R_BRACKET
+    ;
+
 fromClause
     : K_FROM prefixPath (COMMA prefixPath)*
     -> ^(TOK_FROM prefixPath+)
     ;
 
 prefixPath
-    : K_ROOT (DOT nodeName)*
+    : K_ROOT (DOT nodeName | nodeNames)*
     -> ^(TOK_PATH ^(TOK_ROOT nodeName*))
     ;
 

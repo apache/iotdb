@@ -396,6 +396,14 @@ RS_BRACKET
     : ']'
     ;
 
+L_BRACKET
+    : '{'
+    ;
+
+R_BRACKET
+    : '}'
+    ;
+
 STRING_LITERAL
    : DQUOTA_STRING
    | SQUOTA_STRING

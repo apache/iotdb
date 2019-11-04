@@ -917,6 +917,16 @@ public class TqlParserTest {
   }
 
   @Test
+  public void query20() throws ParseException {
+    ArrayList<String> rec = new ArrayList<>();
+    AstNode astTree = ParseGenerator
+        .generateAST("select s3 from root.dwf.{d1,d2}");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+  }
+
+  @Test
   public void queryGroupByDevice() throws ParseException {
     // template for test case
     ArrayList<String> ans = new ArrayList<>(
