@@ -97,14 +97,14 @@ A `Chunk` represents a *sensor*. There is a byte `0x01` as the marker, following
 
 <center>
         <table style="text-align:center">
-        	<tr><th>Member Description</th><th>Member Type</td></tr>
-        	<tr><td>The name of this sensor(measurementID)</td><td>String</td>
-        	<tr><td>Size of this chunk</td><td>int</td>
-        	<tr><td>Data type of this chuck</td><td>short</td>
-        	<tr><td>Number of pages</td><td>int</td>
-        	<tr><td>Compression Type</td><td>short</td>
-        	<tr><td>Encoding Type</td><td>short</td>
-        	<tr><td>Max Tombstone Time</td><td>long</td>
+            <tr><th>Member Description</th><th>Member Type</td></tr>
+            <tr><td>The name of this sensor(measurementID)</td><td>String</td>
+            <tr><td>Size of this chunk</td><td>int</td>
+            <tr><td>Data type of this chuck</td><td>short</td>
+            <tr><td>Number of pages</td><td>int</td>
+            <tr><td>Compression Type</td><td>short</td>
+            <tr><td>Encoding Type</td><td>short</td>
+            <tr><td>Max Tombstone Time</td><td>long</td>
         </table>
 </center>
 
@@ -116,17 +116,17 @@ PageHeader Structure
 
 <center>
         <table style="text-align:center">
-        	<tr><th>Member Description</th><th>Member Type</td></tr>
-        	<tr><td>Data size before compressing</td><td>int</td>
-        	<tr><td>Data size after compressing(if use SNAPPY)</td><td>int</td>
-        	<tr><td>Number of values</td><td>int</td>
-        	<tr><td>Maximum time stamp</td><td>long</td>
-        	<tr><td>Minimum time stamp</td><td>long</td>
-        	<tr><td>Maximum value of the page</td><td>Type of the page</td>
-          <tr><td>Minimum value of the page</td><td>Type of the page</td>
-        	<tr><td>First value of the page</td><td>Type of the page</td>
-        	<tr><td>Sum of the Page</td><td>double</td>
-        	<tr><td>Last value of the page</td><td>Type of the page</td>
+            <tr><th>Member Description</th><th>Member Type</td></tr>
+            <tr><td>Data size before compressing</td><td>int</td>
+            <tr><td>Data size after compressing(if use SNAPPY)</td><td>int</td>
+            <tr><td>Number of values</td><td>int</td>
+            <tr><td>Maximum time stamp</td><td>long</td>
+            <tr><td>Minimum time stamp</td><td>long</td>
+            <tr><td>Maximum value of the page</td><td>Type of the page</td>
+            <tr><td>Minimum value of the page</td><td>Type of the page</td>
+            <tr><td>First value of the page</td><td>Type of the page</td>
+            <tr><td>Sum of the Page</td><td>double</td>
+            <tr><td>Last value of the page</td><td>Type of the page</td>
         </table>
 </center>
 
@@ -134,10 +134,10 @@ PageHeader Structure
 
 <center>
         <table style="text-align:center">
-        	<tr><th>Member Description</th><th>Member Type</td></tr>
-        	<tr><td>DeviceId</td><td>String</td>
-        	<tr><td>Data size of the ChunkGroup</td><td>long</td>
-        	<tr><td>Number of chunks</td><td>int</td>
+            <tr><th>Member Description</th><th>Member Type</td></tr>
+            <tr><td>DeviceId</td><td>String</td>
+            <tr><td>Data size of the ChunkGroup</td><td>long</td>
+            <tr><td>Number of chunks</td><td>int</td>
         </table>
 </center>
 
@@ -149,11 +149,11 @@ The first part of metadata is `TsDeviceMetaData`
 
 <center>
         <table style="text-align:center">
-        	<tr><th>Member Description</th><th>Member Type</td></tr>
-        	<tr><td>Start time</td><td>long</td>
-        	<tr><td>End time</td><td>long</td>
-        	<tr><td>Number of chunk groups</td><td>int</td>
-        	<tr><td>List of ChunkGroupMetaData</td><td>list</td>
+            <tr><th>Member Description</th><th>Member Type</td></tr>
+            <tr><td>Start time</td><td>long</td>
+            <tr><td>End time</td><td>long</td>
+            <tr><td>Number of chunk groups</td><td>int</td>
+            <tr><td>List of ChunkGroupMetaData</td><td>list</td>
         </table>
 </center>
 
@@ -161,13 +161,13 @@ The first part of metadata is `TsDeviceMetaData`
 
 <center>
         <table style="text-align:center">
-        	<tr><th>Member Description</th><th>Member Type</td></tr>
-        	<tr><td>DeviceId</td><td>String</td>
-        	<tr><td>Start offset of the ChunkGroup</td><td>long</td>
-        	<tr><td>End offset of the ChunkGroup</td><td>long</td>
-        	<tr><td>Version</td><td>long</td>
-        	<tr><td>Number of ChunkMetaData</td><td>int</td>
-        	<tr><td>List of ChunkMetaData</td><td>list</td>
+            <tr><th>Member Description</th><th>Member Type</td></tr>
+            <tr><td>DeviceId</td><td>String</td>
+            <tr><td>Start offset of the ChunkGroup</td><td>long</td>
+            <tr><td>End offset of the ChunkGroup</td><td>long</td>
+            <tr><td>Version</td><td>long</td>
+            <tr><td>Number of ChunkMetaData</td><td>int</td>
+            <tr><td>List of ChunkMetaData</td><td>list</td>
         </table>
 </center>
 
@@ -175,14 +175,14 @@ The first part of metadata is `TsDeviceMetaData`
 
 <center>
         <table style="text-align:center">
-        	<tr><th>Member Description</th><th>Member Type</td></tr>
-        	<tr><td>MeasurementId</td><td>String</td>
-        	<tr><td>Start offset of ChunkHeader</td><td>long</td>
-        	<tr><td>Number of data points</td><td>long</td>
-        	<tr><td>Start time</td><td>long</td>
-        	<tr><td>End time</td><td>long</td>
-        	<tr><td>Data type</td><td>short</td>
-        	<tr><td>The statistics of this chunk</td><td>TsDigest</td>
+            <tr><th>Member Description</th><th>Member Type</td></tr>
+            <tr><td>MeasurementId</td><td>String</td>
+            <tr><td>Start offset of ChunkHeader</td><td>long</td>
+            <tr><td>Number of data points</td><td>long</td>
+            <tr><td>Start time</td><td>long</td>
+            <tr><td>End time</td><td>long</td>
+            <tr><td>Data type</td><td>short</td>
+            <tr><td>The statistics of this chunk</td><td>TsDigest</td>
         </table>
 </center>
 
@@ -244,19 +244,19 @@ ByteBuffer[] statistics = [
 
 <center>
         <table style="text-align:center">
-        	<tr><th>Member Description</th><th>Member Type</td></tr>
-        	<tr><td>Number of devices</td><td>int</td>
-        	<tr><td>Pairs of device name and deviceMetadataIndex</td><td>String, TsDeviceMetadataIndex pair</td>
-        	<tr><td>Number of measurements</td><td>int</td>
-        	<tr><td>Pairs of measurement name and schema</td><td>String, MeasurementSchema pair</td>
-        	<tr><td>Author byte</td><td>byte</td>
-          <tr><td>Author(if author byte is 0x01)</td><td>String</td>
-          <tr><td>totalChunkNum</td><td>int</td>
-          <tr><td>invalidChunkNum</td><td>int</td>
-        	<tr><td>Bloom filter size</td><td>int</td>
-        	<tr><td>Bloom filter bit vector</td><td>byte[Bloom filter size]</td>
-        	<tr><td>Bloom filter capacity</td><td>int</td>
-        	<tr><td>Bloom filter hash functions size</td><td>int</td>
+            <tr><th>Member Description</th><th>Member Type</td></tr>
+            <tr><td>Number of devices</td><td>int</td>
+            <tr><td>Pairs of device name and deviceMetadataIndex</td><td>String, TsDeviceMetadataIndex pair</td>
+            <tr><td>Number of measurements</td><td>int</td>
+            <tr><td>Pairs of measurement name and schema</td><td>String, MeasurementSchema pair</td>
+            <tr><td>Author byte</td><td>byte</td>
+            <tr><td>Author(if author byte is 0x01)</td><td>String</td>
+            <tr><td>totalChunkNum</td><td>int</td>
+            <tr><td>invalidChunkNum</td><td>int</td>
+            <tr><td>Bloom filter size</td><td>int</td>
+            <tr><td>Bloom filter bit vector</td><td>byte[Bloom filter size]</td>
+            <tr><td>Bloom filter capacity</td><td>int</td>
+            <tr><td>Bloom filter hash functions size</td><td>int</td>
         </table>
 </center>
 
@@ -264,12 +264,12 @@ ByteBuffer[] statistics = [
 
 <center>
         <table style="text-align:center">
-        	<tr><th>Member Description</th><th>Member Type</td></tr>
-        	<tr><td>DeviceId</td><td>String</td>
-        	<tr><td>Start offset of TsDeviceMetaData</td><td>long</td>
-        	<tr><td>length</td><td>int</td>
-        	<tr><td>Start time</td><td>long</td>
-        	<tr><td>End time</td><td>long</td>
+            <tr><th>Member Description</th><th>Member Type</td></tr>
+            <tr><td>DeviceId</td><td>String</td>
+            <tr><td>Start offset of TsDeviceMetaData</td><td>long</td>
+            <tr><td>length</td><td>int</td>
+            <tr><td>Start time</td><td>long</td>
+            <tr><td>End time</td><td>long</td>
         </table>
 </center>
 
@@ -278,11 +278,11 @@ ByteBuffer[] statistics = [
 <center>
         <table style="text-align:center">
           <tr><th>Member Description</th><th>Member Type</td></tr>
-        	<tr><td>MeasurementId</td><td>String</td></tr>
-        	<tr><td>Data type</td><td>short</td>
-        	<tr><td>Encoding</td><td>short</td>
-        	<tr><td>Compressor</td><td>short</td>
-        	<tr><td>Size of props</td><td>int</td>
+            <tr><td>MeasurementId</td><td>String</td></tr>
+            <tr><td>Data type</td><td>short</td>
+            <tr><td>Encoding</td><td>short</td>
+            <tr><td>Compressor</td><td>short</td>
+            <tr><td>Size of props</td><td>int</td>
         </table>
 </center>
 
@@ -438,6 +438,11 @@ file length: 187382
 #### 1.3.3 TsFileSequenceRead
 You can also use `example/tsfile/org/apache/iotdb/tsfile/TsFileSequenceRead` to sequentially print a TsFile's content.
 
-### 1.4 A TsFile Visualization Example (v0.8.0)
+### 1.4 A TsFile Visualization Example
+
+#### v0.8.0
 
 ![A TsFile Visualization Example v0.8.0](https://user-images.githubusercontent.com/33376433/65209576-2bd36000-dacb-11e9-9e43-49e0dd01274e.png)
+
+#### v0.9.0
+![A TsFile Visualization Example v0.9.0](https://user-images.githubusercontent.com/33376433/68128717-35b60300-ff53-11e9-919e-48d80536df88.png)

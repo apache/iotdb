@@ -136,6 +136,7 @@ public class IoTDBQueryDemoIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
