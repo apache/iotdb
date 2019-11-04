@@ -240,6 +240,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       clearAllStatusForCurrentRequest();
     } catch (Exception e) {
       logger.error("Error in closeOperation : ", e);
+      return new TSStatus(getStatus(TSStatusCode.CLOSE_OPERATION_ERROR, "Error in closeOperation"));
     }
     return new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
   }
@@ -350,8 +351,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
     } catch (PathErrorException | MetadataErrorException | OutOfMemoryError | SQLException e) {
       logger
-          .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()),
-              e);
+          .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()), e);
       Thread.currentThread().interrupt();
       status = getStatus(TSStatusCode.FETCH_METADATA_ERROR, e.getMessage());
       resp.setStatus(status);
@@ -487,7 +487,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             isAllSuccessful && executeStatementInBatch(statement, batchErrorMessage, result);
         Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
       }
-
       if (isAllSuccessful) {
         return getTSBatchExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS,
             "Execute batch statements successfully"), result);
@@ -495,10 +494,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return getTSBatchExecuteStatementResp(getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR,
             batchErrorMessage.toString()), result);
       }
-    } catch (Exception e) {
-      logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
-      return getTSBatchExecuteStatementResp(
-          getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()), null);
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
     }
@@ -522,13 +517,22 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         batchErrorMessage.append(resp.getStatus().getStatusType().getCode()).append("\n");
         return false;
       }
-    } catch (Exception e) {
-      String errMessage = String.format(
-          "Fail to generate physical plan and execute for statement "
-              + "%s because %s", statement, e.getMessage());
-      logger.warn("Error occurred when executing {}", statement, e);
+    } catch (MetadataErrorException e) {
+      logger.error("Error occurred when executing {}, check metadata error: ", statement, e);
       result.add(Statement.EXECUTE_FAILED);
-      batchErrorMessage.append(errMessage).append("\n");
+      batchErrorMessage.append(TSStatusCode.FETCH_METADATA_ERROR.getStatusCode()).append("\n");
+      return false;
+    } catch (QueryProcessorException e) {
+      logger.error(
+          "Error occurred when executing {}, meet error while parsing SQL to physical plan: ",
+          statement, e);
+      result.add(Statement.EXECUTE_FAILED);
+      batchErrorMessage.append(TSStatusCode.SQL_PARSE_ERROR.getStatusCode()).append("\n");
+      return false;
+    } catch (QueryInBatchStmtException e) {
+      logger.error("Error occurred when executing {}, query statement not allowed: ", statement, e);
+      result.add(Statement.EXECUTE_FAILED);
+      batchErrorMessage.append(TSStatusCode.QUERY_NOT_ALLOWED.getStatusCode()).append("\n");
       return false;
     }
     return true;
@@ -1315,9 +1319,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private TSStatus executePlan(PhysicalPlan plan) {
-    // TODO
-    // In current version, we only return OK/ERROR
-    // Do we need to add extra information of executive condition
     boolean execRet;
     try {
       execRet = executeNonQuery(plan);
@@ -1327,10 +1328,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return getStatus(TSStatusCode.OUT_OF_TTL_ERROR, e.getMessage());
       } else if (e.getCause() instanceof NotStorageGroupException) {
         return getStatus(TSStatusCode.NOT_A_STORAGE_GROUP_ERROR, e.getMessage());
+      } else if (e.getMessage().contains("exist")) {
+        return getStatus(TSStatusCode.TIMESERIES_NOT_EXIST_ERROR, e.getMessage());
       } else {
-        return getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+          return getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+        }
       }
-    }
+
 
     return execRet ? getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
         : getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);

@@ -106,7 +106,6 @@ public class QueryProcessor {
     try {
       astTree = ParseGenerator.generateAST(sqlStr);
     } catch (ParseException e) {
-      // e.printStackTrace();
       throw new IllegalASTFormatException(
           "parsing error,statement: " + sqlStr + " .message:" + e.getMessage());
     }
