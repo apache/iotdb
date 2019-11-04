@@ -221,6 +221,7 @@ public abstract class AbstractClient {
       }
       if (displayCnt == maxPrintRowCount) {
         println(String.format("Reach maxPrintRowCount = %s lines", maxPrintRowCount));
+        return;
       }
     }
 
