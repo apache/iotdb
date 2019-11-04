@@ -20,6 +20,7 @@ package org.apache.iotdb.spark.tsfile
 
 import java.io.{ByteArrayOutputStream, File}
 import java.net.URI
+import java.util
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
@@ -376,8 +377,9 @@ device_2: 400000 rows, time range [0,799998], interval 2
         "|131047|device_1   |null    |131047  |null    |\n" +
         "|131048|device_1   |null    |131048  |null    |\n" +
         "|131049|device_1   |null    |131049  |null    |\n" +
-        "+------+-----------+--------+--------+--------+\n"
+        "+------+-----------+--------+--------+--------+"
 
+    println("???" + util.Arrays.toString(actual))
     Assert.assertArrayEquals(expect.toCharArray, actual.dropRight(2))
 
     reader.close() // DO NOT FORGET THIS
