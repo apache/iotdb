@@ -89,8 +89,8 @@ public abstract class AbstractClient {
   private static final String NEED_NOT_TO_PRINT_TIMESTAMP = "AGGREGATION";
   private static final String DEFAULT_TIME_FORMAT = "default";
   private static String timeFormat = DEFAULT_TIME_FORMAT;
-  static int maxPrintRowCount = 1000;
-  private static int fetchSize = maxPrintRowCount;
+  static int maxPrintRowCount = 100000;
+  private static int fetchSize = 10000;
   static int maxTimeLength = ISO_DATETIME_LEN;
   static int maxValueLength = 15;
   private static int deviceColumnLength = 20; // for GROUP_BY_DEVICE sql
