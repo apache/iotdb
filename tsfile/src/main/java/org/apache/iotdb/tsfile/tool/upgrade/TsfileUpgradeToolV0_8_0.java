@@ -425,9 +425,6 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
             pagesList.add(pages);
             break;
           case MetaMarker.CHUNK_GROUP_FOOTER:
-            //this is a chunk group
-            //if there is something wrong with the ChunkGroup Footer, we will drop this ChunkGroup
-            //because we can not guarantee the correctness of the deviceId.
             ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
             String deviceID = chunkGroupFooter.getDeviceID();
             long endOffsetOfChunkGroup = this.position();
@@ -475,9 +472,6 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
       }
       tsFileIOWriter.endFile(schema);
       return true;
-      // now we read the tail of the data section, so we are sure that the last ChunkGroupFooter is
-      // complete.
-
     } catch (IOException | PageException e2) {
       logger.info("TsFile upgrade process cannot proceed at position {} after {} chunk groups "
           + "recovered, because : {}", this.position(), newMetaData.size(), e2.getMessage());

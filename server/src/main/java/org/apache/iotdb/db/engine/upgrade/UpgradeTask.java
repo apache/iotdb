@@ -68,15 +68,6 @@ public class UpgradeTask implements Runnable {
     }
   }
 
-  public static void main(String[] args) throws IOException {
-    UpgradeUtils.createUpgradeLog();
-    RandomAccessFile file = new RandomAccessFile(
-        UpgradeUtils.getUpgradeLogPath(), "rw");
-    writeUpgradeLogFile(file, "test", file.length());
-    file.close();
-  }
-
-
   @Override
   public void run() {
     try (RandomAccessFile upgradeLogFile = new RandomAccessFile(UpgradeUtils.getUpgradeLogPath(),
