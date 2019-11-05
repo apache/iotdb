@@ -257,6 +257,10 @@ K_PATH
     : P A T H
     ;
 
+K_SUBPATH
+    : S U B P A T H
+    ;
+
 K_LOAD
     : L O A D
     ;

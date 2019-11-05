@@ -107,6 +107,7 @@ tokens{
     TOK_SHOW;
     TOK_DATE_EXPR;
     TOK_DURATION;
+    TOK_SUBPATH;
 }
 
 @header{
@@ -409,8 +410,13 @@ functionCall
     ;
 
 suffixPath
-    : (nodeNames | nodeName) (DOT (nodeName | nodeNames))*
-    -> ^(TOK_PATH nodeName+)
+    : node (DOT node)*
+    -> ^(TOK_PATH node+)
+    ;
+
+node
+    : nodeNames
+    | nodeName
     ;
 
 nodeName
@@ -422,6 +428,7 @@ nodeName
 
 nodeNames
     : L_BRACKET nodeName (COMMA nodeName)* R_BRACKET
+    -> ^(TOK_SUBPATH nodeName+)
     ;
 
 fromClause
@@ -430,8 +437,8 @@ fromClause
     ;
 
 prefixPath
-    : K_ROOT (DOT (nodeNames | nodeName))*
-    -> ^(TOK_PATH ^(TOK_ROOT nodeName*))
+    : K_ROOT (DOT node)*
+    -> ^(TOK_PATH ^(TOK_ROOT node*))
     ;
 
 whereClause
