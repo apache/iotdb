@@ -39,7 +39,7 @@ public interface IMemTable {
   Map<String, Map<String, IWritableMemChunk>> getMemTableMap();
 
   void write(String deviceId, String measurement, TSDataType dataType,
-      long insertTime, String insertValue);
+      long insertTime, Object objectValue);
 
   void write(BatchInsertPlan batchInsertPlan, List<Integer> indexes);
 
@@ -58,7 +58,7 @@ public interface IMemTable {
   void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes) throws QueryProcessorException;
 
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      Map<String, String> props);
+      Map<String, String> props, long timeLowerBound);
 
   /**
    * putBack all the memory resources.

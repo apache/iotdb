@@ -25,17 +25,18 @@ import java.util.*;
 
 public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
 
-  public static final String GET_STRING_COLUMN = "COLUMN";
-  public static final String GET_STRING_STORAGE_GROUP = "STORAGE_GROUP";
-  public static final String GET_STRING_TIMESERIES_NUM = "TIMESERIES_NUM";
-  public static final String GET_STRING_NODES_NUM = "NODE_NUM";
-  public static final String GET_STRING_NODE_PATH = "NODE_PATH";
-  public static final String GET_STRING_NODE_TIMESERIES_NUM = "NODE_TIMESERIES_NUM";
-  public static final String GET_STRING_TIMESERIES_NAME = "Timeseries";
-  public static final String GET_STRING_DEVICES = "DEVICES";
-  public static final String GET_STRING_TIMESERIES_STORAGE_GROUP = "Storage Group";
+  private static final String GET_STRING_COLUMN = "COLUMN";
+  private static final String GET_STRING_STORAGE_GROUP = "STORAGE_GROUP";
+  private static final String GET_STRING_TIMESERIES_NUM = "TIMESERIES_NUM";
+  private static final String GET_STRING_NODES_NUM = "NODE_NUM";
+  private static final String GET_STRING_NODE_PATH = "NODE_PATH";
+  private static final String GET_STRING_NODE_TIMESERIES_NUM = "NODE_TIMESERIES_NUM";
+  private static final String GET_STRING_TIMESERIES_NAME = "Timeseries";
+  private static final String GET_STRING_DEVICES = "DEVICES";
+  private static final String GET_STRING_TIMESERIES_STORAGE_GROUP = "Storage Group";
+
   public static final String GET_STRING_TIMESERIES_DATATYPE = "DataType";
-  public static final String GET_STRING_TIMESERIES_ENCODING = "Encoding";
+  private static final String GET_STRING_TIMESERIES_ENCODING = "Encoding";
   private Iterator<?> columnItr;
   private MetadataType type;
   private String currentColumn;
@@ -58,7 +59,7 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   /**
    * Constructor used for the result of DatabaseMetadata.getColumns()
    */
-  public IoTDBMetadataResultSet(Object object, MetadataType type) throws SQLException {
+  IoTDBMetadataResultSet(Object object, MetadataType type) throws SQLException {
     this.type = type;
     switch (type) {
       case COLUMN:
@@ -87,7 +88,7 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         columnItr = showTimeseriesList.iterator();
         break;
       case COUNT_TIMESERIES:
-        String tsNum = (String) object.toString();
+        String tsNum = object.toString();
         timeseriesNumList = new ArrayList<>();
         timeseriesNumList.add(tsNum);
         colCount = 1;
@@ -95,7 +96,7 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         columnItr = timeseriesNumList.iterator();
         break;
       case COUNT_NODES:
-        String ndNum = (String) object.toString();
+        String ndNum = object.toString();
         nodesNumList = new ArrayList<>();
         nodesNumList.add(ndNum);
         colCount = 1;
@@ -229,12 +230,12 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   }
 
   @Override
-  public ResultSetMetaData getMetaData() throws SQLException {
+  public ResultSetMetaData getMetaData() {
     return new IoTDBMetadataResultMetadata(showLabels);
   }
 
   @Override
-  public boolean next() throws SQLException {
+  public boolean next() {
     boolean hasNext = columnItr.hasNext();
     if (hasNext) {
       switch (type) {
@@ -333,7 +334,7 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   }
 
   @Override
-  public String getString(String columnName) throws SQLException {
+  public String getString(String columnName) {
     // use special key word to judge return content
     switch (columnName) {
       case GET_STRING_STORAGE_GROUP:
@@ -375,7 +376,7 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   }
 
   @Override
-  public int getType() throws SQLException {
+  public int getType() {
     return type.ordinal();
   }
 

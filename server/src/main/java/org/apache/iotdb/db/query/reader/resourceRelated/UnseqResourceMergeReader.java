@@ -85,7 +85,7 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
             continue;
           }
         }
-        metaDataList = tsFileResource.getChunkMetaDatas();
+        metaDataList = tsFileResource.getChunkMetaDataList();
       }
 
       ChunkLoaderImpl chunkLoader = null;

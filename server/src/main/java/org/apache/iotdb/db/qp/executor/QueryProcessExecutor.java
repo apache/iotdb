@@ -24,6 +24,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.USER;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,32 +34,43 @@ import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
-import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.AuthDataSet;
+import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -111,18 +123,31 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       case REVOKE_WATERMARK_EMBEDDING:
         return operateWatermarkEmbedding(((DataAuthPlan) plan).getUsers(), false);
       case DELETE_TIMESERIES:
+        return deleteTimeSeries((DeleteTimeSeriesPlan) plan);
       case CREATE_TIMESERIES:
+        return createTimeSeries((CreateTimeSeriesPlan) plan);
       case SET_STORAGE_GROUP:
+        return setStorageGroup((SetStorageGroupPlan) plan);
       case DELETE_STORAGE_GROUP:
-      case METADATA:
-        MetadataPlan metadata = (MetadataPlan) plan;
-        return operateMetadata(metadata);
+        return deleteStorageGroup((DeleteStorageGroupPlan) plan);  
       case PROPERTY:
         PropertyPlan property = (PropertyPlan) plan;
         return operateProperty(property);
+      case TTL:
+        operateTTL((SetTTLPlan) plan);
+        return true;
       default:
         throw new UnsupportedOperationException(
-            String.format("operation %s does not support", plan.getOperatorType()));
+            String.format("operation %s is not supported", plan.getOperatorType()));
+    }
+  }
+
+  private void operateTTL(SetTTLPlan plan) throws ProcessorException {
+    try {
+      MManager.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
+      StorageEngine.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
+    } catch (PathErrorException | IOException | StorageEngineException e) {
+      throw new ProcessorException(e);
     }
   }
 
@@ -171,21 +196,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   @Override
   public boolean update(Path path, long startTime, long endTime, String value)
       throws ProcessorException {
-    String deviceId = path.getDevice();
-    String measurementId = path.getMeasurement();
-    try {
-      String fullPath = deviceId + "." + measurementId;
-      if (!mManager.pathExist(fullPath)) {
-        throw new ProcessorException(String.format("Time series %s does not exist.", fullPath));
-      }
-      mManager.getStorageGroupNameByPath(fullPath);
-      TSDataType dataType = mManager.getSeriesType(fullPath);
-      value = checkValue(dataType, value);
-      storageEngine.update(deviceId, measurementId, startTime, endTime, dataType, value);
-      return true;
-    } catch (PathErrorException e) {
-      throw new ProcessorException(e);
-    }
+    return false;
   }
 
   @Override
@@ -200,7 +211,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       mManager.getStorageGroupNameByPath(path.getFullPath());
       storageEngine.delete(deviceId, measurementId, timestamp);
       return true;
-    } catch (PathErrorException | StorageEngineException e) {
+    } catch (StorageGroupException | StorageEngineException e) {
       throw new ProcessorException(e);
     }
   }
@@ -212,14 +223,26 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
       MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
-      String[] values = insertPlan.getValues();
+      String[] strValues = insertPlan.getValues();
       TSDataType[] dataTypes = new TSDataType[measurementList.length];
+      IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
       for (int i = 0; i < measurementList.length; i++) {
+
+        // check if timeseries exists
         if (!node.hasChild(measurementList[i])) {
-          throw new ProcessorException(
-              String.format("Current deviceId[%s] does not contain measurement:%s",
-                  deviceId, measurementList[i]));
+          if (!conf.isAutoCreateSchemaEnabled()) {
+            throw new ProcessorException(
+                String.format("Current deviceId[%s] does not contain measurement:%s",
+                    deviceId, measurementList[i]));
+          }
+          try {
+            addPathToMTree(deviceId, measurementList[i], strValues[i]);
+          } catch (MetadataErrorException e) {
+            if (!e.getMessage().contains("already exist")) {
+              throw e;
+            }
+          }
         }
         MNode measurementNode = node.getChild(measurementList[i]);
         if (!measurementNode.isLeaf()) {
@@ -229,13 +252,12 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         }
 
         dataTypes[i] = measurementNode.getSchema().getType();
-        values[i] = checkValue(dataTypes[i], values[i]);
       }
       insertPlan.setDataTypes(dataTypes);
       return storageEngine.insert(insertPlan);
 
-    } catch (PathErrorException | StorageEngineException e) {
-      throw new ProcessorException(e.getMessage());
+    } catch (PathErrorException | StorageEngineException | MetadataErrorException | CacheException e) {
+      throw new ProcessorException(e);
     }
   }
 
@@ -245,22 +267,37 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       String[] measurementList = batchInsertPlan.getMeasurements();
       String deviceId = batchInsertPlan.getDeviceId();
       MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
+      TSDataType[] dataTypes = batchInsertPlan.getDataTypes();
+      IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
-      for (String s : measurementList) {
-        if (!node.hasChild(s)) {
-          throw new ProcessorException(
-              String.format("Current deviceId[%s] does not contain measurement:%s",
-                  deviceId, s));
+      for (int i = 0; i < measurementList.length; i++) {
+
+        // check if timeseries exists
+        if (!node.hasChild(measurementList[i])) {
+          if (!conf.isAutoCreateSchemaEnabled()) {
+            throw new ProcessorException(
+                String.format("Current deviceId[%s] does not contain measurement:%s",
+                    deviceId, measurementList[i]));
+          }
+          addPathToMTree(deviceId, measurementList[i], dataTypes[i]);
         }
-        MNode measurementNode = node.getChild(s);
+        MNode measurementNode = node.getChild(measurementList[i]);
         if (!measurementNode.isLeaf()) {
           throw new ProcessorException(
-              String.format("Current Path is not leaf node. %s.%s", deviceId, s));
+              String.format("Current Path is not leaf node. %s.%s", deviceId, measurementList[i]));
+        }
+
+        // check data type
+        if (measurementNode.getSchema().getType() != batchInsertPlan.getDataTypes()[i]) {
+          throw new ProcessorException(String
+              .format("Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
+                  measurementList[i], batchInsertPlan.getDataTypes()[i],
+                  measurementNode.getSchema().getType()));
         }
       }
       return storageEngine.insertBatch(batchInsertPlan);
 
-    } catch (PathErrorException | StorageEngineException e) {
+    } catch (PathErrorException | StorageEngineException | MetadataErrorException | CacheException e) {
       throw new ProcessorException(e);
     }
   }
@@ -269,30 +306,6 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   public List<String> getAllPaths(String originPath) throws MetadataErrorException {
     return MManager.getInstance().getPaths(originPath);
   }
-
-
-  private static String checkValue(TSDataType dataType, String value) throws ProcessorException {
-    if (dataType == TSDataType.BOOLEAN) {
-      value = value.toLowerCase();
-      if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value)) {
-        value = "false";
-      } else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value)) {
-        value = "true";
-      } else if (!SQLConstant.BOOLEN_TRUE.equals(value) && !SQLConstant.BOOLEN_FALSE
-          .equals(value)) {
-        throw new ProcessorException("The BOOLEAN data type should be true/TRUE or false/FALSE");
-      }
-    } else if (dataType == TSDataType.TEXT) {
-      if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
-          || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
-        value = value.substring(1, value.length() - 1);
-      } else {
-        throw new ProcessorException("The TEXT data type should be covered by \" or '");
-      }
-    }
-    return value;
-  }
-
 
   private boolean operateAuthor(AuthorPlan author) throws ProcessorException {
     AuthorOperator.AuthorType authorType = author.getAuthorType();
@@ -373,43 +386,56 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
     return true;
   }
-
-  private boolean operateMetadata(MetadataPlan metadataPlan) throws ProcessorException {
-    MetadataOperator.NamespaceType namespaceType = metadataPlan.getNamespaceType();
-    Path path = metadataPlan.getPath();
-    TSDataType dataType = metadataPlan.getDataType();
-    CompressionType compressor = metadataPlan.getCompressor();
-    TSEncoding encoding = metadataPlan.getEncoding();
-    Map<String, String> props = metadataPlan.getProps();
-    List<Path> deletePathList = metadataPlan.getDeletePathList();
+  
+  private boolean createTimeSeries(CreateTimeSeriesPlan createTimeSeriesPlan) throws ProcessorException {
+    Path path = createTimeSeriesPlan.getPath();
+    TSDataType dataType = createTimeSeriesPlan.getDataType();
+    CompressionType compressor = createTimeSeriesPlan.getCompressor();
+    TSEncoding encoding = createTimeSeriesPlan.getEncoding();
+    Map<String, String> props = createTimeSeriesPlan.getProps();
     try {
-      switch (namespaceType) {
-        case ADD_PATH:
-          boolean result = mManager.addPathToMTree(path, dataType, encoding, compressor, props);
-          if (result) {
-            storageEngine.addTimeSeries(path, dataType, encoding, compressor, props);
-          }
-          break;
-        case DELETE_PATH:
-          deleteDataOfTimeSeries(deletePathList);
-          Set<String> emptyStorageGroups = mManager.deletePaths(deletePathList);
-          for (String deleteStorageGroup : emptyStorageGroups) {
-            storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
-          }
-          break;
-        case SET_STORAGE_GROUP:
-          mManager.setStorageGroupToMTree(path.getFullPath());
-          break;
-        case DELETE_STORAGE_GROUP:
-          mManager.deleteStorageGroupsFromMTree(deletePathList);
-          for (Path storageGroupPath : deletePathList) {
-            storageEngine.deleteStorageGroup(storageGroupPath.getFullPath());
-          }
-          break;
-        default:
-          throw new ProcessorException("unknown namespace type:" + namespaceType);
+      boolean result = mManager.addPathToMTree(path, dataType, encoding, compressor, props);
+      if (result) {
+        storageEngine.addTimeSeries(path, dataType, encoding, compressor, props);
       }
-    } catch (StorageEngineException | MetadataErrorException e) {
+    } catch (StorageEngineException | MetadataErrorException | PathErrorException e) {
+      throw new ProcessorException(e);
+    }
+    return true;
+  }
+  
+  private boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws ProcessorException {
+    List<Path> deletePathList = deleteTimeSeriesPlan.getPaths();
+    try {
+      deleteDataOfTimeSeries(deletePathList);
+      Set<String> emptyStorageGroups = mManager.deletePaths(deletePathList);
+      for (String deleteStorageGroup : emptyStorageGroups) {
+        storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
+      }
+    } catch (MetadataErrorException e) {
+      throw new ProcessorException(e);
+    }
+    return true;
+  }
+  
+  private boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) throws ProcessorException {
+    Path path = setStorageGroupPlan.getPath();
+    try {
+      mManager.setStorageGroupToMTree(path.getFullPath());
+    } catch (MetadataErrorException e) {
+      throw new ProcessorException(e);
+    }
+    return true;
+  }
+  
+  private boolean deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan) throws ProcessorException {
+    List<Path> deletePathList = deleteStorageGroupPlan.getPaths();
+    try {
+      mManager.deleteStorageGroupsFromMTree(deletePathList);
+      for (Path storageGroupPath : deletePathList) {
+        storageEngine.deleteStorageGroup(storageGroupPath.getFullPath());
+      }
+    } catch (MetadataErrorException e) {
       throw new ProcessorException(e);
     }
     return true;
@@ -473,7 +499,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       throw new ProcessorException(e);
     }
 
-    AuthDataSet dataSet;
+    ListDataSet dataSet;
 
     try {
       switch (authorType) {
@@ -504,13 +530,13 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return dataSet;
   }
 
-  private AuthDataSet executeListRole(IAuthorizer authorizer) {
+  private ListDataSet executeListRole(IAuthorizer authorizer) {
     int index = 0;
     List<Path> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
     headerList.add(new Path(ROLE));
     typeList.add(TSDataType.TEXT);
-    AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+    ListDataSet dataSet = new ListDataSet(headerList, typeList);
     List<String> roleList = authorizer.listAllRoles();
     for (String role : roleList) {
       RowRecord record = new RowRecord(index++);
@@ -522,14 +548,14 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return dataSet;
   }
 
-  private AuthDataSet executeListUser(IAuthorizer authorizer) {
+  private ListDataSet executeListUser(IAuthorizer authorizer) {
     List<String> userList = authorizer.listAllUsers();
     List<Path> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
     headerList.add(new Path(USER));
     typeList.add(TSDataType.TEXT);
     int index = 0;
-    AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+    ListDataSet dataSet = new ListDataSet(headerList, typeList);
     for (String user : userList) {
       RowRecord record = new RowRecord(index++);
       Field field = new Field(TSDataType.TEXT);
@@ -540,7 +566,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return dataSet;
   }
 
-  private AuthDataSet executeListRoleUsers(IAuthorizer authorizer, String roleName)
+  private ListDataSet executeListRoleUsers(IAuthorizer authorizer, String roleName)
       throws AuthException {
     Role role = authorizer.getRole(roleName);
     if (role == null) {
@@ -550,7 +576,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     List<TSDataType> typeList = new ArrayList<>();
     headerList.add(new Path(USER));
     typeList.add(TSDataType.TEXT);
-    AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+    ListDataSet dataSet = new ListDataSet(headerList, typeList);
     List<String> userList = authorizer.listAllUsers();
     int index = 0;
     for (String userN : userList) {
@@ -566,7 +592,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return dataSet;
   }
 
-  private AuthDataSet executeListUserRoles(IAuthorizer authorizer, String userName)
+  private ListDataSet executeListUserRoles(IAuthorizer authorizer, String userName)
       throws AuthException {
     User user = authorizer.getUser(userName);
     if (user != null) {
@@ -574,7 +600,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       List<TSDataType> typeList = new ArrayList<>();
       headerList.add(new Path(ROLE));
       typeList.add(TSDataType.TEXT);
-      AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+      ListDataSet dataSet = new ListDataSet(headerList, typeList);
       int index = 0;
       for (String roleN : user.getRoleList()) {
         RowRecord record = new RowRecord(index++);
@@ -589,7 +615,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
   }
 
-  private AuthDataSet executeListRolePrivileges(IAuthorizer authorizer, String roleName, Path path)
+  private ListDataSet executeListRolePrivileges(IAuthorizer authorizer, String roleName, Path path)
       throws AuthException {
     Role role = authorizer.getRole(roleName);
     if (role != null) {
@@ -597,7 +623,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       List<TSDataType> typeList = new ArrayList<>();
       headerList.add(new Path(PRIVILEGE));
       typeList.add(TSDataType.TEXT);
-      AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+      ListDataSet dataSet = new ListDataSet(headerList, typeList);
       int index = 0;
       for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
         if (path == null || AuthUtils
@@ -615,7 +641,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
   }
 
-  private AuthDataSet executeListUserPrivileges(IAuthorizer authorizer, String userName, Path path)
+  private ListDataSet executeListUserPrivileges(IAuthorizer authorizer, String userName, Path path)
       throws AuthException {
     User user = authorizer.getUser(userName);
     if (user == null) {
@@ -627,7 +653,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     headerList.add(new Path(PRIVILEGE));
     typeList.add(TSDataType.TEXT);
     typeList.add(TSDataType.TEXT);
-    AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+    ListDataSet dataSet = new ListDataSet(headerList, typeList);
     int index = 0;
     for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
       if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
@@ -660,5 +686,52 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       }
     }
     return dataSet;
+  }
+
+  /**
+   * Add a seriesPath to MTree
+   */
+  private void addPathToMTree(String deviceId, String measurementId, TSDataType dataType)
+      throws PathErrorException, MetadataErrorException, StorageEngineException {
+    String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
+    TSEncoding defaultEncoding = getDefaultEncoding(dataType);
+    CompressionType defaultCompressor =
+        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
+    boolean result = mManager.addPathToMTree(
+        fullPath, dataType, defaultEncoding, defaultCompressor, Collections.emptyMap());
+    if (result) {
+      storageEngine.addTimeSeries(
+          new Path(fullPath), dataType, defaultEncoding, defaultCompressor, Collections.emptyMap());
+    }
+  }
+
+  private void addPathToMTree(String deviceId, String measurementId, Object value)
+      throws PathErrorException, MetadataErrorException, StorageEngineException {
+    TSDataType predictedDataType = TypeInferenceUtils.getPredictedDataType(value);
+    addPathToMTree(deviceId, measurementId, predictedDataType);
+  }
+
+  /**
+   * Get default encoding by dataType
+   */
+  private TSEncoding getDefaultEncoding(TSDataType dataType) {
+    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    switch (dataType) {
+      case BOOLEAN:
+        return conf.getDefaultBooleanEncoding();
+      case INT32:
+        return conf.getDefaultInt32Encoding();
+      case INT64:
+        return conf.getDefaultInt64Encoding();
+      case FLOAT:
+        return conf.getDefaultFloatEncoding();
+      case DOUBLE:
+        return conf.getDefaultDoubleEncoding();
+      case TEXT:
+        return conf.getDefaultTextEncoding();
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", dataType.toString()));
+    }
   }
 }

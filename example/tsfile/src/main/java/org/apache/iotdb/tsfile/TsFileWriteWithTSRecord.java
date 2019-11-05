@@ -22,7 +22,7 @@ package org.apache.iotdb.tsfile;
 import java.io.File;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.TSFileFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -38,7 +38,7 @@ public class TsFileWriteWithTSRecord {
   public static void main(String args[]) {
     try {
       String path = "test.tsfile";
-      File f = TSFileFactory.INSTANCE.getFile(path);
+      File f = FSFactoryProducer.getFSFactory().getFile(path);
       if (f.exists()) {
         f.delete();
       }
@@ -53,16 +53,18 @@ public class TsFileWriteWithTSRecord {
           .addMeasurement(new MeasurementSchema("sensor_3", TSDataType.INT64, TSEncoding.RLE));
 
       // construct TSRecord
-      TSRecord tsRecord = new TSRecord(1, "device_1");
-      DataPoint dPoint1 = new LongDataPoint("sensor_1", 1);
-      DataPoint dPoint2 = new LongDataPoint("sensor_2", 2);
-      DataPoint dPoint3 = new LongDataPoint("sensor_3", 3);
-      tsRecord.addTuple(dPoint1);
-      tsRecord.addTuple(dPoint2);
-      tsRecord.addTuple(dPoint3);
+      for (int i = 0; i < 100; i++) {
+        TSRecord tsRecord = new TSRecord(i, "device_" + (i % 4));
+        DataPoint dPoint1 = new LongDataPoint("sensor_1", i);
+        DataPoint dPoint2 = new LongDataPoint("sensor_2", i);
+        DataPoint dPoint3 = new LongDataPoint("sensor_3", i);
+        tsRecord.addTuple(dPoint1);
+        tsRecord.addTuple(dPoint2);
+        tsRecord.addTuple(dPoint3);
 
-      // write TSRecord
-      tsFileWriter.write(tsRecord);
+        // write TSRecord
+        tsFileWriter.write(tsRecord);
+      }
 
       tsFileWriter.close();
     } catch (Throwable e) {

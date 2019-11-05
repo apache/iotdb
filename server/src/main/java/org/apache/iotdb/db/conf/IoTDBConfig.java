@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,10 +37,15 @@ import org.slf4j.LoggerFactory;
 public class IoTDBConfig {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
-  public static final String CONFIG_NAME = "iotdb-engine.properties";
+  static final String CONFIG_NAME = "iotdb-engine.properties";
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
+  
+  /**
+   * Port which the metrics service listens to.
+   */
+  private int metricsPort = 8181;
 
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
@@ -234,12 +240,6 @@ public class IoTDBConfig {
    * Set the language version when loading file including error information, default value is "EN"
    */
   private String languageVersion = "EN";
-  /**
-   * Choose a postBack strategy of merging historical data: 1. It's more likely to update historical
-   * data, choose "true". 2. It's more likely not to update historical data or you don't know
-   * exactly, choose "false".
-   */
-  private boolean updateHistoricalDataPossibility = false;
 
   private String ipWhiteList = "0.0.0.0/0";
   /**
@@ -290,6 +290,46 @@ public class IoTDBConfig {
    * Watermark method and parameters
    */
   private String watermarkMethod = "GroupBasedLSBMethod(embed_row_cycle=5,embed_lsb_num=5)";
+
+  /**
+   * Switch of creating schema automatically
+   */
+  private boolean enableAutoCreateSchema = false;
+
+  /**
+   * Storage group level when creating schema automatically is enabled
+   */
+  private int defaultStorageGroupLevel = 2;
+
+  /**
+   * BOOLEAN encoding when creating schema automatically is enabled
+   */
+  private TSEncoding defaultBooleanEncoding = TSEncoding.RLE;
+
+  /**
+   * INT32 encoding when creating schema automatically is enabled
+   */
+  private TSEncoding defaultInt32Encoding = TSEncoding.RLE;
+
+  /**
+   * INT64 encoding when creating schema automatically is enabled
+   */
+  private TSEncoding defaultInt64Encoding = TSEncoding.RLE;
+
+  /**
+   * FLOAT encoding when creating schema automatically is enabled
+   */
+  private TSEncoding defaultFloatEncoding = TSEncoding.GORILLA;
+
+  /**
+   * DOUBLE encoding when creating schema automatically is enabled
+   */
+  private TSEncoding defaultDoubleEncoding = TSEncoding.GORILLA;
+
+  /**
+   * TEXT encoding when creating schema automatically is enabled
+   */
+  private TSEncoding defaultTextEncoding = TSEncoding.PLAIN;
 
   /**
    * How much memory (in byte) can be used by a single merge task.
@@ -361,6 +401,33 @@ public class IoTDBConfig {
    */
   private String hdfsPort = "9000";
 
+  /**
+   * Default DFS NameServices is hdfsnamespace
+   */
+  private String dfsNameServices = "hdfsnamespace";
+
+  /**
+   * Default DFS HA name nodes are nn1 and nn2
+   */
+  private String dfsHaNamenodes = "nn1,nn2";
+
+  /**
+   * Default DFS HA automatic failover is enabled
+   */
+  private boolean dfsHaAutomaticFailoverEnabled = true;
+
+  /**
+   * Default DFS client failover proxy provider is "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider"
+   */
+  private String dfsClientFailoverProxyProvider = "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider";
+
+  /**
+   * default TTL for storage groups that are not set TTL by statements, in ms
+   * Notice: if this property is changed, previous created storage group which are not set TTL will
+   * also be affected.
+   */
+  private long defaultTTL = Long.MAX_VALUE;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -393,8 +460,13 @@ public class IoTDBConfig {
     }
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
-      String hdfsDir = "hdfs://" + TSFileDescriptor.getInstance().getConfig().getHdfsIp() + ":"
-          + TSFileDescriptor.getInstance().getConfig().getHdfsPort();
+      String[] hdfsIps = TSFileDescriptor.getInstance().getConfig().getHdfsIp();
+      String hdfsDir = "hdfs://";
+      if (hdfsIps.length > 1) {
+        hdfsDir += TSFileDescriptor.getInstance().getConfig().getDfsNameServices();
+      } else {
+        hdfsDir += hdfsIps[0] + ":" + TSFileDescriptor.getInstance().getConfig().getHdfsPort();
+      }
       for (int i = 5; i < dirs.size(); i++) {
         String dir = dirs.get(i);
         dir = hdfsDir + File.separatorChar + dir;
@@ -448,6 +520,14 @@ public class IoTDBConfig {
 
   public String[] getDataDirs() {
     return dataDirs;
+  }
+
+  public int getMetricsPort() {
+    return metricsPort;
+  }
+
+  public void setMetricsPort(int metricsPort) {
+    this.metricsPort = metricsPort;
   }
 
   public String getRpcAddress() {
@@ -656,14 +736,6 @@ public class IoTDBConfig {
 
   void setLanguageVersion(String languageVersion) {
     this.languageVersion = languageVersion;
-  }
-
-  public boolean isUpdateHistoricalDataPossibility() {
-    return updateHistoricalDataPossibility;
-  }
-
-  void setUpdateHistoricalDataPossibility(boolean updateHistoricalDataPossibility) {
-    this.updateHistoricalDataPossibility = updateHistoricalDataPossibility;
   }
 
   public String getBaseDir() {
@@ -961,6 +1033,94 @@ public class IoTDBConfig {
     return null;
   }
 
+  public boolean isAutoCreateSchemaEnabled() {
+    return enableAutoCreateSchema;
+  }
+
+  public void setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
+    this.enableAutoCreateSchema = enableAutoCreateSchema;
+  }
+
+  public int getDefaultStorageGroupLevel() {
+    return defaultStorageGroupLevel;
+  }
+
+  public void setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+    this.defaultStorageGroupLevel = defaultStorageGroupLevel;
+  }
+
+  public TSEncoding getDefaultBooleanEncoding() {
+    return defaultBooleanEncoding;
+  }
+
+  public void setDefaultBooleanEncoding(TSEncoding defaultBooleanEncoding) {
+    this.defaultBooleanEncoding = defaultBooleanEncoding;
+  }
+
+  public void setDefaultBooleanEncoding(String defaultBooleanEncoding) {
+    this.defaultBooleanEncoding = TSEncoding.valueOf(defaultBooleanEncoding);
+  }
+
+  public TSEncoding getDefaultInt32Encoding() {
+    return defaultInt32Encoding;
+  }
+
+  public void setDefaultInt32Encoding(TSEncoding defaultInt32Encoding) {
+    this.defaultInt32Encoding = defaultInt32Encoding;
+  }
+
+  public void setDefaultInt32Encoding(String defaultInt32Encoding) {
+    this.defaultInt32Encoding = TSEncoding.valueOf(defaultInt32Encoding);
+  }
+
+  public TSEncoding getDefaultInt64Encoding() {
+    return defaultInt64Encoding;
+  }
+
+  public void setDefaultInt64Encoding(TSEncoding defaultInt64Encoding) {
+    this.defaultInt64Encoding = defaultInt64Encoding;
+  }
+
+  public void setDefaultInt64Encoding(String defaultInt64Encoding) {
+    this.defaultInt64Encoding = TSEncoding.valueOf(defaultInt64Encoding);
+  }
+
+  public TSEncoding getDefaultFloatEncoding() {
+    return defaultFloatEncoding;
+  }
+
+  public void setDefaultFloatEncoding(TSEncoding defaultFloatEncoding) {
+    this.defaultFloatEncoding = defaultFloatEncoding;
+  }
+
+  public void setDefaultFloatEncoding(String defaultFloatEncoding) {
+    this.defaultFloatEncoding = TSEncoding.valueOf(defaultFloatEncoding);
+  }
+
+  public TSEncoding getDefaultDoubleEncoding() {
+    return defaultDoubleEncoding;
+  }
+
+  public void setDefaultDoubleEncoding(TSEncoding defaultDoubleEncoding) {
+    this.defaultDoubleEncoding = defaultDoubleEncoding;
+  }
+
+  public void setDefaultDoubleEncoding(String defaultDoubleEncoding) {
+    this.defaultDoubleEncoding = TSEncoding.valueOf(defaultDoubleEncoding);
+  }
+
+  public TSEncoding getDefaultTextEncoding() {
+    return defaultTextEncoding;
+  }
+
+  public void setDefaultTextEncoding(TSEncoding defaultTextEncoding) {
+    this.defaultTextEncoding = defaultTextEncoding;
+  }
+
+  public void setDefaultTextEncoding(String defaultTextEncoding) {
+    this.defaultTextEncoding = TSEncoding.valueOf(defaultTextEncoding);
+  }
+
   public FSType getSystemFileStorageFs() {
     return systemFileStorageFs;
   }
@@ -977,12 +1137,12 @@ public class IoTDBConfig {
     this.tsFileStorageFs = FSType.valueOf(tsFileStorageFs);
   }
 
-  public String getHdfsIp() {
-    return hdfsIp;
+  public String[] getHdfsIp() {
+    return hdfsIp.split(",");
   }
 
-  public void setHdfsIp(String hdfsIp) {
-    this.hdfsIp = hdfsIp;
+  public void setHdfsIp(String[] hdfsIp) {
+    this.hdfsIp = String.join(",", hdfsIp);
   }
 
   public String getHdfsPort() {
@@ -991,5 +1151,45 @@ public class IoTDBConfig {
 
   public void setHdfsPort(String hdfsPort) {
     this.hdfsPort = hdfsPort;
+  }
+
+  public String getDfsNameServices() {
+    return dfsNameServices;
+  }
+
+  public void setDfsNameServices(String dfsNameServices) {
+    this.dfsNameServices = dfsNameServices;
+  }
+
+  public String[] getDfsHaNamenodes() {
+    return dfsHaNamenodes.split(",");
+  }
+
+  public void setDfsHaNamenodes(String[] dfsHaNamenodes) {
+    this.dfsHaNamenodes = String.join(",", dfsHaNamenodes);
+  }
+
+  public boolean isDfsHaAutomaticFailoverEnabled() {
+    return dfsHaAutomaticFailoverEnabled;
+  }
+
+  public void setDfsHaAutomaticFailoverEnabled(boolean dfsHaAutomaticFailoverEnabled) {
+    this.dfsHaAutomaticFailoverEnabled = dfsHaAutomaticFailoverEnabled;
+  }
+
+  public String getDfsClientFailoverProxyProvider() {
+    return dfsClientFailoverProxyProvider;
+  }
+
+  public void setDfsClientFailoverProxyProvider(String dfsClientFailoverProxyProvider) {
+    this.dfsClientFailoverProxyProvider = dfsClientFailoverProxyProvider;
+  }
+
+  public long getDefaultTTL() {
+    return defaultTTL;
+  }
+
+  public void setDefaultTTL(long defaultTTL) {
+    this.defaultTTL = defaultTTL;
   }
 }

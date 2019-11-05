@@ -18,14 +18,18 @@
  */
 package org.apache.iotdb.db.conf;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.time.ZoneId;
+import java.util.Properties;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.*;
-import java.time.ZoneId;
-import java.util.Properties;
 
 public class IoTDBDescriptor {
 
@@ -116,9 +120,13 @@ public class IoTDBDescriptor {
             + " use default value");
       }
 
+      conf.setMetricsPort(Integer.parseInt(properties.getProperty("metrics_port",
+          Integer.toString(conf.getMetricsPort()))));
+
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
 
-      conf.setRpcThriftCompressionEnable(Boolean.parseBoolean(properties.getProperty("rpc_thrift_compression_enable",
+      conf.setRpcThriftCompressionEnable(
+          Boolean.parseBoolean(properties.getProperty("rpc_thrift_compression_enable",
               Boolean.toString(conf.isRpcThriftCompressionEnable()))));
 
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
@@ -195,9 +203,6 @@ public class IoTDBDescriptor {
           .parseInt(properties.getProperty("sync_server_port",
               Integer.toString(conf.getSyncServerPort())).trim()));
 
-      conf.setUpdateHistoricalDataPossibility(Boolean.parseBoolean(
-          properties.getProperty("update_historical_data_possibility",
-              Boolean.toString(conf.isSyncEnable()))));
       conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
 
       conf.setConcurrentFlushThread(Integer
@@ -234,12 +239,12 @@ public class IoTDBDescriptor {
           Integer.toString(conf.getMergeThreadNum()))));
       conf.setMergeChunkSubThreadNum(Integer.parseInt(properties.getProperty
           ("merge_chunk_subthread_num",
-          Integer.toString(conf.getMergeChunkSubThreadNum()))));
+              Integer.toString(conf.getMergeChunkSubThreadNum()))));
       conf.setContinueMergeAfterReboot(Boolean.parseBoolean(properties.getProperty(
           "continue_merge_after_reboot", Boolean.toString(conf.isContinueMergeAfterReboot()))));
       conf.setMergeFileSelectionTimeBudget(Long.parseLong(properties.getProperty
           ("merge_fileSelection_time_budget",
-          Long.toString(conf.getMergeFileSelectionTimeBudget()))));
+              Long.toString(conf.getMergeFileSelectionTimeBudget()))));
       conf.setMergeIntervalSec(Long.parseLong(properties.getProperty("merge_interval_sec",
           Long.toString(conf.getMergeIntervalSec()))));
       conf.setForceFullMerge(Boolean.parseBoolean(properties.getProperty("force_full_merge",
@@ -274,16 +279,97 @@ public class IoTDBDescriptor {
       conf.setWatermarkMethod(
           properties.getProperty("watermark_method", conf.getWatermarkMethod()));
 
+      conf.setAutoCreateSchemaEnabled(
+          Boolean.parseBoolean(properties.getProperty("enable_auto_create_schema",
+              Boolean.toString(conf.isAutoCreateSchemaEnabled()).trim())));
+      conf.setDefaultStorageGroupLevel(
+          Integer.parseInt(properties.getProperty("default_storage_group_level",
+              Integer.toString(conf.getDefaultStorageGroupLevel()))));
+      conf.setDefaultBooleanEncoding(
+          properties.getProperty("default_boolean_encoding",
+              conf.getDefaultBooleanEncoding().toString()));
+      conf.setDefaultInt32Encoding(
+          properties.getProperty("default_int32_encoding",
+              conf.getDefaultInt32Encoding().toString()));
+      conf.setDefaultInt64Encoding(
+          properties.getProperty("default_int64_encoding",
+              conf.getDefaultInt64Encoding().toString()));
+      conf.setDefaultFloatEncoding(
+          properties.getProperty("default_float_encoding",
+              conf.getDefaultFloatEncoding().toString()));
+      conf.setDefaultDoubleEncoding(
+          properties.getProperty("default_double_encoding",
+              conf.getDefaultDoubleEncoding().toString()));
+      conf.setDefaultTextEncoding(
+          properties.getProperty("default_text_encoding",
+              conf.getDefaultTextEncoding().toString()));
+
       conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
       conf.setTsFileStorageFs(properties.getProperty("tsfile_storage_fs"));
-      conf.setHdfsIp(properties.getProperty("hdfs_ip"));
+      conf.setHdfsIp(properties.getProperty("hdfs_ip").split(","));
       conf.setHdfsPort(properties.getProperty("hdfs_port"));
+      conf.setDfsNameServices(properties.getProperty("dfs_nameservices"));
+      conf.setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes").split(","));
+      conf.setDfsHaAutomaticFailoverEnabled(
+          Boolean.parseBoolean(properties.getProperty("dfs_ha_automatic_failover_enabled")));
+      conf.setDfsClientFailoverProxyProvider(
+          properties.getProperty("dfs_client_failover_proxy_provider"));
+
+      conf.setDefaultTTL(Long.parseLong(properties.getProperty("default_ttl",
+          String.valueOf(conf.getDefaultTTL()))));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
-      TSFileDescriptor.getInstance().getConfig().setHdfsIp(properties.getProperty("hdfs_ip"));
+      TSFileDescriptor.getInstance().getConfig().setHdfsIp(properties.getProperty("hdfs_ip").split(","));
       TSFileDescriptor.getInstance().getConfig().setHdfsPort(properties.getProperty("hdfs_port"));
+      TSFileDescriptor.getInstance().getConfig().setDfsNameServices(properties.getProperty("dfs_nameservices"));
+      TSFileDescriptor.getInstance().getConfig().setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes").split(","));
+      TSFileDescriptor.getInstance().getConfig().setDfsHaAutomaticFailoverEnabled(
+          Boolean.parseBoolean(properties.getProperty("dfs_ha_automatic_failover_enabled")));
+      TSFileDescriptor.getInstance().getConfig().setDfsClientFailoverProxyProvider(
+          properties.getProperty("dfs_client_failover_proxy_provider"));
+
+      // set tsfile-format config
+      TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(Integer
+          .parseInt(properties.getProperty("group_size_in_byte",
+              Integer.toString(TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte()))));
+      TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(Integer
+          .parseInt(properties.getProperty("page_size_in_byte",
+              Integer.toString(TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()))));
+      if (TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() > TSFileDescriptor
+          .getInstance().getConfig().getGroupSizeInByte()) {
+        logger
+            .warn("page_size is greater than group size, will set it as the same with group size");
+        TSFileDescriptor.getInstance().getConfig()
+            .setPageSizeInByte(TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte());
+      }
+      TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(Integer
+          .parseInt(properties.getProperty("max_number_of_points_in_page",
+              Integer.toString(
+                  TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage()))));
+      TSFileDescriptor.getInstance().getConfig().setTimeSeriesDataType(properties
+          .getProperty("time_series_data_type",
+              TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType()));
+      TSFileDescriptor.getInstance().getConfig().setMaxStringLength(Integer
+          .parseInt(properties.getProperty("max_string_length",
+              Integer.toString(TSFileDescriptor.getInstance().getConfig().getMaxStringLength()))));
+      TSFileDescriptor.getInstance().getConfig().setBloomFilterErrorRate(Double
+          .parseDouble(properties.getProperty("bloom_filter_error_rate",
+              Double.toString(
+                  TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate()))));
+      TSFileDescriptor.getInstance().getConfig().setFloatPrecision(Integer
+          .parseInt(properties
+              .getProperty("float_precision", Integer
+                  .toString(TSFileDescriptor.getInstance().getConfig().getFloatPrecision()))));
+      TSFileDescriptor.getInstance().getConfig().setTimeEncoder(properties
+          .getProperty("time_encoder",
+              TSFileDescriptor.getInstance().getConfig().getTimeEncoder()));
+      TSFileDescriptor.getInstance().getConfig().setValueEncoder(properties
+          .getProperty("value_encoder",
+              TSFileDescriptor.getInstance().getConfig().getValueEncoder()));
+      TSFileDescriptor.getInstance().getConfig().setCompressor(properties
+          .getProperty("compressor", TSFileDescriptor.getInstance().getConfig().getCompressor()));
 
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);

@@ -29,9 +29,6 @@ public class SyncUtils {
 
   private static final String IP_SEPARATOR = "\\.";
 
-  private static String[] snapshotPaths = SyncSenderDescriptor.getInstance()
-      .getConfig().getSnapshotPaths();
-
   private SyncUtils() {
   }
 
@@ -40,41 +37,20 @@ public class SyncUtils {
    * multiple directories, it's necessary to make a snapshot in the same disk. It's used by sync
    * sender.
    */
-  public static String getSnapshotFilePath(String filePath) {
-    String[] name;
-    String relativeFilePath;
-    String os = System.getProperty("os.name");
-    if (os.toLowerCase().startsWith("windows")) {
-      name = filePath.split(File.separator + File.separator);
-      relativeFilePath = name[name.length - 2] + File.separator + name[name.length - 1];
-    } else {
-      name = filePath.split(File.separator);
-      relativeFilePath = name[name.length - 2] + File.separator + name[name.length - 1];
+  public static File getSnapshotFile(File file) {
+    String relativeFilePath = file.getParentFile().getName() + File.separator + file.getName();
+    String snapshotDir = SyncSenderDescriptor.getInstance().getConfig().getSnapshotPath();
+    if (!new File(snapshotDir).exists()) {
+      new File(snapshotDir).mkdirs();
     }
-    String bufferWritePath = name[0];
-    for (int i = 1; i < name.length - 2; i++) {
-      bufferWritePath = bufferWritePath + File.separatorChar + name[i];
-    }
-    for (String snapshotPath : snapshotPaths) {
-      if (snapshotPath.startsWith(bufferWritePath)) {
-        if (!new File(snapshotPath).exists()) {
-          new File(snapshotPath).mkdir();
-        }
-        if (snapshotPath.length() > 0
-            && snapshotPath.charAt(snapshotPath.length() - 1) != File.separatorChar) {
-          snapshotPath = snapshotPath + File.separatorChar;
-        }
-        return snapshotPath + relativeFilePath;
-      }
-    }
-    return null;
+    return new File(snapshotDir, relativeFilePath);
   }
 
   /**
    * Verify sending list is empty or not It's used by sync sender.
    */
-  public static boolean isEmpty(Map<String, Set<String>> sendingFileList) {
-    for (Entry<String, Set<String>> entry : sendingFileList.entrySet()) {
+  public static boolean isEmpty(Map<String, Set<File>> sendingFileList) {
+    for (Entry<String, Set<File>> entry : sendingFileList.entrySet()) {
       if (!entry.getValue().isEmpty()) {
         return false;
       }

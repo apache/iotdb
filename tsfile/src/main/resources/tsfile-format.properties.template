@@ -27,6 +27,9 @@ page_size_in_byte=1048576
 # The maximum number of data points in a page, defalut 1024*1024
 max_number_of_points_in_page=1048576
 
+# The acceptable error rate of bloom filter, should be in [0.01, 0.1]
+bloom_filter_error_rate=0.05
+
 # Data type configuration
 
 # Data type for input timestamp, TsFile supports INT32 or INT64
@@ -53,3 +56,4 @@ value_encoder=PLAIN
 
 # Data compression method, TsFile supports UNCOMPRESSED or SNAPPY. Default value is UNCOMPRESSED which means no compression
 compressor=UNCOMPRESSED
+

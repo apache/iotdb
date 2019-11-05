@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSType;
  * TSFileConfig is a configure class. Every variables is public and has default value.
  */
 public class TSFileConfig {
+
   // Memory configuration
   public static final int RLE_MIN_REPEATED_NUM = 8;
   public static final int RLE_MAX_REPEATED_NUM = 0x7FFF;
@@ -49,12 +50,16 @@ public class TSFileConfig {
   public static final int BYTE_SIZE_PER_CHAR = 4;
   public static final String STRING_ENCODING = "UTF-8";
   public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
-  public static final String CONFIG_FILE_NAME = "tsfile-format.properties";
-  public static final String MAGIC_STRING = "TsFilev0.8.0";
+  public static final String CONFIG_FILE_NAME = "iotdb-engine.properties";
+  public static final String MAGIC_STRING = "TsFile";
+  public static final String VERSION_NUMBER = "000001";
+
   /**
-   * Current version is 3.
+   * Bloom filter constrain
    */
-  public static final int CURRENT_VERSION = 3;
+  public static final double MIN_BLOOM_FILTER_ERROR_RATE = 0.01;
+  public static final double MAX_BLOOM_FILTER_ERROR_RATE = 0.1;
+
   /**
    * The default grow size of class BatchData.
    */
@@ -293,8 +298,41 @@ public class TSFileConfig {
    */
   private String hdfsPort = "9000";
 
+  /**
+   * Default DFS NameServices is hdfsnamespace
+   */
+  private String dfsNameServices = "hdfsnamespace";
+
+  /**
+   * Default DFS HA name nodes are nn1 and nn2
+   */
+  private String dfsHaNamenodes = "nn1,nn2";
+
+  /**
+   * Default DFS HA automatic failover is enabled
+   */
+  private boolean dfsHaAutomaticFailoverEnabled = true;
+
+  /**
+   * Default DFS client failover proxy provider is "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider"
+   */
+  private String dfsClientFailoverProxyProvider = "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider";
+
+  /**
+   * The acceptable error rate of bloom filter
+   */
+  private double bloomFilterErrorRate = 0.05;
+
   public TSFileConfig() {
 
+  }
+
+  public double getBloomFilterErrorRate() {
+    return bloomFilterErrorRate;
+  }
+
+  public void setBloomFilterErrorRate(double bloomFilterErrorRate) {
+    this.bloomFilterErrorRate = bloomFilterErrorRate;
   }
 
 
@@ -306,12 +344,12 @@ public class TSFileConfig {
     this.TSFileStorageFs = FSType.valueOf(TSFileStorageFs);
   }
 
-  public String getHdfsIp() {
-    return this.hdfsIp;
+  public String[] getHdfsIp() {
+    return hdfsIp.split(",");
   }
 
-  public void setHdfsIp(String hdfsIp) {
-    this.hdfsIp = hdfsIp;
+  public void setHdfsIp(String[] hdfsIp) {
+    this.hdfsIp = String.join(",", hdfsIp);
   }
 
   public String getHdfsPort() {
@@ -321,4 +359,37 @@ public class TSFileConfig {
   public void setHdfsPort(String hdfsPort) {
     this.hdfsPort = hdfsPort;
   }
+
+  public String getDfsNameServices() {
+    return dfsNameServices;
+  }
+
+  public void setDfsNameServices(String dfsNameServices) {
+    this.dfsNameServices = dfsNameServices;
+  }
+
+  public String[] getDfsHaNamenodes() {
+    return dfsHaNamenodes.split(",");
+  }
+
+  public void setDfsHaNamenodes(String[] dfsHaNamenodes) {
+    this.dfsHaNamenodes = String.join(",", dfsHaNamenodes);
+  }
+
+  public boolean isDfsHaAutomaticFailoverEnabled() {
+    return dfsHaAutomaticFailoverEnabled;
+  }
+
+  public void setDfsHaAutomaticFailoverEnabled(boolean dfsHaAutomaticFailoverEnabled) {
+    this.dfsHaAutomaticFailoverEnabled = dfsHaAutomaticFailoverEnabled;
+  }
+
+  public String getDfsClientFailoverProxyProvider() {
+    return dfsClientFailoverProxyProvider;
+  }
+
+  public void setDfsClientFailoverProxyProvider(String dfsClientFailoverProxyProvider) {
+    this.dfsClientFailoverProxyProvider = dfsClientFailoverProxyProvider;
+  }
+
 }

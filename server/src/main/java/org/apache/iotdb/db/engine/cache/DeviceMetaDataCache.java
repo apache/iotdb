@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,11 +45,9 @@ public class DeviceMetaDataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(DeviceMetaDataCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
-  private static StorageEngine storageEngine = StorageEngine.getInstance();
-
-  private static boolean cacheEnable = config.isMetaDataCacheEnable();
   private static final long MEMORY_THRESHOLD_IN_B = config.getAllocateMemoryForChumkMetaDataCache();
+  private static StorageEngine storageEngine = StorageEngine.getInstance();
+  private static boolean cacheEnable = config.isMetaDataCacheEnable();
   /**
    * key: file path dot deviceId dot sensorId.
    * <p>
@@ -65,9 +64,6 @@ public class DeviceMetaDataCache {
   private long chunkMetaDataSize = 0;
 
   private DeviceMetaDataCache(long memoryThreshold) {
-    if (!cacheEnable) {
-      return;
-    }
     lruCache = new LRULinkedHashMap<String, List<ChunkMetaData>>(memoryThreshold, true) {
       @Override
       protected long calEntrySize(String key, List<ChunkMetaData> value) {
@@ -90,6 +86,15 @@ public class DeviceMetaDataCache {
       throws IOException {
     if (!cacheEnable) {
       TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(resource);
+      // bloom filter part
+      BloomFilter bloomFilter = fileMetaData.getBloomFilter();
+      if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
+        if (logger.isDebugEnabled()) {
+          logger.debug("path not found by bloom filter, file is: " + resource.getFile() + " path is: " + seriesPath);
+        }
+        return new ArrayList<>();
+      }
+      //
       TsDeviceMetadata deviceMetaData = TsFileMetadataUtils
           .getTsDeviceMetaData(resource, seriesPath, fileMetaData);
       // If measurement isn't included in the tsfile, empty list is returned.
@@ -99,8 +104,9 @@ public class DeviceMetaDataCache {
       return TsFileMetadataUtils.getChunkMetaDataList(seriesPath.getMeasurement(), deviceMetaData);
     }
 
-    StringBuilder builder = new StringBuilder(resource.getFile().getPath()).append(".").append(seriesPath
-        .getDevice());
+    StringBuilder builder = new StringBuilder(resource.getFile().getPath()).append(".")
+        .append(seriesPath
+            .getDevice());
     String pathDeviceStr = builder.toString();
     String key = builder.append(".").append(seriesPath.getMeasurement()).toString();
     Object devicePathObject = pathDeviceStr.intern();
@@ -109,27 +115,29 @@ public class DeviceMetaDataCache {
       cacheRequestNum.incrementAndGet();
       if (lruCache.containsKey(key)) {
         cacheHitNum.incrementAndGet();
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              "Cache hit: the number of requests for cache is {}, "
-                  + "the number of hints for cache is {}",
-              cacheRequestNum.get(), cacheHitNum.get());
-        }
+        printCacheLog(true);
         return new ArrayList<>(lruCache.get(key));
       }
     }
     synchronized (devicePathObject) {
       synchronized (lruCache) {
         if (lruCache.containsKey(key)) {
+          printCacheLog(true);
           cacheHitNum.incrementAndGet();
           return new ArrayList<>(lruCache.get(key));
         }
       }
-      if (logger.isDebugEnabled()) {
-        logger.debug("Cache didn't hit: the number of requests for cache is {}",
-            cacheRequestNum.get());
-      }
+      printCacheLog(false);
       TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(resource);
+      // bloom filter part
+      BloomFilter bloomFilter = fileMetaData.getBloomFilter();
+      if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
+        if (logger.isDebugEnabled()) {
+          logger.debug("path not found by bloom filter, file is: " + resource.getFile() + " path is: " + seriesPath);
+        }
+        return new ArrayList<>();
+      }
+      //
       TsDeviceMetadata deviceMetaData = TsFileMetadataUtils
           .getTsDeviceMetaData(resource, seriesPath, fileMetaData);
       // If measurement isn't included in the tsfile, empty list is returned.
@@ -150,6 +158,24 @@ public class DeviceMetaDataCache {
         }
         return new ArrayList<>();
       }
+    }
+  }
+
+  private void printCacheLog(boolean isHit) {
+    if (!logger.isDebugEnabled()) {
+      return;
+    }
+    logger.debug(
+        "[ChunkMetaData cache {}hit] The number of requests for cache is {}, hit rate is {}.",
+        isHit ? "" : "didn't ", cacheRequestNum.get(),
+        cacheHitNum.get() * 1.0 / cacheRequestNum.get());
+  }
+
+  public double calculateChunkMetaDataHitRatio() {
+    if (cacheRequestNum.get() != 0) {
+      return cacheHitNum.get() * 1.0 / cacheRequestNum.get();
+    } else {
+      return 0;
     }
   }
 
@@ -191,6 +217,12 @@ public class DeviceMetaDataCache {
     }
   }
 
+  public void remove(TsFileResource resource) {
+    synchronized (lruCache) {
+      lruCache.entrySet().removeIf(e -> e.getKey().startsWith(resource.getFile().getPath()));
+    }
+  }
+
   /**
    * singleton pattern.
    */
@@ -198,11 +230,5 @@ public class DeviceMetaDataCache {
 
     private static final DeviceMetaDataCache INSTANCE = new
         DeviceMetaDataCache(MEMORY_THRESHOLD_IN_B);
-  }
-
-  public void remove(TsFileResource resource) {
-    synchronized (lruCache) {
-      lruCache.entrySet().removeIf(e -> e.getKey().startsWith(resource.getFile().getPath()));
-    }
   }
 }
