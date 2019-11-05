@@ -104,6 +104,20 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         } catch (TException e) {
           throw new TException("Connection error when fetching device metadata", e);
         }
+      case Constant.CATALOG_CHILD_PATHS:
+        req = new TSFetchMetadataReq(Constant.GLOBAL_SHOW_CHILD_PATHS_REQ);
+        req.setColumnPath(schemaPattern);
+        try {
+            TSFetchMetadataResp resp = client.fetchMetadata(req);
+          try {
+            RpcUtils.verifySuccess(resp.getStatus());
+          } catch (IoTDBRPCException e) {
+            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
+          }
+          return new IoTDBMetadataResultSet(resp.getChildPaths(), MetadataType.CHILD_PATHS);
+        } catch (TException e) {
+          throw new TException("Connection error when fetching child path metadata", e);
+        }
       case Constant.CATALOG_STORAGE_GROUP:
         req = new TSFetchMetadataReq(Constant.GLOBAL_SHOW_STORAGE_GROUP_REQ);
         try {

@@ -324,6 +324,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setDevices(devices);
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
+        case "SHOW_CHILD_PATHS":
+          path = req.getColumnPath();
+          Set<String> childPaths = getChildPaths(path);
+          resp.setChildPaths(childPaths);
+          status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+          break;
         case "COLUMN":
           resp.setDataType(getSeriesType(req.getColumnPath()).toString());
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
@@ -384,6 +390,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private Set<String> getAllDevices() throws SQLException {
     return MManager.getInstance().getAllDevices();
+  }
+  
+  private Set<String> getChildPaths(String path) throws PathErrorException {
+	  return MManager.getInstance().getChildNodePathInNextLevel(path);
   }
 
   private String getVersion() throws SQLException {
