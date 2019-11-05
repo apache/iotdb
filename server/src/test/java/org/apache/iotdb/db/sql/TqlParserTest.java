@@ -918,12 +918,20 @@ public class TqlParserTest {
 
   @Test
   public void query20() throws ParseException {
+    ArrayList<String> ans = new ArrayList<>(
+        Arrays.asList("TOK_QUERY", "TOK_SELECT",
+            "TOK_PATH", "s3",
+            "TOK_FROM", "TOK_PATH", "TOK_ROOT", "dwf", "TOK_SUBPATH", "d1", "d2"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator
         .generateAST("select s3 from root.dwf.{d1,d2}");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
-
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(ans.get(i), rec.get(i));
+      i++;
+    }
   }
 
   @Test
