@@ -96,7 +96,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   protected ThreadLocal<String> username = new ThreadLocal<>();
   protected ThreadLocal<AtomicLong> queryId = new ThreadLocal<>();
   private ThreadLocal<HashMap<Long, PhysicalPlan>> queryStatus = new ThreadLocal<>();
-  private ThreadLocal<HashMap<Long, QueryDataSet>> queryRet = new ThreadLocal<>();
+  private ThreadLocal<HashMap<Long, QueryDataSet>> queryDataSets = new ThreadLocal<>();
   private ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private ThreadLocal<Map<Long, QueryContext>> contextMapLocal = new ThreadLocal<>();
@@ -150,7 +150,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private void initForOneSession() {
     queryStatus.set(new HashMap<>());
-    queryRet.set(new HashMap<>());
+    queryDataSets.set(new HashMap<>());
     queryId.set(new AtomicLong(0L));
   }
 
@@ -215,8 +215,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private void clearAllStatusForCurrentRequest() {
-    if (this.queryRet.get() != null) {
-      this.queryRet.get().clear();
+    if (this.queryDataSets.get() != null) {
+      this.queryDataSets.get().clear();
     }
     if (this.queryStatus.get() != null) {
       this.queryStatus.get().clear();
@@ -830,10 +830,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       QueryDataSet queryDataSet;
-      if (!queryRet.get().containsKey(queryId)) {
+      if (!queryDataSets.get().containsKey(queryId)) {
         queryDataSet = createNewDataSet(queryId, req);
       } else {
-        queryDataSet = queryRet.get().get(queryId);
+        queryDataSet = queryDataSets.get().get(queryId);
       }
 
       int fetchSize = req.getFetch_size();
@@ -858,8 +858,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
       }
       boolean hasResultSet = (result.getRowCount() != 0);
-      if (!hasResultSet && queryRet.get() != null) {
-        queryRet.get().remove(queryId);
+      if (!hasResultSet && queryDataSets.get() != null) {
+        queryDataSets.get().remove(queryId);
       }
 
       TSFetchResultsResp resp = getTSFetchResultsResp(getStatus(TSStatusCode.SUCCESS_STATUS,
@@ -887,7 +887,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     queryDataSet = processor.getExecutor().processQuery(physicalPlan,
         context);
 
-    queryRet.get().put(req.queryId, queryDataSet);
+    queryDataSets.get().put(req.queryId, queryDataSet);
     return queryDataSet;
   }
 

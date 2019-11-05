@@ -281,9 +281,9 @@ public class IoTDBStatement implements Statement {
         throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
       }
       if (execResp.getOperationHandle().hasResultSet) {
-        this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
-            execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, operationHandle, sql,
-            execResp.operationHandle.operationId.queryId);
+        this.resultSet = new IoTDBQueryResultSet(this,
+                execResp.getColumns(), execResp.getDataTypeList(),
+                execResp.ignoreTimeStamp, client, operationHandle, sql, operationHandle.getOperationId().getQueryId());
         return true;
       }
       return false;
@@ -383,7 +383,7 @@ public class IoTDBStatement implements Statement {
     }
     this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
         execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, operationHandle, sql,
-            execResp.operationHandle.operationId.queryId);
+        operationHandle.getOperationId().getQueryId());
     return resultSet;
   }
 

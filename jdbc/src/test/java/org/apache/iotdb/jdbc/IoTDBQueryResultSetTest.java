@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.jdbc;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -35,26 +38,9 @@ import java.sql.Types;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.service.rpc.thrift.TSStatusType;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.*;
 
 /*
     This class is designed to test the function of TsfileQueryResultSet.
@@ -109,6 +95,8 @@ public class IoTDBQueryResultSetTest {
   @Mock
   TSOperationHandle operationHandle;
   @Mock
+  TSHandleIdentifier handleIdentifier;
+  @Mock
   private IoTDBConnection connection;
   @Mock
   private TSIService.Iface client;
@@ -135,7 +123,11 @@ public class IoTDBQueryResultSetTest {
     when(connection.isClosed()).thenReturn(false);
     when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execResp);
     operationHandle.hasResultSet = true;
+    operationHandle.operationId = handleIdentifier;
+    handleIdentifier.queryId = 1L;
     when(execResp.getOperationHandle()).thenReturn(operationHandle);
+    when(operationHandle.getOperationId()).thenReturn(handleIdentifier);
+    when(handleIdentifier.getQueryId()).thenReturn(1L);
     when(execResp.getStatus()).thenReturn(Status_SUCCESS);
 
     when(client.fetchMetadata(any(TSFetchMetadataReq.class))).thenReturn(fetchMetadataResp);
