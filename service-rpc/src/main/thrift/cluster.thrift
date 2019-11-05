@@ -69,6 +69,7 @@ service TSIService {
 
 /**
 * Leader will call this method to all followers to ensure its authority.
+* <br>For the receiver,
 * The method will check the authority of the leader.
 *
 * @param request information of the leader
@@ -79,6 +80,7 @@ service TSIService {
 
 /**
 * If a node wants to be a leader, it'll call the method to other nodes to get vote.
+* <br>For the receiver,
 * The method will check whether the node can be a leader.
 *
 * @param voteRequest a candidate that wants to be a leader.
@@ -88,6 +90,7 @@ service TSIService {
 
 /**
 * Leader will call this method to send a entry to all followers.
+* <br>For the receiver,
 * The method will check the authority of the leader and if the local log is complete.
 * If the leader is valid and local log is complete, the follower will append the entry to local log.
 *
@@ -98,6 +101,7 @@ service TSIService {
 
 /**
 * Leader will call this method to send a entry to all followers.
+* <br>For the receiver,
 * The method will check the authority of the leader and if the local log is complete.
 * If the leader is valid and local log is complete, the follower will append the entry to local log.
 *
@@ -108,6 +112,7 @@ service TSIService {
 
 /**
 * Leader will call this method to send a batch of entries to all followers.
+* <br>For the receiver,
 * The method will check the authority of the leader and if the local log is complete.
 * If the leader is valid and local log is complete, the follower will append these entries to local log.
 *
@@ -118,6 +123,7 @@ service TSIService {
 
 /**
 * Leader will call this method to send a batch of entries to all followers.
+* <br>For the receiver,
 * The method will check the authority of the leader and if the local log is complete.
 * If the leader is valid and local log is complete, the follower will append these entries to local log.
 *
@@ -127,13 +133,16 @@ service TSIService {
   long appendDataEntries(1:AppendEntriesRequest request)
 
 /**
-* Node which is not leader will call this method to try to add a new node.
-* If the local node is leader, it'll check whether the cluster can add this new node; otherwise, the local node will
-* transfer the request to the leader.
+* Node which is not leader will call this method to try to add itself into the cluster as a new node.
+* <br>For the receiver,
+* If the local node is leader, it'll check whether the cluster can add this new node;
+* otherwise, the local node will transfer the request to the leader.
 *
 * @param node a new node that needs to be added
 * @return 1: accept to add new node, 0: the node is already in this cluster, -1: fail to add new node
 **/
   int addNode(1: Node node)
+
+
 
 }
