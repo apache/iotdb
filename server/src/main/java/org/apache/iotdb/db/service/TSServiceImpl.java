@@ -94,8 +94,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // Record the username for every rpc connection. Username.get() is null if
   // login is failed.
   protected ThreadLocal<String> username = new ThreadLocal<>();
+
+  // The queryId is unique in one session for each operation.
   protected ThreadLocal<AtomicLong> queryId = new ThreadLocal<>();
-  private ThreadLocal<HashMap<Long, PhysicalPlan>> queryStatus = new ThreadLocal<>();
+  // (queryId -> PhysicalPlan)
+  private ThreadLocal<HashMap<Long, PhysicalPlan>> operationStatus = new ThreadLocal<>();
+  // (queryId -> QueryDataSet)
   private ThreadLocal<HashMap<Long, QueryDataSet>> queryDataSets = new ThreadLocal<>();
   private ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -149,7 +153,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private void initForOneSession() {
-    queryStatus.set(new HashMap<>());
+    operationStatus.set(new HashMap<>());
     queryDataSets.set(new HashMap<>());
     queryId.set(new AtomicLong(0L));
   }
@@ -218,8 +222,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (this.queryDataSets.get() != null) {
       this.queryDataSets.get().clear();
     }
-    if (this.queryStatus.get() != null) {
-      this.queryStatus.get().clear();
+    if (this.operationStatus.get() != null) {
+      this.operationStatus.get().clear();
     }
     if (this.queryId.get() != null) {
       this.queryId.get().set(0L);
@@ -824,7 +828,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       long queryId = req.queryId;
-      if (!queryStatus.get().containsKey(queryId)) {
+      if (!operationStatus.get().containsKey(queryId)) {
         return getTSFetchResultsResp(
             getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Has not executed statement"));
       }
@@ -876,7 +880,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private QueryDataSet createNewDataSet(long queryId, TSFetchResultsReq req)
       throws PathErrorException, QueryFilterOptimizationException, StorageEngineException,
       ProcessorException, IOException {
-    PhysicalPlan physicalPlan = queryStatus.get().get(queryId);
+    PhysicalPlan physicalPlan = operationStatus.get().get(queryId);
 
     QueryDataSet queryDataSet;
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignJobId());
@@ -959,7 +963,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private void recordANewQuery(long queryId, PhysicalPlan physicalPlan) {
-    queryStatus.get().put(queryId, physicalPlan);
+    operationStatus.get().put(queryId, physicalPlan);
   }
 
   /**
