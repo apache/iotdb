@@ -44,6 +44,7 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   private String currentStorageGroup;
   private String currentDevice;
   private String currentChildPath;
+  private String currentVersion;
   private List<String> currentTimeseries;
   private List<String> timeseriesNumList;
   private List<String> nodesNumList;
@@ -116,6 +117,14 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         colCount = 2;
         showLabels = new String[]{"column", "count"};
         columnItr = nodeTimeseriesNumMap.entrySet().iterator();
+        break;
+      case VERSION:
+        String version = (String) object;
+        colCount = 1;
+        showLabels = new String[]{version};
+        Set<String> versionSet = new HashSet<>();
+        versionSet.add(version);
+        columnItr = versionSet.iterator();
         break;
       default:
         throw new SQLException("TsfileMetadataResultSet constructor is wrongly used.");
@@ -273,6 +282,10 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
           currentNode = (String) pair.getKey();
           currentNodeTimeseriesNum = (String) pair.getValue();
           break;
+        case VERSION:
+          currentVersion = (String) columnItr.next();
+          hasNext = false;
+          break;
         default:
           break;
       }
@@ -413,7 +426,7 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   }
 
   public enum MetadataType {
-    STORAGE_GROUP, TIMESERIES, COLUMN, DEVICES, CHILD_PATHS,
-    COUNT_TIMESERIES, COUNT_NODES, COUNT_NODE_TIMESERIES
+    STORAGE_GROUP, TIMESERIES, COLUMN, DEVICES, CHILD_PATHS, 
+    COUNT_TIMESERIES, COUNT_NODES, COUNT_NODE_TIMESERIES，VERSION
   }
 }

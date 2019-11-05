@@ -54,6 +54,7 @@ public class IoTDBStatement implements Statement {
   private static final String COUNT_TIMESERIES_COMMAND_LOWERCASE = "count timeseries";
   private static final String COUNT_NODES_COMMAND_LOWERCASE = "count nodes";
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
+  private static final String SHOW_VERSION_COMMAND_LOWERCASE = "show version";
 
   ZoneId zoneId;
   private ResultSet resultSet = null;
@@ -304,6 +305,10 @@ public class IoTDBStatement implements Statement {
         resultSet = databaseMetaData.getNodes(Constant.COUNT_NODES, path, null, null, level);
         return true;
       }
+    } else if(sqlToLowerCase.equals(SHOW_VERSION_COMMAND_LOWERCASE)) {
+      IoTDBDatabaseMetadata databaseMetadata = (IoTDBDatabaseMetadata) connection.getMetaData();
+      resultSet = databaseMetadata.getColumns(Constant.CATALOG_VERSION, null, null, null);
+      return true;
     } else {
       TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql);
       TSExecuteStatementResp execResp = client.executeStatement(execReq);

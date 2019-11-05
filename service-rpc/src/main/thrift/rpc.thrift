@@ -185,6 +185,7 @@ struct TSFetchMetadataResp{
 		9: optional list<string> nodesList
 		10: optional map<string, string> nodeTimeseriesNum
 		11: optional set<string> childPaths
+		12: optional string version
 }
 
 struct TSFetchMetadataReq{

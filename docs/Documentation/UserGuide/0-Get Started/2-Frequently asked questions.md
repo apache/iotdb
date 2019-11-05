@@ -43,7 +43,7 @@ There are several ways to identify the version of IoTDB that you are using:
 * Launch IoTDB's Command Line Interface:
 
 ```
-> ./start-cli.sh -p 6667 -pw root -u root -h localhost
+> ./start-client.sh -p 6667 -pw root -u root -h localhost
  _____       _________  ______   ______    
 |_   _|     |  _   _  ||_   _ `.|_   _ \   
   | |   .--.|_/ | | \_|  | | `. \ | |_) |  
@@ -142,6 +142,6 @@ IoTDB> show timeseries root.fit.d1.*
 The default IoTDB's Client time display format is human readable (e.g. ```1970-01-01T08:00:00.001```), if you want to display time in timestamp type or other readable format, add parameter ```-disableIS08601``` in start command:
 
 ```
-> $IOTDB_CLI_HOME/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableIS08601
+> $IOTDB_CLI_HOME/sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableIS08601
 ```
 

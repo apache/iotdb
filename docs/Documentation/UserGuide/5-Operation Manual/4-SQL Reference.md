@@ -30,6 +30,18 @@ In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a S
 
 All of these statements are write in IoTDB's own syntax, for details about the syntax composition, please check the `Reference` section.
 
+### Show Version
+
+```sql
+show version
+```
+
+```
++---------------------------------------------------------------------------+
+|                                                             0.9.0-SNAPSHOT|
++---------------------------------------------------------------------------+
+It costs 0.001s
+```
 
 ### Schema Statement
 

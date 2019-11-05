@@ -35,7 +35,6 @@ public class Field {
   private float floatV;
   private double doubleV;
   private Binary binaryV;
-  private boolean isNull;
 
   public Field(TSDataType dataType) {
     this.dataType = dataType;
@@ -99,7 +98,7 @@ public class Field {
    * @return value string
    */
   public String getStringValue() {
-    if (isNull || dataType == null) {
+    if (dataType == null) {
       return "null";
     }
     switch (dataType) {
@@ -125,16 +124,8 @@ public class Field {
     return getStringValue();
   }
 
-  public void setNull() {
-    this.isNull = true;
-  }
-
-  public boolean isNull() {
-    return this.isNull;
-  }
-
   public Object getObjectValue(TSDataType dataType) {
-    if (isNull) {
+    if (this.dataType == null) {
       return null;
     }
     switch (dataType) {
