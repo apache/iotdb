@@ -168,6 +168,8 @@ public class IoTDBMultiStatementsIT {
       }
       Assert.assertEquals(9, cnt2);
 
+      // use do-while instead of while because in the previous while loop, we have executed the next function,
+      // and the cursor has been moved to the next position, so we should fetch that value first.
       do {
         StringBuilder builder = new StringBuilder();
         builder.append(resultSet1.getString(Constant.TIMESTAMP_STR))
@@ -178,6 +180,8 @@ public class IoTDBMultiStatementsIT {
         Assert.assertEquals(retArray[cnt1], builder.toString());
         cnt1++;
       } while (resultSet1.next());
+      // Although the statement2 has the same sql as statement1, they shouldn't affect each other.
+      // So the statement1's ResultSet should also have 9 rows in total.
       Assert.assertEquals(9, cnt1);
 
     } catch (Exception e) {
