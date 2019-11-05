@@ -219,8 +219,6 @@ public class IoTDBMetadataFetchIT {
         }
       } catch (Exception e) {
         fail(e.getMessage());
-      } finally {
-        connection.close();
       }
     }
   }
