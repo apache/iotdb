@@ -24,7 +24,7 @@ public class Constant {
 
   public static final String GLOBAL_DB_NAME = "IoTDB";
 
-  static final String GLOBAL_DB_VERSION = "0.8.0-SNAPSHOT";
+  static final String GLOBAL_VERSION = "VERSION";
 
   public static final String GLOBAL_COLUMN_REQ = "COLUMN";
 
@@ -47,6 +47,7 @@ public class Constant {
   public static final String CATALOG_TIMESERIES = "ts";
   public static final String CATALOG_STORAGE_GROUP = "sg";
   public static final String CATALOG_DEVICES = "devices";
+  public static final String CATALOG_VERSION = "version";
 
   static final String COUNT_TIMESERIES = "cntts";
   static final String COUNT_NODE_TIMESERIES = "cntnodets";
