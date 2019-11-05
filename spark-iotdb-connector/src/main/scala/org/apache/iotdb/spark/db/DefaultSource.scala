@@ -16,27 +16,27 @@
   * specific language governing permissions and limitations
   * under the License.
   */
-package org.apache.iotdb.sparkdb
+package org.apache.iotdb.spark.db
 
-class IoTDBOptions(
-                    @transient private val parameters: Map[String, String])
-  extends Serializable {
+import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.sources.{BaseRelation, DataSourceRegister, RelationProvider}
+import org.slf4j.LoggerFactory
 
-  val url = parameters.getOrElse("url", sys.error("Option 'url' not specified"))
+private[iotdb] class DefaultSource extends RelationProvider with DataSourceRegister {
+  private final val logger = LoggerFactory.getLogger(classOf[DefaultSource])
 
-  val user = parameters.getOrElse("user", "root")
+  override def shortName(): String = "tsfile"
 
-  val password = parameters.getOrElse("password", "root")
+  override def createRelation(
+                               sqlContext: SQLContext,
+                               parameters: Map[String, String]): BaseRelation = {
 
-  val sql = parameters.getOrElse("sql", sys.error("Option 'sql' not specified"))
+    val iotdbOptions = new IoTDBOptions(parameters)
 
-  val numPartition = parameters.getOrElse("numPartition", "1")
-
-  val lowerBound = parameters.getOrElse("lowerBound", "0")
-
-  val upperBound = parameters.getOrElse("upperBound", "0")
-
-  def get(name: String): Unit = {
+    if (iotdbOptions.url == null || iotdbOptions.sql == null) {
+      sys.error("IoTDB url or sql not specified")
+    }
+    new IoTDBRelation(iotdbOptions)(sqlContext.sparkSession)
 
   }
 }
