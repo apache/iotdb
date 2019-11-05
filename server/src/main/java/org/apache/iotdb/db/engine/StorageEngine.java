@@ -204,9 +204,8 @@ public class StorageEngine implements IService {
    * insert an InsertPlan to a storage group.
    *
    * @param insertPlan physical plan of insertion
-   * @return true if and only if this insertion succeeds
    */
-  public boolean insert(InsertPlan insertPlan) throws ProcessorException {
+  public void insert(InsertPlan insertPlan) throws ProcessorException {
 
     StorageGroupProcessor storageGroupProcessor;
     try {
@@ -220,7 +219,7 @@ public class StorageEngine implements IService {
 
     // TODO monitor: update statistics
     try {
-      return storageGroupProcessor.insert(insertPlan);
+      storageGroupProcessor.insert(insertPlan);
     } catch (QueryProcessorException e) {
       throw new ProcessorException(e);
     }
