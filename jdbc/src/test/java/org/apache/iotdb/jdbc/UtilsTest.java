@@ -201,37 +201,37 @@ public class UtilsTest {
       for (Field f : fields) {
         if (j == 0) {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getBoolV());
           }
         } else if (j == 1) {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getIntV());
           }
         } else if (j == 2) {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getLongV());
           }
         } else if (j == 3) {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getFloatV());
           }
         } else if (j == 4) {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getDoubleV());
           }
         } else {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getStringValue());
           }

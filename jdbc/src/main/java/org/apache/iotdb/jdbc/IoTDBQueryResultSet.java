@@ -1256,7 +1256,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     for (Field field : record.getFields()) {
       i++;
       if (i == tmp - 1) {
-        return field.isNull() ? null : field.getStringValue();
+        return field.getDataType() == null ? null : field.getStringValue();
       }
     }
     return null;
