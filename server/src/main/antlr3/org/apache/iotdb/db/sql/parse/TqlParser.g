@@ -409,7 +409,7 @@ functionCall
     ;
 
 suffixPath
-    : nodeNames (DOT nodeName | nodeNames)* | nodeName
+    : (nodeNames | nodeName) (DOT (nodeName | nodeNames))*
     -> ^(TOK_PATH nodeName+)
     ;
 
@@ -430,7 +430,7 @@ fromClause
     ;
 
 prefixPath
-    : K_ROOT (DOT nodeNames | nodeName)*
+    : K_ROOT (DOT (nodeNames | nodeName))*
     -> ^(TOK_PATH ^(TOK_ROOT nodeName*))
     ;
 
