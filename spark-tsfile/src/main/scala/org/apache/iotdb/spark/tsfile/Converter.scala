@@ -57,7 +57,7 @@ abstract class Converter {
   def toSqlValue(field: Field): Any = {
     if (field == null)
       return null
-    if (field.isNull)
+    if (field.getDataType == null)
       null
     else field.getDataType match {
       case TSDataType.BOOLEAN => field.getBoolV

@@ -32,7 +32,7 @@ public abstract class LRUCache<K, T> implements Cache<K, T> {
 
   public LRUCache(int cacheSize) {
     this.cacheSize = cacheSize;
-    this.cache = new LinkedHashMap<>();
+    this.cache = new LinkedHashMap<>(cacheSize);
   }
 
   @Override
