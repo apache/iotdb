@@ -110,7 +110,6 @@ public class SessionUtils {
         boolean is_empty = BytesUtils.byteToBool(byteBuffer.get());
         if (is_empty) {
           field = new Field(null);
-          field.setNull();
         } else {
           TSDataType dataType = TSDataType.valueOf(type);
           field = new Field(dataType);
