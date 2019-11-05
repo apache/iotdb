@@ -19,31 +19,16 @@
 
 package org.apache.iotdb.jdbc;
 
-import java.sql.BatchUpdateException;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.SQLWarning;
-import java.sql.Statement;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
-import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
+
+import java.sql.*;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 
 public class IoTDBStatement implements Statement {
 
@@ -63,7 +48,6 @@ public class IoTDBStatement implements Statement {
   private TS_SessionHandle sessionHandle;
   private TSOperationHandle operationHandle = null;
   private List<String> batchSQLList;
-  private AtomicLong queryId = new AtomicLong(0);
   /**
    * Keep state so we can fail certain calls made after close().
    */
@@ -299,7 +283,7 @@ public class IoTDBStatement implements Statement {
       if (execResp.getOperationHandle().hasResultSet) {
         this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
             execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, operationHandle, sql,
-            queryId.getAndIncrement());
+            execResp.operationHandle.operationId.queryId);
         return true;
       }
       return false;
@@ -399,7 +383,7 @@ public class IoTDBStatement implements Statement {
     }
     this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
         execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, operationHandle, sql,
-        queryId.getAndIncrement());
+            execResp.operationHandle.operationId.queryId);
     return resultSet;
   }
 
