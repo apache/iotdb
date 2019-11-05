@@ -219,13 +219,14 @@ public abstract class AbstractClient {
       } else {
         printBlockLine(printTimestamp, colCount, resultSetMetaData, isShow);
       }
-      if (displayCnt == maxPrintRowCount) {
-        println(String.format("Reach maxPrintRowCount = %s lines", maxPrintRowCount));
-        return;
-      }
+
     }
 
-    printCount(isShow, res, cnt);
+    if(!res.next()){
+        printCount(isShow, res, cnt);
+    } else {
+        println(String.format("Reach maxPrintRowCount = %s lines", maxPrintRowCount));
+    }
   }
 
   private static String getTimestampPrecision() {
