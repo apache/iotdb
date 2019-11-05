@@ -227,11 +227,11 @@ try {
 
 ```
 
-With Status Code, instead of writing codes like `if (e.getErrorMessage().contains("exist"))`, we can simply use `e.getStatusType().getCode() == TSStatusCode.TIME_SERIES_NOT_EXIST_ERROR.getStatusCode()`.
+With Status Code, instead of writing codes like `if (e.getErrorMessage().contains("exist"))`, we can simply use `e.getErrorCode() == TSStatusCode.TIME_SERIES_NOT_EXIST_ERROR.getStatusCode()`.
 
 Here is a list of Status Code and related message:
 
-|Status Code|Status Type|Status Message|
+|Status Code|Status Type|Meaning|
 |:---|:---|:---|
 |200|SUCCESS_STATUS||
 |201|STILL_EXECUTING_STATUS||
@@ -244,6 +244,8 @@ Here is a list of Status Code and related message:
 |401|SQL_PARSE_ERROR|Meet error while parsing SQL|
 |402|GENERATE_TIME_ZONE_ERROR|Meet error while generating time zone|
 |403|SET_TIME_ZONE_ERROR|Meet error while setting time zone|
+|404|NOT_A_STORAGE_GROUP_ERROR|Operating object is not a storage group|
+|405|READ_ONLY_SYSTEM_ERROR|Operating system is read only|
 |500|INTERNAL_SERVER_ERROR|Internal server error|
 |600|WRONG_LOGIN_PASSWORD_ERROR|Username or password is wrong|
 |601|NOT_LOGIN_ERROR|Has not logged in|
