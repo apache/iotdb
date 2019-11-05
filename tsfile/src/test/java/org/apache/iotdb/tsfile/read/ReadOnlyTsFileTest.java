@@ -151,11 +151,12 @@ public class ReadOnlyTsFileTest {
     QueryExpression queryExpression = QueryExpression.create(paths, expression);
     try {
       QueryDataSet queryDataSet = tsFile.query(queryExpression);
+    } catch (Exception e) {
       fail();
-    } catch (IOException e) {
-      Assert.assertEquals(e.getMessage(), "No device path : dr");
     }
   }
+
+
 
 }
 

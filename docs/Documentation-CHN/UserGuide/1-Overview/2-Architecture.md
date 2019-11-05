@@ -27,7 +27,7 @@ IoTDB套件由若干个组件构成，共同形成“数据收集-数据写入-�
 
 图1.1展示了使用IoTDB套件全部组件后形成的整体应用架构。下文称所有组件形成IoTDB套件，而IoTDB特指其中的时间序列数据库组件。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578977-4d5b5800-1efa-11e9-9d6e-6bfe7e890f30.jpg">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/25913899/67943956-39c1e800-fc16-11e9-8da2-a662f8246816.png">
 
 在图1.1中，用户可以通过JDBC将来自设备上传感器采集的时序数据、服务器负载和CPU内存等系统状态数据、消息队列中的时序数据、应用程序的时序数据或者其他数据库中的时序数据导入到本地或者远程的IoTDB中。用户还可以将上述数据直接写成本地（或位于HDFS上）的TsFile文件。
 

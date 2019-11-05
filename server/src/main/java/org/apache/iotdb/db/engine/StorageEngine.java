@@ -52,6 +52,7 @@ import org.apache.iotdb.db.query.control.JobFileManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -94,6 +95,8 @@ public class StorageEngine implements IService {
       throw new StorageEngineFailureException("create system directory failed!");
     }
 
+    // recover upgrade process
+    UpgradeUtils.recoverUpgrade();
     /*
      * recover all storage group processors.
      */

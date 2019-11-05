@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.PriorityQueue;
-import java.util.Set;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
@@ -34,6 +29,10 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.TreeSet;
+
 /**
  * TODO implement this class as TsFile DataSetWithoutTimeGenerator.
  */
@@ -43,9 +42,7 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
 
   private TimeValuePair[] cacheTimeValueList;
 
-  private PriorityQueue<Long> timeHeap;
-
-  private Set<Long> timeSet;
+  private TreeSet<Long> timeHeap;
 
   /**
    * constructor of EngineDataSetWithoutValueFilter.
@@ -64,8 +61,7 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
   }
 
   private void initHeap() throws IOException {
-    timeSet = new HashSet<>();
-    timeHeap = new PriorityQueue<>();
+    timeHeap = new TreeSet<>();
     cacheTimeValueList = new TimeValuePair[seriesReaderWithoutValueFilterList.size()];
 
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
@@ -143,16 +139,11 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
    * keep heap from storing duplicate time.
    */
   private void timeHeapPut(long time) {
-    if (!timeSet.contains(time)) {
-      timeSet.add(time);
-      timeHeap.add(time);
-    }
+    timeHeap.add(time);
   }
 
   private Long timeHeapGet() {
-    Long t = timeHeap.poll();
-    timeSet.remove(t);
-    return t;
+    return timeHeap.pollFirst();
   }
 
   public List<IPointReader> getReaders() {

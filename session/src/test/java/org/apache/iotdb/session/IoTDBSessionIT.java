@@ -29,6 +29,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBRPCException;
@@ -81,7 +84,7 @@ public class IoTDBSessionIT {
     insert_via_sql();
     query3();
 
-//    insertRowBatchTest();
+//    insertRowBatchTest1();
     deleteData();
 
     query();
@@ -96,6 +99,28 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
 
     deleteStorageGroupTest();
+
+    // Test batch insertions when creating schema automatically is enabled
+    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    conf.setAutoCreateSchemaEnabled(true);
+
+    // set storage group but do not create timeseries
+    session.setStorageGroup("root.sg3");
+    insertRowBatchTest1("root.sg3.d1");
+
+    // create timeseries but do not set storage group
+    session.createTimeseries("root.sg4.d1.s1", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg4.d1.s2", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg4.d1.s3", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    insertRowBatchTest1("root.sg4.d1");
+
+    // do not set storage group and create timeseries
+    insertRowBatchTest1("root.sg5.d1");
+
+    conf.setAutoCreateSchemaEnabled(false);
 
     session.close();
   }
@@ -124,13 +149,13 @@ public class IoTDBSessionIT {
     }
   }
 
-  private void insertRowBatch() throws IoTDBSessionException {
+  private void insertRowBatchTest1(String deviceId) throws IoTDBSessionException {
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
     schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
-    RowBatch rowBatch = schema.createRowBatch("root.sg1.d1", 100);
+    RowBatch rowBatch = schema.createRowBatch(deviceId, 100);
 
     long[] timestamps = rowBatch.timestamps;
     Object[] values = rowBatch.values;

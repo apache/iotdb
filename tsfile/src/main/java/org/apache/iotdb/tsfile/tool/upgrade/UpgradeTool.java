@@ -86,12 +86,12 @@ public class UpgradeTool {
   }
 
   public static void main(String[] args) throws IOException {
-    List<String> tsfileDirs = new ArrayList<>();
-    List<String> tsfileDirsUpdate = new ArrayList<>();
-    tsfileDirs.add("/Users/tianyu/2019秋季学期/incubator-iotdb/data/data/sequence/root.group_10");
-    tsfileDirsUpdate.add("/Users/tianyu/2019秋季学期/incubator-iotdb/data/data/sequence/root.group_8");
-    for (int i = 0; i < tsfileDirs.size(); i++) {
-      updateTsfiles(tsfileDirs.get(i), tsfileDirsUpdate.get(i));
+    List<String> oldVersionTsfileDirs = new ArrayList<>();
+    List<String> newVersionTsfileDirs = new ArrayList<>();
+    oldVersionTsfileDirs.add("/Users/tianyu/incubator-iotdb/data/data/sequence/root.group_10");
+    newVersionTsfileDirs.add("/Users/tianyu/incubator-iotdb/data/data/sequence/root.group_8");
+    for (int i = 0; i < oldVersionTsfileDirs.size(); i++) {
+      updateTsfiles(oldVersionTsfileDirs.get(i), newVersionTsfileDirs.get(i));
     }
   }
 }

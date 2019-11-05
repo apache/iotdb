@@ -53,16 +53,18 @@ public class TsFileWriteWithTSRecord {
           .addMeasurement(new MeasurementSchema("sensor_3", TSDataType.INT64, TSEncoding.RLE));
 
       // construct TSRecord
-      TSRecord tsRecord = new TSRecord(1, "device_1");
-      DataPoint dPoint1 = new LongDataPoint("sensor_1", 1);
-      DataPoint dPoint2 = new LongDataPoint("sensor_2", 2);
-      DataPoint dPoint3 = new LongDataPoint("sensor_3", 3);
-      tsRecord.addTuple(dPoint1);
-      tsRecord.addTuple(dPoint2);
-      tsRecord.addTuple(dPoint3);
+      for (int i = 0; i < 100; i++) {
+        TSRecord tsRecord = new TSRecord(i, "device_" + (i % 4));
+        DataPoint dPoint1 = new LongDataPoint("sensor_1", i);
+        DataPoint dPoint2 = new LongDataPoint("sensor_2", i);
+        DataPoint dPoint3 = new LongDataPoint("sensor_3", i);
+        tsRecord.addTuple(dPoint1);
+        tsRecord.addTuple(dPoint2);
+        tsRecord.addTuple(dPoint3);
 
-      // write TSRecord
-      tsFileWriter.write(tsRecord);
+        // write TSRecord
+        tsFileWriter.write(tsRecord);
+      }
 
       tsFileWriter.close();
     } catch (Throwable e) {

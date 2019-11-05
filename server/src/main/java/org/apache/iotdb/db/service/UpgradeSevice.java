@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +55,7 @@ public class UpgradeSevice implements IService {
     }
     upgradeThreadPool = Executors.newFixedThreadPool(updateThreadNum,
         r -> new Thread(r, "UpgradeThread-" + threadCnt.getAndIncrement()));
+    UpgradeUtils.createUpgradeLog();
     countUpgradeFiles();
     upgradeAll();
   }
@@ -76,12 +78,22 @@ public class UpgradeSevice implements IService {
     return ServiceType.UPGRADE_SERVICE;
   }
 
+
+  public static void setCntUpgradeFileNum(int cntUpgradeFileNum) {
+    UpgradeSevice.cntUpgradeFileNum = cntUpgradeFileNum;
+  }
+
+  public static int getCntUpgradeFileNum() {
+    return cntUpgradeFileNum;
+  }
+
   public void submitUpgradeTask(UpgradeTask upgradeTask) {
     upgradeThreadPool.submit(upgradeTask);
   }
 
   private static void countUpgradeFiles() {
     cntUpgradeFileNum = StorageEngine.getInstance().countUpgradeFiles();
+    logger.info("finish counting upgrading files, total num:{}", cntUpgradeFileNum);
   }
 
   private static void upgradeAll() {

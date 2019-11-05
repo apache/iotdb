@@ -171,22 +171,16 @@ public class MergeResource {
   /**
    * Construct the a new or get an existing ChunkWriter of a measurement. Different timeseries of
    * the same measurement shares the same instance.
-   * @param measurementSchema
-   * @return
    */
   public IChunkWriter getChunkWriter(MeasurementSchema measurementSchema) {
-    return chunkWriterCache.computeIfAbsent(measurementSchema,
-        schema -> new ChunkWriterImpl(new ChunkBuffer(schema),
-            TSFileDescriptor.getInstance().getConfig().getPageCheckSizeThreshold()));
+    return chunkWriterCache.computeIfAbsent(measurementSchema, ChunkWriterImpl::new);
   }
 
   /**
    * Get the modifications of a timeseries in the ModificationFile of a TsFile. Once the
    * modifications of the timeseries are found out, they will be removed from the list to boost
    * the next query, so two calls of the same file and timeseries are forbidden.
-   * @param tsFileResource
    * @param path name of the time series
-   * @return
    */
   public List<Modification> getModifications(TsFileResource tsFileResource, Path path) {
     // copy from TsFileResource so queries are not affected

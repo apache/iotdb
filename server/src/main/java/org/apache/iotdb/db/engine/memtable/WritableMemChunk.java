@@ -47,25 +47,25 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void write(long insertTime, String insertValue) {
+  public void write(long insertTime, Object objectValue) {
     switch (dataType) {
       case BOOLEAN:
-        putBoolean(insertTime, Boolean.valueOf(insertValue));
+        putBoolean(insertTime, (boolean) objectValue);
         break;
       case INT32:
-        putInt(insertTime, Integer.valueOf(insertValue));
+        putInt(insertTime, (int) objectValue);
         break;
       case INT64:
-        putLong(insertTime, Long.valueOf(insertValue));
+        putLong(insertTime, (long) objectValue);
         break;
       case FLOAT:
-        putFloat(insertTime, Float.valueOf(insertValue));
+        putFloat(insertTime, (float) objectValue);
         break;
       case DOUBLE:
-        putDouble(insertTime, Double.valueOf(insertValue));
+        putDouble(insertTime, (double) objectValue);
         break;
       case TEXT:
-        putBinary(insertTime, Binary.valueOf(insertValue));
+        putBinary(insertTime, (Binary) objectValue);
         break;
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);

@@ -288,7 +288,7 @@ ddlStatement
     : createTimeseries
     | deleteTimeseries
     | setStorageGroup
-    | deleteStorageGroup // todo to implement
+    | deleteStorageGroup
     | createProperty
     | addLabel
     | deleteLabel
@@ -332,6 +332,7 @@ timeseriesPath
 nodeNameWithoutStar
     : INT
     | ID
+    | STRING_LITERAL
     ;
 
 attributeClauses
@@ -414,6 +415,7 @@ nodeName
     : ID
     | INT
     | STAR
+    | STRING_LITERAL
     ;
 
 fromClause

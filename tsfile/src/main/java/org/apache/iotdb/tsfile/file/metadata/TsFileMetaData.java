@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,6 +30,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.BloomFilter;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * TSFileMetaData collects all metadata info and saves in its data structure.
@@ -43,7 +48,7 @@ public class TsFileMetaData {
    * TSFile schema for this file. This schema contains metadata for all the measurements.
    */
   private Map<String, MeasurementSchema> measurementSchema = new HashMap<>();
-  
+
   /**
    * String for application that wrote this file. This should be in the format [Application] version
    * [App Version](build [App Build Hash]). e.g. impala version 1.0 (build SHA-1_hash_code)
@@ -55,6 +60,9 @@ public class TsFileMetaData {
   // invalid means a chunk has been rewritten by merge and the chunk's data is in
   // another new chunk
   private int invalidChunkNum;
+
+  // bloom filter
+  private BloomFilter bloomFilter;
 
   public TsFileMetaData() {
     //do nothing
@@ -74,8 +82,8 @@ public class TsFileMetaData {
   /**
    * deserialize data from the inputStream.
    *
-   * @param inputStream -input stream use to deserialize
-   * @return -a instance of TsFileMetaData
+   * @param inputStream input stream used to deserialize
+   * @return an instance of TsFileMetaData
    */
   public static TsFileMetaData deserializeFrom(InputStream inputStream) throws IOException {
     TsFileMetaData fileMetaData = new TsFileMetaData();
@@ -110,6 +118,13 @@ public class TsFileMetaData {
     }
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(inputStream);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(inputStream);
+    // read bloom filter
+    if (!ReadWriteIOUtils.checkIfMagicString(inputStream)) {
+      byte[] bytes = ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream);
+      int filterSize = ReadWriteIOUtils.readInt(inputStream);
+      int hashFunctionSize = ReadWriteIOUtils.readInt(inputStream);
+      fileMetaData.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize, hashFunctionSize);
+    }
 
     return fileMetaData;
   }
@@ -153,8 +168,19 @@ public class TsFileMetaData {
     }
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
+    // read bloom filter
+    if (buffer.hasRemaining()) {
+      byte[] bytes = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer).array();
+      int filterSize = ReadWriteIOUtils.readInt(buffer);
+      int hashFunctionSize = ReadWriteIOUtils.readInt(buffer);
+      fileMetaData.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize, hashFunctionSize);
+    }
 
     return fileMetaData;
+  }
+
+  public BloomFilter getBloomFilter() {
+    return bloomFilter;
   }
 
   /**
@@ -192,8 +218,8 @@ public class TsFileMetaData {
     return this.deviceIndexMap.containsKey(deltaObjUid);
   }
 
-  public TsDeviceMetadataIndex getDeviceMetadataIndex(String deltaObjUid) {
-    return this.deviceIndexMap.get(deltaObjUid);
+  public TsDeviceMetadataIndex getDeviceMetadataIndex(String deviceUid) {
+    return this.deviceIndexMap.get(deviceUid);
   }
 
   public boolean containsMeasurement(String measurement) {
@@ -249,6 +275,61 @@ public class TsFileMetaData {
 
     return byteLen;
   }
+
+  /**
+   * use the given outputStream to serialize bloom filter.
+   *
+   * @param outputStream -output stream to determine byte length
+   * @return -byte length
+   */
+  public int serializeBloomFilter(OutputStream outputStream,
+      List<ChunkGroupMetaData> chunkGroupMetaDataList)
+      throws IOException {
+    int byteLen = 0;
+    BloomFilter filter = buildBloomFilter(chunkGroupMetaDataList);
+
+    byte[] bytes = filter.serialize();
+    byteLen += ReadWriteIOUtils.write(bytes.length, outputStream);
+    outputStream.write(bytes);
+    byteLen += bytes.length;
+    byteLen += ReadWriteIOUtils.write(filter.getSize(), outputStream);
+    byteLen += ReadWriteIOUtils.write(filter.getHashFunctionSize(), outputStream);
+    return byteLen;
+  }
+
+  /**
+   * get all path in this tsfile
+   *
+   * @return all path in set
+   */
+  private List<String> getAllPath(List<ChunkGroupMetaData> chunkGroupMetaDataList) {
+    List<String> res = new ArrayList<>();
+    for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
+      String deviceId = chunkGroupMetaData.getDeviceID();
+      for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+        res.add(deviceId + PATH_SEPARATOR + chunkMetaData.getMeasurementUid());
+      }
+    }
+
+    return res;
+  }
+
+  /**
+   * build bloom filter
+   *
+   * @return bloom filter
+   */
+  private BloomFilter buildBloomFilter(List<ChunkGroupMetaData> chunkGroupMetaDataList) {
+    List<String> paths = getAllPath(chunkGroupMetaDataList);
+    BloomFilter bloomFilter = BloomFilter
+        .getEmptyBloomFilter(TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(),
+            paths.size());
+    for (String path : paths) {
+      bloomFilter.add(path);
+    }
+    return bloomFilter;
+  }
+
 
   /**
    * use the given buffer to serialize.

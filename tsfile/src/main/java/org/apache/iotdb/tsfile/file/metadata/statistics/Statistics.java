@@ -75,14 +75,14 @@ public abstract class Statistics<T> {
   public static Statistics deserialize(InputStream inputStream, TSDataType dataType)
       throws IOException {
     Statistics statistics = getStatsByType(dataType);
-    statistics.fill(inputStream);
+    statistics.deserialize(inputStream);
     statistics.isEmpty = false;
     return statistics;
   }
 
   public static Statistics deserialize(ByteBuffer buffer, TSDataType dataType) throws IOException {
     Statistics statistics = getStatsByType(dataType);
-    statistics.fill(buffer);
+    statistics.deserialize(buffer);
     statistics.isEmpty = false;
     return statistics;
   }
@@ -90,7 +90,7 @@ public abstract class Statistics<T> {
   public static Statistics deserialize(TsFileInput input, long offset, TSDataType dataType)
       throws IOException {
     Statistics statistics = getStatsByType(dataType);
-    statistics.fill(input, offset);
+    statistics.deserialize(input, offset);
     statistics.isEmpty = false;
     return statistics;
   }
@@ -242,16 +242,16 @@ public abstract class Statistics<T> {
   /**
    * read data from the inputStream.
    */
-  abstract void fill(InputStream inputStream) throws IOException;
+  abstract void deserialize(InputStream inputStream) throws IOException;
 
-  abstract void fill(ByteBuffer byteBuffer) throws IOException;
+  abstract void deserialize(ByteBuffer byteBuffer) throws IOException;
 
-  protected void fill(TsFileInput input, long offset) throws IOException {
+  protected void deserialize(TsFileInput input, long offset) throws IOException {
     int size = getSerializedSize();
     ByteBuffer buffer = ByteBuffer.allocate(size);
     ReadWriteIOUtils.readAsPossible(input, offset, buffer);
     buffer.flip();
-    fill(buffer);
+    deserialize(buffer);
   }
 
   public int getSerializedSize() {

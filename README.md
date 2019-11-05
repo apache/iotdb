@@ -65,6 +65,14 @@ For the latest information about IoTDB, please visit our [IoTDB official website
     - Stop IoTDB
  - Only build server
  - Only build client
+ - Usage of import-csv.sh
+    - Create metadata
+    - An Example of import csv file
+    - Run import shell
+    - Error data file
+ - Usage of export-csv.sh
+    - Run export shell
+    - Input query
 
 <!-- /TOC -->
 
@@ -117,7 +125,7 @@ configuration files are under "conf" folder
   * system config module (`tsfile-format.properties`, `iotdb-engine.properties`)
   * log config module (`logback.xml`).
 
-For more, see [Chapter4: Deployment and Management](https://iotdb.apache.org/#/Documents/0.8.0/chap4/sec1) in detail.
+For more, see [Chapter3: Server](https://iotdb.apache.org/#/Documents/progress/chap3/sec1) and [Chapter4: Client](https://iotdb.apache.org/#/Documents/progress/chap4/sec1) in detail.
 
 ## Start
 
@@ -150,10 +158,10 @@ Here is the command for starting the Cli:
 
 ```
 # Unix/OS X
-> sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
 
 # Windows
-> sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 
 The command line client is interactive so if everything is ready you should see the welcome logo and statements:
@@ -302,3 +310,56 @@ Under the root path of incubator-iotdb:
 ```
 
 After build, the IoTDB client will be at the folder "client/target/iotdb-client-{project.version}".
+
+## Usage of import-csv.sh
+
+### Create metadata
+```
+SET STORAGE GROUP TO root.fit.d1;
+SET STORAGE GROUP TO root.fit.d2;
+SET STORAGE GROUP TO root.fit.p;
+CREATE TIMESERIES root.fit.d1.s1 WITH DATATYPE=INT32,ENCODING=RLE;
+CREATE TIMESERIES root.fit.d1.s2 WITH DATATYPE=TEXT,ENCODING=PLAIN;
+CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE;
+CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE;
+CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
+```
+
+### An example of import csv file
+
+```
+Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
+1,100,'hello',200,300,400
+2,500,'world',600,700,800
+3,900,'IoTDB',1000,1100,1200
+```
+
+### Run import shell
+```
+# Unix/OS X
+> $IOTDB_CLI_HOME/tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
+
+# Windows
+> $IOTDB_CLI_HOME\tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
+```
+
+### Error data file
+
+`csvInsertError.error`
+
+## Usage of export-csv.sh
+
+### Run export shell
+```
+# Unix/OS X
+> $IOTDB_CLI_HOME/tools/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format>]
+
+# Windows
+> $IOTDB_CLI_HOME\tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format>]
+```
+
+### Input query
+
+```
+select * from root.fit.d1
+```

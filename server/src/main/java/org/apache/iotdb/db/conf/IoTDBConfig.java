@@ -302,24 +302,34 @@ public class IoTDBConfig {
   private int defaultStorageGroupLevel = 2;
 
   /**
-   * Boolean encoding when creating schema automatically is enabled
+   * BOOLEAN encoding when creating schema automatically is enabled
    */
   private TSEncoding defaultBooleanEncoding = TSEncoding.RLE;
 
   /**
-   * Long encoding when creating schema automatically is enabled
+   * INT32 encoding when creating schema automatically is enabled
    */
-  private TSEncoding defaultLongEncoding = TSEncoding.RLE;
+  private TSEncoding defaultInt32Encoding = TSEncoding.RLE;
 
   /**
-   * Double encoding when creating schema automatically is enabled
+   * INT64 encoding when creating schema automatically is enabled
+   */
+  private TSEncoding defaultInt64Encoding = TSEncoding.RLE;
+
+  /**
+   * FLOAT encoding when creating schema automatically is enabled
+   */
+  private TSEncoding defaultFloatEncoding = TSEncoding.GORILLA;
+
+  /**
+   * DOUBLE encoding when creating schema automatically is enabled
    */
   private TSEncoding defaultDoubleEncoding = TSEncoding.GORILLA;
 
   /**
-   * String encoding when creating schema automatically is enabled
+   * TEXT encoding when creating schema automatically is enabled
    */
-  private TSEncoding defaultStringEncoding = TSEncoding.PLAIN;
+  private TSEncoding defaultTextEncoding = TSEncoding.PLAIN;
 
   /**
    * How much memory (in byte) can be used by a single merge task.
@@ -397,6 +407,26 @@ public class IoTDBConfig {
   private String hdfsPort = "9000";
 
   /**
+   * Default DFS NameServices is hdfsnamespace
+   */
+  private String dfsNameServices = "hdfsnamespace";
+
+  /**
+   * Default DFS HA name nodes are nn1 and nn2
+   */
+  private String dfsHaNamenodes = "nn1,nn2";
+
+  /**
+   * Default DFS HA automatic failover is enabled
+   */
+  private boolean dfsHaAutomaticFailoverEnabled = true;
+
+  /**
+   * Default DFS client failover proxy provider is "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider"
+   */
+  private String dfsClientFailoverProxyProvider = "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider";
+
+  /**
    * default TTL for storage groups that are not set TTL by statements, in ms
    * Notice: if this property is changed, previous created storage group which are not set TTL will
    * also be affected.
@@ -435,8 +465,13 @@ public class IoTDBConfig {
     }
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
-      String hdfsDir = "hdfs://" + TSFileDescriptor.getInstance().getConfig().getHdfsIp() + ":"
-          + TSFileDescriptor.getInstance().getConfig().getHdfsPort();
+      String[] hdfsIps = TSFileDescriptor.getInstance().getConfig().getHdfsIp();
+      String hdfsDir = "hdfs://";
+      if (hdfsIps.length > 1) {
+        hdfsDir += TSFileDescriptor.getInstance().getConfig().getDfsNameServices();
+      } else {
+        hdfsDir += hdfsIps[0] + ":" + TSFileDescriptor.getInstance().getConfig().getHdfsPort();
+      }
       for (int i = 5; i < dirs.size(); i++) {
         String dir = dirs.get(i);
         dir = hdfsDir + File.separatorChar + dir;
@@ -499,7 +534,7 @@ public class IoTDBConfig {
   public void setMetricsPort(int metricsPort) {
     this.metricsPort = metricsPort;
   }
-  
+
   public String getRpcAddress() {
     return rpcAddress;
   }
@@ -908,6 +943,7 @@ public class IoTDBConfig {
   public void setMergeFileSelectionTimeBudget(long mergeFileSelectionTimeBudget) {
     this.mergeFileSelectionTimeBudget = mergeFileSelectionTimeBudget;
   }
+
   public boolean isRpcThriftCompressionEnable() {
     return rpcThriftCompressionEnable;
   }
@@ -1030,16 +1066,40 @@ public class IoTDBConfig {
     this.defaultBooleanEncoding = TSEncoding.valueOf(defaultBooleanEncoding);
   }
 
-  public TSEncoding getDefaultLongEncoding() {
-    return defaultLongEncoding;
+  public TSEncoding getDefaultInt32Encoding() {
+    return defaultInt32Encoding;
   }
 
-  public void setDefaultLongEncoding(TSEncoding defaultLongEncoding) {
-    this.defaultLongEncoding = defaultLongEncoding;
+  public void setDefaultInt32Encoding(TSEncoding defaultInt32Encoding) {
+    this.defaultInt32Encoding = defaultInt32Encoding;
   }
 
-  public void setDefaultLongEncoding(String defaultLongEncoding) {
-    this.defaultLongEncoding = TSEncoding.valueOf(defaultLongEncoding);
+  public void setDefaultInt32Encoding(String defaultInt32Encoding) {
+    this.defaultInt32Encoding = TSEncoding.valueOf(defaultInt32Encoding);
+  }
+
+  public TSEncoding getDefaultInt64Encoding() {
+    return defaultInt64Encoding;
+  }
+
+  public void setDefaultInt64Encoding(TSEncoding defaultInt64Encoding) {
+    this.defaultInt64Encoding = defaultInt64Encoding;
+  }
+
+  public void setDefaultInt64Encoding(String defaultInt64Encoding) {
+    this.defaultInt64Encoding = TSEncoding.valueOf(defaultInt64Encoding);
+  }
+
+  public TSEncoding getDefaultFloatEncoding() {
+    return defaultFloatEncoding;
+  }
+
+  public void setDefaultFloatEncoding(TSEncoding defaultFloatEncoding) {
+    this.defaultFloatEncoding = defaultFloatEncoding;
+  }
+
+  public void setDefaultFloatEncoding(String defaultFloatEncoding) {
+    this.defaultFloatEncoding = TSEncoding.valueOf(defaultFloatEncoding);
   }
 
   public TSEncoding getDefaultDoubleEncoding() {
@@ -1054,16 +1114,16 @@ public class IoTDBConfig {
     this.defaultDoubleEncoding = TSEncoding.valueOf(defaultDoubleEncoding);
   }
 
-  public TSEncoding getDefaultStringEncoding() {
-    return defaultStringEncoding;
+  public TSEncoding getDefaultTextEncoding() {
+    return defaultTextEncoding;
   }
 
-  public void setDefaultStringEncoding(TSEncoding defaultStringEncoding) {
-    this.defaultStringEncoding = defaultStringEncoding;
+  public void setDefaultTextEncoding(TSEncoding defaultTextEncoding) {
+    this.defaultTextEncoding = defaultTextEncoding;
   }
 
-  public void setDefaultStringEncoding(String defaultStringEncoding) {
-    this.defaultStringEncoding = TSEncoding.valueOf(defaultStringEncoding);
+  public void setDefaultTextEncoding(String defaultTextEncoding) {
+    this.defaultTextEncoding = TSEncoding.valueOf(defaultTextEncoding);
   }
 
   public FSType getSystemFileStorageFs() {
@@ -1082,12 +1142,12 @@ public class IoTDBConfig {
     this.tsFileStorageFs = FSType.valueOf(tsFileStorageFs);
   }
 
-  public String getHdfsIp() {
-    return hdfsIp;
+  public String[] getHdfsIp() {
+    return hdfsIp.split(",");
   }
 
-  public void setHdfsIp(String hdfsIp) {
-    this.hdfsIp = hdfsIp;
+  public void setHdfsIp(String[] hdfsIp) {
+    this.hdfsIp = String.join(",", hdfsIp);
   }
 
   public String getHdfsPort() {
@@ -1104,6 +1164,38 @@ public class IoTDBConfig {
 
   public void setUpgradeThreadNum(int upgradeThreadNum) {
     this.upgradeThreadNum = upgradeThreadNum;
+  }
+
+  public String getDfsNameServices() {
+    return dfsNameServices;
+  }
+
+  public void setDfsNameServices(String dfsNameServices) {
+    this.dfsNameServices = dfsNameServices;
+  }
+
+  public String[] getDfsHaNamenodes() {
+    return dfsHaNamenodes.split(",");
+  }
+
+  public void setDfsHaNamenodes(String[] dfsHaNamenodes) {
+    this.dfsHaNamenodes = String.join(",", dfsHaNamenodes);
+  }
+
+  public boolean isDfsHaAutomaticFailoverEnabled() {
+    return dfsHaAutomaticFailoverEnabled;
+  }
+
+  public void setDfsHaAutomaticFailoverEnabled(boolean dfsHaAutomaticFailoverEnabled) {
+    this.dfsHaAutomaticFailoverEnabled = dfsHaAutomaticFailoverEnabled;
+  }
+
+  public String getDfsClientFailoverProxyProvider() {
+    return dfsClientFailoverProxyProvider;
+  }
+
+  public void setDfsClientFailoverProxyProvider(String dfsClientFailoverProxyProvider) {
+    this.dfsClientFailoverProxyProvider = dfsClientFailoverProxyProvider;
   }
 
   public long getDefaultTTL() {

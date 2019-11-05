@@ -44,7 +44,7 @@ import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 public class TsFileSequenceRead {
 
   public static void main(String[] args) throws IOException {
-    String filename = "test.tsfile";
+    String filename = "/Users/tianyu/2019秋季学期/incubator-iotdb/data/data/sequence/root.group_8/1571213405617-101.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
