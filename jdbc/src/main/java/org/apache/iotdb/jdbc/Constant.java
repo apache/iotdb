@@ -39,6 +39,8 @@ public class Constant {
   static final String GLOBAL_COUNT_NODES_REQ = "COUNT_NODES";
 
   static final String GLOBAL_SHOW_STORAGE_GROUP_REQ = "SHOW_STORAGE_GROUP";
+  
+  static final String GLOBAL_SHOW_CHILD_PATHS_REQ = "SHOW_CHILD_PATHS";
 
   static final String GLOBAL_COLUMNS_REQ = "ALL_COLUMNS";
 
@@ -47,6 +49,7 @@ public class Constant {
   public static final String CATALOG_TIMESERIES = "ts";
   public static final String CATALOG_STORAGE_GROUP = "sg";
   public static final String CATALOG_DEVICES = "devices";
+  public static final String CATALOG_CHILD_PATHS = "cp";
   public static final String CATALOG_VERSION = "version";
 
   static final String COUNT_TIMESERIES = "cntts";

@@ -187,7 +187,8 @@ struct TSFetchMetadataResp{
 		8: optional set<string> devices
 		9: optional list<string> nodesList
 		10: optional map<string, string> nodeTimeseriesNum
-		11: optional string version
+		11: optional set<string> childPaths
+		12: optional string version
 }
 
 struct TSFetchMetadataReq{

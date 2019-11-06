@@ -198,9 +198,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   }
 
   @Override
-  public boolean delete(DeletePlan deletePlan) throws ProcessorException {
+  public void delete(DeletePlan deletePlan) throws ProcessorException {
     try {
-      boolean result = true;
       MManager mManager = MManager.getInstance();
       Set<String> existingPaths = new HashSet<>();
       for (Path p : deletePlan.getPaths()) {
@@ -217,9 +216,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
         }
       }
       for (String path : existingPaths) {
-        result &= delete(new Path(path), deletePlan.getDeleteTime());
+        delete(new Path(path), deletePlan.getDeleteTime());
       }
-      return result;
     } catch (MetadataErrorException e) {
       throw new ProcessorException(e);
     }

@@ -72,6 +72,7 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Change struct TSQueryDataSet to eliminate row-wise rpc writing | Lei Rui                |
 | Add optional i32 timeseriesNum in TSFetchMetadataResp        | Jack Tsai              |
 | Add required i64 queryId in TSHandleIdentifier               | Yuan Tian    |
+| Add optional set\<string> childPaths in TSFetchMetadataResp     | Haonan Hou             |
 | Add optional string version in TSFetchMetadataResp           | Genius_pig             |
 
 
