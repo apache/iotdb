@@ -135,5 +135,8 @@ public class QueryProcessorTest {
     PhysicalPlan plan10 = processor.parseSQLToPhysicalPlan(fillStatement);
     assertEquals(OperatorType.FILL, plan10.getOperatorType());
 
+    String queryStatement1 = "select * from root.{vehicle,vehicle1}.device1";
+    PhysicalPlan plan11 = processor.parseSQLToPhysicalPlan(queryStatement1);
+    assertEquals(OperatorType.QUERY, plan11.getOperatorType());
   }
 }

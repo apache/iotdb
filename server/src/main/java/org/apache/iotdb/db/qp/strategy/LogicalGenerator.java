@@ -1081,17 +1081,20 @@ public class LogicalGenerator {
     List<List<String>> result = new ArrayList<>();
     List<Path> pathLists = new ArrayList<>();
     if (childCount == 1 && node.getChild(0).getType() == TOK_ROOT) {
+      ArrayList<String> rootList = new ArrayList<>();
+      rootList.add(SQLConstant.ROOT);
+      paths.add(rootList);
       AstNode childNode = node.getChild(0);
       childCount = childNode.getChildCount();
       for (int i = 0; i < childCount; i++) {
         AstNode grandChild = childNode.getChild(i);
         int grandChildCount = grandChild.getChildCount();
         if(grandChild.getType() == TOK_SUBPATH) {
+          ArrayList<String> path = new ArrayList<>();
           for(int j = 0; j < grandChildCount; j++) {
-            ArrayList<String> path = new ArrayList<>();
             path.add(grandChild.getChild(j).getText());
-            paths.add(path);
           }
+          paths.add(path);
         } else {
           ArrayList<String> path = new ArrayList<>();
           path.add(grandChild.getText());
@@ -1104,11 +1107,11 @@ public class LogicalGenerator {
         AstNode childNode = node.getChild(i);
         int count = childNode.getChildCount();
         if(childNode.getType() == TOK_SUBPATH) {
+          ArrayList<String> path = new ArrayList<>();
           for(int j = 0; j < count; j++) {
-            ArrayList<String> path = new ArrayList<>();
             path.add(childNode.getChild(j).getText());
-            paths.add(path);
           }
+          paths.add(path);
         } else {
           ArrayList<String> path = new ArrayList<>();
           path.add(childNode.getText());
