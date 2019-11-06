@@ -18,10 +18,18 @@
  */
 package org.apache.iotdb.cluster.config;
 
+import java.util.Collections;
+import java.util.List;
+
 public class ClusterConfig {
 
+  static final String CONFIG_NAME = "iotdb-cluster.properties";
+
   private String localIP = "127.0.0.1";
-  private int localPort = 9003;
+  private int localMetaPort = 9003;
+
+  // each one is {IP | domain name}:{meta port}
+  private List<String> seedNodeUrls = Collections.emptyList();
 
   private boolean isRpcThriftCompressionEnabled = true;
   private int maxConcurrentClientNum = 1024;
@@ -35,12 +43,12 @@ public class ClusterConfig {
     this.localIP = localIP;
   }
 
-  public int getLocalPort() {
-    return localPort;
+  public int getLocalMetaPort() {
+    return localMetaPort;
   }
 
-  public void setLocalPort(int localPort) {
-    this.localPort = localPort;
+  public void setLocalMetaPort(int localMetaPort) {
+    this.localMetaPort = localMetaPort;
   }
 
   public boolean isRpcThriftCompressionEnabled() {
@@ -57,5 +65,13 @@ public class ClusterConfig {
 
   public void setMaxConcurrentClientNum(int maxConcurrentClientNum) {
     this.maxConcurrentClientNum = maxConcurrentClientNum;
+  }
+
+  public List<String> getSeedNodeUrls() {
+    return seedNodeUrls;
+  }
+
+  public void setSeedNodeUrls(List<String> seedNodeUrls) {
+    this.seedNodeUrls = seedNodeUrls;
   }
 }

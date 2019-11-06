@@ -27,16 +27,19 @@ typedef i64 long
 struct HeartBeatRequest {
   1: required long term // leader's
   2: required long commitLogIndex  // leader's
+  3: required Node leader
 }
 
 // follower -> leader
 struct HeartBeatResponse {
   1: required long term // follower's
-  2: required long lastLogIndex // follower's
+  2: optional long lastLogIndex // follower's
+  // used to perform a catch up when necessary
+  3: optional Node follower
 }
 
 // node -> node
-struct VoteRequest {
+struct ElectionRequest {
   1: required long term
   2: required long lastLogTerm
   3: required long lastLogIndex
@@ -65,7 +68,53 @@ struct Node{
   2: required int port
 }
 
-service TSIService {
+service TSDataService {
+  /**
+  * Leader will call this method to all followers to ensure its authority.
+  * <br>For the receiver,
+  * The method will check the authority of the leader.
+  *
+  * @param request information of the leader
+  * @return if the leader is valid, HeartBeatResponse.term will set -1, and the follower will tell
+  * leader its lastLogIndex;
+  * otherwise, the follower will tell the fake leader its term.
+  **/
+	HeartBeatResponse sendHeartBeat(1:HeartBeatRequest request);
+
+	/**
+  * If a node wants to be a leader, it'll call the method to other nodes to get a vote.
+  * <br>For the receiver,
+  * The method will check whether the node can be a leader.
+  *
+  * @param voteRequest a candidate that wants to be a leader.
+  * @return -1 means agree, otherwise return the voter's term
+  **/
+  long startElection(1:ElectionRequest electionRequest);
+
+	/**
+  * Leader will call this method to send a batch of entries to all followers.
+  * <br>For the receiver,
+  * The method will check the authority of the leader and if the local log is complete.
+  * If the leader is valid and local log is complete, the follower will append these entries to local log.
+  *
+  * @param request entries that need to be appended and the information of the leader.
+  * @return -1: agree, -2: log index mismatch , otherwise return the follower's term
+  **/
+  long appendDataEntries(1:AppendEntriesRequest request)
+
+  /**
+  * Leader will call this method to send a entry to all followers.
+  * <br>For the receiver,
+  * The method will check the authority of the leader and if the local log is complete.
+  * If the leader is valid and local log is complete, the follower will append the entry to local log.
+  *
+  * @param request entry that needs to be appended and the information of the leader.
+  * @return -1: agree, -2: log index mismatch , otherwise return the follower's term
+  **/
+    long appendDataEntry(1:AppendEntryRequest request)
+}
+
+service TSMetaService {
 
 /**
 * Leader will call this method to all followers to ensure its authority.
@@ -73,20 +122,21 @@ service TSIService {
 * The method will check the authority of the leader.
 *
 * @param request information of the leader
-* @return if the leader is valid, HeartBeatResponse.item will set -1, and the follower will tell leader its lastLogIndex;
-* otherwise, the follower will tell the fake leader its item.
+* @return if the leader is valid, HeartBeatResponse.term will set -1, and the follower will tell
+* leader its lastLogIndex;
+* otherwise, the follower will tell the fake leader its term.
 **/
 	HeartBeatResponse sendHeartBeat(1:HeartBeatRequest request);
 
 /**
-* If a node wants to be a leader, it'll call the method to other nodes to get vote.
+* If a node wants to be a leader, it'll call the method to other nodes to get a vote.
 * <br>For the receiver,
 * The method will check whether the node can be a leader.
 *
 * @param voteRequest a candidate that wants to be a leader.
 * @return -1 means agree, otherwise return the voter's term
 **/
-	long startVote(1:VoteRequest voteRequest);
+	long startElection(1:ElectionRequest electionRequest);
 
 /**
 * Leader will call this method to send a entry to all followers.
@@ -100,17 +150,6 @@ service TSIService {
   long appendMetadataEntry(1:AppendEntryRequest request)
 
 /**
-* Leader will call this method to send a entry to all followers.
-* <br>For the receiver,
-* The method will check the authority of the leader and if the local log is complete.
-* If the leader is valid and local log is complete, the follower will append the entry to local log.
-*
-* @param request entry that needs to be appended and the information of the leader.
-* @return -1: agree, -2: log index mismatch , otherwise return the follower's term
-**/
-  long appendDataEntry(1:AppendEntryRequest request)
-
-/**
 * Leader will call this method to send a batch of entries to all followers.
 * <br>For the receiver,
 * The method will check the authority of the leader and if the local log is complete.
@@ -122,17 +161,6 @@ service TSIService {
   long appendMetadataEntries(1:AppendEntriesRequest request)
 
 /**
-* Leader will call this method to send a batch of entries to all followers.
-* <br>For the receiver,
-* The method will check the authority of the leader and if the local log is complete.
-* If the leader is valid and local log is complete, the follower will append these entries to local log.
-*
-* @param request entries that need to be appended and the information of the leader.
-* @return -1: agree, -2: log index mismatch , otherwise return the follower's term
-**/
-  long appendDataEntries(1:AppendEntriesRequest request)
-
-/**
 * Node which is not leader will call this method to try to add itself into the cluster as a new node.
 * <br>For the receiver,
 * If the local node is leader, it'll check whether the cluster can add this new node;
@@ -142,7 +170,4 @@ service TSIService {
 * @return 1: accept to add new node, 0: the node is already in this cluster, -1: fail to add new node
 **/
   int addNode(1: Node node)
-
-
-
 }
