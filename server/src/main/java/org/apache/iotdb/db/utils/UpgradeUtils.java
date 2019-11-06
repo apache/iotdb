@@ -78,6 +78,12 @@ public class UpgradeUtils {
         .getFile().getName();
   }
 
+  private static String getUpgradeFileName(String upgradingFileName) {
+    File upgradingFile = FSFactoryProducer.getFSFactory().getFile(upgradingFileName);
+    return upgradingFile.getParentFile().getParent() + File.separator + TMP_STRING
+        + File.separator + UPGRADE_FILE_PREFIX + upgradingFile.getName();
+  }
+
   public static void recoverUpgrade() {
     if (FSFactoryProducer.getFSFactory().getFile(UpgradeLog.getUpgradeLogPath()).exists()) {
       try (BufferedReader upgradeLogReader = new BufferedReader(
@@ -93,17 +99,20 @@ public class UpgradeUtils {
             upgradeRecoverMap.put(upgradeFileName, 1);
           }
         }
-        for (String key:upgradeRecoverMap.keySet()){
-          if (upgradeRecoverMap.get(key) ==UpgradeCheckStatus.BEGIN_UPGRADE_FILE.getCheckStatusCode()){
-            if (FSFactoryProducer.getFSFactory().getFile(key.split(COMMA_SEPERATOR)[1]).exists()) {
-              FSFactoryProducer.getFSFactory().getFile(key.split(COMMA_SEPERATOR)[1]).delete();
+        for (String key : upgradeRecoverMap.keySet()) {
+          String upgradeFileName = getUpgradeFileName(key);
+          if (upgradeRecoverMap.get(key) == UpgradeCheckStatus.BEGIN_UPGRADE_FILE
+              .getCheckStatusCode()) {
+            if (FSFactoryProducer.getFSFactory().getFile(upgradeFileName).exists()) {
+              FSFactoryProducer.getFSFactory().getFile(upgradeFileName).delete();
             }
-          }
-          else if (upgradeRecoverMap.get(key) == UpgradeCheckStatus.AFTER_UPGRADE_FILE.getCheckStatusCode()) {
+          } else if (upgradeRecoverMap.get(key) == UpgradeCheckStatus.AFTER_UPGRADE_FILE
+              .getCheckStatusCode()) {
             FSFactoryProducer.getFSFactory()
-                .moveFile(FSFactoryProducer.getFSFactory().getFile(key.split(COMMA_SEPERATOR)[1]),
-                    FSFactoryProducer.getFSFactory().getFile(key.split(COMMA_SEPERATOR)[0]));
-            FSFactoryProducer.getFSFactory().getFile(key.split(COMMA_SEPERATOR)[1]).getParentFile().delete();
+                .moveFile(FSFactoryProducer.getFSFactory().getFile(upgradeFileName),
+                    FSFactoryProducer.getFSFactory().getFile(key));
+            FSFactoryProducer.getFSFactory().getFile(upgradeFileName).getParentFile()
+                .delete();
           }
         }
       } catch (IOException e) {
