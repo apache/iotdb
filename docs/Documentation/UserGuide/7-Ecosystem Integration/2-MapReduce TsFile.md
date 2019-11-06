@@ -168,7 +168,6 @@ Then, the `mapper` and `reducer` class is how you deal with the `MapWritable` pr
 
 ```
     public static class TSMapper extends Mapper<NullWritable, MapWritable, Text, MapWritable> {
-
         @Override
         protected void map(NullWritable key, MapWritable value,
                            Mapper<NullWritable, MapWritable, Text, MapWritable>.Context context)

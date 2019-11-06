@@ -33,10 +33,10 @@ package object tsfile {
                isNarrowForm: Boolean = false): DataFrame = {
       if (isNarrowForm) {
         reader.option(DefaultSource.path, path).option(DefaultSource.isNarrowForm, "narrow_form").
-          format("org.apache.iotdb.tsfile").load
+          format("org.apache.iotdb.spark.tsfile").load
       }
       else {
-        reader.option(DefaultSource.path, path).format("org.apache.iotdb.tsfile").load
+        reader.option(DefaultSource.path, path).format("org.apache.iotdb.spark.tsfile").load
       }
     }
   }
@@ -49,7 +49,7 @@ package object tsfile {
                isNarrowForm: Boolean = false): Unit = {
       if (isNarrowForm) {
         writer.option(DefaultSource.path, path).option(DefaultSource.isNarrowForm, "narrow_form").
-          format("org.apache.iotdb.tsfile").save
+          format("org.apache.iotdb.spark.tsfile").save
       }
       else {
         writer.option(DefaultSource.path, path).format("org.apache.iotdb.tsfile").save
