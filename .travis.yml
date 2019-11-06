@@ -123,7 +123,7 @@ matrix:
       script:
         - java -version
         - mvn -version
-        - travis_wait mvn -B clean integration-test
+        - travis_wait 40 mvn -B clean integration-test
 
     - os: linux
       name: linux-openjdk11
