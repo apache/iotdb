@@ -70,6 +70,7 @@ import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -94,16 +95,17 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
     switch (plan.getOperatorType()) {
       case DELETE:
-        return delete((DeletePlan) plan);
+        delete((DeletePlan) plan);
+        return true;
       case UPDATE:
         UpdatePlan update = (UpdatePlan) plan;
-        boolean flag = true;
         for (Pair<Long, Long> timePair : update.getIntervals()) {
-          flag &= update(update.getPath(), timePair.left, timePair.right, update.getValue());
+          update(update.getPath(), timePair.left, timePair.right, update.getValue());
         }
-        return flag;
+        return true;
       case INSERT:
-        return insert((InsertPlan) plan);
+        insert((InsertPlan) plan);
+        return true;
       case CREATE_ROLE:
       case DELETE_ROLE:
       case CREATE_USER:
@@ -193,13 +195,12 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  public boolean update(Path path, long startTime, long endTime, String value)
+  public void update(Path path, long startTime, long endTime, String value)
       throws ProcessorException {
-    return false;
   }
 
   @Override
-  public boolean delete(Path path, long timestamp) throws ProcessorException {
+  public void delete(Path path, long timestamp) throws ProcessorException {
     String deviceId = path.getDevice();
     String measurementId = path.getMeasurement();
     try {
@@ -209,7 +210,6 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       }
       mManager.getStorageGroupNameByPath(path.getFullPath());
       storageEngine.delete(deviceId, measurementId, timestamp);
-      return true;
     } catch (StorageGroupException | StorageEngineException e) {
       throw new ProcessorException(e);
     }
@@ -217,7 +217,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
 
   @Override
-  public boolean insert(InsertPlan insertPlan) throws ProcessorException {
+  public void insert(InsertPlan insertPlan) throws ProcessorException {
     try {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
@@ -253,8 +253,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         dataTypes[i] = measurementNode.getSchema().getType();
       }
       insertPlan.setDataTypes(dataTypes);
-      return storageEngine.insert(insertPlan);
-
+      storageEngine.insert(insertPlan);
     } catch (PathErrorException | StorageEngineException | MetadataErrorException | CacheException e) {
       throw new ProcessorException(e);
     }
@@ -265,9 +264,8 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       String[] measurementList = batchInsertPlan.getMeasurements();
       String deviceId = batchInsertPlan.getDeviceId();
-
       MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
-      Object[] values;
+      TSDataType[] dataTypes = batchInsertPlan.getDataTypes();
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
       for (int i = 0; i < measurementList.length; i++) {
@@ -279,8 +277,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
                 String.format("Current deviceId[%s] does not contain measurement:%s",
                     deviceId, measurementList[i]));
           }
-          values = collectFirstElements(batchInsertPlan.getColumns());
-          addPathToMTree(deviceId, measurementList[i], values[i]);
+          addPathToMTree(deviceId, measurementList[i], dataTypes[i]);
         }
         MNode measurementNode = node.getChild(measurementList[i]);
         if (!measurementNode.isLeaf()) {
@@ -692,19 +689,24 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   /**
    * Add a seriesPath to MTree
    */
-  private void addPathToMTree(String deviceId, String measurementId, Object value)
+  private void addPathToMTree(String deviceId, String measurementId, TSDataType dataType)
       throws PathErrorException, MetadataErrorException, StorageEngineException {
     String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
-    TSDataType predictedDataType = TypeInferenceUtils.getPredictedDataType(value);
-    TSEncoding defaultEncoding = getDefaultEncoding(predictedDataType);
+    TSEncoding defaultEncoding = getDefaultEncoding(dataType);
     CompressionType defaultCompressor =
         CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
     boolean result = mManager.addPathToMTree(
-        fullPath, predictedDataType, defaultEncoding, defaultCompressor, Collections.emptyMap());
+        fullPath, dataType, defaultEncoding, defaultCompressor, Collections.emptyMap());
     if (result) {
       storageEngine.addTimeSeries(
-          new Path(fullPath), predictedDataType, defaultEncoding, defaultCompressor, Collections.emptyMap());
+          new Path(fullPath), dataType, defaultEncoding, defaultCompressor, Collections.emptyMap());
     }
+  }
+
+  private void addPathToMTree(String deviceId, String measurementId, Object value)
+      throws PathErrorException, MetadataErrorException, StorageEngineException {
+    TSDataType predictedDataType = TypeInferenceUtils.getPredictedDataType(value);
+    addPathToMTree(deviceId, measurementId, predictedDataType);
   }
 
   /**
@@ -715,23 +717,19 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     switch (dataType) {
       case BOOLEAN:
         return conf.getDefaultBooleanEncoding();
+      case INT32:
+        return conf.getDefaultInt32Encoding();
       case INT64:
-        return conf.getDefaultLongEncoding();
+        return conf.getDefaultInt64Encoding();
+      case FLOAT:
+        return conf.getDefaultFloatEncoding();
       case DOUBLE:
         return conf.getDefaultDoubleEncoding();
+      case TEXT:
+        return conf.getDefaultTextEncoding();
       default:
-        return conf.getDefaultStringEncoding();
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", dataType.toString()));
     }
-  }
-
-  /**
-   * Collect the first element of columns of an array of arrays
-   */
-  private Object[] collectFirstElements(Object[] values) {
-    Object[] firstElements = new Object[values.length];
-    for (int i = 0; i < values.length; i++) {
-      firstElements[i] = ((Object[]) values[i])[0];
-    }
-    return firstElements;
   }
 }

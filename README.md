@@ -125,7 +125,7 @@ configuration files are under "conf" folder
   * system config module (`tsfile-format.properties`, `iotdb-engine.properties`)
   * log config module (`logback.xml`).
 
-For more, see [Chapter4: Deployment and Management](https://iotdb.apache.org/#/Documents/0.8.0/chap4/sec1) in detail.
+For more, see [Chapter3: Server](https://iotdb.apache.org/#/Documents/progress/chap3/sec1) and [Chapter4: Client](https://iotdb.apache.org/#/Documents/progress/chap4/sec1) in detail.
 
 ## Start
 
@@ -158,10 +158,10 @@ Here is the command for starting the Cli:
 
 ```
 # Unix/OS X
-> sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
 
 # Windows
-> sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 
 The command line client is interactive so if everything is ready you should see the welcome logo and statements:

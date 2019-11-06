@@ -27,6 +27,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -85,7 +86,7 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
-  public void showTimeseriesTest1() throws ClassNotFoundException, SQLException {
+  public void showTimeseriesTest() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -201,6 +202,27 @@ public class IoTDBMetadataFetchIT {
     }
   }
 
+  @Test
+  public void showVersion() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      String sql = "show version";
+      try {
+        boolean hasResultSet = statement.execute(sql);
+        if(hasResultSet) {
+          try(ResultSet resultSet = statement.getResultSet()) {
+            ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+            Assert.assertEquals(resultSetMetaData.getColumnLabel(1), IoTDBConstant.VERSION);
+          }
+        }
+      } catch (Exception e) {
+        fail(e.getMessage());
+      }
+    }
+  }
+
   /**
    * get all columns' name under a given seriesPath
    */
@@ -307,7 +329,7 @@ public class IoTDBMetadataFetchIT {
     String standard = "Storage Group,\n" + "root.ln.wf01.wt01,\n";
 
     try (ResultSet resultSet = databaseMetaData
-        .getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null);) {
+        .getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null)) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();

@@ -26,7 +26,6 @@ import java.io.InputStream;
 import java.time.ZoneId;
 import java.util.Properties;
 import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -288,15 +287,21 @@ public class IoTDBDescriptor {
       conf.setDefaultBooleanEncoding(
           properties.getProperty("default_boolean_encoding",
               conf.getDefaultBooleanEncoding().toString()));
-      conf.setDefaultLongEncoding(
-          properties
-              .getProperty("default_long_encoding", conf.getDefaultLongEncoding().toString()));
+      conf.setDefaultInt32Encoding(
+          properties.getProperty("default_int32_encoding",
+              conf.getDefaultInt32Encoding().toString()));
+      conf.setDefaultInt64Encoding(
+          properties.getProperty("default_int64_encoding",
+              conf.getDefaultInt64Encoding().toString()));
+      conf.setDefaultFloatEncoding(
+          properties.getProperty("default_float_encoding",
+              conf.getDefaultFloatEncoding().toString()));
       conf.setDefaultDoubleEncoding(
-          properties
-              .getProperty("default_double_encoding", conf.getDefaultDoubleEncoding().toString()));
-      conf.setDefaultStringEncoding(
-          properties
-              .getProperty("default_string_encoding", conf.getDefaultStringEncoding().toString()));
+          properties.getProperty("default_double_encoding",
+              conf.getDefaultDoubleEncoding().toString()));
+      conf.setDefaultTextEncoding(
+          properties.getProperty("default_text_encoding",
+              conf.getDefaultTextEncoding().toString()));
 
       conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
@@ -314,14 +319,14 @@ public class IoTDBDescriptor {
           String.valueOf(conf.getDefaultTTL()))));
 
       // At the same time, set TSFileConfig
-      TSFileConfig tsFileConfig =TSFileDescriptor.getInstance().getConfig();
-      tsFileConfig.setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
-      tsFileConfig.setHdfsIp(properties.getProperty("hdfs_ip").split(","));
-      tsFileConfig.setHdfsPort(properties.getProperty("hdfs_port"));tsFileConfig.setDfsNameServices(properties.getProperty("dfs_nameservices"));
-      tsFileConfig.setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes").split(","));
-      tsFileConfig.setDfsHaAutomaticFailoverEnabled(
+      TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
+      TSFileDescriptor.getInstance().getConfig().setHdfsIp(properties.getProperty("hdfs_ip").split(","));
+      TSFileDescriptor.getInstance().getConfig().setHdfsPort(properties.getProperty("hdfs_port"));
+      TSFileDescriptor.getInstance().getConfig().setDfsNameServices(properties.getProperty("dfs_nameservices"));
+      TSFileDescriptor.getInstance().getConfig().setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes").split(","));
+      TSFileDescriptor.getInstance().getConfig().setDfsHaAutomaticFailoverEnabled(
           Boolean.parseBoolean(properties.getProperty("dfs_ha_automatic_failover_enabled")));
-      tsFileConfig.setDfsClientFailoverProxyProvider(
+      TSFileDescriptor.getInstance().getConfig().setDfsClientFailoverProxyProvider(
           properties.getProperty("dfs_client_failover_proxy_provider"));
 
       // set tsfile-format config

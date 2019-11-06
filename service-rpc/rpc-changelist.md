@@ -53,7 +53,6 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add method TSStatus deleteStorageGroups(1:list\<string> storageGroup) | Yi Tao                             |
 
 
-
 ## 3. Update
 
 | Latest Changes                                               | Related Committers     |
@@ -72,6 +71,8 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Rename some fields in TSFetchMetadataResp: ~~ColumnsList~~ to columnsList, ~~showTimeseriesList~~ to timeseriesList, ~~showStorageGroups~~ to storageGroups | Zesong Sun             |
 | Change struct TSQueryDataSet to eliminate row-wise rpc writing | Lei Rui                |
 | Add optional i32 timeseriesNum in TSFetchMetadataResp        | Jack Tsai              |
+| Add optional set\<string> childPaths in TSFetchMetadataResp     | Haonan Hou             |
+| Add optional string version in TSFetchMetadataResp           | Genius_pig             |
 
 
 

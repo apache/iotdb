@@ -50,9 +50,11 @@ public class IoTDBStatement implements Statement {
   private static final String SHOW_TIMESERIES_COMMAND_LOWERCASE = "show timeseries";
   private static final String SHOW_STORAGE_GROUP_COMMAND_LOWERCASE = "show storage group";
   private static final String SHOW_DEVICES_COMMAND_LOWERCASE = "show devices";
+  private static final String SHOW_CHILD_PATHS_COMMAND_LOWERCASE = "show child paths";
   private static final String COUNT_TIMESERIES_COMMAND_LOWERCASE = "count timeseries";
   private static final String COUNT_NODES_COMMAND_LOWERCASE = "count nodes";
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
+  private static final String SHOW_VERSION_COMMAND_LOWERCASE = "show version";
 
   ZoneId zoneId;
   private ResultSet resultSet = null;
@@ -253,6 +255,22 @@ public class IoTDBStatement implements Statement {
       DatabaseMetaData databaseMetaData = connection.getMetaData();
       resultSet = databaseMetaData.getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null);
       return true;
+    } else if (sqlToLowerCase.startsWith(SHOW_CHILD_PATHS_COMMAND_LOWERCASE)) {
+      if (sqlToLowerCase.equals(SHOW_CHILD_PATHS_COMMAND_LOWERCASE)) {
+        DatabaseMetaData databaseMetaData = connection.getMetaData();
+        resultSet = databaseMetaData.getColumns(Constant.CATALOG_CHILD_PATHS, "root", null, null);
+        return true;
+      } else {
+        String[] cmdSplit = sql.split("\\s+");
+        if (cmdSplit.length != 4) {
+          throw new SQLException("Error format of \'SHOW CHILD PATHS <PATH>\'");
+        } else {
+          String path = cmdSplit[3];
+          DatabaseMetaData databaseMetaData = connection.getMetaData();
+          resultSet = databaseMetaData.getColumns(Constant.CATALOG_CHILD_PATHS, path, null, null);
+          return true;
+        }
+      }
     } else if (sqlToLowerCase.equals(SHOW_DEVICES_COMMAND_LOWERCASE)) {
       DatabaseMetaData databaseMetaData = connection.getMetaData();
       resultSet = databaseMetaData.getColumns(Constant.CATALOG_DEVICES, null, null, null);
@@ -287,6 +305,10 @@ public class IoTDBStatement implements Statement {
         resultSet = databaseMetaData.getNodes(Constant.COUNT_NODES, path, null, null, level);
         return true;
       }
+    } else if(sqlToLowerCase.equals(SHOW_VERSION_COMMAND_LOWERCASE)) {
+      IoTDBDatabaseMetadata databaseMetadata = (IoTDBDatabaseMetadata) connection.getMetaData();
+      resultSet = databaseMetadata.getColumns(Constant.CATALOG_VERSION, null, null, null);
+      return true;
     } else {
       TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql);
       TSExecuteStatementResp execResp = client.executeStatement(execReq);
