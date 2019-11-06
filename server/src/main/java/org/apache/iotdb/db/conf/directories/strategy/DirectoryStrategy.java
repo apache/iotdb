@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf.directories.strategy;
 
 import java.util.List;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.slf4j.Logger;
@@ -54,6 +55,7 @@ public abstract class DirectoryStrategy {
       }
     }
     if (!hasSpace) {
+      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new DiskSpaceInsufficientException(
           String.format("All disks of folders %s are full, can't init.", folders));
     }

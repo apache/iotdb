@@ -67,9 +67,31 @@ public class DirectoryManager {
       sequenceStrategy.init(sequenceFileFolders);
       unsequenceStrategy = (DirectoryStrategy) clazz.newInstance();
       unsequenceStrategy.init(unsequenceFileFolders);
+    } catch (DiskSpaceInsufficientException e) {
+      logger.error("All disks of folders are full.", e);
     } catch (Exception e) {
-      logger.error("can't find sequenceStrategy {} for mult-directories.", strategyName, e);
+      logger.error("Can't find sequenceStrategy {} for mult-directories.", strategyName, e);
     }
+  }
+
+  public void updateFileFolders() {
+    try {
+      sequenceFileFolders =
+          new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+      mkDataDirs(sequenceFileFolders);
+
+      unsequenceFileFolders =
+          new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+      mkDataDirs(unsequenceFileFolders);
+      sequenceStrategy.init(sequenceFileFolders);
+      unsequenceStrategy.init(unsequenceFileFolders);
+    } catch (DiskSpaceInsufficientException e) {
+      logger.error("All disks of folders are full.", e);
+    }
+  }
+
+  private void updateDirectoryStrategy(){
+
   }
 
   public static DirectoryManager getInstance() {
@@ -147,8 +169,4 @@ public class DirectoryManager {
     return new ArrayList<>(unsequenceFileFolders);
   }
 
-  // only used by test
-  public String getUnSequenceFolderForTest() {
-    return unsequenceFileFolders.get(0);
-  }
 }
