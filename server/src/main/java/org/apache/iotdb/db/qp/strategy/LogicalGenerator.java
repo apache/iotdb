@@ -65,6 +65,7 @@ import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SHOW;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SLIMIT;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SOFFSET;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_STORAGEGROUP;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SUBPATH;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_TIMESERIES;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_TTL;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_UNLINK;
@@ -601,10 +602,16 @@ public class LogicalGenerator {
     UpdateOperator updateOp = new UpdateOperator(SQLConstant.TOK_UPDATE);
     initializedOperator = updateOp;
     FromOperator fromOp = new FromOperator(TOK_FROM);
-    fromOp.addPrefixTablePath(parsePath(astNode.getChild(0)));
+    List<Path> paths = parseSelectAndFromPath(astNode.getChild(0));
+    for(Path path: paths) {
+      fromOp.addPrefixTablePath(path);
+    }
     updateOp.setFromOperator(fromOp);
     SelectOperator selectOp = new SelectOperator(TOK_SELECT);
-    selectOp.addSelectPath(parsePath(astNode.getChild(1).getChild(0)));
+    List<Path> listPaths = parseSelectAndFromPath(astNode.getChild(1).getChild(0));
+    for(Path listPath : listPaths) {
+      selectOp.addSelectPath(listPath);
+    }
     updateOp.setSelectOperator(selectOp);
     updateOp.setValue(astNode.getChild(1).getChild(1).getText());
     analyzeWhere(astNode.getChild(2));
@@ -621,8 +628,10 @@ public class LogicalGenerator {
             "children FROM clause except last one must all be seriesPath like root.a.b, actual:"
                 + child.getText());
       }
-      Path tablePath = parsePath(child);
-      selectOp.addSelectPath(tablePath);
+      List<Path> tablePaths = parseSelectAndFromPath(child);
+      for(Path tablePath: tablePaths) {
+        selectOp.addSelectPath(tablePath);
+      }
     }
     ((SFWOperator) initializedOperator).setSelectOperator(selectOp);
     analyzeWhere(astNode.getChild(selChildCount));
@@ -662,8 +671,10 @@ public class LogicalGenerator {
         throw new LogicalOperatorException(
             "children FROM clause must all be seriesPath like root.a.b, actual:" + child.getText());
       }
-      Path tablePath = parsePath(child);
-      from.addPrefixTablePath(tablePath);
+      List<Path> tablePaths = parseSelectAndFromPath(child);
+      for(Path tablePath : tablePaths) {
+        from.addPrefixTablePath(tablePath);
+      }
     }
     ((SFWOperator) initializedOperator).setFromOperator(from);
   }
@@ -678,17 +689,23 @@ public class LogicalGenerator {
         if (child.getChild(0).getType() == TOK_AGGREGATE) {
           AstNode cluster = child.getChild(0);
           AstNode pathChild = cluster.getChild(0);
-          Path selectPath = parsePath(pathChild);
+          List<Path> selectPaths = parseSelectAndFromPath(pathChild);
           String aggregation = cluster.getChild(1).getText();
-          selectOp.addClusterPath(selectPath, aggregation);
+          for(Path selectPath : selectPaths) {
+            selectOp.addClusterPath(selectPath, aggregation);
+          }
         } else {
-          Path selectPath = parsePath(child);
-          selectOp.addSelectPath(selectPath);
+          List<Path> selectPaths = parseSelectAndFromPath(child);
+          for(Path selectPath : selectPaths) {
+            selectOp.addSelectPath(selectPath);
+          }
         }
       }
     } else if (tokenIntType == TOK_PATH) {
-      Path selectPath = parsePath(astNode);
-      selectOp.addSelectPath(selectPath);
+      List<Path> selectPaths = parseSelectAndFromPath(astNode);
+      for(Path selectPath : selectPaths) {
+        selectOp.addSelectPath(selectPath);
+      }
     } else {
       throw new LogicalOperatorException(
           "children SELECT clause must all be seriesPath like root.a.b, actual:" + astNode.dump());
@@ -1056,6 +1073,79 @@ public class LogicalGenerator {
       }
     }
     return new Path(new StringContainer(path, TsFileConstant.PATH_SEPARATOR));
+  }
+
+  private List<Path> parseSelectAndFromPath(AstNode node) {
+    int childCount = node.getChildCount();
+    List<List<String>> paths = new ArrayList<>();
+    List<List<String>> result = new ArrayList<>();
+    List<Path> pathLists = new ArrayList<>();
+    if (childCount == 1 && node.getChild(0).getType() == TOK_ROOT) {
+      AstNode childNode = node.getChild(0);
+      childCount = childNode.getChildCount();
+      for (int i = 0; i < childCount; i++) {
+        AstNode grandChild = childNode.getChild(i);
+        int grandChildCount = grandChild.getChildCount();
+        if(grandChild.getType() == TOK_SUBPATH) {
+          for(int j = 0; j < grandChildCount; j++) {
+            ArrayList<String> path = new ArrayList<>();
+            path.add(grandChild.getChild(j).getText());
+            paths.add(path);
+          }
+        } else {
+          ArrayList<String> path = new ArrayList<>();
+          path.add(grandChild.getText());
+          paths.add(path);
+        }
+      }
+      descartes(paths, result, 0, new ArrayList<>());
+    } else {
+      for (int i = 0; i < childCount; i++) {
+        AstNode childNode = node.getChild(i);
+        int count = childNode.getChildCount();
+        if(childNode.getType() == TOK_SUBPATH) {
+          for(int j = 0; j < count; j++) {
+            ArrayList<String> path = new ArrayList<>();
+            path.add(childNode.getChild(j).getText());
+            paths.add(path);
+          }
+        } else {
+          ArrayList<String> path = new ArrayList<>();
+          path.add(childNode.getText());
+          paths.add(path);
+        }
+      }
+      descartes(paths, result, 0, new ArrayList<>());
+    }
+    for(List<String> list: result) {
+      Path pathList = new Path(new StringContainer(list.toArray(new String[0]), TsFileConstant.PATH_SEPARATOR));
+      pathLists.add(pathList);
+    }
+    return pathLists;
+  }
+
+  private void descartes(List<List<String>> dimvalue, List<List<String>> result, int layer, List<String> curList) {
+    if (layer < dimvalue.size() - 1) {
+      if (dimvalue.get(layer).size() == 0) {
+        descartes(dimvalue, result, layer + 1, curList);
+      } else {
+        for (int i = 0; i < dimvalue.get(layer).size(); i++) {
+          List<String> list = new ArrayList<>(curList);
+          list.add(dimvalue.get(layer).get(i));
+          descartes(dimvalue, result, layer + 1, list);
+        }
+      }
+    } else if (layer == dimvalue.size() - 1) {
+      if (dimvalue.get(layer).size() == 0) {
+        result.add(curList);
+      } else {
+        for (int i = 0; i < dimvalue.get(layer).size(); i++) {
+          List<String> list = new ArrayList<>(curList);
+          list.add(dimvalue.get(layer).get(i));
+          result.add(list);
+        }
+      }
+    }
   }
 
   private String removeStringQuote(String src) throws IllegalASTFormatException {
