@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.db.engine.upgrade;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -33,61 +31,28 @@ public class UpgradeTask implements Runnable {
 
   private final TsFileResource upgradeResource;
   private static final Logger logger = LoggerFactory.getLogger(UpgradeTask.class);
-  private static final String DOT_SEPERATOR = ",";
+  private static final String COMMA_SEPERATOR = ",";
+
 
   public UpgradeTask(TsFileResource upgradeResource) {
     this.upgradeResource = upgradeResource;
   }
 
-
-  private static boolean writeUpgradeLogFile(RandomAccessFile upgradeLog, String content,
-      long position) {
-    UpgradeUtils.getUpgradeLogLock().writeLock().lock();
-    try {
-      upgradeLog.seek(position);
-      upgradeLog.write(content.getBytes());
-      upgradeLog.write(System.getProperty("line.separator").getBytes());
-      return true;
-    } catch (IOException e) {
-      logger.error("write upgrade log file failed, the log file:{}", upgradeLog);
-      return false;
-    } finally {
-      UpgradeUtils.getUpgradeLogLock().writeLock().unlock();
-    }
-  }
-
-  private static long getUpgradeLogLength(RandomAccessFile upgradeLog) {
-    UpgradeUtils.getUpgradeLogLock().readLock().lock();
-    try {
-      return upgradeLog.length();
-    } catch (IOException e) {
-      logger.error("read upgrade log file failed, the log file:{}", upgradeLog);
-      return 0;
-    } finally {
-      UpgradeUtils.getUpgradeLogLock().readLock().unlock();
-    }
-  }
-
   @Override
   public void run() {
-    try (RandomAccessFile upgradeLogFile = new RandomAccessFile(UpgradeUtils.getUpgradeLogPath(),
-        "rw")) {
+    try {
       upgradeResource.getWriteQueryLock().readLock().lock();
       String tsfilePathBefore = upgradeResource.getFile().getAbsolutePath();
-      String tsfilePathAfter =
-          upgradeResource.getFile().getParentFile().getParent() + File.separator + "tmp"
-              + File.separator + "upgrade_" + upgradeResource
-              .getFile().getName();
+      String tsfilePathAfter = UpgradeUtils.getUpgradeFileName(upgradeResource);
 
-      long upgradePostion = getUpgradeLogLength(upgradeLogFile);
-      writeUpgradeLogFile(upgradeLogFile,
-          tsfilePathBefore + DOT_SEPERATOR + tsfilePathAfter + DOT_SEPERATOR
-              + UpgradeCheckStatus.BEGIN_UPGRADE_FILE, upgradePostion);
+      UpgradeLog.writeUpgradeLogFile(
+          tsfilePathBefore + COMMA_SEPERATOR + tsfilePathAfter + COMMA_SEPERATOR +
+              UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
       try {
         UpgradeTool.upgradeOneTsfile(tsfilePathBefore, tsfilePathAfter);
-        writeUpgradeLogFile(upgradeLogFile,
-            tsfilePathBefore + DOT_SEPERATOR + tsfilePathAfter + DOT_SEPERATOR
-                + UpgradeCheckStatus.AFTER_UPGRADE_FILE, upgradePostion);
+        UpgradeLog.writeUpgradeLogFile(
+            tsfilePathBefore + COMMA_SEPERATOR + tsfilePathAfter + COMMA_SEPERATOR
+                + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
       } catch (IOException e) {
         logger.error("generate upgrade file failed, the file to be upgraded:{}", tsfilePathBefore);
       } finally {
@@ -99,9 +64,9 @@ public class UpgradeTask implements Runnable {
         FSFactoryProducer.getFSFactory()
             .moveFile(FSFactoryProducer.getFSFactory().getFile(tsfilePathAfter),
                 FSFactoryProducer.getFSFactory().getFile(tsfilePathBefore));
-        writeUpgradeLogFile(upgradeLogFile,
-            tsfilePathBefore + DOT_SEPERATOR + tsfilePathAfter + DOT_SEPERATOR
-                + UpgradeCheckStatus.UPGRADE_SUCCESS, upgradePostion);
+        UpgradeLog.writeUpgradeLogFile(
+            tsfilePathBefore + COMMA_SEPERATOR + tsfilePathAfter + COMMA_SEPERATOR
+                + UpgradeCheckStatus.UPGRADE_SUCCESS);
         FSFactoryProducer.getFSFactory().getFile(tsfilePathAfter).getParentFile().delete();
       } finally {
         upgradeResource.getWriteQueryLock().writeLock().unlock();

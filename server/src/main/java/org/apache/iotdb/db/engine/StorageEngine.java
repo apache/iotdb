@@ -315,6 +315,10 @@ public class StorageEngine implements IService {
     return Collections.emptyList();
   }
 
+  /**
+   * count all Tsfiles which need to upgrade
+   * @return total num of the tsfiles which need to upgrade
+   */
   public int countUpgradeFiles() {
     int totalUpgradeFileNum = 0;
     for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {

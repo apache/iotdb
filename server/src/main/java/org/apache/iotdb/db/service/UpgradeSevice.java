@@ -23,6 +23,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -55,7 +56,7 @@ public class UpgradeSevice implements IService {
     }
     upgradeThreadPool = Executors.newFixedThreadPool(updateThreadNum,
         r -> new Thread(r, "UpgradeThread-" + threadCnt.getAndIncrement()));
-    UpgradeUtils.createUpgradeLog();
+    UpgradeLog.createUpgradeLog();
     countUpgradeFiles();
     upgradeAll();
   }
@@ -80,11 +81,21 @@ public class UpgradeSevice implements IService {
 
 
   public static void setCntUpgradeFileNum(int cntUpgradeFileNum) {
-    UpgradeSevice.cntUpgradeFileNum = cntUpgradeFileNum;
+    UpgradeUtils.getCntUpgradeFileLock().writeLock().lock();
+    try {
+      UpgradeSevice.cntUpgradeFileNum = cntUpgradeFileNum;
+    } finally {
+      UpgradeUtils.getCntUpgradeFileLock().writeLock().unlock();
+    }
   }
 
   public static int getCntUpgradeFileNum() {
-    return cntUpgradeFileNum;
+    UpgradeUtils.getCntUpgradeFileLock().readLock().lock();
+    try {
+      return cntUpgradeFileNum;
+    } finally {
+      UpgradeUtils.getCntUpgradeFileLock().readLock().unlock();
+    }
   }
 
   public void submitUpgradeTask(UpgradeTask upgradeTask) {

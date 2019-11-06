@@ -47,7 +47,7 @@ public class UpgradeTool {
     List<String> tsfiles = new ArrayList<>();
     if (file.exists()) {
       while (!tmp.isEmpty()) {
-        File tmp_file = ((LinkedList<File>) tmp).pollFirst();
+        File tmp_file = tmp.poll();
         File[] files = tmp_file.listFiles();
         for (File file2 : files) {
           if (file2.isDirectory()) {

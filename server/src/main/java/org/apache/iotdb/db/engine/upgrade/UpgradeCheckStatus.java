@@ -18,9 +18,22 @@
  */
 package org.apache.iotdb.db.engine.upgrade;
 
-public class UpgradeCheckStatus {
+public enum UpgradeCheckStatus {
 
-  public static final long BEGIN_UPGRADE_FILE = 1;
-  public static final long AFTER_UPGRADE_FILE = 2;
-  public static final long UPGRADE_SUCCESS = 3;
+  BEGIN_UPGRADE_FILE(1), AFTER_UPGRADE_FILE(2), UPGRADE_SUCCESS(3);
+
+  private final int checkStatusCode;
+
+  UpgradeCheckStatus(int checkStatusCode) {
+    this.checkStatusCode = checkStatusCode;
+  }
+
+  public int getCheckStatusCode() {
+    return checkStatusCode;
+  }
+
+  @Override
+  public String toString() {
+    return String.valueOf(checkStatusCode);
+  }
 }

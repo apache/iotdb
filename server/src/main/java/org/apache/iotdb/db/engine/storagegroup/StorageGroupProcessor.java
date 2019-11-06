@@ -187,8 +187,8 @@ public class StorageGroupProcessor {
   private static final int MAX_CACHE_SENSORS = 5000;
 
   /**
-   * when the data in a storage group is older than dataTTL, it is considered invalid and will
-   * be eventually removed.
+   * when the data in a storage group is older than dataTTL, it is considered invalid and will be
+   * eventually removed.
    */
   private long dataTTL = Long.MAX_VALUE;
 
@@ -362,7 +362,7 @@ public class StorageGroupProcessor {
   public boolean insert(InsertPlan insertPlan) throws QueryProcessorException {
     // reject insertions that are out of ttl
     if (!checkTTL(insertPlan.getTime())) {
-     throw new OutOfTTLException(insertPlan.getTime(), (System.currentTimeMillis() - dataTTL));
+      throw new OutOfTTLException(insertPlan.getTime(), (System.currentTimeMillis() - dataTTL));
     }
     writeLock();
     try {
@@ -419,8 +419,6 @@ public class StorageGroupProcessor {
   }
 
   /**
-   *
-   * @param time
    * @return whether the given time falls in ttl
    */
   private boolean checkTTL(long time) {
@@ -832,9 +830,6 @@ public class StorageGroupProcessor {
   }
 
   /**
-   *
-   * @param tsFileResource
-   * @param deviceId
    * @return true if the device is contained in the TsFile and it lives beyond TTL
    */
   private boolean testResourceDevice(TsFileResource tsFileResource, String deviceId) {
@@ -978,7 +973,11 @@ public class StorageGroupProcessor {
     }
   }
 
-
+  /**
+   * count all Tsfiles in the storage group which need to upgrade
+   *
+   * @return total num of the tsfiles which need to upgrade in the storage group
+   */
   public int countUpgradeFiles() {
     int cntUpgradeFileNum = 0;
     for (TsFileResource seqTsFileResource : sequenceFileList) {
@@ -994,21 +993,14 @@ public class StorageGroupProcessor {
     return cntUpgradeFileNum;
   }
 
-
   public void upgrade() {
-    insertLock.readLock().lock();
-    try {
-      for (TsFileResource seqTsFileResource : sequenceFileList) {
-        seqTsFileResource.doUpgrade();
-      }
-      for (TsFileResource unseqTsFileResource : unSequenceFileList) {
-        unseqTsFileResource.doUpgrade();
-      }
-    } finally {
-      insertLock.readLock().unlock();
+    for (TsFileResource seqTsFileResource : sequenceFileList) {
+      seqTsFileResource.doUpgrade();
+    }
+    for (TsFileResource unseqTsFileResource : unSequenceFileList) {
+      unseqTsFileResource.doUpgrade();
     }
   }
-
 
   public void merge(boolean fullMerge) {
     writeLock();
@@ -1027,7 +1019,8 @@ public class StorageGroupProcessor {
 
       long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
       long timeLowerBound = System.currentTimeMillis() - dataTTL;
-      MergeResource mergeResource = new MergeResource(sequenceFileList, unSequenceFileList, timeLowerBound);
+      MergeResource mergeResource = new MergeResource(sequenceFileList, unSequenceFileList,
+          timeLowerBound);
 
       IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
       try {
