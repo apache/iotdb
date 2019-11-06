@@ -19,23 +19,6 @@
 
 package org.apache.iotdb.db.integration;
 
-import static org.apache.iotdb.db.integration.Constant.avg;
-import static org.apache.iotdb.db.integration.Constant.count;
-import static org.apache.iotdb.db.integration.Constant.first;
-import static org.apache.iotdb.db.integration.Constant.last;
-import static org.apache.iotdb.db.integration.Constant.max_time;
-import static org.apache.iotdb.db.integration.Constant.max_value;
-import static org.apache.iotdb.db.integration.Constant.min_time;
-import static org.apache.iotdb.db.integration.Constant.min_value;
-import static org.apache.iotdb.db.integration.Constant.sum;
-import static org.junit.Assert.fail;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.Locale;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -43,6 +26,12 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.sql.*;
+import java.util.Locale;
+
+import static org.apache.iotdb.db.integration.Constant.*;
+import static org.junit.Assert.fail;
 
 public class IoTDBAggregationIT {
 
