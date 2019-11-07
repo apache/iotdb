@@ -36,6 +36,8 @@ public class UpgradeLog {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String UPGRADE_DIR = "upgrade";
   private static final String UPGRADE_LOG_NAME = "upgrade.txt";
+  private static BufferedWriter upgradeLogWriter = new BufferedWriter(
+      FSFactoryProducer.getFSFactory().getBufferedWriter(getUpgradeLogPath(), true));
   private static File upgradeLogPath = SystemFileFactory.INSTANCE
       .getFile(SystemFileFactory.INSTANCE.getFile(config.getSystemDir(), UPGRADE_DIR),
           UPGRADE_LOG_NAME);
@@ -60,8 +62,7 @@ public class UpgradeLog {
 
   public static boolean writeUpgradeLogFile(String content) {
     UpgradeUtils.getUpgradeLogLock().writeLock().lock();
-    try (BufferedWriter upgradeLogWriter = new BufferedWriter(
-        FSFactoryProducer.getFSFactory().getBufferedWriter(getUpgradeLogPath(), true))) {
+    try {
       upgradeLogWriter.write(content);
       upgradeLogWriter.newLine();
       return true;
@@ -70,6 +71,16 @@ public class UpgradeLog {
       return false;
     } finally {
       UpgradeUtils.getUpgradeLogLock().writeLock().unlock();
+    }
+  }
+
+  public static void closeLogWriter(){
+    try {
+      if (upgradeLogWriter != null) {
+        upgradeLogWriter.close();
+      }
+    } catch (IOException e) {
+      logger.error("close upgrade log file failed, the log file:{}", getUpgradeLogPath(), e);
     }
   }
 }

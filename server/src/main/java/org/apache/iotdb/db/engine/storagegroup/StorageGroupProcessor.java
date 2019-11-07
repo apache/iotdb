@@ -974,9 +974,9 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * count all Tsfiles in the storage group which need to upgrade
+   * count all Tsfiles in the storage group which need to be upgraded
    *
-   * @return total num of the tsfiles which need to upgrade in the storage group
+   * @return total num of the tsfiles which need to be upgraded in the storage group
    */
   public int countUpgradeFiles() {
     int cntUpgradeFileNum = 0;

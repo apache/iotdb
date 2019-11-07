@@ -316,8 +316,8 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * count all Tsfiles which need to upgrade
-   * @return total num of the tsfiles which need to upgrade
+   * count all Tsfiles which need to be upgraded
+   * @return total num of the tsfiles which need to be upgraded
    */
   public int countUpgradeFiles() {
     int totalUpgradeFileNum = 0;

@@ -52,7 +52,9 @@ public class UpgradeTask implements Runnable {
         UpgradeLog.writeUpgradeLogFile(
             tsfilePathBefore + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
       } catch (IOException e) {
-        logger.error("generate upgrade file failed, the file to be upgraded:{}", tsfilePathBefore);
+        logger
+            .error("generate upgrade file failed, the file to be upgraded:{}", tsfilePathBefore, e);
+        return;
       } finally {
         upgradeResource.getWriteQueryLock().readLock().unlock();
       }
