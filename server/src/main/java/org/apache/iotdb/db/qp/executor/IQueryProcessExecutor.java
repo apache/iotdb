@@ -86,34 +86,31 @@ public interface IQueryProcessExecutor {
    * @param startTime start time in update command
    * @param endTime end time in update command
    * @param value - in type of string
-   * @return - whether the operator is successful.
    */
-  boolean update(Path path, long startTime, long endTime, String value)
+  void update(Path path, long startTime, long endTime, String value)
       throws ProcessorException;
 
   /**
    * execute delete command and return whether the operator is successful.
    *
    * @param deletePlan physical delete plan
-   * @return - whether the operator is successful.
    */
-  boolean delete(DeletePlan deletePlan) throws ProcessorException;
+  void delete(DeletePlan deletePlan) throws ProcessorException;
 
   /**
    * execute delete command and return whether the operator is successful.
    *
    * @param path : delete series seriesPath
    * @param deleteTime end time in delete command
-   * @return - whether the operator is successful.
    */
-  boolean delete(Path path, long deleteTime) throws ProcessorException;
+  void delete(Path path, long deleteTime) throws ProcessorException;
 
   /**
    * execute insert command and return whether the operator is successful.
    *
-   * @return - Operate Type.
+   * @param insertPlan physical insert plan
    */
-  boolean insert(InsertPlan insertPlan) throws ProcessorException;
+  void insert(InsertPlan insertPlan) throws ProcessorException;
 
   /**
    * execute batch insert plan
