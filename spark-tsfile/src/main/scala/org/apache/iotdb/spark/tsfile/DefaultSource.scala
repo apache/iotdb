@@ -115,12 +115,12 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       }
 
       if (options.getOrElse(DefaultSource.isNarrowForm, "").equals("narrow_form")) {
-        val device_names = tsFileMetaData.getDeviceMap.keySet()
-        val measurement_names = tsFileMetaData.getMeasurementSchema.keySet()
+        val deviceNames = tsFileMetaData.getDeviceMap.keySet()
+        val measurementNames = tsFileMetaData.getMeasurementSchema.keySet()
 
         // construct queryExpression based on queriedSchema and filters
-        val queryExpressions = NarrowConverter.toQueryExpression(dataSchema, device_names,
-          measurement_names, filters, reader, file.start.asInstanceOf[java.lang.Long],
+        val queryExpressions = NarrowConverter.toQueryExpression(dataSchema, deviceNames,
+          measurementNames, filters, reader, file.start.asInstanceOf[java.lang.Long],
           (file.start + file.length).asInstanceOf[java.lang.Long])
 
         val queryDataSets = Executor.query(readTsFile, queryExpressions,
@@ -128,7 +128,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
           (file.start + file.length).asInstanceOf[java.lang.Long])
 
         var queryDataSet: QueryDataSet = null
-        var device_name: String = null
+        var deviceName: String = null
 
         def queryNext(): Boolean = {
           if (queryDataSet != null && queryDataSet.hasNext) {
@@ -146,7 +146,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
             }
             queryDataSet = queryDataSets.remove(queryDataSets.size() - 1)
           }
-          device_name = queryDataSet.getPaths.get(0).getDevice
+          deviceName = queryDataSet.getPaths.get(0).getDevice
           true
         }
 
@@ -174,10 +174,10 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
                 rowBuffer(index) = curRecord.getTimestamp
               }
               else if (field.name == NarrowConverter.DEVICE_NAME) {
-                rowBuffer(index) = device_name
+                rowBuffer(index) = deviceName
               }
               else {
-                val pos = paths.indexOf(new org.apache.iotdb.tsfile.read.common.Path(device_name,
+                val pos = paths.indexOf(new org.apache.iotdb.tsfile.read.common.Path(deviceName,
                   field.name))
                 var curField: Field = null
                 if (pos != -1) {
