@@ -43,16 +43,14 @@ public class UpgradeTask implements Runnable {
     try {
       upgradeResource.getWriteQueryLock().readLock().lock();
       String tsfilePathBefore = upgradeResource.getFile().getAbsolutePath();
-      String tsfilePathAfter = UpgradeUtils.getUpgradeFileName(upgradeResource);
+      String tsfilePathAfter = UpgradeUtils.getUpgradeFileName(upgradeResource.getFile());
 
       UpgradeLog.writeUpgradeLogFile(
-          tsfilePathBefore + COMMA_SEPERATOR + tsfilePathAfter + COMMA_SEPERATOR +
-              UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
+          tsfilePathBefore + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
       try {
         UpgradeTool.upgradeOneTsfile(tsfilePathBefore, tsfilePathAfter);
         UpgradeLog.writeUpgradeLogFile(
-            tsfilePathBefore + COMMA_SEPERATOR + tsfilePathAfter + COMMA_SEPERATOR
-                + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
+            tsfilePathBefore + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
       } catch (IOException e) {
         logger.error("generate upgrade file failed, the file to be upgraded:{}", tsfilePathBefore);
       } finally {
@@ -65,8 +63,7 @@ public class UpgradeTask implements Runnable {
             .moveFile(FSFactoryProducer.getFSFactory().getFile(tsfilePathAfter),
                 FSFactoryProducer.getFSFactory().getFile(tsfilePathBefore));
         UpgradeLog.writeUpgradeLogFile(
-            tsfilePathBefore + COMMA_SEPERATOR + tsfilePathAfter + COMMA_SEPERATOR
-                + UpgradeCheckStatus.UPGRADE_SUCCESS);
+            tsfilePathBefore + COMMA_SEPERATOR + UpgradeCheckStatus.UPGRADE_SUCCESS);
         FSFactoryProducer.getFSFactory().getFile(tsfilePathAfter).getParentFile().delete();
       } finally {
         upgradeResource.getWriteQueryLock().writeLock().unlock();

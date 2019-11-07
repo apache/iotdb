@@ -72,16 +72,9 @@ public class UpgradeUtils {
     return false;
   }
 
-  public static String getUpgradeFileName(TsFileResource upgradeResource) {
-    return upgradeResource.getFile().getParentFile().getParent() + File.separator + TMP_STRING
-        + File.separator + UPGRADE_FILE_PREFIX + upgradeResource
-        .getFile().getName();
-  }
-
-  private static String getUpgradeFileName(String upgradingFileName) {
-    File upgradingFile = FSFactoryProducer.getFSFactory().getFile(upgradingFileName);
-    return upgradingFile.getParentFile().getParent() + File.separator + TMP_STRING
-        + File.separator + UPGRADE_FILE_PREFIX + upgradingFile.getName();
+  public static String getUpgradeFileName(File upgradeResource) {
+    return upgradeResource.getParentFile().getParent() + File.separator + TMP_STRING
+        + File.separator + UPGRADE_FILE_PREFIX + upgradeResource.getName();
   }
 
   public static void recoverUpgrade() {
@@ -100,7 +93,8 @@ public class UpgradeUtils {
           }
         }
         for (String key : upgradeRecoverMap.keySet()) {
-          String upgradeFileName = getUpgradeFileName(key);
+          String upgradeFileName = getUpgradeFileName(
+              FSFactoryProducer.getFSFactory().getFile(key));
           if (upgradeRecoverMap.get(key) == UpgradeCheckStatus.BEGIN_UPGRADE_FILE
               .getCheckStatusCode()) {
             if (FSFactoryProducer.getFSFactory().getFile(upgradeFileName).exists()) {
@@ -108,9 +102,19 @@ public class UpgradeUtils {
             }
           } else if (upgradeRecoverMap.get(key) == UpgradeCheckStatus.AFTER_UPGRADE_FILE
               .getCheckStatusCode()) {
-            FSFactoryProducer.getFSFactory()
-                .moveFile(FSFactoryProducer.getFSFactory().getFile(upgradeFileName),
-                    FSFactoryProducer.getFSFactory().getFile(key));
+            if (FSFactoryProducer.getFSFactory().getFile(key).exists() && FSFactoryProducer
+                .getFSFactory().getFile(upgradeFileName).exists()) {
+              //if both old tsfile and upgrade file exists, replace the old tsfile with the upgrade one
+              FSFactoryProducer.getFSFactory().getFile(key).delete();
+              FSFactoryProducer.getFSFactory()
+                  .moveFile(FSFactoryProducer.getFSFactory().getFile(upgradeFileName),
+                      FSFactoryProducer.getFSFactory().getFile(key));
+            } else if (!FSFactoryProducer.getFSFactory().getFile(key).exists()) {
+              //if the old tsfile does not exist, rename the upgrade file to the old tsfile path
+              FSFactoryProducer.getFSFactory()
+                  .moveFile(FSFactoryProducer.getFSFactory().getFile(upgradeFileName),
+                      FSFactoryProducer.getFSFactory().getFile(key));
+            }
             FSFactoryProducer.getFSFactory().getFile(upgradeFileName).getParentFile()
                 .delete();
           }

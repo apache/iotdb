@@ -36,6 +36,7 @@ import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,6 +94,9 @@ public class SyncFileManager implements ISyncFileManager {
         dataDir + File.separatorChar + IoTDBConstant.SEQUENCE_FLODER_NAME)
         .listFiles();
     for (File sgFolder : allSGFolders) {
+      if (sgFolder.getName().equals(TsFileConstant.PATH_UPGRADE)){
+        continue;
+      }
       allSGs.add(sgFolder.getName());
       currentAllLocalFiles.putIfAbsent(sgFolder.getName(), new HashSet<>());
       File[] files = sgFolder.listFiles();
