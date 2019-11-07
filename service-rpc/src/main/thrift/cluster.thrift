@@ -51,7 +51,7 @@ struct AppendEntryRequest {
   2: required binary entry // data
   3: required long previousLogTerm // leader's previous log term
   4: required long previousLogIndex // leader's
-  5: required long leaderID
+  5: required Node leader
 }
 
 // leader -> follower
@@ -60,7 +60,7 @@ struct AppendEntriesRequest {
   2: required list<binary> entries // data
   3: required long previousLogTerm // leader's previous log term
   4: required long previousLogIndex // leader's
-  5: required long leaderID
+  5: required Node leader
 }
 
 struct Node{
@@ -90,11 +90,8 @@ service RaftService {
   * @return -1 means agree, otherwise return the voter's term
   **/
   long startElection(1:ElectionRequest electionRequest);
-}
 
-service TSDataService extends RaftService{
-
-	/**
+  /**
   * Leader will call this method to send a batch of entries to all followers.
   * <br>For the receiver,
   * The method will check the authority of the leader and if the local log is complete.
@@ -103,7 +100,7 @@ service TSDataService extends RaftService{
   * @param request entries that need to be appended and the information of the leader.
   * @return -1: agree, -2: log index mismatch , otherwise return the follower's term
   **/
-  long appendDataEntries(1:AppendEntriesRequest request)
+  long appendEntries(1:AppendEntriesRequest request)
 
   /**
   * Leader will call this method to send a entry to all followers.
@@ -114,41 +111,25 @@ service TSDataService extends RaftService{
   * @param request entry that needs to be appended and the information of the leader.
   * @return -1: agree, -2: log index mismatch , otherwise return the follower's term
   **/
-    long appendDataEntry(1:AppendEntryRequest request)
+  long appendEntry(1:AppendEntryRequest request)
+}
+
+service TSDataService extends RaftService{
+
+
 }
 
 service TSMetaService extends RaftService {
 
-/**
-* Leader will call this method to send a entry to all followers.
-* <br>For the receiver,
-* The method will check the authority of the leader and if the local log is complete.
-* If the leader is valid and local log is complete, the follower will append the entry to local log.
-*
-* @param request entry that needs to be appended and the information of the leader.
-* @return -1: agree, -2: log index mismatch , otherwise return the follower's term
-**/
-  long appendMetadataEntry(1:AppendEntryRequest request)
 
-/**
-* Leader will call this method to send a batch of entries to all followers.
-* <br>For the receiver,
-* The method will check the authority of the leader and if the local log is complete.
-* If the leader is valid and local log is complete, the follower will append these entries to local log.
-*
-* @param request entries that need to be appended and the information of the leader.
-* @return -1: agree, -2: log index mismatch , otherwise return the follower's term
-**/
-  long appendMetadataEntries(1:AppendEntriesRequest request)
-
-/**
-* Node which is not leader will call this method to try to add itself into the cluster as a new node.
-* <br>For the receiver,
-* If the local node is leader, it'll check whether the cluster can add this new node;
-* otherwise, the local node will transfer the request to the leader.
-*
-* @param node a new node that needs to be added
-* @return 1: accept to add new node, 0: the node is already in this cluster, -1: fail to add new node
-**/
+  /**
+  * Node which is not leader will call this method to try to add itself into the cluster as a new node.
+  * <br>For the receiver,
+  * If the local node is leader, it'll check whether the cluster can add this new node;
+  * otherwise, the local node will transfer the request to the leader.
+  *
+  * @param node a new node that needs to be added
+  * @return 1: accept to add new node, 0: the node is already in this cluster, -1: fail to add new node
+  **/
   int addNode(1: Node node)
 }
