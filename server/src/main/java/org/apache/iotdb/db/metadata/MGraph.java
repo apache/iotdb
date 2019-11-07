@@ -278,6 +278,10 @@ public class MGraph implements Serializable {
   List<String> getLeafNodePathInNextLevel(String path) throws PathErrorException {
     return mtree.getLeafNodePathInNextLevel(path);
   }
+  
+  Set<String> getChildNodePathInNextLevel(String path) throws PathErrorException {
+    return mtree.getChildNodePathInNextLevel(path);
+  }
 
   /**
    * Get all ColumnSchemas for given delta object type.

@@ -26,7 +26,6 @@ import java.io.InputStream;
 import java.time.ZoneId;
 import java.util.Properties;
 import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
