@@ -181,7 +181,7 @@ static {
 	tokenNameMap.put("K_DEVICE", "DEVICE");
 	tokenNameMap.put("K_TEMPLATE", "TEMPLATE");
 	tokenNameMap.put("K_COMPLEX", "COMPLEX");
-  tokenNameMap.put("K_SIMPLE", "SIMPLE");
+	tokenNameMap.put("K_SIMPLE", "SIMPLE");
 	// Operators
 	tokenNameMap.put("DOT", ".");
 	tokenNameMap.put("COLON", ":");
