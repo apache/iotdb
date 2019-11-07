@@ -18,18 +18,19 @@
  */
 package org.apache.iotdb.cluster.config;
 
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 
 public class ClusterConfig {
 
   static final String CONFIG_NAME = "iotdb-cluster.properties";
 
-  private String localIP = "127.0.0.1";
+  private String localIP = "localhost";
   private int localMetaPort = 9003;
 
   // each one is {IP | domain name}:{meta port}
-  private List<String> seedNodeUrls = Collections.emptyList();
+  private List<String> seedNodeUrls = Arrays.asList("localhost:9003", "localhost"
+      + ":9004", "localhost:9005");
 
   private boolean isRpcThriftCompressionEnabled = true;
   private int maxConcurrentClientNum = 1024;
@@ -39,7 +40,7 @@ public class ClusterConfig {
     return localIP;
   }
 
-  public void setLocalIP(String localIP) {
+  void setLocalIP(String localIP) {
     this.localIP = localIP;
   }
 
@@ -47,7 +48,7 @@ public class ClusterConfig {
     return localMetaPort;
   }
 
-  public void setLocalMetaPort(int localMetaPort) {
+  void setLocalMetaPort(int localMetaPort) {
     this.localMetaPort = localMetaPort;
   }
 
@@ -55,7 +56,7 @@ public class ClusterConfig {
     return isRpcThriftCompressionEnabled;
   }
 
-  public void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
+  void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
     isRpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
   }
 
@@ -63,7 +64,7 @@ public class ClusterConfig {
     return maxConcurrentClientNum;
   }
 
-  public void setMaxConcurrentClientNum(int maxConcurrentClientNum) {
+  void setMaxConcurrentClientNum(int maxConcurrentClientNum) {
     this.maxConcurrentClientNum = maxConcurrentClientNum;
   }
 
@@ -71,7 +72,7 @@ public class ClusterConfig {
     return seedNodeUrls;
   }
 
-  public void setSeedNodeUrls(List<String> seedNodeUrls) {
+  void setSeedNodeUrls(List<String> seedNodeUrls) {
     this.seedNodeUrls = seedNodeUrls;
   }
 }

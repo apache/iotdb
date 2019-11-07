@@ -68,8 +68,8 @@ struct Node{
   2: required int port
 }
 
-service TSDataService {
-  /**
+service RaftService {
+/**
   * Leader will call this method to all followers to ensure its authority.
   * <br>For the receiver,
   * The method will check the authority of the leader.
@@ -90,6 +90,9 @@ service TSDataService {
   * @return -1 means agree, otherwise return the voter's term
   **/
   long startElection(1:ElectionRequest electionRequest);
+}
+
+service TSDataService extends RaftService{
 
 	/**
   * Leader will call this method to send a batch of entries to all followers.
@@ -114,29 +117,7 @@ service TSDataService {
     long appendDataEntry(1:AppendEntryRequest request)
 }
 
-service TSMetaService {
-
-/**
-* Leader will call this method to all followers to ensure its authority.
-* <br>For the receiver,
-* The method will check the authority of the leader.
-*
-* @param request information of the leader
-* @return if the leader is valid, HeartBeatResponse.term will set -1, and the follower will tell
-* leader its lastLogIndex;
-* otherwise, the follower will tell the fake leader its term.
-**/
-	HeartBeatResponse sendHeartBeat(1:HeartBeatRequest request);
-
-/**
-* If a node wants to be a leader, it'll call the method to other nodes to get a vote.
-* <br>For the receiver,
-* The method will check whether the node can be a leader.
-*
-* @param voteRequest a candidate that wants to be a leader.
-* @return -1 means agree, otherwise return the voter's term
-**/
-	long startElection(1:ElectionRequest electionRequest);
+service TSMetaService extends RaftService {
 
 /**
 * Leader will call this method to send a entry to all followers.

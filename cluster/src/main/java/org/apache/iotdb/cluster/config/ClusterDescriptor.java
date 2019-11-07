@@ -35,7 +35,7 @@ public class ClusterDescriptor {
   private static final Logger logger = LoggerFactory.getLogger(ClusterDescriptor.class);
   private static final ClusterDescriptor INSTANCE = new ClusterDescriptor();
 
-  private ClusterConfig config;
+  private ClusterConfig config = new ClusterConfig();
 
   private ClusterDescriptor() {
     loadProps();

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.server;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -30,51 +30,54 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient.Factory;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncProcessor;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.Factory;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.sendHeartBeat_call;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.startElection_call;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncProcessor;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
+import org.apache.thrift.server.THsHaServer;
+import org.apache.thrift.server.THsHaServer.Args;
 import org.apache.thrift.server.TServer;
-import org.apache.thrift.server.TThreadPoolServer;
-import org.apache.thrift.server.TThreadPoolServer.Args;
+import org.apache.thrift.transport.TFramedTransport;
+import org.apache.thrift.transport.TNonblockingServerSocket;
+import org.apache.thrift.transport.TNonblockingServerTransport;
 import org.apache.thrift.transport.TNonblockingSocket;
 import org.apache.thrift.transport.TNonblockingTransport;
-import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * MetaCluster manages cluster metadata, such as what nodes are in the cluster and data partition.
- */
-public class MetaClusterServer implements TSMetaService.AsyncIface {
+public abstract class RaftServer implements RaftService.AsyncIface {
 
-  private static final Logger logger = LoggerFactory.getLogger(MetaClusterServer.class);
-  private static final long ELECTION_LEAST_TIME_OUT_MS = 30 * 1000L;
-  private static final long ELECTION_RANDOM_TIME_OUT_MS = 30 * 1000L;
+  private static final Logger logger = LoggerFactory.getLogger(RaftService.class);
+  private static final long ELECTION_LEAST_TIME_OUT_MS = 5 * 1000L;
+  private static final long ELECTION_RANDOM_TIME_OUT_MS = 5 * 1000L;
+  private static final int CONNECTION_TIME_OUT_MS = 30 * 1000;
+
   private static final long TERM_AGREE = -1;
   private static final long CATCH_UP_THRESHOLD = 10;
 
   private Random random = new Random();
 
   private ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
-  private TServerSocket socket;
+  private TNonblockingServerTransport socket;
   private TServer poolServer;
   private Node thisNode;
 
@@ -98,20 +101,17 @@ public class MetaClusterServer implements TSMetaService.AsyncIface {
   private long lastHeartBeatReceivedTime;
   private Node leader;
 
-  // handlers
-  private HeartBeatHandler heartBeatHandler = new HeartBeatHandler();
-  private ElectionHandler electionHandler;
-
   private ExecutorService heartBeatService;
+  private ExecutorService clientService;
 
-  public MetaClusterServer() {
+  RaftServer() {
     this.thisNode = new Node();
     this.thisNode.setIp(config.getLocalIP());
     this.thisNode.setPort(config.getLocalMetaPort());
   }
 
   public void start() throws TTransportException, IOException {
-    if (poolServer != null) {
+    if (clientService != null) {
       return;
     }
 
@@ -123,7 +123,7 @@ public class MetaClusterServer implements TSMetaService.AsyncIface {
   }
 
   public void stop() {
-    if (poolServer == null) {
+    if (clientService == null) {
       return;
     }
 
@@ -133,9 +133,10 @@ public class MetaClusterServer implements TSMetaService.AsyncIface {
     nodeTransportMap.clear();
     nodeClientMap.clear();
 
-    heartBeatService.shutdownNow();
-    socket.close();
     poolServer.stop();
+    socket.close();
+    clientService.shutdownNow();
+    heartBeatService.shutdownNow();
     socket = null;
     poolServer = null;
   }
@@ -176,11 +177,12 @@ public class MetaClusterServer implements TSMetaService.AsyncIface {
     }
 
     try {
-      TNonblockingTransport transport = new TNonblockingSocket(node.getIp(), node.getPort());
+      logger.info("Establish a new connection to {}", node);
+      TNonblockingTransport transport = new TNonblockingSocket(node.getIp(), node.getPort(),
+          CONNECTION_TIME_OUT_MS);
       client = clientFactory.getAsyncClient(transport);
       nodeClientMap.put(node, client);
       nodeTransportMap.put(node, transport);
-      logger.info("Connected to node {}", node);
     } catch (IOException e) {
       logger.warn("Cannot connect to seed node {}", node, e);
     }
@@ -193,19 +195,22 @@ public class MetaClusterServer implements TSMetaService.AsyncIface {
     TProtocolFactory protocolFactory = config.isRpcThriftCompressionEnabled() ?
         new TCompactProtocol.Factory() : new TBinaryProtocol.Factory();
 
-    socket = new TServerSocket(new InetSocketAddress(config.getLocalIP(),
-        config.getLocalMetaPort()));
+    socket = new TNonblockingServerSocket(new InetSocketAddress(config.getLocalIP(),
+        config.getLocalMetaPort()), CONNECTION_TIME_OUT_MS);
     Args poolArgs =
-        new TThreadPoolServer.Args(socket).maxWorkerThreads(config.getMaxConcurrentClientNum())
+        new THsHaServer.Args(socket).maxWorkerThreads(config.getMaxConcurrentClientNum())
             .minWorkerThreads(1);
 
-    poolArgs.executorService = new ThreadPoolExecutor(poolArgs.minWorkerThreads,
-        poolArgs.maxWorkerThreads, poolArgs.stopTimeoutVal, poolArgs.stopTimeoutUnit,
-        new SynchronousQueue<>(), r -> new Thread(r, "IoTDBClusterClientThread"));
+    poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,
+        poolArgs.maxWorkerThreads, poolArgs.getStopTimeoutVal(), poolArgs.getStopTimeoutUnit(),
+        new SynchronousQueue<>(), r -> new Thread(r, "IoTDBClusterClientThread")));
     poolArgs.processor(new AsyncProcessor<>(this));
     poolArgs.protocolFactory(protocolFactory);
-    poolServer = new TThreadPoolServer(poolArgs);
-    poolServer.serve();
+    poolArgs.transportFactory(new TFramedTransport.Factory());
+
+    poolServer = new THsHaServer(poolArgs);
+    clientService = Executors.newSingleThreadExecutor(r -> new Thread(r, "ClientServiceThread"));
+    clientService.submit(()->poolServer.serve());
 
     clientFactory = new Factory(new TAsyncClientManager(), protocolFactory);
     logger.info("Cluster node {} is up", thisNode);
@@ -214,6 +219,7 @@ public class MetaClusterServer implements TSMetaService.AsyncIface {
 
   @Override
   public void sendHeartBeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
+    logger.info("Received a heartbeat");
     synchronized (term) {
       long thisTerm = term.get();
       long leaderTerm = request.getTerm();
@@ -247,6 +253,8 @@ public class MetaClusterServer implements TSMetaService.AsyncIface {
     long thatTerm = electionRequest.getTerm();
     long thatLastLogId = electionRequest.getLastLogIndex();
     long thatLastLogTerm = electionRequest.getLastLogTerm();
+    logger.info("Received an election request, term:{}, lastLogId:{}, lastLogTerm:{}", thatTerm,
+        thatLastLogId, thatLastLogTerm);
 
     synchronized (term) {
       long response;
@@ -265,23 +273,9 @@ public class MetaClusterServer implements TSMetaService.AsyncIface {
         character = NodeCharacter.FOLLOWER;
         leader = null;
       }
+      logger.info("Sending response to the elector");
       resultHandler.onComplete(response);
     }
-  }
-
-  @Override
-  public void appendMetadataEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
-
-  }
-
-  @Override
-  public void appendMetadataEntries(AppendEntriesRequest request, AsyncMethodCallback resultHandler) {
-
-  }
-
-  @Override
-  public void addNode(Node node, AsyncMethodCallback resultHandler) {
-
   }
 
   /**
@@ -291,13 +285,13 @@ public class MetaClusterServer implements TSMetaService.AsyncIface {
   private class HeartBeatThread implements Runnable {
 
     private static final long HEART_BEAT_INTERVAL_MS = 1000L;
-    private static final long HEART_BEAT_TIME_OUT_MS = 30 * 1000L;
 
     HeartBeatRequest request = new HeartBeatRequest();
 
     @Override
     public void run() {
       try {
+        logger.info("Heartbeat thread starts...");
         while (!Thread.interrupted()) {
           switch (character) {
             case LEADER:
@@ -308,12 +302,12 @@ public class MetaClusterServer implements TSMetaService.AsyncIface {
             case FOLLOWER:
               // check if heart beat times out
               long heartBeatInterval = System.currentTimeMillis() - lastHeartBeatReceivedTime;
-              if (heartBeatInterval >= HEART_BEAT_TIME_OUT_MS) {
+              if (heartBeatInterval >= CONNECTION_TIME_OUT_MS) {
                 // the leader is considered dead, an election will be started in the next loop
                 character = NodeCharacter.ELECTOR;
                 leader = null;
               } else {
-                Thread.sleep(HEART_BEAT_TIME_OUT_MS);
+                Thread.sleep(CONNECTION_TIME_OUT_MS);
               }
               break;
             case ELECTOR:
@@ -324,6 +318,8 @@ public class MetaClusterServer implements TSMetaService.AsyncIface {
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
+      } catch (Exception e) {
+        logger.error("Unexpected heartbeat exception:", e);
       }
       logger.info("Heart beat thread exits");
     }
@@ -340,22 +336,22 @@ public class MetaClusterServer implements TSMetaService.AsyncIface {
     }
 
     private void sendHeartBeats(List<Node> nodes) {
-      for (Node seedNode : nodes) {
+      for (Node node : nodes) {
         if (character != NodeCharacter.LEADER) {
           // if the character changes, abort the remaining heart beats
           return;
         }
 
-        AsyncClient client = connectNode(seedNode);
+        AsyncClient client = connectNode(node);
         if (client == null) {
           continue;
         }
         try {
-          client.sendHeartBeat(request, heartBeatHandler);
+          client.sendHeartBeat(request, new HeartBeatHandler(node));
         } catch (TException e) {
-          nodeClientMap.remove(seedNode);
-          nodeTransportMap.remove(seedNode).close();
-          logger.error("Cannot send heart beat to node {}", seedNode, e);
+          nodeClientMap.remove(node);
+          nodeTransportMap.remove(node).close();
+          logger.error("Cannot send heart beat to node {}", node, e);
         }
       }
     }
@@ -375,33 +371,35 @@ public class MetaClusterServer implements TSMetaService.AsyncIface {
     // start one round of election
     private void startElection() {
       synchronized (term) {
-        Long nextTerm = term.incrementAndGet();
+        long nextTerm = term.incrementAndGet();
         // different elections are handled by different handlers, which avoids previous votes
         // interfere the current election
-        electionHandler = new ElectionHandler();
-        electionHandler.currTerm = nextTerm;
-        electionHandler.quorum = (seedNodes.size() + nonSeedNodes.size()) / 2;
-        logger.info("Election {} starts, quorum: {}", term, electionHandler.quorum);
+        int quorumNum = (seedNodes.size() + nonSeedNodes.size()) / 2;
+        logger.info("Election {} starts, quorum: {}", term, quorumNum);
+        AtomicBoolean electionTerminated = new AtomicBoolean(false);
+        AtomicBoolean electionValid = new AtomicBoolean(false);
+        AtomicInteger quorum = new AtomicInteger(quorumNum);
 
         ElectionRequest electionRequest = new ElectionRequest();
         electionRequest.setTerm(nextTerm);
         electionRequest.setLastLogTerm(lastLogTerm);
         electionRequest.setLastLogIndex(lastLogIndex);
 
-        requestVote(seedNodes, electionRequest);
-        requestVote(nonSeedNodes, electionRequest);
+        requestVote(seedNodes, electionRequest, nextTerm, quorum, electionTerminated, electionValid);
+        requestVote(nonSeedNodes, electionRequest, nextTerm, quorum, electionTerminated, electionValid);
 
         long timeOut =
             ELECTION_LEAST_TIME_OUT_MS + Math.abs(random.nextLong() % ELECTION_RANDOM_TIME_OUT_MS);
         try {
-          nextTerm.wait(timeOut);
+          logger.info("Wait for {}ms until next election", timeOut);
+          term.wait(timeOut);
         } catch (InterruptedException e) {
           logger.info("Election {} times out", nextTerm);
           Thread.currentThread().interrupt();
         }
 
-        electionHandler.terminated = true;
-        if (electionHandler.electionValid) {
+        electionTerminated.set(true);
+        if (electionValid.get()) {
           logger.info("Election {} accepted", nextTerm);
           character = NodeCharacter.LEADER;
           leader = thisNode;
@@ -411,12 +409,16 @@ public class MetaClusterServer implements TSMetaService.AsyncIface {
     }
 
     // request a vote from given nodes
-    private void requestVote(List<Node> nodes, ElectionRequest request) {
+    private void requestVote(List<Node> nodes, ElectionRequest request, long nextTerm,
+        AtomicInteger quorum, AtomicBoolean electionTerminated, AtomicBoolean electionValid) {
       for (Node node : nodes) {
+        logger.info("Requesting a vote from {}", node);
         AsyncClient client = connectNode(node);
+        ElectionHandler handler = new ElectionHandler(node, nextTerm, quorum, electionTerminated,
+            electionValid);
         if (client != null) {
           try {
-            client.startElection(request, electionHandler);
+            client.startElection(request, handler);
           } catch (TException e) {
             logger.error("Cannot request a vote from {}", node, e);
             nodeClientMap.remove(node);
@@ -427,17 +429,32 @@ public class MetaClusterServer implements TSMetaService.AsyncIface {
     }
   }
 
-  class HeartBeatHandler implements AsyncMethodCallback<HeartBeatResponse> {
+  class HeartBeatHandler implements AsyncMethodCallback<sendHeartBeat_call> {
+
+    private Node receiver;
+
+    HeartBeatHandler(Node node) {
+      this.receiver = node;
+    }
 
     @Override
-    public void onComplete(HeartBeatResponse response) {
+    public void onComplete(sendHeartBeat_call resp) {
+      logger.debug("Received a heartbeat response");
+      HeartBeatResponse response;
+      try {
+        response = resp.getResult();
+      } catch (TException e) {
+        onError(e);
+        return;
+      }
+
       long followerTerm = response.getTerm();
       if (followerTerm == TERM_AGREE) {
         // current leadership is still valid
         Node follower = response.getFollower();
         long lastLogIdx = response.getLastLogIndex();
         logger.debug("Node {} is still alive, log index: {}", follower, lastLogIdx);
-        if (MetaClusterServer.this.lastLogIndex - lastLogIdx >= CATCH_UP_THRESHOLD) {
+        if (RaftServer.this.lastLogIndex - lastLogIdx >= CATCH_UP_THRESHOLD) {
           handleCatchUp(follower, lastLogIdx);
         }
       } else {
@@ -458,62 +475,87 @@ public class MetaClusterServer implements TSMetaService.AsyncIface {
 
     @Override
     public void onError(Exception exception) {
-      logger.error("Heart beat error", exception);
+      logger.error("Heart beat error, receiver {}", receiver, exception);
+      // reset the connection
+      nodeClientMap.remove(receiver);
+      nodeTransportMap.remove(receiver).close();
     }
 
-    private void handleCatchUp(Node follower, long followerLastLogIndex) {
-      logger.debug("Log of {} is stale [Pos:{}/{}], try to help it catch up", follower,
-          followerLastLogIndex, lastLogIndex);
-    }
   }
 
-  class ElectionHandler implements AsyncMethodCallback<Long> {
+  abstract void handleCatchUp(Node follower, long followerLastLogIndex);
 
-    private int quorum;
-    private boolean electionValid = false;
-    private Long currTerm;
-    private boolean terminated = false;
+  class ElectionHandler implements AsyncMethodCallback<startElection_call> {
+
+    private Node voter;
+    private long currTerm;
+    private AtomicInteger quorum;
+    private AtomicBoolean terminated;
+    private AtomicBoolean electionValid;
+
+    ElectionHandler(Node voter, long currTerm, AtomicInteger quorum,
+        AtomicBoolean terminated, AtomicBoolean electionValid) {
+      this.voter = voter;
+      this.currTerm = currTerm;
+      this.quorum = quorum;
+      this.terminated = terminated;
+      this.electionValid = electionValid;
+    }
 
     @Override
-    public void onComplete(Long response) {
-      synchronized (currTerm) {
-        if (!electionValid || terminated) {
+    public void onComplete(startElection_call resp) {
+      logger.info("Received an election response");
+      long voterTerm;
+      try {
+        voterTerm = resp.getResult();
+      } catch (TException e) {
+        onError(e);
+        return;
+      }
+
+      logger.info("Election response term {}", voterTerm);
+      synchronized (term) {
+        if (terminated.get()) {
           // a voter has rejected this election, which means the term or the log id falls behind
           // this node is not able to be the leader
           return;
         }
 
-        if (response == TERM_AGREE) {
-          if (--quorum == 0) {
+        if (voterTerm == TERM_AGREE) {
+          long remaining = quorum.decrementAndGet();
+          logger.info("Received a for vote, reaming votes to succeed: {}", remaining);
+          if (remaining == 0) {
             // the election is valid
-            electionValid = true;
-            currTerm.notifyAll();
-            terminated = true;
+            electionValid.set(true);
+            terminated.set(true);
+            term.notifyAll();
           }
           // still need more votes
         } else {
           // the election is rejected
-          terminated = true;
-          if (response < currTerm) {
+          terminated.set(true);
+          if (voterTerm < currTerm) {
             // the rejection from a node with a smaller term means the log of this node falls behind
             logFallsBehind = true;
             logger.info("Election {} rejected: The node has stale logs and should not start "
                 + "elections again", currTerm);
           } else {
             // the election is rejected by a node with a bigger term, update current term to it
-            term.set(response);
+            term.set(voterTerm);
             logger.info("Election {} rejected: The term of this node is no bigger than {}",
-                response, currTerm);
+                voterTerm, currTerm);
           }
-          currTerm.notifyAll();
+          term.notifyAll();
         }
       }
-
     }
 
     @Override
     public void onError(Exception exception) {
-      logger.warn("A voter encountered an error:", exception);
+      logger.warn("A voter {} encountered an error:", voter, exception);
+      // reset the connection
+      nodeClientMap.remove(voter);
+      nodeTransportMap.remove(voter).close();
     }
 
   }

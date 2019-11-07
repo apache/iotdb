@@ -15,16 +15,15 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
 
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.server;
 
-public enum NodeCharacter {
-  // the leader in this quorum is unknown
-  ELECTOR,
-  // this node has known the leader in the quorum
-  FOLLOWER,
-  // this node is the leader in the quorum
-  LEADER
+public enum NodeStatus {
+  // this node hasn't finished start up and should not serve other nodes
+  STARTING_UP,
+  // this node has set up but does not join any cluster
+  ALONE,
+  // this node has joined a cluster
+  JOINED
 }
