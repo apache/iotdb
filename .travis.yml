@@ -35,8 +35,11 @@ matrix:
         - java -version
         - mvn -version
         - mvn -B apache-rat:check
-        # set travis timeout limit to 60m
-        - travis_wait 60 mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
+        # Output something every 10 minutes or Travis kills the job
+        - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
+        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
+        # Killing background sleep loop
+        - kill %1
     - os: osx
       osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
       name: osx-oraclejdk8
@@ -54,8 +57,11 @@ matrix:
         - java -version
         - mvn -version
         - mvn -B apache-rat:check
-        # set travis timeout limit to 60m
-        - travis_wait 60 mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
+        # Output something every 10 minutes or Travis kills the job
+        - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
+        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
+        # Killing background sleep loop
+        - kill %1
     - os: osx
       osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
       name: osx-openjdk8
@@ -125,8 +131,11 @@ matrix:
       script:
         - java -version
         - mvn -version
-        # set travis timeout limit to 60m
-        - travis_wait 60 mvn -B clean integration-test
+        # Output something every 10 minutes or Travis kills the job
+        - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
+        - mvn -B clean integration-test
+        # Killing background sleep loop
+        - kill %1
 
     - os: linux
       name: linux-openjdk11
@@ -140,8 +149,11 @@ matrix:
         - export PATH=$JAVA_HOME/bin:$PATH
       script:
         - java -version
-        # set travis timeout limit to 60m
-        - travis_wait 60 mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
+        # Output something every 10 minutes or Travis kills the job
+        - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
+        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
+        # Killing background sleep loop
+        - kill %1
     - os: linux
       name: linux-openjdk8
       dist: trusty

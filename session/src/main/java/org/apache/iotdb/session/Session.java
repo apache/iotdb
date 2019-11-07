@@ -18,38 +18,14 @@
  */
 package org.apache.iotdb.session;
 
-import static org.apache.iotdb.session.Config.PATH_MATCHER;
-
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.regex.Pattern;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
-import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSInsertReq;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
-import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
-import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
-import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
@@ -59,6 +35,14 @@ import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.sql.SQLException;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
+
+import static org.apache.iotdb.session.Config.PATH_MATCHER;
 
 public class Session {
 
@@ -73,8 +57,8 @@ public class Session {
   private TSocket transport;
   private boolean isClosed = true;
   private ZoneId zoneId;
-  private AtomicLong queryId = new AtomicLong(0);
   private TSOperationHandle operationHandle;
+  private long statementId;
 
 
   public Session(String host, int port) {
@@ -132,6 +116,8 @@ public class Session {
       }
 
       sessionHandle = openResp.getSessionHandle();
+
+      statementId = client.requestStatementId();
 
       if (zoneId != null) {
         setTimeZone(zoneId.toString());
@@ -355,13 +341,13 @@ public class Session {
           + "\" is not a query statement, you should use executeNonQueryStatement method instead.");
     }
 
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql);
+    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, statementId);
     TSExecuteStatementResp execResp = client.executeStatement(execReq);
 
     RpcUtils.verifySuccess(execResp.getStatus());
     operationHandle = execResp.getOperationHandle();
     return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
-        queryId.incrementAndGet(), client, operationHandle);
+            operationHandle.getOperationId().getQueryId(), client, operationHandle);
   }
 
   /**
@@ -375,7 +361,7 @@ public class Session {
           + "\" is a query statement, you should use executeQueryStatement method instead.");
     }
 
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql);
+    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, statementId);
     TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
     operationHandle = execResp.getOperationHandle();
 

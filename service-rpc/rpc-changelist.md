@@ -74,6 +74,7 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add required i64 queryId in TSHandleIdentifier               | Yuan Tian    |
 | Add optional set\<string> childPaths in TSFetchMetadataResp     | Haonan Hou             |
 | Add optional string version in TSFetchMetadataResp           | Genius_pig             |
+| Add required i64 statementId in TSExecuteStatementReq        | Yuan Tian |
 
 
 
