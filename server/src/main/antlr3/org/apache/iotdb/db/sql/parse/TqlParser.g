@@ -340,17 +340,17 @@ createDeviceTemplate
     ;
 
 complexTemplate
-    : LR_BRACKET measurement=nodeNameWithoutStar dataType encoding (compressor=propertyValue)? 
-    (COMMA measurement=nodeNameWithoutStar dataType encoding (compressor=propertyValue)?)* RR_BRACKET
+    : LR_BRACKET measurement=nodeNameWithoutStar dataType encoding 
+    (COMMA measurement=nodeNameWithoutStar dataType encoding)* RR_BRACKET
     -> ^(TOK_COMPLEX ^(TOK_SCHEMA ^(TOK_MEASUREMENT nodeNameWithoutStar) ^(TOK_DATATYPE dataType) 
-    ^(TOK_ENCODING encoding) ^(TOK_COMPRESSOR $compressor)?)+)
+    ^(TOK_ENCODING encoding))+)
     ;
 
 simpleTemplate
-    : K_MEASUREMENTS  LR_BRACKET measurement=nodeNameWithoutStar (COMMA measurement=nodeNameWithoutStar)* RR_BRACKET 
-    K_DATATYPE dataType K_ENCODING encoding (K_COMPRESSOR compressor=propertyValue)?
+    : K_MEASUREMENTS LR_BRACKET measurement=nodeNameWithoutStar (COMMA measurement=nodeNameWithoutStar)* RR_BRACKET 
+    K_DATATYPE dataType K_ENCODING encoding
     -> ^(TOK_SIMPLE ^(TOK_MEASUREMENT nodeNameWithoutStar+) ^(TOK_DATATYPE dataType) 
-    ^(TOK_ENCODING encoding) ^(TOK_COMPRESSOR $compressor)?)
+    ^(TOK_ENCODING encoding))
     ;
   
 createDevice

@@ -512,51 +512,30 @@ public class LogicalGenerator {
     List<MeasurementSchema> schemaList = new ArrayList<>();
     String deviceType = astNode.getChild(0).getChild(0).getText();
     AstNode paramNode = astNode.getChild(0).getChild(1);
+    // case 1: Template is complex
     if (paramNode.getToken().getText().equals("TOK_COMPLEX")) {
       int size = paramNode.getChildCount();
       for (int i = 0; i < size; i++) {
         String measurement = paramNode.getChild(i).getChild(0).getChild(0).getText();
         String dataType = paramNode.getChild(i).getChild(1).getChild(0).getText().toUpperCase();
         String encodingType = paramNode.getChild(i).getChild(2).getChild(0).getText().toUpperCase();
-        if (paramNode.getChild(i).getChildren().size() > 3 
-            && paramNode.getChild(i).getChild(3).getChild(0).getToken().getText().equals("TOK_COMPRESSOR")) {
-          String compressor = cascadeChildrenText(paramNode.getChild(i).getChild(3).getChild(0)).toUpperCase();
-          MeasurementSchema schema = 
-              new MeasurementSchema(measurement, TSDataType.valueOf(dataType), 
-                  TSEncoding.valueOf(encodingType), CompressionType.valueOf(compressor));
-          schemaList.add(schema);
-          continue;
-        }
         MeasurementSchema schema = new MeasurementSchema(measurement, TSDataType.valueOf(dataType), 
             TSEncoding.valueOf(encodingType));
         schemaList.add(schema);
       }
       
     }
+    // case 2: Template is simple
     else {
       String dataType = paramNode.getChild(1).getChild(0).getText().toUpperCase();
       String encodingType = paramNode.getChild(2).getChild(0).getText().toUpperCase();
-      if (paramNode.getChildren().size() > 3 
-          && paramNode.getChild(3).getText().equals("TOK_COMPRESSOR")) {
-        String compressor = cascadeChildrenText(paramNode.getChild(3).getChild(0)).toUpperCase();
-        int size = paramNode.getChild(0).getChildren().size();
-        for (int i = 0; i < size; i++) {
-          String measurement = paramNode.getChild(0).getChild(i).getText();
-          MeasurementSchema schema = 
-              new MeasurementSchema(measurement, TSDataType.valueOf(dataType), 
-                  TSEncoding.valueOf(encodingType), CompressionType.valueOf(compressor));
-          schemaList.add(schema);
-        }
-      }
-      else {
-        int size = paramNode.getChild(0).getChildren().size();
-        for (int i = 0; i < size; i++) {
-          String measurement = paramNode.getChild(0).getChild(i).getText();
-          MeasurementSchema schema = 
-              new MeasurementSchema(measurement, TSDataType.valueOf(dataType), 
-              TSEncoding.valueOf(encodingType));
-          schemaList.add(schema);
-        }
+      int size = paramNode.getChild(0).getChildren().size();
+      for (int i = 0; i < size; i++) {
+        String measurement = paramNode.getChild(0).getChild(i).getText();
+        MeasurementSchema schema = 
+            new MeasurementSchema(measurement, TSDataType.valueOf(dataType), 
+            TSEncoding.valueOf(encodingType));
+        schemaList.add(schema);
       }
     }
     createDeviceTemplateOperator.setDeviceType(deviceType);

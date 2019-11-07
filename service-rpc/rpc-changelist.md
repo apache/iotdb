@@ -51,8 +51,8 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add method TSStatus deleteData(1:TSDeleteDataReq req)        | Jack Tsai, Jialin Qiao, qiaojialin |
 | Add method TSStatus deleteTimeseries(1:list\<string> path)   | qiaojialin                         |
 | Add method TSStatus deleteStorageGroups(1:list\<string> storageGroup) | Yi Tao                             |
-
-
+| Add method TSStatus createDeviceTemplate(1:TSCreateDeviceTemplateReq req) | Haonan Hou                             |
+| Add method TSStatus createDevice(1:TSCreateDeviceReq req)    | Haonan Hou                         |
 
 ## 3. Update
 

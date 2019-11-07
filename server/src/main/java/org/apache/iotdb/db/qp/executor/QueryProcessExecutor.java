@@ -463,7 +463,6 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       if (mManager.getDeviceTemplates().get(deviceType) != null) {
         List<MeasurementSchema> schemaList = mManager.getDeviceTemplates().get(deviceType);
         for (MeasurementSchema schema : schemaList) {
-          System.out.println(devicePath + " " + schema.getMeasurementId());
           Path path = new Path(devicePath, schema.getMeasurementId());
           boolean result = mManager.addPathToMTree(path, 
               schema.getType(), schema.getEncodingType(), 

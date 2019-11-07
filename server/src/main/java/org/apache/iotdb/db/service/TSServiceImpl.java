@@ -690,8 +690,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     String statement = req.getStatement();
-    System.out.println(statement);
-    System.out.println(statement);
     PhysicalPlan physicalPlan;
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
