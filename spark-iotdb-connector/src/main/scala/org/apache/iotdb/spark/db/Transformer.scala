@@ -16,7 +16,7 @@
   * specific language governing permissions and limitations
   * under the License.
   */
-package org.apache.iotdb.sparkdb
+package org.apache.iotdb.spark.db
 
 import org.apache.spark.sql.{SparkSession, _}
 import org.apache.spark.sql.types._
