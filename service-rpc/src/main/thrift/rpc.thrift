@@ -121,6 +121,9 @@ struct TSExecuteStatementReq {
 
   // The statement to be executed (DML, DDL, SET, etc)
   2: required string statement
+
+  // statementId
+  3: required i64 statementId
 }
 
 
