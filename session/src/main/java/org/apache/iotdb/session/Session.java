@@ -20,7 +20,6 @@ package org.apache.iotdb.session;
 
 import static org.apache.iotdb.session.Config.PATH_MATCHER;
 
-import java.sql.SQLException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -74,7 +73,6 @@ public class Session {
   private TSocket transport;
   private boolean isClosed = true;
   private ZoneId zoneId;
-  private RowRecord record;
   private AtomicLong queryId = new AtomicLong(0);
   private TSOperationHandle operationHandle;
 
@@ -98,7 +96,7 @@ public class Session {
     open(false, 0);
   }
 
-  public synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
+  private synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
       throws IoTDBSessionException {
     if (!isClosed) {
       return;
@@ -129,7 +127,7 @@ public class Session {
 
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         throw new TException(String
-            .format("Protocol not supported, Client version is {}, but Server version is {}",
+            .format("Protocol not supported, Client version is %s, but Server version is %s",
                 protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
       }
 
@@ -210,7 +208,7 @@ public class Session {
    *
    * @param path timeseries to delete, should be a whole path
    */
-  public synchronized TSStatus deleteTimeseries(String path) throws IoTDBSessionException {
+  synchronized TSStatus deleteTimeseries(String path) throws IoTDBSessionException {
     List<String> paths = new ArrayList<>();
     paths.add(path);
     return deleteTimeseries(paths);
@@ -247,7 +245,7 @@ public class Session {
    * @param paths data in which time series to delete
    * @param time data with time stamp less than or equal to time will be deleted
    */
-  public synchronized TSStatus deleteData(List<String> paths, long time)
+  synchronized TSStatus deleteData(List<String> paths, long time)
       throws IoTDBSessionException {
     TSDeleteDataReq request = new TSDeleteDataReq();
     request.setPaths(paths);
@@ -270,14 +268,14 @@ public class Session {
   }
 
 
-  public synchronized TSStatus deleteStorageGroup(String storageGroup)
+  synchronized TSStatus deleteStorageGroup(String storageGroup)
       throws IoTDBSessionException {
     List<String> groups = new ArrayList<>();
     groups.add(storageGroup);
     return deleteStorageGroups(groups);
   }
 
-  public synchronized TSStatus deleteStorageGroups(List<String> storageGroup)
+  synchronized TSStatus deleteStorageGroups(List<String> storageGroup)
       throws IoTDBSessionException {
     try {
       return checkAndReturn(client.deleteStorageGroups(storageGroup));
@@ -316,7 +314,7 @@ public class Session {
     return resp;
   }
 
-  public synchronized String getTimeZone() throws TException, IoTDBRPCException {
+  private synchronized String getTimeZone() throws TException, IoTDBRPCException {
     if (zoneId != null) {
       return zoneId.toString();
     }
@@ -326,7 +324,7 @@ public class Session {
     return resp.getTimeZone();
   }
 
-  public synchronized void setTimeZone(String zoneId) throws TException, IoTDBRPCException {
+  private synchronized void setTimeZone(String zoneId) throws TException, IoTDBRPCException {
     TSSetTimeZoneReq req = new TSSetTimeZoneReq(zoneId);
     TSStatus resp = client.setTimeZone(req);
     RpcUtils.verifySuccess(resp);
@@ -351,7 +349,7 @@ public class Session {
    * @return result set
    */
   public SessionDataSet executeQueryStatement(String sql)
-      throws TException, IoTDBRPCException, SQLException {
+      throws TException, IoTDBRPCException {
     if (!checkIsQuery(sql)) {
       throw new IllegalArgumentException("your sql \"" + sql
           + "\" is not a query statement, you should use executeNonQueryStatement method instead.");
