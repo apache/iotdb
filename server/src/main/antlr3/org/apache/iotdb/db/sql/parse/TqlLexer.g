@@ -273,6 +273,26 @@ K_UNSET
     : U N S E T
     ;
 
+K_DEVICE
+    : D E V I C E
+    ;
+
+K_TEMPLATE
+    : T E M P L A T E
+    ;
+    
+K_MEASUREMENTS
+    : M E A S U R E M E N T S
+    ; 
+
+K_COMPLEX
+    : C O M P L E X
+    ;
+    
+K_SIMPLE
+    : S I M P L E 
+    ;
+        
 //************** logical operator***********
 OPERATOR_AND
     : A N D
@@ -321,9 +341,6 @@ K_ADD
     : A D D
     ;
 
-K_DEVICE
-    : D E V I C E
-    ;
 
 // *************** comparison *******
 OPERATOR_GT

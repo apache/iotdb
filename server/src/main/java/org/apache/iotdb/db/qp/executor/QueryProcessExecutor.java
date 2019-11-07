@@ -56,6 +56,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateDevicePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -81,6 +83,7 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
@@ -130,6 +133,10 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         return setStorageGroup((SetStorageGroupPlan) plan);
       case DELETE_STORAGE_GROUP:
         return deleteStorageGroup((DeleteStorageGroupPlan) plan);  
+      case CREATE_DEVICE:
+        return createDevice((CreateDevicePlan) plan);
+      case CREATE_DEVICE_TEMPLATE:
+        return createDeviceTemplate((CreateDeviceTemplatePlan) plan);
       case PROPERTY:
         PropertyPlan property = (PropertyPlan) plan;
         return operateProperty(property);
@@ -436,6 +443,41 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         storageEngine.deleteStorageGroup(storageGroupPath.getFullPath());
       }
     } catch (MetadataErrorException e) {
+      throw new ProcessorException(e);
+    }
+    return true;
+  }
+  
+  private boolean createDeviceTemplate(CreateDeviceTemplatePlan createDeviceTemplatePlan) 
+      throws ProcessorException {
+    String deviceType = createDeviceTemplatePlan.getDeviceType();
+    List<MeasurementSchema> schemaList = createDeviceTemplatePlan.getSchemaList();
+    mManager.getDeviceTemplates().put(deviceType, schemaList);
+    return true;
+  }
+  
+  private boolean createDevice(CreateDevicePlan createDevicePlan) throws ProcessorException {
+    String deviceType = createDevicePlan.getDeviceType();
+    String devicePath = createDevicePlan.getDevicePath();
+    try {
+      if (mManager.getDeviceTemplates().get(deviceType) != null) {
+        List<MeasurementSchema> schemaList = mManager.getDeviceTemplates().get(deviceType);
+        for (MeasurementSchema schema : schemaList) {
+          System.out.println(devicePath + " " + schema.getMeasurementId());
+          Path path = new Path(devicePath, schema.getMeasurementId());
+          boolean result = mManager.addPathToMTree(path, 
+              schema.getType(), schema.getEncodingType(), 
+              schema.getCompressor(), schema.getProps());
+          if (result) {
+            storageEngine.addTimeSeries(path, schema.getType(), schema.getEncodingType(), 
+                schema.getCompressor(), schema.getProps());
+          }
+        }
+      }
+      else {
+        throw new ProcessorException("No device template (" + deviceType + ")");
+      }
+    } catch (MetadataErrorException | PathErrorException |StorageEngineException e) {
       throw new ProcessorException(e);
     }
     return true;

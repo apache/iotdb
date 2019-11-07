@@ -135,6 +135,8 @@ public class QueryProcessor {
       case DELETE_STORAGE_GROUP:
       case CREATE_TIMESERIES:
       case DELETE_TIMESERIES:
+      case CREATE_DEVICE_TEMPLATE:
+      case CREATE_DEVICE:
       case PROPERTY:
       case LOADDATA:
       case INSERT:

@@ -102,6 +102,9 @@ public class SQLConstant {
   public static final int TOK_SET = 63;
   public static final int TOK_UNSET = 64;
   public static final int TOK_SHOW = 65;
+  
+  public static final int TOK_CREATE_DEVICE = 66;
+  public static final int TOK_DEVICE_TEMPLATE_CREATE = 67;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
@@ -161,6 +164,8 @@ public class SQLConstant {
     tokenNames.put(TOK_SET, "TOK_SET");
     tokenNames.put(TOK_UNSET, "TOK_UNSET");
     tokenNames.put(TOK_SHOW, "TOK_SHOW");
+    
+    tokenNames.put(TOK_CREATE_DEVICE, "TOK_CREATE_DEVICE");
   }
 
   static {

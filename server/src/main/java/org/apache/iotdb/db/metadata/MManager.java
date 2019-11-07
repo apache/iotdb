@@ -83,6 +83,8 @@ public class MManager {
   private long maxSeriesNumberAmongStorageGroup;
   private boolean initialized;
 
+  private Map<String, List<MeasurementSchema>> deviceTemplates = new HashMap<>();
+  
   private MManager() {
 
     schemaDir =
@@ -1413,5 +1415,9 @@ public class MManager {
     } finally {
       lock.writeLock().unlock();
     }
+  }
+  
+  public Map<String, List<MeasurementSchema>> getDeviceTemplates() {
+    return this.deviceTemplates;
   }
 }

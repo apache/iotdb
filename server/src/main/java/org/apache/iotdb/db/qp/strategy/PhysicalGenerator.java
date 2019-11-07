@@ -42,6 +42,8 @@ import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateDeviceOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateDeviceTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
@@ -59,6 +61,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateDevicePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -117,6 +121,14 @@ public class PhysicalGenerator {
       case DELETE_TIMESERIES:
         DeleteTimeSeriesOperator deletePath = (DeleteTimeSeriesOperator) operator;
         return new DeleteTimeSeriesPlan(deletePath.getDeletePathList());
+      case CREATE_DEVICE_TEMPLATE:
+        CreateDeviceTemplateOperator addDeviceTemplate = (CreateDeviceTemplateOperator) operator;
+        return new CreateDeviceTemplatePlan(addDeviceTemplate.getDeviceType(), 
+            addDeviceTemplate.getSchemaList());
+      case CREATE_DEVICE:
+        CreateDeviceOperator addDevice = (CreateDeviceOperator) operator;
+        return new CreateDevicePlan(addDevice.getDeviceType(), 
+            addDevice.getDeviceId());
       case PROPERTY:
         PropertyOperator property = (PropertyOperator) operator;
         return new PropertyPlan(property.getPropertyType(), property.getPropertyPath(),

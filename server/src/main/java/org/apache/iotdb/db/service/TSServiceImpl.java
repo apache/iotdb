@@ -77,6 +77,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateDevicePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -93,6 +95,8 @@ import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateDeviceReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateDeviceTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
@@ -124,6 +128,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
@@ -581,7 +586,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS,
             "Execute set consistency level successfully"));
       }
-      
       PhysicalPlan physicalPlan;
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
@@ -686,6 +690,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     String statement = req.getStatement();
+    System.out.println(statement);
+    System.out.println(statement);
     PhysicalPlan physicalPlan;
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
@@ -1287,6 +1293,43 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       pathList.add(new Path(path));
     }
     DeleteTimeSeriesPlan plan = new DeleteTimeSeriesPlan(pathList);
+    TSStatus status = checkAuthority(plan);
+    if (status != null) {
+      return new TSStatus(status);
+    }
+    return new TSStatus(executePlan(plan));
+  }
+  
+  @Override
+  public TSStatus createDeviceTemplate(TSCreateDeviceTemplateReq req) {
+    if (!checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
+    }
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    for (int i = 0; i < req.getMeasurements().size(); i++) {
+      MeasurementSchema schema = new MeasurementSchema(req.getMeasurements().get(i), 
+          TSDataType.values()[req.getDataTypes().get(i)], 
+          TSEncoding.values()[req.getEncodings().get(i)],
+          CompressionType.values()[req.getCompressors().get(i)]);
+      schemaList.add(schema);
+    }
+    CreateDeviceTemplatePlan plan = new CreateDeviceTemplatePlan(req.getDeviceType(), schemaList);
+    TSStatus status = checkAuthority(plan);
+    if (status != null) {
+      return new TSStatus(status);
+    }
+    return new TSStatus(executePlan(plan));
+  }
+  
+  @Override
+  public TSStatus createDevice(TSCreateDeviceReq req) {
+    if (!checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
+    }
+    
+    CreateDevicePlan plan = new CreateDevicePlan(req.getDeviceType(), req.getDeviceId());
     TSStatus status = checkAuthority(plan);
     if (status != null) {
       return new TSStatus(status);

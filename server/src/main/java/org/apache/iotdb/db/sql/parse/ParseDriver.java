@@ -83,14 +83,10 @@ public class ParseDriver {
   public AstNode parse(String command) throws ParseException {
     TqlLexerX lexer = new TqlLexerX(new ANTLRNoCaseStringStream(command));
     TokenRewriteStream tokens = new TokenRewriteStream(lexer);
-
     TqlParser parser = new TqlParser(tokens);
-
     parser.setTreeAdaptor(adaptor);
     TqlParser.statement_return r = null;
-
     try {
-
       r = parser.statement();
     } catch (RecognitionException e) {
       LOG.trace("meet error while parsing statement: {}", command, e);

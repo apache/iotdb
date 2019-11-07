@@ -144,6 +144,30 @@ Eg: IoTDB > SHOW DEVICES
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
+* Create Device Template Statement
+There are two types of templates we can use. 
+The simple template is for those all datatypes(or encodings) of measurements are the same. 
+```
+CREATE SIMPLE TEMPLATE <TemplateName> (<Measurement> [COMMA <Measurement>]*) DATATYPE <DataTypeValue> ENCODING <EncodingValue>
+Eg: IoTDB > CREATE SIMPLE TEMPLATE vehicle MEASUREMENTS (speed, direction, temperature, fuel) DATATYPE DOUBLE ENCODING PLAIN
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+The complex template is for those datatypes(or encodings) of measurements are different.
+```
+CREATE COMPLEX TEMPLATE <TemplateName> MEASUREMENTS (<Measurement> <DataTypeValue> <EncodingValue> [COMMA <Measurement> <DataTypeValue> <EncodingValue>])
+Eg: IoTDB > CREATE COMPLEX TEMPLATE vehicle (speed DOUBLE PLAIN, direction TEXT PLAIN, temperature DOUBLE PLAIN, fuel DOUBLE PLAIN)
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+
+* Create Device Statement
+```
+CREATE DEVICE (TemplateName) <PrefixPath>
+Eg: IoTDB > CREATE DEVICE (vehicle) root.sg1.vehicle1
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
 ### Data Management Statement
 
 * Insert Record Statement

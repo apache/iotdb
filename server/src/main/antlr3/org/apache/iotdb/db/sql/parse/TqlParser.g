@@ -107,6 +107,12 @@ tokens{
     TOK_SHOW;
     TOK_DATE_EXPR;
     TOK_DURATION;
+    TOK_TEMPLATE;
+    TOK_MEASUREMENT;
+    TOK_DEVICE;
+    TOK_COMPLEX;
+    TOK_SIMPLE;
+    TOK_SCHEMA;
 }
 
 @header{
@@ -171,6 +177,11 @@ static {
 	tokenNameMap.put("K_LIST", "LIST");
 	tokenNameMap.put("K_TTL", "TTL");
 	tokenNameMap.put("K_UNSET", "UNSET");
+	tokenNameMap.put("K_MEASUREMENTS", "MEASUREMENTS");
+	tokenNameMap.put("K_DEVICE", "DEVICE");
+	tokenNameMap.put("K_TEMPLATE", "TEMPLATE");
+	tokenNameMap.put("K_COMPLEX", "COMPLEX");
+  tokenNameMap.put("K_SIMPLE", "SIMPLE");
 	// Operators
 	tokenNameMap.put("DOT", ".");
 	tokenNameMap.put("COLON", ":");
@@ -301,6 +312,8 @@ ddlStatement
     | mergeStatement
     | listStatement
     | ttlStatement
+    | createDevice
+    | createDeviceTemplate
     ;
 
 administrationStatement
@@ -318,7 +331,33 @@ administrationStatement
     | grantWatermarkEmbedding
     | revokeWatermarkEmbedding
     ;
+    
+createDeviceTemplate
+    : K_CREATE K_COMPLEX K_TEMPLATE deviceType=nodeNameWithoutStar complexTemplate
+    -> ^(TOK_CREATE ^(TOK_TEMPLATE $deviceType complexTemplate))
+    | K_CREATE K_SIMPLE K_TEMPLATE deviceType=nodeNameWithoutStar simpleTemplate
+    -> ^(TOK_CREATE ^(TOK_TEMPLATE $deviceType simpleTemplate))
+    ;
 
+complexTemplate
+    : LR_BRACKET measurement=nodeNameWithoutStar dataType encoding (compressor=propertyValue)? 
+    (COMMA measurement=nodeNameWithoutStar dataType encoding (compressor=propertyValue)?)* RR_BRACKET
+    -> ^(TOK_COMPLEX ^(TOK_SCHEMA ^(TOK_MEASUREMENT nodeNameWithoutStar) ^(TOK_DATATYPE dataType) 
+    ^(TOK_ENCODING encoding) ^(TOK_COMPRESSOR $compressor)?)+)
+    ;
+
+simpleTemplate
+    : K_MEASUREMENTS  LR_BRACKET measurement=nodeNameWithoutStar (COMMA measurement=nodeNameWithoutStar)* RR_BRACKET 
+    K_DATATYPE dataType K_ENCODING encoding (K_COMPRESSOR compressor=propertyValue)?
+    -> ^(TOK_SIMPLE ^(TOK_MEASUREMENT nodeNameWithoutStar+) ^(TOK_DATATYPE dataType) 
+    ^(TOK_ENCODING encoding) ^(TOK_COMPRESSOR $compressor)?)
+    ;
+  
+createDevice
+    : K_CREATE K_DEVICE LR_BRACKET deviceType=nodeNameWithoutStar RR_BRACKET prefixPath
+    -> ^(TOK_CREATE ^(TOK_DEVICE $deviceType) ^(TOK_PATH prefixPath))
+    ;
+    
 createTimeseries
     : K_CREATE K_TIMESERIES timeseriesPath K_WITH attributeClauses
     -> ^(TOK_CREATE timeseriesPath ^(TOK_WITH attributeClauses))

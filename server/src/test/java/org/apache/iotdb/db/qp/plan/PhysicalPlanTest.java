@@ -36,6 +36,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateDevicePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
@@ -486,5 +488,45 @@ public class PhysicalPlanTest {
     DataAuthPlan dataAuthPlan = (DataAuthPlan) plan;
     Assert.assertEquals(2, dataAuthPlan.getUsers().size());
     Assert.assertEquals(OperatorType.REVOKE_WATERMARK_EMBEDDING, dataAuthPlan.getOperatorType());
+  }
+  
+  @Test
+  public void testTemplate1() 
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+    String sqlStr = 
+        "create complex template vehicle1 (s2 INT32 PLAIN, s3 DOUBLE RLE, s4 TEXT PLAIN)";
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    CreateDeviceTemplatePlan plan = 
+        (CreateDeviceTemplatePlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    Assert.assertEquals(String.format("vehicle1%n" + "measurement: s2%n"+ "dataType: INT32%n" +
+        "encoding: PLAIN%n" + "vehicle1%n" + "measurement: s3%n"+ "dataType: DOUBLE%n" +
+        "encoding: RLE%n" + "vehicle1%n" + "measurement: s4%n"+ "dataType: TEXT%n" +
+        "encoding: PLAIN%n"), plan.toString());
+  }
+  
+  @Test
+  public void testTemplate2() 
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+    String sqlStr = 
+        "create simple template vehicle2 measurements (s2, s3, s4) datatype INT32 encoding RLE";
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    CreateDeviceTemplatePlan plan = 
+        (CreateDeviceTemplatePlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    Assert.assertEquals(String.format("vehicle2%n" + "measurement: s2%n"+ "dataType: INT32%n" +
+        "encoding: RLE%n" + "vehicle2%n" + "measurement: s3%n"+ "dataType: INT32%n" +
+        "encoding: RLE%n" + "vehicle2%n" + "measurement: s4%n"+ "dataType: INT32%n" +
+        "encoding: RLE%n"), plan.toString());
+  }
+  
+  @Test
+  public void testCreateDevice() 
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+    String sqlStr = 
+        "create device (vehicle1) root.vehicle.d5";
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    CreateDevicePlan plan = 
+        (CreateDevicePlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    Assert.assertEquals(String.format("deviceType: vehicle1%n" + "devicePath: root.vehicle.d5%n" ), 
+        plan.toString());
   }
 }

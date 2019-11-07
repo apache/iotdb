@@ -134,6 +134,30 @@ Eg: IoTDB > SHOW DEVICES
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
+* 创建设备模版语句
+我们有两种模版类型 
+简版模版用于数据类型和编码类型相同
+```
+CREATE SIMPLE TEMPLATE <TemplateName> (<Measurement> [COMMA <Measurement>]*) DATATYPE <DataTypeValue> ENCODING <EncodingValue>
+Eg: IoTDB > CREATE SIMPLE TEMPLATE vehicle MEASUREMENTS (speed, direction, temperature, fuel) DATATYPE DOUBLE ENCODING PLAIN
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+复杂模版用于数据类型或者编码类型不相同
+```
+CREATE COMPLEX TEMPLATE <TemplateName> (<Measurement> <DataTypeValue> <EncodingValue> [COMMA <Measurement> <DataTypeValue> <EncodingValue>]*)
+Eg: IoTDB > CREATE COMPLEX TEMPLATE vehicle (speed DOUBLE PLAIN, direction TEXT PLAIN, temperature DOUBLE PLAIN, fuel DOUBLE PLAIN)
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+
+* 创建设备语句
+```
+CREATE DEVICE (TemplateName) <PrefixPath>
+Eg: IoTDB > CREATE DEVICE (vehicle) root.sg1.vehicle1
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
 ### 数据管理语句
 
 * 插入记录语句

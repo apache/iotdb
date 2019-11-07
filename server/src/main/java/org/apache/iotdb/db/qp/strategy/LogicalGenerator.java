@@ -36,6 +36,7 @@ import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_ALTER;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_CREATE;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DATETIME;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DELETE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DEVICE;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DROP;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_FILL;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_FROM;
@@ -65,6 +66,7 @@ import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SHOW;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SLIMIT;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SOFFSET;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_STORAGEGROUP;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_TEMPLATE;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_TIMESERIES;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_TTL;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_UNLINK;
@@ -99,6 +101,8 @@ import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.db.qp.logical.crud.UpdateOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateDeviceOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateDeviceTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
@@ -122,6 +126,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * This class receives an AstNode and transform it to an operator which is a logical plan.
@@ -130,6 +135,7 @@ public class LogicalGenerator {
 
   private static final String ERR_INCORRECT_AUTHOR_COMMAND = "illegal ast tree in grant author "
       + "command, please check you SQL statement";
+
 
   private RootOperator initializedOperator = null;
   private ZoneId zoneId;
@@ -221,6 +227,11 @@ public class LogicalGenerator {
           case TOK_PROPERTY:
             analyzePropertyCreate(astNode);
             break;
+          case TOK_DEVICE:
+            analyzeDeviceCreate(astNode);
+            break;
+          case TOK_TEMPLATE:
+            analyzeDeviceTemplateCreate(astNode);
           default:
             break;
         }
@@ -493,6 +504,73 @@ public class LogicalGenerator {
     Path propertyLabel = parsePropertyAndLabel(astNode, 1);
     propertyOperator.setPropertyPath(propertyLabel);
     initializedOperator = propertyOperator;
+  }
+  
+  private void analyzeDeviceTemplateCreate(AstNode astNode) throws IllegalASTFormatException{
+    CreateDeviceTemplateOperator createDeviceTemplateOperator = 
+        new CreateDeviceTemplateOperator(SQLConstant.TOK_DEVICE_TEMPLATE_CREATE);
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    String deviceType = astNode.getChild(0).getChild(0).getText();
+    AstNode paramNode = astNode.getChild(0).getChild(1);
+    if (paramNode.getToken().getText().equals("TOK_COMPLEX")) {
+      int size = paramNode.getChildCount();
+      for (int i = 0; i < size; i++) {
+        String measurement = paramNode.getChild(i).getChild(0).getChild(0).getText();
+        String dataType = paramNode.getChild(i).getChild(1).getChild(0).getText().toUpperCase();
+        String encodingType = paramNode.getChild(i).getChild(2).getChild(0).getText().toUpperCase();
+        if (paramNode.getChild(i).getChildren().size() > 3 
+            && paramNode.getChild(i).getChild(3).getChild(0).getToken().getText().equals("TOK_COMPRESSOR")) {
+          String compressor = cascadeChildrenText(paramNode.getChild(i).getChild(3).getChild(0)).toUpperCase();
+          MeasurementSchema schema = 
+              new MeasurementSchema(measurement, TSDataType.valueOf(dataType), 
+                  TSEncoding.valueOf(encodingType), CompressionType.valueOf(compressor));
+          schemaList.add(schema);
+          continue;
+        }
+        MeasurementSchema schema = new MeasurementSchema(measurement, TSDataType.valueOf(dataType), 
+            TSEncoding.valueOf(encodingType));
+        schemaList.add(schema);
+      }
+      
+    }
+    else {
+      String dataType = paramNode.getChild(1).getChild(0).getText().toUpperCase();
+      String encodingType = paramNode.getChild(2).getChild(0).getText().toUpperCase();
+      if (paramNode.getChildren().size() > 3 
+          && paramNode.getChild(3).getText().equals("TOK_COMPRESSOR")) {
+        String compressor = cascadeChildrenText(paramNode.getChild(3).getChild(0)).toUpperCase();
+        int size = paramNode.getChild(0).getChildren().size();
+        for (int i = 0; i < size; i++) {
+          String measurement = paramNode.getChild(0).getChild(i).getText();
+          MeasurementSchema schema = 
+              new MeasurementSchema(measurement, TSDataType.valueOf(dataType), 
+                  TSEncoding.valueOf(encodingType), CompressionType.valueOf(compressor));
+          schemaList.add(schema);
+        }
+      }
+      else {
+        int size = paramNode.getChild(0).getChildren().size();
+        for (int i = 0; i < size; i++) {
+          String measurement = paramNode.getChild(0).getChild(i).getText();
+          MeasurementSchema schema = 
+              new MeasurementSchema(measurement, TSDataType.valueOf(dataType), 
+              TSEncoding.valueOf(encodingType));
+          schemaList.add(schema);
+        }
+      }
+    }
+    createDeviceTemplateOperator.setDeviceType(deviceType);
+    createDeviceTemplateOperator.setSchemaList(schemaList);
+    initializedOperator = createDeviceTemplateOperator;
+  }
+  
+  private void analyzeDeviceCreate(AstNode astNode) throws IllegalASTFormatException {
+    String deviceType = astNode.getChild(0).getChild(0).getText();
+    String deviceId = parsePath(astNode.getChild(1).getChild(0)).toString();
+    CreateDeviceOperator createDeviceOperator = new CreateDeviceOperator(SQLConstant.TOK_CREATE_DEVICE);
+    createDeviceOperator.setDeviceType(deviceType);
+    createDeviceOperator.setDeviceId(deviceId);
+    initializedOperator = createDeviceOperator;
   }
 
   private void analyzeMetadataCreate(AstNode astNode) throws MetadataErrorException {
