@@ -128,7 +128,7 @@ public class TTLTest {
     insertPlan.setDataTypes(new TSDataType[]{TSDataType.INT64});
 
     // ok without ttl
-    assertTrue(storageGroupProcessor.insert(insertPlan));
+    storageGroupProcessor.insert(insertPlan);
 
     storageGroupProcessor.setDataTTL(1000);
     // with ttl
@@ -141,7 +141,7 @@ public class TTLTest {
     }
     assertTrue(caught);
     insertPlan.setTime(System.currentTimeMillis() - 900);
-    assertTrue(storageGroupProcessor.insert(insertPlan));
+    storageGroupProcessor.insert(insertPlan);
   }
 
   private void prepareData() throws QueryProcessorException {
@@ -156,7 +156,7 @@ public class TTLTest {
     // sequence data
     for (int i = 1000; i < 2000; i++) {
       insertPlan.setTime(initTime - 2000 + i);
-      assertTrue(storageGroupProcessor.insert(insertPlan));
+      storageGroupProcessor.insert(insertPlan);
       if ((i + 1) % 300 == 0) {
         storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
       }

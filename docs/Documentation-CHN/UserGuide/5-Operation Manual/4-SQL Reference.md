@@ -22,6 +22,19 @@
 # 第5章 IoTDB操作指南
 ## SQL 参考文档
 
+### 显示版本号
+
+```sql
+show version
+```
+
+```
++---------------------------------------------------------------------------+
+|                                                             0.9.0-SNAPSHOT|
++---------------------------------------------------------------------------+
+It costs 0.001s
+```
+
 ### Schema语句
 
 * 设置存储组
@@ -150,7 +163,6 @@ Eg: IoTDB > CREATE COMPLEX TEMPLATE vehicle (speed DOUBLE PLAIN, direction TEXT 
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
-
 * 创建设备语句
 ```
 CREATE DEVICE (TemplateName) <PrefixPath>
@@ -158,6 +170,22 @@ Eg: IoTDB > CREATE DEVICE (vehicle) root.sg1.vehicle1
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
+* 显示ROOT节点的子节点名称语句
+```
+SHOW CHILD PATHS
+Eg: IoTDB > SHOW CHILD PATHS
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+* 显示子节点名称语句
+```
+SHOW CHILD PATHS <Path>
+Eg: IoTDB > SHOW CHILD PATHS root
+Eg: IoTDB > SHOW CHILD PATHS root.ln
+Eg: IoTDB > SHOW CHILD PATHS root.ln.wf01
+Note: The path can only be prefix path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
 ### 数据管理语句
 
 * 插入记录语句

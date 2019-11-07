@@ -98,16 +98,17 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
     switch (plan.getOperatorType()) {
       case DELETE:
-        return delete((DeletePlan) plan);
+        delete((DeletePlan) plan);
+        return true;
       case UPDATE:
         UpdatePlan update = (UpdatePlan) plan;
-        boolean flag = true;
         for (Pair<Long, Long> timePair : update.getIntervals()) {
-          flag &= update(update.getPath(), timePair.left, timePair.right, update.getValue());
+          update(update.getPath(), timePair.left, timePair.right, update.getValue());
         }
-        return flag;
+        return true;
       case INSERT:
-        return insert((InsertPlan) plan);
+        insert((InsertPlan) plan);
+        return true;
       case CREATE_ROLE:
       case DELETE_ROLE:
       case CREATE_USER:
@@ -201,13 +202,12 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  public boolean update(Path path, long startTime, long endTime, String value)
+  public void update(Path path, long startTime, long endTime, String value)
       throws ProcessorException {
-    return false;
   }
 
   @Override
-  public boolean delete(Path path, long timestamp) throws ProcessorException {
+  public void delete(Path path, long timestamp) throws ProcessorException {
     String deviceId = path.getDevice();
     String measurementId = path.getMeasurement();
     try {
@@ -217,7 +217,6 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       }
       mManager.getStorageGroupNameByPath(path.getFullPath());
       storageEngine.delete(deviceId, measurementId, timestamp);
-      return true;
     } catch (StorageGroupException | StorageEngineException e) {
       throw new ProcessorException(e);
     }
@@ -225,7 +224,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
 
   @Override
-  public boolean insert(InsertPlan insertPlan) throws ProcessorException {
+  public void insert(InsertPlan insertPlan) throws ProcessorException {
     try {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
@@ -261,8 +260,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         dataTypes[i] = measurementNode.getSchema().getType();
       }
       insertPlan.setDataTypes(dataTypes);
-      return storageEngine.insert(insertPlan);
-
+      storageEngine.insert(insertPlan);
     } catch (PathErrorException | StorageEngineException | MetadataErrorException | CacheException e) {
       throw new ProcessorException(e);
     }

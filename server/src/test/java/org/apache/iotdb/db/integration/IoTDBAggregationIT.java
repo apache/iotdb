@@ -19,23 +19,6 @@
 
 package org.apache.iotdb.db.integration;
 
-import static org.apache.iotdb.db.integration.Constant.avg;
-import static org.apache.iotdb.db.integration.Constant.count;
-import static org.apache.iotdb.db.integration.Constant.first;
-import static org.apache.iotdb.db.integration.Constant.last;
-import static org.apache.iotdb.db.integration.Constant.max_time;
-import static org.apache.iotdb.db.integration.Constant.max_value;
-import static org.apache.iotdb.db.integration.Constant.min_time;
-import static org.apache.iotdb.db.integration.Constant.min_value;
-import static org.apache.iotdb.db.integration.Constant.sum;
-import static org.junit.Assert.fail;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.Locale;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -43,6 +26,12 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.sql.*;
+import java.util.Locale;
+
+import static org.apache.iotdb.db.integration.Constant.*;
+import static org.junit.Assert.fail;
 
 public class IoTDBAggregationIT {
 
@@ -470,7 +459,7 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("Internal server error: Unsupported data type in aggregation AVG : TEXT", e.getMessage());
+        Assert.assertEquals("Unsupported data type in aggregation AVG : TEXT", e.getMessage());
       }
 
       hasResultSet = statement.execute("select sum(s3)" +
@@ -480,7 +469,7 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("Internal server error: Unsupported data type in aggregation SUM : TEXT", e.getMessage());
+        Assert.assertEquals("Unsupported data type in aggregation SUM : TEXT", e.getMessage());
       }
 
       hasResultSet = statement.execute("select avg(s4)" +
@@ -491,7 +480,7 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("Internal server error: Unsupported data type in aggregation AVG : BOOLEAN", e.getMessage());
+        Assert.assertEquals("Unsupported data type in aggregation AVG : BOOLEAN", e.getMessage());
       }
 
       hasResultSet = statement.execute("select sum(s4)" +
@@ -501,7 +490,7 @@ public class IoTDBAggregationIT {
         resultSet.next();
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("Internal server error: Unsupported data type in aggregation SUM : BOOLEAN", e.getMessage());
+        Assert.assertEquals("Unsupported data type in aggregation SUM : BOOLEAN", e.getMessage());
       }
     } catch (Exception e) {
       e.printStackTrace();

@@ -170,7 +170,7 @@ Since the user does not specify the time axis origin position, the GROUP BY stat
 
 The first parameter of the GROUP BY statement above is the time interval for dividing the time axis. Taking this parameter (1d) as time interval and the default origin as the dividing origin, the time axis is divided into several continuous intervals, which are [0,1d], [1d, 2d], [2d, 3d], etc.
 
-The second parameter of the GROUP BY statement above is the display window paramter, which determines the final display range is [2017-11-01T00:00:00, 2017-11-07T23:00:00].
+The second parameter of the GROUP BY statement above is the display window parameter, which determines the final display range is [2017-11-01T00:00:00, 2017-11-07T23:00:00].
 
 Then the system will use the time and value filtering condition in the WHERE clause and the second parameter of the GROUP BY statement as the data filtering condition to obtain the data satisfying the filtering condition (which in this case is the data in the range of [2017-11-01T00:00:00, 2017-11-07 T23:00:00]), and map these data to the previously segmented time axis (in this case there are mapped data in every 1-day period from 2017-11-01T00:00:00 to 2017-11-07T23:00:00:00).
 
@@ -191,9 +191,9 @@ Since the user specifies the time axis origin position parameter as 2017-11-03 0
 
 The first parameter of the GROUP BY statement above is the time interval for dividing the time axis. Taking this parameter (1d) as time interval and the speicified origin as the dividing origin, the time axis is divided into several continuous intervals, which are [2017-11-02T00:00:00, 2017-11-03T00:00:00], [2017-11-03T00:00:00, 2017-11-04T00:00:00], etc.
 
-The third parameter of the GROUP BY statement above is the display window paramter, which determines the final display range is [2017-11-01T00:00:00, 2017-11-07T23:00:00].
+The third parameter of the GROUP BY statement above is the display window parameter, which determines the final display range is [2017-11-01T00:00:00, 2017-11-07T23:00:00].
 
-hen the system will use the time and value filtering condition in the WHERE clause and the second parameter of the GROUP BY statement as the data filtering condition to obtain the data satisfying the filtering condition (which in this case is the data in the range of [2017-11-01T00:00:00, 2017-11-07T23:00:00]), and map these data to the previously segmented time axis (in this case there are mapped data in every 1-day period from 2017-11-01T00:00:00 to 2017-11-07T23:00:00:00).
+Then the system will use the time and value filtering condition in the WHERE clause and the second parameter of the GROUP BY statement as the data filtering condition to obtain the data satisfying the filtering condition (which in this case is the data in the range of [2017-11-01T00:00:00, 2017-11-07T23:00:00]), and map these data to the previously segmented time axis (in this case there are mapped data in every 1-day period from 2017-11-01T00:00:00 to 2017-11-07T23:00:00:00).
 
 Since there is data for each time period in the result range to be displayed, the execution result of the SQL statement is shown below:
 
@@ -209,13 +209,13 @@ which means:
 
 Since the user does not specify the time axis origin position, the GROUP BY statement will by default set the origin at 0 (+0 time zone) on January 1, 1970.
 
-The first parameter of the GROUP BY statement above is the time interval for dividing the time axis. Taking this parameter (1d) as time interval and the default origin as the dividing origin, the time axis is divided into several continuous intervals, which are [0,1d], [1d, 2d], [2d, 3d], etc.
+The first parameter of the GROUP BY statement above is the time interval for dividing the time axis. Taking this parameter (1h) as time interval and the default origin as the dividing origin, the time axis is divided into several continuous intervals, which are [0,1h], [1h, 2h], [2h, 3h], etc.
 
-The second parameter of the GROUP BY statement above is the display window paramter, which determines the final display range is [2017-11-03T00:00:00, 2017-11-03T23:00:00].
+The second parameter of the GROUP BY statement above is the display window parameter, which determines the final display range is [2017-11-03T00:00:00, 2017-11-03T23:00:00].
 
-Then the system will use the time and value filtering condition in the WHERE clause and the second parameter of the GROUP BY statement as the data filtering condition to obtain the data satisfying the filtering condition (which in this case is the data in the range of (2017-11-03T06:00:00, 2017-11-03T23:00:00] and satisfying root.ln.wf01.wt01.temperature > 20), and map these data to the previously segmented time axis (in this case there are mapped data in every 1-day period from 2017-11-03T00:06:00 to 2017-11-03T23:00:00).
+Then the system will use the time and value filtering condition in the WHERE clause and the second parameter of the GROUP BY statement as the data filtering condition to obtain the data satisfying the filtering condition (which in this case is the data in the range of (2017-11-03T06:00:00, 2017-11-03T23:00:00] and satisfying root.ln.wf01.wt01.temperature > 20), and map these data to the previously segmented time axis (in this case there are mapped data in every 1-hour period from 2017-11-03T00:06:00 to 2017-11-03T23:00:00).
 
-Since there is  no data in the result range [2017-11-03T00:00:00, 2017-11-03T00:06:00], the aggregation results of this segment will be null. There is data in all other time periods in the result range to be displayed. The execution result of the SQL statement is shown below:
+Since there is no data in the result range [2017-11-03T00:00:00, 2017-11-03T00:06:00], the aggregation results of this segment will be null. There is data in all other time periods in the result range to be displayed. The execution result of the SQL statement is shown below:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577582-441bbc80-1ef5-11e9-8b54-3ad1f586bbc4.jpg"></center>
 

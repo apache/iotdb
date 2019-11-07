@@ -16,15 +16,15 @@
   * specific language governing permissions and limitations
   * under the License.
   */
-package org.apache.iotdb.sparkdb
+package org.apache.iotdb.spark.db
 
-import org.apache.spark.{Partition, SparkContext, TaskContext}
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.sources._
 import java.sql.{Connection, DriverManager, ResultSet, Statement}
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
+import org.apache.spark.{Partition, SparkContext, TaskContext}
 
 
 //IoTDB data partition
