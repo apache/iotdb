@@ -52,6 +52,20 @@ public class HDFSConfUtil {
       }
     }
 
+    // Kerberos configuration
+    if(tsFileConfig.isUseKerberos()){
+      conf.set("hadoop.security.authorization", "true");
+      conf.set("hadoop.security.authentication", "kerberos");
+      conf.set("dfs.block.access.token.enable", "true");
+
+      conf.set("dfs.namenode.kerberos.principal", tsFileConfig.getKerberosPrincipal());
+      conf.set("dfs.namenode.keytab.file", tsFileConfig.getKerberosKeytabFilePath());
+      conf.set("dfs.secondary.namenode.kerberos.principal", tsFileConfig.getKerberosPrincipal());
+      conf.set("dfs.secondary.namenode.keytab.file", tsFileConfig.getKerberosKeytabFilePath());
+      conf.set("dfs.datanode.kerberos.principal", tsFileConfig.getKerberosPrincipal());
+      conf.set("dfs.datanode.keytab.file", tsFileConfig.getKerberosKeytabFilePath());
+    }
+
     return conf;
   }
 }
