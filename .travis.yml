@@ -35,6 +35,7 @@ matrix:
         - java -version
         - mvn -version
         - mvn -B apache-rat:check
+        # set travis timeout limit to 60m
         - travis_wait 60 mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
     - os: osx
       osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
@@ -53,6 +54,7 @@ matrix:
         - java -version
         - mvn -version
         - mvn -B apache-rat:check
+        # set travis timeout limit to 60m
         - travis_wait 60 mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
     - os: osx
       osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
@@ -123,6 +125,7 @@ matrix:
       script:
         - java -version
         - mvn -version
+        # set travis timeout limit to 60m
         - travis_wait 60 mvn -B clean integration-test
 
     - os: linux
@@ -137,6 +140,7 @@ matrix:
         - export PATH=$JAVA_HOME/bin:$PATH
       script:
         - java -version
+        # set travis timeout limit to 60m
         - travis_wait 60 mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
     - os: linux
       name: linux-openjdk8
@@ -172,6 +176,6 @@ install: true
 script:
   - java -version
   - ./mvnw.sh -B -ntp apache-rat:check
-  - travis_wait 60 ./mvnw.sh -B -ntp clean integration-test
+  - ./mvnw.sh -B -ntp clean integration-test
 
 after_success:
