@@ -16,21 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception;
 
-public class ArgsErrorException extends Exception {
+package org.apache.iotdb.db.exception.storageGroup;
 
-  private static final long serialVersionUID = -3614543017182165265L;
+import org.apache.iotdb.db.exception.ProcessException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public ArgsErrorException(String msg) {
-    super(msg);
-  }
+public class StorageGroupException extends ProcessException {
 
-  public ArgsErrorException(String message, Throwable cause) {
-    super(message, cause);
-  }
+  private static final long serialVersionUID = 7082567513626836322L;
 
-  public ArgsErrorException(Throwable cause) {
-    super(cause);
+  public StorageGroupException(String message) {
+    super(message);
+    errorCode = TSStatusCode.STORAGE_GROUP_ERROR.getStatusCode();
   }
 }

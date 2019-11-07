@@ -26,10 +26,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -41,8 +41,8 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.dataset.DeviceIterateDataSet;
+import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.executor.IEngineQueryRouter;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -60,17 +60,15 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
 
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
-      throws IOException, StorageEngineException, PathErrorException,
-      QueryFilterOptimizationException, ProcessorException {
-
+      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException {
     if (queryPlan instanceof QueryPlan) {
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof AuthorPlan) {
       return processAuthorQuery((AuthorPlan) queryPlan, context);
-    } else if(queryPlan instanceof ShowTTLPlan) {
+    } else if (queryPlan instanceof ShowTTLPlan) {
       return processShowTTLQuery((ShowTTLPlan) queryPlan);
     } else {
-      throw new ProcessorException(String.format("Unrecognized query plan %s", queryPlan));
+      throw new QueryProcessException(String.format("Unrecognized query plan %s", queryPlan));
     }
   }
 
@@ -111,11 +109,10 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   }
 
   protected abstract QueryDataSet processAuthorQuery(AuthorPlan plan, QueryContext context)
-      throws ProcessorException;
+      throws QueryProcessException;
 
   private QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
-      throws StorageEngineException, QueryFilterOptimizationException, PathErrorException,
-      ProcessorException, IOException {
+      throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException, UnSupportedFillTypeException {
     if (queryPlan.isGroupByDevice()) {
       return new DeviceIterateDataSet(queryPlan, context, queryRouter);
     }
@@ -159,13 +156,13 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
    */
   private void deduplicate(List<Path> paths, List<String> aggregations,
       List<Path> deduplicatedPaths,
-      List<String> deduplicatedAggregations) throws ProcessorException {
+      List<String> deduplicatedAggregations) throws QueryProcessException {
     if (paths == null || aggregations == null || deduplicatedPaths == null
         || deduplicatedAggregations == null) {
-      throw new ProcessorException("Parameters should not be null.");
+      throw new QueryProcessException("Parameters should not be null.");
     }
     if (paths.size() != aggregations.size()) {
-      throw new ProcessorException(
+      throw new QueryProcessException(
           "The size of the path list does not equal that of the aggregation list.");
     }
     Set<String> columnSet = new HashSet<>();
@@ -183,9 +180,9 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
    * Note that the deduplication strategy must be consistent with that of IoTDBQueryResultSet.
    */
   private void deduplicate(List<Path> paths, List<Path> deduplicatedPaths)
-      throws ProcessorException {
+      throws QueryProcessException {
     if (paths == null || deduplicatedPaths == null) {
-      throw new ProcessorException("Parameters should not be null.");
+      throw new QueryProcessException("Parameters should not be null.");
     }
     Set<String> columnSet = new HashSet<>();
     for (Path path : paths) {
@@ -198,7 +195,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   }
 
   @Override
-  public void delete(DeletePlan deletePlan) throws ProcessorException {
+  public void delete(DeletePlan deletePlan) throws QueryProcessException {
     try {
       MManager mManager = MManager.getInstance();
       Set<String> existingPaths = new HashSet<>();
@@ -206,21 +203,20 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
         existingPaths.addAll(mManager.getPaths(p.getFullPath()));
       }
       if (existingPaths.isEmpty()) {
-        throw new ProcessorException("TimeSeries does not exist and its data cannot be deleted");
+        throw new QueryProcessException(
+            "TimeSeries does not exist and its data cannot be deleted");
       }
       for (String onePath : existingPaths) {
         if (!mManager.pathExist(onePath)) {
-          throw new ProcessorException(
-              String
-                  .format("TimeSeries %s does not exist and its data cannot be deleted", onePath));
+          throw new QueryProcessException(String
+              .format("TimeSeries %s does not exist and its data cannot be deleted", onePath));
         }
       }
       for (String path : existingPaths) {
         delete(new Path(path), deletePlan.getDeleteTime());
       }
-    } catch (MetadataErrorException e) {
-      throw new ProcessorException(e);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
     }
   }
-
 }

@@ -16,25 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception;
 
-/**
- * If query metadata constructs schema but passes illegal parameters to EncodingConvertor or
- * DataTypeConvertor,this exception will be threw.
- */
-public class MetadataErrorException extends Exception {
+package org.apache.iotdb.db.exception.runtime;
 
-  private static final long serialVersionUID = 3415275599091623570L;
+public class StorageEngineFailureException extends RuntimeException {
 
-  public MetadataErrorException(String msg) {
-    super(msg);
+  private static final long serialVersionUID = -1197701024139022020L;
+
+  public StorageEngineFailureException(Throwable e) {
+    super("Create system directory failed! " + e.getMessage());
   }
 
-  public MetadataErrorException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public MetadataErrorException(Throwable cause) {
-    super(cause);
+  public StorageEngineFailureException(String message, Throwable e) {
+    super(message + e.getMessage());
   }
 }

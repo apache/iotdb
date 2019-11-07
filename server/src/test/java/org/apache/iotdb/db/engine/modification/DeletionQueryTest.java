@@ -27,12 +27,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.MetadataException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupException;
+import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
@@ -50,7 +50,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class  DeletionQueryTest {
+public class DeletionQueryTest {
 
   private String processorName = "root.test";
 
@@ -66,8 +66,8 @@ public class  DeletionQueryTest {
   }
 
   @Before
-  public void setup() throws MetadataErrorException,
-      PathErrorException, IOException, StorageEngineException, StartupException, StorageGroupException {
+  public void setup() throws MetadataException,
+      PathException, IOException, StorageEngineException, StartupException, StorageGroupException {
     EnvironmentUtils.envSetUp();
 
     MManager.getInstance().setStorageGroupToMTree(processorName);
@@ -76,7 +76,8 @@ public class  DeletionQueryTest {
           encoding);
       StorageEngine.getInstance()
           .addTimeSeries(new Path(processorName, measurements[i]), TSDataType.valueOf(dataType),
-              TSEncoding.valueOf(encoding), CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
+              TSEncoding.valueOf(encoding),
+              CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
               Collections.emptyMap());
     }
   }
@@ -88,7 +89,7 @@ public class  DeletionQueryTest {
 
   @Test
   public void testDeleteInBufferWriteCache() throws
-      StorageEngineException, IOException, ProcessorException {
+      StorageEngineException, IOException, QueryProcessException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -121,7 +122,7 @@ public class  DeletionQueryTest {
 
   @Test
   public void testDeleteInBufferWriteFile()
-      throws StorageEngineException, IOException, ProcessorException {
+      throws StorageEngineException, IOException, QueryProcessException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
@@ -153,7 +154,7 @@ public class  DeletionQueryTest {
 
   @Test
   public void testDeleteInOverflowCache()
-      throws StorageEngineException, IOException, ProcessorException {
+      throws StorageEngineException, IOException, QueryProcessException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -196,7 +197,7 @@ public class  DeletionQueryTest {
 
   @Test
   public void testDeleteInOverflowFile()
-      throws StorageEngineException, IOException, ProcessorException {
+      throws StorageEngineException, IOException, QueryProcessException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -239,7 +240,7 @@ public class  DeletionQueryTest {
 
   @Test
   public void testSuccessiveDeletion()
-      throws StorageEngineException, IOException, ProcessorException {
+      throws StorageEngineException, IOException, QueryProcessException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {

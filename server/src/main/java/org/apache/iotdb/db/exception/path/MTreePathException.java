@@ -16,29 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception;
 
-public class StorageGroupProcessorException extends ProcessorException {
+package org.apache.iotdb.db.exception.path;
 
-  private static final long serialVersionUID = 7373978140952977661L;
+public class MTreePathException extends PathException {
 
-  public StorageGroupProcessorException() {
-    super();
+
+  private static final long serialVersionUID = 5633901351119088504L;
+
+  public MTreePathException(String error, String path) {
+    super(String.format("%s [%s] is not correct. ", error, path));
   }
 
-  public StorageGroupProcessorException(PathErrorException pathExcp) {
-    super(pathExcp.getMessage());
+  public MTreePathException(String timeseriesPath, String error, String message) {
+    super(String.format("Timeseries [%s] %s. %s", timeseriesPath, error, message));
   }
 
-  public StorageGroupProcessorException(String msg) {
-    super(msg);
-  }
-
-  public StorageGroupProcessorException(Throwable throwable) {
-    super(throwable);
-  }
-
-  public StorageGroupProcessorException(String msg, Throwable e) {
-    super(msg, e);
+  public MTreePathException(String message) {
+    super(message);
   }
 }

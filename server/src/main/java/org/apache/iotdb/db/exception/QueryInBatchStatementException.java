@@ -16,24 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.qp;
 
-/**
- * This exception is thrown while meeting error in parsing ast tree to generate logical operator.
- */
-public class IllegalASTFormatException extends QueryProcessorException {
+package org.apache.iotdb.db.exception;
 
-  private static final long serialVersionUID = -8987915911329315588L;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public IllegalASTFormatException(String msg) {
-    super(msg);
-  }
+public class QueryInBatchStatementException extends ProcessException {
 
-  public IllegalASTFormatException(Throwable e) {
-    super(e);
-  }
+  private static final long serialVersionUID = 204423954433950490L;
 
-  public IllegalASTFormatException(String message, Throwable cause) {
-    super(message, cause);
+  public QueryInBatchStatementException(String statement) {
+    super(String.format("Query statement not allowed in batch: [%s]", statement));
+    errorCode = TSStatusCode.QUERY_NOT_ALLOWED.getStatusCode();
   }
 }

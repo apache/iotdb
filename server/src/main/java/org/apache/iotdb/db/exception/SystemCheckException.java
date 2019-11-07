@@ -15,14 +15,18 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
 
 package org.apache.iotdb.db.exception;
 
-public class NotStorageGroupException extends PathErrorException {
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public NotStorageGroupException(String path) {
-    super(String.format("%s is not a storage group", path));
+public class SystemCheckException extends ProcessException {
+
+  private static final long serialVersionUID = 3845398095925149972L;
+
+  public SystemCheckException(String walFolder) {
+    super(String.format("[%s] is not a directory", walFolder));
+    errorCode = TSStatusCode.SYNC_CHECK_ERROR.getStatusCode();
   }
 }

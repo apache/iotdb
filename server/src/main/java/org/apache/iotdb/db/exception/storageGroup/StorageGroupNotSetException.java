@@ -16,16 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.exception;
 
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+package org.apache.iotdb.db.exception.storageGroup;
 
-public class DateTimeFormatException extends QueryProcessorException {
+public class StorageGroupNotSetException extends StorageGroupException {
 
-  private static final long serialVersionUID = 5901175084493972130L;
+  private static final long serialVersionUID = 3739300272099030533L;
 
-  public DateTimeFormatException(String msg) {
-    super(msg);
+  public StorageGroupNotSetException(String path) {
+    super(String.format("Storage group is not set for current seriesPath: [%s]", path));
   }
-
 }

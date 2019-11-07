@@ -16,25 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.qp;
+package org.apache.iotdb.db.exception;
+
+import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
- * This exception is the basic exception of query process. It's thrown when meeting any error in
- * query process.
+ * If query metadata constructs schema but passes illegal parameters to EncodingConvertor or
+ * DataTypeConvertor,this exception will be threw.
  */
-public class QueryProcessorException extends Exception {
+public class MetadataException extends ProcessException {
 
-  private static final long serialVersionUID = -8987915921329335088L;
+  private static final long serialVersionUID = 3415275599091623570L;
 
-  public QueryProcessorException(String msg) {
+  public MetadataException(String msg) {
     super(msg);
+    errorCode = TSStatusCode.METADATA_ERROR.getStatusCode();
   }
 
-  public QueryProcessorException(Throwable e) {
-    super(e);
+  public MetadataException(String message, Throwable cause) {
+    super(message + cause.getMessage());
+    errorCode = TSStatusCode.METADATA_ERROR.getStatusCode();
   }
 
-  public QueryProcessorException(String message, Throwable cause) {
-    super(message, cause);
+  public MetadataException(ProcessException exception) {
+    super(exception.getMessage());
+    this.errorCode = exception.getErrorCode();
   }
 }

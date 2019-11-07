@@ -21,9 +21,9 @@ package org.apache.iotdb.db.metadata;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.StorageGroupException;
+import org.apache.iotdb.db.exception.MetadataException;
+import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -80,7 +80,7 @@ public class MetadataTest {
 
       Metadata combineMetadata = Metadata.combineMetadatas(new Metadata[]{metadata1, metadata2});
       assertTrue(metadata.equals(combineMetadata));
-    } catch (PathErrorException | IOException | MetadataErrorException | StorageGroupException e) {
+    } catch (PathException | IOException | MetadataException | StorageGroupException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

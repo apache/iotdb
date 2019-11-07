@@ -37,7 +37,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
+import org.apache.iotdb.db.exception.MetadataException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -66,7 +66,7 @@ public class SyncReceiverLogAnalyzerTest {
 
   @Before
   public void setUp()
-      throws IOException, InterruptedException, StartupException, DiskSpaceInsufficientException, MetadataErrorException {
+      throws IOException, InterruptedException, StartupException, DiskSpaceInsufficientException, MetadataException {
     EnvironmentUtils.closeStatMonitor();
     daemon = IoTDB.getInstance();
     daemon.active();
@@ -77,7 +77,7 @@ public class SyncReceiverLogAnalyzerTest {
     initMetadata();
   }
 
-  private void initMetadata() throws MetadataErrorException {
+  private void initMetadata() throws MetadataException {
     MManager mmanager = MManager.getInstance();
     mmanager.init();
     mmanager.clear();

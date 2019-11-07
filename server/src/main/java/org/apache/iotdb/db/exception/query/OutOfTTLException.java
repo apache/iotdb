@@ -15,24 +15,21 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.query;
 
-public class FlushRunTimeException extends RuntimeException {
+import java.util.Date;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public FlushRunTimeException() {
-  }
+public class OutOfTTLException extends QueryProcessException {
 
-  public FlushRunTimeException(String message) {
-    super(message);
-  }
+  private static final long serialVersionUID = -1197147887094603300L;
 
-  public FlushRunTimeException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public FlushRunTimeException(Throwable cause) {
-    super(cause);
+  public OutOfTTLException(long insertionTime, long timeLowerBound) {
+    super(String.format("Insertion time [%s] is less than ttl time bound [%s]",
+        new Date(insertionTime), new Date(timeLowerBound)));
+    errorCode = TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode();
   }
 }

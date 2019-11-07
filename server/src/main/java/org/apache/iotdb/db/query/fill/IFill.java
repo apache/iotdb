@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.fill;
 
 import java.io.IOException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
@@ -56,7 +57,7 @@ public abstract class IFill {
     allDataReader = new SeriesReaderWithoutValueFilter(path, timeFilter, context);
   }
 
-  public abstract IPointReader getFillResult() throws IOException;
+  public abstract IPointReader getFillResult() throws IOException, UnSupportedFillTypeException;
 
   public TSDataType getDataType() {
     return this.dataType;

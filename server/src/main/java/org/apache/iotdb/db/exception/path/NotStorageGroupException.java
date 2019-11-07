@@ -18,15 +18,16 @@
  *
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.path;
 
-import java.util.Date;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public class OutOfTTLException extends QueryProcessorException {
+public class NotStorageGroupException extends PathException {
 
-  public OutOfTTLException(long insertionTime, long timeLowerBound) {
-    super(String.format("Insertion time [%s] is less than ttl time bound [%s]",
-        new Date(insertionTime), new Date(timeLowerBound)));
+  private static final long serialVersionUID = 2693272249167539978L;
+
+  public NotStorageGroupException(String path) {
+    super(String.format("[%s] is not a storage group", path));
+    errorCode = TSStatusCode.NOT_STORAGE_GROUP_ERROR.getStatusCode();
   }
 }

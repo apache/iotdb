@@ -17,22 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.runtime;
 
-public class QueryInBatchStmtException extends Exception {
+public class FlushRunTimeException extends RuntimeException {
 
-  public QueryInBatchStmtException() {
-  }
+  private static final long serialVersionUID = 2249517655460110259L;
 
-  public QueryInBatchStmtException(String message) {
-    super(message);
-  }
-
-  public QueryInBatchStmtException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public QueryInBatchStmtException(Throwable cause) {
-    super(cause);
+  public FlushRunTimeException(Exception exception) {
+    super(exception);
   }
 }

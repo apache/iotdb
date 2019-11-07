@@ -22,15 +22,15 @@ import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.StorageGroupException;
+import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.utils.RandomNum;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.RandomNum;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -65,7 +65,7 @@ public class FileNodeManagerBenchmark {
   }
 
   private static void prepare()
-      throws MetadataErrorException, PathErrorException, IOException, StorageGroupException {
+      throws MetadataException, PathException, IOException, StorageGroupException {
     MManager manager = MManager.getInstance();
     manager.setStorageGroupToMTree(prefix);
     for (String device : devices) {
@@ -81,8 +81,8 @@ public class FileNodeManagerBenchmark {
   }
 
   public static void main(String[] args)
-      throws InterruptedException, IOException, MetadataErrorException,
-      PathErrorException, StorageEngineException, StorageGroupException {
+      throws InterruptedException, IOException, MetadataException,
+      PathException, StorageEngineException, StorageGroupException {
     tearDown();
     prepare();
     long startTime = System.currentTimeMillis();
@@ -119,7 +119,7 @@ public class FileNodeManagerBenchmark {
           TSRecord tsRecord = getRecord(deltaObject, time);
           StorageEngine.getInstance().insert(new InsertPlan(tsRecord));
         }
-      } catch (ProcessorException e) {
+      } catch (QueryProcessException | StorageEngineException e) {
         e.printStackTrace();
       } finally {
         latch.countDown();

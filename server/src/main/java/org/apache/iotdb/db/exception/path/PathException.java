@@ -16,32 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.path;
 
-/**
- * Processor Exception, the top-level exception in IoTDB.
- */
-public class ProcessorException extends Exception {
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  private static final long serialVersionUID = 4137638418544201605L;
+public class PathException extends QueryProcessException {
 
-  public ProcessorException(String msg) {
-    super(msg);
+  private static final long serialVersionUID = 2141197032898163234L;
+
+  public PathException() {
+    super("Timeseries is null");
+    errorCode = TSStatusCode.PATH_ERROR.getStatusCode();
   }
 
-  public ProcessorException(Throwable e) {
-    super(e);
-  }
-
-  public ProcessorException(Exception e) {
-    super(e);
-  }
-
-  public ProcessorException() {
-    super();
-  }
-
-  public ProcessorException(String msg, Throwable e) {
-    super(msg, e);
+  public PathException(String message) {
+    super(message);
+    errorCode = TSStatusCode.PATH_ERROR.getStatusCode();
   }
 }

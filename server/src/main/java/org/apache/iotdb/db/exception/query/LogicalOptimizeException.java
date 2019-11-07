@@ -16,23 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.exception.query;
 
-package org.apache.iotdb.db.exception;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public class SysCheckException extends Exception {
+/**
+ * This exception is thrown while meeting error in optimizing logical operator.
+ */
+public class LogicalOptimizeException extends LogicalOperatorException {
 
-  public SysCheckException() {
-  }
+  private static final long serialVersionUID = -7098092782689670064L;
 
-  public SysCheckException(String message) {
+  public LogicalOptimizeException(String message) {
     super(message);
+    errorCode = TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode();
   }
 
-  public SysCheckException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public SysCheckException(Throwable cause) {
-    super(cause);
+  public LogicalOptimizeException(String filterOperator, int tokenInt) {
+    super(String.format("Unknown token in [%s]: [%s], [%s].", filterOperator, tokenInt,
+        SQLConstant.tokenNames.get(tokenInt)));
+    errorCode = TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode();
   }
 }

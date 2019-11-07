@@ -54,8 +54,7 @@ public abstract class DirectoryStrategy {
       }
     }
     if (!hasSpace) {
-      throw new DiskSpaceInsufficientException(
-          String.format("All disks of folders %s are full, can't init.", folders));
+      throw new DiskSpaceInsufficientException(folders);
     }
   }
 

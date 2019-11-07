@@ -23,10 +23,8 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Arrays;
 import java.util.Collection;
-import org.apache.iotdb.db.exception.ArgsErrorException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator.PropertyType;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
@@ -83,8 +81,7 @@ public class TSPlanContextPropertyTest {
 
   @Test
   public void testAnalyzeMetadata()
-      throws QueryProcessorException, ArgsErrorException, ProcessorException,
-      MetadataErrorException {
+      throws QueryProcessException, MetadataException {
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     PropertyPlan plan = (PropertyPlan) processor.parseSQLToPhysicalPlan(inputSQL);
     assertEquals(propertyType, plan.getPropertyType());

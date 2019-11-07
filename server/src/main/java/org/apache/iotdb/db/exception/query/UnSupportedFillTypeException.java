@@ -16,19 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.query;
 
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class PathErrorException extends QueryProcessorException {
+public class UnSupportedFillTypeException extends QueryProcessException {
 
-  private static final long serialVersionUID = 2141197032898163234L;
+  private static final long serialVersionUID = 2166251102397630376L;
 
-  public PathErrorException(String msg) {
-    super(msg);
-  }
-
-  public PathErrorException(Throwable e) {
-    super(e);
+  public UnSupportedFillTypeException(TSDataType dataType) {
+    super(String.format("Unsupported linear fill data type: [%s]", dataType.toString()));
+    errorCode = TSStatusCode.UNSUPPORTED_FILL_TYPE_ERROR.getStatusCode();
   }
 }
