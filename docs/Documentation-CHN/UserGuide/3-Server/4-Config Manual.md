@@ -355,3 +355,30 @@
 |类型| String |
 |默认值|org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider |
 |改后生效方式|重启服务器生效|
+
+* hdfs\_use\_kerberos
+
+|名字| hdfs\_use\_kerberos |
+|:---:|:---|
+|描述| 是否使用kerberos验证访问hdfs|
+|类型| String |
+|默认值|false |
+|改后生效方式|重启服务器生效|
+
+* kerberos\_keytab\_file_path
+
+|名字| kerberos\_keytab\_file_path |
+|:---:|:---|
+|描述| kerberos keytab file 的完整路径|
+|类型| String |
+|默认值|/path |
+|改后生效方式|重启服务器生效|
+
+* kerberos\_principal
+
+|名字| kerberos\_principal |
+|:---:|:---|
+|描述| Kerberos 认证原则|
+|类型| String |
+|默认值|your principal |
+|改后生效方式|重启服务器生效|
