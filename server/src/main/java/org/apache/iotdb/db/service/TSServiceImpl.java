@@ -56,7 +56,6 @@ import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.exception.MetadataException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.path.NotStorageGroupException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
@@ -1386,15 +1385,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     boolean execRet;
     try {
       execRet = executeNonQuery(plan);
-    } catch (NotStorageGroupException e) {
-      return getStatus(TSStatusCode.NOT_STORAGE_GROUP_ERROR, e.getMessage());
     } catch (QueryProcessException e) {
       logger.debug("meet error while processing non-query. ", e);
-      if (e.getMessage().contains("exist") || e.getMessage().contains("measurement")) {
-        return getStatus(TSStatusCode.TIMESERIES_NOT_EXIST_ERROR, e.getMessage());
-      } else {
-        return getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
-      }
+      return new TSStatus(new TSStatusType(e.getErrorCode(), e.getMessage()));
     }
 
     return execRet ? getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")

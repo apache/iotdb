@@ -23,6 +23,8 @@ import org.apache.iotdb.db.exception.ProcessException;
 
 public class QueryProcessException extends ProcessException {
 
+  private static final long serialVersionUID = -683191083844850054L;
+
   public QueryProcessException(String message) {
     super(message);
   }

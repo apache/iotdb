@@ -219,7 +219,7 @@ public class StorageEngine implements IService {
     try {
       storageGroupProcessor.insert(insertPlan);
     } catch (QueryProcessException e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new QueryProcessException(e);
     }
   }
 
