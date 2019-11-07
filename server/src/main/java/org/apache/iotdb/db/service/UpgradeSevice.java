@@ -63,6 +63,7 @@ public class UpgradeSevice implements IService {
 
   @Override
   public void stop() {
+    UpgradeLog.closeLogWriter();
     if (upgradeThreadPool != null) {
       upgradeThreadPool.shutdownNow();
       logger.info("Waiting for upgrade task pool to shut down");

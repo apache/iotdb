@@ -24,22 +24,23 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class UpgradeTool {
-
-  private static final Logger logger = LoggerFactory.getLogger(UpgradeTool.class);
 
   /**
    * upgrade all tsfiles in the specific dir
    *
    * @param dir tsfile dir which needs to be upgraded
    * @param upgradeDir tsfile dir after upgraded
+   * @param threadNum num of threads that perform offline upgrade tasks
    */
-  public static void updateTsfiles(String dir, String upgradeDir) throws IOException {
+  public static void upgradeTsfiles(String dir, String upgradeDir, int threadNum)
+      throws IOException {
     //Traverse to find all tsfiles
     File file = FSFactoryProducer.getFSFactory().getFile(dir);
     Queue<File> tmp = new LinkedList<>();
@@ -56,9 +57,11 @@ public class UpgradeTool {
             if (file2.getName().endsWith(".tsfile")) {
               tsfiles.add(file2.getAbsolutePath());
             }
-            if (file2.getName().endsWith(".resource")){
-              File newFileName = FSFactoryProducer.getFSFactory().getFile(file2.getAbsoluteFile().toString().replace(dir, upgradeDir));
-              if (!newFileName.getParentFile().exists()){
+            // copy all the resource files to the upgradeDir
+            if (file2.getName().endsWith(".resource")) {
+              File newFileName = FSFactoryProducer.getFSFactory()
+                  .getFile(file2.getAbsoluteFile().toString().replace(dir, upgradeDir));
+              if (!newFileName.getParentFile().exists()) {
                 newFileName.getParentFile().mkdirs();
               }
               newFileName.createNewFile();
@@ -68,10 +71,27 @@ public class UpgradeTool {
         }
       }
     }
+    // begin upgrade tsfiles
+    System.out.println(String.format(
+        "begin upgrade the data dir:%s, the total num of the tsfiles that need to be upgraded:%s",
+        dir, tsfiles.size()));
+    AtomicInteger dirUpgradeFileNum = new AtomicInteger(tsfiles.size());
+    ExecutorService offlineUpgradeThreadPool = Executors.newFixedThreadPool(threadNum);
     //for every tsfile，do upgrade operation
     for (String tsfile : tsfiles) {
-      upgradeOneTsfile(tsfile, tsfile.replace(dir, upgradeDir));
+      offlineUpgradeThreadPool.submit(() -> {
+        try {
+          upgradeOneTsfile(tsfile, tsfile.replace(dir, upgradeDir));
+          System.out.println(
+              String.format("upgrade file success, file name:%s, remaining file num:%s", tsfile,
+                  dirUpgradeFileNum.decrementAndGet()));
+        } catch (Exception e) {
+          System.out.println(String.format("meet error when upgrade file:%s", tsfile));
+          e.printStackTrace();
+        }
+      });
     }
+    offlineUpgradeThreadPool.shutdown();
   }
 
   /**
@@ -85,13 +105,4 @@ public class UpgradeTool {
     updater.upgradeFile(updateFileName);
   }
 
-  public static void main(String[] args) throws IOException {
-    List<String> oldVersionTsfileDirs = new ArrayList<>();
-    List<String> newVersionTsfileDirs = new ArrayList<>();
-    oldVersionTsfileDirs.add("/Users/tianyu/incubator-iotdb/data/data/sequence/root.group_10");
-    newVersionTsfileDirs.add("/Users/tianyu/incubator-iotdb/data/data/sequence/root.group_8");
-    for (int i = 0; i < oldVersionTsfileDirs.size(); i++) {
-      updateTsfiles(oldVersionTsfileDirs.get(i), newVersionTsfileDirs.get(i));
-    }
-  }
 }
