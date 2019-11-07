@@ -71,8 +71,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.*;
@@ -95,9 +93,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   protected ThreadLocal<String> username = new ThreadLocal<>();
 
   // The statementId is unique in one session for each statement.
-  private ThreadLocal<AtomicLong> statementIdGenerator = new ThreadLocal<>();
+  private ThreadLocal<Long> statementIdGenerator = new ThreadLocal<>();
   // The queryId is unique in one session for each operation.
-  private ThreadLocal<AtomicLong> queryIdGenerator = new ThreadLocal<>();
+  private ThreadLocal<Long> queryIdGenerator = new ThreadLocal<>();
   // (statement -> Set(queryId))
   private ThreadLocal<Map<Long, Set<Long>>> statementId2QueryId = new ThreadLocal<>();
   // (queryId -> PhysicalPlan)
@@ -151,12 +149,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private void initForOneSession() {
-    operationStatus.set(new ConcurrentHashMap<>());
-    queryDataSets.set(new ConcurrentHashMap<>());
-    queryIdGenerator.set(new AtomicLong(0L));
-    statementIdGenerator.set(new AtomicLong(0L));
-    contextMapLocal.set(new ConcurrentHashMap<>());
-    statementId2QueryId.set(new ConcurrentHashMap<>());
+    operationStatus.set(new HashMap<>());
+    queryDataSets.set(new HashMap<>());
+    queryIdGenerator.set(0L);
+    statementIdGenerator.set(0L);
+    contextMapLocal.set(new HashMap<>());
+    statementId2QueryId.set(new HashMap<>());
   }
 
   @Override
@@ -671,7 +669,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       } // else default ignoreTimeStamp is false
       resp.setOperationType(plan.getOperatorType().toString());
       // generate the queryId for the operation
-      long queryId = queryIdGenerator.get().getAndIncrement();
+      long queryId = generateQueryId();
       // put it into the corresponding Set
       Set<Long> queryIdSet = statementId2QueryId.get().computeIfAbsent(statementId, k -> new HashSet<>());
       queryIdSet.add(queryId);
@@ -983,9 +981,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     status = executePlan(plan);
     TSExecuteStatementResp resp = getTSExecuteStatementResp(status);
+    long queryId = generateQueryId();
     TSHandleIdentifier operationId = new TSHandleIdentifier(
         ByteBuffer.wrap(username.get().getBytes()),
-        ByteBuffer.wrap("PASS".getBytes()), queryIdGenerator.get().getAndIncrement());
+        ByteBuffer.wrap("PASS".getBytes()), queryId);
     TSOperationHandle operationHandle;
     operationHandle = new TSOperationHandle(operationId, false);
     resp.setOperationHandle(operationHandle);
@@ -1045,7 +1044,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     resp.setStatus(tsStatus);
     TSHandleIdentifier operationId = new TSHandleIdentifier(
         ByteBuffer.wrap(username.get().getBytes()),
-        ByteBuffer.wrap("PASS".getBytes()), queryIdGenerator.get().getAndIncrement());
+        ByteBuffer.wrap("PASS".getBytes()), generateQueryId());
     TSOperationHandle operationHandle = new TSOperationHandle(operationId, false);
     resp.setOperationHandle(operationHandle);
     return resp;
@@ -1307,7 +1306,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public long requestStatementId() {
-    return statementIdGenerator.get().incrementAndGet();
+    long statementId = statementIdGenerator.get();
+    statementIdGenerator.set(statementId+1);
+    return statementId;
   }
 
   private TSStatus checkAuthority(PhysicalPlan plan) {
@@ -1343,6 +1344,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     return execRet ? getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
         : getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
+  }
+
+  private long generateQueryId() {
+    long queryId = queryIdGenerator.get();
+    queryIdGenerator.set(queryId+1);
+    return queryId;
   }
 }
 
