@@ -662,15 +662,16 @@ public class TsFileSequenceReader implements AutoCloseable {
             // the disk file is corrupted, using this file may be dangerous
             MetaMarker.handleUnexpectedMarker(marker);
             goon = false;
-            logger.error("Unrecognized marker detected, this file may be corrupted");
+            logger.error(String
+                .format("Unrecognized marker detected, this file {%s} may be corrupted", file));
         }
       }
       // now we read the tail of the data section, so we are sure that the last ChunkGroupFooter is
       // complete.
       truncatedPosition = this.position() - 1;
-    } catch (IOException e2) {
-      logger.info("TsFile self-check cannot proceed at position {} after {} chunk groups "
-          + "recovered, because : {}", this.position(), newMetaData.size(), e2.getMessage());
+    } catch (Exception e2) {
+      logger.info("TsFile {} self-check cannot proceed at position {} after {} chunk groups "
+          + "recovered, because : {}", file, this.position(), newMetaData.size(), e2.getMessage());
     }
     // Despite the completeness of the data section, we will discard current FileMetadata
     // so that we can continue to write data into this tsfile.
