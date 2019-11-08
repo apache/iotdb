@@ -16,20 +16,27 @@
   * specific language governing permissions and limitations
   * under the License.
   */
-package org.apache.iotdb.sparkdb
+package org.apache.iotdb.spark.db
 
-import org.apache.spark.sql.{DataFrame, DataFrameReader}
+import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.sources.{BaseRelation, DataSourceRegister, RelationProvider}
+import org.slf4j.LoggerFactory
 
-package object sparkdb {
+private[iotdb] class DefaultSource extends RelationProvider with DataSourceRegister {
+  private final val logger = LoggerFactory.getLogger(classOf[DefaultSource])
 
-  val myPackage = "org.apache.iotdb.sparkdb"
+  override def shortName(): String = "tsfile"
 
-  /**
-    * Adds a method, `iotdb`, to DataFrameReader that allows you to read data from IoTDB using
-    * the DataFileReade
-    */
-  implicit class IoTDBDataFrameReader(reader: DataFrameReader) {
-    def iotdb: (Map[String, String]) => DataFrame = reader.format(myPackage).options(_).load()
+  override def createRelation(
+                               sqlContext: SQLContext,
+                               parameters: Map[String, String]): BaseRelation = {
+
+    val iotdbOptions = new IoTDBOptions(parameters)
+
+    if (iotdbOptions.url == null || iotdbOptions.sql == null) {
+      sys.error("IoTDB url or sql not specified")
+    }
+    new IoTDBRelation(iotdbOptions)(sqlContext.sparkSession)
+
   }
-
 }

@@ -104,6 +104,20 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         } catch (TException e) {
           throw new TException("Connection error when fetching device metadata", e);
         }
+      case Constant.CATALOG_CHILD_PATHS:
+        req = new TSFetchMetadataReq(Constant.GLOBAL_SHOW_CHILD_PATHS_REQ);
+        req.setColumnPath(schemaPattern);
+        try {
+            TSFetchMetadataResp resp = client.fetchMetadata(req);
+          try {
+            RpcUtils.verifySuccess(resp.getStatus());
+          } catch (IoTDBRPCException e) {
+            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
+          }
+          return new IoTDBMetadataResultSet(resp.getChildPaths(), MetadataType.CHILD_PATHS);
+        } catch (TException e) {
+          throw new TException("Connection error when fetching child path metadata", e);
+        }
       case Constant.CATALOG_STORAGE_GROUP:
         req = new TSFetchMetadataReq(Constant.GLOBAL_SHOW_STORAGE_GROUP_REQ);
         try {
@@ -144,6 +158,20 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
           }
           return new IoTDBMetadataResultSet(resp.getTimeseriesNum(), MetadataType.COUNT_TIMESERIES);
+        } catch (TException e) {
+          throw new TException("Connection error when fetching timeseries metadata", e);
+        }
+      case Constant.CATALOG_VERSION:
+        req = new TSFetchMetadataReq(Constant.GLOBAL_VERSION);
+        req.setColumnPath(schemaPattern);
+        try {
+          TSFetchMetadataResp resp = client.fetchMetadata(req);
+          try {
+            RpcUtils.verifySuccess(resp.getStatus());
+          } catch (IoTDBRPCException e) {
+            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
+          }
+          return new IoTDBMetadataResultSet(resp.getVersion(), MetadataType.VERSION);
         } catch (TException e) {
           throw new TException("Connection error when fetching timeseries metadata", e);
         }
@@ -335,8 +363,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public String getDatabaseProductVersion() {
-    return Constant.GLOBAL_DB_VERSION;
+  public String getDatabaseProductVersion() throws SQLException {
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override

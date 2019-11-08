@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.expression.util;
 
-import java.util.List;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
@@ -30,6 +29,8 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+
+import java.util.List;
 
 public class ExpressionOptimizer {
 
@@ -88,9 +89,6 @@ public class ExpressionOptimizer {
           return midRet;
         }
 
-      } else if (left.getType() == ExpressionType.SERIES
-          && right.getType() == ExpressionType.SERIES) {
-        return expression;
       }
     }
     throw new UnsupportedOperationException(

@@ -20,16 +20,22 @@ package org.apache.iotdb.db.engine;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -62,7 +68,7 @@ import org.slf4j.LoggerFactory;
 
 public class StorageEngine implements IService {
 
-  private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
+  private final Logger logger;
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000;
 
@@ -77,6 +83,10 @@ public class StorageEngine implements IService {
    */
   private final ConcurrentHashMap<String, StorageGroupProcessor> processorMap = new ConcurrentHashMap<>();
 
+  private static final ExecutorService recoveryThreadPool = IoTDBThreadPoolFactory
+      .newFixedThreadPool(Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
+  ;
+
   private static final StorageEngine INSTANCE = new StorageEngine();
 
   public static StorageEngine getInstance() {
@@ -86,6 +96,7 @@ public class StorageEngine implements IService {
   private ScheduledExecutorService ttlCheckThread;
 
   private StorageEngine() {
+    logger = LoggerFactory.getLogger(StorageEngine.class);
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
     // create systemDir
     try {
@@ -97,17 +108,23 @@ public class StorageEngine implements IService {
     /*
      * recover all storage group processors.
      */
-    try {
-      List<MNode> sgNodes = MManager.getInstance().getAllStorageGroups();
-      for (MNode storageGroup : sgNodes) {
-        StorageGroupProcessor processor = new StorageGroupProcessor(systemDir, storageGroup.getFullPath());
-        processor.setDataTTL(storageGroup.getDataTTL());
-        logger.info("Storage Group Processor {} is recovered successfully", storageGroup.getFullPath());
-        processorMap.put(storageGroup.getFullPath(), processor);
+    List<MNode> sgNodes = MManager.getInstance().getAllStorageGroups();
+    List<Future> futures = new ArrayList<>();
+    for (MNode storageGroup : sgNodes) {
+      futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
+          StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,storageGroup.getFullPath());
+          processor.setDataTTL(storageGroup.getDataTTL());
+          processorMap.put(storageGroup.getFullPath(), processor);
+          logger.info("Storage Group Processor {} is recovered successfully",storageGroup.getFullPath());
+        return null;
+      }));
+    }
+    for (Future future: futures) {
+      try {
+        future.get();
+      } catch (Exception e) {
+        throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
       }
-    } catch (ProcessorException e) {
-      logger.error("init a storage group processor failed. ", e);
-      throw new StorageEngineFailureException(e);
     }
   }
 
@@ -115,7 +132,7 @@ public class StorageEngine implements IService {
   public void start() {
     ttlCheckThread = Executors.newSingleThreadScheduledExecutor();
     ttlCheckThread.scheduleAtFixedRate(this::checkTTL, TTL_CHECK_INTERVAL, TTL_CHECK_INTERVAL
-    ,TimeUnit.MILLISECONDS);
+        , TimeUnit.MILLISECONDS);
   }
 
   private void checkTTL() {
@@ -134,6 +151,7 @@ public class StorageEngine implements IService {
   public void stop() {
     syncCloseAllProcessor();
     ttlCheckThread.shutdownNow();
+    recoveryThreadPool.shutdownNow();
     try {
       ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
@@ -160,7 +178,8 @@ public class StorageEngine implements IService {
             logger.info("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroupName, Thread.currentThread().getId());
             processor = new StorageGroupProcessor(systemDir, storageGroupName);
-            processor.setDataTTL(MManager.getInstance().getNodeByPathWithCheck(storageGroupName).getDataTTL());
+            processor.setDataTTL(
+                MManager.getInstance().getNodeByPathWithCheck(storageGroupName).getDataTTL());
             processorMap.put(storageGroupName, processor);
           }
         }
@@ -185,9 +204,8 @@ public class StorageEngine implements IService {
    * insert an InsertPlan to a storage group.
    *
    * @param insertPlan physical plan of insertion
-   * @return true if and only if this insertion succeeds
    */
-  public boolean insert(InsertPlan insertPlan) throws ProcessorException {
+  public void insert(InsertPlan insertPlan) throws ProcessorException {
 
     StorageGroupProcessor storageGroupProcessor;
     try {
@@ -201,7 +219,7 @@ public class StorageEngine implements IService {
 
     // TODO monitor: update statistics
     try {
-      return storageGroupProcessor.insert(insertPlan);
+      storageGroupProcessor.insert(insertPlan);
     } catch (QueryProcessorException e) {
       throw new ProcessorException(e);
     }
@@ -209,6 +227,7 @@ public class StorageEngine implements IService {
 
   /**
    * insert a BatchInsertPlan to a storage group
+   *
    * @return result of each row
    */
   public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws StorageEngineException {
@@ -288,7 +307,7 @@ public class StorageEngine implements IService {
    * transmission module</b>
    *
    * @param storageGroupName the seriesPath of storage group
-   * @param appendFile the appended tsfile information
+   * @param appendFile       the appended tsfile information
    */
   @SuppressWarnings("unused") // reimplement sync module
   public boolean appendFileToStorageGroupProcessor(String storageGroupName,
@@ -302,7 +321,7 @@ public class StorageEngine implements IService {
    * get all overlap TsFiles which are conflict with the appendFile.
    *
    * @param storageGroupName the seriesPath of storage group
-   * @param appendFile the appended tsfile information
+   * @param appendFile       the appended tsfile information
    */
   @SuppressWarnings("unused") // reimplement sync module
   public List<String> getOverlapFiles(String storageGroupName, TsFileResource appendFile,
@@ -371,14 +390,15 @@ public class StorageEngine implements IService {
   public void deleteStorageGroup(String storageGroupName) {
     deleteAllDataFilesInOneStorageGroup(storageGroupName);
     StorageGroupProcessor processor = processorMap.remove(storageGroupName);
-    if(processor != null) {
+    if (processor != null) {
       processor.deleteFolder(systemDir);
     }
   }
 
   public void loadNewTsFile(TsFileResource newTsFileResource)
       throws TsFileProcessorException, StorageEngineException {
-    getProcessor(newTsFileResource.getFile().getParentFile().getName()).loadNewTsFile(newTsFileResource);
+    getProcessor(newTsFileResource.getFile().getParentFile().getName())
+        .loadNewTsFile(newTsFileResource);
   }
 
   public void deleteTsfile(File deletedTsfile) throws StorageEngineException {

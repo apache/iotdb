@@ -649,6 +649,33 @@ public class MTree implements Serializable {
     }
     return ret;
   }
+  
+  /**
+   * function for getting child node path in the next level of the given path.
+   *
+   * @return All child nodes' seriesPath(s) of given seriesPath.
+   */
+  Set<String> getChildNodePathInNextLevel(String path) throws PathErrorException {
+    Set<String> ret = new HashSet<>();
+    String[] nodes = MetaUtils.getNodeNames(path, PATH_SEPARATOR);
+    if (!nodes[0].equals(getRoot().getName())) {
+      throw new PathErrorException(String.format(SERIES_NOT_CORRECT, path));
+    }
+    MNode cur = getRoot();
+    for (int i = 1; i < nodes.length; i++) {
+      if (!cur.hasChild(nodes[i])) {
+        throw new PathErrorException("Path: \"" + path + "\" doesn't correspond to any known time series");
+      }
+      cur = cur.getChild(nodes[i]);
+    }
+    if (!cur.hasChildren()) {
+      throw new PathErrorException("Path: \"" + path + "\" doesn't have a child node");
+    }
+    for (MNode child : cur.getChildren().values()) {
+      ret.add(path + "." + child.getName());
+    }
+    return ret;
+  }  
 
   /**
    * function for getting all paths in list.

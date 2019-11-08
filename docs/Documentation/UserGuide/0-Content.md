@@ -30,7 +30,7 @@
 * 3-Scenario
 * 4-Features
 # Chapter 2: Concept
-* 1-Data Modal and Terminology
+* 1-Data Model and Terminology
 * 2-Data Type
 * 3-Encoding
 * 4-Compression
@@ -48,7 +48,7 @@
 * 5-Programming - TsFile API (TimeSeries File Format)
 # Chapter 5: Operation Manual
 * 1-DDL (Data Definition Language)
-* 2-DML (Data Manipulation Languange)
+* 2-DML (Data Manipulation Language)
 * 3-Account Management Statements
 * 4-SQL Reference
 # Chapter 6: System Tools
@@ -64,7 +64,7 @@
 * 2-TsFile Hadoop Connector
 * 3-TsFile Spark Connector
 * 4-Spark IoTDB Connector
-* 5-Tsfile Hive Connector
+* 5-TsFile Hive Connector
 # Chapter 8: System Design (Developer)
 * 1-Hierarchy
 * 2-Files

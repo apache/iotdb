@@ -109,13 +109,13 @@ IoTDB为用户提供多种与服务器交互的方式，在此我们介绍使用
 Linux系统与MacOS系统启动命令如下：
 
 ```
-> sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 
 Windows系统启动命令如下：
 
 ```
-> sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 
 启动后出现如图提示即为启动成功。
