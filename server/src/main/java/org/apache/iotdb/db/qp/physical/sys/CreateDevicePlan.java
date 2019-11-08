@@ -59,8 +59,8 @@ public class CreateDevicePlan extends PhysicalPlan {
   @Override
   public String toString() {
     StringBuilder stringBuilder = new StringBuilder();
-    String ret = String.format(
-        "deviceType: %s%ndevicePath: %s%n", deviceType, devicePath);
+    String ret = String.format("deviceType: %s%n" + "devicePath: %s%n", 
+        deviceType, devicePath);
     stringBuilder.append(ret);
     return stringBuilder.toString();
   }
