@@ -419,6 +419,22 @@ public class IoTDBConfig {
    */
   private String dfsClientFailoverProxyProvider = "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider";
 
+
+  /**
+   * whether use kerberos to authenticate hdfs
+   */
+  private boolean useKerberos = false;
+
+  /**
+   * full path of kerberos keytab file
+   */
+  private String kerberosKeytabFilePath = "/path";
+
+  /**
+   * kerberos pricipal
+   */
+  private String kerberosPrincipal = "principal";
+
   /**
    * default TTL for storage groups that are not set TTL by statements, in ms
    * Notice: if this property is changed, previous created storage group which are not set TTL will
@@ -1183,6 +1199,30 @@ public class IoTDBConfig {
 
   public void setDfsClientFailoverProxyProvider(String dfsClientFailoverProxyProvider) {
     this.dfsClientFailoverProxyProvider = dfsClientFailoverProxyProvider;
+  }
+
+  public boolean isUseKerberos() {
+    return useKerberos;
+  }
+
+  public void setUseKerberos(boolean useKerberos) {
+    this.useKerberos = useKerberos;
+  }
+
+  public String getKerberosKeytabFilePath() {
+    return kerberosKeytabFilePath;
+  }
+
+  public void setKerberosKeytabFilePath(String kerberosKeytabFilePath) {
+    this.kerberosKeytabFilePath = kerberosKeytabFilePath;
+  }
+
+  public String getKerberosPrincipal() {
+    return kerberosPrincipal;
+  }
+
+  public void setKerberosPrincipal(String kerberosPrincipal) {
+    this.kerberosPrincipal = kerberosPrincipal;
   }
 
   public long getDefaultTTL() {
