@@ -20,7 +20,7 @@
 -->
 # Chapter 4: Client
 
-# Programming - Other Language
+# Programming - Other Languages
 ## Python API
 ### Introduction
 This is an example of how to connect to IoTDB with python, using the thrift rpc interfaces. Things will be a bit different

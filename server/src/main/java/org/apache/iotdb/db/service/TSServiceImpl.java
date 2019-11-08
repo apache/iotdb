@@ -71,8 +71,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.*;
@@ -94,20 +92,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // login is failed.
   protected ThreadLocal<String> username = new ThreadLocal<>();
 
+  // The statementId is unique in one session for each statement.
+  private ThreadLocal<Long> statementIdGenerator = new ThreadLocal<>();
   // The queryId is unique in one session for each operation.
-  protected ThreadLocal<AtomicLong> queryId = new ThreadLocal<>();
+  private ThreadLocal<Long> queryIdGenerator = new ThreadLocal<>();
+  // (statement -> Set(queryId))
+  private ThreadLocal<Map<Long, Set<Long>>> statementId2QueryId = new ThreadLocal<>();
   // (queryId -> PhysicalPlan)
-  private ThreadLocal<HashMap<Long, PhysicalPlan>> operationStatus = new ThreadLocal<>();
+  private ThreadLocal<Map<Long, PhysicalPlan>> operationStatus = new ThreadLocal<>();
   // (queryId -> QueryDataSet)
-  private ThreadLocal<HashMap<Long, QueryDataSet>> queryDataSets = new ThreadLocal<>();
+  private ThreadLocal<Map<Long, QueryDataSet>> queryDataSets = new ThreadLocal<>();
   private ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private ThreadLocal<Map<Long, QueryContext>> contextMapLocal = new ThreadLocal<>();
-
-  private AtomicLong globalStmtId = new AtomicLong(0L);
-  // (statementId) -> (statement)
-  // TODO: remove unclosed statements
-  private Map<Long, PhysicalPlan> idStmtMap = new ConcurrentHashMap<>();
 
   public TSServiceImpl() {
     processor = new QueryProcessor(new QueryProcessExecutor());
@@ -154,7 +151,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private void initForOneSession() {
     operationStatus.set(new HashMap<>());
     queryDataSets.set(new HashMap<>());
-    queryId.set(new AtomicLong(0L));
+    queryIdGenerator.set(0L);
+    statementIdGenerator.set(0L);
+    contextMapLocal.set(new HashMap<>());
+    statementId2QueryId.set(new HashMap<>());
   }
 
   @Override
@@ -163,16 +163,41 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSStatus tsStatus;
     if (username.get() == null) {
       tsStatus = getStatus(TSStatusCode.NOT_LOGIN_ERROR);
-      if (zoneIds.get() != null) {
-        zoneIds.remove();
-      }
     } else {
       tsStatus = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
       username.remove();
-      if (zoneIds.get() != null) {
-        zoneIds.remove();
+    }
+    if (zoneIds.get() != null) {
+      zoneIds.remove();
+    }
+    // clear the statementId counter
+    if (statementIdGenerator.get() != null)
+      statementIdGenerator.remove();
+    // clear the queryId counter
+    if (queryIdGenerator.get() != null)
+      queryIdGenerator.remove();
+    // clear all cached physical plans of the connection
+    if (operationStatus.get() != null)
+      operationStatus.remove();
+    // clear all cached ResultSets of the connection
+    if (queryDataSets.get() != null)
+      queryDataSets.remove();
+    // clear all cached query context of the connection
+    if (contextMapLocal.get() != null) {
+      try {
+        for (QueryContext context : contextMapLocal.get().values()) {
+            QueryResourceManager.getInstance().endQueryForGivenJob(context.getJobId());
+        }
+        contextMapLocal.remove();
+      } catch (StorageEngineException e) {
+        logger.error("Error in closeSession : ", e);
+        return new TSStatus(getStatus(TSStatusCode.CLOSE_OPERATION_ERROR, "Error in closeOperation"));
       }
     }
+    // clear the statementId to queryId map
+    if (statementId2QueryId.get() != null)
+      statementId2QueryId.remove();
+
     return new TSStatus(tsStatus);
   }
 
@@ -185,15 +210,21 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSStatus closeOperation(TSCloseOperationReq req) {
     logger.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
     try {
-
-      if (req != null && req.isSetStmtId()) {
+      // statement close
+      if (req.isSetStmtId()) {
         long stmtId = req.getStmtId();
-        idStmtMap.remove(stmtId);
+        Set<Long> queryIdSet = statementId2QueryId.get().get(stmtId);
+        if (queryIdSet != null) {
+          for (long queryId : queryIdSet)
+            releaseQueryResource(queryId);
+          statementId2QueryId.get().remove(stmtId);
+        }
+      }
+      // ResultSet close
+      else {
+        releaseQueryResource(req.queryId);
       }
 
-      releaseQueryResource(req);
-
-      clearAllStatusForCurrentRequest();
     } catch (Exception e) {
       logger.error("Error in closeOperation : ", e);
       return new TSStatus(getStatus(TSStatusCode.CLOSE_OPERATION_ERROR, "Error in closeOperation"));
@@ -201,32 +232,24 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
   }
 
-  private void releaseQueryResource(TSCloseOperationReq req) throws StorageEngineException {
-    Map<Long, QueryContext> contextMap = contextMapLocal.get();
-    if (contextMap == null) {
-      return;
-    }
-    if (req == null || req.queryId == -1) {
-      // end query for all the query tokens created by current thread
-      for (QueryContext context : contextMap.values()) {
-        QueryResourceManager.getInstance().endQueryForGivenJob(context.getJobId());
-      }
-      contextMapLocal.set(new HashMap<>());
-    } else {
-      QueryResourceManager.getInstance()
-          .endQueryForGivenJob(contextMap.remove(req.queryId).getJobId());
-    }
-  }
 
-  private void clearAllStatusForCurrentRequest() {
-    if (this.queryDataSets.get() != null) {
-      this.queryDataSets.get().clear();
-    }
-    if (this.operationStatus.get() != null) {
-      this.operationStatus.get().clear();
-    }
-    if (this.queryId.get() != null) {
-      this.queryId.get().set(0L);
+  /**
+   * release single operation resource
+   * @param queryId
+   * @throws StorageEngineException
+   */
+  private void releaseQueryResource(long queryId) throws StorageEngineException {
+
+    // remove the corresponding Physical Plan
+    if (operationStatus.get() != null)
+      operationStatus.get().remove(queryId);
+    // remove the corresponding Dataset
+    if (queryDataSets.get() != null)
+      queryDataSets.get().remove(queryId);
+    // remove the corresponding query context and query resource
+    if (contextMapLocal.get() != null && contextMapLocal.get().containsKey(queryId)) {
+      QueryResourceManager.getInstance()
+              .endQueryForGivenJob(contextMapLocal.get().remove(queryId).getJobId());
     }
   }
 
@@ -564,7 +587,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       PhysicalPlan physicalPlan;
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
-        resp = executeQueryStatement(physicalPlan);
+        resp = executeQueryStatement(req.statementId, physicalPlan);
         long endTime = System.currentTimeMillis();
         sqlArgument = new SqlArgument(resp, physicalPlan, statement, startTime, endTime);
         sqlArgumentsList.add(sqlArgument);
@@ -630,7 +653,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private TSExecuteStatementResp executeQueryStatement(PhysicalPlan plan) {
+  private TSExecuteStatementResp executeQueryStatement(long statementId, PhysicalPlan plan) {
     long t1 = System.currentTimeMillis();
     try {
       TSExecuteStatementResp resp;
@@ -645,8 +668,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         resp.setIgnoreTimeStamp(true);
       } // else default ignoreTimeStamp is false
       resp.setOperationType(plan.getOperatorType().toString());
+      // generate the queryId for the operation
+      long queryId = generateQueryId();
+      // put it into the corresponding Set
+      Set<Long> queryIdSet = statementId2QueryId.get().computeIfAbsent(statementId, k -> new HashSet<>());
+      queryIdSet.add(queryId);
+
       TSHandleIdentifier operationId = new TSHandleIdentifier(
-          ByteBuffer.wrap(username.get().getBytes()), ByteBuffer.wrap("PASS".getBytes()), queryId.get().getAndIncrement());
+          ByteBuffer.wrap(username.get().getBytes()), ByteBuffer.wrap("PASS".getBytes()), queryId);
       TSOperationHandle operationHandle = new TSOperationHandle(operationId, true);
       resp.setOperationHandle(operationHandle);
 
@@ -681,7 +710,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getTSExecuteStatementResp(getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR,
           "Statement is not a query statement."));
     }
-    return executeQueryStatement(physicalPlan);
+    return executeQueryStatement(req.statementId, physicalPlan);
   }
 
   private List<String> queryColumnsType(List<String> columns) throws PathErrorException {
@@ -952,9 +981,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     status = executePlan(plan);
     TSExecuteStatementResp resp = getTSExecuteStatementResp(status);
+    long queryId = generateQueryId();
     TSHandleIdentifier operationId = new TSHandleIdentifier(
         ByteBuffer.wrap(username.get().getBytes()),
-        ByteBuffer.wrap("PASS".getBytes()), queryId.get().getAndIncrement());
+        ByteBuffer.wrap("PASS".getBytes()), queryId);
     TSOperationHandle operationHandle;
     operationHandle = new TSOperationHandle(operationId, false);
     resp.setOperationHandle(operationHandle);
@@ -1014,7 +1044,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     resp.setStatus(tsStatus);
     TSHandleIdentifier operationId = new TSHandleIdentifier(
         ByteBuffer.wrap(username.get().getBytes()),
-        ByteBuffer.wrap("PASS".getBytes()), queryId.get().getAndIncrement());
+        ByteBuffer.wrap("PASS".getBytes()), generateQueryId());
     TSOperationHandle operationHandle = new TSOperationHandle(operationId, false);
     resp.setOperationHandle(operationHandle);
     return resp;
@@ -1037,7 +1067,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   void handleClientExit() {
-    closeOperation(null);
     closeSession(null);
   }
 
@@ -1091,7 +1120,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     long stmtId = req.getStmtId();
-    InsertPlan plan = (InsertPlan) idStmtMap.computeIfAbsent(stmtId, k -> new InsertPlan());
+    InsertPlan plan = (InsertPlan) operationStatus.get().computeIfAbsent(stmtId, k -> new InsertPlan());
 
     // the old parameter will be used if new parameter is not set
     if (req.isSetDeviceId()) {
@@ -1277,7 +1306,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public long requestStatementId() {
-    return globalStmtId.incrementAndGet();
+    long statementId = statementIdGenerator.get();
+    statementIdGenerator.set(statementId+1);
+    return statementId;
   }
 
   private TSStatus checkAuthority(PhysicalPlan plan) {
@@ -1313,6 +1344,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     return execRet ? getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
         : getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
+  }
+
+  private long generateQueryId() {
+    long queryId = queryIdGenerator.get();
+    queryIdGenerator.set(queryId+1);
+    return queryId;
   }
 }
 

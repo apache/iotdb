@@ -20,7 +20,9 @@
 -->
 
 # Chapter 4: Client
-# Programming - TsFile API (TimeSerices File Format)
+# Programming - TsFile API
+
+TsFile is a file format of Time Series we used in IoTDB. In this section, we would like to introduce the usage of this file format. 
 
 ## TsFile libaray Installation
 
