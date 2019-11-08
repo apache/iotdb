@@ -265,7 +265,7 @@ public class TsFileMetaData {
       byteLen += entry.getValue().serializeTo(outputStream);
     }
 
-    byteLen += ReadWriteIOUtils.writeIsNull(createdBy, outputStream);
+    byteLen += ReadWriteIOUtils.writeIsNotNull(createdBy, outputStream);
     if (createdBy != null) {
       byteLen += ReadWriteIOUtils.write(createdBy, outputStream);
     }
@@ -352,7 +352,7 @@ public class TsFileMetaData {
       byteLen += entry.getValue().serializeTo(buffer);
     }
 
-    byteLen += ReadWriteIOUtils.writeIsNull(createdBy, buffer);
+    byteLen += ReadWriteIOUtils.writeIsNotNull(createdBy, buffer);
     if (createdBy != null) {
       byteLen += ReadWriteIOUtils.write(createdBy, buffer);
     }

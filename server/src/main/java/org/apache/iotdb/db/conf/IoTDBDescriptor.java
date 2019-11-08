@@ -26,7 +26,6 @@ import java.io.InputStream;
 import java.time.ZoneId;
 import java.util.Properties;
 import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -308,29 +307,50 @@ public class IoTDBDescriptor {
 
       conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
-      conf.setTsFileStorageFs(properties.getProperty("tsfile_storage_fs"));
+      conf.setTsFileStorageFs(properties.getProperty("tsfile_storage_fs",
+          conf.getTsFileStorageFs().toString()));
       conf.setHdfsIp(properties.getProperty("hdfs_ip").split(","));
-      conf.setHdfsPort(properties.getProperty("hdfs_port"));
-      conf.setDfsNameServices(properties.getProperty("dfs_nameservices"));
+      conf.setHdfsPort(properties.getProperty("hdfs_port", conf.getHdfsPort()));
+      conf.setDfsNameServices(
+          properties.getProperty("dfs_nameservices", conf.getDfsNameServices()));
       conf.setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes").split(","));
       conf.setDfsHaAutomaticFailoverEnabled(
-          Boolean.parseBoolean(properties.getProperty("dfs_ha_automatic_failover_enabled")));
+          Boolean.parseBoolean(properties.getProperty("dfs_ha_automatic_failover_enabled",
+              String.valueOf(conf.isDfsHaAutomaticFailoverEnabled()))));
       conf.setDfsClientFailoverProxyProvider(
-          properties.getProperty("dfs_client_failover_proxy_provider"));
+          properties.getProperty("dfs_client_failover_proxy_provider",
+              conf.getDfsClientFailoverProxyProvider()));
+      conf.setUseKerberos(Boolean.parseBoolean(
+          properties.getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))));
+      conf.setKerberosKeytabFilePath(
+          properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
+      conf.setKerberosPrincipal(
+          properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
 
       conf.setDefaultTTL(Long.parseLong(properties.getProperty("default_ttl",
           String.valueOf(conf.getDefaultTTL()))));
 
       // At the same time, set TSFileConfig
-      TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
-      TSFileDescriptor.getInstance().getConfig().setHdfsIp(properties.getProperty("hdfs_ip").split(","));
+      TSFileDescriptor.getInstance().getConfig()
+          .setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
+      TSFileDescriptor.getInstance().getConfig()
+          .setHdfsIp(properties.getProperty("hdfs_ip").split(","));
       TSFileDescriptor.getInstance().getConfig().setHdfsPort(properties.getProperty("hdfs_port"));
-      TSFileDescriptor.getInstance().getConfig().setDfsNameServices(properties.getProperty("dfs_nameservices"));
-      TSFileDescriptor.getInstance().getConfig().setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes").split(","));
+      TSFileDescriptor.getInstance().getConfig()
+          .setDfsNameServices(properties.getProperty("dfs_nameservices"));
+      TSFileDescriptor.getInstance().getConfig()
+          .setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes").split(","));
       TSFileDescriptor.getInstance().getConfig().setDfsHaAutomaticFailoverEnabled(
           Boolean.parseBoolean(properties.getProperty("dfs_ha_automatic_failover_enabled")));
       TSFileDescriptor.getInstance().getConfig().setDfsClientFailoverProxyProvider(
           properties.getProperty("dfs_client_failover_proxy_provider"));
+      TSFileDescriptor.getInstance().getConfig().setUseKerberos(Boolean.parseBoolean(
+          properties.getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))));
+      TSFileDescriptor.getInstance().getConfig().setKerberosKeytabFilePath(
+          properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
+      TSFileDescriptor.getInstance().getConfig().setKerberosPrincipal(
+          properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
+
 
       // set tsfile-format config
       TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(Integer

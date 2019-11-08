@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class TypeInferenceUtils {
@@ -27,7 +28,7 @@ public class TypeInferenceUtils {
 
   }
 
-  public static boolean isNumber(String s) {
+  static boolean isNumber(String s) {
     try {
       Double.parseDouble(s);
     } catch (NumberFormatException e) {
@@ -36,11 +37,16 @@ public class TypeInferenceUtils {
     return true;
   }
 
+  private static boolean isBoolean(String s) {
+    return s.equalsIgnoreCase(SQLConstant.BOOLEN_TRUE) || s
+        .equalsIgnoreCase(SQLConstant.BOOLEN_FALSE);
+  }
+
   /**
    * Get predicted DataType of the given value
    */
   public static TSDataType getPredictedDataType(Object value) {
-    if (value instanceof Boolean) {
+    if (value instanceof Boolean || (value instanceof String && isBoolean((String) value))) {
       return TSDataType.BOOLEAN;
     } else if (value instanceof Number || (value instanceof String && isNumber((String) value))) {
       String v = String.valueOf(value);

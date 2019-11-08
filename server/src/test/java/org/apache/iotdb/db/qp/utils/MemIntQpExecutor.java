@@ -87,16 +87,17 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
   public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
     switch (plan.getOperatorType()) {
       case DELETE:
-        return delete((DeletePlan) plan);
+        delete((DeletePlan) plan);
+        return true;
       case UPDATE:
         UpdatePlan update = (UpdatePlan) plan;
-        boolean flag = true;
         for (Pair<Long, Long> timePair : update.getIntervals()) {
-          flag &= update(update.getPath(), timePair.left, timePair.right, update.getValue());
+          update(update.getPath(), timePair.left, timePair.right, update.getValue());
         }
-        return flag;
+        return true;
       case INSERT:
-        return insert((InsertPlan) plan);
+        insert((InsertPlan) plan);
+        return true;
       default:
         throw new UnsupportedOperationException();
     }
@@ -138,10 +139,9 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  public boolean update(Path path, long startTime, long endTime, String value) {
+  public void update(Path path, long startTime, long endTime, String value) {
     if (!demoMemDataBase.containsKey(path.toString())) {
       LOG.warn("no series:{}", path);
-      return false;
     }
     TestSeries series = demoMemDataBase.get(path.toString());
     for (Entry<Long, Integer> entry : series.data.entrySet()) {
@@ -151,13 +151,12 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
       }
     }
     LOG.info("update, series:{}, time range:<{},{}>, value:{}", path, startTime, endTime, value);
-    return true;
   }
 
   @Override
-  public boolean delete(Path path, long deleteTime) {
+  public void delete(Path path, long deleteTime) {
     if (!demoMemDataBase.containsKey(path.toString())) {
-      return true;
+      return;
     }
     TestSeries series = demoMemDataBase.get(path.toString());
     TreeMap<Long, Integer> delResult = new TreeMap<>();
@@ -169,7 +168,6 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
     }
     series.data = delResult;
     LOG.info("delete series:{}, timestamp:{}", path, deleteTime);
-    return true;
   }
 
   @Override
@@ -182,16 +180,17 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  public boolean insert(InsertPlan insertPlan) {
+  public void insert(InsertPlan insertPlan) {
     for (int i = 0; i < insertPlan.getMeasurements().length; i++) {
-      String strPath = insertPlan.getDeviceId() + IoTDBConstant.PATH_SEPARATOR + insertPlan.getMeasurements()[i];
+      String strPath =
+          insertPlan.getDeviceId() + IoTDBConstant.PATH_SEPARATOR + insertPlan.getMeasurements()[i];
       if (!demoMemDataBase.containsKey(strPath)) {
         demoMemDataBase.put(strPath, new TestSeries());
       }
-      demoMemDataBase.get(strPath).data.put(insertPlan.getTime(), Integer.valueOf(insertPlan.getValues()[i]));
+      demoMemDataBase.get(strPath).data
+          .put(insertPlan.getTime(), Integer.valueOf(insertPlan.getValues()[i]));
       timeStampUnion.add(insertPlan.getTime());
     }
-    return true;
   }
 
   @Override

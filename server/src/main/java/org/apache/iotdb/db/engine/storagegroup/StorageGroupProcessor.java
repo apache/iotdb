@@ -116,6 +116,7 @@ public class StorageGroupProcessor {
 
   private static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
+  private static final int MAX_CACHE_SENSORS = 5000;
   /**
    * a read write lock for guaranteeing concurrent safety when accessing all fields in this class
    * (i.e., schema, (un)sequenceFileList, work(un)SequenceTsFileProcessor,
@@ -158,34 +159,27 @@ public class StorageGroupProcessor {
   private Map<String, Long> latestFlushedTimeForEachDevice = new HashMap<>();
   private String storageGroupName;
   private File storageGroupSysDir;
-
   /**
    * versionController assigns a version for each MemTable and deletion/update such that after they
    * are persisted, the order of insertions, deletions and updates can be re-determined.
    */
   private VersionController versionController;
-
   /**
    * mergeLock is to be used in the merge process. Concurrent queries, deletions and merges may
    * result in losing some deletion in the merged new file, so a lock is necessary.
    */
   private ReentrantReadWriteLock mergeLock = new ReentrantReadWriteLock();
-
   /**
    * This is the modification file of the result of the current merge. Because the merged file may
    * be invisible at this moment, without this, deletion/update during merge could be lost.
    */
   private ModificationFile mergingModification;
-
   private volatile boolean isMerging = false;
   private long mergeStartTime;
-
   /**
    * This linked list records the access order of measurements used by query.
    */
   private LinkedList<String> lruForSensorUsedInQuery = new LinkedList<>();
-  private static final int MAX_CACHE_SENSORS = 5000;
-
   /**
    * when the data in a storage group is older than dataTTL, it is considered invalid and will be
    * eventually removed.
@@ -359,7 +353,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public boolean insert(InsertPlan insertPlan) throws QueryProcessorException {
+  public void insert(InsertPlan insertPlan) throws QueryProcessorException {
     // reject insertions that are out of ttl
     if (!checkTTL(insertPlan.getTime())) {
       throw new OutOfTTLException(insertPlan.getTime(), (System.currentTimeMillis() - dataTTL));
@@ -371,7 +365,7 @@ public class StorageGroupProcessor {
       latestFlushedTimeForEachDevice.putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
 
       // insert to sequence or unSequence file
-      return insertToTsFileProcessor(insertPlan,
+      insertToTsFileProcessor(insertPlan,
           insertPlan.getTime() > latestFlushedTimeForEachDevice.get(insertPlan.getDeviceId()));
     } finally {
       writeUnlock();
@@ -458,7 +452,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  private boolean insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence)
+  private void insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence)
       throws QueryProcessorException {
     TsFileProcessor tsFileProcessor;
     boolean result;
@@ -466,7 +460,7 @@ public class StorageGroupProcessor {
     tsFileProcessor = getOrCreateTsFileProcessor(sequence);
 
     if (tsFileProcessor == null) {
-      return false;
+      return;
     }
 
     // insert TsFileProcessor
@@ -489,7 +483,6 @@ public class StorageGroupProcessor {
         tsFileProcessor.asyncFlush();
       }
     }
-    return result;
   }
 
   private TsFileProcessor getOrCreateTsFileProcessor(boolean sequence) {
@@ -1355,12 +1348,6 @@ public class StorageGroupProcessor {
     return workSequenceTsFileProcessor;
   }
 
-  @FunctionalInterface
-  public interface CloseTsFileCallBack {
-
-    void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
-  }
-
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
     checkFilesTTL();
@@ -1378,6 +1365,12 @@ public class StorageGroupProcessor {
 
   private enum LoadTsFileType {
     LOAD_SEQUENCE, LOAD_UNSEQUENCE
+  }
+
+  @FunctionalInterface
+  public interface CloseTsFileCallBack {
+
+    void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
   }
 
 }

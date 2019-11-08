@@ -16,27 +16,20 @@
   * specific language governing permissions and limitations
   * under the License.
   */
-package org.apache.iotdb.sparkdb
+package org.apache.iotdb.spark
 
-class IoTDBOptions(
-                    @transient private val parameters: Map[String, String])
-  extends Serializable {
+import org.apache.spark.sql.{DataFrame, DataFrameReader}
 
-  val url = parameters.getOrElse("url", sys.error("Option 'url' not specified"))
+package object db {
 
-  val user = parameters.getOrElse("user", "root")
+  val myPackage = "org.apache.iotdb.spark.db"
 
-  val password = parameters.getOrElse("password", "root")
-
-  val sql = parameters.getOrElse("sql", sys.error("Option 'sql' not specified"))
-
-  val numPartition = parameters.getOrElse("numPartition", "1")
-
-  val lowerBound = parameters.getOrElse("lowerBound", "0")
-
-  val upperBound = parameters.getOrElse("upperBound", "0")
-
-  def get(name: String): Unit = {
-
+  /**
+    * Adds a method, `iotdb`, to DataFrameReader that allows you to read data from IoTDB using
+    * the DataFileReade
+    */
+  implicit class IoTDBDataFrameReader(reader: DataFrameReader) {
+    def iotdb: (Map[String, String]) => DataFrame = reader.format(myPackage).options(_).load()
   }
+
 }

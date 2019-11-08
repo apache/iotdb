@@ -18,39 +18,14 @@
  */
 package org.apache.iotdb.session;
 
-import static org.apache.iotdb.session.Config.PATH_MATCHER;
-
-import java.sql.SQLException;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.regex.Pattern;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
-import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSInsertReq;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
-import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
-import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
-import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
@@ -60,6 +35,14 @@ import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.sql.SQLException;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
+
+import static org.apache.iotdb.session.Config.PATH_MATCHER;
 
 public class Session {
 
@@ -74,9 +57,8 @@ public class Session {
   private TSocket transport;
   private boolean isClosed = true;
   private ZoneId zoneId;
-  private RowRecord record;
-  private AtomicLong queryId = new AtomicLong(0);
   private TSOperationHandle operationHandle;
+  private long statementId;
 
 
   public Session(String host, int port) {
@@ -98,7 +80,7 @@ public class Session {
     open(false, 0);
   }
 
-  public synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
+  private synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
       throws IoTDBSessionException {
     if (!isClosed) {
       return;
@@ -129,11 +111,13 @@ public class Session {
 
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         throw new TException(String
-            .format("Protocol not supported, Client version is {}, but Server version is {}",
+            .format("Protocol not supported, Client version is %s, but Server version is %s",
                 protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
       }
 
       sessionHandle = openResp.getSessionHandle();
+
+      statementId = client.requestStatementId();
 
       if (zoneId != null) {
         setTimeZone(zoneId.toString());
@@ -210,7 +194,7 @@ public class Session {
    *
    * @param path timeseries to delete, should be a whole path
    */
-  public synchronized TSStatus deleteTimeseries(String path) throws IoTDBSessionException {
+  synchronized TSStatus deleteTimeseries(String path) throws IoTDBSessionException {
     List<String> paths = new ArrayList<>();
     paths.add(path);
     return deleteTimeseries(paths);
@@ -247,7 +231,7 @@ public class Session {
    * @param paths data in which time series to delete
    * @param time data with time stamp less than or equal to time will be deleted
    */
-  public synchronized TSStatus deleteData(List<String> paths, long time)
+  synchronized TSStatus deleteData(List<String> paths, long time)
       throws IoTDBSessionException {
     TSDeleteDataReq request = new TSDeleteDataReq();
     request.setPaths(paths);
@@ -270,14 +254,14 @@ public class Session {
   }
 
 
-  public synchronized TSStatus deleteStorageGroup(String storageGroup)
+  synchronized TSStatus deleteStorageGroup(String storageGroup)
       throws IoTDBSessionException {
     List<String> groups = new ArrayList<>();
     groups.add(storageGroup);
     return deleteStorageGroups(groups);
   }
 
-  public synchronized TSStatus deleteStorageGroups(List<String> storageGroup)
+  synchronized TSStatus deleteStorageGroups(List<String> storageGroup)
       throws IoTDBSessionException {
     try {
       return checkAndReturn(client.deleteStorageGroups(storageGroup));
@@ -316,7 +300,7 @@ public class Session {
     return resp;
   }
 
-  public synchronized String getTimeZone() throws TException, IoTDBRPCException {
+  private synchronized String getTimeZone() throws TException, IoTDBRPCException {
     if (zoneId != null) {
       return zoneId.toString();
     }
@@ -326,7 +310,7 @@ public class Session {
     return resp.getTimeZone();
   }
 
-  public synchronized void setTimeZone(String zoneId) throws TException, IoTDBRPCException {
+  private synchronized void setTimeZone(String zoneId) throws TException, IoTDBRPCException {
     TSSetTimeZoneReq req = new TSSetTimeZoneReq(zoneId);
     TSStatus resp = client.setTimeZone(req);
     RpcUtils.verifySuccess(resp);
@@ -351,19 +335,19 @@ public class Session {
    * @return result set
    */
   public SessionDataSet executeQueryStatement(String sql)
-      throws TException, IoTDBRPCException, SQLException {
+      throws TException, IoTDBRPCException {
     if (!checkIsQuery(sql)) {
       throw new IllegalArgumentException("your sql \"" + sql
           + "\" is not a query statement, you should use executeNonQueryStatement method instead.");
     }
 
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql);
+    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, statementId);
     TSExecuteStatementResp execResp = client.executeStatement(execReq);
 
     RpcUtils.verifySuccess(execResp.getStatus());
     operationHandle = execResp.getOperationHandle();
     return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
-        queryId.incrementAndGet(), client, operationHandle);
+            operationHandle.getOperationId().getQueryId(), client, operationHandle);
   }
 
   /**
@@ -377,7 +361,7 @@ public class Session {
           + "\" is a query statement, you should use executeQueryStatement method instead.");
     }
 
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql);
+    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, statementId);
     TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
     operationHandle = execResp.getOperationHandle();
 
