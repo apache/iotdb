@@ -42,14 +42,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.exception.RequestTimeOutException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.LogManager;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.MemoryLogManager;
-import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -59,10 +57,9 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.Factory;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.appendEntry_call;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.sendHeartBeat_call;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.startElection_call;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncProcessor;
+import org.apache.iotdb.cluster.server.handlers.AppendEntryHandler;
+import org.apache.iotdb.cluster.server.handlers.HeartBeatThread;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.async.TAsyncClientManager;
@@ -85,13 +82,11 @@ import org.slf4j.LoggerFactory;
 public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftService.class);
-  private static final long ELECTION_LEAST_TIME_OUT_MS = 5 * 1000L;
-  private static final long ELECTION_RANDOM_TIME_OUT_MS = 5 * 1000L;
-  private static final int CONNECTION_TIME_OUT_MS = 30 * 1000;
-  private static final String NON_SEED_FILE_NAME = "non-seeds";
+  public static final int CONNECTION_TIME_OUT_MS = 30 * 1000;
+  private static final String NODES_FILE_NAME = "nodes";
 
-  static final long AGREE = -1;
-  private static final long LOG_MISMATCH = -2;
+  public static final long AGREE = -1;
+  public static final long LOG_MISMATCH = -2;
 
   private Random random = new Random();
 
@@ -135,12 +130,12 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
    * load the non-seed nodes from a local record
    */
   private void loadNodes() {
-    File nonSeedFile = new File(NON_SEED_FILE_NAME);
+    File nonSeedFile = new File(NODES_FILE_NAME);
     if (!nonSeedFile.exists()) {
       logger.info("No non-seed file found");
       return;
     }
-    try (BufferedReader reader = new BufferedReader(new FileReader(NON_SEED_FILE_NAME))) {
+    try (BufferedReader reader = new BufferedReader(new FileReader(NODES_FILE_NAME))) {
       String line;
       while ((line = reader.readLine()) != null) {
         loadNode(line);
@@ -171,7 +166,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
   }
 
   synchronized void saveNodes() {
-    try (BufferedWriter writer = new BufferedWriter(new FileWriter(NON_SEED_FILE_NAME))){
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter(NODES_FILE_NAME))){
       for (Node node : allNodes) {
         writer.write(node.ip + ":" + node.port);
         writer.newLine();
@@ -222,7 +217,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
    */
   public void buildCluster() {
     // just establish the heart beat thread and it will do the remaining
-    heartBeatService.submit(new HeartBeatThread());
+    heartBeatService.submit(new HeartBeatThread(this));
   }
 
   private void connectToNodes() {
@@ -246,7 +241,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     }
   }
 
-  synchronized AsyncClient connectNode(Node node) {
+  public synchronized AsyncClient connectNode(Node node) {
     if (node.equals(thisNode)) {
       return null;
     }
@@ -390,6 +385,8 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
         if (lastLogIndex == localLastLogIndex && lastLogTerm == localLastLogTerm) {
           logManager.appendLog(log, localTerm);
           resultHandler.onComplete(AGREE);
+          // as the log is updated, this node gets a chance to compete for the leader
+          logFallsBehind = false;
           logger.debug("Append a new log {}, term:{}, index:{}", log, localTerm, lastLogIndex + 1);
         } else if (lastLogIndex == localLastLogIndex - 1 && lastLogTerm > localLastLogTerm) {
           logManager.replaceLastLog(log, localTerm);
@@ -425,11 +422,11 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     for (Node node : allNodes) {
       AsyncClient client = connectNode(node);
       if (client != null) {
-        AppendEntryHandler handler = new AppendEntryHandler();
-        handler.follower = node;
-        handler.quorum = quorum;
-        handler.leaderShipStale = leaderShipStale;
-        handler.log = log;
+        AppendEntryHandler handler = new AppendEntryHandler(this);
+        handler.setFollower(node);
+        handler.setQuorum(quorum);
+        handler.setLeaderShipStale(leaderShipStale);
+        handler.setLog(log);
         try {
           client.appendEntry(request, handler);
         } catch (TException e) {
@@ -460,463 +457,72 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     OK, TIME_OUT, LEADERSHIP_STALE
   }
 
-  class AppendEntryHandler implements AsyncMethodCallback<appendEntry_call> {
-
-    private Log log;
-    private AtomicInteger quorum;
-    private AtomicBoolean leaderShipStale;
-    private Node follower;
-
-    @Override
-    public void onComplete(appendEntry_call response) {
-      try {
-        if (leaderShipStale.get()) {
-          // someone has rejected this log because the leadership is stale
-          return;
-        }
-        long resp = response.getResult();
-        synchronized (quorum) {
-          if (resp == AGREE) {
-            int remaining = quorum.decrementAndGet();
-            logger.debug("Received an agreement from {} for {}, remaining to succeed: {}", follower,
-                log, remaining);
-            if (remaining == 0) {
-              quorum.notifyAll();
-            }
-          } else if (resp != LOG_MISMATCH) {
-            // the leader ship is stale, wait for the new leader's heartbeat
-            synchronized (term) {
-              long currTerm = term.get();
-              leaderShipStale.set(true);
-              // confirm that the heartbeat of the new leader hasn't come
-              if (currTerm < resp) {
-                term.set(resp);
-                character = NodeCharacter.FOLLOWER;
-                leader = null;
-              }
-            }
-            quorum.notifyAll();
-          }
-          // if the follower's logs are stale, just wait for the heartbeat to handle
-        }
-      } catch (TException e) {
-        onError(e);
-      }
-    }
-
-    @Override
-    public void onError(Exception exception) {
-      logger.warn("Cannot append log {} to {}", log, follower, exception);
-    }
+  public void disConnectNode(Node node) {
+    nodeClientMap.remove(node);
+    nodeTransportMap.remove(node).close();
   }
 
-  /**
-   * HeartBeatThread takes the responsibility to send heartbeats (when this node is a leader), or
-   * start elections (when this node is a follower)
-   */
-  private class HeartBeatThread implements Runnable {
-
-    private static final long HEART_BEAT_INTERVAL_MS = 1000L;
-
-    HeartBeatRequest request = new HeartBeatRequest();
-
-    @Override
-    public void run() {
-      try {
-        logger.info("Heartbeat thread starts...");
-        while (!Thread.interrupted()) {
-          switch (character) {
-            case LEADER:
-              // send heart beats to the followers
-              sendHeartBeats();
-              Thread.sleep(HEART_BEAT_INTERVAL_MS);
-              break;
-            case FOLLOWER:
-              // check if heart beat times out
-              long heartBeatInterval = System.currentTimeMillis() - lastHeartBeatReceivedTime;
-              if (heartBeatInterval >= CONNECTION_TIME_OUT_MS) {
-                // the leader is considered dead, an election will be started in the next loop
-                character = NodeCharacter.ELECTOR;
-                leader = null;
-              } else {
-                Thread.sleep(CONNECTION_TIME_OUT_MS);
-              }
-              break;
-            case ELECTOR:
-            default:
-              startElections();
-              break;
-          }
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      } catch (Exception e) {
-        logger.error("Unexpected heartbeat exception:", e);
-      }
-      logger.info("Heart beat thread exits");
-    }
-
-    private void sendHeartBeats() {
-      synchronized (term) {
-        request.setTerm(term.get());
-        request.setCommitLogIndex(logManager.getLastLogTerm());
-        request.setLeader(thisNode);
-
-        sendHeartBeats(allNodes);
-      }
-    }
-
-    private void sendHeartBeats(Set<Node> nodes) {
-      for (Node node : nodes) {
-        if (character != NodeCharacter.LEADER) {
-          // if the character changes, abort the remaining heart beats
-          return;
-        }
-
-        AsyncClient client = connectNode(node);
-        if (client == null) {
-          continue;
-        }
-        try {
-          client.sendHeartBeat(request, new HeartBeatHandler(node));
-        } catch (TException e) {
-          nodeClientMap.remove(node);
-          nodeTransportMap.remove(node).close();
-          logger.warn("Cannot send heart beat to node {}", node, e);
-        }
-      }
-    }
-
-    // start elections until this node becomes a leader or a follower
-    private void startElections() {
-
-      // the election goes on until this node becomes a follower or a leader
-      while (character == NodeCharacter.ELECTOR) {
-        if (!logFallsBehind) {
-          startElection();
-        }
-      }
-      lastHeartBeatReceivedTime = System.currentTimeMillis();
-    }
-
-    // start one round of election
-    private void startElection() {
-      synchronized (term) {
-        long nextTerm = term.incrementAndGet();
-        // different elections are handled by different handlers, which avoids previous votes
-        // interfere the current election
-        int quorumNum = allNodes.size() / 2;
-        logger.info("Election {} starts, quorum: {}", term, quorumNum);
-        AtomicBoolean electionTerminated = new AtomicBoolean(false);
-        AtomicBoolean electionValid = new AtomicBoolean(false);
-        AtomicInteger quorum = new AtomicInteger(quorumNum);
-
-        ElectionRequest electionRequest = new ElectionRequest();
-        electionRequest.setTerm(nextTerm);
-        electionRequest.setLastLogTerm(logManager.getLastLogTerm());
-        electionRequest.setLastLogIndex(logManager.getCommitLogIndex());
-
-        requestVote(allNodes, electionRequest, nextTerm, quorum, electionTerminated, electionValid);
-
-        long timeOut =
-            ELECTION_LEAST_TIME_OUT_MS + Math.abs(random.nextLong() % ELECTION_RANDOM_TIME_OUT_MS);
-        try {
-          logger.info("Wait for {}ms until next election", timeOut);
-          term.wait(timeOut);
-        } catch (InterruptedException e) {
-          logger.info("Election {} times out", nextTerm);
-          Thread.currentThread().interrupt();
-        }
-
-        electionTerminated.set(true);
-        if (electionValid.get()) {
-          logger.info("Election {} accepted", nextTerm);
-          character = NodeCharacter.LEADER;
-          leader = thisNode;
-          nodeStatus = NodeStatus.JOINED;
-        }
-      }
-    }
-
-    // request a vote from given nodes
-    private void requestVote(Set<Node> nodes, ElectionRequest request, long nextTerm,
-        AtomicInteger quorum, AtomicBoolean electionTerminated, AtomicBoolean electionValid) {
-      for (Node node : nodes) {
-        logger.info("Requesting a vote from {}", node);
-        AsyncClient client = connectNode(node);
-        if (client != null) {
-          ElectionHandler handler = new ElectionHandler(node, nextTerm, quorum, electionTerminated,
-              electionValid);
-          try {
-            client.startElection(request, handler);
-          } catch (TException e) {
-            logger.error("Cannot request a vote from {}", node, e);
-            nodeClientMap.remove(node);
-            nodeTransportMap.remove(node).close();
-          }
-        }
-      }
-    }
+  public NodeCharacter getCharacter() {
+    return character;
   }
 
-  class HeartBeatHandler implements AsyncMethodCallback<sendHeartBeat_call> {
-
-    private Node receiver;
-
-    HeartBeatHandler(Node node) {
-      this.receiver = node;
-    }
-
-    @Override
-    public void onComplete(sendHeartBeat_call resp) {
-      logger.debug("Received a heartbeat response");
-      HeartBeatResponse response;
-      try {
-        response = resp.getResult();
-      } catch (TException e) {
-        onError(e);
-        return;
-      }
-
-      long followerTerm = response.getTerm();
-      if (followerTerm == AGREE) {
-        // current leadership is still valid
-        Node follower = response.getFollower();
-        long lastLogIdx = response.getLastLogIndex();
-        long lastLogTerm = response.getLastLogTerm();
-        logger.debug("Node {} is still alive, log index: {}, log term: {}", follower, lastLogIdx,
-            lastLogTerm);
-        long localLastLogIdx = RaftServer.this.logManager.getLastLogIndex();
-        long localLastLogTerm = RaftServer.this.logManager.getLastLogTerm();
-        if (localLastLogIdx > lastLogIdx ||
-            lastLogIdx == localLastLogIdx && localLastLogTerm > lastLogTerm) {
-          handleCatchUp(follower, lastLogIdx);
-        }
-      } else {
-        // current leadership is invalid because the follower has a larger term
-        synchronized (term) {
-          long currTerm = term.get();
-          if (currTerm < followerTerm) {
-            logger.info("Losing leadership because current term {} is smaller than {}", currTerm,
-                followerTerm);
-            term.set(followerTerm);
-            character = NodeCharacter.FOLLOWER;
-            leader = null;
-            lastHeartBeatReceivedTime = System.currentTimeMillis();
-          }
-        }
-      }
-    }
-
-    @Override
-    public void onError(Exception exception) {
-      logger.error("Heart beat error, receiver {}", receiver, exception);
-      // reset the connection
-      nodeClientMap.remove(receiver);
-      nodeTransportMap.remove(receiver).close();
-    }
-
-
-    private void handleCatchUp(Node follower, long followerLastLogIndex) {
-      if (followerLastLogIndex == -1) {
-        // if the follower does not have any logs, send from the first one
-        followerLastLogIndex = 0;
-      }
-      // avoid concurrent catch-up of the same follower
-      synchronized (follower) {
-        AsyncClient client = connectNode(follower);
-        if (client != null) {
-          List<Log> logs;
-          boolean allLogsValid;
-          Snapshot snapshot = null;
-          synchronized (logManager) {
-            allLogsValid = logManager.logValid(followerLastLogIndex);
-            logs = logManager.getLogs(followerLastLogIndex, logManager.getLastLogIndex());
-            if (!allLogsValid) {
-              logger.debug("Logs in {} are too old, catch up with snapshot", follower);
-              snapshot = logManager.getSnapshot();
-            }
-          }
-          if (allLogsValid) {
-            try {
-              doCatchUp(logs, client);
-            } catch (TException e) {
-              logger.error("Catch-up error, receiver {}", follower, e);
-              // reset the connection
-              nodeClientMap.remove(follower);
-              nodeTransportMap.remove(follower).close();
-            }
-          } else {
-            doCatchUp(logs, client, snapshot);
-          }
-        }
-      }
-    }
-
-    private void doCatchUp(List<Log> logs, AsyncClient client) throws TException {
-      AppendEntryRequest request = new AppendEntryRequest();
-      AtomicBoolean aborted = new AtomicBoolean(false);
-      AtomicBoolean appendSucceed = new AtomicBoolean(false);
-
-      CatchUpHandler handler = new CatchUpHandler();
-      handler.aborted = aborted;
-      handler.appendSucceed = appendSucceed;
-
-      for (Log log : logs) {
-        synchronized (term) {
-          // make sure this node is still a leader
-          if (character != NodeCharacter.LEADER) {
-            logger.debug("Leadership is lost when doing a catch-up, aborting");
-            return;
-          }
-          request.setTerm(term.get());
-        }
-        handler.log = log;
-        request.setEntry(log.serialize());
-        client.appendEntry(request, handler);
-
-        synchronized (aborted) {
-          if (!aborted.get() && !appendSucceed.get()) {
-            try {
-              aborted.wait(CONNECTION_TIME_OUT_MS);
-            } catch (InterruptedException e) {
-              Thread.currentThread().interrupt();
-              throw new TException(new RequestTimeOutException(log));
-            }
-          }
-        }
-      }
-    }
-
-    class CatchUpHandler implements AsyncMethodCallback<appendEntry_call> {
-
-      private Log log;
-      private AtomicBoolean aborted;
-      private AtomicBoolean appendSucceed;
-
-      @Override
-      public void onComplete(appendEntry_call response) {
-        try {
-          long resp = response.getResult();
-          if (resp == AGREE) {
-            synchronized (aborted) {
-              appendSucceed.set(true);
-              aborted.notifyAll();
-            }
-            logger.debug("Succeed to sen log {}", log);
-          } else if (resp == LOG_MISMATCH) {
-            // this is not probably possible
-            logger.error("Log mismatch occurred when sending log {}", log);
-            synchronized (aborted) {
-              aborted.set(true);
-              aborted.notifyAll();
-            }
-          } else {
-            // the follower'term has updated, which means a new leader is elected
-            synchronized (term) {
-              long currTerm = term.get();
-              if (currTerm < resp) {
-                character = NodeCharacter.FOLLOWER;
-                term.set(currTerm);
-              }
-            }
-            synchronized (aborted) {
-              aborted.set(true);
-              aborted.notifyAll();
-            }
-            logger.warn("Catch-up aborted because leadership is lost");
-          }
-        } catch (TException e) {
-          onError(e);
-        }
-      }
-
-      @Override
-      public void onError(Exception exception) {
-        synchronized (aborted) {
-          aborted.set(true);
-          aborted.notifyAll();
-        }
-        logger.warn("Catchup fails when sending log {}", log, exception);
-      }
-    }
-
-    private void doCatchUp(List<Log> logs, AsyncClient client, Snapshot snapshot) {
-      // TODO-Cluster implement
-    }
+  public AtomicLong getTerm() {
+    return term;
   }
 
-  class ElectionHandler implements AsyncMethodCallback<startElection_call> {
+  public LogManager getLogManager() {
+    return logManager;
+  }
 
-    private Node voter;
-    private long currTerm;
-    private AtomicInteger quorum;
-    private AtomicBoolean terminated;
-    private AtomicBoolean electionValid;
+  public boolean isLogFallsBehind() {
+    return logFallsBehind;
+  }
 
-    ElectionHandler(Node voter, long currTerm, AtomicInteger quorum,
-        AtomicBoolean terminated, AtomicBoolean electionValid) {
-      this.voter = voter;
-      this.currTerm = currTerm;
-      this.quorum = quorum;
-      this.terminated = terminated;
-      this.electionValid = electionValid;
-    }
+  public long getLastHeartBeatReceivedTime() {
+    return lastHeartBeatReceivedTime;
+  }
 
-    @Override
-    public void onComplete(startElection_call resp) {
-      logger.info("Received an election response");
-      long voterTerm;
-      try {
-        voterTerm = resp.getResult();
-      } catch (TException e) {
-        onError(e);
-        return;
-      }
+  public Node getLeader() {
+    return leader;
+  }
 
-      logger.info("Election response term {}", voterTerm);
-      synchronized (term) {
-        if (terminated.get()) {
-          // a voter has rejected this election, which means the term or the log id falls behind
-          // this node is not able to be the leader
-          return;
-        }
+  public void setCharacter(NodeCharacter character) {
+    this.character = character;
+  }
 
-        if (voterTerm == AGREE) {
-          long remaining = quorum.decrementAndGet();
-          logger.info("Received a for vote, reaming votes to succeed: {}", remaining);
-          if (remaining == 0) {
-            // the election is valid
-            electionValid.set(true);
-            terminated.set(true);
-            term.notifyAll();
-          }
-          // still need more votes
-        } else {
-          // the election is rejected
-          terminated.set(true);
-          if (voterTerm < currTerm) {
-            // the rejection from a node with a smaller term means the log of this node falls behind
-            logFallsBehind = true;
-            logger.info("Election {} rejected: The node has stale logs and should not start "
-                + "elections again", currTerm);
-          } else {
-            // the election is rejected by a node with a bigger term, update current term to it
-            term.set(voterTerm);
-            logger.info("Election {} rejected: The term of this node is no bigger than {}",
-                voterTerm, currTerm);
-          }
-          term.notifyAll();
-        }
-      }
-    }
+  public void setTerm(AtomicLong term) {
+    this.term = term;
+  }
 
-    @Override
-    public void onError(Exception exception) {
-      logger.warn("A voter {} encountered an error:", voter, exception);
-      // reset the connection
-      nodeClientMap.remove(voter);
-      nodeTransportMap.remove(voter).close();
-    }
+  public void setLogManager(LogManager logManager) {
+    this.logManager = logManager;
+  }
+
+  public void setLogFallsBehind(boolean logFallsBehind) {
+    this.logFallsBehind = logFallsBehind;
+  }
+
+  public void setLastHeartBeatReceivedTime(long lastHeartBeatReceivedTime) {
+    this.lastHeartBeatReceivedTime = lastHeartBeatReceivedTime;
+  }
+
+  public void setLeader(Node leader) {
+    this.leader = leader;
+  }
+
+  public Node getThisNode() {
+    return thisNode;
+  }
+
+  public Set<Node> getAllNodes() {
+    return allNodes;
+  }
+
+  public NodeStatus getNodeStatus() {
+    return nodeStatus;
+  }
+
+  public void setNodeStatus(NodeStatus nodeStatus) {
+    this.nodeStatus = nodeStatus;
   }
 }

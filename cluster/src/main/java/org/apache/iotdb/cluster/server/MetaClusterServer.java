@@ -21,12 +21,8 @@ package org.apache.iotdb.cluster.server;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
-import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.meta.AddNodeLog;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
@@ -111,6 +107,8 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
       newNode.setPort(addNodeLog.getPort());
       allNodes.add(newNode);
       saveNodes();
+    } else {
+      logger.error("Unsupported log: {}", log);
     }
   }
 }
