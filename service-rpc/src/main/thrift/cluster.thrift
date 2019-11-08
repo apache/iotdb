@@ -34,8 +34,9 @@ struct HeartBeatRequest {
 struct HeartBeatResponse {
   1: required long term // follower's
   2: optional long lastLogIndex // follower's
+  3: optional long lastLogTerm
   // used to perform a catch up when necessary
-  3: optional Node follower
+  4: optional Node follower
 }
 
 // node -> node
@@ -49,18 +50,12 @@ struct ElectionRequest {
 struct AppendEntryRequest {
   1: required long term // leader's
   2: required binary entry // data
-  3: required long previousLogTerm // leader's previous log term
-  4: required long previousLogIndex // leader's
-  5: required Node leader
 }
 
 // leader -> follower
 struct AppendEntriesRequest {
   1: required long term // leader's
   2: required list<binary> entries // data
-  3: required long previousLogTerm // leader's previous log term
-  4: required long previousLogIndex // leader's
-  5: required Node leader
 }
 
 struct Node{

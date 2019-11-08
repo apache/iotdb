@@ -21,10 +21,12 @@ package org.apache.iotdb.cluster.log;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 
+// TODO-Cluster: implement a serializable LogManager
 public class MemoryLogManager implements LogManager {
 
   private long firstLogIndex = 0;
@@ -70,14 +72,22 @@ public class MemoryLogManager implements LogManager {
 
   @Override
   public void commitLog(long maxLogIndex) {
-    while (!logBuffer.isEmpty() && firstLogIndex <= maxLogIndex) {
-      logApplier.apply(logBuffer.removeFirst());
-      firstLogIndex++;
+    Iterator<Log> logIterator = logBuffer.iterator();
+    for (long i = firstLogIndex; i <= lastLogIndex; i++) {
+      Log currLog = logIterator.next();
+      if (commitLogIndex < i && i <= maxLogIndex) {
+        logApplier.apply(currLog);
+        commitLogIndex ++;
+      }
     }
   }
 
   @Override
   public List<Log> getLogs(long startIndex, long endIndex) {
+    if (startIndex > endIndex) {
+      return Collections.emptyList();
+    }
+
     Iterator<Log> logIterator = logBuffer.iterator();
     List<Log> ret = new ArrayList<>();
     for (long i = firstLogIndex; i <= lastLogIndex; i++) {
@@ -92,5 +102,10 @@ public class MemoryLogManager implements LogManager {
   @Override
   public boolean logValid(long logIndex) {
     return firstLogIndex <= logIndex && logIndex <= lastLogIndex;
+  }
+
+  @Override
+  public Snapshot getSnapshot() {
+    return null;
   }
 }

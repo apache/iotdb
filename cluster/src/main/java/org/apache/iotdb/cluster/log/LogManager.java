@@ -59,4 +59,10 @@ public interface LogManager {
    * @return true if the log is still available, false if the log has been deleted.
    */
   boolean logValid(long logIndex);
+
+  /**
+   *
+   * @return the latest snapshot
+   */
+  Snapshot getSnapshot();
 }

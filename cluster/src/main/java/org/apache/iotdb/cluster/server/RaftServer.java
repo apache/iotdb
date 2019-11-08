@@ -42,10 +42,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.RequestTimeOutException;
+import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.LogManager;
+import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.MemoryLogManager;
+import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
@@ -86,7 +91,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
   private static final String NON_SEED_FILE_NAME = "non-seeds";
 
   static final long AGREE = -1;
-  private static final long LOG_INDEX_MISMATCH = -2;
+  private static final long LOG_MISMATCH = -2;
 
   private Random random = new Random();
 
@@ -309,6 +314,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
         response.setTerm(AGREE);
         response.setFollower(thisNode);
         response.setLastLogIndex(logManager.getLastLogIndex());
+        response.setLastLogTerm(logManager.getLastLogTerm());
         term.set(leaderTerm);
         leader = request.getLeader();
         nodeStatus = NodeStatus.JOINED;
@@ -354,6 +360,58 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     }
   }
 
+  @Override
+  public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
+    logger.debug("Received an AppendEntryRequest");
+    long leaderTerm = request.getTerm();
+    long localTerm;
+
+    synchronized (term) {
+      // if the request comes before the heartbeat arrives, the local term may be smaller than the
+      // leader term
+      localTerm = term.get();
+      if (leaderTerm < localTerm) {
+        resultHandler.onComplete(localTerm);
+        return;
+      } else if (leaderTerm > localTerm) {
+        term.set(leaderTerm);
+        localTerm = leaderTerm;
+        character = NodeCharacter.FOLLOWER;
+      }
+    }
+
+    try {
+      Log log = LogParser.getINSTANCE().parse(request.entry);
+      synchronized (logManager) {
+        long localLastLogIndex = logManager.getLastLogIndex();
+        long localLastLogTerm = logManager.getLastLogTerm();
+        long lastLogIndex = log.getPreviousLogIndex();
+        long lastLogTerm = log.getPreviousLogTerm();
+        if (lastLogIndex == localLastLogIndex && lastLogTerm == localLastLogTerm) {
+          logManager.appendLog(log, localTerm);
+          resultHandler.onComplete(AGREE);
+          logger.debug("Append a new log {}, term:{}, index:{}", log, localTerm, lastLogIndex + 1);
+        } else if (lastLogIndex == localLastLogIndex - 1 && lastLogTerm > localLastLogTerm) {
+          logManager.replaceLastLog(log, localTerm);
+          resultHandler.onComplete(AGREE);
+          logger.debug("Replaced a stale log {}, term:{}, index:{}", log, localTerm, lastLogIndex);
+        } else {
+          resultHandler.onComplete(LOG_MISMATCH);
+          logger.debug("Cannot append the log because the last log does not match, local:term-{},"
+                  + "index-{}, request:term-{},index-{}", localLastLogTerm, localLastLogIndex,
+              lastLogTerm, lastLogIndex);
+        }
+      }
+    } catch (UnknownLogTypeException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback resultHandler) {
+    //TODO-Cluster: implement
+  }
+
   AppendLogResult sendLogToFollowers(Log log) {
     logger.debug("Sending a log to followers: {}", log);
 
@@ -361,12 +419,8 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
 
     AppendEntryRequest request = new AppendEntryRequest();
-    request.setLeader(thisNode);
     request.setTerm(term.get());
     request.setEntry(log.serialize());
-    request.setPreviousLogIndex(logManager.getLastLogIndex());
-    request.setPreviousLogTerm(logManager.getLastLogTerm());
-
 
     for (Node node : allNodes) {
       AsyncClient client = connectNode(node);
@@ -429,7 +483,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
             if (remaining == 0) {
               quorum.notifyAll();
             }
-          } else if (resp != LOG_INDEX_MISMATCH) {
+          } else if (resp != LOG_MISMATCH) {
             // the leader ship is stale, wait for the new leader's heartbeat
             synchronized (term) {
               long currTerm = term.get();
@@ -629,8 +683,13 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
         // current leadership is still valid
         Node follower = response.getFollower();
         long lastLogIdx = response.getLastLogIndex();
-        logger.debug("Node {} is still alive, log index: {}", follower, lastLogIdx);
-        if (RaftServer.this.logManager.getLastLogIndex() > lastLogIdx) {
+        long lastLogTerm = response.getLastLogTerm();
+        logger.debug("Node {} is still alive, log index: {}, log term: {}", follower, lastLogIdx,
+            lastLogTerm);
+        long localLastLogIdx = RaftServer.this.logManager.getLastLogIndex();
+        long localLastLogTerm = RaftServer.this.logManager.getLastLogTerm();
+        if (localLastLogIdx > lastLogIdx ||
+            lastLogIdx == localLastLogIdx && localLastLogTerm > lastLogTerm) {
           handleCatchUp(follower, lastLogIdx);
         }
       } else {
@@ -657,9 +716,135 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
       nodeTransportMap.remove(receiver).close();
     }
 
-  }
 
-  abstract void handleCatchUp(Node follower, long followerLastLogIndex);
+    private void handleCatchUp(Node follower, long followerLastLogIndex) {
+      if (followerLastLogIndex == -1) {
+        // if the follower does not have any logs, send from the first one
+        followerLastLogIndex = 0;
+      }
+      // avoid concurrent catch-up of the same follower
+      synchronized (follower) {
+        AsyncClient client = connectNode(follower);
+        if (client != null) {
+          List<Log> logs;
+          boolean allLogsValid;
+          Snapshot snapshot = null;
+          synchronized (logManager) {
+            allLogsValid = logManager.logValid(followerLastLogIndex);
+            logs = logManager.getLogs(followerLastLogIndex, logManager.getLastLogIndex());
+            if (!allLogsValid) {
+              logger.debug("Logs in {} are too old, catch up with snapshot", follower);
+              snapshot = logManager.getSnapshot();
+            }
+          }
+          if (allLogsValid) {
+            try {
+              doCatchUp(logs, client);
+            } catch (TException e) {
+              logger.error("Catch-up error, receiver {}", follower, e);
+              // reset the connection
+              nodeClientMap.remove(follower);
+              nodeTransportMap.remove(follower).close();
+            }
+          } else {
+            doCatchUp(logs, client, snapshot);
+          }
+        }
+      }
+    }
+
+    private void doCatchUp(List<Log> logs, AsyncClient client) throws TException {
+      AppendEntryRequest request = new AppendEntryRequest();
+      AtomicBoolean aborted = new AtomicBoolean(false);
+      AtomicBoolean appendSucceed = new AtomicBoolean(false);
+
+      CatchUpHandler handler = new CatchUpHandler();
+      handler.aborted = aborted;
+      handler.appendSucceed = appendSucceed;
+
+      for (Log log : logs) {
+        synchronized (term) {
+          // make sure this node is still a leader
+          if (character != NodeCharacter.LEADER) {
+            logger.debug("Leadership is lost when doing a catch-up, aborting");
+            return;
+          }
+          request.setTerm(term.get());
+        }
+        handler.log = log;
+        request.setEntry(log.serialize());
+        client.appendEntry(request, handler);
+
+        synchronized (aborted) {
+          if (!aborted.get() && !appendSucceed.get()) {
+            try {
+              aborted.wait(CONNECTION_TIME_OUT_MS);
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              throw new TException(new RequestTimeOutException(log));
+            }
+          }
+        }
+      }
+    }
+
+    class CatchUpHandler implements AsyncMethodCallback<appendEntry_call> {
+
+      private Log log;
+      private AtomicBoolean aborted;
+      private AtomicBoolean appendSucceed;
+
+      @Override
+      public void onComplete(appendEntry_call response) {
+        try {
+          long resp = response.getResult();
+          if (resp == AGREE) {
+            synchronized (aborted) {
+              appendSucceed.set(true);
+              aborted.notifyAll();
+            }
+            logger.debug("Succeed to sen log {}", log);
+          } else if (resp == LOG_MISMATCH) {
+            // this is not probably possible
+            logger.error("Log mismatch occurred when sending log {}", log);
+            synchronized (aborted) {
+              aborted.set(true);
+              aborted.notifyAll();
+            }
+          } else {
+            // the follower'term has updated, which means a new leader is elected
+            synchronized (term) {
+              long currTerm = term.get();
+              if (currTerm < resp) {
+                character = NodeCharacter.FOLLOWER;
+                term.set(currTerm);
+              }
+            }
+            synchronized (aborted) {
+              aborted.set(true);
+              aborted.notifyAll();
+            }
+            logger.warn("Catch-up aborted because leadership is lost");
+          }
+        } catch (TException e) {
+          onError(e);
+        }
+      }
+
+      @Override
+      public void onError(Exception exception) {
+        synchronized (aborted) {
+          aborted.set(true);
+          aborted.notifyAll();
+        }
+        logger.warn("Catchup fails when sending log {}", log, exception);
+      }
+    }
+
+    private void doCatchUp(List<Log> logs, AsyncClient client, Snapshot snapshot) {
+      // TODO-Cluster implement
+    }
+  }
 
   class ElectionHandler implements AsyncMethodCallback<startElection_call> {
 

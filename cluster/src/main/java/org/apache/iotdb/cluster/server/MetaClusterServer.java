@@ -21,7 +21,9 @@ package org.apache.iotdb.cluster.server;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
+import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.meta.AddNodeLog;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -42,16 +44,6 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   private static final Logger logger = LoggerFactory.getLogger(MetaClusterServer.class);
 
   @Override
-  public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
-
-  }
-
-  @Override
-  public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback resultHandler) {
-
-  }
-
-  @Override
   public void addNode(Node node, AsyncMethodCallback resultHandler) {
     if (node == thisNode) {
       resultHandler.onError(new AddSelfException());
@@ -63,6 +55,8 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
         AddNodeLog addNodeLog = new AddNodeLog();
         addNodeLog.setIp(node.getIp());
         addNodeLog.setPort(node.getPort());
+        addNodeLog.setPreviousLogIndex(logManager.getLastLogIndex());
+        addNodeLog.setPreviousLogTerm(logManager.getLastLogTerm());
 
         AppendLogResult result = sendLogToFollowers(addNodeLog);
         switch (result) {
@@ -118,10 +112,5 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
       allNodes.add(newNode);
       saveNodes();
     }
-  }
-
-  @Override
-  void handleCatchUp(Node follower, long followerLastLogIndex) {
-
   }
 }

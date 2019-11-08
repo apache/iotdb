@@ -46,10 +46,15 @@ public class AddNodeLog extends Log {
   public ByteBuffer serialize() {
     byte[] ipBytes = ip.getBytes();
 
-    int totalSize = Byte.BYTES  + Integer.BYTES + ipBytes.length + Integer.BYTES;
+    int totalSize =
+            Long.BYTES + Long.BYTES +
+            Byte.BYTES  + Integer.BYTES + ipBytes.length + Integer.BYTES;
     byte[] buffer = new byte[totalSize];
 
     ByteBuffer byteBuffer = ByteBuffer.wrap(buffer);
+
+    byteBuffer.putLong(getPreviousLogIndex());
+    byteBuffer.putLong(getPreviousLogTerm());
 
     byteBuffer.put((byte) Types.ADD_NODE.ordinal());
     byteBuffer.putInt((short) ipBytes.length);
@@ -61,6 +66,10 @@ public class AddNodeLog extends Log {
 
   @Override
   public void deserialize(ByteBuffer buffer) {
+
+    setPreviousLogIndex(buffer.getLong());
+    setPreviousLogTerm(buffer.getLong());
+
     int ipLength = buffer.getInt();
     byte[] ipBytes = new byte[ipLength];
     buffer.get(ipBytes);

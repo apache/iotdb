@@ -22,11 +22,30 @@ import java.nio.ByteBuffer;
 
 public abstract class Log {
 
+  private long previousLogIndex;
+  private long previousLogTerm;
+
   public abstract ByteBuffer serialize();
 
   public abstract void deserialize(ByteBuffer buffer);
 
   public enum Types {
     ADD_NODE
+  }
+
+  public long getPreviousLogIndex() {
+    return previousLogIndex;
+  }
+
+  public void setPreviousLogIndex(long previousLogIndex) {
+    this.previousLogIndex = previousLogIndex;
+  }
+
+  public long getPreviousLogTerm() {
+    return previousLogTerm;
+  }
+
+  public void setPreviousLogTerm(long previousLogTerm) {
+    this.previousLogTerm = previousLogTerm;
   }
 }
