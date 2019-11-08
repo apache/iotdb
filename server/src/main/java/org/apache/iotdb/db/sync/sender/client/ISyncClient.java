@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.sender.transfer;
+package org.apache.iotdb.db.sync.sender.client;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,7 +31,7 @@ import org.apache.thrift.TException;
  * synchronized in <class>SyncFileManager</class>, these files are synchronized to the receiving end
  * to complete the synchronization task.
  */
-public interface IDataTransferManager {
+public interface ISyncClient {
 
   void init();
 

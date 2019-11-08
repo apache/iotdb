@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.sender.transfer;
+package org.apache.iotdb.db.sync.sender.client;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -51,7 +51,7 @@ import org.slf4j.LoggerFactory;
 public class DataTransferManagerTest {
 
   private static final Logger logger = LoggerFactory.getLogger(DataTransferManagerTest.class);
-  private IDataTransferManager manager = DataTransferManager.getInstance();
+  private ISyncClient manager = SyncClient.getInstance();
   private SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
   private String dataDir;
   private ISyncSenderLogAnalyzer senderLogAnalyzer;
@@ -106,7 +106,7 @@ public class DataTransferManagerTest {
       dataFileMap.putIfAbsent(sgFile.getName(), new HashSet<>());
       for (File tsfile : sgFile.listFiles()) {
         if (!tsfile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
-          ((DataTransferManager)manager).makeFileSnapshot(tsfile);
+          ((SyncClient)manager).makeFileSnapshot(tsfile);
         }
         dataFileMap.get(sgFile.getName()).add(tsfile.getName());
       }
