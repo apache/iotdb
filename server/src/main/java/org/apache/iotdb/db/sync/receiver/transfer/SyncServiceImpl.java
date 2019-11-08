@@ -46,8 +46,8 @@ import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogAnalyzer;
 import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogger;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SyncUtils;
-import org.apache.iotdb.service.sync.thrift.ResultStatus;
 import org.apache.iotdb.service.sync.thrift.SyncService;
+import org.apache.iotdb.service.sync.thrift.SyncStatus;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,7 +76,7 @@ public class SyncServiceImpl implements SyncService.Iface {
    * Verify IP address of sender
    */
   @Override
-  public ResultStatus check(String ipAddress, String uuid) {
+  public SyncStatus check(String ipAddress, String uuid) {
     Thread.currentThread().setName(ThreadName.SYNC_SERVER.getName());
     if (SyncUtils.verifyIPSegment(config.getIpWhiteList(), ipAddress)) {
       senderName.set(ipAddress + SyncConstant.SYNC_DIR_NAME_SEPARATOR + uuid);
@@ -108,7 +108,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   }
 
   @Override
-  public ResultStatus startSync() {
+  public SyncStatus startSync() {
     try {
       initPath();
       currentSG.remove();
@@ -137,7 +137,7 @@ public class SyncServiceImpl implements SyncService.Iface {
    * Init threadLocal variable.
    */
   @Override
-  public ResultStatus init(String storageGroup) {
+  public SyncStatus init(String storageGroup) {
     logger.info("Sync process started to receive data of storage group {}", storageGroup);
     currentSG.set(storageGroup);
     try {
@@ -150,7 +150,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   }
 
   @Override
-  public ResultStatus syncDeletedFileName(String fileName) throws TException {
+  public SyncStatus syncDeletedFileName(String fileName) throws TException {
     try {
       syncLog.get().finishSyncDeletedFileName(
           new File(getSyncDataPath(), currentSG.get() + File.separatorChar + fileName));
@@ -165,7 +165,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   }
 
   @Override
-  public ResultStatus initSyncData(String filename) throws TException {
+  public SyncStatus initSyncData(String filename) throws TException {
     try {
       File file;
       if (currentSG.get() == null) { // schema mlog.txt file
@@ -194,7 +194,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   }
 
   @Override
-  public ResultStatus syncData(ByteBuffer buff) {
+  public SyncStatus syncData(ByteBuffer buff) {
     try {
       currentFileWriter.get().write(buff);
       buff.flip();
@@ -209,7 +209,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   }
 
   @Override
-  public ResultStatus checkDataMD5(String md5OfSender) throws TException {
+  public SyncStatus checkDataMD5(String md5OfSender) throws TException {
     String md5OfReceiver = (new BigInteger(1, messageDigest.get().digest())).toString(16);
     try {
       if (currentFileWriter.get() != null && currentFileWriter.get().isOpen()) {
@@ -241,12 +241,13 @@ public class SyncServiceImpl implements SyncService.Iface {
           .format("Can not check data MD5 for file %s because %s", currentFile.get().getName(),
               e.getMessage()));
     } catch (SyncDeviceOwnerConflictException e) {
-      logger.error("Device owner has conflicts, skip all other tsfiles in the sg {}.", currentSG.get());
-      return new ResultStatus(false, String
+      logger.error("Device owner has conflicts, skip all other tsfiles in the sg {}.",
+          currentSG.get());
+      return new SyncStatus(SyncConstant.CONFLICT_CODE, String
           .format("Device owner has conflicts, skip all other tsfiles in the same sg %s because %s",
-              currentSG.get(), e.getMessage()), -2);
+              currentSG.get(), e.getMessage()));
     }
-    return new ResultStatus(true, md5OfReceiver, 1);
+    return new SyncStatus(SyncConstant.SUCCESS_CODE, md5OfReceiver);
   }
 
   private void loadMetadata() {
@@ -269,7 +270,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   }
 
   @Override
-  public ResultStatus endSync() throws TException {
+  public SyncStatus endSync() throws TException {
     try {
       if (syncLog.get() != null) {
         syncLog.get().close();
@@ -293,12 +294,12 @@ public class SyncServiceImpl implements SyncService.Iface {
     return syncFolderPath.get() + File.separatorChar + SyncConstant.RECEIVER_DATA_FOLDER_NAME;
   }
 
-  private ResultStatus getSuccessResult() {
-    return new ResultStatus(true, null, 1);
+  private SyncStatus getSuccessResult() {
+    return new SyncStatus(SyncConstant.SUCCESS_CODE, null);
   }
 
-  private ResultStatus getErrorResult(String errorMsg) {
-    return new ResultStatus(false, errorMsg, -1);
+  private SyncStatus getErrorResult(String errorMsg) {
+    return new SyncStatus(SyncConstant.ERROR_CODE, errorMsg);
   }
 
 }
