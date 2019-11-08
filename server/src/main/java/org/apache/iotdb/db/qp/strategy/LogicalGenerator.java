@@ -50,6 +50,7 @@ import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LINEAR;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LINK;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LIST;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LOAD;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LOAD_CONFIGURATION;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PATH;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PREVIOUS;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PRIVILEGES;
@@ -103,6 +104,7 @@ import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
@@ -274,6 +276,9 @@ public class LogicalGenerator {
       case TOK_GROUPBY_DEVICE:
         ((QueryOperator) initializedOperator).setGroupByDevice(true);
         return;
+      case TOK_LOAD_CONFIGURATION:
+        initializedOperator = new LoadConfigurationOperator();
+        return;
       default:
         throw new QueryProcessorException("Not supported TqlParser type " + token.getText());
     }
@@ -301,8 +306,7 @@ public class LogicalGenerator {
 
   private void analyzeSetTTL(AstNode astNode) {
     String path = parsePath(astNode.getChild(1)).getFullPath();
-    long dataTTL;
-    dataTTL = Long.parseLong(astNode.getChild(2).getText());
+    long dataTTL = Long.parseLong(astNode.getChild(2).getText());
     SetTTLOperator operator = new SetTTLOperator(SQLConstant.TOK_SET);
     initializedOperator = operator;
     operator.setStorageGroup(path);

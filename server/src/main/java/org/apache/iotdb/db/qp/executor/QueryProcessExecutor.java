@@ -54,14 +54,14 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -130,12 +130,15 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       case SET_STORAGE_GROUP:
         return setStorageGroup((SetStorageGroupPlan) plan);
       case DELETE_STORAGE_GROUP:
-        return deleteStorageGroup((DeleteStorageGroupPlan) plan);  
+        return deleteStorageGroup((DeleteStorageGroupPlan) plan);
       case PROPERTY:
         PropertyPlan property = (PropertyPlan) plan;
         return operateProperty(property);
       case TTL:
         operateTTL((SetTTLPlan) plan);
+        return true;
+      case LOAD_CONFIGURATION:
+        IoTDBDescriptor.getInstance().loadHotModifiedProps();
         return true;
       default:
         throw new UnsupportedOperationException(
@@ -384,8 +387,9 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
     return true;
   }
-  
-  private boolean createTimeSeries(CreateTimeSeriesPlan createTimeSeriesPlan) throws ProcessorException {
+
+  private boolean createTimeSeries(CreateTimeSeriesPlan createTimeSeriesPlan)
+      throws ProcessorException {
     Path path = createTimeSeriesPlan.getPath();
     TSDataType dataType = createTimeSeriesPlan.getDataType();
     CompressionType compressor = createTimeSeriesPlan.getCompressor();
@@ -401,8 +405,9 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
     return true;
   }
-  
-  private boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws ProcessorException {
+
+  private boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan)
+      throws ProcessorException {
     List<Path> deletePathList = deleteTimeSeriesPlan.getPaths();
     try {
       deleteDataOfTimeSeries(deletePathList);
@@ -415,8 +420,9 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
     return true;
   }
-  
-  private boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) throws ProcessorException {
+
+  private boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan)
+      throws ProcessorException {
     Path path = setStorageGroupPlan.getPath();
     try {
       mManager.setStorageGroupToMTree(path.getFullPath());
@@ -425,8 +431,9 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
     return true;
   }
-  
-  private boolean deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan) throws ProcessorException {
+
+  private boolean deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan)
+      throws ProcessorException {
     List<Path> deletePathList = deleteStorageGroupPlan.getPaths();
     try {
       mManager.deleteStorageGroupsFromMTree(deletePathList);

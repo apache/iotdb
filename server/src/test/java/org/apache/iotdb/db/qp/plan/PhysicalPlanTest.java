@@ -37,6 +37,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
 import org.apache.iotdb.db.query.fill.LinearFill;
@@ -486,5 +487,14 @@ public class PhysicalPlanTest {
     DataAuthPlan dataAuthPlan = (DataAuthPlan) plan;
     Assert.assertEquals(2, dataAuthPlan.getUsers().size());
     Assert.assertEquals(OperatorType.REVOKE_WATERMARK_EMBEDDING, dataAuthPlan.getOperatorType());
+  }
+
+  @Test
+  public void testConfiguration()
+      throws QueryProcessorException, MetadataErrorException {
+    String metadata = "load configuration";
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    LoadConfigurationPlan plan = (LoadConfigurationPlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals("LOAD_CONFIGURATION", plan.toString());
   }
 }
