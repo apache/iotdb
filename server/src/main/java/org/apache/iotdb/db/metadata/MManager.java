@@ -584,8 +584,8 @@ public class MManager {
       if (mgraph.checkStorageGroup(path)) {
         return;
       }
-      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
       mgraph.setStorageGroup(path);
+      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
       seriesNumberInStorageGroups.put(path, 0);
       if (writeToLog) {
         BufferedWriter writer = getLogWriter();
@@ -593,15 +593,15 @@ public class MManager {
         writer.newLine();
         writer.flush();
       }
-    } catch (IOException | ConfigAdjusterException e) {
+    } catch (IOException | StorageGroupException e) {
       throw new MetadataErrorException(e);
-    } catch (StorageGroupException e) {
+    } catch (ConfigAdjusterException e) {
       try {
-        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
-      } catch (ConfigAdjusterException ex) {
+        mgraph.deleteStorageGroup(path);
+        throw new MetadataErrorException(e);
+      } catch (PathErrorException ex) {
         throw new MetadataErrorException(ex);
       }
-      throw new MetadataErrorException(e);
     } finally {
       lock.writeLock().unlock();
     }
