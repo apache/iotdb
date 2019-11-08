@@ -222,7 +222,7 @@ public class MManager {
             props);
         break;
       case MetadataOperationType.DELETE_PATH_FROM_MTREE:
-        deletePaths(Collections.singletonList(new Path(args[1])));
+        deletePaths(Collections.singletonList(new Path(args[1])), false);
         break;
       case MetadataOperationType.SET_STORAGE_GROUP_TO_MTREE:
         setStorageGroupToMTree(args[1]);
@@ -317,11 +317,6 @@ public class MManager {
       } catch (StorageGroupException e) {
         throw new MetadataErrorException(e);
       }
-      try {
-        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
-      } catch (ConfigAdjusterException e) {
-        throw new MetadataErrorException(e);
-      }
       // the two map is stored in the storage group node
       Map<String, MeasurementSchema> schemaMap = getStorageGroupSchemaMap(fileNodePath);
       Map<String, Integer> numSchemaMap = getStorageGroupNumSchemaMap(fileNodePath);
@@ -364,6 +359,13 @@ public class MManager {
           }
           schemaMap.put(lastNode, columnSchema);
           numSchemaMap.put(lastNode, 1);
+        }
+        try {
+          IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
+        } catch (ConfigAdjusterException e) {
+          // Undo create time series
+          deletePaths(Collections.singletonList(path), true);
+          throw new MetadataErrorException(e);
         }
         return isNewMeasurement;
       }
@@ -483,17 +485,19 @@ public class MManager {
    * @return a set contains StorageGroups that contain no more timeseries after this deletion and
    * files of such StorageGroups should be deleted to reclaim disk space.
    */
-  public Set<String> deletePaths(List<Path> deletePathList)
+  public Set<String> deletePaths(List<Path> deletePathList, boolean isUndo)
       throws MetadataErrorException {
     if (deletePathList != null && !deletePathList.isEmpty()) {
       List<String> fullPath = collectPaths(deletePathList);
 
       Set<String> emptyStorageGroups = new HashSet<>();
       for (String p : fullPath) {
-        try {
-          IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(-1);
-        } catch (ConfigAdjusterException e) {
-          throw new MetadataErrorException(e);
+        if (!isUndo) {
+          try {
+            IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(-1);
+          } catch (ConfigAdjusterException e) {
+            throw new MetadataErrorException(e);
+          }
         }
         String emptiedStorageGroup = deletePath(p);
         if (emptiedStorageGroup != null) {
