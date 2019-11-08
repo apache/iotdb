@@ -31,12 +31,12 @@ public class FakedSeriesReader implements IPointReader {
   private boolean initWithTimeList;
   private final static TSDataType DATA_TYPE = TSDataType.INT64;
 
-  // init with time list and value
+  // setFolders with time list and value
   private long[] timestamps;
   private long value;
 
 
-  // init with startTime, size, interval and modValue
+  // setFolders with startTime, size, interval and modValue
   private long startTime;
   private int interval;
   private int modValue;

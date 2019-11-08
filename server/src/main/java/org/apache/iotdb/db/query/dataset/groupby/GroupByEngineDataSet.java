@@ -61,7 +61,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     this.mergedIntervals = mergedIntervals;
     this.functions = new ArrayList<>();
 
-    // init group by time partition
+    // setFolders group by time partition
     this.usedIndex = 0;
     this.hasCachedTimeInterval = false;
     this.endTime = -1;

@@ -358,7 +358,7 @@ public class StorageGroupProcessor {
     }
     writeLock();
     try {
-      // init map
+      // setFolders map
       latestTimeForEachDevice.putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
       latestFlushedTimeForEachDevice.putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
 
@@ -373,7 +373,7 @@ public class StorageGroupProcessor {
   public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessorException {
     writeLock();
     try {
-      // init map
+      // setFolders map
       latestTimeForEachDevice.putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
       latestFlushedTimeForEachDevice.putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
 

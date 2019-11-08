@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategy;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,34 +65,54 @@ public class DirectoryManager {
       strategyName = IoTDBDescriptor.getInstance().getConfig().getMultiDirStrategyClassName();
       Class<?> clazz = Class.forName(strategyName);
       sequenceStrategy = (DirectoryStrategy) clazz.newInstance();
-      sequenceStrategy.init(sequenceFileFolders);
+      sequenceStrategy.setFolders(sequenceFileFolders);
       unsequenceStrategy = (DirectoryStrategy) clazz.newInstance();
-      unsequenceStrategy.init(unsequenceFileFolders);
+      unsequenceStrategy.setFolders(unsequenceFileFolders);
     } catch (DiskSpaceInsufficientException e) {
       logger.error("All disks of folders are full.", e);
     } catch (Exception e) {
-      logger.error("Can't find sequenceStrategy {} for mult-directories.", strategyName, e);
+      logger.error("Can't find strategy {} for mult-directories.", strategyName, e);
     }
   }
 
-  public void updateFileFolders() {
+  public void updateFileFolders() throws LoadConfigurationException {
     try {
-      sequenceFileFolders =
+      List<String> sequenceFileFolders =
           new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
       mkDataDirs(sequenceFileFolders);
 
-      unsequenceFileFolders =
+      List<String> unsequenceFileFolders =
           new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
       mkDataDirs(unsequenceFileFolders);
-      sequenceStrategy.init(sequenceFileFolders);
-      unsequenceStrategy.init(unsequenceFileFolders);
+      sequenceStrategy.setFolders(sequenceFileFolders);
+      unsequenceStrategy.setFolders(unsequenceFileFolders);
+      this.sequenceFileFolders = sequenceFileFolders;
+      this.unsequenceFileFolders = unsequenceFileFolders;
+      logger.info("Success to update file folders.");
     } catch (DiskSpaceInsufficientException e) {
-      logger.error("All disks of folders are full.", e);
+      logger.error(
+          "Fail to update file folders, use previous folders.", e);
+      throw new LoadConfigurationException(
+          "Fail to update file folders because all disks of folders are full, use previous folders.");
     }
   }
 
-  private void updateDirectoryStrategy(){
-
+  public void updateDirectoryStrategy() throws LoadConfigurationException {
+    String strategyName = "";
+    try {
+      strategyName = IoTDBDescriptor.getInstance().getConfig().getMultiDirStrategyClassName();
+      Class<?> clazz = Class.forName(strategyName);
+      sequenceStrategy = (DirectoryStrategy) clazz.newInstance();
+      sequenceStrategy.setFolders(sequenceFileFolders);
+      unsequenceStrategy = (DirectoryStrategy) clazz.newInstance();
+      unsequenceStrategy.setFolders(unsequenceFileFolders);
+      logger.info("Success to update directory strategy.");
+    } catch (Exception e) {
+      logger.error("Fail to update directory strategy {}, use previous strategy", strategyName, e);
+      throw new LoadConfigurationException(String.format(
+          "Fail to update directory strategy because can't find strategy %s for mult-directories, use previous strategy",
+          strategyName));
+    }
   }
 
   public static DirectoryManager getInstance() {
@@ -125,10 +146,6 @@ public class DirectoryManager {
 
   public String getSequenceFileFolder(int index) {
     return sequenceFileFolders.get(index);
-  }
-
-  public int getSequenceFileFolderIndex(String folder) {
-    return sequenceFileFolders.indexOf(folder);
   }
 
   public List<String> getAllSequenceFileFolders() {

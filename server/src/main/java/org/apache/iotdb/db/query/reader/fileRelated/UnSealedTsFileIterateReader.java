@@ -109,7 +109,7 @@ public class UnSealedTsFileIterateReader extends IterateReader {
     List<ChunkMetaData> metaDataList = unSealedTsFile.getChunkMetaDataList();
 
     if (metaDataList == null || metaDataList.isEmpty()) {
-      // init fileSeriesReader
+      // setFolders fileSeriesReader
       // no need to construct a IChunkLoader since it will never be used in this case
       if (filter == null) {
         fileSeriesReader = new FileSeriesReaderWithoutFilter(null, metaDataList);
@@ -126,7 +126,7 @@ public class UnSealedTsFileIterateReader extends IterateReader {
       TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
           .get(unSealedTsFile, false);
       IChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
-      // init fileSeriesReader
+      // setFolders fileSeriesReader
       if (filter == null) {
         fileSeriesReader = new FileSeriesReaderWithoutFilter(chunkLoader, metaDataList);
       } else {

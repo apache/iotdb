@@ -46,7 +46,7 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
   private int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
 
   /**
-   * init by TSDataType and TimeValuePairSorter.
+   * setFolders by TSDataType and TimeValuePairSorter.
    */
   public ReadOnlyMemChunk(TSDataType dataType, TimeValuePairSorter memSeries, Map<String, String> props) {
     this.dataType = dataType;

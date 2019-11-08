@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.conf.directories.strategy;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
@@ -34,19 +35,17 @@ public abstract class DirectoryStrategy {
   protected static final Logger logger = LoggerFactory.getLogger(DirectoryStrategy.class);
 
   /**
-   * All the folders of data files, should be init once the subclass is created.
+   * All the folders of data files, should be setFolders once the subclass is created.
    */
-  List<String> folders;
+  List<String> folders = new ArrayList<>();
 
   /**
-   * To init folders. Do not recommend to overwrite.
+   * To setFolders folders. Do not recommend to overwrite.
    * This method guarantees that at least one folder has available space.
    *
    * @param folders the folders from conf
    */
-  public void init(List<String> folders) throws DiskSpaceInsufficientException {
-    this.folders = folders;
-
+  public void setFolders(List<String> folders) throws DiskSpaceInsufficientException {
     boolean hasSpace = false;
     for (String folder : folders) {
       if (CommonUtils.hasSpace(folder)) {
@@ -57,8 +56,10 @@ public abstract class DirectoryStrategy {
     if (!hasSpace) {
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new DiskSpaceInsufficientException(
-          String.format("All disks of folders %s are full, can't init.", folders));
+          String.format("All disks of folders %s are full, can't setFolders.", folders));
     }
+
+    this.folders = folders;
   }
 
   /**

@@ -73,7 +73,7 @@ public class DirectoryStrategyTest {
   @Test
   public void testSequenceStrategy() throws DiskSpaceInsufficientException {
     SequenceStrategy sequenceStrategy = new SequenceStrategy();
-    sequenceStrategy.init(dataDirList);
+    sequenceStrategy.setFolders(dataDirList);
 
     // loop two times of data dir size to fully loop
     int index = 0;
@@ -89,7 +89,7 @@ public class DirectoryStrategyTest {
   @Test
   public void testMaxDiskUsableSpaceFirstStrategy() throws DiskSpaceInsufficientException {
     MaxDiskUsableSpaceFirstStrategy maxDiskUsableSpaceFirstStrategy = new MaxDiskUsableSpaceFirstStrategy();
-    maxDiskUsableSpaceFirstStrategy.init(dataDirList);
+    maxDiskUsableSpaceFirstStrategy.setFolders(dataDirList);
 
     int maxIndex = getIndexOfMaxSpace();
     for (int i = 0; i < dataDirList.size(); i++) {
@@ -120,7 +120,7 @@ public class DirectoryStrategyTest {
   public void testMinFolderOccupiedSpaceFirstStrategy()
       throws DiskSpaceInsufficientException, IOException {
     MinFolderOccupiedSpaceFirstStrategy minFolderOccupiedSpaceFirstStrategy = new MinFolderOccupiedSpaceFirstStrategy();
-    minFolderOccupiedSpaceFirstStrategy.init(dataDirList);
+    minFolderOccupiedSpaceFirstStrategy.setFolders(dataDirList);
 
     int minIndex = getIndexOfMinOccupiedSpace();
     for (int i = 0; i < dataDirList.size(); i++) {
@@ -155,21 +155,21 @@ public class DirectoryStrategyTest {
 
     SequenceStrategy sequenceStrategy = new SequenceStrategy();
     try {
-      sequenceStrategy.init(dataDirList);
+      sequenceStrategy.setFolders(dataDirList);
       fail();
     } catch (DiskSpaceInsufficientException e) {
     }
 
     MaxDiskUsableSpaceFirstStrategy maxDiskUsableSpaceFirstStrategy = new MaxDiskUsableSpaceFirstStrategy();
     try {
-      maxDiskUsableSpaceFirstStrategy.init(dataDirList);
+      maxDiskUsableSpaceFirstStrategy.setFolders(dataDirList);
       fail();
     } catch (DiskSpaceInsufficientException e) {
     }
 
     MinFolderOccupiedSpaceFirstStrategy minFolderOccupiedSpaceFirstStrategy = new MinFolderOccupiedSpaceFirstStrategy();
     try {
-      minFolderOccupiedSpaceFirstStrategy.init(dataDirList);
+      minFolderOccupiedSpaceFirstStrategy.setFolders(dataDirList);
       fail();
     } catch (DiskSpaceInsufficientException e) {
     }

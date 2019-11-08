@@ -127,7 +127,7 @@ public class MManagerImproveTest {
 
     logger.debug("string combine:\t" + string_combine);
     logger.debug("seriesPath exist:\t" + path_exist);
-    logger.debug("list init:\t" + list_init);
+    logger.debug("list setFolders:\t" + list_init);
     logger.debug("check file level:\t" + check_filelevel);
     logger.debug("get series type:\t" + get_seriestype);
   }

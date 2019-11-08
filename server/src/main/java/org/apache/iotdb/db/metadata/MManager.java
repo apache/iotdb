@@ -165,7 +165,7 @@ public class MManager {
 
   private void initFromLog(File logFile)
       throws IOException, PathErrorException, MetadataErrorException {
-    // init the metadata from the operation log
+    // setFolders the metadata from the operation log
     mgraph = new MGraph(ROOT_NAME);
     if (logFile.exists()) {
       try (FileReader fr = new FileReader(logFile);

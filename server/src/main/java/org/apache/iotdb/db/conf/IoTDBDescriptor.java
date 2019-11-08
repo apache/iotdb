@@ -26,6 +26,8 @@ import java.io.InputStream;
 import java.time.ZoneId;
 import java.util.Properties;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.exception.LoadConfigurationException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
@@ -407,7 +409,7 @@ public class IoTDBDescriptor {
         .getProperty("compressor", TSFileDescriptor.getInstance().getConfig().getCompressor()));
   }
 
-  public void loadHotModifiedProps() {
+  public void loadHotModifiedProps() throws ProcessorException {
     String url = getPropsUrl();
     if (url == null) {
       return;
@@ -429,7 +431,7 @@ public class IoTDBDescriptor {
       if (multiDirStrategyClassName != null && !multiDirStrategyClassName
           .equals(conf.getMultiDirStrategyClassName())) {
         conf.setMultiDirStrategyClassName(multiDirStrategyClassName);
-        DirectoryManager.getInstance().updateFileFolders();
+        DirectoryManager.getInstance().updateDirectoryStrategy();
       }
 
       // update WAL conf
@@ -460,12 +462,9 @@ public class IoTDBDescriptor {
       // update tsfile-format config
       loadTsFileProps(properties);
 
-    } catch (FileNotFoundException e) {
-      logger.warn("Fail to reload config file {}", url, e);
-    } catch (IOException e) {
-      logger.warn("Cannot reload config file, use default configuration", e);
     } catch (Exception e) {
-      logger.warn("Incorrect format in config file, use default configuration", e);
+      logger.warn("Fail to reload config file {}", url, e);
+      throw new ProcessorException(String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     }
   }
 

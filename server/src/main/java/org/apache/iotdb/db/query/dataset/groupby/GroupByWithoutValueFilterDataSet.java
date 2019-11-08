@@ -70,12 +70,12 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   /**
-   * init reader and aggregate function.
+   * setFolders reader and aggregate function.
    */
   public void initGroupBy(QueryContext context, List<String> aggres, IExpression expression)
       throws StorageEngineException, PathErrorException, ProcessorException, IOException {
     initAggreFuction(aggres);
-    // init reader
+    // setFolders reader
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }

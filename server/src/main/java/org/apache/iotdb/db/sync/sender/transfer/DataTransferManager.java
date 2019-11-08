@@ -450,7 +450,7 @@ public class DataTransferManager implements IDataTransferManager {
         try {
           ResultStatus status = serviceClient.init(sgName);
           if (!status.success) {
-            throw new SyncConnectionException("Unable init receiver because " + status.msg);
+            throw new SyncConnectionException("Unable setFolders receiver because " + status.msg);
           }
         } catch (TException | SyncConnectionException e) {
           throw new SyncConnectionException("Unable to connect to receiver", e);

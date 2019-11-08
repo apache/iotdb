@@ -174,7 +174,7 @@ public class SeqResourceIterateReader extends IterateReader {
         .get(sealedTsFile, true);
     IChunkLoader chunkLoader = new ChunkLoaderImpl(tsFileReader);
 
-    // init fileSeriesReader
+    // setFolders fileSeriesReader
     FileSeriesReader fileSeriesReader;
     if (filter == null) {
       fileSeriesReader = new FileSeriesReaderWithoutFilter(chunkLoader, metaDataList);
