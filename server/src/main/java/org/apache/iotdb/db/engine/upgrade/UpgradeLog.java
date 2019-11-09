@@ -66,6 +66,7 @@ public class UpgradeLog {
     try {
       upgradeLogWriter.write(content);
       upgradeLogWriter.newLine();
+      upgradeLogWriter.flush();
       return true;
     } catch (IOException e) {
       logger.error("write upgrade log file failed, the log file:{}", getUpgradeLogPath(), e);
