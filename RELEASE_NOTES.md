@@ -19,7 +19,7 @@
 
 -->
 
-# Apache IoTDB (incubating) 0.8.0
+# Apache IoTDB (incubating) 0.9.0
 
 This is the first official release of Apache IoTDB after joining the Incubator.
 
