@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.cluster.server;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -36,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -48,6 +44,7 @@ import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.LogManager;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.MemoryLogManager;
+import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -56,13 +53,9 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.Factory;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.handlers.AppendEntryHandler;
-import org.apache.iotdb.cluster.server.handlers.HeartBeatThread;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
@@ -74,7 +67,6 @@ import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 import org.apache.thrift.transport.TNonblockingSocket;
 import org.apache.thrift.transport.TNonblockingTransport;
-import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,145 +74,81 @@ import org.slf4j.LoggerFactory;
 public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftService.class);
-  public static final int CONNECTION_TIME_OUT_MS = 30 * 1000;
-  private static final String NODES_FILE_NAME = "nodes";
+  static final int CONNECTION_TIME_OUT_MS = 20 * 1000;
 
-  public static final long AGREE = -1;
-  public static final long LOG_MISMATCH = -2;
+  static final long RESPONSE_UNSET = 0;
+  public static final long RESPONSE_AGREE = -1;
+  public static final long RESPONSE_LOG_MISMATCH = -2;
+  public static final long RESPONSE_REJECT = -3;
 
-  private Random random = new Random();
+  Random random = new Random();
 
   private ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
   private TNonblockingServerTransport socket;
   private TServer poolServer;
   Node thisNode;
 
-  private AsyncClient.Factory clientFactory;
+  TProtocolFactory protocolFactory = config.isRpcThriftCompressionEnabled() ?
+      new TCompactProtocol.Factory() : new TBinaryProtocol.Factory();
 
   private List<Node> seedNodes = new ArrayList<>();
   Set<Node> allNodes = new HashSet<>();
 
-  Map<Node, TTransport> nodeTransportMap = new ConcurrentHashMap<>();
-  Map<Node, AsyncClient> nodeClientMap = new ConcurrentHashMap<>();
-
   private NodeStatus nodeStatus = NodeStatus.STARTING_UP;
   NodeCharacter character = NodeCharacter.ELECTOR;
-
   private AtomicLong term = new AtomicLong(0);
+  Node leader;
+  private long lastHeartBeatReceivedTime;
 
   LogManager logManager;
 
-  // if the log of this node falls behind, there is no point for this node to start election anymore
-  private boolean logFallsBehind = false;
-
-  private long lastHeartBeatReceivedTime;
-  Node leader;
-
-  private ExecutorService heartBeatService;
+  ExecutorService heartBeatService;
   private ExecutorService clientService;
+  private ExecutorService catchUpService;
+
+  private Map<Node, Long> lastCatchUpResponse = new ConcurrentHashMap<>();
 
   RaftServer() {
     this.thisNode = new Node();
     this.thisNode.setIp(config.getLocalIP());
     this.thisNode.setPort(config.getLocalMetaPort());
+
     initLogManager();
   }
 
-  /**
-   * load the non-seed nodes from a local record
-   */
-  private void loadNodes() {
-    File nonSeedFile = new File(NODES_FILE_NAME);
-    if (!nonSeedFile.exists()) {
-      logger.info("No non-seed file found");
-      return;
-    }
-    try (BufferedReader reader = new BufferedReader(new FileReader(NODES_FILE_NAME))) {
-      String line;
-      while ((line = reader.readLine()) != null) {
-        loadNode(line);
-      }
-      logger.info("Load {} non-seed nodes: {}", allNodes.size(), allNodes);
-    } catch (IOException e) {
-      logger.error("Cannot read non seeds");
-    }
-  }
-
-  private void loadNode(String url) {
-    String[] split = url.split(":");
-    if (split.length != 2) {
-      logger.warn("Incorrect seed url: {}", url);
-      return;
-    }
-    // TODO: check url format
-    String ip = split[0];
-    try {
-      int port = Integer.parseInt(split[1]);
-      Node node = new Node();
-      node.setIp(ip);
-      node.setPort(port);
-      allNodes.add(node);
-    } catch (NumberFormatException e) {
-      logger.warn("Incorrect seed url: {}", url);
-    }
-  }
-
-  synchronized void saveNodes() {
-    try (BufferedWriter writer = new BufferedWriter(new FileWriter(NODES_FILE_NAME))){
-      for (Node node : allNodes) {
-        writer.write(node.ip + ":" + node.port);
-        writer.newLine();
-      }
-    } catch (IOException e) {
-      logger.error("Cannot save the non-seed nodes", e);
-    }
-  }
-
-  public void start() throws TTransportException, IOException {
+  public void start() throws TTransportException {
     if (clientService != null) {
       return;
     }
 
     establishServer();
-    connectToNodes();
+    addSeedNodes();
     nodeStatus = NodeStatus.ALONE;
     heartBeatService =
         Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "HeartBeatThread"));
+    catchUpService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
   }
 
   private void initLogManager() {
     this.logManager = new MemoryLogManager(this);
   }
 
-  public void stop() {
+  void stop() {
     if (clientService == null) {
       return;
     }
-
-    for (TTransport transport : nodeTransportMap.values()) {
-      transport.close();
-    }
-    nodeTransportMap.clear();
-    nodeClientMap.clear();
 
     poolServer.stop();
     socket.close();
     clientService.shutdownNow();
     heartBeatService.shutdownNow();
+    catchUpService.shutdownNow();
     socket = null;
     poolServer = null;
+    catchUpService = null;
   }
 
-  /**
-   * this node itself is a seed node, and it is going to build the initial cluster with other seed
-   * nodes
-   */
-  public void buildCluster() {
-    // just establish the heart beat thread and it will do the remaining
-    heartBeatService.submit(new HeartBeatThread(this));
-  }
-
-  private void connectToNodes() {
+  private void addSeedNodes() {
     List<String> seedUrls = config.getSeedNodeUrls();
     for (String seedUrl : seedUrls) {
       String[] split = seedUrl.split(":");
@@ -234,40 +162,30 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
       }
     }
     allNodes.addAll(seedNodes);
-
-    for (Node seedNode : allNodes) {
-      // pre-connect the nodes
-      connectNode(seedNode);
-    }
   }
 
-  public synchronized AsyncClient connectNode(Node node) {
+  AsyncClient connectNode(Node node) {
     if (node.equals(thisNode)) {
       return null;
     }
-    AsyncClient client = nodeClientMap.get(node);
-    if (client != null) {
-      return client;
-    }
 
+    AsyncClient client = null;
     try {
-      logger.info("Establish a new connection to {}", node);
-      TNonblockingTransport transport = new TNonblockingSocket(node.getIp(), node.getPort(),
-          CONNECTION_TIME_OUT_MS);
-      client = clientFactory.getAsyncClient(transport);
-      nodeClientMap.put(node, client);
-      nodeTransportMap.put(node, transport);
+      client = getAsyncClient(new TNonblockingSocket(node.getIp(), node.getPort(),
+          CONNECTION_TIME_OUT_MS));
     } catch (IOException e) {
       logger.warn("Cannot connect to seed node {}", node, e);
     }
     return client;
   }
 
+  abstract AsyncClient getAsyncClient(TNonblockingTransport transport);
 
-  private void establishServer() throws TTransportException, IOException {
+  abstract AsyncProcessor getProcessor();
+
+  private void establishServer() throws TTransportException {
     logger.info("Cluster node {} begins to set up", thisNode);
-    TProtocolFactory protocolFactory = config.isRpcThriftCompressionEnabled() ?
-        new TCompactProtocol.Factory() : new TBinaryProtocol.Factory();
+
 
     socket = new TNonblockingServerSocket(new InetSocketAddress(config.getLocalIP(),
         config.getLocalMetaPort()), CONNECTION_TIME_OUT_MS);
@@ -275,10 +193,17 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
         new THsHaServer.Args(socket).maxWorkerThreads(config.getMaxConcurrentClientNum())
             .minWorkerThreads(1);
 
+
     poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,
         poolArgs.maxWorkerThreads, poolArgs.getStopTimeoutVal(), poolArgs.getStopTimeoutUnit(),
-        new SynchronousQueue<>(), r -> new Thread(r, "IoTDBClusterClientThread")));
-    poolArgs.processor(new AsyncProcessor<>(this));
+        new SynchronousQueue<>(), new ThreadFactory() {
+      private AtomicLong threadIndex = new AtomicLong(0);
+      @Override
+      public Thread newThread(Runnable r) {
+        return new Thread(r, "IoTDBClusterClientThread-" + threadIndex.incrementAndGet());
+      }
+    }));
+    poolArgs.processor(getProcessor());
     poolArgs.protocolFactory(protocolFactory);
     poolArgs.transportFactory(new TFramedTransport.Factory());
 
@@ -286,14 +211,14 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     clientService = Executors.newSingleThreadExecutor(r -> new Thread(r, "ClientServiceThread"));
     clientService.submit(()->poolServer.serve());
 
-    clientFactory = new Factory(new TAsyncClientManager(), protocolFactory);
     logger.info("Cluster node {} is up", thisNode);
   }
 
 
+
   @Override
   public void sendHeartBeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
-    logger.info("Received a heartbeat");
+    logger.debug("Received heartbeat");
     synchronized (term) {
       long thisTerm = term.get();
       long leaderTerm = request.getTerm();
@@ -306,14 +231,19 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
           logger.debug("Received heartbeat from a stale leader {}", request.getLeader());
         }
       } else {
-        response.setTerm(AGREE);
+        response.setTerm(RESPONSE_AGREE);
         response.setFollower(thisNode);
         response.setLastLogIndex(logManager.getLastLogIndex());
         response.setLastLogTerm(logManager.getLastLogTerm());
+        synchronized (logManager) {
+          logManager.commitLog(request.getCommitLogIndex());
+        }
         term.set(leaderTerm);
         leader = request.getLeader();
         nodeStatus = NodeStatus.JOINED;
-        character = NodeCharacter.FOLLOWER;
+        if (character != NodeCharacter.FOLLOWER) {
+          setCharacter(NodeCharacter.FOLLOWER);
+        }
         lastHeartBeatReceivedTime = System.currentTimeMillis();
         if (logger.isDebugEnabled()) {
           logger.debug("Received heartbeat from a valid leader {}", request.getLeader());
@@ -343,11 +273,15 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
       long lastLogTerm = logManager.getLastLogTerm();
       if (thatTerm <= thisTerm || thatLastLogId < lastLogIndex
           || (thatLastLogId == lastLogIndex && thatLastLogTerm < lastLogTerm)) {
+        logger.debug("Rejected an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
+            thatTerm, thisTerm, thatLastLogId, lastLogIndex, thatLastLogTerm, lastLogTerm);
         response = thisTerm;
       } else {
+        logger.debug("Accepted an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
+            thatTerm, thisTerm, thatLastLogId, lastLogIndex, thatLastLogTerm, lastLogTerm);
         term.set(thatTerm);
-        response = AGREE;
-        character = NodeCharacter.FOLLOWER;
+        response = RESPONSE_AGREE;
+        setCharacter(NodeCharacter.FOLLOWER);
         leader = null;
       }
       logger.info("Sending response to the elector");
@@ -366,12 +300,16 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
       // leader term
       localTerm = term.get();
       if (leaderTerm < localTerm) {
+        logger.debug("Rejected the AppendEntryRequest for term: {}/{}", leaderTerm, localTerm);
         resultHandler.onComplete(localTerm);
         return;
       } else if (leaderTerm > localTerm) {
+        logger.debug("Accepted the AppendEntryRequest for term: {}/{}", leaderTerm, localTerm);
         term.set(leaderTerm);
         localTerm = leaderTerm;
-        character = NodeCharacter.FOLLOWER;
+        if (character != NodeCharacter.FOLLOWER) {
+          setCharacter(NodeCharacter.FOLLOWER);
+        }
       }
     }
 
@@ -384,16 +322,15 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
         long lastLogTerm = log.getPreviousLogTerm();
         if (lastLogIndex == localLastLogIndex && lastLogTerm == localLastLogTerm) {
           logManager.appendLog(log, localTerm);
-          resultHandler.onComplete(AGREE);
+          resultHandler.onComplete(RESPONSE_AGREE);
           // as the log is updated, this node gets a chance to compete for the leader
-          logFallsBehind = false;
           logger.debug("Append a new log {}, term:{}, index:{}", log, localTerm, lastLogIndex + 1);
         } else if (lastLogIndex == localLastLogIndex - 1 && lastLogTerm > localLastLogTerm) {
           logManager.replaceLastLog(log, localTerm);
-          resultHandler.onComplete(AGREE);
+          resultHandler.onComplete(RESPONSE_AGREE);
           logger.debug("Replaced a stale log {}, term:{}, index:{}", log, localTerm, lastLogIndex);
         } else {
-          resultHandler.onComplete(LOG_MISMATCH);
+          resultHandler.onComplete(RESPONSE_LOG_MISMATCH);
           logger.debug("Cannot append the log because the last log does not match, local:term-{},"
                   + "index-{}, request:term-{},index-{}", localLastLogTerm, localLastLogIndex,
               lastLogTerm, lastLogIndex);
@@ -409,10 +346,17 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     //TODO-Cluster: implement
   }
 
-  AppendLogResult sendLogToFollowers(Log log) {
+  AppendLogResult sendLogToFollowers(Log log, int requiredQuorum) {
+    if (requiredQuorum < 0) {
+      return sendLogToFollowers(log, new AtomicInteger(allNodes.size() / 2));
+    } else {
+      return sendLogToFollowers(log ,new AtomicInteger(requiredQuorum));
+    }
+  }
+
+  private AppendLogResult sendLogToFollowers(Log log, AtomicInteger quorum) {
     logger.debug("Sending a log to followers: {}", log);
 
-    AtomicInteger quorum = new AtomicInteger(allNodes.size() / 2);
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
 
     AppendEntryRequest request = new AppendEntryRequest();
@@ -429,9 +373,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
         handler.setLog(log);
         try {
           client.appendEntry(request, handler);
-        } catch (TException e) {
-          nodeClientMap.remove(node);
-          nodeTransportMap.remove(node).close();
+        } catch (Exception e) {
           logger.warn("Cannot append log to node {}", node, e);
         }
       }
@@ -457,12 +399,49 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     OK, TIME_OUT, LEADERSHIP_STALE
   }
 
-  public void disConnectNode(Node node) {
-    nodeClientMap.remove(node);
-    nodeTransportMap.remove(node).close();
+  public void catchUp(Node follower, long followerLastLogIndex) {
+    synchronized (follower) {
+      Long lastCatchupResp = lastCatchUpResponse.get(follower);
+      if (lastCatchupResp != null
+          && System.currentTimeMillis() - lastCatchupResp < CONNECTION_TIME_OUT_MS) {
+        logger.debug("Last catch up of {} is ongoing", follower);
+        return;
+      } else {
+        lastCatchUpResponse.put(follower, System.currentTimeMillis());
+      }
+    }
+    if (followerLastLogIndex == -1) {
+      // if the follower does not have any logs, send from the first one
+      followerLastLogIndex = 0;
+    }
+
+    AsyncClient client = connectNode(follower);
+    if (client != null) {
+      List<Log> logs;
+      boolean allLogsValid;
+      Snapshot snapshot = null;
+      synchronized (logManager) {
+        allLogsValid = logManager.logValid(followerLastLogIndex);
+        logs = logManager.getLogs(followerLastLogIndex, logManager.getLastLogIndex());
+        if (!allLogsValid) {
+          snapshot = logManager.getSnapshot();
+        }
+      }
+
+      if (allLogsValid) {
+        if (logger.isDebugEnabled()) {
+          logger.debug("Make {} catch up with {} cached logs", follower, logs.size());
+        }
+        catchUpService.submit(new CatchUpTask(logs, follower, this));
+      } else {
+        logger.debug("Logs in {} are too old, catch up with snapshot", follower);
+        // TODO-Cluster doCatchUp(logs, node, snapshot);
+      }
+    }
   }
 
-  public NodeCharacter getCharacter() {
+
+  NodeCharacter getCharacter() {
     return character;
   }
 
@@ -474,11 +453,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     return logManager;
   }
 
-  public boolean isLogFallsBehind() {
-    return logFallsBehind;
-  }
-
-  public long getLastHeartBeatReceivedTime() {
+  long getLastHeartBeatReceivedTime() {
     return lastHeartBeatReceivedTime;
   }
 
@@ -487,6 +462,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
   }
 
   public void setCharacter(NodeCharacter character) {
+    logger.info("This node has become a {}", character);
     this.character = character;
   }
 
@@ -498,10 +474,6 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     this.logManager = logManager;
   }
 
-  public void setLogFallsBehind(boolean logFallsBehind) {
-    this.logFallsBehind = logFallsBehind;
-  }
-
   public void setLastHeartBeatReceivedTime(long lastHeartBeatReceivedTime) {
     this.lastHeartBeatReceivedTime = lastHeartBeatReceivedTime;
   }
@@ -510,11 +482,11 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     this.leader = leader;
   }
 
-  public Node getThisNode() {
+  Node getThisNode() {
     return thisNode;
   }
 
-  public Set<Node> getAllNodes() {
+  Set<Node> getAllNodes() {
     return allNodes;
   }
 
@@ -522,7 +494,11 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     return nodeStatus;
   }
 
-  public void setNodeStatus(NodeStatus nodeStatus) {
+  void setNodeStatus(NodeStatus nodeStatus) {
     this.nodeStatus = nodeStatus;
+  }
+
+  Map<Node, Long> getLastCatchUpResponse() {
+    return lastCatchUpResponse;
   }
 }

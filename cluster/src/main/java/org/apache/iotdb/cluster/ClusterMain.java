@@ -40,8 +40,9 @@ public class ClusterMain {
     }
     String mode = args[0];
 
-    MetaClusterServer metaServer = new MetaClusterServer();
+    MetaClusterServer metaServer;
     try {
+      metaServer = new MetaClusterServer();
       metaServer.start();
     } catch (TTransportException | IOException e) {
       logger.error("Cannot set up meta service", e);
@@ -52,7 +53,7 @@ public class ClusterMain {
     if (MODE_START.equals(mode)) {
       metaServer.buildCluster();
     } else if (MODE_ADD.equals(mode)) {
-      // TODO add node
+      metaServer.joinCluster();
     } else {
       logger.error("Unrecognized mode {}", mode);
     }

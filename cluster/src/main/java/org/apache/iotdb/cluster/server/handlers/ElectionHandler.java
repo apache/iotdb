@@ -40,7 +40,7 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
   private AtomicBoolean terminated;
   private AtomicBoolean electionValid;
 
-  ElectionHandler(RaftServer raftServer, Node voter, long currTerm, AtomicInteger quorum,
+  public ElectionHandler(RaftServer raftServer, Node voter, long currTerm, AtomicInteger quorum,
       AtomicBoolean terminated, AtomicBoolean electionValid) {
     this.raftServer = raftServer;
     this.voter = voter;
@@ -69,7 +69,7 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
         return;
       }
 
-      if (voterTerm == RaftServer.AGREE) {
+      if (voterTerm == RaftServer.RESPONSE_AGREE) {
         long remaining = quorum.decrementAndGet();
         logger.info("Received a for vote, reaming votes to succeed: {}", remaining);
         if (remaining == 0) {
@@ -84,9 +84,7 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
         terminated.set(true);
         if (voterTerm < currTerm) {
           // the rejection from a node with a smaller term means the log of this node falls behind
-          raftServer.setLogFallsBehind(true);
-          logger.info("Election {} rejected: The node has stale logs and should not start "
-              + "elections again", currTerm);
+          logger.info("Election {} rejected: The node has stale logs", currTerm);
         } else {
           // the election is rejected by a node with a bigger term, update current term to it
           raftServer.getTerm().set(voterTerm);
@@ -101,7 +99,5 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
   @Override
   public void onError(Exception exception) {
     logger.warn("A voter {} encountered an error:", voter, exception);
-    // reset the connection
-    raftServer.disConnectNode(voter);
   }
 }

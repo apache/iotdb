@@ -64,6 +64,15 @@ public class MemoryLogManager implements LogManager {
   }
 
   @Override
+  public void removeLastLog() {
+    if (!logBuffer.isEmpty()) {
+      Log log = logBuffer.removeLast();
+      lastLogTerm = log.getPreviousLogTerm();
+      lastLogIndex--;
+    }
+  }
+
+  @Override
   public void replaceLastLog(Log log, long term) {
     logBuffer.removeLast();
     logBuffer.addLast(log);

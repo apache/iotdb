@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.cluster.server.handlers;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -53,17 +54,18 @@ public class AppendEntryHandler implements AsyncMethodCallback<appendEntry_call>
       }
       long resp = response.getResult();
       synchronized (quorum) {
-        if (resp == RaftServer.AGREE) {
+        if (resp == RaftServer.RESPONSE_AGREE) {
           int remaining = quorum.decrementAndGet();
           logger.debug("Received an agreement from {} for {}, remaining to succeed: {}", follower,
               log, remaining);
           if (remaining == 0) {
             quorum.notifyAll();
           }
-        } else if (resp != RaftServer.LOG_MISMATCH) {
+        } else if (resp != RaftServer.RESPONSE_LOG_MISMATCH) {
           // the leader ship is stale, wait for the new leader's heartbeat
           synchronized (raftServer.getTerm()) {
             long currTerm = raftServer.getTerm().get();
+            logger.debug("Received a rejection because term is stale: {}/{}", currTerm, resp);
             leaderShipStale.set(true);
             // confirm that the heartbeat of the new leader hasn't come
             if (currTerm < resp) {

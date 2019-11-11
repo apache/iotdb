@@ -124,7 +124,8 @@ service TSMetaService extends RaftService {
   * otherwise, the local node will transfer the request to the leader.
   *
   * @param node a new node that needs to be added
-  * @return 1: accept to add new node, 0: the node is already in this cluster, -1: fail to add new node
+  * @return -1: accept to add new node or the node is already in this cluster, otherwise: fail to
+  * add new node
   **/
   int addNode(1: Node node)
 }

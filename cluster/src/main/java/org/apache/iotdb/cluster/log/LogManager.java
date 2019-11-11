@@ -34,6 +34,11 @@ public interface LogManager {
   void appendLog(Log log, long term);
 
   /**
+   * Remove the last log, also decrease last log index and change last log term.
+   */
+  void removeLastLog();
+
+  /**
    * Replace the last log the given log, change last log term but do not change last log index.
    * @param log
    */

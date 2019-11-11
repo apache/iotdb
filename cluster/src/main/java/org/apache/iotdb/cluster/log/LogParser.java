@@ -23,9 +23,12 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log.Types;
 import org.apache.iotdb.cluster.log.meta.AddNodeLog;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LogParser {
 
+  private static final Logger logger = LoggerFactory.getLogger(LogParser.class);
   private static final LogParser INSTANCE = new LogParser();
 
   private LogParser() {
@@ -37,6 +40,9 @@ public class LogParser {
   }
 
   public Log parse(ByteBuffer buffer) throws UnknownLogTypeException {
+    if (logger.isDebugEnabled()) {
+      logger.debug("Received a log buffer, pos:{}, limit:{}", buffer.position(), buffer.limit());
+    }
     int typeInt = buffer.get();
     Types type;
     try {

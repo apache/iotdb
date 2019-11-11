@@ -47,20 +47,22 @@ public class AddNodeLog extends Log {
     byte[] ipBytes = ip.getBytes();
 
     int totalSize =
-            Long.BYTES + Long.BYTES +
-            Byte.BYTES  + Integer.BYTES + ipBytes.length + Integer.BYTES;
+              Byte.BYTES  + Long.BYTES + Long.BYTES +
+              Integer.BYTES + ipBytes.length + Integer.BYTES;
     byte[] buffer = new byte[totalSize];
 
     ByteBuffer byteBuffer = ByteBuffer.wrap(buffer);
 
+    byteBuffer.put((byte) Types.ADD_NODE.ordinal());
+
     byteBuffer.putLong(getPreviousLogIndex());
     byteBuffer.putLong(getPreviousLogTerm());
 
-    byteBuffer.put((byte) Types.ADD_NODE.ordinal());
-    byteBuffer.putInt((short) ipBytes.length);
+    byteBuffer.putInt(ipBytes.length);
     byteBuffer.put(ipBytes);
     byteBuffer.putInt(port);
 
+    byteBuffer.flip();
     return byteBuffer;
   }
 
