@@ -191,9 +191,7 @@ public class IoTDBStatement implements Statement {
     try {
       return executeSQL(sql);
     } catch (TException e) {
-      boolean flag = connection.reconnect();
-      reInit();
-      if (flag) {
+      if (reConnect()) {
         try {
           return executeSQL(sql);
         } catch (TException e2) {
@@ -332,9 +330,7 @@ public class IoTDBStatement implements Statement {
     try {
       return executeBatchSQL();
     } catch (TException e) {
-      boolean flag = connection.reconnect();
-      reInit();
-      if (flag) {
+      if (reConnect()) {
         try {
           return executeBatchSQL();
         } catch (TException e2) {
@@ -389,9 +385,7 @@ public class IoTDBStatement implements Statement {
     try {
       return executeQuerySQL(sql);
     } catch (TException e) {
-      boolean flag = connection.reconnect();
-      reInit();
-      if (flag) {
+      if (reConnect()) {
         try {
           return executeQuerySQL(sql);
         } catch (TException e2) {
@@ -429,9 +423,7 @@ public class IoTDBStatement implements Statement {
     try {
       return executeUpdateSQL(sql);
     } catch (TException e) {
-      boolean flag = connection.reconnect();
-      reInit();
-      if (flag) {
+      if (reConnect()) {
         try {
           return executeUpdateSQL(sql);
         } catch (TException e2) {
@@ -639,7 +631,25 @@ public class IoTDBStatement implements Statement {
     try {
       this.stmtId = client.requestStatementId();
     } catch (TException e) {
-      throw new SQLException("Cannot get id for statement", e);
+      if (reConnect()) {
+        try {
+          this.stmtId = client.requestStatementId();
+        } catch (TException e2) {
+          throw new SQLException(
+                  "Cannot get id for statement after reconnecting. please check server status",
+                  e2);
+        }
+      } else {
+        throw new SQLException(
+                "Cannot get id for statement after reconnecting. please check server status", e);
+      }
     }
+  }
+
+
+  private boolean reConnect(){
+    boolean flag = connection.reconnect();
+    reInit();
+    return flag;
   }
 }
