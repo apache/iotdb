@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.utils.MergeUtils;
+import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -155,6 +156,26 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
 
       selectOverlappedSeqFiles(unseqFile);
 
+      // skip if the unseqFile and tmpSelectedSeqFiles has TsFileResources that need to be upgraded
+      if (tmpSelectedSeqFiles.size() == 0) {
+        unseqIndex++;
+        timeConsumption = System.currentTimeMillis() - startTime;
+        continue;
+      }
+      boolean isNeedUpgrade = false;
+      for (Integer seqIdx : tmpSelectedSeqFiles) {
+        if (UpgradeUtils.isNeedUpgrade(resource.getSeqFiles().get(seqIdx))) {
+          isNeedUpgrade = true;
+          break;
+        }
+      }
+      if (isNeedUpgrade) {
+        tmpSelectedSeqFiles.clear();
+        unseqIndex++;
+        timeConsumption = System.currentTimeMillis() - startTime;
+        continue;
+      }
+
       tempMaxSeqFileCost = maxSeqFileCost;
       long newCost = useTightBound ? calculateTightMemoryCost(unseqFile, tmpSelectedSeqFiles,
           startTime, timeLimit) :
@@ -181,7 +202,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
   }
 
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
-    if (seqSelectedNum == resource.getSeqFiles().size()) {
+    if (seqSelectedNum == resource.getSeqFiles().size() || UpgradeUtils.isNeedUpgrade(unseqFile)) {
       return;
     }
     int tmpSelectedNum = 0;
@@ -200,7 +221,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
         if (unseqEndTime <= seqEndTime) {
           // the unseqFile overlaps current seqFile
           tmpSelectedSeqFiles.add(i);
-          tmpSelectedNum ++;
+          tmpSelectedNum++;
           // the device of the unseqFile can not merge with later seqFiles
           noMoreOverlap = true;
         } else if (unseqStartTime <= seqEndTime) {
@@ -251,7 +272,8 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
   private long calculateTightMemoryCost(TsFileResource tmpSelectedUnseqFile,
       Collection<Integer> tmpSelectedSeqFiles, long startTime, long timeLimit) throws IOException {
     return calculateMemoryCost(tmpSelectedUnseqFile, tmpSelectedSeqFiles,
-        this::calculateTightUnseqMemoryCost, this::calculateTightSeqMemoryCost, startTime, timeLimit);
+        this::calculateTightUnseqMemoryCost, this::calculateTightSeqMemoryCost, startTime,
+        timeLimit);
   }
 
   private long calculateMetadataSize(TsFileResource seqFile) throws IOException {
@@ -264,11 +286,13 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
     return cost;
   }
 
-  private long calculateTightFileMemoryCost(TsFileResource seqFile, IFileQueryMemMeasurement measurement)
+  private long calculateTightFileMemoryCost(TsFileResource seqFile,
+      IFileQueryMemMeasurement measurement)
       throws IOException {
     Long cost = maxSeriesQueryCostMap.get(seqFile);
     if (cost == null) {
-      long[] chunkNums = MergeUtils.findTotalAndLargestSeriesChunkNum(seqFile, resource.getFileReader(seqFile));
+      long[] chunkNums = MergeUtils
+          .findTotalAndLargestSeriesChunkNum(seqFile, resource.getFileReader(seqFile));
       long totalChunkNum = chunkNums[0];
       long maxChunkNum = chunkNums[1];
       cost = measurement.measure(seqFile) * maxChunkNum / totalChunkNum;

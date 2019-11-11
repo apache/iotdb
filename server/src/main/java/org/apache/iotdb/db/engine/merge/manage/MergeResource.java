@@ -70,15 +70,14 @@ public class MergeResource {
   private boolean cacheDeviceMeta = false;
 
   public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    this.seqFiles = seqFiles.stream().filter(p -> p.isClosed() && !UpgradeUtils.isNeedUpgrade(p))
+    this.seqFiles = seqFiles.stream().filter(this::filterResource)
         .collect(Collectors.toList());
-    this.unseqFiles = unseqFiles.stream().filter(p -> p.isClosed() && !UpgradeUtils.isNeedUpgrade(p))
+    this.unseqFiles = unseqFiles.stream().filter(this::filterResource)
         .collect(Collectors.toList());
   }
 
   private boolean filterResource(TsFileResource res) {
-    return res.isClosed() && !res.isDeleted() && res.stillLives(timeLowerBound) && !UpgradeUtils
-        .isNeedUpgrade(res);
+    return res.isClosed() && !res.isDeleted() && res.stillLives(timeLowerBound);
   }
 
   public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
