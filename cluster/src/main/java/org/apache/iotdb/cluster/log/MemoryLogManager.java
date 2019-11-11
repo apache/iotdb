@@ -53,7 +53,7 @@ public class MemoryLogManager implements LogManager {
   }
 
   @Override
-  public void appendLog(Log log, long term) {
+  public void appendLog(Log log) {
     logBuffer.addLast(log);
   }
 
@@ -65,7 +65,7 @@ public class MemoryLogManager implements LogManager {
   }
 
   @Override
-  public void replaceLastLog(Log log, long term) {
+  public void replaceLastLog(Log log) {
     logBuffer.removeLast();
     logBuffer.addLast(log);
   }
