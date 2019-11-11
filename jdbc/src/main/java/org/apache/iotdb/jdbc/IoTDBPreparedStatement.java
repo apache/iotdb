@@ -18,37 +18,20 @@
  */
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
+import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
+
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
-import java.sql.Array;
-import java.sql.Blob;
-import java.sql.Clob;
 import java.sql.Date;
-import java.sql.NClob;
-import java.sql.ParameterMetaData;
-import java.sql.PreparedStatement;
-import java.sql.Ref;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.RowId;
-import java.sql.SQLException;
-import java.sql.SQLXML;
-import java.sql.Time;
-import java.sql.Timestamp;
+import java.sql.*;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
-import org.apache.thrift.TException;
+import java.util.*;
 
 public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedStatement {
 
@@ -63,12 +46,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   public IoTDBPreparedStatement(IoTDBConnection connection, Iface client,
       TS_SessionHandle sessionHandle, ZoneId zoneId) throws SQLException{
     super(connection, client, sessionHandle, zoneId);
-    requestStmtId();
   }
 
   public IoTDBPreparedStatement(IoTDBConnection connection, Iface client,
       TS_SessionHandle sessionHandle, String sql,
-      ZoneId zoneId) {
+      ZoneId zoneId) throws SQLException {
     super(connection, client, sessionHandle, zoneId);
     this.sql = sql;
   }

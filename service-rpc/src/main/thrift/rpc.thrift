@@ -121,6 +121,9 @@ struct TSExecuteStatementReq {
 
   // The statement to be executed (DML, DDL, SET, etc)
   2: required string statement
+
+  // statementId
+  3: required i64 statementId
 }
 
 
@@ -303,13 +306,15 @@ service TSIService {
 
 	TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
 
-    TSStatus deleteTimeseries(1:list<string> path)
+  TSStatus deleteTimeseries(1:list<string> path)
 
-    TSStatus deleteStorageGroups(1:list<string> storageGroup);
+  TSStatus deleteStorageGroups(1:list<string> storageGroup);
     
-    TSStatus createDevice(1:TSCreateDeviceReq req);
+  TSStatus createDevice(1:TSCreateDeviceReq req);
     
-    TSStatus createDeviceTemplate(1:TSCreateDeviceTemplateReq req);
+  TSStatus createDeviceTemplate(1:TSCreateDeviceTemplateReq req);
+    
+  TSStatus deleteStorageGroups(1:list<string> storageGroup);
 
 	TSStatus insertRow(1:TSInsertReq req);
 

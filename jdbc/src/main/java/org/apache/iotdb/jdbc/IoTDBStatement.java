@@ -79,18 +79,31 @@ public class IoTDBStatement implements Statement {
    */
   IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
       TS_SessionHandle sessionHandle,
-      int fetchSize, ZoneId zoneId) {
+      int fetchSize, ZoneId zoneId) throws SQLException {
     this.connection = connection;
     this.client = client;
     this.sessionHandle = sessionHandle;
     this.fetchSize = fetchSize;
     this.batchSQLList = new ArrayList<>();
     this.zoneId = zoneId;
+    requestStmtId();
+  }
+
+  // only for test
+  IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
+                 TS_SessionHandle sessionHandle, ZoneId zoneId, long statementId) throws SQLException {
+    this.connection = connection;
+    this.client = client;
+    this.sessionHandle = sessionHandle;
+    this.fetchSize = Config.fetchSize;
+    this.batchSQLList = new ArrayList<>();
+    this.zoneId = zoneId;
+    this.stmtId = statementId;
   }
 
   IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
       TS_SessionHandle sessionHandle,
-      ZoneId zoneId) {
+      ZoneId zoneId) throws SQLException {
     this(connection, client, sessionHandle, Config.fetchSize, zoneId);
   }
 
@@ -294,7 +307,7 @@ public class IoTDBStatement implements Statement {
       resultSet = databaseMetadata.getColumns(Constant.CATALOG_VERSION, null, null, null);
       return true;
     } else {
-      TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql);
+      TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, stmtId);
       TSExecuteStatementResp execResp = client.executeStatement(execReq);
       operationHandle = execResp.getOperationHandle();
       try {
@@ -395,7 +408,7 @@ public class IoTDBStatement implements Statement {
 
   private ResultSet executeQuerySQL(String sql) throws TException, SQLException {
     isCancelled = false;
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql);
+    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, stmtId);
     TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
     operationHandle = execResp.getOperationHandle();
     try {
@@ -450,7 +463,7 @@ public class IoTDBStatement implements Statement {
   }
 
   private int executeUpdateSQL(String sql) throws TException, IoTDBSQLException {
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql);
+    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, stmtId);
     TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
     operationHandle = execResp.getOperationHandle();
     try {
@@ -622,7 +635,7 @@ public class IoTDBStatement implements Statement {
     this.sessionHandle = connection.sessionHandle;
   }
 
-  void requestStmtId() throws SQLException {
+  private void requestStmtId() throws SQLException {
     try {
       this.stmtId = client.requestStatementId();
     } catch (TException e) {

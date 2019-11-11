@@ -41,6 +41,7 @@ public class HDFSOutputFactory implements FileOutputFactory {
     }
   }
 
+  @Override
   public TsFileOutput getTsFileOutput(String filePath, boolean append) {
     try {
       return (TsFileOutput) constructor.newInstance(filePath, !append);
