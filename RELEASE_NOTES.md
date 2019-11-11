@@ -101,7 +101,7 @@
 * IOTDB-266 NullPoint exception when reading not existed devices using ReadOnlyTsFile
 * IOTDB-264 Restart failure due to WAL replay error
 * IOTDB-240 Fix unknown time series in where clause
-* IOTDB-168&169	Fix a bug in export-csv tool and fix compatibility of timestamp formats in exportCsv, client display and sql
+* IOTDB-168&169 Fix a bug in export-csv tool and fix compatibility of timestamp formats in exportCsv, client display and sql
 * IOTDB-174 Fix querying timeseries interface cannot make a query by the specified path prefix
 * IOTDB-195 Using String.getBytes(utf-9).length to replace string.length() in ChunkGroupMetadata for supporting Chinese
 * IOTDB-211 Use "%IOTDB_HOME%\lib\*" to refers to all .jar files in the directory in start-server.bat
