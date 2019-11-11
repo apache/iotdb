@@ -140,7 +140,7 @@ public class IoTDBConfigDynamicAdapterTest {
         MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups() + 1);
       }
     } catch (ConfigAdjusterException e ) {
-      assertEquals("The IoTDB system load is too large to add timeseries", e.getMessage());
+      assertEquals("IoTDB system load is too large to add timeseries", e.getMessage());
     }
   }
 }
