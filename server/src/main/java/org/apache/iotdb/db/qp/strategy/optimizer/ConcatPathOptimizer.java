@@ -21,7 +21,7 @@ package org.apache.iotdb.db.qp.strategy.optimizer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import org.apache.iotdb.db.exception.MetadataException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;

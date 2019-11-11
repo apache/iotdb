@@ -26,10 +26,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.db.exception.MetadataException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -112,7 +111,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       throws QueryProcessException;
 
   private QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
-      throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException, UnSupportedFillTypeException {
+      throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
+      IOException {
     if (queryPlan.isGroupByDevice()) {
       return new DeviceIterateDataSet(queryPlan, context, queryRouter);
     }

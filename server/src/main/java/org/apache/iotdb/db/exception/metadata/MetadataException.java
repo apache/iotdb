@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.metadata;
 
+import org.apache.iotdb.db.exception.ProcessException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /**

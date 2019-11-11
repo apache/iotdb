@@ -26,7 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.iotdb.db.exception.MetadataException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.MTreePathException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;

@@ -85,7 +85,6 @@ public class StorageEngine implements IService {
 
   private static final ExecutorService recoveryThreadPool = IoTDBThreadPoolFactory
       .newFixedThreadPool(Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
-  ;
 
   private static final StorageEngine INSTANCE = new StorageEngine();
 
@@ -109,15 +108,20 @@ public class StorageEngine implements IService {
      * recover all storage group processors.
      */
 
-      List<MNode> sgNodes = MManager.getInstance().getAllStorageGroups();
-    List<Future> futures = new ArrayList<>();  for (MNode storageGroup : sgNodes) {
-      futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {  StorageGroupProcessor processor = new StorageGroupProcessor(systemDir, storageGroup.getFullPath());
+    List<MNode> sgNodes = MManager.getInstance().getAllStorageGroups();
+    List<Future> futures = new ArrayList<>();
+    for (MNode storageGroup : sgNodes) {
+      futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
+        StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
+            storageGroup.getFullPath());
         processor.setDataTTL(storageGroup.getDataTTL());
-        processorMap.put(storageGroup.getFullPath(), processor);logger.info("Storage Group Processor {} is recovered successfully", storageGroup.getFullPath());
+        processorMap.put(storageGroup.getFullPath(), processor);
+        logger.info("Storage Group Processor {} is recovered successfully",
+            storageGroup.getFullPath());
         return null;
       }));
     }
-    for (Future future: futures) {
+    for (Future future : futures) {
       try {
         future.get();
       } catch (InterruptedException | ExecutionException e) {
@@ -305,7 +309,7 @@ public class StorageEngine implements IService {
    * transmission module</b>
    *
    * @param storageGroupName the seriesPath of storage group
-   * @param appendFile       the appended tsfile information
+   * @param appendFile the appended tsfile information
    */
   @SuppressWarnings("unused") // reimplement sync module
   public boolean appendFileToStorageGroupProcessor(String storageGroupName,
@@ -319,7 +323,7 @@ public class StorageEngine implements IService {
    * get all overlap TsFiles which are conflict with the appendFile.
    *
    * @param storageGroupName the seriesPath of storage group
-   * @param appendFile       the appended tsfile information
+   * @param appendFile the appended tsfile information
    */
   @SuppressWarnings("unused") // reimplement sync module
   public List<String> getOverlapFiles(String storageGroupName, TsFileResource appendFile,

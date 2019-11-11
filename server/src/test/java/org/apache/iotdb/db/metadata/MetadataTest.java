@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.MetadataException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;

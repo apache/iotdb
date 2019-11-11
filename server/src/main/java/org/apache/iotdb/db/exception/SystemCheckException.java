@@ -27,6 +27,6 @@ public class SystemCheckException extends ProcessException {
 
   public SystemCheckException(String walFolder) {
     super(String.format("[%s] is not a directory", walFolder));
-    errorCode = TSStatusCode.SYNC_CHECK_ERROR.getStatusCode();
+    errorCode = TSStatusCode.SYSTEM_CHECK_ERROR.getStatusCode();
   }
 }

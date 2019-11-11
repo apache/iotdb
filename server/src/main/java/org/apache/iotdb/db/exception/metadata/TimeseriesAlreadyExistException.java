@@ -15,17 +15,20 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.db.exception;
+
+package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class ConfigAdjusterException extends ProcessException {
+public class TimeseriesAlreadyExistException extends MetadataException {
 
-  private static final long serialVersionUID = 3502288856999147687L;
 
-  public ConfigAdjusterException(String action) {
-    super(String.format("IoTDB system load is too large to %s", action));
-    errorCode = TSStatusCode.CONFIG_ADJUSTER.getStatusCode();
+  private static final long serialVersionUID = -6713847897890531438L;
+
+  public TimeseriesAlreadyExistException(String path) {
+    super(String.format("Timeseries [%s] already exist", path));
+    errorCode = TSStatusCode.TIMESERIES_ALREADY_EXIST_ERROR.getStatusCode();
   }
 }

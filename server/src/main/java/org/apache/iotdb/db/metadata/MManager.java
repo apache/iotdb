@@ -39,7 +39,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
-import org.apache.iotdb.db.exception.MetadataException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.TimeseriesAlreadyExistException;
 import org.apache.iotdb.db.exception.path.MTreePathException;
 import org.apache.iotdb.db.exception.path.NotStorageGroupException;
 import org.apache.iotdb.db.exception.path.PathException;
@@ -299,8 +300,7 @@ public class MManager {
     lock.writeLock().lock();
     try {
       if (pathExist(path.getFullPath())) {
-        throw new MetadataException(
-            String.format("Timeseries %s already exist", path.getFullPath()));
+        throw new TimeseriesAlreadyExistException(path.getFullPath());
       }
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
       if (!checkStorageGroupByPath(path.getFullPath())) {
@@ -327,8 +327,7 @@ public class MManager {
       synchronized (schemaMap) {
         // Need to check the path again to avoid duplicated inserting by multi concurrent threads
         if (pathExist(path.getFullPath())) {
-          throw new MetadataException(
-              String.format("Timeseries %s already exist", path.getFullPath()));
+          throw new TimeseriesAlreadyExistException(path.getFullPath());
         }
         if (schemaMap.containsKey(lastNode)) {
           isNewMeasurement = false;
@@ -604,8 +603,10 @@ public class MManager {
         writer.newLine();
         writer.flush();
       }
-    } catch (IOException | StorageGroupException e) {
+    } catch (StorageGroupException e) {
       throw new MetadataException(e);
+    } catch (IOException e) {
+      throw new MetadataException(e.getMessage());
     } catch (ConfigAdjusterException e) {
       try {
         mgraph.deleteStorageGroup(path);

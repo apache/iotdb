@@ -38,9 +38,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
- * This class is for filter operator and implements {@link Operator} .<br> It may consist of more
- * than two child FilterOperators, but if it's not a leaf operator, the relation is the same among
- * all of its children.(AND or OR), which is identified by tokenType.
+ * This class is for filter operator and implements {@link Operator} . It may consist of more than
+ * two child FilterOperators, but if it's not a leaf operator, the relation is the same among all of
+ * its children (AND or OR), which is identified by tokenType.
  */
 public class FilterOperator extends Operator implements Comparable<FilterOperator> {
 
