@@ -84,6 +84,7 @@
 * IOTDB-293 Variable naming convention
 * IOTDB-295 Refactor db.exception
 * IOTDB-144 meta data cache for query
+* IOTDB-192 Improvement for LRUCache
 * Reconstruct Antlr3 grammar to improve performance
 * Tooling for release
 * Modified Decoder and SequenceReader to support old version of TsFile 
