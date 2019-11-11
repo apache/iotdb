@@ -99,7 +99,6 @@
 * IOTDB-266 NullPoint exception when reading not existed devices using ReadOnlyTsFile
 * IOTDB-264	Restart failure due to WAL replay error
 * IOTDB-240	Fix unknown time series in where clause
-* IOTDB-244	Fix bug when querying with duplicated columns
 * IOTDB-168&169 Fix a bug in export-csv tool and fix compatibility of timestamp formats in exportCsv, client display and sql
 * IOTDB-174	Fix querying timeseries interface cannot make a query by the specified path prefix
 * IOTDB-195	Using String.getBytes(utf-9).length to replace string.length() in ChunkGroupMetadata for supporting Chinese
