@@ -83,6 +83,7 @@
 * IOTDB-287 Restrict users to only use domain names and IP addresses.
 * IOTDB-293 Variable naming convention
 * IOTDB-295 Refactor db.exception
+* IOTDB-144 meta data cache for query
 * Reconstruct Antlr3 grammar to improve performance
 * Tooling for release
 * Modified Decoder and SequenceReader to support old version of TsFile 
