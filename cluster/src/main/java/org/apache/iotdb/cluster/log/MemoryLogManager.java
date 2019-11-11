@@ -23,15 +23,11 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.Iterator;
 import java.util.List;
 
 // TODO-Cluster: implement a serializable LogManager
 public class MemoryLogManager implements LogManager {
 
-  private long firstLogIndex = 0;
-  private long lastLogIndex = -1;
-  private long lastLogTerm = -1;
   private long commitLogIndex = -1;
 
   private Deque<Log> logBuffer = new ArrayDeque<>();
@@ -43,12 +39,12 @@ public class MemoryLogManager implements LogManager {
 
   @Override
   public long getLastLogIndex() {
-    return lastLogIndex;
+    return logBuffer.isEmpty() ? -1 : logBuffer.getLast().getCurrLogIndex();
   }
 
   @Override
   public long getLastLogTerm() {
-    return lastLogTerm;
+    return logBuffer.isEmpty() ? -1 : logBuffer.getLast().getCurrLogTerm();
   }
 
   @Override
@@ -59,16 +55,12 @@ public class MemoryLogManager implements LogManager {
   @Override
   public void appendLog(Log log, long term) {
     logBuffer.addLast(log);
-    lastLogTerm = term;
-    lastLogIndex ++;
   }
 
   @Override
   public void removeLastLog() {
     if (!logBuffer.isEmpty()) {
-      Log log = logBuffer.removeLast();
-      lastLogTerm = log.getPreviousLogTerm();
-      lastLogIndex--;
+      logBuffer.removeLast();
     }
   }
 
@@ -76,17 +68,15 @@ public class MemoryLogManager implements LogManager {
   public void replaceLastLog(Log log, long term) {
     logBuffer.removeLast();
     logBuffer.addLast(log);
-    lastLogTerm = term;
   }
 
   @Override
   public void commitLog(long maxLogIndex) {
-    Iterator<Log> logIterator = logBuffer.iterator();
-    for (long i = firstLogIndex; i <= lastLogIndex; i++) {
-      Log currLog = logIterator.next();
+    for (Log log : logBuffer) {
+      long i  = log.getCurrLogIndex();
       if (commitLogIndex < i && i <= maxLogIndex) {
-        logApplier.apply(currLog);
-        commitLogIndex ++;
+        logApplier.apply(log);
+        commitLogIndex++;
       }
     }
   }
@@ -97,12 +87,11 @@ public class MemoryLogManager implements LogManager {
       return Collections.emptyList();
     }
 
-    Iterator<Log> logIterator = logBuffer.iterator();
     List<Log> ret = new ArrayList<>();
-    for (long i = firstLogIndex; i <= lastLogIndex; i++) {
-      Log currLog = logIterator.next();
+    for (Log log : logBuffer) {
+      long i = log.getCurrLogIndex();
       if (startIndex <= i && i <= endIndex) {
-        ret.add(currLog);
+        ret.add(log);
       }
     }
     return ret;
@@ -110,11 +99,17 @@ public class MemoryLogManager implements LogManager {
 
   @Override
   public boolean logValid(long logIndex) {
-    return firstLogIndex <= logIndex && logIndex <= lastLogIndex;
+    return !logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex()
+        <= logIndex && logIndex <= logBuffer.getLast().getCurrLogIndex();
   }
 
   @Override
   public Snapshot getSnapshot() {
     return null;
+  }
+
+  @Override
+  public Log getLastLog() {
+    return logBuffer.isEmpty()? null : logBuffer.getLast();
   }
 }

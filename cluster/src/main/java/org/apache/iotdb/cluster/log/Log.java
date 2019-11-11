@@ -22,6 +22,8 @@ import java.nio.ByteBuffer;
 
 public abstract class Log {
 
+  private long currLogIndex;
+  private long currLogTerm;
   private long previousLogIndex;
   private long previousLogTerm;
 
@@ -47,5 +49,21 @@ public abstract class Log {
 
   public void setPreviousLogTerm(long previousLogTerm) {
     this.previousLogTerm = previousLogTerm;
+  }
+
+  public long getCurrLogIndex() {
+    return currLogIndex;
+  }
+
+  public void setCurrLogIndex(long currLogIndex) {
+    this.currLogIndex = currLogIndex;
+  }
+
+  public long getCurrLogTerm() {
+    return currLogTerm;
+  }
+
+  public void setCurrLogTerm(long currLogTerm) {
+    this.currLogTerm = currLogTerm;
   }
 }

@@ -31,7 +31,7 @@ public interface LogManager {
    * Append log to the last of logs, also increase last log index and change last log term.
    * @param log
    */
-  void appendLog(Log log, long term);
+  void appendLog(Log log);
 
   /**
    * Remove the last log, also decrease last log index and change last log term.
@@ -42,7 +42,7 @@ public interface LogManager {
    * Replace the last log the given log, change last log term but do not change last log index.
    * @param log
    */
-  void replaceLastLog(Log log, long term);
+  void replaceLastLog(Log log);
 
   /**
    * Commit all logs whose index <= maxLogIndex, also change commit log index.
@@ -70,4 +70,6 @@ public interface LogManager {
    * @return the latest snapshot
    */
   Snapshot getSnapshot();
+
+  Log getLastLog();
 }

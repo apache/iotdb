@@ -61,7 +61,7 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
       return;
     }
 
-    logger.info("Election response term {}", voterTerm);
+    logger.info("Election response term {} from {}", voterTerm, voterTerm);
     synchronized (raftServer.getTerm()) {
       if (terminated.get()) {
         // a voter has rejected this election, which means the term or the log id falls behind
@@ -89,7 +89,7 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
           // the election is rejected by a node with a bigger term, update current term to it
           raftServer.getTerm().set(voterTerm);
           logger.info("Election {} rejected: The term of this node is no bigger than {}",
-              voterTerm, currTerm);
+              currTerm, voterTerm);
         }
         raftServer.getTerm().notifyAll();
       }

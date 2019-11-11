@@ -139,11 +139,15 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
       // node adding must be serialized
       synchronized (logManager) {
         AddNodeLog addNodeLog = new AddNodeLog();
-        addNodeLog.setIp(node.getIp());
-        addNodeLog.setPort(node.getPort());
         addNodeLog.setPreviousLogIndex(logManager.getLastLogIndex());
         addNodeLog.setPreviousLogTerm(logManager.getLastLogTerm());
-        logManager.appendLog(addNodeLog, getTerm().get());
+        addNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+        addNodeLog.setCurrLogTerm(getTerm().get());
+
+        addNodeLog.setIp(node.getIp());
+        addNodeLog.setPort(node.getPort());
+
+        logManager.appendLog(addNodeLog);
 
         logger.info("Send the join request of {} to other nodes", node);
         // adding a node requires strong consistency

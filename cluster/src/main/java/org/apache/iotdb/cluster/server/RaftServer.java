@@ -316,24 +316,25 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     try {
       Log log = LogParser.getINSTANCE().parse(request.entry);
       synchronized (logManager) {
-        long localLastLogIndex = logManager.getLastLogIndex();
-        long localLastLogTerm = logManager.getLastLogTerm();
+        Log lastLog = logManager.getLastLog();
         long lastLogIndex = log.getPreviousLogIndex();
         long lastLogTerm = log.getPreviousLogTerm();
-        if (lastLogIndex == localLastLogIndex && lastLogTerm == localLastLogTerm) {
-          logManager.appendLog(log, localTerm);
+
+        if (lastLog == null ||
+            lastLog.getCurrLogIndex() == lastLogIndex && lastLog.getCurrLogTerm() == lastLogTerm) {
+          logManager.appendLog(log);
           resultHandler.onComplete(RESPONSE_AGREE);
-          // as the log is updated, this node gets a chance to compete for the leader
-          logger.debug("Append a new log {}, term:{}, index:{}", log, localTerm, lastLogIndex + 1);
-        } else if (lastLogIndex == localLastLogIndex - 1 && lastLogTerm > localLastLogTerm) {
-          logManager.replaceLastLog(log, localTerm);
+          logger.debug("Append a new log {}, term:{}, index:{}", log, localTerm, logManager.getLastLogIndex());
+        } else if (lastLog.getPreviousLogIndex() == lastLogIndex
+            && lastLog.getPreviousLogTerm() < lastLogTerm) {
+          logManager.replaceLastLog(log);
           resultHandler.onComplete(RESPONSE_AGREE);
           logger.debug("Replaced a stale log {}, term:{}, index:{}", log, localTerm, lastLogIndex);
         } else {
           resultHandler.onComplete(RESPONSE_LOG_MISMATCH);
           logger.debug("Cannot append the log because the last log does not match, local:term-{},"
-                  + "index-{}, request:term-{},index-{}", localLastLogTerm, localLastLogIndex,
-              lastLogTerm, lastLogIndex);
+                  + "index-{},previousTerm{}, request:term-{},index-{}", lastLog.getCurrLogIndex(),
+              lastLog.getCurrLogTerm(), lastLog.getPreviousLogTerm(), lastLogTerm, lastLogIndex);
         }
       }
     } catch (UnknownLogTypeException e) {
