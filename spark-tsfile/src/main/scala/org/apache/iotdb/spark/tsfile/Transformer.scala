@@ -44,27 +44,27 @@ object Transformer {
     */
   def toNewForm(spark: SparkSession,
                 df: DataFrame): DataFrame = {
-    df.registerTempTable("tsfle_old_form")
+    df.createOrReplaceTempView("tsfle_old_form")
     // use to record device and their measurement
     var map = new scala.collection.mutable.HashMap[String, List[String]]()
     // use to record all the measurement, prepare for the union
-    var m_map = scala.collection.mutable.HashMap[String, DataType]()
+    var mMap = scala.collection.mutable.HashMap[String, DataType]()
 
     // this step is to record device_name and measurement_name
     df.schema.foreach(f => {
       if (!QueryConstant.RESERVED_TIME.equals(f.name)) {
         val pos = f.name.lastIndexOf('.')
-        val divice_name = f.name.substring(0, pos)
+        val diviceName = f.name.substring(0, pos)
         val measurement_name = f.name.substring(pos + 1)
-        if (map.contains(divice_name)) {
-          map(divice_name) = map(divice_name) :+ measurement_name
+        if (map.contains(diviceName)) {
+          map(diviceName) = map(diviceName) :+ measurement_name
         }
         else {
           var l: List[String] = List()
           l = l :+ (measurement_name)
-          map += (divice_name -> l)
+          map += (diviceName -> l)
         }
-        m_map += (measurement_name -> f.dataType)
+        mMap += (measurement_name -> f.dataType)
       }
     })
 
@@ -76,15 +76,15 @@ object Transformer {
     // |        1| root.ln.d1| 11| 12|null|
     // +---------+-----------+---+---+----+
     var res: org.apache.spark.sql.DataFrame = null
-    map.keys.foreach { device_name =>
+    map.keys.foreach { deviceName =>
       // build query
-      var query = "select " + QueryConstant.RESERVED_TIME + ", \"" + device_name + "\" as device_name"
-      val measurement_name = map(device_name)
-      m_map.keySet.foreach { m =>
+      var query = "select " + QueryConstant.RESERVED_TIME + ", \"" + deviceName + "\" as device_name"
+      val measurement_name = map(deviceName)
+      mMap.keySet.foreach { m =>
         val pos = measurement_name.indexOf(m)
         if (pos >= 0) {
           // select normal column
-          query += ", `" + device_name + "." + m + "` as " + m
+          query += ", `" + deviceName + "." + m + "` as " + m
         }
         else {
           // fill null column
@@ -93,13 +93,13 @@ object Transformer {
       }
 
       query += " from tsfle_old_form"
-      var cur_df = spark.sql(query)
+      val curDF = spark.sql(query)
 
       if (res == null) {
-        res = cur_df
+        res = curDF
       }
       else {
-        res = res.union(cur_df)
+        res = res.union(curDF)
       }
     }
 
@@ -127,18 +127,18 @@ object Transformer {
     */
   def toOldForm(spark: SparkSession,
                 df: DataFrame): DataFrame = {
-    df.registerTempTable("tsfle_new_form")
+    df.createOrReplaceTempView("tsfle_new_form")
     // get all device_name
-    val device_names = spark.sql("select distinct device_name from tsfle_new_form").collect()
-    val table_df = spark.sql("select * from tsfle_new_form")
+    val deviceNames = spark.sql("select distinct device_name from tsfle_new_form").collect()
+    val tableDF= spark.sql("select * from tsfle_new_form")
 
     import scala.collection.mutable.ListBuffer
     // get all measurement_name
-    val measurement_names = new ListBuffer[String]()
+    val measurementNames = new ListBuffer[String]()
 
-    table_df.schema.foreach(f => {
+    tableDF.schema.foreach(f => {
       if (!QueryConstant.RESERVED_TIME.equals(f.name) && !"device_name".equals(f.name)) {
-        measurement_names += f.name
+        measurementNames += f.name
       }
     })
 
@@ -150,21 +150,21 @@ object Transformer {
     // |        1|           11|           12|         null|           21|           22|           23|
     // +---------+-------------+-------------+-------------+-------------+-------------+-------------+
 
-    device_names.foreach(device_name => {
+    deviceNames.foreach(deviceName => {
       var query = "select " + QueryConstant.RESERVED_TIME
 
-      measurement_names.foreach(measurement_name => {
-        query = query + ", " + measurement_name + " as `" + device_name(0) + "." + measurement_name + "`"
+      measurementNames.foreach(measurementName => {
+        query = query + ", " + measurementName + " as `" + deviceName(0) + "." + measurementName + "`"
       })
 
-      query = query + " from tsfle_new_form where device_name = \"" + device_name(0) + "\""
-      val cur_df = spark.sql(query)
+      query = query + " from tsfle_new_form where device_name = \"" + deviceName(0) + "\""
+      val curDF = spark.sql(query)
 
       if (res == null) {
-        res = cur_df
+        res = curDF
       }
       else {
-        res = res.join(cur_df, List(QueryConstant.RESERVED_TIME), "outer")
+        res = res.join(curDF, List(QueryConstant.RESERVED_TIME), "outer")
       }
     })
 

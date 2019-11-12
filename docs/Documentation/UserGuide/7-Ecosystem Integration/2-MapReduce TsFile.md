@@ -19,7 +19,7 @@
 
 -->
 # Chapter 7: Ecosystem Integration
-# TsFile-Hadoop-Connector
+# MapReduce TsFile
 <!-- TOC -->
 ## Outline
 

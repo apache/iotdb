@@ -19,22 +19,19 @@
 namespace java org.apache.iotdb.service.sync.thrift
 
 typedef i32 int 
-typedef i16 short
-typedef i64 long
 
-struct ResultStatus{
-  bool success,
-  string msg,
-  i32 errorCode
+struct SyncStatus{
+  required i32 code
+  required string msg
 }
 
 service SyncService{
-	ResultStatus check(1:string address, 2:string uuid)
-	ResultStatus startSync();
-	ResultStatus init(1:string storageGroupName)
-	ResultStatus syncDeletedFileName(1:string fileName)
-	ResultStatus initSyncData(1:string filename)
-	ResultStatus syncData(1:binary buff)
-	ResultStatus checkDataMD5(1:string md5)
-	ResultStatus endSync()
+	SyncStatus check(1:string address, 2:string uuid)
+	SyncStatus startSync();
+	SyncStatus init(1:string storageGroupName)
+	SyncStatus syncDeletedFileName(1:string fileName)
+	SyncStatus initSyncData(1:string filename)
+	SyncStatus syncData(1:binary buff)
+	SyncStatus checkDataMD5(1:string md5)
+	SyncStatus endSync()
 }
