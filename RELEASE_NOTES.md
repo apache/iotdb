@@ -32,7 +32,7 @@
 * IOTDB-188 Delete storage group
 * IOTDB-193 Create schema automatically when inserting
 * IOTDB-198 Add sync module (Sync TsFiles between IoTDB instances)
-* IOTDB-199 Add a log visulization tool 
+* IOTDB-199 Add a log visualization tool 
 * IOTDB-203 Add "group by device" function for narrow table display
 * IOTDB-205 Support storage-group-level Time To Live (TTL)
 * IOTDB-208 Add Bloom filter in TsFile
@@ -111,7 +111,7 @@
 * IOTDB-296 Fix error when skip page data in sequence reader
 * IOTDB-301 Bug Fix: executing "count nodes root" in client gets "Msg:3"
 * Fix Dynamic Config when Creating Existing SG or Time-series
-* Fix start-walchecker scripts for leting user define the wal folder
+* Fix start-walchecker scripts for letting user define the wal folder
 
 
 # Apache IoTDB (incubating) 0.8.1
@@ -242,7 +242,7 @@ If you use the previous unofficial version 0.7.0. It is incompatible with 0.8.0.
 * IOTDB-103 Does not give a hint when encountering unsupported data types
 * IOTDB-104 MManager is incorrectly recovered when system reboots
 * IOTDB-108 Mistakes in documents
-* IOTDB-110 Clis inserts data normally even if there is no space left on the disk
+* IOTDB-110 Cli inserts data normally even if there is no space left on the disk
 * IOTDB-118 When the disk space is full, the storage group is created successfully
 * IOTDB-121 A bug of query on value columns
 * IOTDB-128 Probably a bug in iotdb official website
