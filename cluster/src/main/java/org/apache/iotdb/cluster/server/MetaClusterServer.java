@@ -30,6 +30,8 @@ import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.meta.AddNodeLog;
+import org.apache.iotdb.cluster.log.meta.PhysicalPlanLog;
+import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
@@ -37,6 +39,9 @@ import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardAddNodeHandler;
+import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.qp.QueryProcessor;
+import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -57,11 +62,22 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
 
   private AsyncClient.Factory clientFactory;
   private IoTDB ioTDB;
+  private QueryProcessor queryProcessor = new QueryProcessor(new QueryProcessExecutor());
+  private PartitionTable partitionTable;
 
   public MetaClusterServer() throws IOException {
     super();
     clientFactory = new AsyncClient.Factory(new TAsyncClientManager(), protocolFactory);
     loadNodes();
+    buildPartitionTable();
+  }
+
+  /**
+   * Use the initial nodes to build a partition table. As the logs catch up, the partitionTable
+   * will eventually be consistent with the leader's.
+   */
+  private void buildPartitionTable() {
+    //TODO-Cluster: implement
   }
 
   @Override
@@ -226,11 +242,33 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
       synchronized (allNodes) {
         allNodes.add(newNode);
         saveNodes();
+        // update the partition table
+        PartitionTable oldPartition = partitionTable;
+        partitionTable = partitionTable.addNode(newNode);
+      }
+    } if (log instanceof PhysicalPlanLog) {
+      PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
+      try {
+        queryProcessor.getExecutor().processNonQuery(physicalPlanLog.getPlan());
+      } catch (ProcessorException e) {
+        logger.error("Log {} cannot be applied:", e);
       }
     } else {
       // TODO-Cluster support more types of logs
       logger.error("Unsupported log: {}", log);
     }
+  }
+
+  /**
+   * Compare the old partition table and the new one, then issue data transfer if necessary.
+   * When data transfer is issued, the data flow is unidirectional, which means only the senders
+   * will actively send the data or the receivers will actively pull the data (this is to be
+   * discussed).
+   * @param oldTable
+   * @param newTable
+   */
+  private void repartition(PartitionTable oldTable, PartitionTable newTable) {
+    // TODO-Cluster: implement
   }
 
   /**

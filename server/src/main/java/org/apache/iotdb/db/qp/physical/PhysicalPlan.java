@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -73,6 +74,10 @@ public abstract class PhysicalPlan {
     isQuery = query;
   }
 
+  public void serializeTo(DataOutputStream stream) throws IOException {
+    throw new UnsupportedOperationException("serialize of unimplemented");
+  }
+
   public void serializeTo(ByteBuffer buffer) {
     throw new UnsupportedOperationException("serialize of unimplemented");
   }
@@ -86,6 +91,14 @@ public abstract class PhysicalPlan {
       buffer.putInt(NULL_VALUE_LEN);
     } else {
       ReadWriteIOUtils.write(value, buffer);
+    }
+  }
+
+  protected void putString(DataOutputStream stream, String value) throws IOException {
+    if (value == null) {
+      stream.writeInt(NULL_VALUE_LEN);
+    } else {
+      ReadWriteIOUtils.write(value, stream);
     }
   }
 

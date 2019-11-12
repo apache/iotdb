@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -83,6 +85,85 @@ public class BatchInsertPlan extends PhysicalPlan {
     }
     paths = ret;
     return ret;
+  }
+
+  @Override
+  public void serializeTo(DataOutputStream stream) throws IOException {
+    int type = PhysicalPlanType.BATCHINSERT.ordinal();
+    stream.writeByte((byte) type);
+
+    putString(stream, deviceId);
+
+    stream.writeInt(measurements.length);
+    for (String m : measurements) {
+      putString(stream, m);
+    }
+
+    for (TSDataType dataType : dataTypes) {
+      stream.writeShort(dataType.serialize());
+    }
+
+    stream.writeInt(index.size());
+
+    if (timeBuffer == null) {
+      for(int loc : index){
+        stream.writeLong(times[loc]);
+      }
+    } else {
+      stream.write(timeBuffer.array());
+      timeBuffer = null;
+    }
+
+    if (valueBuffer == null) {
+      for (int i = 0; i < measurements.length; i++) {
+        TSDataType dataType = dataTypes[i];
+        switch (dataType) {
+          case INT32:
+            int[] intValues = (int[]) columns[i];
+            for(int loc : index){
+              stream.writeInt(intValues[loc]);
+            }
+            break;
+          case INT64:
+            long[] longValues = (long[]) columns[i];
+            for(int loc : index){
+              stream.writeLong(longValues[loc]);
+            }
+            break;
+          case FLOAT:
+            float[] floatValues = (float[]) columns[i];
+            for(int loc : index){
+              stream.writeFloat(floatValues[loc]);
+            }
+            break;
+          case DOUBLE:
+            double[] doubleValues = (double[]) columns[i];
+            for(int loc : index){
+              stream.writeDouble(doubleValues[loc]);
+            }
+            break;
+          case BOOLEAN:
+            boolean[] boolValues = (boolean[]) columns[i];
+            for(int loc : index){
+              stream.write(BytesUtils.boolToByte(boolValues[loc]));
+            }
+            break;
+          case TEXT:
+            Binary[] binaryValues = (Binary[]) columns[i];
+            for(int loc : index){
+              stream.writeInt(binaryValues[loc].getLength());
+              stream.write(binaryValues[loc].getValues());
+            }
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", dataType));
+        }
+      }
+    } else {
+      stream.write(valueBuffer.array());
+      valueBuffer = null;
+    }
   }
 
   @Override

@@ -39,7 +39,7 @@ public abstract class Log {
 
   public enum Types {
     // TODO-Cluster support more logs
-    ADD_NODE
+    ADD_NODE, PHYSICAL_PLAN
   }
 
   public long getPreviousLogIndex() {

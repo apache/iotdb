@@ -109,8 +109,6 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     this.thisNode = new Node();
     this.thisNode.setIp(config.getLocalIP());
     this.thisNode.setPort(config.getLocalMetaPort());
-    addSeedNodes();
-    initLogManager();
   }
 
   public void start() throws TTransportException {
@@ -118,6 +116,8 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
       return;
     }
 
+    addSeedNodes();
+    initLogManager();
     establishServer();
 
     heartBeatService =
