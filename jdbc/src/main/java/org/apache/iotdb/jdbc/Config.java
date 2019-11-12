@@ -27,31 +27,31 @@ public class Config {
    */
   public static final String IOTDB_URL_PREFIX = "jdbc:iotdb://";
 
-  public static final String IOTDB_DEFAULT_HOST = "localhost";
+  static final String IOTDB_DEFAULT_HOST = "localhost";
   /**
    * If host is provided, without a port.
    */
-  public static final int IOTDB_DEFAULT_PORT = 6667;
+  static final int IOTDB_DEFAULT_PORT = 6667;
 
   /**
    * tsfile's default series name.
    */
-  public static final String DEFAULT_SERIES_NAME = "default";
+  static final String DEFAULT_SERIES_NAME = "default";
 
-  public static final String AUTH_USER = "user";
-  public static final String DEFAULT_USER = "user";
+  static final String AUTH_USER = "user";
+  static final String DEFAULT_USER = "user";
 
-  public static final String AUTH_PASSWORD = "password";
-  public static final String DEFALUT_PASSWORD = "password";
+  static final String AUTH_PASSWORD = "password";
+  static final String DEFALUT_PASSWORD = "password";
 
-  public static final int RETRY_NUM = 3;
-  public static final long RETRY_INTERVAL = 1000;
+  static final int RETRY_NUM = 3;
+  static final long RETRY_INTERVAL = 1000;
 
-  public static int fetchSize = 10000;
-  public static int connectionTimeoutInMs = 0;
+  static int fetchSize = 10000;
+  static int connectionTimeoutInMs = 0;
 
   public static final String JDBC_DRIVER_NAME = "org.apache.iotdb.jdbc.IoTDBDriver";
 
-  public static boolean rpcThriftCompressionEnable = false;
+  static boolean rpcThriftCompressionEnable = false;
 
 }

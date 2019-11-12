@@ -406,7 +406,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     List<Path> deletePathList = deleteTimeSeriesPlan.getPaths();
     try {
       deleteDataOfTimeSeries(deletePathList);
-      Set<String> emptyStorageGroups = mManager.deletePaths(deletePathList);
+      Set<String> emptyStorageGroups = mManager.deletePaths(deletePathList, false);
       for (String deleteStorageGroup : emptyStorageGroups) {
         storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
       }
