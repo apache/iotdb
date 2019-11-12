@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.server.handlers;
+package org.apache.iotdb.cluster.server.handlers.caller;
 
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -29,6 +29,10 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * HeartBeatHandler check the response of a heartbeat and decide whether to start a catch-up or
+ * give up the leadership due to the term is stale.
+ */
 public class HeartBeatHandler implements AsyncMethodCallback<sendHeartBeat_call> {
 
   private static final Logger logger = LoggerFactory.getLogger(HeartBeatHandler.class);
@@ -87,7 +91,4 @@ public class HeartBeatHandler implements AsyncMethodCallback<sendHeartBeat_call>
   public void onError(Exception exception) {
     logger.error("Heart beat error, receiver {}, {}", receiver, exception.getMessage());
   }
-
-
-
 }

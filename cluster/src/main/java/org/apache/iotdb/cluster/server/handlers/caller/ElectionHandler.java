@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.server.handlers;
+package org.apache.iotdb.cluster.server.handlers.caller;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -29,6 +29,10 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * ElectionHandler checks the result from a voter and decides whether the election goes on,
+ * succeeds or fails.
+ */
 public class ElectionHandler implements AsyncMethodCallback<startElection_call> {
 
   private static final Logger logger = LoggerFactory.getLogger(ElectionHandler.class);
@@ -38,6 +42,7 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
   private long currTerm;
   private AtomicInteger quorum;
   private AtomicBoolean terminated;
+  // when set to true, the elector wins the election
   private AtomicBoolean electionValid;
 
   public ElectionHandler(RaftServer raftServer, Node voter, long currTerm, AtomicInteger quorum,
@@ -61,7 +66,7 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
       return;
     }
 
-    logger.info("Election response term {} from {}", voterTerm, voterTerm);
+    logger.info("Election response term {} from {}", voterTerm, voter);
     synchronized (raftServer.getTerm()) {
       if (terminated.get()) {
         // a voter has rejected this election, which means the term or the log id falls behind
@@ -71,12 +76,13 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
 
       if (voterTerm == RaftServer.RESPONSE_AGREE) {
         long remaining = quorum.decrementAndGet();
-        logger.info("Received a for vote, reaming votes to succeed: {}", remaining);
+        logger.info("Received a for vote from {}, reaming votes to succeed: {}", voter, remaining);
         if (remaining == 0) {
           // the election is valid
           electionValid.set(true);
           terminated.set(true);
           raftServer.getTerm().notifyAll();
+          logger.info("Election {} is wined", currTerm);
         }
         // still need more votes
       } else {

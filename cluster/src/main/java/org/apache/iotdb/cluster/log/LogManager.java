@@ -21,6 +21,10 @@ package org.apache.iotdb.cluster.log;
 
 import java.util.List;
 
+/**
+ * LogManager manages the logs that are still in memory and the last snapshot which can be used
+ * to make other nodes catch up.
+ */
 public interface LogManager {
 
   long getLastLogIndex();
@@ -28,24 +32,26 @@ public interface LogManager {
   long getCommitLogIndex();
 
   /**
-   * Append log to the last of logs, also increase last log index and change last log term.
+   * Append log to the last of logs.
    * @param log
    */
   void appendLog(Log log);
 
   /**
-   * Remove the last log, also decrease last log index and change last log term.
+   * Remove the last log. Often it is used to remove the newly-added log when it fails to operate
+   * on the quorum.
    */
   void removeLastLog();
 
   /**
-   * Replace the last log the given log, change last log term but do not change last log index.
+   * Replace the last log with the given log. It is used when the last log came from a stale
+   * leader and the new leader just sent a log with the same index but bigger term.
    * @param log
    */
   void replaceLastLog(Log log);
 
   /**
-   * Commit all logs whose index <= maxLogIndex, also change commit log index.
+   * Commit (apply) all memory logs whose index <= maxLogIndex, also change commit log index.
    * @param maxLogIndex
    */
   void commitLog(long maxLogIndex);
@@ -59,17 +65,21 @@ public interface LogManager {
   List<Log> getLogs(long startIndex, long endIndex);
 
   /**
-   * Test whether a log whose index is logIndex is still available.
+   * Test whether a log whose index is logIndex is still in memory.
    * @param logIndex
-   * @return true if the log is still available, false if the log has been deleted.
+   * @return true if the log is still in memory, false if the log has been snapshot.
    */
   boolean logValid(long logIndex);
 
   /**
-   *
-   * @return the latest snapshot
+   * Get the latest snapshot.
+   * @return the latest snapshot, or null if there is no snapshot.
    */
   Snapshot getSnapshot();
 
+  /**
+   * Get the last log in memory.
+   * @return the last log in memory, or null if there is no log in memory.
+   */
   Log getLastLog();
 }

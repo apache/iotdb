@@ -20,5 +20,5 @@
 /**
  * Handlers in this package are handlers of the callers.
  */
-package org.apache.iotdb.cluster.server.handlers;
+package org.apache.iotdb.cluster.server.handlers.caller;
 

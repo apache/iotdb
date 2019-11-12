@@ -26,6 +26,9 @@ import org.apache.iotdb.cluster.log.meta.AddNodeLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * LogParser transform a ByteBuffer into a Log.
+ */
 public class LogParser {
 
   private static final Logger logger = LoggerFactory.getLogger(LogParser.class);
@@ -51,12 +54,13 @@ public class LogParser {
       throw new UnknownLogTypeException(typeInt);
     }
     switch (type) {
+      // TODO-Cluster support more logs
       case ADD_NODE:
         AddNodeLog addNodeLog = new AddNodeLog();
         addNodeLog.deserialize(buffer);
         return addNodeLog;
       default:
-        throw new IllegalArgumentException();
+        throw new IllegalArgumentException(type.toString());
     }
   }
 }

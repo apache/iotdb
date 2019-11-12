@@ -17,10 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.server.handlers;
+package org.apache.iotdb.cluster.server.handlers.caller;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.appendEntry_call;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.RaftServer;
@@ -29,10 +30,15 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * CatchUpHandler check the result of appending a log in a catch-up task and decide to abort the
+ * catch up or not.
+ */
 public class CatchUpHandler implements AsyncMethodCallback<appendEntry_call> {
 
   private static final Logger logger = LoggerFactory.getLogger(CatchUpHandler.class);
 
+  private Node follower;
   private Log log;
   private AtomicBoolean aborted;
   private AtomicBoolean appendSucceed;
@@ -41,7 +47,7 @@ public class CatchUpHandler implements AsyncMethodCallback<appendEntry_call> {
   @Override
   public void onComplete(appendEntry_call response) {
     try {
-      logger.debug("Received a catch up result of {}", log);
+      logger.debug("Received a catch-up result of {} from {}", log, follower);
       long resp = response.getResult();
       if (resp == RaftServer.RESPONSE_AGREE) {
         synchronized (aborted) {
@@ -57,7 +63,7 @@ public class CatchUpHandler implements AsyncMethodCallback<appendEntry_call> {
           aborted.notifyAll();
         }
       } else {
-        // the follower'term has updated, which means a new leader is elected
+        // the follower's term has updated, which means a new leader is elected
         synchronized (raftServer.getTerm()) {
           long currTerm = raftServer.getTerm().get();
           if (currTerm < resp) {
@@ -83,7 +89,7 @@ public class CatchUpHandler implements AsyncMethodCallback<appendEntry_call> {
       aborted.set(true);
       aborted.notifyAll();
     }
-    logger.warn("Catchup fails when sending log {}", log, exception);
+    logger.warn("Catch-up fails when sending log {}", log, exception);
   }
 
   public void setLog(Log log) {
@@ -100,5 +106,9 @@ public class CatchUpHandler implements AsyncMethodCallback<appendEntry_call> {
 
   public void setRaftServer(RaftServer raftServer) {
     this.raftServer = raftServer;
+  }
+
+  public void setFollower(Node follower) {
+    this.follower = follower;
   }
 }

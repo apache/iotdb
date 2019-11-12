@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.server.handlers;
+package org.apache.iotdb.cluster.server.handlers.caller;
 
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -28,6 +28,9 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * JoinClusterHandler wakes up the main thread when the response of joining a cluster has arrived.
+ */
 public class JoinClusterHandler implements AsyncMethodCallback<addNode_call> {
 
   private static final Logger logger = LoggerFactory.getLogger(JoinClusterHandler.class);
@@ -39,7 +42,7 @@ public class JoinClusterHandler implements AsyncMethodCallback<addNode_call> {
   public void onComplete(addNode_call call) {
     try {
       long resp = call.getResult();
-      logger.debug("Received a join cluster response {} from {}", resp, contact);
+      logger.info("Received a join cluster response {} from {}", resp, contact);
       synchronized (response) {
         response.set(resp);
         response.notifyAll();

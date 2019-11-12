@@ -22,6 +22,9 @@ package org.apache.iotdb.cluster.log.meta;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.log.Log;
 
+/**
+ * AddNodeLog records the operation of adding a node into this cluster.
+ */
 public class AddNodeLog extends Log {
   private String ip;
   private int port;
@@ -46,8 +49,10 @@ public class AddNodeLog extends Log {
   public ByteBuffer serialize() {
     byte[] ipBytes = ip.getBytes();
 
+    // marker(byte), previous index(long), previous term(long), curr index(long), curr term(long)
+    // ipLength(int), inBytes(byte[]), port(int)
     int totalSize =
-              Byte.BYTES  + Long.BYTES + Long.BYTES +
+              Byte.BYTES  + Long.BYTES + Long.BYTES + Long.BYTES + Long.BYTES +
               Integer.BYTES + ipBytes.length + Integer.BYTES;
     byte[] buffer = new byte[totalSize];
 
@@ -56,6 +61,8 @@ public class AddNodeLog extends Log {
     byteBuffer.put((byte) Types.ADD_NODE.ordinal());
 
     byteBuffer.putLong(getPreviousLogIndex());
+    byteBuffer.putLong(getPreviousLogTerm());
+    byteBuffer.putLong(getCurrLogIndex());
     byteBuffer.putLong(getPreviousLogTerm());
 
     byteBuffer.putInt(ipBytes.length);
@@ -69,8 +76,13 @@ public class AddNodeLog extends Log {
   @Override
   public void deserialize(ByteBuffer buffer) {
 
+    // marker is previously read
+    // previous index(long), previous term(long), curr index(long), curr term(long)
+    // ipLength(int), inBytes(byte[]), port(int)
     setPreviousLogIndex(buffer.getLong());
     setPreviousLogTerm(buffer.getLong());
+    setCurrLogIndex(buffer.getLong());
+    setCurrLogTerm(buffer.getLong());
 
     int ipLength = buffer.getInt();
     byte[] ipBytes = new byte[ipLength];

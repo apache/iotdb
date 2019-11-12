@@ -16,8 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.cluster.server.handlers;
+package org.apache.iotdb.cluster.server.handlers.caller;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -31,6 +30,10 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * AppendEntryHandler checks if the log is successfully appended by the quorum or some node has
+ * rejected it for some reason when one node has finished the AppendEntryRequest.
+ */
 public class AppendEntryHandler implements AsyncMethodCallback<appendEntry_call> {
 
   private static final Logger logger = LoggerFactory.getLogger(AppendEntryHandler.class);
@@ -56,9 +59,10 @@ public class AppendEntryHandler implements AsyncMethodCallback<appendEntry_call>
       synchronized (quorum) {
         if (resp == RaftServer.RESPONSE_AGREE) {
           int remaining = quorum.decrementAndGet();
-          logger.debug("Received an agreement from {} for {}, remaining to succeed: {}", follower,
-              log, remaining);
+          logger.debug("Received an agreement from {} for {}, remaining votes to succeed: {}",
+              follower, log, remaining);
           if (remaining == 0) {
+            logger.debug("Log {} is accepted by the quorum", log);
             quorum.notifyAll();
           }
         } else if (resp != RaftServer.RESPONSE_LOG_MISMATCH) {
@@ -76,7 +80,7 @@ public class AppendEntryHandler implements AsyncMethodCallback<appendEntry_call>
           }
           quorum.notifyAll();
         }
-        // if the follower's logs are stale, just wait for the heartbeat to handle
+        // rejected because the follower's logs are stale, just wait for the heartbeat to handle
       }
     } catch (TException e) {
       onError(e);

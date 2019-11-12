@@ -34,13 +34,15 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient.addNode_call;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncProcessor;
-import org.apache.iotdb.cluster.server.handlers.JoinClusterHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
+import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardAddNodeHandler;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.transport.TNonblockingTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,11 +56,26 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   private static final String NODES_FILE_NAME = "nodes";
 
   private AsyncClient.Factory clientFactory;
+  private IoTDB ioTDB;
 
   public MetaClusterServer() throws IOException {
     super();
     clientFactory = new AsyncClient.Factory(new TAsyncClientManager(), protocolFactory);
     loadNodes();
+  }
+
+  @Override
+  public void start() throws TTransportException {
+    super.start();
+    ioTDB = new IoTDB();
+    ioTDB.active();
+  }
+
+  @Override
+  void stop() {
+    super.stop();
+    ioTDB.stop();
+    ioTDB = null;
   }
 
   @Override
@@ -72,7 +89,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   /**
-   * load the non-seed nodes from a local record
+   * load the nodes from a local file
    */
   private void loadNodes() {
     File nonSeedFile = new File(NODES_FILE_NAME);
@@ -85,16 +102,16 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
       while ((line = reader.readLine()) != null) {
         loadNode(line);
       }
-      logger.info("Load {} non-seed nodes: {}", allNodes.size(), allNodes);
+      logger.info("Load {} nodes: {}", allNodes.size(), allNodes);
     } catch (IOException e) {
-      logger.error("Cannot read non seeds");
+      logger.error("Cannot load nodes", e);
     }
   }
 
   private void loadNode(String url) {
     String[] split = url.split(":");
     if (split.length != 2) {
-      logger.warn("Incorrect seed url: {}", url);
+      logger.warn("Incorrect node url: {}", url);
       return;
     }
     // TODO: check url format
@@ -106,7 +123,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
       node.setPort(port);
       allNodes.add(node);
     } catch (NumberFormatException e) {
-      logger.warn("Incorrect seed url: {}", url);
+      logger.warn("Incorrect node url: {}", url);
     }
   }
 
@@ -117,7 +134,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
         writer.newLine();
       }
     } catch (IOException e) {
-      logger.error("Cannot save the non-seed nodes", e);
+      logger.error("Cannot save the nodes", e);
     }
   }
 
@@ -152,6 +169,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
         logger.info("Send the join request of {} to other nodes", node);
         // adding a node requires strong consistency
         AppendLogResult result = sendLogToFollowers(addNodeLog, allNodes.size());
+
         switch (result) {
           case OK:
             logger.info("Join request of {} is accepted", node);
@@ -179,25 +197,17 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     resultHandler.onError(new LeaderUnknownException());
   }
 
+  /**
+   * Forward the join cluster request to the leader.
+   * @param node
+   * @param resultHandler
+   * @return true if the forwarding succeeds, false otherwise.
+   */
   private boolean forwardAddNode(Node node, AsyncMethodCallback resultHandler) {
     AsyncClient client = (AsyncClient) connectNode(leader);
     if (client != null) {
       try {
-        client.addNode(node, new AsyncMethodCallback<addNode_call>() {
-          @Override
-          public void onComplete(addNode_call response) {
-            try {
-              resultHandler.onComplete(response.getResult());
-            } catch (TException e) {
-              resultHandler.onError(e);
-            }
-          }
-
-          @Override
-          public void onError(Exception exception) {
-            resultHandler.onError(exception);
-          }
-        });
+        client.addNode(node, new ForwardAddNodeHandler(resultHandler));
         return true;
       } catch (TException e) {
         logger.warn("Cannot connect to node {}", node, e);
@@ -213,15 +223,18 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
       Node newNode = new Node();
       newNode.setIp(addNodeLog.getIp());
       newNode.setPort(addNodeLog.getPort());
-      allNodes.add(newNode);
-      saveNodes();
+      synchronized (allNodes) {
+        allNodes.add(newNode);
+        saveNodes();
+      }
     } else {
+      // TODO-Cluster support more types of logs
       logger.error("Unsupported log: {}", log);
     }
   }
 
   /**
-   * this node itself is a seed node, and it is going to build the initial cluster with other seed
+   * This node itself is a seed node, and it is going to build the initial cluster with other seed
    * nodes
    */
   public void buildCluster() {
@@ -230,7 +243,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   /**
-   * this node is a node seed node and wants to join an established cluster
+   * This node is a node seed node and wants to join an established cluster
    */
   public void joinCluster() {
     int retry = DEFAULT_JOIN_RETRY;
@@ -241,7 +254,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     handler.setResponse(response);
 
     while (retry > 0) {
-      // random pick up a node to try
+      // randomly pick up a node to try
       Node node = nodes[random.nextInt(nodes.length)];
       try {
         if (joinCluster(node, response, handler)) {
@@ -285,7 +298,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
         logger.info("Node {} admitted this node into the cluster", node);
         return true;
       }
-      logger.warn("Joining the cluster is rejected for response {}", resp);
+      logger.warn("Joining the cluster is rejected by {} for response {}", node, resp);
       return false;
     }
     return false;

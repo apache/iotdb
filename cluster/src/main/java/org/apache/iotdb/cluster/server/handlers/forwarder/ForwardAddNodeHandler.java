@@ -17,13 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.server;
+package org.apache.iotdb.cluster.server.handlers.forwarder;
 
-public enum NodeStatus {
-  // this node hasn't finished start up and should not serve other nodes
-  STARTING_UP,
-  // this node has set up but does not join any cluster
-  ALONE,
-  // this node has joined a cluster
-  JOINED
+import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient.addNode_call;
+import org.apache.thrift.TException;
+import org.apache.thrift.async.AsyncMethodCallback;
+
+public class ForwardAddNodeHandler implements AsyncMethodCallback<addNode_call> {
+
+  private AsyncMethodCallback resultHandler;
+
+  public ForwardAddNodeHandler(AsyncMethodCallback resultHandler) {
+    this.resultHandler = resultHandler;
+  }
+
+  @Override
+  public void onComplete(addNode_call response) {
+    try {
+      resultHandler.onComplete(response.getResult());
+    } catch (TException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void onError(Exception exception) {
+    resultHandler.onError(exception);
+  }
 }

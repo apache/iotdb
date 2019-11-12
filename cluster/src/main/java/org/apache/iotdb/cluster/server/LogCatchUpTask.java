@@ -25,20 +25,24 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
-import org.apache.iotdb.cluster.server.handlers.CatchUpHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.CatchUpHandler;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class CatchUpTask implements Runnable {
+/**
+ * LogCatchUpTask send a list of logs to a node to make the node keep up with the leader.
+ * TODO-Cluster: implement a SnapshotCatchUpTask that use both logs and snapshot.
+ */
+class LogCatchUpTask implements Runnable {
 
-  private static final Logger logger = LoggerFactory.getLogger(CatchUpTask.class);
+  private static final Logger logger = LoggerFactory.getLogger(LogCatchUpTask.class);
 
   private List<Log> logs;
   private Node node;
   private RaftServer raftServer;
 
-  CatchUpTask(List<Log> logs, Node node, RaftServer raftServer) {
+  LogCatchUpTask(List<Log> logs, Node node, RaftServer raftServer) {
     this.logs = logs;
     this.node = node;
     this.raftServer = raftServer;
@@ -58,6 +62,7 @@ class CatchUpTask implements Runnable {
     handler.setAborted(aborted);
     handler.setAppendSucceed(appendSucceed);
     handler.setRaftServer(raftServer);
+    handler.setFollower(node);
 
     for (int i = 0; i < logs.size() && !aborted.get(); i++) {
       Log log = logs.get(i);
@@ -75,13 +80,15 @@ class CatchUpTask implements Runnable {
       logger.debug("Catching up with log {}", log);
       try {
         client.appendEntry(request, handler);
-        raftServer.getLastCatchUpResponse().put(node, System.currentTimeMillis());
+        raftServer.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
       } catch (TException e) {
         logger.error("Cannot send log {} to {}", log, node);
         aborted.set(true);
       }
 
       synchronized (aborted) {
+        // if the follower responds fast enough, this response may come before wait() is called and
+        // the wait() will surely time out
         if (!aborted.get() && !appendSucceed.get()) {
           try {
             aborted.wait(RaftServer.CONNECTION_TIME_OUT_MS);
@@ -102,6 +109,7 @@ class CatchUpTask implements Runnable {
       logger.error("Catch up {} errored", node, e);
     }
     logger.debug("Catch up finished");
-    raftServer.getLastCatchUpResponse().remove(node);
+    // the next catch up is enabled
+    raftServer.getLastCatchUpResponseTime().remove(node);
   }
 }
