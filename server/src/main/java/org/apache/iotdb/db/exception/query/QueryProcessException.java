@@ -17,22 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.query;
 
-public class FlushRunTimeException extends RuntimeException {
+import org.apache.iotdb.db.exception.ProcessException;
 
-  public FlushRunTimeException() {
-  }
+public class QueryProcessException extends ProcessException {
 
-  public FlushRunTimeException(String message) {
+  private static final long serialVersionUID = -683191083844850054L;
+
+  public QueryProcessException(String message) {
     super(message);
   }
 
-  public FlushRunTimeException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public FlushRunTimeException(Throwable cause) {
-    super(cause);
+  public QueryProcessException(ProcessException e) {
+    super(e.getMessage());
+    errorCode = e.getErrorCode();
   }
 }

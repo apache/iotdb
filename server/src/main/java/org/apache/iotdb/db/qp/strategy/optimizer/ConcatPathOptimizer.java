@@ -21,9 +21,9 @@ package org.apache.iotdb.db.qp.strategy.optimizer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
-import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ConcatPathOptimizer implements ILogicalOptimizer {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ConcatPathOptimizer.class);
+  private static final Logger logger = LoggerFactory.getLogger(ConcatPathOptimizer.class);
   private static final String WARNING_NO_SUFFIX_PATHS = "given SFWOperator doesn't have suffix paths, cannot concat seriesPath";
   private static final String WARNING_NO_PREFIX_PATHS = "given SFWOperator doesn't have prefix paths, cannot concat seriesPath";
 
@@ -55,31 +55,31 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   @Override
   public Operator transform(Operator operator) throws LogicalOptimizeException {
     if (!(operator instanceof SFWOperator)) {
-      LOG.warn("given operator isn't SFWOperator, cannot concat seriesPath");
+      logger.warn("given operator isn't SFWOperator, cannot concat seriesPath");
       return operator;
     }
     SFWOperator sfwOperator = (SFWOperator) operator;
     FromOperator from = sfwOperator.getFromOperator();
     List<Path> prefixPaths;
     if (from == null) {
-      LOG.warn(WARNING_NO_PREFIX_PATHS);
+      logger.warn(WARNING_NO_PREFIX_PATHS);
       return operator;
     } else {
       prefixPaths = from.getPrefixPaths();
       if (prefixPaths.isEmpty()) {
-        LOG.warn(WARNING_NO_PREFIX_PATHS);
+        logger.warn(WARNING_NO_PREFIX_PATHS);
         return operator;
       }
     }
     SelectOperator select = sfwOperator.getSelectOperator();
     List<Path> initialSuffixPaths;
     if (select == null) {
-      LOG.warn(WARNING_NO_SUFFIX_PATHS);
+      logger.warn(WARNING_NO_SUFFIX_PATHS);
       return operator;
     } else {
       initialSuffixPaths = select.getSuffixPaths();
       if (initialSuffixPaths.isEmpty()) {
-        LOG.warn(WARNING_NO_SUFFIX_PATHS);
+        logger.warn(WARNING_NO_SUFFIX_PATHS);
         return operator;
       }
     }
@@ -257,7 +257,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             new BasicFunctionOperator(operator.getTokenIntType(), noStarPaths.get(i),
                 ((BasicFunctionOperator) operator).getValue()));
       } catch (LogicalOperatorException e) {
-        throw new LogicalOptimizeException(e);
+        throw new LogicalOptimizeException(e.getMessage());
       }
     }
     return filterTwoFolkTree;
@@ -276,8 +276,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       for (Path path : paths) {
         List<String> all;
         all = executor.getAllPaths(path.getFullPath());
-        if(all.isEmpty()){
-          throw new LogicalOptimizeException("Path: \"" + path + "\" doesn't correspond to any known time series");
+        if (all.isEmpty()) {
+          throw new LogicalOptimizeException(
+              "Path: \"" + path + "\" doesn't correspond to any known time series");
         }
         for (String subPath : all) {
           if (!pathMap.containsKey(subPath)) {
@@ -288,8 +289,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       for (String pathStr : pathMap.keySet()) {
         retPaths.add(new Path(pathStr));
       }
-    } catch (MetadataErrorException e) {
-      throw new LogicalOptimizeException("error when remove star: ", e);
+    } catch (MetadataException e) {
+      throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
     }
     return retPaths;
   }
@@ -301,8 +302,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     for (int i = 0; i < paths.size(); i++) {
       try {
         List<String> actualPaths = executor.getAllPaths(paths.get(i).getFullPath());
-        if(actualPaths.isEmpty()){
-          throw new LogicalOptimizeException("Path: \"" + paths.get(i) + "\" doesn't correspond to any known time series");
+        if (actualPaths.isEmpty()) {
+          throw new LogicalOptimizeException(
+              "Path: \"" + paths.get(i) + "\" doesn't correspond to any known time series");
         }
         for (String actualPath : actualPaths) {
           retPaths.add(new Path(actualPath));
@@ -310,8 +312,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             newAggregations.add(afterConcatAggregations.get(i));
           }
         }
-      } catch (MetadataErrorException e) {
-        throw new LogicalOptimizeException("error when remove star: ", e);
+      } catch (MetadataException e) {
+        throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
       }
     }
     selectOperator.setSuffixPathList(retPaths);

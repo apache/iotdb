@@ -16,25 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.qp;
+package org.apache.iotdb.db.exception.path;
 
-/**
- * This exception is the basic exception of query process. It's thrown when meeting any error in
- * query process.
- */
-public class QueryProcessorException extends Exception {
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  private static final long serialVersionUID = -8987915921329335088L;
+public class PathException extends QueryProcessException {
 
-  public QueryProcessorException(String msg) {
-    super(msg);
+  private static final long serialVersionUID = 2141197032898163234L;
+
+  public PathException() {
+    super("Timeseries is null");
+    errorCode = TSStatusCode.PATH_ERROR.getStatusCode();
   }
 
-  public QueryProcessorException(Throwable e) {
-    super(e);
-  }
-
-  public QueryProcessorException(String message, Throwable cause) {
-    super(message, cause);
+  public PathException(String message) {
+    super(message);
+    errorCode = TSStatusCode.PATH_ERROR.getStatusCode();
   }
 }

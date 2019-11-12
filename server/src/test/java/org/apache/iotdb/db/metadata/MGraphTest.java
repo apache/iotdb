@@ -20,8 +20,8 @@ package org.apache.iotdb.db.metadata;
 
 import static org.junit.Assert.*;
 
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.StorageGroupException;
+import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -73,7 +73,7 @@ public class MGraphTest {
       metadatas[1] = root2.toString();
       metadatas[2] = root3.toString();
       assertEquals(MGraph.combineMetadataInStrings(metadatas), root.toString());
-    } catch (PathErrorException | StorageGroupException e) {
+    } catch (PathException | StorageGroupException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

@@ -15,14 +15,18 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
+package org.apache.iotdb.db.exception.query;
 
-package org.apache.iotdb.db.exception;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class NotStorageGroupException extends PathErrorException {
+public class UnSupportedFillTypeException extends QueryProcessException {
 
-  public NotStorageGroupException(String path) {
-    super(String.format("%s is not a storage group", path));
+  private static final long serialVersionUID = 2166251102397630376L;
+
+  public UnSupportedFillTypeException(TSDataType dataType) {
+    super(String.format("Unsupported linear fill data type: [%s]", dataType.toString()));
+    errorCode = TSStatusCode.UNSUPPORTED_FILL_TYPE_ERROR.getStatusCode();
   }
 }

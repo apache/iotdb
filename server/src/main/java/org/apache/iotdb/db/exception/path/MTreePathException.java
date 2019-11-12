@@ -17,22 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.path;
 
-public class SysCheckException extends Exception {
+public class MTreePathException extends PathException {
 
-  public SysCheckException() {
+
+  private static final long serialVersionUID = 5633901351119088504L;
+
+  public MTreePathException(String error, String path) {
+    super(String.format("%s [%s] is not correct. ", error, path));
   }
 
-  public SysCheckException(String message) {
+  public MTreePathException(String timeseriesPath, String error, String message) {
+    super(String.format("Timeseries [%s] %s. %s", timeseriesPath, error, message));
+  }
+
+  public MTreePathException(String message) {
     super(message);
-  }
-
-  public SysCheckException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public SysCheckException(Throwable cause) {
-    super(cause);
   }
 }

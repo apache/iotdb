@@ -22,9 +22,9 @@ import java.io.File;
 import java.io.IOException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.StorageGroupException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -113,7 +113,7 @@ public class PerformanceTest {
 
   @Test
   public void recoverTest()
-      throws IOException, PathErrorException, StorageGroupException {
+      throws IOException, PathException, StorageGroupException {
     // this test insert 1000000 * 3 logs , recover from them and report elapsed time
     if (skip) {
       return;
@@ -126,7 +126,7 @@ public class PerformanceTest {
 
     try {
       MManager.getInstance().setStorageGroupToMTree("root.logTestDevice");
-    } catch (MetadataErrorException ignored) {
+    } catch (MetadataException ignored) {
     }
     MManager.getInstance().addPathToMTree("root.logTestDevice.s1",
         TSDataType.DOUBLE.name(),

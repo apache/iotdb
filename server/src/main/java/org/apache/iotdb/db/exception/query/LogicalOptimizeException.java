@@ -16,24 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.qp;
+package org.apache.iotdb.db.exception.query;
+
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
- * This exception is thrown while meeting error in parsing ast tree to generate logical operator.
+ * This exception is thrown while meeting error in optimizing logical operator.
  */
-public class IllegalASTFormatException extends QueryProcessorException {
+public class LogicalOptimizeException extends LogicalOperatorException {
 
-  private static final long serialVersionUID = -8987915911329315588L;
+  private static final long serialVersionUID = -7098092782689670064L;
 
-  public IllegalASTFormatException(String msg) {
-    super(msg);
+  public LogicalOptimizeException(String message) {
+    super(message);
+    errorCode = TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode();
   }
 
-  public IllegalASTFormatException(Throwable e) {
-    super(e);
-  }
-
-  public IllegalASTFormatException(String message, Throwable cause) {
-    super(message, cause);
+  public LogicalOptimizeException(String filterOperator, int tokenInt) {
+    super(String.format("Unknown token in [%s]: [%s], [%s].", filterOperator, tokenInt,
+        SQLConstant.tokenNames.get(tokenInt)));
+    errorCode = TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode();
   }
 }

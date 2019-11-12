@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.reader.fileRelated;
 import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -85,7 +85,7 @@ public class UnSealedTsFileReaderTest extends ReaderTestHelper {
 
 
   @Override
-  protected void insertData() throws IOException, QueryProcessorException {
+  protected void insertData() throws IOException, QueryProcessException {
     for (int j = 1000; j <= 1009; j++) {
       insertOneRecord(j, j);
     }

@@ -15,18 +15,20 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class MergeException extends ProcessException {
+public class TimeseriesAlreadyExistException extends MetadataException {
 
-  private static final long serialVersionUID = 5445240999141374140L;
 
-  public MergeException(Throwable cause) {
-    super(cause.getMessage());
-    errorCode = TSStatusCode.MERGE_ERROR.getStatusCode();
+  private static final long serialVersionUID = -6713847897890531438L;
+
+  public TimeseriesAlreadyExistException(String path) {
+    super(String.format("Timeseries [%s] already exist", path));
+    errorCode = TSStatusCode.TIMESERIES_ALREADY_EXIST_ERROR.getStatusCode();
   }
 }
