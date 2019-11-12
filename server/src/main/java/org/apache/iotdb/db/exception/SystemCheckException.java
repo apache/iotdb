@@ -19,20 +19,14 @@
 
 package org.apache.iotdb.db.exception;
 
-public class QueryInBatchStmtException extends Exception {
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public QueryInBatchStmtException() {
-  }
+public class SystemCheckException extends ProcessException {
 
-  public QueryInBatchStmtException(String message) {
-    super(message);
-  }
+  private static final long serialVersionUID = 3845398095925149972L;
 
-  public QueryInBatchStmtException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public QueryInBatchStmtException(Throwable cause) {
-    super(cause);
+  public SystemCheckException(String walFolder) {
+    super(String.format("[%s] is not a directory", walFolder));
+    errorCode = TSStatusCode.SYSTEM_CHECK_ERROR.getStatusCode();
   }
 }

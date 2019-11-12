@@ -60,12 +60,11 @@ import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.MergeException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.OutOfTTLException;
-import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.query.OutOfTTLException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -179,15 +178,15 @@ public class StorageGroupProcessor {
    */
   private LinkedList<String> lruForSensorUsedInQuery = new LinkedList<>();
   /**
-   * when the data in a storage group is older than dataTTL, it is considered invalid and will
-   * be eventually removed.
+   * when the data in a storage group is older than dataTTL, it is considered invalid and will be
+   * eventually removed.
    */
   private long dataTTL = Long.MAX_VALUE;
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   public StorageGroupProcessor(String systemInfoDir, String storageGroupName)
-      throws ProcessorException {
+      throws StorageGroupProcessorException {
     this.storageGroupName = storageGroupName;
 
     // construct the file schema
@@ -211,7 +210,7 @@ public class StorageGroupProcessor {
     recover();
   }
 
-  private void recover() throws ProcessorException {
+  private void recover() throws StorageGroupProcessorException {
     logger.info("recover Storage Group  {}", storageGroupName);
 
     try {
@@ -239,8 +238,8 @@ public class StorageGroupProcessor {
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
         mergingMods.delete();
       }
-    } catch (IOException | MetadataErrorException e) {
-      throw new ProcessorException(e);
+    } catch (IOException | MetadataException e) {
+      throw new StorageGroupProcessorException(e);
     }
 
     for (TsFileResource resource : sequenceFileList) {
@@ -287,8 +286,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void recoverSeqFiles(List<TsFileResource> tsFiles) throws ProcessorException {
-
+  private void recoverSeqFiles(List<TsFileResource> tsFiles) throws StorageGroupProcessorException {
     for (TsFileResource tsFileResource : tsFiles) {
       sequenceFileList.add(tsFileResource);
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-"
@@ -298,7 +296,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void recoverUnseqFiles(List<TsFileResource> tsFiles) throws ProcessorException {
+  private void recoverUnseqFiles(List<TsFileResource> tsFiles) throws StorageGroupProcessorException {
     for (TsFileResource tsFileResource : tsFiles) {
       unSequenceFileList.add(tsFileResource);
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-",
@@ -351,7 +349,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void insert(InsertPlan insertPlan) throws QueryProcessorException {
+  public void insert(InsertPlan insertPlan) throws QueryProcessException {
     // reject insertions that are out of ttl
     if (!checkTTL(insertPlan.getTime())) {
       throw new OutOfTTLException(insertPlan.getTime(), (System.currentTimeMillis() - dataTTL));
@@ -370,7 +368,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessorException {
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
     writeLock();
     try {
       // init map
@@ -418,7 +416,7 @@ public class StorageGroupProcessor {
   }
 
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
-      List<Integer> indexes, boolean sequence, Integer[] results) throws QueryProcessorException {
+      List<Integer> indexes, boolean sequence, Integer[] results) throws QueryProcessException {
 
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(sequence);
     if (tsFileProcessor == null) {
@@ -451,7 +449,7 @@ public class StorageGroupProcessor {
   }
 
   private void insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence)
-      throws QueryProcessorException {
+      throws QueryProcessException {
     TsFileProcessor tsFileProcessor;
     boolean result;
 

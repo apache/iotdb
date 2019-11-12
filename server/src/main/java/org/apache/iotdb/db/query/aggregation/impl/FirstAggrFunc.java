@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -46,14 +46,14 @@ public class FirstAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) throws ProcessorException {
+  public void calculateValueFromPageHeader(PageHeader pageHeader) throws QueryProcessException {
     if (resultData.isSetTime()) {
       return;
     }
 
     Object firstVal = pageHeader.getStatistics().getFirst();
     if (firstVal == null) {
-      throw new ProcessorException("PageHeader contains no FIRST value");
+      throw new QueryProcessException("PageHeader contains no FIRST value");
     }
     resultData.putTimeAndValue(0, firstVal);
   }

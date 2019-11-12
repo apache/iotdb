@@ -16,24 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.qp;
+package org.apache.iotdb.db.exception.query;
+
+import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
  * This exception is thrown while meeting error in transforming logical operator to physical plan.
  */
-public class LogicalOperatorException extends QueryProcessorException {
+public class LogicalOperatorException extends QueryProcessException {
 
   private static final long serialVersionUID = 7573857366601268706L;
 
-  public LogicalOperatorException(String msg) {
-    super(msg);
+  public LogicalOperatorException() {
+    super("Error format in SQL statement, please check whether SQL statement is correct.");
+    errorCode = TSStatusCode.LOGICAL_OPERATOR_ERROR.getStatusCode();
+  }
+  public LogicalOperatorException(String message) {
+    super(message);
+    errorCode = TSStatusCode.LOGICAL_OPERATOR_ERROR.getStatusCode();
   }
 
-  public LogicalOperatorException(Throwable e) {
-    super(e);
-  }
-
-  public LogicalOperatorException(String message, Throwable cause) {
-    super(message, cause);
+  public LogicalOperatorException(String type, String message) {
+    super(String.format("Unsupported type: [%s]. " + message, type));
+    errorCode = TSStatusCode.LOGICAL_OPERATOR_ERROR.getStatusCode();
   }
 }

@@ -16,24 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.qp;
 
-/**
- * This exception is thrown while meeting error in optimizing logical operator.
- */
-public class LogicalOptimizeException extends LogicalOperatorException {
+package org.apache.iotdb.db.exception.storageGroup;
 
-  private static final long serialVersionUID = -7098092782689670064L;
+public class StorageGroupNotSetException extends StorageGroupException {
 
-  public LogicalOptimizeException(String msg) {
-    super(msg);
-  }
+  private static final long serialVersionUID = 3739300272099030533L;
 
-  public LogicalOptimizeException(Throwable e) {
-    super(e);
-  }
-
-  public LogicalOptimizeException(String message, Throwable cause) {
-    super(message, cause);
+  public StorageGroupNotSetException(String path) {
+    super(String.format("Storage group is not set for current seriesPath: [%s]", path));
   }
 }

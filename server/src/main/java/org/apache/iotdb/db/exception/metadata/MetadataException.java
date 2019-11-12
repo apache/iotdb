@@ -16,29 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.metadata;
 
-public class StorageGroupProcessorException extends ProcessorException {
+import org.apache.iotdb.db.exception.ProcessException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  private static final long serialVersionUID = 7373978140952977661L;
+/**
+ * If query metadata constructs schema but passes illegal parameters to EncodingConvertor or
+ * DataTypeConvertor,this exception will be threw.
+ */
+public class MetadataException extends ProcessException {
 
-  public StorageGroupProcessorException() {
-    super();
-  }
+  private static final long serialVersionUID = 3415275599091623570L;
 
-  public StorageGroupProcessorException(PathErrorException pathExcp) {
-    super(pathExcp.getMessage());
-  }
-
-  public StorageGroupProcessorException(String msg) {
+  public MetadataException(String msg) {
     super(msg);
+    errorCode = TSStatusCode.METADATA_ERROR.getStatusCode();
   }
 
-  public StorageGroupProcessorException(Throwable throwable) {
-    super(throwable);
+  public MetadataException(String message, Throwable cause) {
+    super(message + cause.getMessage());
+    errorCode = TSStatusCode.METADATA_ERROR.getStatusCode();
   }
 
-  public StorageGroupProcessorException(String msg, Throwable e) {
-    super(msg, e);
+  public MetadataException(ProcessException exception) {
+    super(exception.getMessage());
+    this.errorCode = exception.getErrorCode();
   }
 }

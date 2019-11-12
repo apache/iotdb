@@ -15,17 +15,21 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.db.qp.exception;
 
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+package org.apache.iotdb.db.exception.query;
 
-public class DateTimeFormatException extends QueryProcessorException {
+import java.util.Date;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  private static final long serialVersionUID = 5901175084493972130L;
+public class OutOfTTLException extends QueryProcessException {
 
-  public DateTimeFormatException(String msg) {
-    super(msg);
+  private static final long serialVersionUID = -1197147887094603300L;
+
+  public OutOfTTLException(long insertionTime, long timeLowerBound) {
+    super(String.format("Insertion time [%s] is less than ttl time bound [%s]",
+        new Date(insertionTime), new Date(timeLowerBound)));
+    errorCode = TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode();
   }
-
 }

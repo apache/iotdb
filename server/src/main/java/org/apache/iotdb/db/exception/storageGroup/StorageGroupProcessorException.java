@@ -16,20 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.storageGroup;
 
-public class UnSupportedFillTypeException extends DeltaEngineRunningException {
+import org.apache.iotdb.db.exception.ProcessException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public UnSupportedFillTypeException(String message, Throwable cause) {
-    super(message, cause);
+public class StorageGroupProcessorException extends ProcessException {
+
+  private static final long serialVersionUID = 7373978140952977661L;
+
+  public StorageGroupProcessorException(Exception exception) {
+    super(exception.getMessage());
+    errorCode = TSStatusCode.STORAGE_GROUP_PROCESSOR_ERROR.getStatusCode();
   }
 
-  public UnSupportedFillTypeException(String message) {
+  public StorageGroupProcessorException(String message) {
     super(message);
+    errorCode = TSStatusCode.STORAGE_GROUP_PROCESSOR_ERROR.getStatusCode();
   }
-
-  public UnSupportedFillTypeException(Throwable cause) {
-    super(cause);
-  }
-
 }
