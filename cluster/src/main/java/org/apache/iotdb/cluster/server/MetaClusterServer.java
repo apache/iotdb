@@ -25,9 +25,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.cluster.exception.AddSelfException;
-import org.apache.iotdb.cluster.exception.LeaderUnknownException;
-import org.apache.iotdb.cluster.exception.RequestTimeOutException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.meta.AddNodeLog;
 import org.apache.iotdb.cluster.log.meta.PhysicalPlanLog;
@@ -38,13 +35,11 @@ import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
-import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardAddNodeHandler;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.thrift.TException;
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.transport.TNonblockingTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -154,83 +149,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     }
   }
 
-  @Override
-  public void addNode(Node node, AsyncMethodCallback resultHandler) {
-    logger.info("A node {} wants to join this cluster", node);
-    if (node == thisNode) {
-      resultHandler.onError(new AddSelfException());
-      return;
-    }
 
-    if (character == NodeCharacter.LEADER) {
-      if (allNodes.contains(node)) {
-        logger.debug("Node {} is already in the cluster", node);
-        resultHandler.onComplete((int) RESPONSE_AGREE);
-        return;
-      }
-
-      // node adding must be serialized
-      synchronized (logManager) {
-        AddNodeLog addNodeLog = new AddNodeLog();
-        addNodeLog.setPreviousLogIndex(logManager.getLastLogIndex());
-        addNodeLog.setPreviousLogTerm(logManager.getLastLogTerm());
-        addNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-        addNodeLog.setCurrLogTerm(getTerm().get());
-
-        addNodeLog.setIp(node.getIp());
-        addNodeLog.setPort(node.getPort());
-
-        logManager.appendLog(addNodeLog);
-
-        logger.info("Send the join request of {} to other nodes", node);
-        // adding a node requires strong consistency
-        AppendLogResult result = sendLogToFollowers(addNodeLog, allNodes.size());
-
-        switch (result) {
-          case OK:
-            logger.info("Join request of {} is accepted", node);
-            resultHandler.onComplete((int) RESPONSE_AGREE);
-            logManager.commitLog(logManager.getLastLogIndex());
-            return;
-          case TIME_OUT:
-            logger.info("Join request of {} timed out", node);
-            resultHandler.onError(new RequestTimeOutException(addNodeLog));
-            logManager.removeLastLog();
-            return;
-          case LEADERSHIP_STALE:
-          default:
-            logManager.removeLastLog();
-            // if the leader is found, forward to it
-        }
-      }
-    }
-    if (character == NodeCharacter.FOLLOWER && leader != null) {
-      logger.info("Forward the join request of {} to leader {}", node, leader);
-      if (forwardAddNode(node, resultHandler)) {
-        return;
-      }
-    }
-    resultHandler.onError(new LeaderUnknownException());
-  }
-
-  /**
-   * Forward the join cluster request to the leader.
-   * @param node
-   * @param resultHandler
-   * @return true if the forwarding succeeds, false otherwise.
-   */
-  private boolean forwardAddNode(Node node, AsyncMethodCallback resultHandler) {
-    AsyncClient client = (AsyncClient) connectNode(leader);
-    if (client != null) {
-      try {
-        client.addNode(node, new ForwardAddNodeHandler(resultHandler));
-        return true;
-      } catch (TException e) {
-        logger.warn("Cannot connect to node {}", node, e);
-      }
-    }
-    return false;
-  }
 
   @Override
   public void apply(Log log) {

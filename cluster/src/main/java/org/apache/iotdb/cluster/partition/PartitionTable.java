@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.partition;
 
+import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
@@ -45,4 +46,11 @@ public abstract class PartitionTable {
    * @return the new partition table.
    */
   public abstract PartitionTable addNode(Node node);
+
+  /**
+   * Get the partition groups that node belongs to. Each group corresponds to a data raft group.
+   * @param node
+   * @return
+   */
+  public abstract List<PartitionGroup> getSubordinateGroups(Node node);
 }

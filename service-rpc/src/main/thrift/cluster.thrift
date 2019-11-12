@@ -107,15 +107,6 @@ service RaftService {
   * @return -1: agree, -2: log index mismatch , otherwise return the follower's term
   **/
   long appendEntry(1:AppendEntryRequest request)
-}
-
-service TSDataService extends RaftService{
-
-
-}
-
-service TSMetaService extends RaftService {
-
 
   /**
   * Node which is not leader will call this method to try to add itself into the cluster as a new node.
@@ -128,4 +119,15 @@ service TSMetaService extends RaftService {
   * add new node
   **/
   int addNode(1: Node node)
+}
+
+service TSDataService extends RaftService{
+
+
+}
+
+service TSMetaService extends RaftService {
+
+
+
 }

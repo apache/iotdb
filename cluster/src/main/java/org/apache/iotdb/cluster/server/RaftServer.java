@@ -37,6 +37,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.AddSelfException;
+import org.apache.iotdb.cluster.exception.LeaderUnknownException;
+import org.apache.iotdb.cluster.exception.RequestTimeOutException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
@@ -44,6 +47,7 @@ import org.apache.iotdb.cluster.log.LogManager;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.MemoryLogManager;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.meta.AddNodeLog;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -53,7 +57,10 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncProcessor;
+import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendEntryHandler;
+import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardAddNodeHandler;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -92,12 +99,12 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
 
   Set<Node> allNodes = new HashSet<>();
 
-  NodeCharacter character = NodeCharacter.ELECTOR;
+  private NodeCharacter character = NodeCharacter.ELECTOR;
   private AtomicLong term = new AtomicLong(0);
-  Node leader;
+  private Node leader;
   private long lastHeartBeatReceivedTime;
 
-  LogManager logManager;
+  private LogManager logManager;
 
   ExecutorService heartBeatService;
   private ExecutorService clientService;
@@ -362,7 +369,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
    *                       < 0, half of the cluster size will be used.
    * @return an AppendLogResult
    */
-  AppendLogResult sendLogToFollowers(Log log, int requiredQuorum) {
+  private AppendLogResult sendLogToFollowers(Log log, int requiredQuorum) {
     if (requiredQuorum < 0) {
       return sendLogToFollowers(log, new AtomicInteger(allNodes.size() / 2));
     } else {
@@ -471,6 +478,84 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
       lastCatchUpResponseTime.remove(follower);
       logger.warn("Catch-up failed: node {} is currently unavailable", follower);
     }
+  }
+
+  @Override
+  public void addNode(Node node, AsyncMethodCallback resultHandler) {
+    logger.info("A node {} wants to join this cluster", node);
+    if (node == thisNode) {
+      resultHandler.onError(new AddSelfException());
+      return;
+    }
+
+    if (character == NodeCharacter.LEADER) {
+      if (allNodes.contains(node)) {
+        logger.debug("Node {} is already in the cluster", node);
+        resultHandler.onComplete((int) RESPONSE_AGREE);
+        return;
+      }
+
+      // node adding must be serialized
+      synchronized (logManager) {
+        AddNodeLog addNodeLog = new AddNodeLog();
+        addNodeLog.setPreviousLogIndex(logManager.getLastLogIndex());
+        addNodeLog.setPreviousLogTerm(logManager.getLastLogTerm());
+        addNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+        addNodeLog.setCurrLogTerm(getTerm().get());
+
+        addNodeLog.setIp(node.getIp());
+        addNodeLog.setPort(node.getPort());
+
+        logManager.appendLog(addNodeLog);
+
+        logger.info("Send the join request of {} to other nodes", node);
+        // adding a node requires strong consistency
+        AppendLogResult result = sendLogToFollowers(addNodeLog, allNodes.size());
+
+        switch (result) {
+          case OK:
+            logger.info("Join request of {} is accepted", node);
+            resultHandler.onComplete((int) RESPONSE_AGREE);
+            logManager.commitLog(logManager.getLastLogIndex());
+            return;
+          case TIME_OUT:
+            logger.info("Join request of {} timed out", node);
+            resultHandler.onError(new RequestTimeOutException(addNodeLog));
+            logManager.removeLastLog();
+            return;
+          case LEADERSHIP_STALE:
+          default:
+            logManager.removeLastLog();
+            // if the leader is found, forward to it
+        }
+      }
+    }
+    if (character == NodeCharacter.FOLLOWER && leader != null) {
+      logger.info("Forward the join request of {} to leader {}", node, leader);
+      if (forwardAddNode(node, resultHandler)) {
+        return;
+      }
+    }
+    resultHandler.onError(new LeaderUnknownException());
+  }
+
+  /**
+   * Forward the join cluster request to the leader.
+   * @param node
+   * @param resultHandler
+   * @return true if the forwarding succeeds, false otherwise.
+   */
+  private boolean forwardAddNode(Node node, AsyncMethodCallback resultHandler) {
+    TSMetaService.AsyncClient client = (TSMetaService.AsyncClient) connectNode(leader);
+    if (client != null) {
+      try {
+        client.addNode(node, new ForwardAddNodeHandler(resultHandler));
+        return true;
+      } catch (TException e) {
+        logger.warn("Cannot connect to node {}", node, e);
+      }
+    }
+    return false;
   }
 
 
