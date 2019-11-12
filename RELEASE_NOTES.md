@@ -37,7 +37,7 @@
 * IOTDB-205 Support storage-group-level Time To Live (TTL)
 * IOTDB-208 Add Bloom filter in TsFile
 * IOTDB-223 Add a TsFile sketch tool
-* IoTDB 226 Hive-TsFile connector
+* IoTDB-226 Hive-TsFile connector
 * IOTDB-239 Add interface for showing devices
 * IOTDB-241 Add query and non query interface in session
 * IOTDB-249 Enable lowercase in create_timeseries sql
