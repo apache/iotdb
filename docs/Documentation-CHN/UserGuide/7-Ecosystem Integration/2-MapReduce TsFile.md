@@ -19,7 +19,7 @@
 
 -->
 # 第7章: 生态集成
-# TsFile的Hadoop连接器
+# MapReduce TsFile
 <!-- TOC -->
 ## 概要
 
