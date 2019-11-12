@@ -79,7 +79,7 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
   }
 
   /**
-   * construct function for TsFileSequenceReader.
+   * construct function for TsfileUpgradeToolV0_8_0.
    *
    * @param file -given file name
    * @param loadMetadataSize -load meta data size
@@ -150,7 +150,6 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
   }
 
   /**
-   * this function does not modify the position of the file reader.
    *
    * @param movePosition whether move the position of the file reader after reading the magic header
    * to the end of the magic head string.
@@ -313,12 +312,12 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
     } else {
       fileSize = checkFile.length();
     }
-    File updateFile = FSFactoryProducer.getFSFactory().getFile(updateFileName);
-    if (!updateFile.getParentFile().exists()) {
-      updateFile.getParentFile().mkdirs();
+    File upgradeFile = FSFactoryProducer.getFSFactory().getFile(updateFileName);
+    if (!upgradeFile.getParentFile().exists()) {
+      upgradeFile.getParentFile().mkdirs();
     }
-    updateFile.createNewFile();
-    TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(updateFile);
+    upgradeFile.createNewFile();
+    TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(upgradeFile);
 
     List<ChunkHeader> chunkHeaders = new ArrayList<>();
     List<List<PageHeader>> pageHeadersList = new ArrayList<>();

@@ -405,11 +405,17 @@ public class TsFileMetaData {
     return new ArrayList<MeasurementSchema>(measurementSchema.values());
   }
 
+  /**
+   * This function is just for upgrade.
+   */
   public void setDeviceIndexMap(
       Map<String, TsDeviceMetadataIndex> deviceIndexMap) {
     this.deviceIndexMap = deviceIndexMap;
   }
 
+  /**
+   * This function is just for upgrade.
+   */
   public void setMeasurementSchema(
       Map<String, MeasurementSchema> measurementSchema) {
     this.measurementSchema = measurementSchema;
