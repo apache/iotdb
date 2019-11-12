@@ -24,27 +24,27 @@
 ## New Features
 
 * IOTDB-143 Compaction of data file
-* IOTDB-208 Add Bloom filter in TsFile
-* IOTDB-205 Support storage-group-level Time To Live (TTL)
-* IOTDB-198 Add sync module (Sync TsFiles between IoTDB instances)
-* IoTDB 226 Hive-TsFile connector
-* IOTDB-188 Delete storage group
-* IOTDB-253 Support time expression 
-* IOTDB-239 Add interface for showing devices
-* IOTDB-259 Level query of path
-* IOTDB-249 Enable lowercase in create_timeseries sql
-* IOTDB-203 Add "group by device" function for narrow table display
-* IOTDB-193 Create schema automatically when inserting
-* IOTDB-241 Add query and non query interface in session
-* IOTDB-223 Add a TsFile sketch tool
-* IOTDB-158 Add metrics web service
-* IOTDB-187 Enable to choose storage in local file system or HDFS
-* IOTDB-199 Add a log visulization tool 
-* IoTDB-174 Add interfaces for querying device or timeseries number
-* IOTDB-173 Add batch write interface in session
 * IOTDB-151 Support number format in timeseries path
-* IOTDB-294 Online upgrade from 0.8.0 to 0.9.0
+* IOTDB-158 Add metrics web service
+* IOTDB-173 Add batch write interface in session
+* IoTDB-174 Add interfaces for querying device or timeseries number
+* IOTDB-187 Enable to choose storage in local file system or HDFS
+* IOTDB-188 Delete storage group
+* IOTDB-193 Create schema automatically when inserting
+* IOTDB-198 Add sync module (Sync TsFiles between IoTDB instances)
+* IOTDB-199 Add a log visulization tool 
+* IOTDB-203 Add "group by device" function for narrow table display
+* IOTDB-205 Support storage-group-level Time To Live (TTL)
+* IOTDB-208 Add Bloom filter in TsFile
+* IOTDB-223 Add a TsFile sketch tool
+* IoTDB 226 Hive-TsFile connector
+* IOTDB-239 Add interface for showing devices
+* IOTDB-241 Add query and non query interface in session
+* IOTDB-249 Enable lowercase in create_timeseries sql
+* IOTDB-253 Support time expression 
+* IOTDB-259 Level query of path
 * IOTDB-282 Add "show version"
+* IOTDB-294 Online upgrade from 0.8.0 to 0.9.0
 * Spark-iotdb-connector
 * Support quoted measurement name
 * Generate cpp, go, and python thrift files under service-rpc
@@ -63,28 +63,27 @@
 
 ## Miscellaneous changes
 
-* IOTDB-258 Add documents for Query History Visualization Tool and Shared Storage Architecture
-* IOTDB-233 keep metadata plan clear
-* IOTDB-267 Reduce IO operations in deserializing chunk header
-* IOTDB-265 Re-adjust the threshold size of memtable
-* IOTDB-251 Improve TSQueryDataSet structure in RPC
-* IOTDB-221 Add a python client example
-* IOTDB-180 Get rid of JSON format in "show timeseries"
-* IOTDB-161 Add ErrorCode of different response errors
-* IOTDB-160 External sort
+* IOTDB-144 Meta data cache for query
 * IOTDB-153 Further limit fetchSize to speed up LIMIT&OFFSET query
-* IOTDB-295 Refactor db.exception
-* IOTDB-257 Makes the client stop fetch when dataSize equals maxPrintRowCount and change client fetchSize less than maxPrintRowCount
-* IOTDB-215 Update TsFile sketch tool and TsFile docs for v0.9.0
-* IOTDB-285 Duplicate fields in EngineDataSetWithoutValueFilter.java
+* IOTDB-160 External sort
+* IOTDB-161 Add ErrorCode of different response errors
+* IOTDB-180 Get rid of JSON format in "show timeseries"
+* IOTDB-192 Improvement for LRUCache
 * IOTDB-210 One else if branch will never be reached in the method optimize of ExpressionOptimizer
-* IOTDB-276 Fix inconsistent ways of judging whether a Field is null
+* IOTDB-215 Update TsFile sketch tool and TsFile docs for v0.9.0
+* IOTDB-221 Add a python client example
+* IOTDB-233 keep metadata plan clear
+* IOTDB-251 Improve TSQueryDataSet structure in RPC
+* IOTDB-257 Makes the client stop fetch when dataSize equals maxPrintRowCount and change client fetchSize less than maxPrintRowCount
+* IOTDB-258 Add documents for Query History Visualization Tool and Shared Storage Architecture
+* IOTDB-265 Re-adjust the threshold size of memtable
+* IOTDB-267 Reduce IO operations in deserializing chunk header
 * IOTDB-273 Parallel recovery
+* IOTDB-276 Fix inconsistent ways of judging whether a Field is null
+* IOTDB-285 Duplicate fields in EngineDataSetWithoutValueFilter.java
 * IOTDB-287 Restrict users to only use domain names and IP addresses.
 * IOTDB-293 Variable naming convention
 * IOTDB-295 Refactor db.exception
-* IOTDB-144 Meta data cache for query
-* IOTDB-192 Improvement for LRUCache
 * Reconstruct Antlr3 grammar to improve performance
 * Tooling for release
 * Modified Decoder and SequenceReader to support old version of TsFile 
@@ -98,15 +97,15 @@
 
 ## Bug Fixes
 
-* IOTDB-266 NullPoint exception when reading not existed devices using ReadOnlyTsFile
-* IOTDB-264 Restart failure due to WAL replay error
-* IOTDB-240 Fix unknown time series in where clause
 * IOTDB-168&169 Fix a bug in export-csv tool and fix compatibility of timestamp formats in exportCsv, client display and sql
 * IOTDB-174 Fix querying timeseries interface cannot make a query by the specified path prefix
 * IOTDB-195 Using String.getBytes(utf-9).length to replace string.length() in ChunkGroupMetadata for supporting Chinese
 * IOTDB-211 Use "%IOTDB_HOME%\lib\*" to refers to all .jar files in the directory in start-server.bat
+* IOTDB-240 Fix unknown time series in where clause
 * IOTDB-244 Fix bug when querying with duplicated columns
 * IOTDB-252 Add/fix shell and bat for TsFileSketchTool/TsFileResourcePrinter
+* IOTDB-266 NullPoint exception when reading not existed devices using ReadOnlyTsFile
+* IOTDB-264 Restart failure due to WAL replay error
 * IOTDB-290 Bug about threadlocal field in TSServiceImpl.java
 * IOTDB-291 Statement close operation may cause the whole connection's resource to be released
 * IOTDB-296 Fix error when skip page data in sequence reader
@@ -119,8 +118,8 @@
 This is a bug-fix version of 0.8.0
 
 * IOTDB-172 Bug in updating startTime and endTime in TsFileResource
-* IOTDB-202 fix tsfile example data type
 * IOTDB-195 Bug about 'serializedSize' in ChunkGroupMetaData.java (for Chinese string)
+* IOTDB-202 fix tsfile example data type
 * IOTDB-242 fix mvn integration-test failed because the files in the target folder changes
 * Abnormal publishing of sequence and unsequence data folders in DirectoryManager
 * Fix a bug in TimeRange's intersects function
