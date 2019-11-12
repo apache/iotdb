@@ -222,8 +222,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     if (!tryToAdaptParameters()) {
       totalStorageGroup -= diff;
       maxMemTableNum -= IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP * diff;
-      throw new ConfigAdjusterException(
-          "The IoTDB system load is too large to create storage group.");
+      throw new ConfigAdjusterException("create storage group");
     }
   }
 
@@ -237,7 +236,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     if (!tryToAdaptParameters()) {
       totalTimeseries -= diff;
       staticMemory -= diff * TIMESERIES_METADATA_SIZE_IN_BYTE;
-      throw new ConfigAdjusterException("The IoTDB system load is too large to add timeseries.");
+      throw new ConfigAdjusterException("add timeseries");
     }
   }
 

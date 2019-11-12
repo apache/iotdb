@@ -17,22 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.path;
 
-public class StorageEngineFailureException extends RuntimeException {
+public class PTreePathException extends PathException {
 
-  public StorageEngineFailureException() {
-  }
-
-  public StorageEngineFailureException(String message) {
+  public PTreePathException(String message) {
     super(message);
-  }
-
-  public StorageEngineFailureException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public StorageEngineFailureException(Throwable cause) {
-    super(cause);
   }
 }

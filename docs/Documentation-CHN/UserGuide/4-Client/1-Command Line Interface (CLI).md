@@ -30,7 +30,7 @@
 
 <!-- /TOC -->
 
-# Command Line Interface(CLI)
+# Command Line Interface (CLI)
 IOTDB为用户提供Client/Shell工具用于启动客户端和服务端程序。下面介绍每个Client/Shell工具的运行方式和相关参数。
 > \$IOTDB\_HOME表示IoTDB的安装目录所在路径。
 

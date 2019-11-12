@@ -15,27 +15,21 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
 package org.apache.iotdb.db.exception;
 
-public class StorageGroupException extends Exception {
+public class ProcessException extends Exception {
 
-  private static final long serialVersionUID = 7082567513626836322L;
+  private static final long serialVersionUID = 8480450962311247736L;
+  protected int errorCode;
 
-  public StorageGroupException() {
-    super();
-  }
-
-  public StorageGroupException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public StorageGroupException(String message) {
+  public ProcessException(String message) {
     super(message);
   }
 
-  public StorageGroupException(Throwable cause) {
-    super(cause);
+  public int getErrorCode() {
+    return errorCode;
   }
 }

@@ -135,10 +135,7 @@ public class JMXService implements IService {
       logger
           .info("{}: start {} successfully.", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     } catch (IOException e) {
-      String errorMessage = String
-          .format("Failed to start %s because of %s", this.getID().getName(),
-              e.getMessage());
-      throw new StartupException(errorMessage, e);
+      throw new StartupException(this.getID().getName(), e.getMessage());
     }
   }
 
@@ -159,6 +156,7 @@ public class JMXService implements IService {
 
     private static final JMXService INSTANCE = new JMXService();
 
-    private JMXServerHolder(){}
+    private JMXServerHolder() {
+    }
   }
 }

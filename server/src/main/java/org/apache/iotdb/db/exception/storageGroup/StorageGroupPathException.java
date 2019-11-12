@@ -16,30 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception;
 
-/**
- * This Exception is the parent class for all delta engine runtime exceptions.<br> This Exception
- * extends super class {@link java.lang.RuntimeException}
- */
-public abstract class DeltaEngineRunningException extends RuntimeException {
+package org.apache.iotdb.db.exception.storageGroup;
 
-  private static final long serialVersionUID = 7537799061005397794L;
+public class StorageGroupPathException extends StorageGroupException {
 
-  public DeltaEngineRunningException() {
-    super();
+  private static final long serialVersionUID = 3739300272099030533L;
+
+  public StorageGroupPathException(String path) {
+    super(String
+        .format("The prefix of the seriesPath [%s] is not one storage group seriesPath", path));
   }
-
-  public DeltaEngineRunningException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public DeltaEngineRunningException(String message) {
-    super(message);
-  }
-
-  public DeltaEngineRunningException(Throwable cause) {
-    super(cause);
-  }
-
 }

@@ -101,7 +101,7 @@ public class QueryResourceManager {
         try {
           deserializer.close();
         } catch (IOException e) {
-          throw new StorageEngineException(e);
+          throw new StorageEngineException(e.getMessage());
         }
       }
       externalSortFileMap.remove(jobId);

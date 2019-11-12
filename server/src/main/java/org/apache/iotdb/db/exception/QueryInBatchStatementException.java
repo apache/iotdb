@@ -16,19 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.exception;
 
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public class PathErrorException extends QueryProcessorException {
+public class QueryInBatchStatementException extends ProcessException {
 
-  private static final long serialVersionUID = 2141197032898163234L;
+  private static final long serialVersionUID = 204423954433950490L;
 
-  public PathErrorException(String msg) {
-    super(msg);
-  }
-
-  public PathErrorException(Throwable e) {
-    super(e);
+  public QueryInBatchStatementException(String statement) {
+    super(String.format("Query statement not allowed in batch: [%s]", statement));
+    errorCode = TSStatusCode.QUERY_NOT_ALLOWED.getStatusCode();
   }
 }

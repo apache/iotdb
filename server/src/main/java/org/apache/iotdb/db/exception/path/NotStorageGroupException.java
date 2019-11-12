@@ -15,33 +15,19 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.db.exception;
 
-/**
- * Processor Exception, the top-level exception in IoTDB.
- */
-public class ProcessorException extends Exception {
+package org.apache.iotdb.db.exception.path;
 
-  private static final long serialVersionUID = 4137638418544201605L;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public ProcessorException(String msg) {
-    super(msg);
-  }
+public class NotStorageGroupException extends PathException {
 
-  public ProcessorException(Throwable e) {
-    super(e);
-  }
+  private static final long serialVersionUID = 2693272249167539978L;
 
-  public ProcessorException(Exception e) {
-    super(e);
-  }
-
-  public ProcessorException() {
-    super();
-  }
-
-  public ProcessorException(String msg, Throwable e) {
-    super(msg, e);
+  public NotStorageGroupException(String path) {
+    super(String.format("[%s] is not a storage group", path));
+    errorCode = TSStatusCode.NOT_STORAGE_GROUP_ERROR.getStatusCode();
   }
 }

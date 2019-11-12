@@ -151,14 +151,14 @@ Note: This statement can be used in IoTDB Client and JDBC.
 
 * Show Devices Statement
 ```
-SHOW DEVICE
+SHOW DEVICES
 Eg: IoTDB > SHOW DEVICES
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * Show Child Paths of Root Statement
 ```
-SHOW CHILD PATH
+SHOW CHILD PATHS
 Eg: IoTDB > SHOW CHILD PATHS
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
