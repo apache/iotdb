@@ -21,7 +21,7 @@
 # Chapter 4: Client
 ## Outline
 <!-- TOC -->
-- CCommand Line Interface(CLI)
+- Command Line Interface(CLI)
     - Running Cli/Shell
     - Cli/Shell Parameters
     - Cli/shell tool with -e parameter
