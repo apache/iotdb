@@ -109,6 +109,7 @@
 * IOTDB-290 Bug about threadlocal field in TSServiceImpl.java
 * IOTDB-291 Statement close operation may cause the whole connection's resource to be released
 * IOTDB-296 Fix error when skip page data in sequence reader
+* IOTDB-301 Bug Fix: executing "count nodes root" in client gets "Msg:3"
 * Fix Dynamic Config when Creating Existing SG or Time-series
 * Fix start-walchecker scripts for leting user define the wal folder
 
