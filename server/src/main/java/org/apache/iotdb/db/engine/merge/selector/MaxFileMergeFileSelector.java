@@ -158,6 +158,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
 
       // skip if the unseqFile and tmpSelectedSeqFiles has TsFileResources that need to be upgraded
       if (tmpSelectedSeqFiles.size() == 0) {
+        selectedUnseqFiles.add(unseqFile);
         unseqIndex++;
         timeConsumption = System.currentTimeMillis() - startTime;
         continue;
