@@ -58,6 +58,7 @@ import org.apache.iotdb.db.query.control.JobFileManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -104,6 +105,8 @@ public class StorageEngine implements IService {
       throw new StorageEngineFailureException(e);
     }
 
+    // recover upgrade process
+    UpgradeUtils.recoverUpgrade();
     /*
      * recover all storage group processors.
      */
@@ -330,6 +333,33 @@ public class StorageEngine implements IService {
       String uuid) throws StorageEngineException {
     // TODO reimplement sync module
     return Collections.emptyList();
+  }
+
+  /**
+   * count all Tsfiles which need to be upgraded
+   * @return total num of the tsfiles which need to be upgraded
+   */
+  public int countUpgradeFiles() {
+    int totalUpgradeFileNum = 0;
+    for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
+      totalUpgradeFileNum += storageGroupProcessor.countUpgradeFiles();
+    }
+    return totalUpgradeFileNum;
+  }
+
+  /**
+   * upgrade all storage groups.
+   *
+   * @throws StorageEngineException StorageEngineException
+   */
+  public void upgradeAll() throws StorageEngineException {
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new StorageEngineException(
+          "Current system mode is read only, does not support file upgrade");
+    }
+    for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
+      storageGroupProcessor.upgrade();
+    }
   }
 
   /**

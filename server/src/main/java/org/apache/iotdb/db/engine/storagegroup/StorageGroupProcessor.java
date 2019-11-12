@@ -71,6 +71,8 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.JobFileManager;
+import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
@@ -657,7 +659,7 @@ public class StorageGroupProcessor {
         return;
       }
       // ensure that the file is not used by any queries
-      if (resource.getMergeQueryLock().writeLock().tryLock()) {
+      if (resource.getWriteQueryLock().writeLock().tryLock()) {
         try {
           // physical removal
           resource.remove();
@@ -671,7 +673,7 @@ public class StorageGroupProcessor {
             unSequenceFileList.remove(resource);
           }
         } finally {
-          resource.getMergeQueryLock().writeLock().unlock();
+          resource.getWriteQueryLock().writeLock().unlock();
         }
       }
     } finally {
@@ -962,6 +964,35 @@ public class StorageGroupProcessor {
     }
   }
 
+  /**
+   * count all Tsfiles in the storage group which need to be upgraded
+   *
+   * @return total num of the tsfiles which need to be upgraded in the storage group
+   */
+  public int countUpgradeFiles() {
+    int cntUpgradeFileNum = 0;
+    for (TsFileResource seqTsFileResource : sequenceFileList) {
+      if (UpgradeUtils.isNeedUpgrade(seqTsFileResource)) {
+        cntUpgradeFileNum += 1;
+      }
+    }
+    for (TsFileResource unseqTsFileResource : unSequenceFileList) {
+      if (UpgradeUtils.isNeedUpgrade(unseqTsFileResource)) {
+        cntUpgradeFileNum += 1;
+      }
+    }
+    return cntUpgradeFileNum;
+  }
+
+  public void upgrade() {
+    for (TsFileResource seqTsFileResource : sequenceFileList) {
+      seqTsFileResource.doUpgrade();
+    }
+    for (TsFileResource unseqTsFileResource : unSequenceFileList) {
+      unseqTsFileResource.doUpgrade();
+    }
+  }
+
   public void merge(boolean fullMerge) {
     writeLock();
     try {
@@ -1046,17 +1077,17 @@ public class StorageGroupProcessor {
     }
 
     for (TsFileResource unseqFile : unseqFiles) {
-      unseqFile.getMergeQueryLock().writeLock().lock();
+      unseqFile.getWriteQueryLock().writeLock().lock();
       try {
         unseqFile.remove();
       } finally {
-        unseqFile.getMergeQueryLock().writeLock().unlock();
+        unseqFile.getWriteQueryLock().writeLock().unlock();
       }
     }
   }
 
   private void updateMergeModification(TsFileResource seqFile) {
-    seqFile.getMergeQueryLock().writeLock().lock();
+    seqFile.getWriteQueryLock().writeLock().lock();
     try {
       // remove old modifications and write modifications generated during merge
       seqFile.removeModFile();
@@ -1069,7 +1100,7 @@ public class StorageGroupProcessor {
       logger.error("{} cannot clean the ModificationFile of {} after merge", storageGroupName,
           seqFile.getFile(), e);
     } finally {
-      seqFile.getMergeQueryLock().writeLock().unlock();
+      seqFile.getWriteQueryLock().writeLock().unlock();
     }
   }
 
@@ -1301,12 +1332,12 @@ public class StorageGroupProcessor {
     if (deletedTsFileResource == null) {
       return;
     }
-    deletedTsFileResource.getMergeQueryLock().writeLock().lock();
+    deletedTsFileResource.getWriteQueryLock().writeLock().lock();
     try {
       logger.info("Delete tsfile {} in sync loading process.", deletedTsFileResource.getFile());
       deletedTsFileResource.remove();
     } finally {
-      deletedTsFileResource.getMergeQueryLock().writeLock().unlock();
+      deletedTsFileResource.getWriteQueryLock().writeLock().unlock();
     }
   }
 

@@ -60,7 +60,7 @@ public class TsFileMetaDataTest {
     TsFileMetaData metaData = null;
     try {
       fileInputStream = new FileInputStream(new File(PATH));
-      metaData = TsFileMetaData.deserializeFrom(fileInputStream);
+      metaData = TsFileMetaData.deserializeFrom(fileInputStream, false);
       return metaData;
     } catch (IOException e) {
       e.printStackTrace();
