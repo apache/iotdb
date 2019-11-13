@@ -276,7 +276,7 @@ Congratulations! You have finished the journey of discovering TsFile.
 
 #### 1.3.1 TsFileResource Print Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.9.0-SNAPSHOT\tools` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.9.0\tools` directory.
 
 Command:
 
@@ -295,7 +295,7 @@ For Linux or MacOs:
 An example on Windows:
 
 ```
-D:\incubator-iotdb\server\target\iotdb-server-0.9.0-SNAPSHOT\tools>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
+D:\incubator-iotdb\server\target\iotdb-server-0.9.0\tools>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
 ​````````````````````````
 Starting Printing the TsFileResources
 ​````````````````````````
@@ -307,7 +307,7 @@ analyzing the resource file finished.
 
 #### 1.3.2 TsFile Sketch Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.9.0-SNAPSHOT\tools` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.9.0\tools` directory.
 
 Command:
 
@@ -330,7 +330,7 @@ For Linux or MacOs:
 An example on Windows:
 
 ```$xslt
-D:\incubator-iotdb\server\target\iotdb-server-0.9.0-SNAPSHOT\tools>.\print-tsfile-sketch.bat D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
+D:\incubator-iotdb\server\target\iotdb-server-0.9.0\tools>.\print-tsfile-sketch.bat D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
 ​````````````````````````
 Starting Printing the TsFile Sketch
 ​````````````````````````
