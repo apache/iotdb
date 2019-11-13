@@ -36,14 +36,12 @@ In total, we provide users three kinds of configurations module:
 
 The configuration files of the three configuration items are located in the IoTDB installation directory: `$IOTDB_HOME/conf` folder.
 
-## Hot Modification Configuration
+### Hot Modification Configuration
 
 For the convenience of users, IoTDB server provides users with hot modification function, that is, modifying some configuration parameters in `iotdb engine. Properties` during the system operation and applying them to the system immediately. 
 In the parameters described below, these parameters whose way of `Effective` is `trigger` support hot modification.
 
 Trigger way: The client sends the command `load configuration` to the IoTDB server. See Chapter 4 for the usage of the client.
-为方便用户使用，IoTDB Server为用户提供了热修改功能，即在系统运行过程中修改`iotdb-engine.properties`中部分配置参数并即时应用到系统中。下面介绍的参数中，改后
-生效方式为`触发修改`的均为支持热修改的配置参数。
 
 ### IoTDB Environment Configuration File
 

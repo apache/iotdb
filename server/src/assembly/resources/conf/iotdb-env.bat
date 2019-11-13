@@ -54,13 +54,21 @@ for /f "tokens=1-3" %%j in ('java -version 2^>^&1') do (
 	set BIT_VERSION=%%l
 )
 IF "%BIT_VERSION%" == "64-Bit" (
+  @REM Maximum heap size
+  MAX_HEAP_SIZE="2G"
+  @REM Minimum heap size
+  HEAP_NEWSIZE="2G"
 	rem 64-bit Java
-	echo Detect 64-bit Java, maximum memory allocation pool = 2GB, initial memory allocation pool = 2GB
-	set IOTDB_HEAP_OPTS=-Xmx2G -Xms2G
+	echo Detect 64-bit Java, maximum memory allocation pool = %MAX_HEAP_SIZE%B, initial memory allocation pool = %HEAP_NEWSIZE%B
+	set IOTDB_HEAP_OPTS=-Xmx%HEAP_NEWSIZE% -Xms%MAX_HEAP_SIZE%
 ) ELSE (
+	@REM Maximum heap size
+  MAX_HEAP_SIZE="512M"
+  @REM Minimum heap size
+  HEAP_NEWSIZE="512M"
 	rem 32-bit Java
-	echo Detect 32-bit Java, maximum memory allocation pool = 512MB, initial memory allocation pool = 512MB
-	set IOTDB_HEAP_OPTS=-Xmx512M -Xms512M
+	echo Detect 32-bit Java, maximum memory allocation pool = %MAX_HEAP_SIZE%B, initial memory allocation pool = %HEAP_NEWSIZE%B
+	set IOTDB_HEAP_OPTS=-Xmx%HEAP_NEWSIZE% -Xms%MAX_HEAP_SIZE%
 )
 
 @REM You can put your env variable here

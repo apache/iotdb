@@ -21,7 +21,7 @@
 
 # 第3章 服务器端
 
-## 系统配置
+## 配置手册
 
 为方便IoTDB Server的配置与管理，IoTDB Server为用户提供三种配置项，使得用户可以在启动服务器或服务器运行时对其进行配置。
 
@@ -33,10 +33,10 @@
 
 * `iotdb-engine.properties`：IoTDB引擎层系统配置项的默认配置文件。用户可以在文件中配置IoTDB引擎运行时的相关参数，如JDBC服务监听端口(`rpc_port`)、overflow数据文件存储目录(`overflow_data_dir`)等。此外，用户可以在文件中配置IoTDB存储时TsFile文件的相关信息，如每次将内存中的数据写入到磁盘时的数据大小(`group_size_in_byte`)，内存中每个列打一次包的大小(`page_size_in_byte`)等。
 
-## 热修改配置项
+### 热修改配置项
 
 为方便用户使用，IoTDB Server为用户提供了热修改功能，即在系统运行过程中修改`iotdb-engine.properties`中部分配置参数并即时应用到系统中。下面介绍的参数中，改后
-生效方式为`触发修改`的均为支持热修改的配置参数。
+生效方式为`触发生效`的均为支持热修改的配置参数。
 
 触发方式：客户端发送```load configuration```命令至IoTDB Server，客户端的使用方式详见第4章
 
