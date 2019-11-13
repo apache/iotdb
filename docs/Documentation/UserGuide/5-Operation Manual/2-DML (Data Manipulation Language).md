@@ -330,7 +330,7 @@ When the fill method is not specified, each data type bears its own default fill
 |text|previous, 0|
 </center>
 
-> Note: In version 0.7.0, at least one fill method should be specified in the Fill statement.
+> Note: In version 0.9.0, at least one fill method should be specified in the Fill statement.
 
 ### Row and Column Control over Query Results
 
