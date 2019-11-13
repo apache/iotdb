@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cluster.server.handlers.forwarder;
 
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient.addNode_call;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.addNode_call;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 

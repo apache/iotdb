@@ -58,6 +58,15 @@ public class HeartBeatHandler implements AsyncMethodCallback<sendHeartBeat_call>
 
     long followerTerm = response.getTerm();
     if (followerTerm == RaftServer.RESPONSE_AGREE) {
+      // register the id of the node
+      if (response.isSetFolloweIdentifier()) {
+        raftServer.registerNodeIdentifier(receiver, response.getFolloweIdentifier());
+      }
+      // record the requirement of node list of the follower
+      if (response.isRequireNodeList()) {
+        raftServer.addBlindNode(receiver);
+      }
+
       // current leadership is still valid
       Node follower = response.getFollower();
       long lastLogIdx = response.getLastLogIndex();

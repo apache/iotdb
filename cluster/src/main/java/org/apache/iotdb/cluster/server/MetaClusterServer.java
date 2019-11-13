@@ -24,10 +24,12 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.meta.AddNodeLog;
 import org.apache.iotdb.cluster.log.meta.PhysicalPlanLog;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
@@ -57,14 +59,28 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
 
   private AsyncClient.Factory clientFactory;
   private IoTDB ioTDB;
-  private QueryProcessor queryProcessor = new QueryProcessor(new QueryProcessExecutor());
-  private PartitionTable partitionTable;
+  private QueryProcessor queryProcessor;
+  private PartitionTable partitionTable = new PartitionTable() {
+    @Override
+    public PartitionGroup route(String storageGroupName, long timestamp) {
+      return null;
+    }
+
+    @Override
+    public void addNode(Node node) {
+
+    }
+
+    @Override
+    public List<PartitionGroup> getSubordinateGroups(Node node) {
+      return null;
+    }
+  };
 
   public MetaClusterServer() throws IOException {
     super();
     clientFactory = new AsyncClient.Factory(new TAsyncClientManager(), protocolFactory);
     loadNodes();
-    buildPartitionTable();
   }
 
   /**
@@ -80,6 +96,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     super.start();
     ioTDB = new IoTDB();
     ioTDB.active();
+    queryProcessor = new QueryProcessor(new QueryProcessExecutor());
   }
 
   @Override
@@ -103,17 +120,18 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
    * load the nodes from a local file
    */
   private void loadNodes() {
-    File nonSeedFile = new File(NODES_FILE_NAME);
-    if (!nonSeedFile.exists()) {
-      logger.info("No non-seed file found");
+    File nodeFile = new File(NODES_FILE_NAME);
+    if (!nodeFile.exists()) {
+      logger.info("No node file found");
       return;
     }
+    initIdNodeMap();
     try (BufferedReader reader = new BufferedReader(new FileReader(NODES_FILE_NAME))) {
       String line;
       while ((line = reader.readLine()) != null) {
         loadNode(line);
       }
-      logger.info("Load {} nodes: {}", allNodes.size(), allNodes);
+      logger.info("Load {} nodes: {}", idNodeMap.size(), idNodeMap);
     } catch (IOException e) {
       logger.error("Cannot load nodes", e);
     }
@@ -121,18 +139,21 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
 
   private void loadNode(String url) {
     String[] split = url.split(":");
-    if (split.length != 2) {
+    if (split.length != 3) {
       logger.warn("Incorrect node url: {}", url);
       return;
     }
     // TODO: check url format
-    String ip = split[0];
+    String ip = split[1];
     try {
-      int port = Integer.parseInt(split[1]);
+      int identifier = Integer.parseInt(split[0]);
+      int port = Integer.parseInt(split[2]);
       Node node = new Node();
       node.setIp(ip);
       node.setPort(port);
+      node.setNodeIdentifier(identifier);
       allNodes.add(node);
+      idNodeMap.put(identifier, node);
     } catch (NumberFormatException e) {
       logger.warn("Incorrect node url: {}", url);
     }
@@ -140,16 +161,14 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
 
   private synchronized void saveNodes() {
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(NODES_FILE_NAME))){
-      for (Node node : allNodes) {
-        writer.write(node.ip + ":" + node.port);
+      for (Node node : idNodeMap.values()) {
+        writer.write(node.getNodeIdentifier() + ":" + node.ip + ":" + node.port);
         writer.newLine();
       }
     } catch (IOException e) {
       logger.error("Cannot save the nodes", e);
     }
   }
-
-
 
   @Override
   public void apply(Log log) {
@@ -158,14 +177,17 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
       Node newNode = new Node();
       newNode.setIp(addNodeLog.getIp());
       newNode.setPort(addNodeLog.getPort());
-      synchronized (allNodes) {
-        allNodes.add(newNode);
-        saveNodes();
-        // update the partition table
-        PartitionTable oldPartition = partitionTable;
-        partitionTable = partitionTable.addNode(newNode);
+      newNode.setNodeIdentifier(addNodeLog.getNodeIdentifier());
+      if (!allNodes.contains(newNode)) {
+        synchronized (idNodeMap) {
+          registerNodeIdentifier(newNode, newNode.getNodeIdentifier());
+          allNodes.add(newNode);
+          saveNodes();
+          // update the partition table
+          partitionTable.addNode(newNode);
+        }
       }
-    } if (log instanceof PhysicalPlanLog) {
+    } else if (log instanceof PhysicalPlanLog) {
       PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
       try {
         queryProcessor.getExecutor().processNonQuery(physicalPlanLog.getPlan());
@@ -254,6 +276,9 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
       if (resp == RESPONSE_AGREE) {
         logger.info("Node {} admitted this node into the cluster", node);
         return true;
+      } else if (resp == RESPONSE_IDENTIFIER_CONFLICT) {
+        logger.info("The identifier {} conflicts the existing ones, regenerate a new one", node.getNodeIdentifier());
+        setNodeIdentifier(genNodeIdentifier());
       }
       logger.warn("Joining the cluster is rejected by {} for response {}", node, resp);
       return false;

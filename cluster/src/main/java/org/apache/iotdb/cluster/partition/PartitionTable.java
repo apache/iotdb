@@ -20,16 +20,13 @@
 package org.apache.iotdb.cluster.partition;
 
 import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
 /**
  * PartitionTable manages the map whose key is the StorageGroupName with a time interval and the
  * value is a PartitionGroup with contains all nodes that manage the corresponding data.
  */
-public abstract class PartitionTable {
-  // the nodes that the partition table maintains
-  private Set<Node> nodeSet;
+public interface PartitionTable {
 
   /**
    * Given the storageGroupName and the timestamp, return the list of nodes on which the storage
@@ -38,19 +35,18 @@ public abstract class PartitionTable {
    * @param timestamp
    * @return
    */
-  public abstract PartitionGroup route(String storageGroupName, long timestamp);
+  PartitionGroup route(String storageGroupName, long timestamp);
 
   /**
-   * Add a new node to generate a new partition table.
+   * Add a new node to update the partition table.
    * @param node
-   * @return the new partition table.
    */
-  public abstract PartitionTable addNode(Node node);
+  void addNode(Node node);
 
   /**
    * Get the partition groups that node belongs to. Each group corresponds to a data raft group.
    * @param node
    * @return
    */
-  public abstract List<PartitionGroup> getSubordinateGroups(Node node);
+  List<PartitionGroup> getSubordinateGroups(Node node);
 }

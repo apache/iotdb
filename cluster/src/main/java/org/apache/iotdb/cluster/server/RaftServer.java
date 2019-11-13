@@ -19,13 +19,21 @@
 
 package org.apache.iotdb.cluster.server;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -80,12 +88,15 @@ import org.slf4j.LoggerFactory;
 public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftService.class);
+  private static final String NODE_IDENTIFIER_NAME = "node_identifier";
   static final int CONNECTION_TIME_OUT_MS = 20 * 1000;
 
   static final long RESPONSE_UNSET = 0;
   public static final long RESPONSE_AGREE = -1;
   public static final long RESPONSE_LOG_MISMATCH = -2;
   public static final long RESPONSE_REJECT = -3;
+  public static final long RESPONSE_CLUSTER_UNKNOWN = -4;
+  static final long RESPONSE_IDENTIFIER_CONFLICT = -5;
 
   Random random = new Random();
 
@@ -98,6 +109,10 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
       new TCompactProtocol.Factory() : new TBinaryProtocol.Factory();
 
   Set<Node> allNodes = new HashSet<>();
+  Map<Integer, Node> idNodeMap = null;
+  // blind nodes are nodes that does not know the nodes in the cluster
+  private Set<Node> blindNodes = new HashSet<>();
+  private Map<Node, Integer> idConflictNodes = new HashMap<>();
 
   private NodeCharacter character = NodeCharacter.ELECTOR;
   private AtomicLong term = new AtomicLong(0);
@@ -116,6 +131,42 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     this.thisNode = new Node();
     this.thisNode.setIp(config.getLocalIP());
     this.thisNode.setPort(config.getLocalMetaPort());
+    allNodes.add(thisNode);
+
+    loadIdentifier();
+  }
+
+  // if the identifier file does not exist, a new identifier will be generated
+  private void loadIdentifier() {
+    File file = new File(NODE_IDENTIFIER_NAME);
+    Integer nodeId = null;
+    if (file.exists()) {
+      try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+        nodeId = Integer.parseInt(reader.readLine());
+      } catch (Exception e) {
+        logger.warn("Cannot read the identifier from file, generating a new one");
+      }
+    }
+    if (nodeId != null) {
+      setNodeIdentifier(nodeId);
+      return;
+    }
+
+    setNodeIdentifier(genNodeIdentifier());
+  }
+
+  int genNodeIdentifier() {
+    return Objects.hash(thisNode.getIp(), thisNode.getPort(), System.currentTimeMillis());
+  }
+
+  void setNodeIdentifier(int identifier) {
+    logger.info("The identifier of this node has been set to {}", identifier);
+    thisNode.setNodeIdentifier(identifier);
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter(NODE_IDENTIFIER_NAME))) {
+      writer.write(String.valueOf(identifier));
+    } catch (IOException e) {
+      logger.error("Cannot save the node identifier");
+    }
   }
 
   public void start() throws TTransportException {
@@ -238,24 +289,54 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
           logger.debug("Received a heartbeat from a stale leader {}", request.getLeader());
         }
       } else {
-        response.setTerm(RESPONSE_AGREE);
-        response.setFollower(thisNode);
-        response.setLastLogIndex(logManager.getLastLogIndex());
-        response.setLastLogTerm(logManager.getLastLogTerm());
-        synchronized (logManager) {
-          logManager.commitLog(request.getCommitLogIndex());
-        }
-        term.set(leaderTerm);
-        leader = request.getLeader();
-        if (character != NodeCharacter.FOLLOWER) {
-          setCharacter(NodeCharacter.FOLLOWER);
-        }
-        lastHeartBeatReceivedTime = System.currentTimeMillis();
-        if (logger.isDebugEnabled()) {
-          logger.debug("Received heartbeat from a valid leader {}", request.getLeader());
-        }
+        processLegalHeartbeat(request, response, leaderTerm);
       }
       resultHandler.onComplete(response);
+    }
+  }
+
+  private void processLegalHeartbeat(HeartBeatRequest request, HeartBeatResponse response,
+      long leaderTerm) {
+    response.setTerm(RESPONSE_AGREE);
+    response.setFollower(thisNode);
+    response.setLastLogIndex(logManager.getLastLogIndex());
+    response.setLastLogTerm(logManager.getLastLogTerm());
+
+    if (request.isRequireIdentifier()) {
+      // the leader wants to know who the node is
+      if (request.isRegenerateIdentifier()) {
+        // the previously sent id conflicted, generate a new one
+        setNodeIdentifier(genNodeIdentifier());
+      }
+      response.setFolloweIdentifier(thisNode.getNodeIdentifier());
+    }
+
+    if (!allNodesIdKnown()) {
+      // this node is blind to the cluster
+      if (request.isSetNodeSet()) {
+        // if the leader has sent the node set then accept it
+        allNodes = request.getNodeSet();
+        initIdNodeMap();
+        for (Node node : allNodes) {
+          idNodeMap.put(node.getNodeIdentifier(), node);
+        }
+      } else {
+        // require the node list
+        response.setRequireNodeList(true);
+      }
+    }
+
+    synchronized (logManager) {
+      logManager.commitLog(request.getCommitLogIndex());
+    }
+    term.set(leaderTerm);
+    leader = request.getLeader();
+    if (character != NodeCharacter.FOLLOWER) {
+      setCharacter(NodeCharacter.FOLLOWER);
+    }
+    lastHeartBeatReceivedTime = System.currentTimeMillis();
+    if (logger.isDebugEnabled()) {
+      logger.debug("Received heartbeat from a valid leader {}", request.getLeader());
     }
   }
 
@@ -299,6 +380,13 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
 
   @Override
   public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
+    if (idNodeMap == null) {
+      // this node lacks information of the cluster and refuse to work
+      logger.debug("This node is blind to the cluster and cannot accept logs");
+      resultHandler.onComplete(RESPONSE_CLUSTER_UNKNOWN);
+      return;
+    }
+
     logger.debug("Received an AppendEntryRequest");
     long leaderTerm = request.getTerm();
     long localTerm;
@@ -346,9 +434,13 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
         } else {
           // the incoming log points to an illegal position, reject it
           resultHandler.onComplete(RESPONSE_LOG_MISMATCH);
-          logger.debug("Cannot append the log because the last log does not match, local:term-{},"
-                  + "index-{},previousTerm{}, request:term-{},index-{}", lastLog.getCurrLogIndex(),
-              lastLog.getCurrLogTerm(), lastLog.getPreviousLogTerm(), previousLogTerm, previousLogIndex);
+          logger.debug("Cannot append the log because the last log does not match, "
+                  + "local:term[{}],index[{}],previousTerm[{}],previousIndex[{}], "
+                  + "request:term[{}],index[{}],previousTerm[{}],previousIndex[{}]",
+              lastLog.getCurrLogTerm(), lastLog.getCurrLogIndex(),
+              lastLog.getPreviousLogTerm(), lastLog.getPreviousLogIndex(),
+              log.getCurrLogTerm(), log.getPreviousLogIndex(),
+              previousLogTerm, previousLogIndex);
         }
       }
     } catch (UnknownLogTypeException e) {
@@ -371,7 +463,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
    */
   private AppendLogResult sendLogToFollowers(Log log, int requiredQuorum) {
     if (requiredQuorum < 0) {
-      return sendLogToFollowers(log, new AtomicInteger(allNodes.size() / 2));
+      return sendLogToFollowers(log, new AtomicInteger(idNodeMap.size() / 2));
     } else {
       return sendLogToFollowers(log ,new AtomicInteger(requiredQuorum));
     }
@@ -388,8 +480,8 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     request.setEntry(log.serialize());
 
     // synchronized: avoid concurrent modification
-    synchronized (allNodes) {
-      for (Node node : allNodes) {
+    synchronized (idNodeMap) {
+      for (Node node : idNodeMap.values()) {
         AsyncClient client = connectNode(node);
         if (client != null) {
           AppendEntryHandler handler = new AppendEntryHandler(this);
@@ -482,6 +574,13 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
 
   @Override
   public void addNode(Node node, AsyncMethodCallback resultHandler) {
+    if (!allNodesIdKnown()) {
+      logger.info("Cannot add node now because not all nodes' id are known");
+      logger.debug("Known nodes: {}, all nodes: {}", idNodeMap, allNodes);
+      resultHandler.onComplete((int) RESPONSE_CLUSTER_UNKNOWN);
+      return;
+    }
+
     logger.info("A node {} wants to join this cluster", node);
     if (node == thisNode) {
       resultHandler.onError(new AddSelfException());
@@ -489,7 +588,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     }
 
     if (character == NodeCharacter.LEADER) {
-      if (allNodes.contains(node)) {
+      if (idNodeMap.containsKey(node.getNodeIdentifier())) {
         logger.debug("Node {} is already in the cluster", node);
         resultHandler.onComplete((int) RESPONSE_AGREE);
         return;
@@ -505,12 +604,13 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
 
         addNodeLog.setIp(node.getIp());
         addNodeLog.setPort(node.getPort());
+        addNodeLog.setNodeIdentifier(node.getNodeIdentifier());
 
         logManager.appendLog(addNodeLog);
 
         logger.info("Send the join request of {} to other nodes", node);
-        // adding a node requires strong consistency
-        AppendLogResult result = sendLogToFollowers(addNodeLog, allNodes.size());
+        // adding a node requires strong consistency, -2 for this node and the new node
+        AppendLogResult result = sendLogToFollowers(addNodeLog, idNodeMap.size() - 2);
 
         switch (result) {
           case OK:
@@ -558,7 +658,6 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     return false;
   }
 
-
   NodeCharacter getCharacter() {
     return character;
   }
@@ -600,7 +699,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
     this.leader = leader;
   }
 
-  Node getThisNode() {
+  public Node getThisNode() {
     return thisNode;
   }
 
@@ -611,4 +710,78 @@ public abstract class RaftServer implements RaftService.AsyncIface, LogApplier {
   Map<Node, Long> getLastCatchUpResponseTime() {
     return lastCatchUpResponseTime;
   }
+
+  public Map<Integer, Node> getIdNodeMap() {
+    return idNodeMap;
+  }
+
+  Map<Node, Integer> getIdConflictNodes() {
+    return idConflictNodes;
+  }
+
+  public void setIdNodeMap(
+      Map<Integer, Node> idNodeMap) {
+    this.idNodeMap = idNodeMap;
+  }
+
+  /**
+   * Register the identifier for the node if it does not conflict with other nodes.
+   * @param node
+   * @param identifier
+   */
+  public void registerNodeIdentifier(Node node, int identifier) {
+    synchronized (idNodeMap) {
+      if (idNodeMap.containsKey(identifier)) {
+        return;
+      }
+      node.setNodeIdentifier(identifier);
+      logger.info("Node {} registered with id {}", node, identifier);
+      idNodeMap.put(identifier, node);
+      idConflictNodes.remove(node);
+    }
+  }
+
+  /**
+   * When a node requires node list in its heartbeat response, add it into blindNodes so in the
+   * heartbeat the node list will be sent to the node.
+   * @param node
+   */
+  public void addBlindNode(Node node) {
+    logger.debug("Node {} requires the node list", node);
+    blindNodes.add(node);
+  }
+
+  /**
+   *
+   * @param node
+   * @return whether a node wants the node list.
+   */
+  boolean isNodeBlind(Node node) {
+    return blindNodes.contains(node);
+  }
+
+  /**
+   * Remove the node from the blindNodes when the node list is sent.
+   * @param node
+   */
+  void removeBlindNode(Node node) {
+    blindNodes.remove(node);
+  }
+  /**
+   * idNodeMap is initialized when the first leader wins or the follower receives the node list
+   * from the leader or a node recovers
+   */
+  public void initIdNodeMap() {
+    idNodeMap = new HashMap<>();
+    idNodeMap.put(thisNode.getNodeIdentifier(), thisNode);
+  }
+
+  /**
+   *
+   * @return Whether all nodes' identifier is known.
+   */
+  boolean allNodesIdKnown() {
+    return idNodeMap != null && idNodeMap.size() == allNodes.size();
+  }
+
 }

@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.log.Log;
 public class AddNodeLog extends Log {
   private String ip;
   private int port;
+  private int nodeIdentifier;
 
   public String getIp() {
     return ip;
@@ -45,15 +46,23 @@ public class AddNodeLog extends Log {
     this.port = port;
   }
 
+  public int getNodeIdentifier() {
+    return nodeIdentifier;
+  }
+
+  public void setNodeIdentifier(int nodeIdentifier) {
+    this.nodeIdentifier = nodeIdentifier;
+  }
+
   @Override
   public ByteBuffer serialize() {
     byte[] ipBytes = ip.getBytes();
 
     // marker(byte), previous index(long), previous term(long), curr index(long), curr term(long)
-    // ipLength(int), inBytes(byte[]), port(int)
+    // ipLength(int), inBytes(byte[]), port(int), identifier(int)
     int totalSize =
               Byte.BYTES  + Long.BYTES + Long.BYTES + Long.BYTES + Long.BYTES +
-              Integer.BYTES + ipBytes.length + Integer.BYTES;
+              Integer.BYTES + ipBytes.length + Integer.BYTES + Integer.BYTES;
     byte[] buffer = new byte[totalSize];
 
     ByteBuffer byteBuffer = ByteBuffer.wrap(buffer);
@@ -63,11 +72,12 @@ public class AddNodeLog extends Log {
     byteBuffer.putLong(getPreviousLogIndex());
     byteBuffer.putLong(getPreviousLogTerm());
     byteBuffer.putLong(getCurrLogIndex());
-    byteBuffer.putLong(getPreviousLogTerm());
+    byteBuffer.putLong(getCurrLogTerm());
 
     byteBuffer.putInt(ipBytes.length);
     byteBuffer.put(ipBytes);
     byteBuffer.putInt(port);
+    byteBuffer.putInt(nodeIdentifier);
 
     byteBuffer.flip();
     return byteBuffer;
@@ -78,7 +88,7 @@ public class AddNodeLog extends Log {
 
     // marker is previously read
     // previous index(long), previous term(long), curr index(long), curr term(long)
-    // ipLength(int), inBytes(byte[]), port(int)
+    // ipLength(int), inBytes(byte[]), port(int), identifier(int)
     setPreviousLogIndex(buffer.getLong());
     setPreviousLogTerm(buffer.getLong());
     setCurrLogIndex(buffer.getLong());
@@ -89,5 +99,6 @@ public class AddNodeLog extends Log {
     buffer.get(ipBytes);
     ip = new String(ipBytes);
     port = buffer.getInt();
+    nodeIdentifier = buffer.getInt();
   }
 }

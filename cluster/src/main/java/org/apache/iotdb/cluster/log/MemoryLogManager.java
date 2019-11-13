@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
+import org.apache.iotdb.cluster.log.meta.AddNodeLog;
 
 // TODO-Cluster: implement a serializable LogManager
 public class MemoryLogManager implements LogManager {
@@ -55,6 +56,11 @@ public class MemoryLogManager implements LogManager {
   @Override
   public void appendLog(Log log) {
     logBuffer.addLast(log);
+    if (log instanceof AddNodeLog) {
+      // AddNodeLog should be applied instantly as it requires strong consistency
+      // Notice: applying AddNodeLog twice does not induce side effect
+      logApplier.apply(log);
+    }
   }
 
   @Override
@@ -68,6 +74,11 @@ public class MemoryLogManager implements LogManager {
   public void replaceLastLog(Log log) {
     logBuffer.removeLast();
     logBuffer.addLast(log);
+    if (log instanceof AddNodeLog) {
+      // AddNodeLog should be applied instantly as it requires strong consistency
+      // Notice: applying AddNodeLog twice does not induce side effect
+      logApplier.apply(log);
+    }
   }
 
   @Override

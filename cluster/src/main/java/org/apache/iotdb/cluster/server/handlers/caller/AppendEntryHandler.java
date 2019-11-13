@@ -65,11 +65,12 @@ public class AppendEntryHandler implements AsyncMethodCallback<appendEntry_call>
             logger.debug("Log {} is accepted by the quorum", log);
             quorum.notifyAll();
           }
-        } else if (resp != RaftServer.RESPONSE_LOG_MISMATCH) {
+        } else if (resp != RaftServer.RESPONSE_LOG_MISMATCH && resp != RaftServer.RESPONSE_CLUSTER_UNKNOWN) {
           // the leader ship is stale, wait for the new leader's heartbeat
           synchronized (raftServer.getTerm()) {
             long currTerm = raftServer.getTerm().get();
-            logger.debug("Received a rejection because term is stale: {}/{}", currTerm, resp);
+            logger.debug("Received a rejection from {} because term is stale: {}/{}", follower,
+                currTerm, resp);
             leaderShipStale.set(true);
             // confirm that the heartbeat of the new leader hasn't come
             if (currTerm < resp) {
@@ -80,7 +81,8 @@ public class AppendEntryHandler implements AsyncMethodCallback<appendEntry_call>
           }
           quorum.notifyAll();
         }
-        // rejected because the follower's logs are stale, just wait for the heartbeat to handle
+        // rejected because the follower's logs are stale or the follower has no cluster info, just
+        // wait for the heartbeat to handle
       }
     } catch (TException e) {
       onError(e);

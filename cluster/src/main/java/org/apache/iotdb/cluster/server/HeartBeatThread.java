@@ -21,8 +21,8 @@ package org.apache.iotdb.cluster.server;
 
 import static org.apache.iotdb.cluster.server.RaftServer.CONNECTION_TIME_OUT_MS;
 
+import java.util.Collection;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -110,7 +110,7 @@ public class HeartBeatThread implements Runnable {
     }
   }
 
-  private void sendHeartBeats(Set<Node> nodes) {
+  private void sendHeartBeats(Collection<Node> nodes) {
     for (Node node : nodes) {
       if (raftServer.getCharacter() != NodeCharacter.LEADER) {
         // if the character changes, abort the remaining heart beats
@@ -122,6 +122,32 @@ public class HeartBeatThread implements Runnable {
         continue;
       }
       try {
+        // if the node's identifier is not clear, require it
+        request.setRequireIdentifier(!node.isSetNodeIdentifier());
+        synchronized (raftServer.getIdConflictNodes()) {
+          request.unsetRegenerateIdentifier();
+          Integer conflictId = raftServer.getIdConflictNodes().get(node);
+          if (conflictId != null) {
+            request.setRegenerateIdentifier(true);
+          }
+        }
+
+        // if the node requires the node list and it is ready (all nodes' ids are known), send it
+        if (raftServer.isNodeBlind(node)) {
+          if (raftServer.allNodesIdKnown()) {
+            logger.debug("Send node list to {}", node);
+            request.setNodeSet(raftServer.getAllNodes());
+            // if the node does not receive the list, it will require it in the next heartbeat, so
+            // we can remove it now
+            raftServer.removeBlindNode(node);
+          } else {
+            if (logger.isDebugEnabled()) {
+              logger.debug("Known nodes: {}, all nodes: {}", raftServer.getIdNodeMap(),
+                  raftServer.getAllNodes());
+            }
+          }
+        }
+
         client.sendHeartBeat(request, new HeartBeatHandler(raftServer, node));
       } catch (Exception e) {
         logger.warn("Cannot send heart beat to node {}", node, e);
@@ -182,7 +208,7 @@ public class HeartBeatThread implements Runnable {
   }
 
   // request votes from given nodes
-  private void requestVote(Set<Node> nodes, ElectionRequest request, long nextTerm,
+  private void requestVote(Collection<Node> nodes, ElectionRequest request, long nextTerm,
       AtomicInteger quorum, AtomicBoolean electionTerminated, AtomicBoolean electionValid) {
     for (Node node : nodes) {
       AsyncClient client = raftServer.connectNode(node);

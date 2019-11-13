@@ -28,6 +28,10 @@ struct HeartBeatRequest {
   1: required long term // leader's
   2: required long commitLogIndex  // leader's
   3: required Node leader
+  4: required bool requireIdentifier
+  5: required bool regenerateIdentifier
+  // all known nodes in the leader
+  6: optional set<Node> nodeSet
 }
 
 // follower -> leader
@@ -37,6 +41,8 @@ struct HeartBeatResponse {
   3: optional long lastLogTerm
   // used to perform a catch up when necessary
   4: optional Node follower
+  5: optional int followeIdentifier
+  6: required bool requireNodeList
 }
 
 // node -> node
@@ -58,21 +64,21 @@ struct AppendEntriesRequest {
   2: required list<binary> entries // data
 }
 
-struct Node{
+struct Node {
   1: required string ip
   2: required int port
+  3: required int nodeIdentifier
 }
 
 service RaftService {
-/**
+  /**
   * Leader will call this method to all followers to ensure its authority.
   * <br>For the receiver,
   * The method will check the authority of the leader.
   *
   * @param request information of the leader
   * @return if the leader is valid, HeartBeatResponse.term will set -1, and the follower will tell
-  * leader its lastLogIndex;
-  * otherwise, the follower will tell the fake leader its term.
+  * leader its lastLogIndex; otherwise, the follower will tell the fake leader its term.
   **/
 	HeartBeatResponse sendHeartBeat(1:HeartBeatRequest request);
 
@@ -121,13 +127,12 @@ service RaftService {
   int addNode(1: Node node)
 }
 
-service TSDataService extends RaftService{
+service TSDataService extends RaftService {
 
 
 }
 
 service TSMetaService extends RaftService {
-
 
 
 }
