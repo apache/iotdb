@@ -82,9 +82,7 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
           electionValid.set(true);
           terminated.set(true);
           raftServer.getTerm().notifyAll();
-          if (raftServer.getIdNodeMap() == null) {
-            raftServer.initIdNodeMap();
-          }
+          raftServer.onElectionWins();
           logger.info("Election {} is wined", currTerm);
         }
         // still need more votes

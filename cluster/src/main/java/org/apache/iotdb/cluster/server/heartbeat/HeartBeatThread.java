@@ -1,23 +1,8 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license agreements.  See the NOTICE file distributed with this work for additional information regarding copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at      http://www.apache.org/licenses/LICENSE-2.0  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the specific language governing permissions and limitations under the License.
  */
 
-package org.apache.iotdb.cluster.server;
+package org.apache.iotdb.cluster.server.heartbeat;
 
 import static org.apache.iotdb.cluster.server.RaftServer.CONNECTION_TIME_OUT_MS;
 
@@ -29,6 +14,8 @@ import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.ElectionHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.HeartBeatHandler;
 import org.slf4j.Logger;
@@ -47,13 +34,16 @@ public class HeartBeatThread implements Runnable {
   private static final long ELECTION_LEAST_TIME_OUT_MS = 5 * 1000L;
   private static final long ELECTION_RANDOM_TIME_OUT_MS = 5 * 1000L;
 
-  private RaftServer raftServer;
-  private HeartBeatRequest request = new HeartBeatRequest();
+  RaftServer raftServer;
+  HeartBeatRequest request = new HeartBeatRequest();
   private ElectionRequest electionRequest = new ElectionRequest();
 
   private Random random = new Random();
 
-  HeartBeatThread(RaftServer raftServer) {
+  public HeartBeatThread() {
+  }
+
+  public HeartBeatThread(RaftServer raftServer) {
     this.raftServer = raftServer;
   }
 
@@ -119,39 +109,18 @@ public class HeartBeatThread implements Runnable {
 
       AsyncClient client = raftServer.connectNode(node);
       if (client == null) {
-        continue;
+        return;
       }
-      try {
-        // if the node's identifier is not clear, require it
-        request.setRequireIdentifier(!node.isSetNodeIdentifier());
-        synchronized (raftServer.getIdConflictNodes()) {
-          request.unsetRegenerateIdentifier();
-          Integer conflictId = raftServer.getIdConflictNodes().get(node);
-          if (conflictId != null) {
-            request.setRegenerateIdentifier(true);
-          }
-        }
+      sendHeartbeat(node, client);
+    }
+  }
 
-        // if the node requires the node list and it is ready (all nodes' ids are known), send it
-        if (raftServer.isNodeBlind(node)) {
-          if (raftServer.allNodesIdKnown()) {
-            logger.debug("Send node list to {}", node);
-            request.setNodeSet(raftServer.getAllNodes());
-            // if the node does not receive the list, it will require it in the next heartbeat, so
-            // we can remove it now
-            raftServer.removeBlindNode(node);
-          } else {
-            if (logger.isDebugEnabled()) {
-              logger.debug("Known nodes: {}, all nodes: {}", raftServer.getIdNodeMap(),
-                  raftServer.getAllNodes());
-            }
-          }
-        }
+  void sendHeartbeat(Node node, AsyncClient client) {
 
-        client.sendHeartBeat(request, new HeartBeatHandler(raftServer, node));
-      } catch (Exception e) {
-        logger.warn("Cannot send heart beat to node {}", node, e);
-      }
+    try {
+      client.sendHeartBeat(request, new HeartBeatHandler(raftServer, node));
+    } catch (Exception e) {
+      logger.warn("Cannot send heart beat to node {}", node, e);
     }
   }
 

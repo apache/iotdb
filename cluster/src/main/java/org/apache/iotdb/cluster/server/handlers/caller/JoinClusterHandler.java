@@ -21,7 +21,7 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.addNode_call;
+import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient.addNode_call;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;

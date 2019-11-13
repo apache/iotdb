@@ -58,28 +58,8 @@ public class HeartBeatHandler implements AsyncMethodCallback<sendHeartBeat_call>
 
     long followerTerm = response.getTerm();
     if (followerTerm == RaftServer.RESPONSE_AGREE) {
-      // register the id of the node
-      if (response.isSetFolloweIdentifier()) {
-        raftServer.registerNodeIdentifier(receiver, response.getFolloweIdentifier());
-      }
-      // record the requirement of node list of the follower
-      if (response.isRequireNodeList()) {
-        raftServer.addBlindNode(receiver);
-      }
-
       // current leadership is still valid
-      Node follower = response.getFollower();
-      long lastLogIdx = response.getLastLogIndex();
-      long lastLogTerm = response.getLastLogTerm();
-      long localLastLogIdx = raftServer.getLogManager().getLastLogIndex();
-      long localLastLogTerm = raftServer.getLogManager().getLastLogTerm();
-      logger.debug("Node {} is still alive, log index: {}/{}, log term: {}/{}", follower, lastLogIdx
-          ,localLastLogIdx, lastLogTerm, localLastLogTerm);
-
-      if (localLastLogIdx > lastLogIdx ||
-          lastLogIdx == localLastLogIdx && localLastLogTerm > lastLogTerm) {
-        raftServer.catchUp(follower, lastLogIdx);
-      }
+      raftServer.processValidHeartbeatResp(response, receiver);
     } else {
       // current leadership is invalid because the follower has a larger term
       synchronized (raftServer.getTerm()) {

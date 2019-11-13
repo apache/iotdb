@@ -24,24 +24,38 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.exception.AddSelfException;
+import org.apache.iotdb.cluster.exception.LeaderUnknownException;
+import org.apache.iotdb.cluster.exception.RequestTimeOutException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.meta.AddNodeLog;
 import org.apache.iotdb.cluster.log.meta.PhysicalPlanLog;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
+import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardAddNodeHandler;
+import org.apache.iotdb.cluster.server.heartbeat.HeartBeatThread;
+import org.apache.iotdb.cluster.server.heartbeat.MetaHeartBeatThread;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.thrift.TException;
+import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.transport.TNonblockingTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -57,25 +71,15 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   private static final int DEFAULT_JOIN_RETRY = 10;
   private static final String NODES_FILE_NAME = "nodes";
 
+  // blind nodes are nodes that does not know the nodes in the cluster
+  private Set<Node> blindNodes = new HashSet<>();
+  private Map<Node, Integer> idConflictNodes = new HashMap<>();
+  private Map<Integer, Node> idNodeMap = null;
+
   private AsyncClient.Factory clientFactory;
   private IoTDB ioTDB;
   private QueryProcessor queryProcessor;
-  private PartitionTable partitionTable = new PartitionTable() {
-    @Override
-    public PartitionGroup route(String storageGroupName, long timestamp) {
-      return null;
-    }
-
-    @Override
-    public void addNode(Node node) {
-
-    }
-
-    @Override
-    public List<PartitionGroup> getSubordinateGroups(Node node) {
-      return null;
-    }
-  };
+  private PartitionTable partitionTable;
 
   public MetaClusterServer() throws IOException {
     super();
@@ -218,7 +222,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
    */
   public void buildCluster() {
     // just establish the heart beat thread and it will do the remaining
-    heartBeatService.submit(new HeartBeatThread(this));
+    heartBeatService.submit(new MetaHeartBeatThread(this));
   }
 
   /**
@@ -284,5 +288,230 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
       return false;
     }
     return false;
+  }
+
+  @Override
+  void processLegalHeartbeat(HeartBeatRequest request, HeartBeatResponse response,
+      long leaderTerm) {
+    if (request.isRequireIdentifier()) {
+      // the leader wants to know who the node is
+      if (request.isRegenerateIdentifier()) {
+        // the previously sent id conflicted, generate a new one
+        setNodeIdentifier(genNodeIdentifier());
+      }
+      if (logger.isDebugEnabled()) {
+        logger.debug("Send identifier {} to the leader", thisNode.getNodeIdentifier());
+      }
+      response.setFolloweIdentifier(thisNode.getNodeIdentifier());
+    }
+
+    if (!allNodesIdKnown()) {
+      // this node is blind to the cluster
+      if (request.isSetNodeSet()) {
+        // if the leader has sent the node set then accept it
+        allNodes = request.getNodeSet();
+        logger.info("Received cluster nodes from the leader: {}", allNodes);
+        initIdNodeMap();
+        for (Node node : allNodes) {
+          idNodeMap.put(node.getNodeIdentifier(), node);
+        }
+      } else {
+        // require the node list
+        logger.debug("Request cluster nodes from the leader");
+        response.setRequireNodeList(true);
+      }
+    }
+    super.processLegalHeartbeat(request, response, leaderTerm);
+  }
+
+  @Override
+  public void processValidHeartbeatResp(HeartBeatResponse response, Node receiver) {
+    // register the id of the node
+    if (response.isSetFolloweIdentifier()) {
+      registerNodeIdentifier(receiver, response.getFolloweIdentifier());
+    }
+    // record the requirement of node list of the follower
+    if (response.isRequireNodeList()) {
+      addBlindNode(receiver);
+    }
+    super.processValidHeartbeatResp(response, receiver);
+  }
+
+  /**
+   * When a node requires node list in its heartbeat response, add it into blindNodes so in the
+   * heartbeat the node list will be sent to the node.
+   * @param node
+   */
+  private void addBlindNode(Node node) {
+    logger.debug("Node {} requires the node list", node);
+    blindNodes.add(node);
+  }
+
+  /**
+   *
+   * @param node
+   * @return whether a node wants the node list.
+   */
+  public boolean isNodeBlind(Node node) {
+    return blindNodes.contains(node);
+  }
+
+  /**
+   * Remove the node from the blindNodes when the node list is sent.
+   * @param node
+   */
+  public void removeBlindNode(Node node) {
+    blindNodes.remove(node);
+  }
+
+  /**
+   * Register the identifier for the node if it does not conflict with other nodes.
+   * @param node
+   * @param identifier
+   */
+  private void registerNodeIdentifier(Node node, int identifier) {
+    synchronized (idNodeMap) {
+      if (idNodeMap.containsKey(identifier)) {
+        return;
+      }
+      node.setNodeIdentifier(identifier);
+      logger.info("Node {} registered with id {}", node, identifier);
+      idNodeMap.put(identifier, node);
+      idConflictNodes.remove(node);
+    }
+  }
+
+  /**
+   * idNodeMap is initialized when the first leader wins or the follower receives the node list
+   * from the leader or a node recovers
+   */
+  private void initIdNodeMap() {
+    idNodeMap = new HashMap<>();
+    idNodeMap.put(thisNode.getNodeIdentifier(), thisNode);
+  }
+
+  @Override
+  public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
+    if (idNodeMap == null) {
+      // this node lacks information of the cluster and refuse to work
+      logger.debug("This node is blind to the cluster and cannot accept logs");
+      resultHandler.onComplete(RESPONSE_CLUSTER_UNKNOWN);
+      return;
+    }
+    super.appendEntry(request, resultHandler);
+  }
+
+  public Map<Integer, Node> getIdNodeMap() {
+    return idNodeMap;
+  }
+
+  public void setIdNodeMap(
+      Map<Integer, Node> idNodeMap) {
+    this.idNodeMap = idNodeMap;
+  }
+
+  /**
+   *
+   * @return Whether all nodes' identifier is known.
+   */
+  public boolean allNodesIdKnown() {
+    return idNodeMap != null && idNodeMap.size() == allNodes.size();
+  }
+
+  @Override
+  public void addNode(Node node, AsyncMethodCallback resultHandler) {
+    if (!allNodesIdKnown()) {
+      logger.info("Cannot add node now because not all nodes' id are known");
+      logger.debug("Known nodes: {}, all nodes: {}", idNodeMap, allNodes);
+      resultHandler.onComplete((int) RESPONSE_CLUSTER_UNKNOWN);
+      return;
+    }
+
+    logger.info("A node {} wants to join this cluster", node);
+    if (node == thisNode) {
+      resultHandler.onError(new AddSelfException());
+      return;
+    }
+
+    if (character == NodeCharacter.LEADER) {
+      if (idNodeMap.containsKey(node.getNodeIdentifier())) {
+        logger.debug("Node {} is already in the cluster", node);
+        resultHandler.onComplete((int) RESPONSE_AGREE);
+        return;
+      }
+
+      // node adding must be serialized
+      synchronized (logManager) {
+        AddNodeLog addNodeLog = new AddNodeLog();
+        addNodeLog.setPreviousLogIndex(logManager.getLastLogIndex());
+        addNodeLog.setPreviousLogTerm(logManager.getLastLogTerm());
+        addNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+        addNodeLog.setCurrLogTerm(getTerm().get());
+
+        addNodeLog.setIp(node.getIp());
+        addNodeLog.setPort(node.getPort());
+        addNodeLog.setNodeIdentifier(node.getNodeIdentifier());
+
+        logManager.appendLog(addNodeLog);
+
+        logger.info("Send the join request of {} to other nodes", node);
+        // adding a node requires strong consistency, -2 for this node and the new node
+        AppendLogResult result = sendLogToFollowers(addNodeLog, allNodes.size() - 2);
+
+        switch (result) {
+          case OK:
+            logger.info("Join request of {} is accepted", node);
+            resultHandler.onComplete((int) RESPONSE_AGREE);
+            logManager.commitLog(logManager.getLastLogIndex());
+            return;
+          case TIME_OUT:
+            logger.info("Join request of {} timed out", node);
+            resultHandler.onError(new RequestTimeOutException(addNodeLog));
+            logManager.removeLastLog();
+            return;
+          case LEADERSHIP_STALE:
+          default:
+            logManager.removeLastLog();
+            // if the leader is found, forward to it
+        }
+      }
+    }
+    if (character == NodeCharacter.FOLLOWER && leader != null) {
+      logger.info("Forward the join request of {} to leader {}", node, leader);
+      if (forwardAddNode(node, resultHandler)) {
+        return;
+      }
+    }
+    resultHandler.onError(new LeaderUnknownException());
+  }
+
+  /**
+   * Forward the join cluster request to the leader.
+   * @param node
+   * @param resultHandler
+   * @return true if the forwarding succeeds, false otherwise.
+   */
+  private boolean forwardAddNode(Node node, AsyncMethodCallback resultHandler) {
+    TSMetaService.AsyncClient client = (TSMetaService.AsyncClient) connectNode(leader);
+    if (client != null) {
+      try {
+        client.addNode(node, new ForwardAddNodeHandler(resultHandler));
+        return true;
+      } catch (TException e) {
+        logger.warn("Cannot connect to node {}", node, e);
+      }
+    }
+    return false;
+  }
+
+  public Map<Node, Integer> getIdConflictNodes() {
+    return idConflictNodes;
+  }
+
+  @Override
+  public void onElectionWins() {
+    if (idNodeMap == null) {
+      initIdNodeMap();
+    }
   }
 }

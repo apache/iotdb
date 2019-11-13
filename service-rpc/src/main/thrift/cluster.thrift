@@ -114,6 +114,15 @@ service RaftService {
   **/
   long appendEntry(1:AppendEntryRequest request)
 
+
+}
+
+service TSDataService extends RaftService {
+
+
+}
+
+service TSMetaService extends RaftService {
   /**
   * Node which is not leader will call this method to try to add itself into the cluster as a new node.
   * <br>For the receiver,
@@ -125,14 +134,4 @@ service RaftService {
   * add new node
   **/
   int addNode(1: Node node)
-}
-
-service TSDataService extends RaftService {
-
-
-}
-
-service TSMetaService extends RaftService {
-
-
 }
