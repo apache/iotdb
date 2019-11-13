@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.service;
 
+import java.io.File;
+
 import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -88,7 +90,17 @@ public class IoTDB implements IoTDBMBean {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
       StatMonitor.getInstance().recovery();
     }
-
+    // Delete data/system/users/*.profile
+    File userDirectory = new File("server/target/iotdb-server-0.9.0/data/system/users");
+    System.out.println(userDirectory.getPath());
+    if (userDirectory.isDirectory()) {
+      File[] userProfiles = userDirectory.listFiles();
+      for (File userProfile : userProfiles) {
+        if (userProfile.getPath().endsWith(".profile")) {
+          userProfile.delete();
+        }
+      }
+    }
     initMManager();
     registerManager.register(StorageEngine.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
