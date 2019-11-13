@@ -18,13 +18,17 @@
  */
 package org.apache.iotdb.cluster.server.handlers.caller;
 
+import static org.apache.iotdb.cluster.server.member.RaftMember.RESPONSE_AGREE;
+import static org.apache.iotdb.cluster.server.member.RaftMember.RESPONSE_CLUSTER_UNKNOWN;
+import static org.apache.iotdb.cluster.server.member.RaftMember.RESPONSE_LOG_MISMATCH;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.appendEntry_call;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -38,14 +42,14 @@ public class AppendEntryHandler implements AsyncMethodCallback<appendEntry_call>
 
   private static final Logger logger = LoggerFactory.getLogger(AppendEntryHandler.class);
 
-  private RaftServer raftServer;
+  private RaftMember raftMember;
   private Log log;
   private AtomicInteger quorum;
   private AtomicBoolean leaderShipStale;
   private Node follower;
 
-  public AppendEntryHandler(RaftServer raftServer) {
-    this.raftServer = raftServer;
+  public AppendEntryHandler(RaftMember raftMember) {
+    this.raftMember = raftMember;
   }
 
   @Override
@@ -57,7 +61,7 @@ public class AppendEntryHandler implements AsyncMethodCallback<appendEntry_call>
       }
       long resp = response.getResult();
       synchronized (quorum) {
-        if (resp == RaftServer.RESPONSE_AGREE) {
+        if (resp == RESPONSE_AGREE) {
           int remaining = quorum.decrementAndGet();
           logger.debug("Received an agreement from {} for {}, remaining votes to succeed: {}",
               follower, log, remaining);
@@ -65,18 +69,18 @@ public class AppendEntryHandler implements AsyncMethodCallback<appendEntry_call>
             logger.debug("Log {} is accepted by the quorum", log);
             quorum.notifyAll();
           }
-        } else if (resp != RaftServer.RESPONSE_LOG_MISMATCH && resp != RaftServer.RESPONSE_CLUSTER_UNKNOWN) {
+        } else if (resp != RESPONSE_LOG_MISMATCH && resp != RESPONSE_CLUSTER_UNKNOWN) {
           // the leader ship is stale, wait for the new leader's heartbeat
-          synchronized (raftServer.getTerm()) {
-            long currTerm = raftServer.getTerm().get();
+          synchronized (raftMember.getTerm()) {
+            long currTerm = raftMember.getTerm().get();
             logger.debug("Received a rejection from {} because term is stale: {}/{}", follower,
                 currTerm, resp);
             leaderShipStale.set(true);
             // confirm that the heartbeat of the new leader hasn't come
             if (currTerm < resp) {
-              raftServer.getTerm().set(resp);
-              raftServer.setCharacter(NodeCharacter.FOLLOWER);
-              raftServer.setLeader(null);
+              raftMember.getTerm().set(resp);
+              raftMember.setCharacter(NodeCharacter.FOLLOWER);
+              raftMember.setLeader(null);
             }
           }
           quorum.notifyAll();

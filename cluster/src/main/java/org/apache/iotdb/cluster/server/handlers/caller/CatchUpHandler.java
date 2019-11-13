@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
+import static org.apache.iotdb.cluster.server.member.RaftMember.RESPONSE_AGREE;
+import static org.apache.iotdb.cluster.server.member.RaftMember.RESPONSE_LOG_MISMATCH;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.appendEntry_call;
 import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -42,20 +46,20 @@ public class CatchUpHandler implements AsyncMethodCallback<appendEntry_call> {
   private Log log;
   private AtomicBoolean aborted;
   private AtomicBoolean appendSucceed;
-  private RaftServer raftServer;
+  private RaftMember raftMember;
 
   @Override
   public void onComplete(appendEntry_call response) {
     try {
       logger.debug("Received a catch-up result of {} from {}", log, follower);
       long resp = response.getResult();
-      if (resp == RaftServer.RESPONSE_AGREE) {
+      if (resp == RESPONSE_AGREE) {
         synchronized (aborted) {
           appendSucceed.set(true);
           aborted.notifyAll();
         }
         logger.debug("Succeeded to send log {}", log);
-      } else if (resp == RaftServer.RESPONSE_LOG_MISMATCH) {
+      } else if (resp == RESPONSE_LOG_MISMATCH) {
         // this is not probably possible
         logger.error("Log mismatch occurred when sending log {}", log);
         synchronized (aborted) {
@@ -64,12 +68,12 @@ public class CatchUpHandler implements AsyncMethodCallback<appendEntry_call> {
         }
       } else {
         // the follower's term has updated, which means a new leader is elected
-        synchronized (raftServer.getTerm()) {
-          long currTerm = raftServer.getTerm().get();
+        synchronized (raftMember.getTerm()) {
+          long currTerm = raftMember.getTerm().get();
           if (currTerm < resp) {
             logger.debug("Received a rejection because term is stale: {}/{}", currTerm, resp);
-            raftServer.setCharacter(NodeCharacter.FOLLOWER);
-            raftServer.getTerm().set(currTerm);
+            raftMember.setCharacter(NodeCharacter.FOLLOWER);
+            raftMember.getTerm().set(currTerm);
           }
         }
         synchronized (aborted) {
@@ -104,8 +108,8 @@ public class CatchUpHandler implements AsyncMethodCallback<appendEntry_call> {
     this.appendSucceed = appendSucceed;
   }
 
-  public void setRaftServer(RaftServer raftServer) {
-    this.raftServer = raftServer;
+  public void setRaftMember(RaftMember raftMember) {
+    this.raftMember = raftMember;
   }
 
   public void setFollower(Node follower) {

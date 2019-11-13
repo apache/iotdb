@@ -23,6 +23,8 @@ import java.util.List;
 
 public class ClusterConfig {
 
+  public static final String[] HASH_SALTS = new String[] {"106", "666", "IoTDB"};
+  public static final int VNODE_NUM = HASH_SALTS.length;
   static final String CONFIG_NAME = "iotdb-cluster.properties";
 
   private String localIP = "localhost";
@@ -34,6 +36,8 @@ public class ClusterConfig {
 
   private boolean isRpcThriftCompressionEnabled = true;
   private int maxConcurrentClientNum = 1024;
+
+  private int replicationNum = 3;
 
 
   public String getLocalIP() {
@@ -74,5 +78,13 @@ public class ClusterConfig {
 
   void setSeedNodeUrls(List<String> seedNodeUrls) {
     this.seedNodeUrls = seedNodeUrls;
+  }
+
+  public int getReplicationNum() {
+    return replicationNum;
+  }
+
+  public void setReplicationNum(int replicationNum) {
+    this.replicationNum = replicationNum;
   }
 }

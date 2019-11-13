@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.handlers.caller.CatchUpHandler;
+import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,22 +35,22 @@ import org.slf4j.LoggerFactory;
  * LogCatchUpTask send a list of logs to a node to make the node keep up with the leader.
  * TODO-Cluster: implement a SnapshotCatchUpTask that use both logs and snapshot.
  */
-class LogCatchUpTask implements Runnable {
+public class LogCatchUpTask implements Runnable {
 
   private static final Logger logger = LoggerFactory.getLogger(LogCatchUpTask.class);
 
   private List<Log> logs;
   private Node node;
-  private RaftServer raftServer;
+  private RaftMember raftMember;
 
-  LogCatchUpTask(List<Log> logs, Node node, RaftServer raftServer) {
+  public LogCatchUpTask(List<Log> logs, Node node, RaftMember raftMember) {
     this.logs = logs;
     this.node = node;
-    this.raftServer = raftServer;
+    this.raftMember = raftMember;
   }
 
   private void doCatchUp() {
-    AsyncClient client = raftServer.connectNode(node);
+    AsyncClient client = raftMember.connectNode(node);
     if (client == null) {
       return;
     }
@@ -61,18 +62,18 @@ class LogCatchUpTask implements Runnable {
     CatchUpHandler handler = new CatchUpHandler();
     handler.setAborted(aborted);
     handler.setAppendSucceed(appendSucceed);
-    handler.setRaftServer(raftServer);
+    handler.setRaftMember(raftMember);
     handler.setFollower(node);
 
     for (int i = 0; i < logs.size() && !aborted.get(); i++) {
       Log log = logs.get(i);
-      synchronized (raftServer.getTerm()) {
+      synchronized (raftMember.getTerm()) {
         // make sure this node is still a leader
-        if (raftServer.getCharacter() != NodeCharacter.LEADER) {
+        if (raftMember.getCharacter() != NodeCharacter.LEADER) {
           logger.debug("Leadership is lost when doing a catch-up, aborting");
           break;
         }
-        request.setTerm(raftServer.getTerm().get());
+        request.setTerm(raftMember.getTerm().get());
       }
 
       handler.setLog(log);
@@ -80,7 +81,7 @@ class LogCatchUpTask implements Runnable {
       logger.debug("Catching up with log {}", log);
       try {
         client.appendEntry(request, handler);
-        raftServer.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
+        raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
       } catch (TException e) {
         logger.error("Cannot send log {} to {}", log, node);
         aborted.set(true);
@@ -110,6 +111,6 @@ class LogCatchUpTask implements Runnable {
     }
     logger.debug("Catch up finished");
     // the next catch up is enabled
-    raftServer.getLastCatchUpResponseTime().remove(node);
+    raftMember.getLastCatchUpResponseTime().remove(node);
   }
 }

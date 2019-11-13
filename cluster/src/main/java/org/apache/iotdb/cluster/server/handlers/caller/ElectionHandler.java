@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
+import static org.apache.iotdb.cluster.server.member.RaftMember.RESPONSE_AGREE;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.startElection_call;
-import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -37,7 +39,7 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
 
   private static final Logger logger = LoggerFactory.getLogger(ElectionHandler.class);
 
-  private RaftServer raftServer;
+  private RaftMember raftMember;
   private Node voter;
   private long currTerm;
   private AtomicInteger quorum;
@@ -45,9 +47,9 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
   // when set to true, the elector wins the election
   private AtomicBoolean electionValid;
 
-  public ElectionHandler(RaftServer raftServer, Node voter, long currTerm, AtomicInteger quorum,
+  public ElectionHandler(RaftMember raftMember, Node voter, long currTerm, AtomicInteger quorum,
       AtomicBoolean terminated, AtomicBoolean electionValid) {
-    this.raftServer = raftServer;
+    this.raftMember = raftMember;
     this.voter = voter;
     this.currTerm = currTerm;
     this.quorum = quorum;
@@ -67,22 +69,22 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
     }
 
     logger.info("Election response term {} from {}", voterTerm, voter);
-    synchronized (raftServer.getTerm()) {
+    synchronized (raftMember.getTerm()) {
       if (terminated.get()) {
         // a voter has rejected this election, which means the term or the log id falls behind
         // this node is not able to be the leader
         return;
       }
 
-      if (voterTerm == RaftServer.RESPONSE_AGREE) {
+      if (voterTerm == RESPONSE_AGREE) {
         long remaining = quorum.decrementAndGet();
         logger.info("Received a for vote from {}, reaming votes to succeed: {}", voter, remaining);
         if (remaining == 0) {
           // the election is valid
           electionValid.set(true);
           terminated.set(true);
-          raftServer.getTerm().notifyAll();
-          raftServer.onElectionWins();
+          raftMember.getTerm().notifyAll();
+          raftMember.onElectionWins();
           logger.info("Election {} is wined", currTerm);
         }
         // still need more votes
@@ -94,11 +96,11 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
           logger.info("Election {} rejected: The node has stale logs", currTerm);
         } else {
           // the election is rejected by a node with a bigger term, update current term to it
-          raftServer.getTerm().set(voterTerm);
+          raftMember.getTerm().set(voterTerm);
           logger.info("Election {} rejected: The term of this node is no bigger than {}",
               currTerm, voterTerm);
         }
-        raftServer.getTerm().notifyAll();
+        raftMember.getTerm().notifyAll();
       }
     }
   }

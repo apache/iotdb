@@ -35,7 +35,7 @@ public interface PartitionTable {
    * @param timestamp
    * @return
    */
-  PartitionGroup route(String storageGroupName, long timestamp);
+  List<Node> route(String storageGroupName, long timestamp);
 
   /**
    * Add a new node to update the partition table.
@@ -44,9 +44,8 @@ public interface PartitionTable {
   void addNode(Node node);
 
   /**
-   * Get the partition groups that node belongs to. Each group corresponds to a data raft group.
-   * @param node
-   * @return
+   *
+   * @return the PartitionGroups this node is in, each corresponding to a virtual node of this node.
    */
-  List<PartitionGroup> getSubordinateGroups(Node node);
+  PartitionGroup[] getPartitionGroups();
 }

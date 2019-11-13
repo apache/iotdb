@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
+import static org.apache.iotdb.cluster.server.member.RaftMember.RESPONSE_AGREE;
+
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.sendHeartBeat_call;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -37,11 +39,11 @@ public class HeartBeatHandler implements AsyncMethodCallback<sendHeartBeat_call>
 
   private static final Logger logger = LoggerFactory.getLogger(HeartBeatHandler.class);
 
-  private RaftServer raftServer;
+  private RaftMember raftMember;
   private Node receiver;
 
-  public HeartBeatHandler(RaftServer raftServer, Node node) {
-    this.raftServer = raftServer;
+  public HeartBeatHandler(RaftMember raftMember, Node node) {
+    this.raftMember = raftMember;
     this.receiver = node;
   }
 
@@ -57,20 +59,20 @@ public class HeartBeatHandler implements AsyncMethodCallback<sendHeartBeat_call>
     }
 
     long followerTerm = response.getTerm();
-    if (followerTerm == RaftServer.RESPONSE_AGREE) {
+    if (followerTerm == RESPONSE_AGREE) {
       // current leadership is still valid
-      raftServer.processValidHeartbeatResp(response, receiver);
+      raftMember.processValidHeartbeatResp(response, receiver);
     } else {
       // current leadership is invalid because the follower has a larger term
-      synchronized (raftServer.getTerm()) {
-        long currTerm = raftServer.getTerm().get();
+      synchronized (raftMember.getTerm()) {
+        long currTerm = raftMember.getTerm().get();
         if (currTerm < followerTerm) {
           logger.info("Losing leadership because current term {} is smaller than {}", currTerm,
               followerTerm);
-          raftServer.getTerm().set(followerTerm);
-          raftServer.setCharacter(NodeCharacter.FOLLOWER);
-          raftServer.setLeader(null);
-          raftServer.setLastHeartBeatReceivedTime(System.currentTimeMillis());
+          raftMember.getTerm().set(followerTerm);
+          raftMember.setCharacter(NodeCharacter.FOLLOWER);
+          raftMember.setLeader(null);
+          raftMember.setLastHeartBeatReceivedTime(System.currentTimeMillis());
         }
       }
     }

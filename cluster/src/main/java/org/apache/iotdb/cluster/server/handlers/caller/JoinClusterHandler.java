@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
+import static org.apache.iotdb.cluster.server.member.RaftMember.RESPONSE_REJECT;
+
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient.addNode_call;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -56,7 +57,7 @@ public class JoinClusterHandler implements AsyncMethodCallback<addNode_call> {
   public void onError(Exception exception) {
     logger.warn("Cannot join the cluster from {}, because", contact, exception);
     synchronized (response) {
-      response.set(RaftServer.RESPONSE_REJECT);
+      response.set(RESPONSE_REJECT);
       response.notifyAll();
     }
   }

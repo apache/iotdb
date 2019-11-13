@@ -20,12 +20,47 @@
 package org.apache.iotdb.cluster.partition;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
 /**
- * PartitionGroup is a group of nodes which manage the same data. All nodes in this group also
- * form a raft group.
+ * PartitionGroup contains all the nodes that will form data group with a certain node, which are
+ * the previous REPLICATION_NUM - 1 nodes, the node itself and the next REPLICATION_NUM - 1 nodes.
+ * From the beginning of the list, every REPLICATION_NUM nodes form a data group, so a node will
+ * join REPLICATION_NUM data groups.
  */
-public class PartitionGroup extends ArrayList<Node> {
+public class PartitionGroup extends ArrayList<VNode> {
+  private Set<Node> physicalNodes = new HashSet<>();
 
+  Set<Node> getPhysicalNodes() {
+    return physicalNodes;
+  }
+
+  public void setPhysicalNodes(Set<Node> physicalNodes) {
+    this.physicalNodes = physicalNodes;
+  }
+
+  @Override
+  public boolean add(VNode vNode) {
+    if (super.add(vNode)) {
+      physicalNodes.add(vNode.getNode());
+      return true;
+    }
+    return false;
+  }
+
+  public void addPhysicalNode(Node node) {
+    physicalNodes.add(node);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return super.equals(o);
+  }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
+  }
 }
