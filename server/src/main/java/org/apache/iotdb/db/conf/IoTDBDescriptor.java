@@ -26,8 +26,7 @@ import java.io.InputStream;
 import java.time.ZoneId;
 import java.util.Properties;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.exception.LoadConfigurationException;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
@@ -216,6 +215,8 @@ public class IoTDBDescriptor {
       conf.setExternalSortThreshold(Integer.parseInt(properties
           .getProperty("external_sort_threshold",
               Integer.toString(conf.getExternalSortThreshold()))));
+      conf.setUpgradeThreadNum(Integer.parseInt(properties.getProperty("upgrade_thread_num",
+          Integer.toString(conf.getUpgradeThreadNum()))));
       conf.setMergeMemoryBudget(Long.parseLong(properties.getProperty("merge_memory_budget",
           Long.toString(conf.getMergeMemoryBudget()))));
       conf.setMergeThreadNum(Integer.parseInt(properties.getProperty("merge_thread_num",
@@ -409,7 +410,7 @@ public class IoTDBDescriptor {
         .getProperty("compressor", TSFileDescriptor.getInstance().getConfig().getCompressor()));
   }
 
-  public void loadHotModifiedProps() throws ProcessorException {
+  public void loadHotModifiedProps() throws QueryProcessException {
     String url = getPropsUrl();
     if (url == null) {
       return;
@@ -464,7 +465,7 @@ public class IoTDBDescriptor {
 
     } catch (Exception e) {
       logger.warn("Fail to reload config file {}", url, e);
-      throw new ProcessorException(String.format("Fail to reload config file %s because %s", url, e.getMessage()));
+      throw new QueryProcessException(String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     }
   }
 

@@ -21,11 +21,11 @@ package org.apache.iotdb.db.qp;
 import java.time.ZoneId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
-import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
-import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.IllegalASTFormatException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.RootOperator;
@@ -59,13 +59,13 @@ public class QueryProcessor {
   }
 
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
-      throws QueryProcessorException, MetadataErrorException {
+      throws QueryProcessException, MetadataException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     return parseSQLToPhysicalPlan(sqlStr, config.getZoneID());
   }
 
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
-      throws QueryProcessorException, MetadataErrorException {
+      throws MetadataException, QueryProcessException {
     AstNode astNode = parseSQLToAST(sqlStr);
     Operator operator = parseASTToOperator(astNode, zoneId);
     operator = logicalOptimize(operator, executor);
@@ -78,10 +78,10 @@ public class QueryProcessor {
    *
    * @param astNode - input ast tree
    * @return - RootOperator has four subclass:Query/Insert/Delete/Update/Author
-   * @throws QueryProcessorException exception in converting sql to operator
+   * @throws IllegalASTFormatException exception in converting sql to operator
    */
   private RootOperator parseASTToOperator(AstNode astNode, ZoneId zoneId)
-      throws QueryProcessorException, MetadataErrorException {
+      throws QueryProcessException, MetadataException {
     LogicalGenerator generator = new LogicalGenerator(zoneId);
     return generator.getLogicalPlan(astNode);
   }
@@ -99,8 +99,7 @@ public class QueryProcessor {
     try {
       astTree = ParseGenerator.generateAST(sqlStr);
     } catch (ParseException e) {
-      throw new IllegalASTFormatException(
-          "parsing error,statement: " + sqlStr + " .message:" + e.getMessage());
+      throw new IllegalASTFormatException(sqlStr, e.getMessage());
     }
     return ParseUtils.findRootNonNullToken(astTree);
   }
@@ -137,7 +136,7 @@ public class QueryProcessor {
         SFWOperator root = (SFWOperator) operator;
         return optimizeSFWOperator(root, executor);
       default:
-        throw new LogicalOperatorException("unknown operator type:" + operator.getType());
+        throw new LogicalOperatorException(operator.getType().toString(), "");
     }
   }
 

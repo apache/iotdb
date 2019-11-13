@@ -411,7 +411,7 @@ public class IoTDBMultiSeriesIT {
       statement.execute("select s1 from root.vehicle.d0 where root.vehicle.d0.s0 < 111 and root.vehicle.d0.s10 < 111");
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
-      assertEquals("Statement format is not right: Path: \"root.vehicle.d0.s10\" doesn't correspond to any known time series", e.getMessage());
+      assertEquals("Statement format is not right: Path: [root.vehicle.d0.s10] doesn't correspond to any known time series", e.getMessage());
     }
   }
 }

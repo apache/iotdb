@@ -55,8 +55,7 @@ public abstract class DirectoryStrategy {
     }
     if (!hasSpace) {
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
-      throw new DiskSpaceInsufficientException(
-          String.format("All disks of folders %s are full, can't setFolders.", folders));
+      throw new DiskSpaceInsufficientException(folders);
     }
 
     this.folders = folders;

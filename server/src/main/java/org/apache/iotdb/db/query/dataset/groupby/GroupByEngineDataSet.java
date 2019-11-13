@@ -21,8 +21,7 @@ package org.apache.iotdb.db.query.dataset.groupby;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.factory.AggreFuncFactory;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
@@ -67,9 +66,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     this.endTime = -1;
   }
 
-  protected void initAggreFuction(List<String> aggres)
-      throws PathErrorException, ProcessorException {
-
+  protected void initAggreFuction(List<String> aggres) throws PathException {
     List<TSDataType> types = new ArrayList<>();
     // construct AggregateFunctions
     for (int i = 0; i < paths.size(); i++) {

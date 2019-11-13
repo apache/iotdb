@@ -215,7 +215,7 @@ The detail of each variables are as follows:
 
 |Name| data\_dirs |
 |:---:|:---|
-|Description| The directories of data files. Multiple directories are separated by comma. See the [multi\_dir\_strategy](/#/Documents/progress/chap4/sec2) configuration item for data distribution strategy. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
+|Description| The directories of data files. Multiple directories are separated by comma. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
 |Type|String[]|
 |Default| data/data |
 |Effective|Trigger|

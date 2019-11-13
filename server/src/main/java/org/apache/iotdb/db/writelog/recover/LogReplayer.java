@@ -29,8 +29,8 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -45,10 +45,11 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
 /**
- * LogReplayer finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads
- * the WALs from the logNode and redoes them into a given MemTable and ModificationFile.
+ * LogReplayer finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads the
+ * WALs from the logNode and redoes them into a given MemTable and ModificationFile.
  */
 public class LogReplayer {
+
   private String logNodePrefix;
   private String insertFilePath;
   private ModificationFile modFile;
@@ -80,11 +81,10 @@ public class LogReplayer {
   }
 
   /**
-   * finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads
-   * the WALs from the logNode and redoes them into a given MemTable and ModificationFile.
-   * @throws ProcessorException
+   * finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads the WALs from
+   * the logNode and redoes them into a given MemTable and ModificationFile.
    */
-  public void replayLogs() throws ProcessorException {
+  public void replayLogs() throws StorageGroupProcessorException {
     WriteLogNode logNode = MultiFileLogNodeManager.getInstance().getNode(
         logNodePrefix + FSFactoryProducer.getFSFactory().getFile(insertFilePath).getName());
 
@@ -103,9 +103,10 @@ public class LogReplayer {
         }
       }
     } catch (IOException e) {
-      throw new ProcessorException("Cannot replay logs", e);
-    } catch (QueryProcessorException e) {
-      throw new ProcessorException("Cannot replay logs for query processor exception", e);
+      throw new StorageGroupProcessorException("Cannot replay logs" + e.getMessage());
+    } catch (QueryProcessException e) {
+      throw new StorageGroupProcessorException(
+          "Cannot replay logs for query processor exception" + e.getMessage());
     } finally {
       logReader.close();
     }
@@ -122,7 +123,7 @@ public class LogReplayer {
     }
   }
 
-  private void replayBatchInsert(BatchInsertPlan batchInsertPlan) throws QueryProcessorException {
+  private void replayBatchInsert(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       Long lastEndTime = currentTsFileResource.getEndTimeMap().get(batchInsertPlan.getDeviceId());
@@ -146,7 +147,7 @@ public class LogReplayer {
     recoverMemTable.insertBatch(batchInsertPlan, index);
   }
 
-  private void replayInsert(InsertPlan insertPlan) throws QueryProcessorException {
+  private void replayInsert(InsertPlan insertPlan) throws QueryProcessException {
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       Long lastEndTime = currentTsFileResource.getEndTimeMap().get(insertPlan.getDeviceId());

@@ -26,19 +26,19 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -50,7 +50,8 @@ import org.slf4j.LoggerFactory;
  * TsFileRecoverPerformer recovers a SeqTsFile to correct status, redoes the WALs since last crash
  * and removes the redone logs.
  */
-public class TsFileRecoverPerformer {
+public class
+TsFileRecoverPerformer {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileRecoverPerformer.class);
 
@@ -77,7 +78,7 @@ public class TsFileRecoverPerformer {
    * 1. recover the TsFile by RestorableTsFileIOWriter and truncate the file to remaining corrected
    * data 2. redo the WALs to recover unpersisted data 3. flush and close the file 4. clean WALs
    */
-  public void recover() throws ProcessorException {
+  public void recover() throws StorageGroupProcessorException {
 
     IMemTable recoverMemTable = new PrimitiveMemTable();
     this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
@@ -93,7 +94,7 @@ public class TsFileRecoverPerformer {
     try {
       restorableTsFileIOWriter = new RestorableTsFileIOWriter(insertFile);
     } catch (IOException e) {
-      throw new ProcessorException(e);
+      throw new StorageGroupProcessorException(e);
     }
 
     if (!restorableTsFileIOWriter.hasCrashed() && !restorableTsFileIOWriter.canWrite()) {
@@ -128,8 +129,9 @@ public class TsFileRecoverPerformer {
         }
         return;
       } catch (IOException e) {
-        throw new ProcessorException("recover the resource file failed: " + insertFilePath
-            + RESOURCE_SUFFIX, e);
+        throw new StorageGroupProcessorException(
+            "recover the resource file failed: " + insertFilePath
+                + RESOURCE_SUFFIX + e);
       }
     } else {
       // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
@@ -145,7 +147,7 @@ public class TsFileRecoverPerformer {
       MultiFileLogNodeManager.getInstance()
           .deleteNode(logNodePrefix + SystemFileFactory.INSTANCE.getFile(insertFilePath).getName());
     } catch (IOException e) {
-      throw new ProcessorException(e);
+      throw new StorageGroupProcessorException(e);
     }
   }
 
@@ -187,13 +189,15 @@ public class TsFileRecoverPerformer {
     for (ChunkGroupMetaData chunkGroupMetaData : restorableTsFileIOWriter
         .getChunkGroupMetaDatas()) {
       for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-        tsFileResource.updateStartTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
+        tsFileResource
+            .updateStartTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
         tsFileResource.updateEndTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
       }
     }
   }
 
-  private void redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter) throws ProcessorException {
+  private void redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter)
+      throws StorageGroupProcessorException {
     IMemTable recoverMemTable = new PrimitiveMemTable();
     this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
         versionController,
@@ -211,9 +215,8 @@ public class TsFileRecoverPerformer {
       // close file
       restorableTsFileIOWriter.endFile(schema);
       tsFileResource.serialize();
-    } catch (ExecutionException | InterruptedException | IOException e) {
-      Thread.currentThread().interrupt();
-      throw new ProcessorException(e);
+    } catch (IOException | InterruptedException | ExecutionException e) {
+      throw new StorageGroupProcessorException(e);
     }
   }
 
