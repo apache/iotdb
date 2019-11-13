@@ -20,7 +20,11 @@
 package org.apache.iotdb.hadoop.fileSystem;
 
 
+import java.io.File;
+import java.io.IOException;
+import java.net.MalformedURLException;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
@@ -29,6 +33,14 @@ public class HDFSConfUtil {
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
 
   public static Configuration setConf(Configuration conf) {
+    try {
+      conf.addResource(new File("/etc/hdfs1/conf/core-site.xml").toURI().toURL());
+      conf.addResource(new File("/etc/hdfs1/conf/hdfs-site.xml").toURI().toURL());
+      conf.addResource(new File("/etc/yarn1/conf/yarn-site.xml").toURI().toURL());
+    } catch (MalformedURLException e) {
+      e.printStackTrace();
+    }
+
     conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
     conf.set("dfs.client.block.write.replace-datanode-on-failure.policy", "NEVER");
     conf.set("dfs.client.block.write.replace-datanode-on-failure.enable", "true");
@@ -53,17 +65,27 @@ public class HDFSConfUtil {
     }
 
     // Kerberos configuration
-    if(tsFileConfig.isUseKerberos()){
+    if (tsFileConfig.isUseKerberos()) {
       conf.set("hadoop.security.authorization", "true");
       conf.set("hadoop.security.authentication", "kerberos");
       conf.set("dfs.block.access.token.enable", "true");
 
-      conf.set("dfs.namenode.kerberos.principal", tsFileConfig.getKerberosPrincipal());
-      conf.set("dfs.namenode.keytab.file", tsFileConfig.getKerberosKeytabFilePath());
-      conf.set("dfs.secondary.namenode.kerberos.principal", tsFileConfig.getKerberosPrincipal());
-      conf.set("dfs.secondary.namenode.keytab.file", tsFileConfig.getKerberosKeytabFilePath());
-      conf.set("dfs.datanode.kerberos.principal", tsFileConfig.getKerberosPrincipal());
-      conf.set("dfs.datanode.keytab.file", tsFileConfig.getKerberosKeytabFilePath());
+//      conf.set("dfs.namenode.kerberos.principal", "nn/_" + tsFileConfig.getKerberosPrincipal());
+//      conf.set("dfs.namenode.keytab.file", tsFileConfig.getKerberosKeytabFilePath());
+//      conf.set("dfs.secondary.namenode.kerberos.principal", tsFileConfig.getKerberosPrincipal());
+//      conf.set("dfs.secondary.namenode.keytab.file", tsFileConfig.getKerberosKeytabFilePath());
+//      conf.set("dfs.datanode.kerberos.principal", "dn/" + tsFileConfig.getKerberosPrincipal());
+//      conf.set("dfs.datanode.keytab.file", tsFileConfig.getKerberosKeytabFilePath());
+//      conf.set("dfs.namenode.kerberos.internal.spnego.principal",
+//          "HTTP/" + tsFileConfig.getKerberosKeytabFilePath());
+
+      UserGroupInformation.setConfiguration(conf);
+      try {
+        UserGroupInformation.loginUserFromKeytab(tsFileConfig.getKerberosPrincipal(),
+            tsFileConfig.getKerberosKeytabFilePath());
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     }
 
     return conf;
