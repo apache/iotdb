@@ -39,6 +39,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.ProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -455,14 +456,14 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   }
   
   private boolean createDeviceTemplate(CreateDeviceTemplatePlan createDeviceTemplatePlan) 
-      throws ProcessorException {
+      throws QueryProcessException {
     String deviceType = createDeviceTemplatePlan.getDeviceType();
     List<MeasurementSchema> schemaList = createDeviceTemplatePlan.getSchemaList();
     mManager.getDeviceTemplates().put(deviceType, schemaList);
     return true;
   }
   
-  private boolean createDevice(CreateDevicePlan createDevicePlan) throws ProcessorException {
+  private boolean createDevice(CreateDevicePlan createDevicePlan) throws QueryProcessException {
     String deviceType = createDevicePlan.getDeviceType();
     String devicePath = createDevicePlan.getDevicePath();
     try {
@@ -480,10 +481,10 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         }
       }
       else {
-        throw new ProcessorException("No device template (" + deviceType + ")");
+        throw new QueryProcessException("No device template (" + deviceType + ")");
       }
-    } catch (MetadataErrorException | PathErrorException |StorageEngineException e) {
-      throw new ProcessorException(e);
+    } catch (MetadataException | PathException |StorageEngineException e) {
+      throw new QueryProcessException(e);
     }
     return true;
   }

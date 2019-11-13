@@ -490,7 +490,7 @@ public class PhysicalPlanTest {
   
   @Test
   public void testTemplate1() 
-      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+      throws QueryProcessException, MetadataException {
     String sqlStr = 
         "create complex template vehicle1 (s2 INT32 PLAIN, s3 DOUBLE RLE, s4 TEXT PLAIN)";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
@@ -504,7 +504,7 @@ public class PhysicalPlanTest {
   
   @Test
   public void testTemplate2() 
-      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+      throws QueryProcessException, MetadataException {
     String sqlStr = 
         "create simple template vehicle2 measurements (s2, s3, s4) datatype INT32 encoding RLE";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
@@ -518,7 +518,7 @@ public class PhysicalPlanTest {
   
   @Test
   public void testCreateDevice() 
-      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+      throws QueryProcessException, MetadataException {
     String sqlStr = 
         "create device (vehicle1) root.vehicle.d5";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
