@@ -273,6 +273,26 @@ K_UNSET
     : U N S E T
     ;
 
+K_FLUSH
+    : F L U S H
+    ;
+
+K_TASK
+    : T A S K
+    ;
+
+K_DYNAMIC
+    : D Y N A  M I C
+    ;
+
+K_PARAMETERS
+    : P A R  A M E T E R S
+    ;
+
+K_INFO
+    : I N F O
+    ;
+
 //************** logical operator***********
 OPERATOR_AND
     : A N D
