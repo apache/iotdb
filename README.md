@@ -276,7 +276,7 @@ or
 IoTDB> exit
 ```
 
-For more on what commands are supported by IoTDB SQL, see [Chapter 5: IoTDB SQL Documentation](https://iotdb.apache.org/#/Documents/0.9.0/chap5/sec1).
+For more on what commands are supported by IoTDB SQL, see [Chapter 5: IoTDB SQL Documentation](https://iotdb.apache.org/#/Documents/0.9.0/chap5/sec4).
 
 ### Stop IoTDB
 
