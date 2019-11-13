@@ -488,8 +488,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testConfiguration()
-      throws QueryProcessorException, MetadataErrorException {
+  public void testConfiguration() throws QueryProcessException, MetadataException {
     String metadata = "load configuration";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     LoadConfigurationPlan plan = (LoadConfigurationPlan) processor.parseSQLToPhysicalPlan(metadata);
