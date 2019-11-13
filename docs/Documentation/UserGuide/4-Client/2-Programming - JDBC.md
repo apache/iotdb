@@ -50,7 +50,7 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-jdbc</artifactId>
-      <version>0.8.0-SNAPSHOT</version>
+      <version>0.9.0</version>
     </dependency>
 </dependencies>
 ```
@@ -231,23 +231,45 @@ With Status Code, instead of writing codes like `if (e.getErrorMessage().contain
 
 Here is a list of Status Code and related message:
 
-|Status Code|Status Type|Meaning|
+|Status Code|Status Type|Meanings|
 |:---|:---|:---|
 |200|SUCCESS_STATUS||
 |201|STILL_EXECUTING_STATUS||
 |202|INVALID_HANDLE_STATUS||
+|300|TIMESERIES_ALREADY_EXIST_ERROR|Timeseries already exists|
 |301|TIMESERIES_NOT_EXIST_ERROR|Timeseries does not exist|
 |302|UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR|Unsupported fetch metadata operation|
-|303|FETCH_METADATA_ERROR|Failed to fetch metadata|
+|303|METADATA_ERROR|Meet error when dealing with metadata|
 |304|CHECK_FILE_LEVEL_ERROR|Meet error while checking file level|
+|305|OUT_OF_TTL_ERROR|Insertion time is less than TTL time bound|
+|306|CONFIG_ADJUSTER|IoTDB system load is too large|
+|307|MERGE_ERROR|Meet error while merging|
+|308|SYSTEM_CHECK_ERROR|Meet error while system checking|
+|309|SYNC_DEVICE_OWNER_CONFLICT_ERROR|Sync device owners conflict|
+|310|SYNC_CONNECTION_EXCEPTION|Meet error while sync connecting|
+|311|STORAGE_GROUP_PROCESSOR_ERROR|Storage group processor related error|
+|312|STORAGE_GROUP_ERROR|Storage group related error|
+|313|STORAGE_ENGINE_ERROR|Storage engine related error|
 |400|EXECUTE_STATEMENT_ERROR|Execute statement error|
 |401|SQL_PARSE_ERROR|Meet error while parsing SQL|
 |402|GENERATE_TIME_ZONE_ERROR|Meet error while generating time zone|
 |403|SET_TIME_ZONE_ERROR|Meet error while setting time zone|
-|404|NOT_A_STORAGE_GROUP_ERROR|Operating object is not a storage group|
-|405|READ_ONLY_SYSTEM_ERROR|Operating system is read only|
+|404|NOT_STORAGE_GROUP_ERROR|Operating object is not a storage group|
+|405|QUERY_NOT_ALLOWED|Query statements are not allowed error|
+|406|AST_FORMAT_ERROR|AST format related error|
+|407|LOGICAL_OPERATOR_ERROR|Logical operator related error|
+|408|LOGICAL_OPTIMIZE_ERROR|Logical optimize related error|
+|409|UNSUPPORTED_FILL_TYPE_ERROR|Unsupported fill type related error|
+|410|PATH_ERROR|Path related error|
 |500|INTERNAL_SERVER_ERROR|Internal server error|
+|501|CLOSE_OPERATION_ERROR|Meet error in close operation|
+|502|READ_ONLY_SYSTEM_ERROR|Operating system is read only|
+|503|DISK_SPACE_INSUFFICIENT_ERROR|Disk space is insufficient|
+|504|START_UP_ERROR|Meet error while starting up|
 |600|WRONG_LOGIN_PASSWORD_ERROR|Username or password is wrong|
 |601|NOT_LOGIN_ERROR|Has not logged in|
 |602|NO_PERMISSION_ERROR|No permissions for this operation|
 |603|UNINITIALIZED_AUTH_ERROR|Uninitialized authorizer|
+
+> All exceptions are refactored in latest version by extracting uniform message into exception classes. Different error codes are added to all exceptions. When an exception is caught and a higher-level exception is thrown, the error code will keep and pass so that users will know the detailed error reason.
+A base exception class "ProcessException" is also added to be extended by all exceptions.

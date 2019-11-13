@@ -18,20 +18,14 @@
  */
 package org.apache.iotdb.db.exception;
 
-public class ConfigAdjusterException extends Exception {
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public ConfigAdjusterException() {
-  }
+public class ConfigAdjusterException extends ProcessException {
 
-  public ConfigAdjusterException(String message) {
-    super(message);
-  }
+  private static final long serialVersionUID = 3502288856999147687L;
 
-  public ConfigAdjusterException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public ConfigAdjusterException(Throwable cause) {
-    super(cause);
+  public ConfigAdjusterException(String action) {
+    super(String.format("IoTDB system load is too large to %s", action));
+    errorCode = TSStatusCode.CONFIG_ADJUSTER.getStatusCode();
   }
 }

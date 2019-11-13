@@ -95,18 +95,15 @@ A `Chunk` represents a *sensor*. There is a byte `0x01` as the marker, following
 
 ##### ChunkHeader
 
-<center>
-        <table style="text-align:center">
-            <tr><th>Member Description</th><th>Member Type</td></tr>
-            <tr><td>The name of this sensor(measurementID)</td><td>String</td>
-            <tr><td>Size of this chunk</td><td>int</td>
-            <tr><td>Data type of this chuck</td><td>short</td>
-            <tr><td>Number of pages</td><td>int</td>
-            <tr><td>Compression Type</td><td>short</td>
-            <tr><td>Encoding Type</td><td>short</td>
-            <tr><td>Max Tombstone Time</td><td>long</td>
-        </table>
-</center>
+|Member Description|Member Type|
+|:---:|:---:|
+|The name of this sensor(measurementID)|String|
+|Size of this chunk|int|
+|Data type of this chuck|short|
+|Number of pages|int|
+|Compression Type|short|
+|Encoding Type|short|
+|Max Tombstone Time|long|
 
 ##### Page
 
@@ -114,32 +111,26 @@ A `Page` represents some data in a `Chunk`. It contains a `PageHeader` and the a
 
 PageHeader Structure
 
-<center>
-        <table style="text-align:center">
-            <tr><th>Member Description</th><th>Member Type</td></tr>
-            <tr><td>Data size before compressing</td><td>int</td>
-            <tr><td>Data size after compressing(if use SNAPPY)</td><td>int</td>
-            <tr><td>Number of values</td><td>int</td>
-            <tr><td>Maximum time stamp</td><td>long</td>
-            <tr><td>Minimum time stamp</td><td>long</td>
-            <tr><td>Maximum value of the page</td><td>Type of the page</td>
-            <tr><td>Minimum value of the page</td><td>Type of the page</td>
-            <tr><td>First value of the page</td><td>Type of the page</td>
-            <tr><td>Sum of the Page</td><td>double</td>
-            <tr><td>Last value of the page</td><td>Type of the page</td>
-        </table>
-</center>
+|Member Description|Member Type|
+|:---:|:---:|
+|Data size before compressing|int|
+|Data size after compressing(if use SNAPPY)|int|
+|Number of values|int|
+|Maximum time stamp|long|
+|Minimum time stamp|long|
+|Maximum value of the page|Type of the page|
+|Minimum value of the page|Type of the page|
+|First value of the page|Type of the page|
+|Sum of the Page|double|
+|Last value of the page|Type of the page|
 
 ##### ChunkGroupFooter
 
-<center>
-        <table style="text-align:center">
-            <tr><th>Member Description</th><th>Member Type</td></tr>
-            <tr><td>DeviceId</td><td>String</td>
-            <tr><td>Data size of the ChunkGroup</td><td>long</td>
-            <tr><td>Number of chunks</td><td>int</td>
-        </table>
-</center>
+|Member Description|Member Type|
+|:---:|:---:|
+|DeviceId|String|
+|Data size of the ChunkGroup|long|
+|Number of chunks|int|
 
 #### 1.2.3  Metadata
 
@@ -147,44 +138,35 @@ PageHeader Structure
 
 The first part of metadata is `TsDeviceMetaData` 
 
-<center>
-        <table style="text-align:center">
-            <tr><th>Member Description</th><th>Member Type</td></tr>
-            <tr><td>Start time</td><td>long</td>
-            <tr><td>End time</td><td>long</td>
-            <tr><td>Number of chunk groups</td><td>int</td>
-            <tr><td>List of ChunkGroupMetaData</td><td>list</td>
-        </table>
-</center>
+|Member Description|Member Type|
+|:---:|:---:|
+|Start time|long|
+|End time|long|
+|Number of chunk groups|int|
+|List of ChunkGroupMetaData|list|
 
 ###### ChunkGroupMetaData
 
-<center>
-        <table style="text-align:center">
-            <tr><th>Member Description</th><th>Member Type</td></tr>
-            <tr><td>DeviceId</td><td>String</td>
-            <tr><td>Start offset of the ChunkGroup</td><td>long</td>
-            <tr><td>End offset of the ChunkGroup</td><td>long</td>
-            <tr><td>Version</td><td>long</td>
-            <tr><td>Number of ChunkMetaData</td><td>int</td>
-            <tr><td>List of ChunkMetaData</td><td>list</td>
-        </table>
-</center>
+|Member Description|Member Type|
+|:---:|:---:|
+|DeviceId|String|
+|Start offset of the ChunkGroup|long|
+|End offset of the ChunkGroup|long|
+|Version|long|
+|Number of ChunkMetaData|int|
+|List of ChunkMetaData|list|
 
 ###### ChunkMetaData
 
-<center>
-        <table style="text-align:center">
-            <tr><th>Member Description</th><th>Member Type</td></tr>
-            <tr><td>MeasurementId</td><td>String</td>
-            <tr><td>Start offset of ChunkHeader</td><td>long</td>
-            <tr><td>Number of data points</td><td>long</td>
-            <tr><td>Start time</td><td>long</td>
-            <tr><td>End time</td><td>long</td>
-            <tr><td>Data type</td><td>short</td>
-            <tr><td>The statistics of this chunk</td><td>TsDigest</td>
-        </table>
-</center>
+|Member Description|Member Type|
+|:---:|:---:|
+|MeasurementId|String|
+|Start offset of ChunkHeader|long|
+|Number of data points|long|
+|Start time|long|
+|End time|long|
+|Data type|short|
+|The statistics of this chunk|TsDigest|
 
 ###### TsDigest
 
@@ -203,8 +185,7 @@ Map<String, ByteBuffer> statistics = {
     "max_value" -> ByteBuffer of int value 99
 }
 ```
-
-![TsDigest ByteBuffer Breakdown comparison](https://user-images.githubusercontent.com/33376433/63765352-664a4280-c8fb-11e9-869e-859edf6d00bb.png)
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/63765352-664a4280-c8fb-11e9-869e-859edf6d00bb.png">
 
 In v0.9.0, the storage format is changed to an array for space and time efficiency. That is, `ByteBuffer[] statistics`. Each position of the array has a fixed association with a specific type of statistic, following the order defined in StatisticType:
 
@@ -242,49 +223,39 @@ ByteBuffer[] statistics = [
 
 `TsFileMetaData` follows after `TsDeviceMetadatas`.
 
-<center>
-        <table style="text-align:center">
-            <tr><th>Member Description</th><th>Member Type</td></tr>
-            <tr><td>Number of devices</td><td>int</td>
-            <tr><td>Pairs of device name and deviceMetadataIndex</td><td>String, TsDeviceMetadataIndex pair</td>
-            <tr><td>Number of measurements</td><td>int</td>
-            <tr><td>Pairs of measurement name and schema</td><td>String, MeasurementSchema pair</td>
-            <tr><td>Author byte</td><td>byte</td>
-            <tr><td>Author(if author byte is 0x01)</td><td>String</td>
-            <tr><td>totalChunkNum</td><td>int</td>
-            <tr><td>invalidChunkNum</td><td>int</td>
-            <tr><td>Bloom filter size</td><td>int</td>
-            <tr><td>Bloom filter bit vector</td><td>byte[Bloom filter size]</td>
-            <tr><td>Bloom filter capacity</td><td>int</td>
-            <tr><td>Bloom filter hash functions size</td><td>int</td>
-        </table>
-</center>
+|Member Description|Member Type|
+|:---:|:---:|
+|Number of devices|int|
+|Pairs of device name and deviceMetadataIndex|String, TsDeviceMetadataIndex pair|
+|Number of measurements|int|
+|Pairs of measurement name and schema|String, MeasurementSchema pair|
+|Author byte|byte|
+|Author(if author byte is 0x01)|String|
+|totalChunkNum|int|
+|invalidChunkNum|int|
+|Bloom filter size|int|
+|Bloom filter bit vector|byte[Bloom filter size]|
+|Bloom filter capacity|int|
+|Bloom filter hash functions size|int|
 
 ###### TsDeviceMetadataIndex
 
-<center>
-        <table style="text-align:center">
-            <tr><th>Member Description</th><th>Member Type</td></tr>
-            <tr><td>DeviceId</td><td>String</td>
-            <tr><td>Start offset of TsDeviceMetaData</td><td>long</td>
-            <tr><td>length</td><td>int</td>
-            <tr><td>Start time</td><td>long</td>
-            <tr><td>End time</td><td>long</td>
-        </table>
-</center>
+|Member Description|Member Type|
+|:---:|:---:|
+|DeviceId|String|
+|Start offset of TsDeviceMetaData|long|
+|length|int|
+|Start time|long|
+|End time|long|
 
 ###### MeasurementSchema
-
-<center>
-        <table style="text-align:center">
-          <tr><th>Member Description</th><th>Member Type</td></tr>
-            <tr><td>MeasurementId</td><td>String</td></tr>
-            <tr><td>Data type</td><td>short</td>
-            <tr><td>Encoding</td><td>short</td>
-            <tr><td>Compressor</td><td>short</td>
-            <tr><td>Size of props</td><td>int</td>
-        </table>
-</center>
+|Member Description|Member Type|
+|:---:|:---:|
+|MeasurementId|String|
+|Data type|short|
+|Encoding|short|
+|Compressor|short|
+|Size of props|int|
 
 If size of props is greater than 0, there is an array of <String, String> pair as properties of this measurement.
 
@@ -305,7 +276,7 @@ Congratulations! You have finished the journey of discovering TsFile.
 
 #### 1.3.1 TsFileResource Print Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.9.0-SNAPSHOT\tools` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.9.0\tools` directory.
 
 Command:
 
@@ -324,7 +295,7 @@ For Linux or MacOs:
 An example on Windows:
 
 ```
-D:\incubator-iotdb\server\target\iotdb-server-0.9.0-SNAPSHOT\tools>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
+D:\incubator-iotdb\server\target\iotdb-server-0.9.0\tools>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
 ​````````````````````````
 Starting Printing the TsFileResources
 ​````````````````````````
@@ -336,7 +307,7 @@ analyzing the resource file finished.
 
 #### 1.3.2 TsFile Sketch Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.9.0-SNAPSHOT\tools` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.9.0\tools` directory.
 
 Command:
 
@@ -359,7 +330,7 @@ For Linux or MacOs:
 An example on Windows:
 
 ```$xslt
-D:\incubator-iotdb\server\target\iotdb-server-0.9.0-SNAPSHOT\tools>.\print-tsfile-sketch.bat D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
+D:\incubator-iotdb\server\target\iotdb-server-0.9.0\tools>.\print-tsfile-sketch.bat D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
 ​````````````````````````
 Starting Printing the TsFile Sketch
 ​````````````````````````
@@ -441,8 +412,7 @@ You can also use `example/tsfile/org/apache/iotdb/tsfile/TsFileSequenceRead` to 
 ### 1.4 A TsFile Visualization Example
 
 #### v0.8.0
-
-![A TsFile Visualization Example v0.8.0](https://user-images.githubusercontent.com/33376433/65209576-2bd36000-dacb-11e9-9e43-49e0dd01274e.png)
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/65209576-2bd36000-dacb-11e9-9e43-49e0dd01274e.png">
 
 #### v0.9.0
-![A TsFile Visualization Example v0.9.0](https://user-images.githubusercontent.com/33376433/68128717-35b60300-ff53-11e9-919e-48d80536df88.png)
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/68128717-35b60300-ff53-11e9-919e-48d80536df88.png">

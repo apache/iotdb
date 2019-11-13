@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.factory;
 
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.impl.AvgAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.CountAggrFunc;
@@ -48,9 +48,9 @@ public class AggreFuncFactory {
    * @param dataType data type.
    */
   public static AggregateFunction getAggrFuncByName(String aggrFuncName, TSDataType dataType)
-      throws ProcessorException {
+      throws PathException {
     if (aggrFuncName == null) {
-      throw new ProcessorException("AggregateFunction Name must not be null");
+      throw new PathException("AggregateFunction Name must not be null");
     }
 
     switch (aggrFuncName.toLowerCase()) {
@@ -73,7 +73,7 @@ public class AggreFuncFactory {
       case StatisticConstant.LAST:
         return new LastAggrFunc(dataType);
       default:
-        throw new ProcessorException(
+        throw new PathException(
             "aggregate does not support " + aggrFuncName + " function.");
     }
   }

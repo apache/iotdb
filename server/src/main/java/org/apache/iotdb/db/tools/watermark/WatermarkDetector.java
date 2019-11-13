@@ -25,13 +25,13 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZoneId;
-import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.thrift.EncodingUtils;
 
 public class WatermarkDetector {
 
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) throws IOException, LogicalOperatorException {
     if (args == null || args.length != 8) {
       throw new IOException("Usage: ./detect-watermark.sh [filePath] [secretKey] "
           + "[watermarkBitString] [embed_row_cycle] [embed_lsb_num] [alpha] [columnIndex] "
@@ -60,7 +60,7 @@ public class WatermarkDetector {
 
   public static boolean isWatermarked(String filePath, String secretKey, String watermarkBitString,
       int embed_row_cycle, int embed_lsb_num, double alpha,
-      int columnIndex, String dataType) throws IOException {
+      int columnIndex, String dataType) throws LogicalOperatorException, IOException {
     System.out.println("-----Watermark detection begins-----");
     int[] trueNums = new int[watermarkBitString.length()]; // for majority vote
     int[] falseNums = new int[watermarkBitString.length()]; // for majority vote
@@ -148,7 +148,7 @@ public class WatermarkDetector {
   /**
    * Parses timestamp from string type to long type
    */
-  private static long parseTimestamp(String str) throws IOException {
+  private static long parseTimestamp(String str) throws LogicalOperatorException {
     long timestamp;
     try {
       timestamp = Long.parseLong(str);
@@ -157,7 +157,7 @@ public class WatermarkDetector {
         ZoneId zoneId = ZoneId.systemDefault();
         timestamp = DatetimeUtils.convertDatetimeStrToLong(str, zoneId);
       } catch (LogicalOperatorException e1) {
-        throw new IOException("The format of timestamp is not unexpected.");
+        throw new LogicalOperatorException("The format of timestamp is not unexpected.");
       }
     }
     return timestamp;

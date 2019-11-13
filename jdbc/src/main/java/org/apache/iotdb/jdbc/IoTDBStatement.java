@@ -19,16 +19,21 @@
 
 package org.apache.iotdb.jdbc;
 
+import java.sql.BatchUpdateException;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.SQLWarning;
+import java.sql.Statement;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
-
-import java.sql.*;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
 
 public class IoTDBStatement implements Statement {
 
@@ -293,7 +298,7 @@ public class IoTDBStatement implements Statement {
       }
     } else if (sqlToLowerCase.startsWith(COUNT_NODES_COMMAND_LOWERCASE)) {
       String[] cmdSplit = sql.split("\\s+", 4);
-      if (cmdSplit.length != 4 && !(cmdSplit[3].startsWith("level"))) {
+      if (!(cmdSplit.length == 4 && cmdSplit[3].startsWith("level"))) {
         throw new SQLException("Error format of \'COUNT NODES <PATH> LEVEL=<INTEGER>\'");
       } else {
         String path = cmdSplit[2];

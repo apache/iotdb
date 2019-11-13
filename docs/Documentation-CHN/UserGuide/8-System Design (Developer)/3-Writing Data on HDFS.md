@@ -39,7 +39,7 @@
 
 首先，使用maven打包server和Hadoop模块：`mvn clean package -pl server,hadoop -am -Dmaven.test.skip=true`
 
-然后，将Hadoop模块的target jar包`hadoop-tsfile-0.9.0-SNAPSHOT-jar-with-dependencies.jar`复制到server模块的target lib文件夹 `.../server/target/iotdb-server-0.9.0-SNAPSHOT/lib`下。
+然后，将Hadoop模块的target jar包`hadoop-tsfile-0.9.0-jar-with-dependencies.jar`复制到server模块的target lib文件夹 `.../server/target/iotdb-server-0.9.0/lib`下。
 
 编辑`iotdb-engine.properties`中的用户配置。相关配置项包括：
 
@@ -135,7 +135,7 @@
 
 启动server, Tsfile将会被存储到HDFS上。
 
-如果你想要恢复将TSFile存储到本地文件系统，只需编辑配置项`tsfile_storage_fs`为`LOCAL`。在这种情况下，如果你已经在HDFS上存储了一些数据文件，你需要将它们下载到本地，并移动到你所配置的数据文件文件夹（默认为`../server/target/iotdb-server-0.9.0-SNAPSHOT/data/data`）， 或者重新开始你的整个导入数据过程。
+如果你想要恢复将TSFile存储到本地文件系统，只需编辑配置项`tsfile_storage_fs`为`LOCAL`。在这种情况下，如果你已经在HDFS上存储了一些数据文件，你需要将它们下载到本地，并移动到你所配置的数据文件文件夹（默认为`../server/target/iotdb-server-0.9.0/data/data`）， 或者重新开始你的整个导入数据过程。
 
 ### 常见问题
 
@@ -150,4 +150,4 @@ ERROR org.apache.iotdb.tsfile.fileSystem.fsFactory.HDFSFactory:62 - Failed to ge
 
 A: 这表明你没有将Hadoop模块的以来放到IoTDB server中。你可以这样解决：
 * 使用Maven打包Hadoop模块: `mvn clean package -pl hadoop -am -Dmaven.test.skip=true`
-* 将Hadoop模块的target jar包`hadoop-tsfile-0.9.0-SNAPSHOT-jar-with-dependencies.jar`复制到server模块的target lib文件夹 `.../server/target/iotdb-server-0.9.0-SNAPSHOT/lib`下。
+* 将Hadoop模块的target jar包`hadoop-tsfile-0.9.0-jar-with-dependencies.jar`复制到server模块的target lib文件夹 `.../server/target/iotdb-server-0.9.0/lib`下。

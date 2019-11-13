@@ -39,7 +39,7 @@ If you want to store TSFile and related data files in HDFS, here are the steps:
 
 First, build server and Hadoop module by: `mvn clean package -pl server,hadoop -am -Dmaven.test.skip=true`
 
-Then, copy the target jar of Hadoop module `hadoop-tsfile-0.9.0-SNAPSHOT-jar-with-dependencies.jar` into server target lib folder `.../server/target/iotdb-server-0.9.0-SNAPSHOT/lib`.
+Then, copy the target jar of Hadoop module `hadoop-tsfile-0.9.0-jar-with-dependencies.jar` into server target lib folder `.../server/target/iotdb-server-0.9.0/lib`.
 
 Edit user config in `iotdb-engine.properties`. Related configurations are:
 
@@ -135,7 +135,7 @@ Edit user config in `iotdb-engine.properties`. Related configurations are:
 
 Start server, and Tsfile will be stored on HDFS.
 
-If you'd like to reset storage file system to local, just edit configuration `tsfile_storage_fs` to `LOCAL`. In this situation, if you have already had some data files on HDFS, you should either download them to local and move them to your config data file folder (`../server/target/iotdb-server-0.9.0-SNAPSHOT/data/data` by default), or restart your process and import data to IoTDB.
+If you'd like to reset storage file system to local, just edit configuration `tsfile_storage_fs` to `LOCAL`. In this situation, if you have already had some data files on HDFS, you should either download them to local and move them to your config data file folder (`../server/target/iotdb-server-0.9.0/data/data` by default), or restart your process and import data to IoTDB.
 
 ### Frequent questions
 
@@ -150,4 +150,4 @@ ERROR org.apache.iotdb.tsfile.fileSystem.fsFactory.HDFSFactory:62 - Failed to ge
 
 A: It indicates that you forget to put Hadoop module dependency in IoTDB server. You can solve it by:
 * Build Hadoop module: `mvn clean package -pl hadoop -am -Dmaven.test.skip=true`
-* Copy the target jar of Hadoop module `hadoop-tsfile-0.9.0-SNAPSHOT-jar-with-dependencies.jar` into server target lib folder `.../server/target/iotdb-server-0.9.0-SNAPSHOT/lib`.
+* Copy the target jar of Hadoop module `hadoop-tsfile-0.9.0-jar-with-dependencies.jar` into server target lib folder `.../server/target/iotdb-server-0.9.0/lib`.

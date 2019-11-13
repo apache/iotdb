@@ -30,7 +30,7 @@ show version
 
 ```
 +---------------------------------------------------------------------------+
-|                                                             0.9.0-SNAPSHOT|
+|                                                             0.9.0|
 +---------------------------------------------------------------------------+
 It costs 0.001s
 ```
@@ -142,7 +142,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 
 * 显示设备语句
 ```
-SHOW DEVICE
+SHOW DEVICES
 Eg: IoTDB > SHOW DEVICES
 Note: This statement can be used in IoTDB Client and JDBC.
 ```

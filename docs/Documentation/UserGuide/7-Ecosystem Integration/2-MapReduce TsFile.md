@@ -19,7 +19,7 @@
 
 -->
 # Chapter 7: Ecosystem Integration
-# TsFile-Hadoop-Connector
+# MapReduce TsFile
 <!-- TOC -->
 ## Outline
 
@@ -48,7 +48,7 @@ With this connector, you can
 
 |Hadoop Version | Java Version | TsFile Version|
 |-------------  | ------------ |------------ |
-| `2.7.3`       | `1.8`        | `0.8.0-SNAPSHOT`|
+| `2.7.3`       | `1.8`        | `0.9.0`|
 
 > Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
 
