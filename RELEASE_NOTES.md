@@ -94,6 +94,7 @@
 ## Known Issues
 
 * IOTDB-20 Need to support UPDATE
+* IOTDB-303 Lost users information when upgrading 0.8.x to 0.9.0
 
 ## Bug Fixes
 
