@@ -80,13 +80,6 @@ public class IoTDB implements IoTDBMBean {
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(enableWAL);
 
-    // When registering statMonitor, we should start recovering some statistics
-    // with latest values stored
-    // Warn: registMonitor() method should be called after systemDataRecovery()
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
-      StatMonitor.getInstance().recovery();
-    }
-
     initMManager();
     registerManager.register(StorageEngine.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
@@ -99,6 +92,13 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(TVListAllocator.getInstance());
 
     JMXService.registerMBean(getInstance(), mbeanName);
+
+    // When registering statMonitor, we should start recovering some statistics
+    // with latest values stored
+    // Warn: registMonitor() method should be called after systemDataRecovery()
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
+      StatMonitor.getInstance().recovery();
+    }
 
     logger.info("IoTDB is set up.");
   }
