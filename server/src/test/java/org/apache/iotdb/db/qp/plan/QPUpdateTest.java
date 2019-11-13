@@ -27,31 +27,24 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.exception.ArgsErrorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.junit.After;
 import org.junit.Test;
 
 public class QPUpdateTest {
 
   private QueryProcessor processor;
 
-  @After
-  public void after() throws ProcessorException {
-  }
-
   @Test
   public void test()
-      throws QueryProcessorException, ArgsErrorException, ProcessorException, IOException {
+      throws QueryProcessException, IOException {
     init();
     // testUpdate();
     // testUpdate2();
@@ -60,7 +53,7 @@ public class QPUpdateTest {
     // testDeletePaths();
   }
 
-  private void init() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+  private void init() throws QueryProcessException {
     MemIntQpExecutor memProcessor = new MemIntQpExecutor();
     Map<String, List<String>> fakeAllPaths = new HashMap<String, List<String>>() {
       {
@@ -91,20 +84,20 @@ public class QPUpdateTest {
     processor = new QueryProcessor(memProcessor);
   }
 
-  private void testUpdate2() throws ArgsErrorException, ProcessorException, IOException {
+  private void testUpdate2() throws IOException {
     PhysicalPlan plan = null;
     // String sql = "update root.qp_update_test.device_1.sensor_1 set value=100 where time>100 or (time<=50 and
     // time>10)";
     String sql = "UPDATE root.laptop SET d1.s1 = -33000, d2.s1 = 'string' WHERE time < 100";
     try {
       plan = processor.parseSQLToPhysicalPlan(sql);
-    } catch (QueryProcessorException | MetadataErrorException e) {
+    } catch (QueryProcessException | MetadataException e) {
       assertEquals("UPDATE clause doesn't support multi-update yet.", e.getMessage());
     }
     sql = "UPDATE root.laptop SET d1.s1 = -33000 WHERE time < 100";
     try {
       plan = processor.parseSQLToPhysicalPlan(sql);
-    } catch (QueryProcessorException | MetadataErrorException e) {
+    } catch (QueryProcessException | MetadataException e) {
       assertTrue(false);
     }
     assertEquals("UpdatePlan:  paths:  root.laptop.d1.s1\n" + "  value:-33000\n" + "  filter: \n"
@@ -115,8 +108,8 @@ public class QPUpdateTest {
   }
 
   private void testUpdate()
-      throws QueryProcessorException, ArgsErrorException, ProcessorException, IOException,
-      StorageEngineException, QueryFilterOptimizationException, MetadataErrorException {
+      throws QueryProcessException, IOException,
+      StorageEngineException, QueryFilterOptimizationException, MetadataException {
     String sqlStr = "update root.qp_update_test.device_1.sensor_1 set value = 33000 where time >= 10 and time <= 10";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
     boolean upRet = processor.getExecutor().processNonQuery(plan1);
@@ -136,8 +129,8 @@ public class QPUpdateTest {
   }
 
   private void testDeletePaths()
-      throws QueryProcessorException, ProcessorException, ArgsErrorException, IOException,
-      StorageEngineException, QueryFilterOptimizationException, MetadataErrorException {
+      throws QueryProcessException, IOException,
+      StorageEngineException, QueryFilterOptimizationException, MetadataException {
     String sqlStr = "delete from root.qp_update_test.device_1 where time < 15";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
     boolean upRet = processor.getExecutor().processNonQuery(plan1);
@@ -160,8 +153,8 @@ public class QPUpdateTest {
   }
 
   private void testDelete()
-      throws QueryProcessorException, ProcessorException, ArgsErrorException, IOException,
-      StorageEngineException, QueryFilterOptimizationException, MetadataErrorException {
+      throws QueryProcessException, IOException,
+      StorageEngineException, QueryFilterOptimizationException, MetadataException {
     String sqlStr = "delete from root.qp_update_test.device_1.sensor_1 where time < 15";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
     boolean upRet = processor.getExecutor().processNonQuery(plan1);
@@ -184,8 +177,8 @@ public class QPUpdateTest {
   }
 
   private void testInsert()
-      throws QueryProcessorException, ProcessorException, ArgsErrorException, IOException,
-      StorageEngineException, QueryFilterOptimizationException, MetadataErrorException {
+      throws QueryProcessException, IOException,
+      StorageEngineException, QueryFilterOptimizationException, MetadataException {
     String sqlStr = "insert into root.qp_update_test.device_1 (timestamp, sensor_1, sensor_2) values (13, 50, 40)";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
 

@@ -18,24 +18,19 @@
  */
 package org.apache.iotdb.db.exception;
 
-public class StorageEngineException extends Exception {
+import org.apache.iotdb.rpc.TSStatusCode;
+
+public class StorageEngineException extends ProcessException {
 
   private static final long serialVersionUID = 9001649171768311032L;
 
-  public StorageEngineException() {
-    super();
-  }
-
-  public StorageEngineException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
   public StorageEngineException(String message) {
     super(message);
+    errorCode = TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode();
   }
 
-  public StorageEngineException(Throwable cause) {
-    super(cause);
+  public StorageEngineException(ProcessException e) {
+    super(e.getMessage());
+    errorCode = e.getErrorCode();
   }
-
 }

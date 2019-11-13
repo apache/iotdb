@@ -70,14 +70,16 @@ public class TsFileSequenceReader implements AutoCloseable {
   private int totalChunkNum;
   private TsFileMetaData tsFileMetaData;
   private EndianType endianType = EndianType.BIG_ENDIAN;
+  private boolean isOldVersion = false;
 
   private boolean cacheDeviceMetadata = false;
   private Map<TsDeviceMetadataIndex, TsDeviceMetadata> deviceMetadataMap;
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the file to get the
-   * file metadata size.Then the reader will skip the first TSFileConfig.MAGIC_STRING.getBytes().length +
-   * TSFileConfig.NUMBER_VERSION.getBytes().length bytes of the file for preparing reading real data.
+   * file metadata size.Then the reader will skip the first TSFileConfig.MAGIC_STRING.getBytes().length
+   * + TSFileConfig.NUMBER_VERSION.getBytes().length bytes of the file for preparing reading real
+   * data.
    *
    * @param file the data file
    * @throws IOException If some I/O error occurs
@@ -96,8 +98,9 @@ public class TsFileSequenceReader implements AutoCloseable {
     this.file = file;
     tsFileInput = FSFactoryProducer.getFileInputFactory().getTsFileInput(file);
     // old version number of TsFile using little endian starts with "v"
-    this.endianType = this.readVersionNumber().startsWith("v") 
+    this.endianType = this.readVersionNumber().startsWith("v")
         ? EndianType.LITTLE_ENDIAN : EndianType.BIG_ENDIAN;
+    this.isOldVersion = this.readVersionNumber().startsWith("v");
     try {
       if (loadMetadataSize) {
         loadMetadataSize();
@@ -119,8 +122,9 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the file to get the
-   * file metadata size.Then the reader will skip the first TSFileConfig.MAGIC_STRING.getBytes().length +
-   * TSFileConfig.NUMBER_VERSION.getBytes().length bytes of the file for preparing reading real data.
+   * file metadata size.Then the reader will skip the first TSFileConfig.MAGIC_STRING.getBytes().length
+   * + TSFileConfig.NUMBER_VERSION.getBytes().length bytes of the file for preparing reading real
+   * data.
    *
    * @param input given input
    */
@@ -164,13 +168,25 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   public void loadMetadataSize() throws IOException {
     ByteBuffer metadataSize = ByteBuffer.allocate(Integer.BYTES);
-    tsFileInput.read(metadataSize,
-        tsFileInput.size() - TSFileConfig.MAGIC_STRING.getBytes().length - Integer.BYTES);
-    metadataSize.flip();
-    // read file metadata size and position
-    fileMetadataSize = ReadWriteIOUtils.readInt(metadataSize);
-    fileMetadataPos =
-        tsFileInput.size() - TSFileConfig.MAGIC_STRING.getBytes().length - Integer.BYTES - fileMetadataSize;
+    if (readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
+      tsFileInput.read(metadataSize,
+          tsFileInput.size() - TSFileConfig.MAGIC_STRING.getBytes().length - Integer.BYTES);
+      metadataSize.flip();
+      // read file metadata size and position
+      fileMetadataSize = ReadWriteIOUtils.readInt(metadataSize);
+      fileMetadataPos =
+          tsFileInput.size() - TSFileConfig.MAGIC_STRING.getBytes().length - Integer.BYTES
+              - fileMetadataSize;
+    } else if (readTailMagic().equals(TSFileConfig.OLD_VERSION)) {
+      tsFileInput.read(metadataSize,
+          tsFileInput.size() - TSFileConfig.OLD_MAGIC_STRING.getBytes().length - Integer.BYTES);
+      metadataSize.flip();
+      // read file metadata size and position
+      fileMetadataSize = ReadWriteIOUtils.readInt(metadataSize);
+      fileMetadataPos =
+          tsFileInput.size() - TSFileConfig.OLD_MAGIC_STRING.getBytes().length - Integer.BYTES
+              - fileMetadataSize;
+    }
   }
 
   public long getFileMetadataPos() {
@@ -196,8 +212,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    * whether the file is a complete TsFile: only if the head magic and tail magic string exists.
    */
   public boolean isComplete() throws IOException {
-    return tsFileInput.size() >= TSFileConfig.MAGIC_STRING.getBytes().length * 2 + TSFileConfig.VERSION_NUMBER.getBytes().length &&
-        readTailMagic().equals(readHeadMagic());
+    return tsFileInput.size()
+        >= TSFileConfig.MAGIC_STRING.getBytes().length * 2 + TSFileConfig.VERSION_NUMBER.getBytes().length &&
+        (readTailMagic().equals(readHeadMagic()) || readTailMagic().equals(TSFileConfig.OLD_VERSION));
   }
 
   /**
@@ -229,13 +246,13 @@ public class TsFileSequenceReader implements AutoCloseable {
    * this function reads version number and checks compatibility of TsFile.
    */
   public String readVersionNumber() throws IOException, NotCompatibleException {
-    ByteBuffer versionNumberBytes = ByteBuffer.allocate(TSFileConfig.VERSION_NUMBER.getBytes().length);
+    ByteBuffer versionNumberBytes = ByteBuffer
+        .allocate(TSFileConfig.VERSION_NUMBER.getBytes().length);
     tsFileInput.read(versionNumberBytes, TSFileConfig.MAGIC_STRING.getBytes().length);
     versionNumberBytes.flip();
-    String versionNumberString = new String(versionNumberBytes.array());
-    return versionNumberString;
+    return new String(versionNumberBytes.array());
   }
-  
+
   public EndianType getEndianType() {
     return this.endianType;
   }
@@ -245,9 +262,28 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public TsFileMetaData readFileMetadata() throws IOException {
     if (tsFileMetaData == null) {
-      tsFileMetaData = TsFileMetaData.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
+      tsFileMetaData = TsFileMetaData
+          .deserializeFrom(readData(fileMetadataPos, fileMetadataSize), isOldVersion);
+    }
+    if (isOldVersion) {
+      tsFileMetaData.setTotalChunkNum(countTotalChunkNum());
     }
     return tsFileMetaData;
+  }
+
+  /**
+   * count total chunk num
+   */
+  private int countTotalChunkNum() throws IOException {
+    int count = 0;
+    for (TsDeviceMetadataIndex deviceIndex : tsFileMetaData.getDeviceMap().values()) {
+      TsDeviceMetadata deviceMetadata = readTsDeviceMetaData(deviceIndex);
+      for (ChunkGroupMetaData chunkGroupMetaData : deviceMetadata
+          .getChunkGroupMetaDataList()) {
+        count += chunkGroupMetaData.getChunkMetaDataList().size();
+      }
+    }
+    return count;
   }
 
   /**
@@ -262,7 +298,8 @@ public class TsFileSequenceReader implements AutoCloseable {
       return data.get();
     } else {
       //no real data
-      return TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length;
+      return TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
+          .getBytes().length;
     }
   }
 
@@ -552,16 +589,19 @@ public class TsFileSequenceReader implements AutoCloseable {
     long endOffsetOfChunkGroup;
     long versionOfChunkGroup = 0;
 
-    if (fileSize < TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length) {
+    if (fileSize < TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
+        .getBytes().length) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
     String magic = readHeadMagic(true);
-    tsFileInput.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length);
+    tsFileInput.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
+        .getBytes().length);
     if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
 
-    if (fileSize == TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length) {
+    if (fileSize == TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
+        .getBytes().length) {
       return TsFileCheckStatus.ONLY_MAGIC_HEAD;
     } else if (readTailMagic().equals(magic)) {
       loadMetadataSize();
@@ -719,7 +759,8 @@ public class TsFileSequenceReader implements AutoCloseable {
 
     List<ChunkGroupMetaData> result = new ArrayList<>();
 
-    for (Map.Entry<String, TsDeviceMetadataIndex> entry : tsFileMetaData.getDeviceMap().entrySet()) {
+    for (Map.Entry<String, TsDeviceMetadataIndex> entry : tsFileMetaData.getDeviceMap()
+        .entrySet()) {
       // read TsDeviceMetadata from file
       TsDeviceMetadata tsDeviceMetadata = readTsDeviceMetaData(entry.getValue());
       result.addAll(tsDeviceMetadata.getChunkGroupMetaDataList());

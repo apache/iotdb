@@ -28,10 +28,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
-import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -40,18 +40,18 @@ import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateDeviceOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateDeviceTemplateOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -59,18 +59,18 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateDevicePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -88,7 +88,7 @@ public class PhysicalGenerator {
   }
 
   public PhysicalPlan transformToPhysicalPlan(Operator operator)
-      throws QueryProcessorException {
+      throws QueryProcessException {
     List<Path> paths;
     switch (operator.getType()) {
       case AUTHOR:
@@ -98,7 +98,7 @@ public class PhysicalGenerator {
               author.getPassWord(), author.getNewPassword(), author.getPrivilegeList(),
               author.getNodeName());
         } catch (AuthException e) {
-          throw new QueryProcessorException(e);
+          throw new QueryProcessException(e.getMessage());
         }
       case GRANT_WATERMARK_EMBEDDING:
       case REVOKE_WATERMARK_EMBEDDING:
@@ -142,7 +142,7 @@ public class PhysicalGenerator {
         paths = insert.getSelectedPaths();
         if (paths.size() != 1) {
           throw new LogicalOperatorException(
-              "For Insert command, cannot specified more than one seriesPath:" + paths);
+              "For Insert command, cannot specified more than one seriesPath: " + paths);
         }
         return new InsertPlan(paths.get(0).getFullPath(), insert.getTime(),
             insert.getMeasurementList(),
@@ -164,13 +164,13 @@ public class PhysicalGenerator {
         }
 
       default:
-        throw new LogicalOperatorException("not supported operator type: " + operator.getType());
+        throw new LogicalOperatorException(operator.getType().toString(), "");
     }
   }
 
 
   private PhysicalPlan transformQuery(QueryOperator queryOperator)
-      throws QueryProcessorException {
+      throws QueryProcessException {
     QueryPlan queryPlan;
 
     if (queryOperator.isGroupBy()) {
@@ -184,7 +184,7 @@ public class PhysicalGenerator {
       queryPlan = new FillQueryPlan();
       FilterOperator timeFilter = queryOperator.getFilterOperator();
       if (!timeFilter.isSingle()) {
-        throw new QueryProcessorException("Slice query must select a single time point");
+        throw new QueryProcessException("Slice query must select a single time point");
       }
       long time = Long.parseLong(((BasicFunctionOperator) timeFilter).getValue());
       ((FillQueryPlan) queryPlan).setQueryTime(time);
@@ -252,7 +252,7 @@ public class PhysicalGenerator {
               TSDataType dataType = TSServiceImpl.getSeriesType(pathForDataType);
               if (dataTypeConsistencyChecker.containsKey(measurementColumn)) {
                 if (!dataType.equals(dataTypeConsistencyChecker.get(measurementColumn))) {
-                  throw new QueryProcessorException(
+                  throw new QueryProcessException(
                       "The data types of the same measurement column should be the same across "
                           + "devices in GROUP_BY_DEVICE sql. For more details please refer to the "
                           + "SQL document.");
@@ -275,10 +275,10 @@ public class PhysicalGenerator {
             // update deviceSetOfGivenSuffix
             deviceSetOfGivenSuffix.addAll(tmpDeviceSet);
 
-          } catch (MetadataErrorException e) {
+          } catch (MetadataException e) {
             throw new LogicalOptimizeException(
-                String.format("error when getting all paths of a full path: %s",
-                    fullPath.getFullPath()), e);
+                String.format("Error when getting all paths of a full path: %s",
+                    fullPath.getFullPath()) + e.getMessage());
           }
         }
         // update measurementColumnList
@@ -292,7 +292,7 @@ public class PhysicalGenerator {
       }
 
       if (measurementColumnList.isEmpty()) {
-        throw new QueryProcessorException("do not select any existing series");
+        throw new QueryProcessException("do not select any existing series");
       }
 
       // slimit trim on the measurementColumnList
@@ -325,12 +325,12 @@ public class PhysicalGenerator {
 
 
   private List<String> slimitTrimColumn(List<String> columnList, int seriesLimit, int seriesOffset)
-      throws QueryProcessorException {
+      throws QueryProcessException {
     int size = columnList.size();
 
     // check parameter range
     if (seriesOffset >= size) {
-      throw new QueryProcessorException("SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.");
+      throw new QueryProcessException("SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.");
     }
     int endPosition = seriesOffset + seriesLimit;
     if (endPosition > size) {

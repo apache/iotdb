@@ -142,7 +142,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 
 * 显示设备语句
 ```
-SHOW DEVICE
+SHOW DEVICES
 Eg: IoTDB > SHOW DEVICES
 Note: This statement can be used in IoTDB Client and JDBC.
 ```

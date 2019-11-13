@@ -145,10 +145,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
         logger.warn("MultiFileLogNodeManager has already started");
       }
     } catch (Exception e) {
-      String errorMessage = String
-          .format("Failed to start %s because of %s", this.getID().getName(),
-              e.getMessage());
-      throw new StartupException(errorMessage, e);
+      throw new StartupException(this.getID().getName(), e.getMessage());
     }
   }
 

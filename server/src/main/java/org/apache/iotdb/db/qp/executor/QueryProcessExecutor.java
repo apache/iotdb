@@ -38,11 +38,11 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupException;
+import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -54,16 +54,16 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateDevicePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -95,7 +95,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
+  public boolean processNonQuery(PhysicalPlan plan) throws QueryProcessException {
     switch (plan.getOperatorType()) {
       case DELETE:
         delete((DeletePlan) plan);
@@ -150,17 +150,19 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
   }
 
-  private void operateTTL(SetTTLPlan plan) throws ProcessorException {
+  private void operateTTL(SetTTLPlan plan) throws QueryProcessException {
     try {
       MManager.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
       StorageEngine.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
-    } catch (PathErrorException | IOException | StorageEngineException e) {
-      throw new ProcessorException(e);
+    } catch (PathException | StorageEngineException e) {
+      throw new QueryProcessException(e);
+    } catch (IOException e) {
+      throw new QueryProcessException(e.getMessage());
     }
   }
 
   @Override
-  public TSDataType getSeriesType(Path path) throws PathErrorException {
+  public TSDataType getSeriesType(Path path) throws PathException {
     if (path.equals(SQLConstant.RESERVED_TIME)) {
       return TSDataType.INT64;
     }
@@ -180,51 +182,49 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
   @Override
   public QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression,
-      QueryContext context)
-      throws ProcessorException, StorageEngineException, QueryFilterOptimizationException,
-      PathErrorException, IOException {
+      QueryContext context) throws StorageEngineException, QueryFilterOptimizationException,
+      QueryProcessException, IOException {
     return queryRouter.aggregate(paths, aggres, expression, context);
   }
 
   @Override
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
       QueryContext context)
-      throws IOException, PathErrorException, StorageEngineException {
+      throws IOException, QueryProcessException, StorageEngineException {
     return queryRouter.fill(fillPaths, queryTime, fillTypes, context);
   }
 
   @Override
   public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
       long unit, long origin, List<Pair<Long, Long>> intervals, QueryContext context)
-      throws ProcessorException, StorageEngineException, QueryFilterOptimizationException,
-      PathErrorException, IOException {
+      throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
     return queryRouter.groupBy(paths, aggres, expression, unit, origin, intervals, context);
   }
 
   @Override
   public void update(Path path, long startTime, long endTime, String value)
-      throws ProcessorException {
+      throws QueryProcessException {
   }
 
   @Override
-  public void delete(Path path, long timestamp) throws ProcessorException {
+  public void delete(Path path, long timestamp) throws QueryProcessException {
     String deviceId = path.getDevice();
     String measurementId = path.getMeasurement();
     try {
       if (!mManager.pathExist(path.getFullPath())) {
-        throw new ProcessorException(
+        throw new QueryProcessException(
             String.format("Time series %s does not exist.", path.getFullPath()));
       }
       mManager.getStorageGroupNameByPath(path.getFullPath());
       storageEngine.delete(deviceId, measurementId, timestamp);
     } catch (StorageGroupException | StorageEngineException e) {
-      throw new ProcessorException(e);
+      throw new QueryProcessException(e);
     }
   }
 
 
   @Override
-  public void insert(InsertPlan insertPlan) throws ProcessorException {
+  public void insert(InsertPlan insertPlan) throws QueryProcessException {
     try {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
@@ -238,13 +238,13 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         // check if timeseries exists
         if (!node.hasChild(measurementList[i])) {
           if (!conf.isAutoCreateSchemaEnabled()) {
-            throw new ProcessorException(
+            throw new QueryProcessException(
                 String.format("Current deviceId[%s] does not contain measurement:%s",
                     deviceId, measurementList[i]));
           }
           try {
             addPathToMTree(deviceId, measurementList[i], strValues[i]);
-          } catch (MetadataErrorException e) {
+          } catch (MetadataException e) {
             if (!e.getMessage().contains("already exist")) {
               throw e;
             }
@@ -252,7 +252,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         }
         MNode measurementNode = node.getChild(measurementList[i]);
         if (!measurementNode.isLeaf()) {
-          throw new ProcessorException(
+          throw new QueryProcessException(
               String.format("Current Path is not leaf node. %s.%s", deviceId,
                   measurementList[i]));
         }
@@ -261,13 +261,15 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       }
       insertPlan.setDataTypes(dataTypes);
       storageEngine.insert(insertPlan);
-    } catch (PathErrorException | StorageEngineException | MetadataErrorException | CacheException e) {
-      throw new ProcessorException(e);
+    } catch (PathException | StorageEngineException | MetadataException e) {
+      throw new QueryProcessException(e);
+    } catch (CacheException e) {
+      throw new QueryProcessException(e.getMessage());
     }
   }
 
   @Override
-  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws ProcessorException {
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
     try {
       String[] measurementList = batchInsertPlan.getMeasurements();
       String deviceId = batchInsertPlan.getDeviceId();
@@ -280,7 +282,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         // check if timeseries exists
         if (!node.hasChild(measurementList[i])) {
           if (!conf.isAutoCreateSchemaEnabled()) {
-            throw new ProcessorException(
+            throw new QueryProcessException(
                 String.format("Current deviceId[%s] does not contain measurement:%s",
                     deviceId, measurementList[i]));
           }
@@ -288,13 +290,13 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         }
         MNode measurementNode = node.getChild(measurementList[i]);
         if (!measurementNode.isLeaf()) {
-          throw new ProcessorException(
+          throw new QueryProcessException(
               String.format("Current Path is not leaf node. %s.%s", deviceId, measurementList[i]));
         }
 
         // check data type
         if (measurementNode.getSchema().getType() != batchInsertPlan.getDataTypes()[i]) {
-          throw new ProcessorException(String
+          throw new QueryProcessException(String
               .format("Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
                   measurementList[i], batchInsertPlan.getDataTypes()[i],
                   measurementNode.getSchema().getType()));
@@ -302,17 +304,19 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       }
       return storageEngine.insertBatch(batchInsertPlan);
 
-    } catch (PathErrorException | StorageEngineException | MetadataErrorException | CacheException e) {
-      throw new ProcessorException(e);
+    } catch (PathException | StorageEngineException | MetadataException e) {
+      throw new QueryProcessException(e);
+    } catch (CacheException e) {
+      throw new QueryProcessException(e.getMessage());
     }
   }
 
   @Override
-  public List<String> getAllPaths(String originPath) throws MetadataErrorException {
+  public List<String> getAllPaths(String originPath) throws MetadataException {
     return MManager.getInstance().getPaths(originPath);
   }
 
-  private boolean operateAuthor(AuthorPlan author) throws ProcessorException {
+  private boolean operateAuthor(AuthorPlan author) throws QueryProcessException {
     AuthorOperator.AuthorType authorType = author.getAuthorType();
     String userName = author.getUserName();
     String roleName = author.getRoleName();
@@ -324,7 +328,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       authorizer = LocalFileAuthorizer.getInstance();
     } catch (AuthException e) {
-      throw new ProcessorException(e);
+      throw new QueryProcessException(e.getMessage());
     }
     try {
       switch (authorType) {
@@ -370,16 +374,16 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
           authorizer.revokeRoleFromUser(roleName, userName);
           break;
         default:
-          throw new ProcessorException("Unsupported operation " + authorType);
+          throw new QueryProcessException("Unsupported operation " + authorType);
       }
     } catch (AuthException e) {
-      throw new ProcessorException(e);
+      throw new QueryProcessException(e.getMessage());
     }
     return true;
   }
 
   private boolean operateWatermarkEmbedding(List<String> users, boolean useWatermark)
-      throws ProcessorException {
+      throws QueryProcessException {
     IAuthorizer authorizer;
     try {
       authorizer = LocalFileAuthorizer.getInstance();
@@ -387,12 +391,13 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         authorizer.setUserUseWaterMark(user, useWatermark);
       }
     } catch (AuthException e) {
-      throw new ProcessorException(e);
+      throw new QueryProcessException(e.getMessage());
     }
     return true;
   }
-  
-  private boolean createTimeSeries(CreateTimeSeriesPlan createTimeSeriesPlan) throws ProcessorException {
+
+  private boolean createTimeSeries(CreateTimeSeriesPlan createTimeSeriesPlan)
+      throws QueryProcessException {
     Path path = createTimeSeriesPlan.getPath();
     TSDataType dataType = createTimeSeriesPlan.getDataType();
     CompressionType compressor = createTimeSeriesPlan.getCompressor();
@@ -403,45 +408,48 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       if (result) {
         storageEngine.addTimeSeries(path, dataType, encoding, compressor, props);
       }
-    } catch (StorageEngineException | MetadataErrorException | PathErrorException e) {
-      throw new ProcessorException(e);
+    } catch (StorageEngineException | MetadataException | PathException e) {
+      throw new QueryProcessException(e);
     }
     return true;
   }
-  
-  private boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws ProcessorException {
+
+  private boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan)
+      throws QueryProcessException {
     List<Path> deletePathList = deleteTimeSeriesPlan.getPaths();
     try {
       deleteDataOfTimeSeries(deletePathList);
-      Set<String> emptyStorageGroups = mManager.deletePaths(deletePathList);
+      Set<String> emptyStorageGroups = mManager.deletePaths(deletePathList, false);
       for (String deleteStorageGroup : emptyStorageGroups) {
         storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
       }
-    } catch (MetadataErrorException e) {
-      throw new ProcessorException(e);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
     }
     return true;
   }
-  
-  private boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) throws ProcessorException {
+
+  private boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan)
+      throws QueryProcessException {
     Path path = setStorageGroupPlan.getPath();
     try {
       mManager.setStorageGroupToMTree(path.getFullPath());
-    } catch (MetadataErrorException e) {
-      throw new ProcessorException(e);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
     }
     return true;
   }
-  
-  private boolean deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan) throws ProcessorException {
+
+  private boolean deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan)
+      throws QueryProcessException {
     List<Path> deletePathList = deleteStorageGroupPlan.getPaths();
     try {
       mManager.deleteStorageGroupsFromMTree(deletePathList);
       for (Path storageGroupPath : deletePathList) {
         storageEngine.deleteStorageGroup(storageGroupPath.getFullPath());
       }
-    } catch (MetadataErrorException e) {
-      throw new ProcessorException(e);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
     }
     return true;
   }
@@ -485,7 +493,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
    *
    * @param pathList deleted paths
    */
-  private void deleteDataOfTimeSeries(List<Path> pathList) throws ProcessorException {
+  private void deleteDataOfTimeSeries(List<Path> pathList) throws QueryProcessException {
     for (Path p : pathList) {
       DeletePlan deletePlan = new DeletePlan();
       deletePlan.addPath(p);
@@ -494,7 +502,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
   }
 
-  private boolean operateProperty(PropertyPlan propertyPlan) throws ProcessorException {
+  private boolean operateProperty(PropertyPlan propertyPlan) throws QueryProcessException {
     PropertyOperator.PropertyType propertyType = propertyPlan.getPropertyType();
     Path propertyPath = propertyPlan.getPropertyPath();
     Path metadataPath = propertyPlan.getMetadataPath();
@@ -516,17 +524,17 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
           mManager.unlinkMNodeFromPTree(propertyPath.getFullPath(), metadataPath.getFullPath());
           break;
         default:
-          throw new ProcessorException("unknown namespace type:" + propertyType);
+          throw new QueryProcessException("unknown namespace type:" + propertyType);
       }
-    } catch (PathErrorException | IOException | MetadataErrorException e) {
-      throw new ProcessorException("meet error in " + propertyType + " . ", e);
+    } catch (PathException | IOException | MetadataException e) {
+      throw new QueryProcessException("meet error in " + propertyType + " . " + e.getMessage());
     }
     return true;
   }
 
   @Override
   protected QueryDataSet processAuthorQuery(AuthorPlan plan, QueryContext context)
-      throws ProcessorException {
+      throws QueryProcessException {
     AuthorType authorType = plan.getAuthorType();
     String userName = plan.getUserName();
     String roleName = plan.getRoleName();
@@ -535,7 +543,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       authorizer = LocalFileAuthorizer.getInstance();
     } catch (AuthException e) {
-      throw new ProcessorException(e);
+      throw new QueryProcessException(e.getMessage());
     }
 
     ListDataSet dataSet;
@@ -561,10 +569,10 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
           dataSet = executeListUserPrivileges(authorizer, userName, path);
           break;
         default:
-          throw new ProcessorException("Unsupported operation " + authorType);
+          throw new QueryProcessException("Unsupported operation " + authorType);
       }
     } catch (AuthException e) {
-      throw new ProcessorException(e);
+      throw new QueryProcessException(e.getMessage());
     }
     return dataSet;
   }
@@ -731,7 +739,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
    * Add a seriesPath to MTree
    */
   private void addPathToMTree(String deviceId, String measurementId, TSDataType dataType)
-      throws PathErrorException, MetadataErrorException, StorageEngineException {
+      throws PathException, MetadataException, StorageEngineException {
     String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
     TSEncoding defaultEncoding = getDefaultEncoding(dataType);
     CompressionType defaultCompressor =
@@ -745,7 +753,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   }
 
   private void addPathToMTree(String deviceId, String measurementId, Object value)
-      throws PathErrorException, MetadataErrorException, StorageEngineException {
+      throws PathException, MetadataException, StorageEngineException {
     TSDataType predictedDataType = TypeInferenceUtils.getPredictedDataType(value);
     addPathToMTree(deviceId, measurementId, predictedDataType);
   }

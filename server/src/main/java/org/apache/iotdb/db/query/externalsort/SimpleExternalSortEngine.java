@@ -25,7 +25,7 @@
  import java.util.List;
  import org.apache.commons.io.FileUtils;
  import org.apache.iotdb.db.conf.IoTDBDescriptor;
- import org.apache.iotdb.db.exception.StorageEngineFailureException;
+ import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
  import org.apache.iotdb.db.query.externalsort.adapter.ByTimestampReaderAdapter;
  import org.apache.iotdb.db.query.reader.IPointReader;
  import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
@@ -55,7 +55,7 @@
        FileUtils.deleteDirectory(new File(queryDir));
        FileUtils.forceMkdir(new File(queryDir));
      } catch (IOException e) {
-       throw new StorageEngineFailureException("create system directory failed! " + e.toString());
+       throw new StorageEngineFailureException(e);
      }
    }
 
