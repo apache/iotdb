@@ -65,7 +65,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   /**
-   * setFolders reader and aggregate function.
+   * init reader and aggregate function.
    */
   public void initGroupBy(QueryContext context, List<String> aggres, IExpression expression)
       throws StorageEngineException, QueryProcessException, IOException {

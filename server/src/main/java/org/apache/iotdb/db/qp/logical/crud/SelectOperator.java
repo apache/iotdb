@@ -32,7 +32,7 @@ public final class SelectOperator extends Operator {
   private List<String> aggregations;
 
   /**
-   * setFolders with tokenIntType, default operatorType is <code>OperatorType.SELECT</code>.
+   * init with tokenIntType, default operatorType is <code>OperatorType.SELECT</code>.
    */
   public SelectOperator(int tokenIntType) {
     super(tokenIntType);

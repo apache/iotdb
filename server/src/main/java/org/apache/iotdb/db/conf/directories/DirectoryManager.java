@@ -45,7 +45,7 @@ public class DirectoryManager {
 
   private DirectoryManager() {
     sequenceFileFolders =
-        new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+        Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs());
     for (int i = 0; i < sequenceFileFolders.size(); i++) {
       sequenceFileFolders
           .set(i, sequenceFileFolders.get(i) + File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME);
@@ -53,7 +53,7 @@ public class DirectoryManager {
     mkDataDirs(sequenceFileFolders);
 
     unsequenceFileFolders =
-        new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+        Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs());
     for (int i = 0; i < unsequenceFileFolders.size(); i++) {
       unsequenceFileFolders.set(i,
           unsequenceFileFolders.get(i) + File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME);
@@ -78,11 +78,11 @@ public class DirectoryManager {
   public void updateFileFolders() throws LoadConfigurationException {
     try {
       List<String> sequenceFileFolders =
-          new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+          Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs());
       mkDataDirs(sequenceFileFolders);
 
       List<String> unsequenceFileFolders =
-          new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+          Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs());
       mkDataDirs(unsequenceFileFolders);
       sequenceStrategy.setFolders(sequenceFileFolders);
       unsequenceStrategy.setFolders(unsequenceFileFolders);

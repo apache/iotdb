@@ -132,7 +132,7 @@
    }
 
    /**
-    * setFolders IPointReader with ChunkReaderWrap.
+    * init IPointReader with ChunkReaderWrap.
     */
    private List<IPointReader> generateIPointReader(List<ChunkReaderWrap> readerWraps,
        final int start, final int size) throws IOException {
@@ -144,7 +144,7 @@
    }
 
    /**
-    * setFolders IReaderByTimestamp with ChunkReaderWrap.
+    * init IReaderByTimestamp with ChunkReaderWrap.
     */
    private List<IReaderByTimestamp> generateIReaderByTimestamp(List<ChunkReaderWrap> readerWraps,
        final int start, final int size) throws IOException {

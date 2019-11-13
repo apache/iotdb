@@ -143,7 +143,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     try {
       syncLog.get().startSyncDeletedFilesName();
     } catch (IOException e) {
-      logger.error("Can not setFolders sync process", e);
+      logger.error("Can not init sync process", e);
       return getErrorResult(e.getMessage());
     }
     return getSuccessResult();
@@ -185,9 +185,9 @@ public class SyncServiceImpl implements SyncService.Iface {
       syncLog.get().startSyncTsFiles();
       messageDigest.set(MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME));
     } catch (IOException | NoSuchAlgorithmException e) {
-      logger.error("Can not setFolders sync resource for file {}", filename, e);
+      logger.error("Can not init sync resource for file {}", filename, e);
       return getErrorResult(
-          String.format("Can not setFolders sync resource for file %s because %s", filename,
+          String.format("Can not init sync resource for file %s because %s", filename,
               e.getMessage()));
     }
     return getSuccessResult();
