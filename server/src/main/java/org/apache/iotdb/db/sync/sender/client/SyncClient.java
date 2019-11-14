@@ -204,7 +204,6 @@ public class SyncClient implements ISyncClient {
         syncAll();
       } catch (SyncConnectionException | IOException | TException e) {
         logger.error("Sync failed", e);
-        stop();
       }
     }, SyncConstant.SYNC_PROCESS_DELAY, SyncConstant.SYNC_PROCESS_PERIOD, TimeUnit.SECONDS);
   }

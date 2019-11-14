@@ -18,21 +18,24 @@
  */
 package org.apache.iotdb.db.exception;
 
-public class SyncConnectionException extends Exception {
+import org.apache.iotdb.rpc.TSStatusCode;
 
+public class SyncConnectionException extends ProcessException {
 
   private static final long serialVersionUID = -6661904365503849681L;
 
   public SyncConnectionException(String message) {
     super(message);
+    errorCode = TSStatusCode.SYNC_CONNECTION_EXCEPTION.getStatusCode();
   }
 
   public SyncConnectionException(String message, Throwable cause) {
-    super(message, cause);
+    super(message + cause.getMessage());
+    errorCode = TSStatusCode.SYNC_CONNECTION_EXCEPTION.getStatusCode();
   }
 
   public SyncConnectionException(Throwable cause) {
-    super(cause);
+    super(cause.getMessage());
+    errorCode = TSStatusCode.SYNC_CONNECTION_EXCEPTION.getStatusCode();
   }
-
 }

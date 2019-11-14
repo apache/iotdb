@@ -29,7 +29,7 @@ import java.time.format.DateTimeParseException;
 import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 
 public class DatetimeUtils {
 
@@ -444,7 +444,7 @@ public class DatetimeUtils {
       }
       return instant.toEpochMilli();
     } catch (DateTimeParseException e) {
-      throw new LogicalOperatorException(e);
+      throw new LogicalOperatorException(e.getMessage());
     }
   }
 

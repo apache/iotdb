@@ -60,18 +60,19 @@ import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.MergeException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.OutOfTTLException;
-import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.query.OutOfTTLException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.JobFileManager;
+import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
@@ -179,15 +180,15 @@ public class StorageGroupProcessor {
    */
   private LinkedList<String> lruForSensorUsedInQuery = new LinkedList<>();
   /**
-   * when the data in a storage group is older than dataTTL, it is considered invalid and will
-   * be eventually removed.
+   * when the data in a storage group is older than dataTTL, it is considered invalid and will be
+   * eventually removed.
    */
   private long dataTTL = Long.MAX_VALUE;
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   public StorageGroupProcessor(String systemInfoDir, String storageGroupName)
-      throws ProcessorException {
+      throws StorageGroupProcessorException {
     this.storageGroupName = storageGroupName;
 
     // construct the file schema
@@ -211,7 +212,7 @@ public class StorageGroupProcessor {
     recover();
   }
 
-  private void recover() throws ProcessorException {
+  private void recover() throws StorageGroupProcessorException {
     logger.info("recover Storage Group  {}", storageGroupName);
 
     try {
@@ -239,8 +240,8 @@ public class StorageGroupProcessor {
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
         mergingMods.delete();
       }
-    } catch (IOException | MetadataErrorException e) {
-      throw new ProcessorException(e);
+    } catch (IOException | MetadataException e) {
+      throw new StorageGroupProcessorException(e);
     }
 
     for (TsFileResource resource : sequenceFileList) {
@@ -287,8 +288,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void recoverSeqFiles(List<TsFileResource> tsFiles) throws ProcessorException {
-
+  private void recoverSeqFiles(List<TsFileResource> tsFiles) throws StorageGroupProcessorException {
     for (TsFileResource tsFileResource : tsFiles) {
       sequenceFileList.add(tsFileResource);
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-"
@@ -298,7 +298,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void recoverUnseqFiles(List<TsFileResource> tsFiles) throws ProcessorException {
+  private void recoverUnseqFiles(List<TsFileResource> tsFiles) throws StorageGroupProcessorException {
     for (TsFileResource tsFileResource : tsFiles) {
       unSequenceFileList.add(tsFileResource);
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-",
@@ -351,7 +351,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void insert(InsertPlan insertPlan) throws QueryProcessorException {
+  public void insert(InsertPlan insertPlan) throws QueryProcessException {
     // reject insertions that are out of ttl
     if (!checkTTL(insertPlan.getTime())) {
       throw new OutOfTTLException(insertPlan.getTime(), (System.currentTimeMillis() - dataTTL));
@@ -370,7 +370,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessorException {
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
     writeLock();
     try {
       // init map
@@ -418,7 +418,7 @@ public class StorageGroupProcessor {
   }
 
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
-      List<Integer> indexes, boolean sequence, Integer[] results) throws QueryProcessorException {
+      List<Integer> indexes, boolean sequence, Integer[] results) throws QueryProcessException {
 
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(sequence);
     if (tsFileProcessor == null) {
@@ -451,7 +451,7 @@ public class StorageGroupProcessor {
   }
 
   private void insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence)
-      throws QueryProcessorException {
+      throws QueryProcessException {
     TsFileProcessor tsFileProcessor;
     boolean result;
 
@@ -659,7 +659,7 @@ public class StorageGroupProcessor {
         return;
       }
       // ensure that the file is not used by any queries
-      if (resource.getMergeQueryLock().writeLock().tryLock()) {
+      if (resource.getWriteQueryLock().writeLock().tryLock()) {
         try {
           // physical removal
           resource.remove();
@@ -673,7 +673,7 @@ public class StorageGroupProcessor {
             unSequenceFileList.remove(resource);
           }
         } finally {
-          resource.getMergeQueryLock().writeLock().unlock();
+          resource.getWriteQueryLock().writeLock().unlock();
         }
       }
     } finally {
@@ -964,6 +964,35 @@ public class StorageGroupProcessor {
     }
   }
 
+  /**
+   * count all Tsfiles in the storage group which need to be upgraded
+   *
+   * @return total num of the tsfiles which need to be upgraded in the storage group
+   */
+  public int countUpgradeFiles() {
+    int cntUpgradeFileNum = 0;
+    for (TsFileResource seqTsFileResource : sequenceFileList) {
+      if (UpgradeUtils.isNeedUpgrade(seqTsFileResource)) {
+        cntUpgradeFileNum += 1;
+      }
+    }
+    for (TsFileResource unseqTsFileResource : unSequenceFileList) {
+      if (UpgradeUtils.isNeedUpgrade(unseqTsFileResource)) {
+        cntUpgradeFileNum += 1;
+      }
+    }
+    return cntUpgradeFileNum;
+  }
+
+  public void upgrade() {
+    for (TsFileResource seqTsFileResource : sequenceFileList) {
+      seqTsFileResource.doUpgrade();
+    }
+    for (TsFileResource unseqTsFileResource : unSequenceFileList) {
+      unseqTsFileResource.doUpgrade();
+    }
+  }
+
   public void merge(boolean fullMerge) {
     writeLock();
     try {
@@ -1048,17 +1077,17 @@ public class StorageGroupProcessor {
     }
 
     for (TsFileResource unseqFile : unseqFiles) {
-      unseqFile.getMergeQueryLock().writeLock().lock();
+      unseqFile.getWriteQueryLock().writeLock().lock();
       try {
         unseqFile.remove();
       } finally {
-        unseqFile.getMergeQueryLock().writeLock().unlock();
+        unseqFile.getWriteQueryLock().writeLock().unlock();
       }
     }
   }
 
   private void updateMergeModification(TsFileResource seqFile) {
-    seqFile.getMergeQueryLock().writeLock().lock();
+    seqFile.getWriteQueryLock().writeLock().lock();
     try {
       // remove old modifications and write modifications generated during merge
       seqFile.removeModFile();
@@ -1071,7 +1100,7 @@ public class StorageGroupProcessor {
       logger.error("{} cannot clean the ModificationFile of {} after merge", storageGroupName,
           seqFile.getFile(), e);
     } finally {
-      seqFile.getMergeQueryLock().writeLock().unlock();
+      seqFile.getWriteQueryLock().writeLock().unlock();
     }
   }
 
@@ -1303,12 +1332,12 @@ public class StorageGroupProcessor {
     if (deletedTsFileResource == null) {
       return;
     }
-    deletedTsFileResource.getMergeQueryLock().writeLock().lock();
+    deletedTsFileResource.getWriteQueryLock().writeLock().lock();
     try {
       logger.info("Delete tsfile {} in sync loading process.", deletedTsFileResource.getFile());
       deletedTsFileResource.remove();
     } finally {
-      deletedTsFileResource.getMergeQueryLock().writeLock().unlock();
+      deletedTsFileResource.getWriteQueryLock().writeLock().unlock();
     }
   }
 

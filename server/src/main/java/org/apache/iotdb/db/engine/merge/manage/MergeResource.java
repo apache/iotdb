@@ -36,14 +36,12 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.CachedUnseqResourceMergeReader;
 import org.apache.iotdb.db.utils.MergeUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -69,10 +67,10 @@ public class MergeResource {
   private boolean cacheDeviceMeta = false;
 
   public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    this.seqFiles =
-        seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
-    this.unseqFiles =
-        unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
+    this.seqFiles = seqFiles.stream().filter(this::filterResource)
+        .collect(Collectors.toList());
+    this.unseqFiles = unseqFiles.stream().filter(this::filterResource)
+        .collect(Collectors.toList());
   }
 
   private boolean filterResource(TsFileResource res) {

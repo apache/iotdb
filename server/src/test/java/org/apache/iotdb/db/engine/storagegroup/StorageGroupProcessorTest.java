@@ -27,8 +27,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -69,7 +69,7 @@ public class StorageGroupProcessorTest {
 
 
   @Test
-  public void testSequenceSyncClose() throws QueryProcessorException {
+  public void testSequenceSyncClose() throws QueryProcessException {
     for (int j = 1; j <= 10; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -88,7 +88,7 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testIoTDBRowBatchWriteAndSyncClose() throws QueryProcessorException {
+  public void testIoTDBRowBatchWriteAndSyncClose() throws QueryProcessException {
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -97,7 +97,8 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
-    BatchInsertPlan batchInsertPlan1 = new BatchInsertPlan("root.vehicle.d0", measurements, dataTypes);
+    BatchInsertPlan batchInsertPlan1 = new BatchInsertPlan("root.vehicle.d0", measurements,
+        dataTypes);
 
     long[] times = new long[100];
     Object[] columns = new Object[2];
@@ -116,12 +117,13 @@ public class StorageGroupProcessorTest {
     processor.insertBatch(batchInsertPlan1);
     processor.putAllWorkingTsFileProcessorIntoClosingList();
 
-    BatchInsertPlan batchInsertPlan2 = new BatchInsertPlan("root.vehicle.d0", measurements, dataTypes);
+    BatchInsertPlan batchInsertPlan2 = new BatchInsertPlan("root.vehicle.d0", measurements,
+        dataTypes);
 
     for (int r = 50; r < 149; r++) {
-      times[r-50] = r;
-      ((int[]) columns[0])[r-50] = 1;
-      ((long[]) columns[1])[r-50] = 1;
+      times[r - 50] = r;
+      ((int[]) columns[0])[r - 50] = 1;
+      ((long[]) columns[1])[r - 50] = 1;
     }
     batchInsertPlan2.setTimes(times);
     batchInsertPlan2.setColumns(columns);
@@ -143,7 +145,7 @@ public class StorageGroupProcessorTest {
 
 
   @Test
-  public void testSeqAndUnSeqSyncClose() throws QueryProcessorException {
+  public void testSeqAndUnSeqSyncClose() throws QueryProcessException {
 
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
@@ -175,7 +177,7 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testMerge() throws QueryProcessorException {
+  public void testMerge() throws QueryProcessException {
 
     mergeLock = new AtomicLong(0);
     for (int j = 21; j <= 30; j++) {
@@ -213,7 +215,7 @@ public class StorageGroupProcessorTest {
 
   class DummySGP extends StorageGroupProcessor {
 
-    DummySGP(String systemInfoDir, String storageGroupName) throws ProcessorException {
+    DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
       super(systemInfoDir, storageGroupName);
     }
 

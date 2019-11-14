@@ -232,6 +232,8 @@ public class IoTDBDescriptor {
       conf.setExternalSortThreshold(Integer.parseInt(properties
           .getProperty("external_sort_threshold",
               Integer.toString(conf.getExternalSortThreshold()))));
+      conf.setUpgradeThreadNum(Integer.parseInt(properties.getProperty("upgrade_thread_num",
+          Integer.toString(conf.getUpgradeThreadNum()))));
       conf.setMergeMemoryBudget(Long.parseLong(properties.getProperty("merge_memory_budget",
           Long.toString(conf.getMergeMemoryBudget()))));
       conf.setMergeThreadNum(Integer.parseInt(properties.getProperty("merge_thread_num",

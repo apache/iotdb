@@ -150,6 +150,46 @@ public class ChunkBuffer {
     return headerSize + uncompressedSize;
   }
 
+  /**
+   * write the page header and data into the PageWriter's output stream.
+   */
+  public void writePageHeaderAndDataIntoBuff(ByteBuffer data, PageHeader header)
+      throws PageException {
+    numOfPages++;
+
+    // 1. update time statistics
+    if (this.minTimestamp == Long.MIN_VALUE) {
+      this.minTimestamp = header.getMinTimestamp();
+    }
+    if (this.minTimestamp == Long.MIN_VALUE) {
+      throw new PageException("No valid data point in this page");
+    }
+    this.maxTimestamp = header.getMaxTimestamp();
+
+    // write the page header to pageBuffer
+    try {
+      LOG.debug("start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
+      header.serializeTo(pageBuffer);
+      LOG.debug("finish to flush a page header {} of {} into buffer, buffer position {} ", header,
+          schema.getMeasurementId(), pageBuffer.size());
+
+    } catch (IOException e) {
+      resetTimeStamp();
+      throw new PageException(
+          "IO Exception in writeDataPageHeader,ignore this page", e);
+    }
+
+    // update data point num
+    this.totalValueCount += header.getNumOfValues();
+
+    // write page content to temp PBAOS
+    try (WritableByteChannel channel = Channels.newChannel(pageBuffer)) {
+      channel.write(data);
+    } catch (IOException e) {
+      throw new PageException(e);
+    }
+  }
+
   private void resetTimeStamp() {
     if (totalValueCount == 0) {
       minTimestamp = Long.MIN_VALUE;
@@ -186,8 +226,9 @@ public class ChunkBuffer {
 
     long dataSize = writer.getPos() - dataOffset;
     if (dataSize != pageBuffer.size()) {
-      throw new IOException("Bytes written is inconsistent with the size of data: " + dataSize  +" !="
-          + " " + pageBuffer.size());
+      throw new IOException(
+          "Bytes written is inconsistent with the size of data: " + dataSize + " !="
+              + " " + pageBuffer.size());
     }
 
     writer.endChunk(totalValueCount);

@@ -26,7 +26,7 @@ import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -82,7 +82,7 @@ public abstract class AbstractMemTable implements IMemTable {
   protected abstract IWritableMemChunk genMemSeries(TSDataType dataType);
 
   @Override
-  public void insert(InsertPlan insertPlan) throws QueryProcessorException {
+  public void insert(InsertPlan insertPlan) throws QueryProcessException {
     try {
       for (int i = 0; i < insertPlan.getValues().length; i++) {
 
@@ -93,11 +93,11 @@ public abstract class AbstractMemTable implements IMemTable {
       long recordSizeInByte = MemUtils.getRecordSize(insertPlan);
       memSize += recordSizeInByte;
     } catch (RuntimeException e) {
-      throw new QueryProcessorException(e);
+      throw new QueryProcessException(e.getMessage());
     }
   }
 
-  private static Object parseValue(TSDataType dataType, String value) throws QueryProcessorException {
+  private static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
     try {
       switch (dataType) {
         case BOOLEAN:
@@ -107,7 +107,7 @@ public abstract class AbstractMemTable implements IMemTable {
           } else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEN_TRUE.equals(value)) {
             return true;
           } else {
-            throw new QueryProcessorException(
+            throw new QueryProcessException(
                 "The BOOLEAN data type should be true/TRUE, false/FALSE or 0/1");
           }
         case INT32:
@@ -127,24 +127,24 @@ public abstract class AbstractMemTable implements IMemTable {
               return new Binary(value.substring(1, value.length() - 1));
             }
           } else {
-            throw new QueryProcessorException("The TEXT data type should be covered by \" or '");
+            throw new QueryProcessException("The TEXT data type should be covered by \" or '");
           }
         default:
-          throw new QueryProcessorException("Unsupported data type:" + dataType);
+          throw new QueryProcessException("Unsupported data type:" + dataType);
       }
     } catch (NumberFormatException e) {
-      throw new QueryProcessorException(e);
+      throw new QueryProcessException(e.getMessage());
     }
   }
 
   @Override
-  public void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes) throws QueryProcessorException{
+  public void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes) throws QueryProcessException {
     try {
       write(batchInsertPlan, indexes);
       long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan);
       memSize += recordSizeInByte;
     } catch (RuntimeException e) {
-      throw new QueryProcessorException(e);
+      throw new QueryProcessException(e.getMessage());
     }
   }
 
