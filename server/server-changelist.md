@@ -26,14 +26,14 @@ Last Updated on November 14th, 2019 by EJTTianYu.
 
 | PR#   | Name                                                         | Author          | Changes                                                      |
 | ---- | ------------------------------------------------------------ | --------------- | ------------------------------------------------------------ |
-| 299  | Turn watermark-demo into watermark feature                             | LeiRui       | Add watermark in the end of the profile.     |
+| 299  | Turn watermark-demo into watermark feature                   | LeiRui          | Add watermark in the end of the profile.                     |
 
 ## Upgrading Log
 Last Updated on November 14th, 2019 by EJTTianYu.
 
 | PR#   | Name                                                         | Author          | Changes                                                      |
 | ---- | ------------------------------------------------------------ | --------------- | ------------------------------------------------------------ |
-| 467  | [IOTDB-294]online upgrade from v0.8.0 to current version                             | EJTTianYu       | Add upgrade/upgrade.txt in the system dir to record the upgrading process.     |
+| 467  | [IOTDB-294]online upgrade from v0.8.0 to current version     | EJTTianYu       | Add upgrade/upgrade.txt in the system dir to record the upgrading process.     |
 
 
 
