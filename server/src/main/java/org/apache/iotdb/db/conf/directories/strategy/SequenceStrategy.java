@@ -27,10 +27,10 @@ public class SequenceStrategy extends DirectoryStrategy {
   private int currentIndex;
 
   @Override
-  public void init(List<String> folders) throws DiskSpaceInsufficientException {
-    super.init(folders);
+  public void setFolders(List<String> folders) throws DiskSpaceInsufficientException {
+    super.setFolders(folders);
 
-    // super.init() ensures at least one folder is not full,
+    // super.setFolders() ensures at least one folder is not full,
     // so currentIndex will not be -1 after loop
     currentIndex = -1;
     for (int i = 0; i < folders.size(); i++) {
