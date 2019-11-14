@@ -54,7 +54,7 @@ public class TSPlanContextAuthorTest {
   @Parameters
   public static Collection<Object[]> data() {
     return Arrays.asList(new Object[][]{{"CREATE USER username1 'password1'", emptyPaths},
-        {"CREATE USER username1 \"password1\"", emptyPaths},
+        {"CREATE USER username2 \"password2\"", emptyPaths},
         {"DROP USER username", emptyPaths}, {"CREATE ROLE rolename", emptyPaths},
         {"DROP ROLE rolename", emptyPaths},
         {"GRANT USER username PRIVILEGES 'SET_STORAGE_GROUP','INSERT_TIMESERIES' ON root.node1.a.b",
