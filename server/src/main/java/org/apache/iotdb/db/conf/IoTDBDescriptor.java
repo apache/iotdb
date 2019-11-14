@@ -354,6 +354,10 @@ public class IoTDBDescriptor {
           properties.getProperty("dfs_client_failover_proxy_provider"));
       TSFileDescriptor.getInstance().getConfig().setUseKerberos(Boolean.parseBoolean(
           properties.getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))));
+      TSFileDescriptor.getInstance().getConfig().setKerberosKeytabFilePath(
+          properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
+      TSFileDescriptor.getInstance().getConfig().setKerberosPrincipal(
+          properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
 
       // set tsfile-format config
       TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(Integer
