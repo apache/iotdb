@@ -106,11 +106,16 @@ public class LocalFileUserAccessor implements IUserAccessor {
         roleList.add(userName);
       }
       user.setRoleList(roleList);
+
       // for online upgrading, profile for 0.8.x does not contain waterMark
       try {
         user.setUseWaterMark(dataInputStream.readInt() != 0);
       } catch (EOFException e1) {
         user.setUseWaterMark(false);
+        try (RandomAccessFile file = new RandomAccessFile(userProfile, "rw")) {
+          file.seek(file.length());
+          file.writeInt(0);
+        }
       }
       return user;
     } catch (Exception e) {
