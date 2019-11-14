@@ -91,7 +91,8 @@ public class IoTDB implements IoTDBMBean {
       StatMonitor.getInstance().recovery();
     }
     // Delete data/system/users/*.profile
-    File userDirectory = new File("server/target/iotdb-server-0.9.0/data/system/users");
+    File usersDir = SystemFileFactory.INSTANCE.getFile(
+        IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "users");
     if (userDirectory.isDirectory()) {
       File[] userProfiles = userDirectory.listFiles();
       for (File userProfile : userProfiles) {
