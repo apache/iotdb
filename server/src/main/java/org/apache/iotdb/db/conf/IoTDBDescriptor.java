@@ -309,6 +309,10 @@ public class IoTDBDescriptor {
 
       conf.setTsFileStorageFs(properties.getProperty("tsfile_storage_fs",
           conf.getTsFileStorageFs().toString()));
+      conf.setCoreSitePath(
+          properties.getProperty("core_site_path", conf.getCoreSitePath()));
+      conf.setHdfsSitePath(
+          properties.getProperty("hdfs_site_path", conf.getHdfsSitePath()));
       conf.setHdfsIp(properties.getProperty("hdfs_ip").split(","));
       conf.setHdfsPort(properties.getProperty("hdfs_port", conf.getHdfsPort()));
       conf.setDfsNameServices(
@@ -333,6 +337,10 @@ public class IoTDBDescriptor {
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
           .setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
+      TSFileDescriptor.getInstance().getConfig().setKerberosKeytabFilePath(
+          properties.getProperty("core_site_path", conf.getCoreSitePath()));
+      TSFileDescriptor.getInstance().getConfig().setKerberosPrincipal(
+          properties.getProperty("hdfs_site_path", conf.getHdfsSitePath()));
       TSFileDescriptor.getInstance().getConfig()
           .setHdfsIp(properties.getProperty("hdfs_ip").split(","));
       TSFileDescriptor.getInstance().getConfig().setHdfsPort(properties.getProperty("hdfs_port"));
@@ -346,11 +354,6 @@ public class IoTDBDescriptor {
           properties.getProperty("dfs_client_failover_proxy_provider"));
       TSFileDescriptor.getInstance().getConfig().setUseKerberos(Boolean.parseBoolean(
           properties.getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))));
-      TSFileDescriptor.getInstance().getConfig().setKerberosKeytabFilePath(
-          properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
-      TSFileDescriptor.getInstance().getConfig().setKerberosPrincipal(
-          properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
-
 
       // set tsfile-format config
       TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(Integer

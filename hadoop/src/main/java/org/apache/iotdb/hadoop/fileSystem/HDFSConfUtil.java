@@ -27,18 +27,21 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class HDFSConfUtil {
+class HDFSConfUtil {
 
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
+  private static final Logger logger = LoggerFactory.getLogger(HDFSConfUtil.class);
 
-  public static Configuration setConf(Configuration conf) {
+  static Configuration setConf(Configuration conf) {
     try {
-      conf.addResource(new File("/etc/hdfs1/conf/core-site.xml").toURI().toURL());
-      conf.addResource(new File("/etc/hdfs1/conf/hdfs-site.xml").toURI().toURL());
-      conf.addResource(new File("/etc/yarn1/conf/yarn-site.xml").toURI().toURL());
+      conf.addResource(new File(tsFileConfig.getCoreSitePath()).toURI().toURL());
+      conf.addResource(new File(tsFileConfig.getHdfsSitePath()).toURI().toURL());
     } catch (MalformedURLException e) {
-      e.printStackTrace();
+      logger.error("Failed to add resource core-site.xml {} and hdfs-site.xml {}. ",
+          tsFileConfig.getCoreSitePath(), tsFileConfig.getHdfsSitePath(), e);
     }
 
     conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
@@ -70,21 +73,13 @@ public class HDFSConfUtil {
       conf.set("hadoop.security.authentication", "kerberos");
       conf.set("dfs.block.access.token.enable", "true");
 
-//      conf.set("dfs.namenode.kerberos.principal", "nn/_" + tsFileConfig.getKerberosPrincipal());
-//      conf.set("dfs.namenode.keytab.file", tsFileConfig.getKerberosKeytabFilePath());
-//      conf.set("dfs.secondary.namenode.kerberos.principal", tsFileConfig.getKerberosPrincipal());
-//      conf.set("dfs.secondary.namenode.keytab.file", tsFileConfig.getKerberosKeytabFilePath());
-//      conf.set("dfs.datanode.kerberos.principal", "dn/" + tsFileConfig.getKerberosPrincipal());
-//      conf.set("dfs.datanode.keytab.file", tsFileConfig.getKerberosKeytabFilePath());
-//      conf.set("dfs.namenode.kerberos.internal.spnego.principal",
-//          "HTTP/" + tsFileConfig.getKerberosKeytabFilePath());
-
       UserGroupInformation.setConfiguration(conf);
       try {
         UserGroupInformation.loginUserFromKeytab(tsFileConfig.getKerberosPrincipal(),
             tsFileConfig.getKerberosKeytabFilePath());
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.error("Failed to login user from key tab. User: {}, path:{}. ",
+            tsFileConfig.getKerberosPrincipal(), tsFileConfig.getKerberosKeytabFilePath(), e);
       }
     }
 
