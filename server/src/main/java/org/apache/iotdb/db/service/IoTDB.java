@@ -29,6 +29,7 @@ import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.exception.StartupException;
@@ -93,8 +94,8 @@ public class IoTDB implements IoTDBMBean {
     // Delete data/system/users/*.profile
     File usersDir = SystemFileFactory.INSTANCE.getFile(
         IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "users");
-    if (userDirectory.isDirectory()) {
-      File[] userProfiles = userDirectory.listFiles();
+    if (usersDir.isDirectory()) {
+      File[] userProfiles = usersDir.listFiles();
       for (File userProfile : userProfiles) {
         if (userProfile.getPath().endsWith(".profile")) {
           userProfile.delete();
