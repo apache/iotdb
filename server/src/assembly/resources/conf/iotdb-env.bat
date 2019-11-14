@@ -55,14 +55,14 @@ for /f "tokens=1-3" %%j in ('java -version 2^>^&1') do (
 )
 IF "%BIT_VERSION%" == "64-Bit" (
   rem 64bit, Maximum heap size
-  MAX_HEAP_SIZE="2G"
+  set MAX_HEAP_SIZE="2G"
   rem 64bit, Minimum heap size
-  HEAP_NEWSIZE="2G"
+  set HEAP_NEWSIZE="2G"
 ) ELSE (
-	rem 32bit, Maximum heap size
-  MAX_HEAP_SIZE="512M"
+  rem 32bit, Maximum heap size
+  set MAX_HEAP_SIZE="512M"
   rem 32bit, Minimum heap size
-  HEAP_NEWSIZE="512M"
+  set HEAP_NEWSIZE="512M"
 )
 
 @REM MAX_HEAP_SIZE="2G"
