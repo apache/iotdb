@@ -21,9 +21,13 @@ package org.apache.iotdb.db.conf.adapter;
 import com.clearspring.analytics.stream.cardinality.HyperLogLog;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(ActiveTimeSeriesCounter.class);
   /**
    * Map[StorageGroup, HyperLogLogCounter]
    */
@@ -35,14 +39,22 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
   private static Map<String, Double> activeRatioMap = new ConcurrentHashMap<>();
 
   /**
+   * Map[StorageGroup, ActiveTimeSeriesNumber]
+   */
+  private static Map<String, Long> activeTimeSeriesNumMap = new ConcurrentHashMap<>();
+
+  /**
    * LOG2M decide the precision of the HyperLogLog algorithm
    */
   private static final int LOG2M = 13;
+
+  private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   @Override
   public void init(String storageGroup) {
     storageGroupHllMap.put(storageGroup, new HyperLogLog(LOG2M));
     activeRatioMap.put(storageGroup, 0D);
+    activeTimeSeriesNumMap.put(storageGroup, 0L);
   }
 
   @Override
@@ -52,29 +64,48 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
 
   @Override
   public void updateActiveRatio(String storageGroup) {
-    double totalActiveTsNum = 0;
-    for (Map.Entry<String, HyperLogLog> entry : storageGroupHllMap.entrySet()) {
-      totalActiveTsNum += entry.getValue().cardinality();
-    }
-    for (Map.Entry<String, HyperLogLog> entry : storageGroupHllMap.entrySet()) {
-      double activeRatio = 0;
-      if (totalActiveTsNum > 0) {
-        activeRatio = entry.getValue().cardinality() / totalActiveTsNum;
-      }
-      activeRatioMap.put(entry.getKey(), activeRatio);
-    }
+    lock.writeLock().lock();
+    // update the active time series number in the newest memtable to be flushed
+    activeTimeSeriesNumMap.put(storageGroup, storageGroupHllMap.get(storageGroup).cardinality());
+    // initialize the HLL counter
     storageGroupHllMap.put(storageGroup, new HyperLogLog(LOG2M));
+    try {
+      double totalActiveTsNum = 0;
+      LOGGER.info("{}: updating active ratio", Thread.currentThread().getName());
+      for (double number : activeTimeSeriesNumMap.values()) {
+        totalActiveTsNum += number;
+      }
+      for (Map.Entry<String, Long> entry : activeTimeSeriesNumMap.entrySet()) {
+        double activeRatio = 0;
+        if (totalActiveTsNum > 0) {
+          activeRatio = entry.getValue() / totalActiveTsNum;
+        }
+        activeRatioMap.put(entry.getKey(), activeRatio);
+        LOGGER.info("{}: storage group {} has active ratio {}", Thread.currentThread().getName(),
+            entry.getKey(), activeRatio);
+      }
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 
   @Override
   public double getActiveRatio(String storageGroup) {
-    return activeRatioMap.get(storageGroup);
+    lock.writeLock().lock();
+    double ratio;
+    try {
+      ratio = activeRatioMap.get(storageGroup);
+    } finally {
+      lock.writeLock().unlock();
+    }
+    return ratio;
   }
 
   @Override
   public void delete(String storageGroup) {
     storageGroupHllMap.remove(storageGroup);
     activeRatioMap.remove(storageGroup);
+    activeTimeSeriesNumMap.remove(storageGroup);
   }
 
   private static class ActiveTimeSeriesCounterHolder {

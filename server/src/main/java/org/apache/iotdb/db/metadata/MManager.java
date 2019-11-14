@@ -648,6 +648,7 @@ public class MManager {
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
           mgraph.deleteStorageGroup(delStorageGroup);
           seriesNumberInStorageGroups.remove(delStorageGroup);
+          ActiveTimeSeriesCounter.getInstance().delete(delStorageGroup);
         } catch (PathException e) {
           try {
             IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
