@@ -97,7 +97,7 @@ public class IoTDB implements IoTDBMBean {
     if (usersDir.isDirectory()) {
       File[] userProfiles = usersDir.listFiles();
       for (File userProfile : userProfiles) {
-        if (userProfile.getPath().endsWith(".profile")) {
+        if (userProfile.getPath().endsWith(IoTDBConstant.PROFILE_SUFFIX)) {
           userProfile.delete();
         }
       }
