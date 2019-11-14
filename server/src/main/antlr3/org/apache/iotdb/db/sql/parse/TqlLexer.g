@@ -273,6 +273,10 @@ K_UNSET
     : U N S E T
     ;
 
+K_CONFIGURATION
+    : C O N F I G U R A T I O N
+    ;
+
 K_FLUSH
     : F L U S H
     ;
@@ -291,7 +295,6 @@ K_PARAMETERS
 
 K_INFO
     : I N F O
-    ;
 
 //************** logical operator***********
 OPERATOR_AND
