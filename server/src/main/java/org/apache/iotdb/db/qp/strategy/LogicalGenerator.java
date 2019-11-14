@@ -1056,11 +1056,15 @@ public class LogicalGenerator {
   }
 
   private String removeStringQuote(String src) throws IllegalASTFormatException {
-    if (src.length() < 3 || src.charAt(0) != '\'' || src.charAt(src.length() - 1) != '\'') {
-      throw new IllegalASTFormatException("remove string", "error format for string with quote: ",
-          src);
+    if (src.length() < 3) {
+      throw new IllegalASTFormatException("remove string", "error format for string with quote: ", src);
+    } else if(src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'') {
+      return src.substring(1, src.length() - 1);
+    } else if(src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
+      return src.substring(1, src.length() - 1);
+    } else {
+      throw new IllegalASTFormatException("remove string", "error format for string with quote: ", src);
     }
-    return src.substring(1, src.length() - 1);
   }
 
   private void analyzeDataLoad(AstNode astNode) throws IllegalASTFormatException {
