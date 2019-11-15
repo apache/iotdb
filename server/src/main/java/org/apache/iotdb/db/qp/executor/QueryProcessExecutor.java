@@ -137,6 +137,9 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       case TTL:
         operateTTL((SetTTLPlan) plan);
         return true;
+      case LOAD_CONFIGURATION:
+        IoTDBDescriptor.getInstance().loadHotModifiedProps();
+        return true;
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
