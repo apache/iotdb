@@ -58,7 +58,7 @@ public class HyperLogLogTest {
         errorSum += Math.abs(p);
       }
       // allow 1% error
-      assertEquals(0,errorSum / testNum, 0.01);
+      assertEquals(0, errorSum / testNum, 0.01);
       avgErrors[floorIndex] = String.format("%.5f", errorSum / testNum);
     }
     System.out.println(Arrays.toString(avgErrors));

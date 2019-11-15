@@ -71,7 +71,7 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
     storageGroupHllMap.put(storageGroup, new HyperLogLog(LOG2M));
     try {
       double totalActiveTsNum = 0;
-      LOGGER.info("{}: updating active ratio", Thread.currentThread().getName());
+      LOGGER.debug("{}: updating active ratio", Thread.currentThread().getName());
       for (double number : activeTimeSeriesNumMap.values()) {
         totalActiveTsNum += number;
       }
@@ -81,7 +81,7 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
           activeRatio = entry.getValue() / totalActiveTsNum;
         }
         activeRatioMap.put(entry.getKey(), activeRatio);
-        LOGGER.info("{}: storage group {} has active ratio {}", Thread.currentThread().getName(),
+        LOGGER.debug("{}: storage group {} has active ratio {}", Thread.currentThread().getName(),
             entry.getKey(), activeRatio);
       }
     } finally {
