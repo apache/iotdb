@@ -223,6 +223,10 @@ org.apache.thrift:libthrift:0.9.3
 org.xerial.snappy:snappy-java:1.0.5-M1
 com.alibaba:fastjson:1.2.31
 com.sun.xml.fastinfoset:FastInfoset:1.2.14
+io.airlift.airline:0.8
+com.google.guava.guava:21.0
+org.fusesource.leveldbjni:leveldbjni-all:1.8
+javax.inject:javax.inject:1
 
 
 BSD 2-Clause
