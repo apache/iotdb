@@ -32,6 +32,10 @@ struct HeartBeatRequest {
   5: required bool regenerateIdentifier
   // all known nodes in the leader
   6: optional set<Node> nodeSet
+
+  // because a data server may plays manay data groups members, this is used to identify which
+  // member should process the request or response. Only used in data group communication.
+  7: optional VNode header
 }
 
 // follower -> leader
@@ -43,6 +47,10 @@ struct HeartBeatResponse {
   4: optional Node follower
   5: optional int followeIdentifier
   6: required bool requireNodeList
+
+  // because a data server may plays manay data groups members, this is used to identify which
+  // member should process the request or response. Only used in data group communication.
+  7: optional VNode header
 }
 
 // node -> node
@@ -50,24 +58,56 @@ struct ElectionRequest {
   1: required long term
   2: required long lastLogTerm
   3: required long lastLogIndex
+
+  // because a data server may plays manay data groups members, this is used to identify which
+  // member should process the request or response. Only used in data group communication.
+  4: optional VNode header
 }
 
 // leader -> follower
 struct AppendEntryRequest {
   1: required long term // leader's
   2: required binary entry // data
+
+  // because a data server may plays manay data groups members, this is used to identify which
+  // member should process the request or response. Only used in data group communication.
+  3: optional VNode header
 }
 
 // leader -> follower
 struct AppendEntriesRequest {
   1: required long term // leader's
   2: required list<binary> entries // data
+
+  // because a data server may plays manay data groups members, this is used to identify which
+  // member should process the request or response. Only used in data group communication.
+  3: optional VNode header
+}
+
+struct AddNodeResponse {
+  // -1: accept to add new node or the node is already in this cluster, otherwise: fail to
+  // add new node
+  1: required int respNum
+  2: optional set<Node> allNodes
 }
 
 struct Node {
   1: required string ip
   2: required int port
   3: required int nodeIdentifier
+  4: required list<int> dataPorts
+}
+
+/**
+*  a virtual node corresponding to a physical node
+**/
+struct VNode {
+  // the corresponding physical node
+  1: required Node pNode
+  // the index on the hash ring
+  2: required int hash
+  // the serial number with regard to all virtual nodes of a physical node
+  3: required int serialNum
 }
 
 service RaftService {
@@ -114,7 +154,6 @@ service RaftService {
   **/
   long appendEntry(1:AppendEntryRequest request)
 
-
 }
 
 service TSDataService extends RaftService {
@@ -130,8 +169,6 @@ service TSMetaService extends RaftService {
   * otherwise, the local node will transfer the request to the leader.
   *
   * @param node a new node that needs to be added
-  * @return -1: accept to add new node or the node is already in this cluster, otherwise: fail to
-  * add new node
   **/
-  int addNode(1: Node node)
+  AddNodeResponse addNode(1: Node node)
 }

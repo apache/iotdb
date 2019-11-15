@@ -19,8 +19,7 @@
 package org.apache.iotdb.cluster.server;
 
 import java.io.IOException;
-import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.partition.PartitionTable;
+import java.net.InetSocketAddress;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -31,6 +30,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,19 +45,13 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   // each node only contains one MetaGroupMember
   private MetaGroupMember member;
   private IoTDB ioTDB;
-  private PartitionTable partitionTable;
 
 
-  public MetaClusterServer() throws IOException {
+  public MetaClusterServer() throws IOException, TTransportException {
     super();
-    member = new MetaGroupMember(protocolFactory);
+    member = new MetaGroupMember(protocolFactory, thisNode);
     member.loadNodes();
     // TODO-Cluster: check the initial cluster size and refuse to start when the size < #replication
-  }
-
-  private void buildDataGroups() {
-    PartitionGroup[] partitionGroups = partitionTable.getPartitionGroups();
-
   }
 
   @Override
@@ -69,11 +63,35 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
-  void stop() {
+  public void stop() {
     super.stop();
     ioTDB.stop();
     ioTDB = null;
     member.stop();
+  }
+
+  public void buildCluster() {
+    member.buildCluster();
+  }
+
+  public void joinCluster() {
+    member.joinCluster();
+  }
+
+  @Override
+  TNonblockingServerSocket getServerSocket() throws TTransportException {
+    return  new TNonblockingServerSocket(new InetSocketAddress(config.getLocalIP(),
+        config.getLocalMetaPort()), CONNECTION_TIME_OUT_MS);
+  }
+
+  @Override
+  String getClientThreadPrefix() {
+    return "MetaClientThread-";
+  }
+
+  @Override
+  String getServerClientName() {
+    return "MetaServerThread-";
   }
 
   @Override
@@ -105,4 +123,5 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
     member.appendEntry(request, resultHandler);
   }
+
 }

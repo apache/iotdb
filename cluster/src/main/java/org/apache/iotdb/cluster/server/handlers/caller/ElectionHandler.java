@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import static org.apache.iotdb.cluster.server.member.RaftMember.RESPONSE_AGREE;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;

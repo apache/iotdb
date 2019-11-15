@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.server;
 
-import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
@@ -52,10 +51,10 @@ public abstract class RaftServer implements RaftService.AsyncIface {
   private static final Logger logger = LoggerFactory.getLogger(RaftService.class);
   public static final int CONNECTION_TIME_OUT_MS = 20 * 1000;
 
-  private ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
+  ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
   private TNonblockingServerTransport socket;
   private TServer poolServer;
-  private Node thisNode;
+  Node thisNode;
 
   TProtocolFactory protocolFactory = config.isRpcThriftCompressionEnabled() ?
       new TCompactProtocol.Factory() : new TBinaryProtocol.Factory();
@@ -66,6 +65,7 @@ public abstract class RaftServer implements RaftService.AsyncIface {
     thisNode = new Node();
     thisNode.setIp(config.getLocalIP());
     thisNode.setPort(config.getLocalMetaPort());
+    thisNode.setDataPorts(config.getLocalDataPorts());
   }
 
   public void start() throws TTransportException {
@@ -76,7 +76,7 @@ public abstract class RaftServer implements RaftService.AsyncIface {
     establishServer();
   }
 
-  void stop() {
+  public void stop() {
     if (poolServer == null) {
       return;
     }
@@ -90,11 +90,16 @@ public abstract class RaftServer implements RaftService.AsyncIface {
 
   abstract AsyncProcessor getProcessor();
 
+  abstract TNonblockingServerSocket getServerSocket() throws TTransportException;
+
+  abstract String getClientThreadPrefix();
+
+  abstract String getServerClientName();
+
   private void establishServer() throws TTransportException {
     logger.info("Cluster node {} begins to set up", thisNode);
 
-    socket = new TNonblockingServerSocket(new InetSocketAddress(config.getLocalIP(),
-        config.getLocalMetaPort()), CONNECTION_TIME_OUT_MS);
+    socket = getServerSocket();
     Args poolArgs =
         new THsHaServer.Args(socket).maxWorkerThreads(config.getMaxConcurrentClientNum())
             .minWorkerThreads(1);
@@ -105,7 +110,7 @@ public abstract class RaftServer implements RaftService.AsyncIface {
       private AtomicLong threadIndex = new AtomicLong(0);
       @Override
       public Thread newThread(Runnable r) {
-        return new Thread(r, "IoTDBClusterClientThread-" + threadIndex.incrementAndGet());
+        return new Thread(r, getClientThreadPrefix() + threadIndex.incrementAndGet());
       }
     }));
     poolArgs.processor(getProcessor());
@@ -113,7 +118,7 @@ public abstract class RaftServer implements RaftService.AsyncIface {
     poolArgs.transportFactory(new TFramedTransport.Factory());
 
     poolServer = new THsHaServer(poolArgs);
-    clientService = Executors.newSingleThreadExecutor(r -> new Thread(r, "ClientServiceThread"));
+    clientService = Executors.newSingleThreadExecutor(r -> new Thread(r, getServerClientName()));
     clientService.submit(() -> poolServer.serve());
 
     logger.info("Cluster node {} is up", thisNode);

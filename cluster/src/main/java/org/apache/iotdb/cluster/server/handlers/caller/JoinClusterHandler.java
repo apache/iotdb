@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import static org.apache.iotdb.cluster.server.member.RaftMember.RESPONSE_REJECT;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_REJECT;
 
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient.addNode_call;
 import org.apache.thrift.TException;
@@ -37,12 +39,12 @@ public class JoinClusterHandler implements AsyncMethodCallback<addNode_call> {
   private static final Logger logger = LoggerFactory.getLogger(JoinClusterHandler.class);
 
   private Node contact;
-  private AtomicLong response;
+  private AtomicReference<AddNodeResponse> response;
 
   @Override
   public void onComplete(addNode_call call) {
     try {
-      long resp = call.getResult();
+      AddNodeResponse resp = call.getResult();
       logger.info("Received a join cluster response {} from {}", resp, contact);
       synchronized (response) {
         response.set(resp);
@@ -57,12 +59,12 @@ public class JoinClusterHandler implements AsyncMethodCallback<addNode_call> {
   public void onError(Exception exception) {
     logger.warn("Cannot join the cluster from {}, because", contact, exception);
     synchronized (response) {
-      response.set(RESPONSE_REJECT);
+      response.set(null);
       response.notifyAll();
     }
   }
 
-  public void setResponse(AtomicLong response) {
+  public void setResponse(AtomicReference response) {
     this.response = response;
   }
 

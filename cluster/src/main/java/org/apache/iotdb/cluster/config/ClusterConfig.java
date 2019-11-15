@@ -23,12 +23,14 @@ import java.util.List;
 
 public class ClusterConfig {
 
+
   public static final String[] HASH_SALTS = new String[] {"106", "666", "IoTDB"};
   public static final int VNODE_NUM = HASH_SALTS.length;
   static final String CONFIG_NAME = "iotdb-cluster.properties";
 
   private String localIP = "localhost";
   private int localMetaPort = 9003;
+  private final List<Integer> localDataPorts = Arrays.asList(40010, 40011, 40012);
 
   // each one is {IP | domain name}:{meta port}
   private List<String> seedNodeUrls = Arrays.asList("localhost:9003", "localhost"
@@ -86,5 +88,9 @@ public class ClusterConfig {
 
   public void setReplicationNum(int replicationNum) {
     this.replicationNum = replicationNum;
+  }
+
+  public List<Integer> getLocalDataPorts() {
+    return localDataPorts;
   }
 }

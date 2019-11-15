@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import static org.apache.iotdb.cluster.server.member.RaftMember.RESPONSE_AGREE;
-import static org.apache.iotdb.cluster.server.member.RaftMember.RESPONSE_LOG_MISMATCH;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.iotdb.cluster.log.Log;
@@ -28,7 +28,6 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.appendEntry_call;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;

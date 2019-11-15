@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import static org.apache.iotdb.cluster.server.member.RaftMember.RESPONSE_AGREE;
-import static org.apache.iotdb.cluster.server.member.RaftMember.RESPONSE_CLUSTER_UNKNOWN;
-import static org.apache.iotdb.cluster.server.member.RaftMember.RESPONSE_LOG_MISMATCH;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -69,7 +69,7 @@ public class AppendEntryHandler implements AsyncMethodCallback<appendEntry_call>
             logger.debug("Log {} is accepted by the quorum", log);
             quorum.notifyAll();
           }
-        } else if (resp != RESPONSE_LOG_MISMATCH && resp != RESPONSE_CLUSTER_UNKNOWN) {
+        } else if (resp != RESPONSE_LOG_MISMATCH && resp != RESPONSE_PARTITION_TABLE_UNAVAILABLE) {
           // the leader ship is stale, wait for the new leader's heartbeat
           synchronized (raftMember.getTerm()) {
             long currTerm = raftMember.getTerm().get();

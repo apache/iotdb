@@ -4,38 +4,168 @@
 
 package org.apache.iotdb.cluster.server;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.cluster.exception.NoHeaderVNodeException;
+import org.apache.iotdb.cluster.exception.NotInSameGroupException;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncProcessor;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
+import org.apache.iotdb.cluster.rpc.thrift.VNode;
+import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.thrift.transport.TNonblockingServerSocket;
+import org.apache.thrift.transport.TTransportException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DataClusterServer extends RaftServer implements TSDataService.AsyncIface {
 
+  private static final Logger logger = LoggerFactory.getLogger(DataClusterServer.class);
+
+  // key: the header of a data group, the member representing this node in this group
+  private Map<VNode, DataGroupMember> headerGroupMap = new ConcurrentHashMap<>();
+  private int port;
+  private PartitionTable partitionTable;
+  private DataGroupMember.Factory dataMemberFactory;
+  private VNode thisVNode;
+
+  public DataClusterServer(int port, DataGroupMember.Factory dataMemberFactory) {
+    this.port = port;
+    this.dataMemberFactory = dataMemberFactory;
+  }
+
+  public void addDataGroupMember(DataGroupMember dataGroupMember) {
+    headerGroupMap.put(dataGroupMember.getHeader(), dataGroupMember);
+  }
+
+  private DataGroupMember getDataMember(VNode header) {
+    // avoid creating two members for a header
+    synchronized (headerGroupMap) {
+      DataGroupMember member = headerGroupMap.get(header);
+      if (member == null) {
+        logger.info("Received a request from unregistered header {}", header);
+        if (thisVNode != null && partitionTable != null) {
+          synchronized (partitionTable) {
+            // it may be that the header and this node are in the same group, but it is the first time
+            // the header contacts this node
+            PartitionGroup partitionGroup = partitionTable.getHeaderGroup(header);
+            if (partitionGroup.contains(thisVNode)) {
+              // the two nodes are in the same group, create a new data member
+              try {
+                member = dataMemberFactory.create(partitionGroup, thisVNode);
+                headerGroupMap.put(header, member);
+                logger.info("Created a member for header {}", header);
+              } catch (IOException e) {
+                logger.error("Cannot create data member for header {}", header, e);
+              }
+            }
+          }
+        } else {
+          logger.info("Partition is not ready, cannot create member");
+        }
+      }
+      return member;
+    }
+  }
+
   @Override
   public void sendHeartBeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
+    if (!request.isSetHeader()) {
+      resultHandler.onError(new NoHeaderVNodeException());
+      return;
+    }
 
+    VNode header = request.getHeader();
+    DataGroupMember member = getDataMember(header);
+    if (member == null) {
+      resultHandler.onError(new NotInSameGroupException(header, thisNode));
+    } else {
+      member.sendHeartBeat(request, resultHandler);
+    }
   }
 
   @Override
   public void startElection(ElectionRequest electionRequest, AsyncMethodCallback resultHandler) {
+    if (!electionRequest.isSetHeader()) {
+      resultHandler.onError(new NoHeaderVNodeException());
+      return;
+    }
 
+    VNode header = electionRequest.getHeader();
+    DataGroupMember member = getDataMember(header);
+    if (member == null) {
+      resultHandler.onError(new NotInSameGroupException(header, thisNode));
+    } else {
+      member.startElection(electionRequest, resultHandler);
+    }
   }
 
   @Override
   public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback resultHandler) {
+    if (!request.isSetHeader()) {
+      resultHandler.onError(new NoHeaderVNodeException());
+      return;
+    }
 
+    VNode header = request.getHeader();
+    DataGroupMember member = getDataMember(header);
+    if (member == null) {
+      resultHandler.onError(new NotInSameGroupException(header, thisNode));
+    } else {
+      member.appendEntries(request, resultHandler);
+    }
   }
 
   @Override
   public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
+    if (!request.isSetHeader()) {
+      resultHandler.onError(new NoHeaderVNodeException());
+      return;
+    }
 
+    VNode header = request.getHeader();
+    DataGroupMember member = getDataMember(header);
+    if (member == null) {
+      resultHandler.onError(new NotInSameGroupException(header, thisNode));
+    } else {
+      member.appendEntry(request, resultHandler);
+    }
   }
 
   @Override
   AsyncProcessor getProcessor() {
     return new AsyncProcessor(this);
+  }
+
+  @Override
+  TNonblockingServerSocket getServerSocket() throws TTransportException {
+    return new TNonblockingServerSocket(new InetSocketAddress(config.getLocalIP(),
+        port), CONNECTION_TIME_OUT_MS);
+  }
+
+  @Override
+  String getClientThreadPrefix() {
+    return "DataClientThread-";
+  }
+
+  @Override
+  String getServerClientName() {
+    return "DataServerThread-";
+  }
+
+  public void setPartitionTable(PartitionTable partitionTable) {
+    this.partitionTable = partitionTable;
+  }
+
+  public void setThisVNode(VNode thisVNode) {
+    this.thisVNode = thisVNode;
   }
 }

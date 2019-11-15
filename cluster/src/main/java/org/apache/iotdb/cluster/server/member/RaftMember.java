@@ -5,11 +5,11 @@
 package org.apache.iotdb.cluster.server.member;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -20,10 +20,8 @@ import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.LogManager;
 import org.apache.iotdb.cluster.log.LogParser;
-import org.apache.iotdb.cluster.log.MemoryLogManager;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -35,30 +33,26 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.LogCatchUpTask;
 import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendEntryHandler;
+import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingSocket;
 import org.apache.thrift.transport.TNonblockingTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class RaftMember implements RaftService.AsyncIface, LogApplier {
+public abstract class RaftMember implements RaftService.AsyncIface {
 
-  private ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
+  ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
 
   static final int CONNECTION_TIME_OUT_MS = 20 * 1000;
 
-  static final long RESPONSE_UNSET = 0;
-  public static final long RESPONSE_AGREE = -1;
-  public static final long RESPONSE_LOG_MISMATCH = -2;
-  public static final long RESPONSE_REJECT = -3;
-  public static final long RESPONSE_CLUSTER_UNKNOWN = -4;
-  static final long RESPONSE_IDENTIFIER_CONFLICT = -5;
-
   Random random = new Random();
   Node thisNode;
-  Set<Node> allNodes = new HashSet<>();
+  Collection<Node> allNodes;
 
   NodeCharacter character = NodeCharacter.ELECTOR;
   private AtomicLong term = new AtomicLong(0);
@@ -72,22 +66,19 @@ public abstract class RaftMember implements RaftService.AsyncIface, LogApplier {
 
   private Map<Node, Long> lastCatchUpResponseTime = new ConcurrentHashMap<>();
 
-  public void start() {
+  QueryProcessor queryProcessor;
+
+  public void start() throws TTransportException {
     if (heartBeatService != null) {
       return;
     }
-
-    addSeedNodes();
-    initLogManager();
 
     heartBeatService =
         Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "HeartBeatThread"));
     catchUpService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
   }
 
-  private void initLogManager() {
-    this.logManager = new MemoryLogManager(this);
-  }
+  abstract void initLogManager();
 
   public void stop() {
     if (heartBeatService == null) {
@@ -129,9 +120,16 @@ public abstract class RaftMember implements RaftService.AsyncIface, LogApplier {
     logger.info("Received an election request, term:{}, lastLogId:{}, lastLogTerm:{}", thatTerm,
         thatLastLogId, thatLastLogTerm);
 
+
+
     synchronized (term) {
       long response;
       long thisTerm = term.get();
+      if (character != NodeCharacter.ELECTOR) {
+        // only elector votes
+        resultHandler.onComplete(thisTerm);
+        return;
+      }
       // reject the election if one of the four holds:
       // 1. the term of the candidate is no bigger than the voter's
       // 2. the lastLogIndex of the candidate is smaller than the voter's
@@ -149,7 +147,7 @@ public abstract class RaftMember implements RaftService.AsyncIface, LogApplier {
         logger.debug("Accepted an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
             thatTerm, thisTerm, thatLastLogId, lastLogIndex, thatLastLogTerm, lastLogTerm);
         term.set(thatTerm);
-        response = RESPONSE_AGREE;
+        response = Response.RESPONSE_AGREE;
         setCharacter(NodeCharacter.FOLLOWER);
         lastHeartBeatReceivedTime = System.currentTimeMillis();
         leader = null;
@@ -195,7 +193,7 @@ public abstract class RaftMember implements RaftService.AsyncIface, LogApplier {
             lastLog.getCurrLogIndex() == previousLogIndex && lastLog.getCurrLogTerm() == previousLogTerm) {
           // the incoming log points to the local last log, append it
           logManager.appendLog(log);
-          resultHandler.onComplete(RESPONSE_AGREE);
+          resultHandler.onComplete(Response.RESPONSE_AGREE);
           logger.debug("Append a new log {}, new term:{}, new index:{}", log, localTerm,
               logManager.getLastLogIndex());
         } else if (lastLog.getPreviousLogIndex() == previousLogIndex
@@ -203,12 +201,12 @@ public abstract class RaftMember implements RaftService.AsyncIface, LogApplier {
           // the incoming log points to the previous log of the local last log, and its term is
           // bigger than then local last log's, replace the local last log with it
           logManager.replaceLastLog(log);
-          resultHandler.onComplete(RESPONSE_AGREE);
+          resultHandler.onComplete(Response.RESPONSE_AGREE);
           logger.debug("Replaced the last log with {}, new term:{}, new index:{}", log,
               previousLogTerm, previousLogIndex);
         } else {
           // the incoming log points to an illegal position, reject it
-          resultHandler.onComplete(RESPONSE_LOG_MISMATCH);
+          resultHandler.onComplete(Response.RESPONSE_LOG_MISMATCH);
           logger.debug("Cannot append the log because the last log does not match, "
                   + "local:term[{}],index[{}],previousTerm[{}],previousIndex[{}], "
                   + "request:term[{}],index[{}],previousTerm[{}],previousIndex[{}]",
@@ -364,7 +362,7 @@ public abstract class RaftMember implements RaftService.AsyncIface, LogApplier {
     return client;
   }
 
-  public void setThisNode(Node thisNode) {
+  void setThisNode(Node thisNode) {
     this.thisNode = thisNode;
     allNodes.add(thisNode);
   }
@@ -399,8 +397,6 @@ public abstract class RaftMember implements RaftService.AsyncIface, LogApplier {
     return leader;
   }
 
-
-
   public void setTerm(AtomicLong term) {
     this.term = term;
   }
@@ -421,7 +417,7 @@ public abstract class RaftMember implements RaftService.AsyncIface, LogApplier {
     return thisNode;
   }
 
-  public Set<Node> getAllNodes() {
+  public Collection<Node> getAllNodes() {
     return allNodes;
   }
 
@@ -448,12 +444,14 @@ public abstract class RaftMember implements RaftService.AsyncIface, LogApplier {
   /**
    * The actions performed when the node wins in an election (becoming a leader).
    */
-  public abstract void onElectionWins();
+  public void onElectionWins() {
+
+  }
 
   void processValidHeartbeatReq(HeartBeatRequest request, HeartBeatResponse response,
       long leaderTerm) {
 
-    response.setTerm(RESPONSE_AGREE);
+    response.setTerm(Response.RESPONSE_AGREE);
     response.setFollower(thisNode);
     response.setLastLogIndex(logManager.getLastLogIndex());
     response.setLastLogTerm(logManager.getLastLogTerm());
@@ -469,30 +467,6 @@ public abstract class RaftMember implements RaftService.AsyncIface, LogApplier {
     setLastHeartBeatReceivedTime(System.currentTimeMillis());
     if (logger.isDebugEnabled()) {
       logger.debug("Received heartbeat from a valid leader {}", request.getLeader());
-    }
-  }
-
-  private void addSeedNodes() {
-    List<String> seedUrls = config.getSeedNodeUrls();
-    for (String seedUrl : seedUrls) {
-      String[] split = seedUrl.split(":");
-      if (split.length != 2) {
-        logger.warn("Bad seed url: {}", seedUrl);
-        continue;
-      }
-      String ip = split[0];
-      // TODO-Cluster: check ip format
-      try {
-        int port = Integer.parseInt(split[1]);
-        if (!ip.equals(thisNode.ip) || port != thisNode.port) {
-          Node seedNode = new Node();
-          seedNode.setIp(ip);
-          seedNode.setPort(port);
-          allNodes.add(seedNode);
-        }
-      } catch (NumberFormatException e) {
-        logger.warn("Bad seed url: {}", seedUrl);
-      }
     }
   }
 }

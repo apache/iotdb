@@ -40,9 +40,6 @@ public class HeartBeatThread implements Runnable {
 
   private Random random = new Random();
 
-  public HeartBeatThread() {
-  }
-
   public HeartBeatThread(RaftMember raftMember) {
     this.raftMember = raftMember;
   }

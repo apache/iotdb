@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.partition;
 
 import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.VNode;
 
 /**
  * PartitionTable manages the map whose key is the StorageGroupName with a time interval and the
@@ -35,7 +36,7 @@ public interface PartitionTable {
    * @param timestamp
    * @return
    */
-  List<Node> route(String storageGroupName, long timestamp);
+  List<VNode> route(String storageGroupName, long timestamp);
 
   /**
    * Add a new node to update the partition table.
@@ -45,7 +46,15 @@ public interface PartitionTable {
 
   /**
    *
-   * @return the PartitionGroups this node is in, each corresponding to a virtual node of this node.
+   * @return All data groups where all VNodes of this node is the header. The first index
+   * indicates the VNode and the second index indicates the data group of one VNode.
    */
-  PartitionGroup[] getPartitionGroups();
+  List<PartitionGroup>[] getHeaderGroups();
+
+  /**
+   *
+   * @param header
+   * @return the partition group of header.
+   */
+  PartitionGroup getHeaderGroup(VNode header);
 }

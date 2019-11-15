@@ -4,6 +4,7 @@
 
 package org.apache.iotdb.cluster.server.heartbeat;
 
+import java.util.Set;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -36,7 +37,7 @@ public class MetaHeartBeatThread extends HeartBeatThread {
     if (raftMember.isNodeBlind(node)) {
       if (raftMember.allNodesIdKnown()) {
         logger.debug("Send node list to {}", node);
-        request.setNodeSet(raftMember.getAllNodes());
+        request.setNodeSet((Set<Node>) raftMember.getAllNodes());
         // if the node does not receive the list, it will require it in the next heartbeat, so
         // we can remove it now
         raftMember.removeBlindNode(node);
