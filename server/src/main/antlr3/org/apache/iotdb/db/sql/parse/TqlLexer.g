@@ -273,6 +273,10 @@ K_UNSET
     : U N S E T
     ;
 
+K_CONFIGURATION
+    : C O N F I G U R A T I O N
+    ;
+
 //************** logical operator***********
 OPERATOR_AND
     : A N D

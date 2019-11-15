@@ -128,6 +128,7 @@ public class QueryProcessor {
       case GRANT_WATERMARK_EMBEDDING:
       case REVOKE_WATERMARK_EMBEDDING:
       case TTL:
+      case LOAD_CONFIGURATION:
         return operator;
       case QUERY:
       case UPDATE:

@@ -20,12 +20,11 @@ package org.apache.iotdb.db.conf;
 
 import java.io.File;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
+import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -467,50 +466,41 @@ public class IoTDBConfig {
    * if the folders are relative paths, add IOTDB_HOME as the path prefix
    */
   private void formulateFolders() {
-    List<String> dirs = new ArrayList<>();
-    dirs.add(baseDir);
-    dirs.add(systemDir);
-    dirs.add(schemaDir);
-    dirs.add(walFolder);
-    dirs.add(indexFileDir);
-    dirs.add(queryDir);
-    dirs.addAll(Arrays.asList(dataDirs));
-
-    for (int i = 0; i < 4; i++) {
-      addHomeDir(dirs, i);
-    }
+    baseDir = addHomeDir(baseDir);
+    systemDir = addHomeDir(systemDir);
+    schemaDir = addHomeDir(schemaDir);
+    walFolder = addHomeDir(walFolder);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
-      String[] hdfsIps = TSFileDescriptor.getInstance().getConfig().getHdfsIp();
-      String hdfsDir = "hdfs://";
-      if (hdfsIps.length > 1) {
-        hdfsDir += TSFileDescriptor.getInstance().getConfig().getDfsNameServices();
-      } else {
-        hdfsDir += hdfsIps[0] + ":" + TSFileDescriptor.getInstance().getConfig().getHdfsPort();
-      }
-      for (int i = 5; i < dirs.size(); i++) {
-        String dir = dirs.get(i);
-        dir = hdfsDir + File.separatorChar + dir;
-        dirs.set(i, dir);
+      String hdfsDir = getHdfsDir();
+      queryDir = hdfsDir + File.separatorChar + queryDir;
+      for (int i = 0; i < dataDirs.length; i++) {
+        dataDirs[i] = hdfsDir + File.separatorChar + dataDirs[i];
       }
     } else {
-      for (int i = 5; i < dirs.size(); i++) {
-        addHomeDir(dirs, i);
+      queryDir = addHomeDir(queryDir);
+      for (int i = 0; i < dataDirs.length; i++) {
+        dataDirs[i] = addHomeDir(dataDirs[i]);
       }
-    }
-    baseDir = dirs.get(0);
-    systemDir = dirs.get(1);
-    schemaDir = dirs.get(2);
-    walFolder = dirs.get(3);
-    indexFileDir = dirs.get(4);
-    queryDir = dirs.get(5);
-    for (int i = 0; i < dataDirs.length; i++) {
-      dataDirs[i] = dirs.get(i + 6);
     }
   }
 
-  private void addHomeDir(List<String> dirs, int i) {
-    String dir = dirs.get(i);
+  void reloadDataDirs(String[] dataDirs) throws LoadConfigurationException {
+    if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
+      String hdfsDir = getHdfsDir();
+      for (int i = 0; i < dataDirs.length; i++) {
+        dataDirs[i] = hdfsDir + File.separatorChar + dataDirs[i];
+      }
+    } else {
+      for (int i = 0; i < dataDirs.length; i++) {
+        dataDirs[i] = addHomeDir(dataDirs[i]);
+      }
+    }
+    this.dataDirs = dataDirs;
+    DirectoryManager.getInstance().updateFileFolders();
+  }
+
+  private String addHomeDir(String dir) {
     String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
     if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
       if (!homeDir.endsWith(File.separator)) {
@@ -518,8 +508,8 @@ public class IoTDBConfig {
       } else {
         dir = homeDir + dir;
       }
-      dirs.set(i, dir);
     }
+    return dir;
   }
 
   private void confirmMultiDirStrategy() {
@@ -537,6 +527,17 @@ public class IoTDBConfig {
           getMultiDirStrategyClassName(), e);
       setMultiDirStrategyClassName(MULTI_DIR_STRATEGY_PREFIX + DEFAULT_MULTI_DIR_STRATEGY);
     }
+  }
+
+  private String getHdfsDir(){
+    String[] hdfsIps = TSFileDescriptor.getInstance().getConfig().getHdfsIp();
+    String hdfsDir = "hdfs://";
+    if (hdfsIps.length > 1) {
+      hdfsDir += TSFileDescriptor.getInstance().getConfig().getDfsNameServices();
+    } else {
+      hdfsDir += hdfsIps[0] + ":" + TSFileDescriptor.getInstance().getConfig().getHdfsPort();
+    }
+    return hdfsDir;
   }
 
   public String[] getDataDirs() {
