@@ -746,7 +746,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     columns.add(ITEM);
     columns.add(VALUE);
     columnTypes.add(TSDataType.TEXT.toString());
-    columnTypes.add(TSDataType.INT64.toString());
+    columnTypes.add(TSDataType.TEXT.toString());
     resp.setColumns(columns);
     resp.setDataTypeList(columnTypes);
     return resp;
@@ -761,7 +761,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     columns.add(PARAMETER);
     columns.add(VALUE);
     columnTypes.add(TSDataType.TEXT.toString());
-    columnTypes.add(TSDataType.INT64.toString());
+    columnTypes.add(TSDataType.TEXT.toString());
     resp.setColumns(columns);
     resp.setDataTypeList(columnTypes);
     return resp;

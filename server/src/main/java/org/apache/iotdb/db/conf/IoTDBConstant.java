@@ -55,9 +55,9 @@ public class IoTDBConstant {
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
 
   // show info
-  public static final String ITEM = "item";
-  public static final String PARAMETER = "parameter";
-  public static final String VALUE = "value(B)";
+  public static final String ITEM = "                             item";
+  public static final String PARAMETER = "                                          parameter";
+  public static final String VALUE = "value";
 
   public static final String ROLE = "role";
   public static final String USER = "user";

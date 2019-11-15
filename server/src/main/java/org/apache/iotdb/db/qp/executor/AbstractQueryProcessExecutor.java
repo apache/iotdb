@@ -134,25 +134,25 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     paths.add(new Path(VALUE));
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.TEXT);
-    dataTypes.add(TSDataType.INT64);
+    dataTypes.add(TSDataType.TEXT);
     ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
 
     int timestamp = 0;
     addRowRecordForShowQuery(listDataSet, timestamp++, "memtable size threshold",
-        IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold());
+        IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold() + "B");
     addRowRecordForShowQuery(listDataSet, timestamp++, "memtable number",
-        IoTDBDescriptor.getInstance().getConfig().getMaxMemtableNumber());
+        IoTDBDescriptor.getInstance().getConfig().getMaxMemtableNumber() + "B");
     addRowRecordForShowQuery(listDataSet, timestamp++, "tsfile size threshold",
-        IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold());
+        IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold() + "B");
     addRowRecordForShowQuery(listDataSet, timestamp++, "compression ratio",
-        (long) CompressionRatio.getInstance().getRatio());
+        Double.toString(CompressionRatio.getInstance().getRatio()));
     addRowRecordForShowQuery(listDataSet, timestamp++, "storage group number",
-        MManager.getInstance().getAllStorageGroupNames().size());
+        Integer.toString( MManager.getInstance().getAllStorageGroupNames().size()));
     addRowRecordForShowQuery(listDataSet, timestamp++, "timeseries number",
-        IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries());
+        Integer.toString(IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries()));
     addRowRecordForShowQuery(listDataSet, timestamp++,
         "maximal timeseries number among storage groups",
-        MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups());
+        Long.toString(MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups()));
     return listDataSet;
   }
 
@@ -162,26 +162,26 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     paths.add(new Path(VALUE));
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.TEXT);
-    dataTypes.add(TSDataType.INT64);
+    dataTypes.add(TSDataType.TEXT);
     ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
 
     int timestamp = 0;
     addRowRecordForShowQuery(listDataSet, timestamp++, "total number of flush tasks",
-        FlushTaskPoolManager.getInstance().getTotalTasks());
+        Integer.toString(FlushTaskPoolManager.getInstance().getTotalTasks()));
     addRowRecordForShowQuery(listDataSet, timestamp++, "number of working flush tasks",
-        FlushTaskPoolManager.getInstance().getWorkingTasksNumber());
+        Integer.toString(FlushTaskPoolManager.getInstance().getWorkingTasksNumber()));
     addRowRecordForShowQuery(listDataSet, timestamp++, "number of waiting flush tasks",
-        FlushTaskPoolManager.getInstance().getWaitingTasksNumber());
+        Integer.toString(FlushTaskPoolManager.getInstance().getWaitingTasksNumber()));
     return listDataSet;
   }
 
   private void addRowRecordForShowQuery(ListDataSet listDataSet, int timestamp, String item,
-      long value) {
+      String value) {
     RowRecord rowRecord = new RowRecord(timestamp);
     Field itemField = new Field(TSDataType.TEXT);
     itemField.setBinaryV(new Binary(item));
-    Field valueField = new Field(TSDataType.INT64);
-    valueField.setLongV(value);
+    Field valueField = new Field(TSDataType.TEXT);
+    valueField.setBinaryV(new Binary(value));
     rowRecord.addField(itemField);
     rowRecord.addField(valueField);
     listDataSet.putRecord(rowRecord);
