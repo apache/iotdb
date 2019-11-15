@@ -286,15 +286,16 @@ K_TASK
     ;
 
 K_DYNAMIC
-    : D Y N A  M I C
+    : D Y N A M I C
     ;
 
-K_PARAMETERS
-    : P A R  A M E T E R S
+K_PARAMETER
+    : P A R A M E T E R
     ;
 
 K_INFO
     : I N F O
+    ;
 
 //************** logical operator***********
 OPERATOR_AND
