@@ -46,7 +46,7 @@ Producers insert IoTDB insert statements into partitions according to devices, e
 
 ## Usage
 ### Version usage
-IoTDB: 0.8.0-SNAPSHOT  
+IoTDB: 0.9.0  
 Kafka: 4.4.0
 ### Dependencies with Maven
 
@@ -55,7 +55,7 @@ Kafka: 4.4.0
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-jdbc</artifactId>
-      <version>0.8.0-SNAPSHOT</version>
+      <version>0.9.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.rocketmq</groupId>

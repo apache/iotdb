@@ -67,7 +67,7 @@
 > mvn clean package -pl server -DskipTests
 
 之后您能在这个目录下找到LogVisualizer的启动脚本： 
-`server/target/iotdb-server-{project-version}-SNAPSHOT/tools/logVisualize`
+`server/target/iotdb-server-{project-version}/tools/logVisualize`
 
 如果您想要掌握本工具的一些进阶使用方法，您需要对正则表达式（特别是Java风格的正则表达式）有一些基本的
 了解。您只有在熟悉正则表达式以后才能新建可视化计划或者对已有的计划进行修改。如果您对正则表达式一无所知，

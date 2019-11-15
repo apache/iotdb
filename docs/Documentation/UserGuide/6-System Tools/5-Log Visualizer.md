@@ -72,7 +72,7 @@ server module as a tool, you can build the server together with LogVisualizer us
 > mvn clean package -pl server -DskipTests
 
 Then you fan find the scripts to start LogVisualizer in: 
-`server/target/iotdb-server-{project-version}-SNAPSHOT/tools/logVisualize`
+`server/target/iotdb-server-{project-version}/tools/logVisualize`
 
 To have access to the advanced usages of this tool, you must have some basic knowledge about regular
 expressions, especially Java style ones. Knowing about regular expressions enables to create your own

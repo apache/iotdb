@@ -295,7 +295,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   }
 
   private SyncStatus getSuccessResult() {
-    return new SyncStatus(SyncConstant.SUCCESS_CODE, null);
+    return new SyncStatus(SyncConstant.SUCCESS_CODE, "");
   }
 
   private SyncStatus getErrorResult(String errorMsg) {
