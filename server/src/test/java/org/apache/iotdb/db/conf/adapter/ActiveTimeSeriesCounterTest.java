@@ -48,6 +48,7 @@ public class ActiveTimeSeriesCounterTest {
 
   @Before
   public void before() throws Exception {
+    ActiveTimeSeriesCounter.clear();
     for (String storageGroup : storageGroups) {
       ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     }

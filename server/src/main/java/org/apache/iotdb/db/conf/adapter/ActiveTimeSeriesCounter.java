@@ -59,17 +59,23 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
 
   @Override
   public void offer(String storageGroup, String device, String measurement) {
-    storageGroupHllMap.get(storageGroup).offer(device + measurement);
+    try {
+      storageGroupHllMap.get(storageGroup).offer(device + measurement);
+    } catch (Exception e) {
+      LOGGER.error("Register active time series root.{}.{}.{} failed", storageGroup, device,
+          measurement, e);
+    }
   }
 
   @Override
   public void updateActiveRatio(String storageGroup) {
     lock.writeLock().lock();
-    // update the active time series number in the newest memtable to be flushed
-    activeTimeSeriesNumMap.put(storageGroup, storageGroupHllMap.get(storageGroup).cardinality());
-    // initialize the HLL counter
-    storageGroupHllMap.put(storageGroup, new HyperLogLog(LOG2M));
     try {
+      // update the active time series number in the newest memtable to be flushed
+      activeTimeSeriesNumMap.put(storageGroup, storageGroupHllMap.get(storageGroup).cardinality());
+      // initialize the HLL counter
+      storageGroupHllMap.put(storageGroup, new HyperLogLog(LOG2M));
+
       double totalActiveTsNum = 0;
       LOGGER.debug("{}: updating active ratio", Thread.currentThread().getName());
       for (double number : activeTimeSeriesNumMap.values()) {
@@ -84,6 +90,8 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
         LOGGER.debug("{}: storage group {} has active ratio {}", Thread.currentThread().getName(),
             entry.getKey(), activeRatio);
       }
+    } catch (Exception e) {
+      LOGGER.error("Update {} active ratio failed", storageGroup, e);
     } finally {
       lock.writeLock().unlock();
     }
@@ -95,6 +103,9 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
     double ratio;
     try {
       ratio = activeRatioMap.get(storageGroup);
+    } catch (Exception e) {
+      LOGGER.error("Get {} active ratio failed", storageGroup, e);
+      return 0;
     } finally {
       lock.writeLock().unlock();
     }
@@ -114,5 +125,14 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
 
   public static ActiveTimeSeriesCounter getInstance() {
     return ActiveTimeSeriesCounterHolder.INSTANCE;
+  }
+
+  /**
+   * this method is for test
+   */
+  public static void clear() {
+    storageGroupHllMap = new ConcurrentHashMap<>();
+    activeRatioMap = new ConcurrentHashMap<>();
+    activeTimeSeriesNumMap = new ConcurrentHashMap<>();
   }
 }

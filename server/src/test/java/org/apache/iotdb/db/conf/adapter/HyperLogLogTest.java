@@ -27,10 +27,12 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class HyperLogLogTest {
 
+  @Ignore
   @Test
   public void testStreamlibHll() {
     final int seed = 12345;
