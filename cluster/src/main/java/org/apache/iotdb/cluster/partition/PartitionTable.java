@@ -49,7 +49,7 @@ public interface PartitionTable {
    * @return All data groups where all VNodes of this node is the header. The first index
    * indicates the VNode and the second index indicates the data group of one VNode.
    */
-  List<PartitionGroup>[] getHeaderGroups();
+  List<PartitionGroup>[] getLocalGroups();
 
   /**
    *

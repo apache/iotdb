@@ -190,12 +190,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   public void applyAddNode(Node newNode) {
     if (!allNodes.contains(newNode)) {
-      synchronized (idNodeMap) {
+      synchronized (allNodes) {
         registerNodeIdentifier(newNode, newNode.getNodeIdentifier());
         allNodes.add(newNode);
         saveNodes();
         // update the partition table
-        partitionTable.addNode(newNode);
+        synchronized (partitionTable) {
+          partitionTable.addNode(newNode);
+        }
       }
     }
   }
@@ -606,7 +608,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   private void buildDataGroups() throws IOException, TTransportException {
     localDataMemberMap = new ConcurrentHashMap<>();
-    List<PartitionGroup>[] partitionGroups = partitionTable.getHeaderGroups();
+    List<PartitionGroup>[] partitionGroups = partitionTable.getLocalGroups();
 
     for (int i = 0; i < partitionGroups.length; i++) {
       // for each VNode and the data group it belongs to, create a DataMember

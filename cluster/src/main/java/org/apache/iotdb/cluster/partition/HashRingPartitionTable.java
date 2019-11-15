@@ -5,9 +5,11 @@
 package org.apache.iotdb.cluster.partition;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -24,7 +26,7 @@ public class HashRingPartitionTable implements PartitionTable {
   private List<VNode> ring = new ArrayList<>();
   private VNode[] thisVNodes;
   // the data groups which the VNode of this node belongs to
-  private List<PartitionGroup>[] headerGroups;
+  private List<PartitionGroup>[] localGroups;
 
   public HashRingPartitionTable(Collection<Node> nodes, Node thisNode) {
     init(nodes, thisNode);
@@ -41,7 +43,7 @@ public class HashRingPartitionTable implements PartitionTable {
         .thenComparingInt(o -> o.getPNode().getNodeIdentifier()));
 
     thisVNodes = getVNode(thisNode);
-    headerGroups = getPartitionGroups();
+    localGroups = getPartitionGroups();
   }
 
   private List<PartitionGroup>[] getPartitionGroups() {
@@ -154,11 +156,67 @@ public class HashRingPartitionTable implements PartitionTable {
 
   @Override
   public void addNode(Node node) {
+    // generate and add the VNodes into the ring
+    VNode[] vNodes = getVNode(node);
+    ring.addAll(Arrays.asList(vNodes));
+    ring.sort(Comparator.comparingInt(VNode::getHash)
+        .thenComparingInt(o -> o.getPNode().getNodeIdentifier()));
+    // scan the groups of local VNode and find groups which the new nodes should join
+    // the groups that the new node joins and the local virtual node remains
+    List<PartitionGroup>[] changedGroups = new List[thisVNodes.length];
+    // the groups that the new node joins and the local virtual node leaves
+    List<PartitionGroup>[] retiredGroups = new List[thisVNodes.length];
+    for (int i = 0; i < thisVNodes.length; i++) {
+      List<PartitionGroup> vNodeChangedGroups = new ArrayList<>();
+      List<PartitionGroup> vNodeRetiredGroups = new ArrayList<>();
+      for (int j = 0; j < localGroups[i].size(); j++) {
+        PartitionGroup oldPartitionGroup = localGroups[i].get(j);
+        PartitionGroup newPartitionGroup = getHeaderGroup(oldPartitionGroup.getThisVNode());
+        if (!newPartitionGroup.equals(oldPartitionGroup)) {
+          // the group has changed
+          if (newPartitionGroup.contains(thisVNodes[i])) {
+            // the local node is still in this group
+            vNodeChangedGroups.add(newPartitionGroup);
+            localGroups[i].set(j, newPartitionGroup);
+          } else {
+            // the local node is no longer in this group
+            vNodeRetiredGroups.add(newPartitionGroup);
+          }
+        }
+      }
+
+      for (PartitionGroup retiredGroup : vNodeRetiredGroups) {
+        // remove retired groups
+        Iterator<PartitionGroup> groupIterator = localGroups[i].iterator();
+        while (groupIterator.hasNext()) {
+          PartitionGroup oldGroup = groupIterator.next();
+          if (oldGroup.getHeader().equals(retiredGroup.getHeader())) {
+            groupIterator.remove();
+            break;
+          }
+        }
+      }
+      changedGroups[i] = vNodeChangedGroups;
+      retiredGroups[i] = vNodeRetiredGroups;
+    }
+
+    // compute the groups of each VNode and see if it contains the local virtual node
+    List<PartitionGroup> newGroups = new ArrayList<>();
+    for (VNode vNode : vNodes) {
+      PartitionGroup partitionGroup = getHeaderGroup(vNode);
+      for (VNode localVNode : thisVNodes) {
+        if (partitionGroup.contains(localVNode)) {
+          newGroups.add(partitionGroup);
+          break;
+        }
+      }
+    }
+
 
   }
 
   @Override
-  public List<PartitionGroup>[] getHeaderGroups() {
-    return headerGroups;
+  public List<PartitionGroup>[] getLocalGroups() {
+    return localGroups;
   }
 }
