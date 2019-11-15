@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.sender.client;
+package org.apache.iotdb.db.sync.sender.transfer;
 
 import java.io.File;
 import java.io.IOException;

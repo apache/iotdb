@@ -12,7 +12,7 @@
  * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.sender.client;
+package org.apache.iotdb.db.sync.sender.transfer;
 
 import static org.apache.iotdb.db.sync.conf.SyncConstant.CONFLICT_CODE;
 import static org.apache.iotdb.db.sync.conf.SyncConstant.SUCCESS_CODE;

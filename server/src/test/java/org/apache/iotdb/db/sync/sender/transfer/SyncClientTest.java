@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.sender.client;
+package org.apache.iotdb.db.sync.sender.transfer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -48,9 +48,9 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DataTransferManagerTest {
+public class SyncClientTest {
 
-  private static final Logger logger = LoggerFactory.getLogger(DataTransferManagerTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(SyncClientTest.class);
   private ISyncClient manager = SyncClient.getInstance();
   private SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
   private String dataDir;
