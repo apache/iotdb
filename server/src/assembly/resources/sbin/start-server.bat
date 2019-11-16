@@ -27,8 +27,25 @@ set "FULL_VERSION="
 set "MAJOR_VERSION="
 set "MINOR_VERSION="
 
+if "%OS%" == "Windows_NT" setlocal
 
-for /f tokens^=2-5^ delims^=.-_+^" %%j in ('java -fullversion 2^>^&1') do (
+pushd %~dp0..
+if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%cd%
+popd
+
+set IOTDB_CONF=%IOTDB_HOME%\conf
+set IOTDB_LOGS=%IOTDB_HOME%\logs
+
+IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
+    CALL "%IOTDB_CONF%\iotdb-env.bat"
+    ) ELSE (
+    echo "can't find %IOTDB_CONF%\iotdb-env.bat"
+    )
+
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.service.IoTDB
+if NOT DEFINED JAVA_HOME goto :err
+
+for /f tokens^=2-5^ delims^=.-_+^" %%j in ('%JAVA_HOME%\bin\java -fullversion 2^>^&1') do (
 	set "FULL_VERSION=%%j-%%k-%%l-%%m"
 	IF "%%j" == "1" (
 	    set "MAJOR_VERSION=%%k"
@@ -47,24 +64,6 @@ IF NOT %JAVA_VERSION% == 8 (
 		goto finally
 	)
 )
-
-if "%OS%" == "Windows_NT" setlocal
-
-pushd %~dp0..
-if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%cd%
-popd
-
-set IOTDB_CONF=%IOTDB_HOME%\conf
-set IOTDB_LOGS=%IOTDB_HOME%\logs
-
-IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
-    CALL "%IOTDB_CONF%\iotdb-env.bat"
-    ) ELSE (
-    echo "can't find %IOTDB_CONF%\iotdb-env.bat"
-    )
-
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.service.IoTDB
-if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
 @REM JVM Opts we'll use in legacy run or installation
