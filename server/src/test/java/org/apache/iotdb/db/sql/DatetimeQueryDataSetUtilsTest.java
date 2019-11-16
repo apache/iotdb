@@ -23,7 +23,7 @@ import static org.junit.Assert.assertEquals;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.junit.After;
 import org.junit.Assert;

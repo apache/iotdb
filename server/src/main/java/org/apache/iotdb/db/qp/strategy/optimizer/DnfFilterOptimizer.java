@@ -23,7 +23,7 @@ import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 
 public class DnfFilterOptimizer implements IFilterOptimizer {
@@ -41,8 +41,8 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
   }
 
   private void dealWithLeftAndRightAndChildren(
-          List<FilterOperator> leftAndChildren, List<FilterOperator> rightAndChildren,
-          List<FilterOperator> newChildrenList) throws LogicalOptimizeException {
+      List<FilterOperator> leftAndChildren, List<FilterOperator> rightAndChildren,
+      List<FilterOperator> newChildrenList) throws LogicalOptimizeException {
     for (FilterOperator leftAndChild : leftAndChildren) {
       for (FilterOperator rightAndChild : rightAndChildren) {
         FilterOperator r = mergeToConjunction(leftAndChild.clone(), rightAndChild.clone());

@@ -85,7 +85,8 @@ public class TsFileMetaData {
    * @param inputStream input stream used to deserialize
    * @return an instance of TsFileMetaData
    */
-  public static TsFileMetaData deserializeFrom(InputStream inputStream) throws IOException {
+  public static TsFileMetaData deserializeFrom(InputStream inputStream, boolean isOldVersion)
+      throws IOException {
     TsFileMetaData fileMetaData = new TsFileMetaData();
 
     int size = ReadWriteIOUtils.readInt(inputStream);
@@ -113,11 +114,21 @@ public class TsFileMetaData {
       }
     }
 
+    if (isOldVersion) {
+      // skip the current version of file metadata
+      ReadWriteIOUtils.readInt(inputStream);
+    }
+
     if (ReadWriteIOUtils.readIsNull(inputStream)) {
       fileMetaData.createdBy = ReadWriteIOUtils.readString(inputStream);
     }
-    fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(inputStream);
-    fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(inputStream);
+    if (isOldVersion) {
+      fileMetaData.totalChunkNum = 0;
+      fileMetaData.invalidChunkNum = 0;
+    } else {
+      fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(inputStream);
+      fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(inputStream);
+    }
     // read bloom filter
     if (!ReadWriteIOUtils.checkIfMagicString(inputStream)) {
       byte[] bytes = ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream);
@@ -135,7 +146,8 @@ public class TsFileMetaData {
    * @param buffer -buffer use to deserialize
    * @return -a instance of TsFileMetaData
    */
-  public static TsFileMetaData deserializeFrom(ByteBuffer buffer) throws IOException {
+  public static TsFileMetaData deserializeFrom(ByteBuffer buffer, boolean isOldVersion)
+      throws IOException {
     TsFileMetaData fileMetaData = new TsFileMetaData();
 
     int size = ReadWriteIOUtils.readInt(buffer);
@@ -163,11 +175,21 @@ public class TsFileMetaData {
       }
     }
 
+    if (isOldVersion) {
+      // skip the current version of file metadata
+      ReadWriteIOUtils.readInt(buffer);
+    }
+
     if (ReadWriteIOUtils.readIsNull(buffer)) {
       fileMetaData.createdBy = ReadWriteIOUtils.readString(buffer);
     }
-    fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
-    fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
+    if (isOldVersion) {
+      fileMetaData.totalChunkNum = 0;
+      fileMetaData.invalidChunkNum = 0;
+    } else {
+      fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
+      fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
+    }
     // read bloom filter
     if (buffer.hasRemaining()) {
       byte[] bytes = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer).array();
@@ -381,5 +403,21 @@ public class TsFileMetaData {
 
   public List<MeasurementSchema> getMeasurementSchemaList() {
     return new ArrayList<MeasurementSchema>(measurementSchema.values());
+  }
+
+  /**
+   * This function is just for upgrade.
+   */
+  public void setDeviceIndexMap(
+      Map<String, TsDeviceMetadataIndex> deviceIndexMap) {
+    this.deviceIndexMap = deviceIndexMap;
+  }
+
+  /**
+   * This function is just for upgrade.
+   */
+  public void setMeasurementSchema(
+      Map<String, MeasurementSchema> measurementSchema) {
+    this.measurementSchema = measurementSchema;
   }
 }

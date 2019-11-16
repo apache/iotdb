@@ -39,10 +39,7 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
     try {
       JMXService.registerMBean(instance, ServiceType.CACHE_HIT_RATIO_DISPLAY_SERVICE.getJmxName());
     } catch (Exception e) {
-      String errorMessage = String
-          .format("Failed to start %s because of %s", this.getID().getName(),
-              e.getMessage());
-      throw new StartupException(errorMessage, e);
+      throw new StartupException(this.getID().getName(), e.getMessage());
     }
   }
 

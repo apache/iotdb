@@ -60,7 +60,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
       startService();
     } catch (Exception e) {
       logger.error("Failed to start {} because: ", this.getID().getName(), e);
-      throw new StartupException(e);
+      throw new StartupException(this.getID().getName(), e.getMessage());
     }
   }
 

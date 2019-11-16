@@ -106,6 +106,33 @@ Edit user config in `iotdb-engine.properties`. Related configurations are:
 |Default|org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider |
 |Effective|After restart system|
 
+* hdfs\_use\_kerberos
+
+|Name| hdfs\_use\_kerberos |
+|:---:|:---|
+|Description| Whether use kerberos to authenticate hdfs|
+|Type| String |
+|Default|false |
+|Effective|After restart system|
+
+* kerberos\_keytab\_file_path
+
+|Name| kerberos\_keytab\_file_path |
+|:---:|:---|
+|Description| Full path of kerberos keytab file|
+|Type| String |
+|Default|/path |
+|Effective|After restart system|
+
+* kerberos\_principal
+
+|Name| kerberos\_principal |
+|:---:|:---|
+|Description| Kerberos pricipal|
+|Type| String |
+|Default|your principal |
+|Effective|After restart system|
+
 Start server, and Tsfile will be stored on HDFS.
 
 If you'd like to reset storage file system to local, just edit configuration `tsfile_storage_fs` to `LOCAL`. In this situation, if you have already had some data files on HDFS, you should either download them to local and move them to your config data file folder (`../server/target/iotdb-server-0.9.0-SNAPSHOT/data/data` by default), or restart your process and import data to IoTDB.

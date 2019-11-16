@@ -76,4 +76,10 @@ public class SyncConstant {
 
   public static final String DEVICE_OWNER_TMP_FILE_NAME = "device_owner.tmp";
 
+  public static final int SUCCESS_CODE = 1;
+
+  public static final int ERROR_CODE = -1;
+
+  public static final int CONFLICT_CODE = -2;
+
 }

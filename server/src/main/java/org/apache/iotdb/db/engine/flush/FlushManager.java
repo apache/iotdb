@@ -45,10 +45,7 @@ public class FlushManager implements FlushManagerMBean, IService {
     try {
       JMXService.registerMBean(this, ServiceType.FLUSH_SERVICE.getJmxName());
     } catch (Exception e) {
-      String errorMessage = String
-          .format("Failed to start %s because of %s", this.getID().getName(),
-              e.getMessage());
-      throw new StartupException(errorMessage, e);
+      throw new StartupException(this.getID().getName(), e.getMessage());
     }
   }
 
