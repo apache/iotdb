@@ -87,15 +87,6 @@ selectElements
     | suffixPath (COMMA suffixPath)* #selectElement
     ;
 
-//suffixSelectPath
-//    : node (DOT node)*
-//    ;
-
-//node
-//    : nodeNames
-//    | nodeName
-//    ;
-
 functionCall
     : ID LR_BRACKET suffixPath RR_BRACKET
     ;
