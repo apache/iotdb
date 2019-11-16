@@ -18,6 +18,8 @@
 # under the License.
 #
 
+# You can put your env variable here
+# export JAVA_HOME=$JAVA_HOME
 
 calculate_heap_sizes()
 {
@@ -92,8 +94,25 @@ calculate_heap_sizes()
 }
 
 
+# find java in JAVA_HOME
+if [ -n "$JAVA_HOME" ]; then
+    for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
+        if [ -x "$java" ]; then
+            JAVA="$java"
+            break
+        fi
+    done
+else
+    JAVA=java
+fi
+
+if [ -z $JAVA ] ; then
+    echo Unable to find java executable. Check JAVA_HOME and PATH environment variables.  > /dev/stderr
+    exit 1;
+fi
+
 # Determine the sort of JVM we'll be running on.
-java_ver_output=`"${JAVA:-java}" -version 2>&1`
+java_ver_output=`"$JAVA" -version 2>&1`
 jvmver=`echo "$java_ver_output" | grep '[openjdk|java] version' | awk -F'"' 'NR==1 {print $2}' | cut -d\- -f1`
 JVM_VERSION=${jvmver%_*}
 JVM_PATCH_VERSION=${jvmver#*_}
@@ -145,5 +164,3 @@ IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${MAX_HEAP_SIZE}"
 echo "Maximum memory allocation pool = ${MAX_HEAP_SIZE}B, initial memory allocation pool = ${HEAP_NEWSIZE}B"
 echo "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat)."
 
-# You can put your env variable here
-# export JAVA_HOME=$JAVA_HOME
