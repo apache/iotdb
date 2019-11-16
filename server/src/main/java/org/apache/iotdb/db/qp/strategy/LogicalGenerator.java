@@ -157,11 +157,11 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   private boolean isNotWhereClause = false;
   private DeleteDataOperator deleteDataOp;
 
-  public LogicalGenerator(ZoneId zoneId) {
+  LogicalGenerator(ZoneId zoneId) {
     this.zoneId = zoneId;
   }
 
-  public RootOperator getLogicalPlan() {
+  RootOperator getLogicalPlan() {
     return initializedOperator;
   }
 
@@ -871,13 +871,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       selectOp.addSelectPath(path);
     }
     queryOp.setSelectOperator(selectOp);
-  }
-
-  @Override
-  public void enterFunctionCall(FunctionCallContext ctx) {
-    super.enterFunctionCall(ctx);
-    Path path = parseSuffixPath(ctx.suffixPath());
-    selectOp.addClusterPath(path, ctx.ID().getText());
   }
 
   @Override
