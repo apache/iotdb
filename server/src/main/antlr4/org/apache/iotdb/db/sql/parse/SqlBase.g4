@@ -67,6 +67,7 @@ statement
     | UNSET TTL TO path=prefixPath #unsetTTLStatement
     | SHOW TTL ON prefixPath (COMMA prefixPath)* #showTTLStatement
     | SHOW ALL TTL #showAllTTLStatement
+    | LOAD CONFIGURATION #loadConfigurationStatement
     | SELECT INDEX func=ID //not suppert yet
     LR_BRACKET
     p1=timeseriesPath COMMA p2=timeseriesPath COMMA n1=timeValue COMMA n2=timeValue COMMA
@@ -128,10 +129,6 @@ predicate
 fromClause
     : FROM prefixPath (COMMA prefixPath)*
     ;
-
-//prefixFromPath
-//    : ROOT (DOT node)*
-//    ;
 
 specialClause
     : specialLimit
@@ -199,12 +196,12 @@ indexValue
 
 
 comparisonOperator
-    : OPERATOR_GT
-    | OPERATOR_GTE
-    | OPERATOR_LT
-    | OPERATOR_LTE
-    | OPERATOR_EQ
-    | OPERATOR_NEQ
+    : type = OPERATOR_GT
+    | type = OPERATOR_GTE
+    | type = OPERATOR_LT
+    | type = OPERATOR_LTE
+    | type = OPERATOR_EQ
+    | type = OPERATOR_NEQ
     ;
 
 insertColumnSpec
@@ -266,10 +263,6 @@ nodeName
     | STAR
     | STRING_LITERAL
     ;
-
-//nodeNames
-//    : L_BRACKET nodeName (COMMA nodeName)* R_BRACKET
-//    ;
 
 nodeNameWithoutStar
     : INT
@@ -371,7 +364,9 @@ DEVICE
     : D E V I C E
     ;
 
-
+CONFIGURATION
+    : C O N F I G U R A T I O N
+    ;
 
 DESCRIBE
     : D E S C R I B E
