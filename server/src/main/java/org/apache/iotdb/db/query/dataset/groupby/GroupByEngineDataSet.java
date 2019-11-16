@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.query.factory.AggreFuncFactory;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
+import org.apache.iotdb.db.query.factory.AggreFuncFactory;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -34,9 +32,13 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
   protected long jobId;
+  // TODO What's the use of the field, the super class has the paths field
   protected List<Path> selectedSeries;
   private long unit;
   private long origin;
