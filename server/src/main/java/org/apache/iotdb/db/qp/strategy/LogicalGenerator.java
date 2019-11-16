@@ -140,7 +140,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
- * This class receives an AstNode and transform it to an operator which is a logical plan.
+ * This class is a listener and you can get an operator which is a logical plan.
  */
 public class LogicalGenerator extends SqlBaseBaseListener {
 
