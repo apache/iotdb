@@ -49,7 +49,7 @@ import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -442,7 +442,7 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
               List<ByteBuffer> pageList = pagesList.get(i);
 
               if (schema.getMeasurementSchema(chunkHeader.getMeasurementID()) != null) {
-                ChunkBuffer chunkBuffer = new ChunkBuffer(
+                ChunkWriterImpl chunkBuffer = new ChunkWriterImpl(
                     schema.getMeasurementSchema(chunkHeader.getMeasurementID()));
                 for (int j = 0; j < pageHeaderList.size(); j++) {
                   if (encodingType.equals(TSEncoding.PLAIN)) {

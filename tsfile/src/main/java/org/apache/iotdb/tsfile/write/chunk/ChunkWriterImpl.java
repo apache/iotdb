@@ -20,12 +20,19 @@ package org.apache.iotdb.tsfile.write.chunk;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.write.page.PageWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -47,8 +54,19 @@ public class ChunkWriterImpl implements IChunkWriter {
   /**
    * help to encode data of this series.
    */
-  private final ChunkBuffer chunkBuffer;
+  //private final ChunkBuffer chunkBuffer;
+  private ICompressor compressor;
+  /**
+   * all pages of this column.
+   */
+  private PublicBAOS pageBuffer;
 
+  private long totalValueCount;
+  private long currentPageMaxTimestamp;
+  private long currentPageMinTimestamp = Long.MIN_VALUE;
+  private ByteBuffer compressedData;// DirectByteBuffer
+
+  private int numOfPages;
   /**
    * value writer to encode data.
    */
@@ -89,7 +107,8 @@ public class ChunkWriterImpl implements IChunkWriter {
    */
   public ChunkWriterImpl(MeasurementSchema schema) {
     this.measurementSchema = schema;
-    this.chunkBuffer = new ChunkBuffer(measurementSchema);
+    this.compressor = ICompressor.getCompressor(schema.getCompressor());
+    this.pageBuffer = new PublicBAOS();
 
     this.pageSizeThreshold = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.maxNumberOfPointsInPage = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
@@ -305,7 +324,7 @@ public class ChunkWriterImpl implements IChunkWriter {
    */
   private void writePage() {
     try {
-      chunkBuffer.writePageHeaderAndDataIntoBuff(pageWriter.getUncompressedBytes(),
+      this.writePageHeaderAndDataIntoBuff(pageWriter.getUncompressedBytes(),
           valueCountInOnePage, pageStatistics, maxTimestamp, minTimestamp);
 
       // update statistics of this series
@@ -327,21 +346,21 @@ public class ChunkWriterImpl implements IChunkWriter {
   @Override
   public void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException {
     sealCurrentPage();
-    chunkBuffer.writeAllPagesOfSeriesToTsFile(tsfileWriter, chunkStatistics);
-    chunkBuffer.reset();
+    this.writeAllPagesOfSeriesToTsFile(tsfileWriter, chunkStatistics);
+    this.reset();
     // reset series_statistics
     this.chunkStatistics = Statistics.getStatsByType(measurementSchema.getType());
   }
 
   @Override
   public long estimateMaxSeriesMemSize() {
-    return pageWriter.estimateMaxMemSize() + chunkBuffer.estimateMaxPageMemSize();
+    return pageWriter.estimateMaxMemSize() + this.estimateMaxPageMemSize();
   }
 
   @Override
   public long getCurrentChunkSize() {
     // return the serialized size of the chunk header + all pages
-    return ChunkHeader.getSerializedSize(measurementSchema.getMeasurementId()) + chunkBuffer
+    return ChunkHeader.getSerializedSize(measurementSchema.getMeasurementId()) + this
         .getCurrentDataSize();
   }
 
@@ -354,15 +373,221 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public int getNumOfPages() {
-    return chunkBuffer.getNumOfPages();
+    return numOfPages;
   }
 
-  public ChunkBuffer getChunkBuffer() {
-    return chunkBuffer;
-  }
 
   @Override
   public TSDataType getDataType() {
     return measurementSchema.getType();
+  }
+
+  /**
+   * write the page header and data into the PageWriter's output stream.
+   *
+   * @param data the data of the page
+   * @param valueCount - the amount of values in that page
+   * @param statistics - page statistics
+   * @param maxTimestamp - timestamp maximum in given data
+   * @param minTimestamp - timestamp minimum in given data
+   * @return byte size of the page header and uncompressed data in the page body.
+   */
+  public int writePageHeaderAndDataIntoBuff(ByteBuffer data, int valueCount,
+      Statistics<?> statistics, long maxTimestamp, long minTimestamp) throws PageException {
+    numOfPages++;
+
+    // 1. update time statistics
+    if (this.currentPageMinTimestamp == Long.MIN_VALUE) {
+      this.currentPageMinTimestamp = minTimestamp;
+    }
+    if (this.currentPageMinTimestamp == Long.MIN_VALUE) {
+      throw new PageException("No valid data point in this page");
+    }
+    this.currentPageMaxTimestamp = maxTimestamp;
+    int uncompressedSize = data.remaining();
+    int compressedSize;
+    int compressedPosition = 0;
+    byte[] compressedBytes = null;
+
+    if (compressor.getType().equals(CompressionType.UNCOMPRESSED)) {
+      compressedSize = data.remaining();
+    } else {
+      compressedBytes = new byte[compressor.getMaxBytesForCompression(uncompressedSize)];
+      try {
+        compressedPosition = 0;
+        // data is never a directByteBuffer now, so we can use data.array()
+        compressedSize = compressor
+            .compress(data.array(), data.position(), data.remaining(), compressedBytes);
+      } catch (IOException e) {
+        throw new PageException(e);
+      }
+    }
+
+    int headerSize;
+
+    // write the page header to IOWriter
+    try {
+      PageHeader header = new PageHeader(uncompressedSize, compressedSize, valueCount, statistics,
+          maxTimestamp, minTimestamp);
+      headerSize = header.getSerializedSize();
+      LOG.debug("start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
+      header.serializeTo(pageBuffer);
+      LOG.debug("finish to flush a page header {} of {} into buffer, buffer position {} ", header,
+          measurementSchema.getMeasurementId(), pageBuffer.size());
+
+    } catch (IOException e) {
+      resetTimeStamp();
+      throw new PageException(
+          "IO Exception in writeDataPageHeader,ignore this page", e);
+    }
+
+    // update data point num
+    this.totalValueCount += valueCount;
+
+    // write page content to temp PBAOS
+    try (WritableByteChannel channel = Channels.newChannel(pageBuffer)) {
+      LOG.debug("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
+      if (compressor.getType().equals(CompressionType.UNCOMPRESSED)) {
+        channel.write(data);
+      } else {
+        if (data.isDirect()) {
+          channel.write(compressedData);
+        } else {
+          pageBuffer.write(compressedBytes, compressedPosition, compressedSize);
+        }
+      }
+      LOG.debug("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
+    } catch (IOException e) {
+      throw new PageException(e);
+    }
+    return headerSize + uncompressedSize;
+  }
+
+  /**
+   * write the page header and data into the PageWriter's output stream.
+   */
+  public void writePageHeaderAndDataIntoBuff(ByteBuffer data, PageHeader header)
+      throws PageException {
+    numOfPages++;
+
+    // 1. update time statistics
+    if (this.currentPageMinTimestamp == Long.MIN_VALUE) {
+      this.currentPageMinTimestamp = header.getMinTimestamp();
+    }
+    if (this.currentPageMinTimestamp == Long.MIN_VALUE) {
+      throw new PageException("No valid data point in this page");
+    }
+    this.currentPageMaxTimestamp = header.getMaxTimestamp();
+
+    // write the page header to pageBuffer
+    try {
+      LOG.debug("start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
+      header.serializeTo(pageBuffer);
+      LOG.debug("finish to flush a page header {} of {} into buffer, buffer position {} ", header,
+          measurementSchema.getMeasurementId(), pageBuffer.size());
+
+    } catch (IOException e) {
+      resetTimeStamp();
+      throw new PageException(
+          "IO Exception in writeDataPageHeader,ignore this page", e);
+    }
+
+    // update data point num
+    this.totalValueCount += header.getNumOfValues();
+
+    // write page content to temp PBAOS
+    try (WritableByteChannel channel = Channels.newChannel(pageBuffer)) {
+      channel.write(data);
+    } catch (IOException e) {
+      throw new PageException(e);
+    }
+  }
+
+  private void resetTimeStamp() {
+    if (totalValueCount == 0) {
+      currentPageMinTimestamp = Long.MIN_VALUE;
+    }
+  }
+
+  /**
+   * write the page to specified IOWriter.
+   *
+   * @param writer the specified IOWriter
+   * @param statistics the statistic information provided by series writer
+   * @return the data size of this chunk
+   * @throws IOException exception in IO
+   */
+  public long writeAllPagesOfSeriesToTsFile(TsFileIOWriter writer, Statistics<?> statistics)
+      throws IOException {
+    if (totalValueCount == 0) {
+      return 0;
+    }
+
+    // start to write this column chunk
+    int headerSize = writer.startFlushChunk(measurementSchema, compressor.getType(), measurementSchema.getType(),
+        measurementSchema.getEncodingType(), statistics, currentPageMaxTimestamp, currentPageMinTimestamp, pageBuffer.size(),
+        numOfPages);
+
+    long dataOffset = writer.getPos();
+    LOG.debug("start writing pages of {} into file, position {}", measurementSchema.getMeasurementId(),
+        writer.getPos());
+
+    // write all pages of this column
+    writer.writeBytesToStream(pageBuffer);
+    LOG.debug("finish writing pages of {} into file, position {}", measurementSchema.getMeasurementId(),
+        writer.getPos());
+
+    long dataSize = writer.getPos() - dataOffset;
+    if (dataSize != pageBuffer.size()) {
+      throw new IOException(
+          "Bytes written is inconsistent with the size of data: " + dataSize + " !="
+              + " " + pageBuffer.size());
+    }
+
+    writer.endChunk(totalValueCount);
+    return headerSize + dataSize;
+  }
+
+  /**
+   * reset exist data in page for next stage.
+   */
+  public void reset() {
+    currentPageMinTimestamp = Long.MIN_VALUE;
+    pageBuffer.reset();
+    totalValueCount = 0;
+  }
+
+  /**
+   * reset exist data in page for next stage.
+   */
+  public void reInit(MeasurementSchema schema) {
+    reset();
+    this.measurementSchema = schema;
+    this.compressor = ICompressor.getCompressor(schema.getCompressor());
+    numOfPages = 0;
+    currentPageMaxTimestamp = 0;
+  }
+
+  /**
+   * estimate max page memory size.
+   *
+   * @return the max possible allocated size currently
+   */
+  public long estimateMaxPageMemSize() {
+    // return the sum of size of buffer and page max size
+    return (long) (pageBuffer.size() + estimateMaxPageHeaderSize());
+  }
+
+  private int estimateMaxPageHeaderSize() {
+    return PageHeader.calculatePageHeaderSize(measurementSchema.getType());
+  }
+
+  /**
+   * get current data size.
+   *
+   * @return current data size that the writer has serialized.
+   */
+  public long getCurrentDataSize() {
+    return pageBuffer.size();
   }
 }
