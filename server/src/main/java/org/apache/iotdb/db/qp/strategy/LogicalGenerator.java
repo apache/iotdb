@@ -609,10 +609,10 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       } else {
         startTime = parseTimeFormat(timeInterval.timeValue(0).dateFormat().getText());
       }
-      if(timeInterval.timeValue(0).INT() != null) {
-        endTime = Long.parseLong(timeInterval.timeValue(0).INT().getText());
+      if(timeInterval.timeValue(1).INT() != null) {
+        endTime = Long.parseLong(timeInterval.timeValue(1).INT().getText());
       } else {
-        endTime = parseTimeFormat(timeInterval.timeValue(0).dateFormat().getText());
+        endTime = parseTimeFormat(timeInterval.timeValue(1).dateFormat().getText());
       }
       intervals.add(new Pair<>(startTime,endTime));
     }
