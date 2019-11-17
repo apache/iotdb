@@ -748,15 +748,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterInsertValuesSpec(InsertValuesSpecContext ctx) {
     super.enterInsertValuesSpec(ctx);
-    String timeValue;
     long timestamp;
     if(ctx.dateFormat() != null) {
-      if (ctx.dateFormat().NOW() != null) {
-        timeValue = ctx.dateFormat().NOW().getText();
-      } else {
-        timeValue = ctx.dateFormat().getText();
-      }
-      timestamp = parseTimeFormat(timeValue);
+      timestamp = parseTimeFormat(ctx.dateFormat().getText());
     } else {
       timestamp = Long.parseLong(ctx.INT().getText());
     }
@@ -800,7 +794,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     checkMetadataArgs(dataType, encoding, compressor);
     if(ctx.property(0) != null) {
       for (PropertyContext property : properties) {
-        props.put(property.ID().getText(), property.propertyValue().getText());
+        props.put(property.ID().getText().toLowerCase(), property.propertyValue().getText().toLowerCase());
       }
     }
     createTimeSeriesOperator.setCompressor(CompressionType.valueOf(compressor));
