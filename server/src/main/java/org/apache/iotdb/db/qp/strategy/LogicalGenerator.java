@@ -262,7 +262,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_UPDATE_USER,
         AuthorOperator.AuthorType.UPDATE_USER);
     authorOperator.setUserName(ctx.userName.getText());
-    authorOperator.setNewPassword(ctx.password.getText());
+    authorOperator.setNewPassword(removeStringQuote(ctx.password.getText()));
     initializedOperator = authorOperator;
     operatorNumber = SQLConstant.TOK_AUTHOR_UPDATE_USER;
   }
@@ -282,7 +282,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterDropRole(ctx);
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_DROP,
         AuthorOperator.AuthorType.DROP_ROLE);
-    authorOperator.setUserName(ctx.ID().getText());
+    authorOperator.setRoleName(ctx.ID().getText());
     initializedOperator = authorOperator;
     operatorNumber = SQLConstant.TOK_AUTHOR_DROP;
   }
@@ -328,7 +328,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterRevokeRole(ctx);
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT,
         AuthorType.REVOKE_ROLE);
-    authorOperator.setUserName(ctx.ID().getText());
+    authorOperator.setRoleName(ctx.ID().getText());
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
     authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     initializedOperator = authorOperator;
@@ -432,7 +432,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterListPrivilegesRole(ctx);
     AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
         AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
-    operator.setUserName(ctx.ID().getText());
+    operator.setRoleName((ctx.ID().getText()));
     operator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     initializedOperator = operator;
     operatorNumber = SQLConstant.TOK_LIST;
@@ -453,7 +453,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterListRolePrivileges(ctx);
     AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
         AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
-    operator.setUserName(ctx.ID().getText());
+    operator.setRoleName(ctx.ID().getText());
     initializedOperator = operator;
     operatorNumber = SQLConstant.TOK_LIST;
   }
@@ -474,7 +474,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
         AuthorOperator.AuthorType.LIST_ROLE_USERS);
     initializedOperator = operator;
-    operator.setUserName(ctx.ID().getText());
+    operator.setRoleName((ctx.ID().getText()));
     operatorNumber = SQLConstant.TOK_LIST;
   }
 
