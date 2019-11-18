@@ -442,17 +442,17 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
               List<ByteBuffer> pageList = pagesList.get(i);
 
               if (schema.getMeasurementSchema(chunkHeader.getMeasurementID()) != null) {
-                ChunkWriterImpl chunkBuffer = new ChunkWriterImpl(
+                ChunkWriterImpl chunkWriter = new ChunkWriterImpl(
                     schema.getMeasurementSchema(chunkHeader.getMeasurementID()));
                 for (int j = 0; j < pageHeaderList.size(); j++) {
                   if (encodingType.equals(TSEncoding.PLAIN)) {
                     pageList.set(j, rewrite(pageList.get(j), tsDataType));
                   }
-                  chunkBuffer
+                  chunkWriter
                       .writePageHeaderAndDataIntoBuff(pageList.get(j), pageHeaderList.get(j));
                 }
-                chunkBuffer
-                    .writeAllPagesOfSeriesToTsFile(tsFileIOWriter, chunkStatisticsList.get(i));
+                chunkWriter
+                    .writeAllPagesOfChunkToTsFile(tsFileIOWriter, chunkStatisticsList.get(i));
               }
             }
             tsFileIOWriter.endChunkGroup(currentChunkGroup.getVersion());
