@@ -550,6 +550,7 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
     }
     switch (compressionType) {
       case UNCOMPRESSED:
+        modifiedPage.flip();
         break;
       case SNAPPY:
         SnappyCompressor snappyCompressor = new SnappyCompressor();
@@ -560,7 +561,6 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
         }
         break;
     }
-    modifiedPage.clear();
     return modifiedPage;
   }
 }
