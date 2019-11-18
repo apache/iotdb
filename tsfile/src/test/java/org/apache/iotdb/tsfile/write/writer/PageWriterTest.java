@@ -210,7 +210,7 @@ public class PageWriterTest {
       for (int i = 0; i < timeCount; i++) {
         assertEquals(i, decoder.readLong(buffer2));
       }
-      assertEquals(value, decoder.readDouble(buffer));
+      assertEquals(value, decoder.readDouble(buffer),0);
 
     } catch (IOException e) {
       fail();
