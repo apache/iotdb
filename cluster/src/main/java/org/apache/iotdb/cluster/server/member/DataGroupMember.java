@@ -5,7 +5,6 @@
 package org.apache.iotdb.cluster.server.member;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,7 +13,6 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
-import org.apache.iotdb.cluster.rpc.thrift.VNode;
 import org.apache.iotdb.cluster.server.heartbeat.HeartBeatThread;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
@@ -32,23 +30,17 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   private TSDataService.AsyncClient.Factory clientFactory;
 
-  private VNode thisVNode;
-  private PartitionGroup vNodes;
+  private Node thisVNode;
   // the data port of each node in this group
   private Map<Node, Integer> dataPortMap = new ConcurrentHashMap<>();
 
-  private DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, VNode thisVNode,
+  private DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisVNode,
       LogManager logManager) throws IOException {
-    this.thisNode = thisVNode.getPNode();
-    this.thisVNode = thisVNode;
+    this.thisNode = thisVNode;
     this.logManager = logManager;
-    allNodes = new ArrayList<>();
+    allNodes = nodes;
     clientFactory = new TSDataService.AsyncClient.Factory(new TAsyncClientManager(), factory);
     queryProcessor = new QueryProcessor(new QueryProcessExecutor());
-    this.vNodes = nodes;
-    for (VNode vNode : vNodes) {
-      allNodes.add(vNode.getPNode());
-    }
   }
 
   @Override
@@ -75,25 +67,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
     AsyncClient client = null;
     try {
-      client = getAsyncClient(new TNonblockingSocket(node.getIp(), getDataPort(node),
+      client = getAsyncClient(new TNonblockingSocket(node.getIp(), node.getDataPort(),
           CONNECTION_TIME_OUT_MS));
     } catch (IOException e) {
       logger.warn("Cannot connect to node {}", node, e);
     }
     return client;
-  }
-
-  private int getDataPort(Node node) {
-    Integer dataPort = dataPortMap.get(node);
-    if (dataPort == null) {
-      for (VNode vNode : vNodes) {
-        if (vNode.getPNode().equals(node)) {
-          dataPort = node.getDataPorts().get(vNode.getSerialNum());
-          dataPortMap.put(node, dataPort);
-        }
-      }
-    }
-    return dataPort;
   }
 
   /**
@@ -102,8 +81,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * nodes in this may change, this node is unchangeable unless the data group is dismissed. It
    * is also the identifier of this data group.
    */
-  public VNode getHeader() {
-    return vNodes.get(0);
+  public Node getHeader() {
+    return ((PartitionGroup) allNodes).get(0);
   }
 
   public static class Factory {
@@ -115,24 +94,24 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       this.logManager = logManager;
     }
 
-    public DataGroupMember create(PartitionGroup partitionGroup, VNode thisVNode)
+    public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode)
         throws IOException {
-      return new DataGroupMember(protocolFactory, partitionGroup, thisVNode, logManager);
+      return new DataGroupMember(protocolFactory, partitionGroup, thisNode, logManager);
     }
   }
 
   /**
-   * Try to add a VNode into this group
+   * Try to add a Node into this group
    * @param node
    */
-  public synchronized void addNode(VNode node) {
+  public synchronized void addNode(Node node) {
     synchronized (allNodes) {
       List<Node> allNodeList = (List<Node>) allNodes;
-      VNode firstNode = vNodes.get(0);
-      VNode lastNode = vNodes.get(vNodes.size() - 1);
+      Node firstNode = allNodeList.get(0);
+      Node lastNode = allNodeList.get(allNodeList.size() - 1);
 
 
-      boolean crossTail = lastNode.hash < firstNode.hash;
+      boolean crossTail = lastNode.nodeIdentifier < firstNode.nodeIdentifier;
     }
   }
 }

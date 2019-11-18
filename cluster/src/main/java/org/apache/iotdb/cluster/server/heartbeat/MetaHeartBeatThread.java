@@ -4,7 +4,6 @@
 
 package org.apache.iotdb.cluster.server.heartbeat;
 
-import java.util.Set;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -35,9 +34,9 @@ public class MetaHeartBeatThread extends HeartBeatThread {
 
     // if the node requires the node list and it is ready (all nodes' ids are known), send it
     if (raftMember.isNodeBlind(node)) {
-      if (raftMember.allNodesIdKnown()) {
-        logger.debug("Send node list to {}", node);
-        request.setNodeSet((Set<Node>) raftMember.getAllNodes());
+      if (raftMember.getPartitionTable() != null) {
+        logger.debug("Send partition table to {}", node);
+        request.setPartitionTableBytes(raftMember.getPartitionTable().serialize());
         // if the node does not receive the list, it will require it in the next heartbeat, so
         // we can remove it now
         raftMember.removeBlindNode(node);

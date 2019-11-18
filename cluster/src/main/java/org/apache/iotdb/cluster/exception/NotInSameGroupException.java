@@ -5,11 +5,10 @@
 package org.apache.iotdb.cluster.exception;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.VNode;
 
 public class NotInSameGroupException extends Exception {
 
-  public NotInSameGroupException(VNode header, Node thisNode) {
+  public NotInSameGroupException(Node header, Node thisNode) {
     super(String.format("Header [%s] and this node [%s] are not in the same data group", header,
         thisNode));
   }

@@ -30,12 +30,12 @@ struct HeartBeatRequest {
   3: required Node leader
   4: required bool requireIdentifier
   5: required bool regenerateIdentifier
-  // all known nodes in the leader
-  6: optional set<Node> nodeSet
+  // serialized partitionTable
+  6: optional binary partitionTableBytes
 
-  // because a data server may plays manay data groups members, this is used to identify which
+  // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
-  7: optional VNode header
+  7: optional Node header
 }
 
 // follower -> leader
@@ -46,11 +46,11 @@ struct HeartBeatResponse {
   // used to perform a catch up when necessary
   4: optional Node follower
   5: optional int followeIdentifier
-  6: required bool requireNodeList
+  6: required bool requirePartitionTable
 
-  // because a data server may plays manay data groups members, this is used to identify which
+  // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
-  7: optional VNode header
+  7: optional Node header
 }
 
 // node -> node
@@ -59,9 +59,9 @@ struct ElectionRequest {
   2: required long lastLogTerm
   3: required long lastLogIndex
 
-  // because a data server may plays manay data groups members, this is used to identify which
+  // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
-  4: optional VNode header
+  4: optional Node header
 }
 
 // leader -> follower
@@ -69,9 +69,9 @@ struct AppendEntryRequest {
   1: required long term // leader's
   2: required binary entry // data
 
-  // because a data server may plays manay data groups members, this is used to identify which
+  // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
-  3: optional VNode header
+  3: optional Node header
 }
 
 // leader -> follower
@@ -79,35 +79,23 @@ struct AppendEntriesRequest {
   1: required long term // leader's
   2: required list<binary> entries // data
 
-  // because a data server may plays manay data groups members, this is used to identify which
+  // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
-  3: optional VNode header
+  3: optional Node header
 }
 
 struct AddNodeResponse {
   // -1: accept to add new node or the node is already in this cluster, otherwise: fail to
   // add new node
   1: required int respNum
-  2: optional set<Node> allNodes
+  2: optional binary partitionTableBytes
 }
 
 struct Node {
   1: required string ip
   2: required int port
   3: required int nodeIdentifier
-  4: required list<int> dataPorts
-}
-
-/**
-*  a virtual node corresponding to a physical node
-**/
-struct VNode {
-  // the corresponding physical node
-  1: required Node pNode
-  // the index on the hash ring
-  2: required int hash
-  // the serial number with regard to all virtual nodes of a physical node
-  3: required int serialNum
+  4: required int dataPort
 }
 
 service RaftService {

@@ -21,16 +21,14 @@ package org.apache.iotdb.cluster.config;
 import java.util.Arrays;
 import java.util.List;
 
+// TODO-Cluster: add the configs into the config file
 public class ClusterConfig {
 
-
-  public static final String[] HASH_SALTS = new String[] {"106", "666", "IoTDB"};
-  public static final int VNODE_NUM = HASH_SALTS.length;
   static final String CONFIG_NAME = "iotdb-cluster.properties";
 
   private String localIP = "localhost";
   private int localMetaPort = 9003;
-  private final List<Integer> localDataPorts = Arrays.asList(40010, 40011, 40012);
+  private int localDataPort = 40010;
 
   // each one is {IP | domain name}:{meta port}
   private List<String> seedNodeUrls = Arrays.asList("localhost:9003", "localhost"
@@ -40,6 +38,8 @@ public class ClusterConfig {
   private int maxConcurrentClientNum = 1024;
 
   private int replicationNum = 3;
+  // default daily partition
+  private long partitionInterval = 24 * 3600 * 1000L;
 
 
   public String getLocalIP() {
@@ -90,7 +90,15 @@ public class ClusterConfig {
     this.replicationNum = replicationNum;
   }
 
-  public List<Integer> getLocalDataPorts() {
-    return localDataPorts;
+  public int getLocalDataPort() {
+    return localDataPort;
+  }
+
+  public long getPartitionInterval() {
+    return partitionInterval;
+  }
+
+  public void setPartitionInterval(long partitionInterval) {
+    this.partitionInterval = partitionInterval;
   }
 }
