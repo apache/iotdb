@@ -86,7 +86,6 @@ tokens{
     TOK_OFFSET;
     TOK_GROUPBY;
     TOK_TIMEUNIT;
-    TOK_TIMEORIGIN;
     TOK_TIMEINTERVAL;
     TOK_FILL;
     TOK_TYPE;
@@ -532,9 +531,11 @@ dateExpression
 
 groupByClause
     : K_GROUP K_BY LR_BRACKET
-      durationExpr (COMMA timeValue)?
-      COMMA timeInterval (COMMA timeInterval)* RR_BRACKET
-      -> ^(TOK_GROUPBY durationExpr ^(TOK_TIMEORIGIN timeValue)? ^(TOK_TIMEINTERVAL timeInterval+))
+      timeInterval
+      COMMA durationExpr
+      (COMMA durationExpr)?
+      RR_BRACKET
+      -> ^(TOK_GROUPBY ^(TOK_TIMEINTERVAL timeInterval) durationExpr durationExpr?)
     ;
 
 timeValue

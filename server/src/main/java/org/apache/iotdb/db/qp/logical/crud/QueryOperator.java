@@ -18,21 +18,23 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.util.Map;
 
 /**
  * this class extends {@code RootOperator} and process getIndex statement
  */
 public class QueryOperator extends SFWOperator {
 
+  private long startTime;
+  private long endTime;
+  // time interval
   private long unit;
-  private long origin;
-  private List<Pair<Long, Long>> intervals;
+  // sliding step
+  private long slidingStep;
   private boolean isGroupByTime = false;
 
   private Map<TSDataType, IFill> fillTypes;
@@ -106,20 +108,28 @@ public class QueryOperator extends SFWOperator {
     this.unit = unit;
   }
 
-  public long getOrigin() {
-    return origin;
+  public long getStartTime() {
+    return startTime;
   }
 
-  public void setOrigin(long origin) {
-    this.origin = origin;
+  public void setStartTime(long startTime) {
+    this.startTime = startTime;
   }
 
-  public List<Pair<Long, Long>> getIntervals() {
-    return intervals;
+  public long getEndTime() {
+    return endTime;
   }
 
-  public void setIntervals(List<Pair<Long, Long>> intervals) {
-    this.intervals = intervals;
+  public void setEndTime(long endTime) {
+    this.endTime = endTime;
+  }
+
+  public long getSlidingStep() {
+    return slidingStep;
+  }
+
+  public void setSlidingStep(long slidingStep) {
+    this.slidingStep = slidingStep;
   }
 
   public boolean isGroupByDevice() {

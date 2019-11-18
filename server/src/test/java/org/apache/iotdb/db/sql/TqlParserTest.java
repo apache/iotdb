@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.db.sql;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.ArrayList;
-import java.util.Arrays;
 import org.apache.iotdb.db.sql.parse.AstNode;
 import org.apache.iotdb.db.sql.parse.Node;
 import org.apache.iotdb.db.sql.parse.ParseException;
 import org.apache.iotdb.db.sql.parse.ParseUtils;
 import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import static org.junit.Assert.assertEquals;
 
 public class TqlParserTest {
 
@@ -1025,12 +1026,11 @@ public class TqlParserTest {
             "TOK_WHERE", "and",
             "<", "TOK_PATH", "TOK_ROOT", "vehicle", "d1", "s1", "TOK_CONSTANT", "0", ".", "32e6",
             "<=", "TOK_PATH", "time", "TOK_DATE_EXPR", "TOK_DATETIME", "now", "TOK_GROUPBY",
-            "TOK_DURATION", "10w", "TOK_TIMEORIGIN", "44", "TOK_TIMEINTERVAL",
-            "TOK_TIMEINTERVALPAIR", "1", "3",
-            "TOK_TIMEINTERVALPAIR", "4", "5"));
+            "TOK_TIMEINTERVAL", "TOK_TIMEINTERVALPAIR", "1", "3",
+                "TOK_DURATION", "10w"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator.generateAST(
-        "select count(s1),max_time(s2) from root.vehicle.d1 where root.vehicle.d1.s1 < 0.32e6 and time <= now() group by(10w, 44, [1,3], [4,5])");
+        "select count(s1),max_time(s2) from root.vehicle.d1 where root.vehicle.d1.s1 < 0.32e6 and time <= now() group by([1,3],10w)");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -1050,13 +1050,12 @@ public class TqlParserTest {
             "TOK_WHERE", "or", "<",
             "TOK_PATH", "s1", "TOK_CONSTANT", "2000", ">=", "TOK_PATH", "time", "TOK_CONSTANT",
             "1234567", "TOK_GROUPBY",
-            "TOK_DURATION",
-            "111ms", "TOK_TIMEINTERVAL", "TOK_TIMEINTERVALPAIR", "123", "TOK_DATETIME",
-            "2017-6-2T12:00:12+07:00",
-            "TOK_TIMEINTERVALPAIR", "55555", "TOK_DATETIME", "now"));
+            "TOK_TIMEINTERVAL", "TOK_TIMEINTERVALPAIR", "TOK_DATETIME",
+            "2017-6-2T12:00:12+07:00", "TOK_DATETIME", "now",
+                "TOK_DURATION", "111ms", "TOK_DURATION", "200ms"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator.generateAST("select sum(s2) " + "FROM root.vehicle.d1 "
-        + "WHERE s1 < 2000 or time >= 1234567 group by(111ms, [123,2017-6-2T12:00:12+07:00], [55555, now()]);");
+        + "WHERE s1 < 2000 or time >= 1234567 group by([2017-6-2T12:00:12+07:00, now()], 111ms, 200ms)");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -1077,13 +1076,11 @@ public class TqlParserTest {
             "TOK_WHERE", "|", "<", "TOK_PATH", "TOK_ROOT", "vehicle", "d1", "s1", "TOK_CONSTANT",
             "2000", ">=",
             "TOK_PATH", "time", "TOK_CONSTANT",
-            "1234567", "TOK_GROUPBY", "TOK_TIMEUNIT", "TOK_DURATION", "111w", "TOK_TIMEORIGIN",
-            "TOK_DATETIME",
-            "2017-6-2T02:00:12+07:00", "TOK_TIMEINTERVAL", "TOK_TIMEINTERVALPAIR", "TOK_DATETIME",
-            "2017-6-2T12:00:12+07:00", "TOK_DATETIME", "now"));
+            "1234567", "TOK_GROUPBY", "TOK_TIMEINTERVAL", "TOK_TIMEINTERVALPAIR", "TOK_DATETIME",
+            "2017-6-2T12:00:12+07:00", "TOK_DATETIME", "now", "TOK_TIMEUNIT","TOK_DURATION", "111w", "TOK_DURATION", "111d"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator.generateAST("select s1,sum(s2) "
-        + "FROM root.vehicle.d1 WHERE root.vehicle.d1.s1 < 2000 | time >= 1234567 group by(111w, 2017-6-2T02:00:12+07:00, [2017-6-2T12:00:12+07:00, now()])");
+        + "FROM root.vehicle.d1 WHERE root.vehicle.d1.s1 < 2000 | time >= 1234567 group by([2017-6-2T12:00:12+07:00, now()], 111w, 111d)");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -1420,13 +1417,12 @@ public class TqlParserTest {
             "TOK_PATH", "TOK_ROOT", "vehicle", "*", "TOK_WHERE", "and",
             "<", "TOK_PATH", "TOK_ROOT", "vehicle", "d1", "s1", "TOK_CONSTANT", "0", ".", "32e6",
             "<=", "TOK_PATH", "time", "TOK_DATE_EXPR", "TOK_DATETIME", "now", "TOK_GROUPBY",
-            "TOK_DURATION",
-            "10w", "TOK_TIMEORIGIN", "44", "TOK_TIMEINTERVAL", "TOK_TIMEINTERVALPAIR", "1", "3",
-            "TOK_TIMEINTERVALPAIR", "4", "5", "TOK_SLIMIT", "1", "TOK_SOFFSET", "1", "TOK_LIMIT",
+                "TOK_TIMEINTERVAL", "TOK_TIMEINTERVALPAIR", "1", "3", "TOK_DURATION", "10w",
+                "TOK_SLIMIT", "1", "TOK_SOFFSET", "1", "TOK_LIMIT",
             "11"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator.generateAST("select count(s1),max_time(s2) "
-        + "from root.vehicle.* where root.vehicle.d1.s1 < 0.32e6 and time <= now() group by(10w, 44, [1,3], [4,5]) slimit 1 "
+        + "from root.vehicle.* where root.vehicle.d1.s1 < 0.32e6 and time <= now() group by([1,3], 10w) slimit 1 "
         + "soffset 1" + "limit 11" + "offset 3");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);

@@ -18,67 +18,6 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
-import static org.apache.iotdb.db.qp.constant.SQLConstant.LESSTHAN;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.LESSTHANOREQUALTO;
-import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_AND;
-import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_EQ;
-import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_GT;
-import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_GTE;
-import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_LT;
-import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_LTE;
-import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_NEQ;
-import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_NOT;
-import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_OR;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_ADD;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_AGGREGATE;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_ALL;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_ALTER;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_CREATE;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DATETIME;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DELETE;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DROP;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_FILL;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_FROM;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_GRANT;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_GRANT_WATERMARK_EMBEDDING;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_GROUPBY;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_GROUPBY_DEVICE;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_INSERT;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LABEL;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LIMIT;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LINEAR;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LINK;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LIST;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LOAD;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PATH;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PREVIOUS;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PRIVILEGES;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PROPERTY;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_QUERY;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_REVOKE;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_REVOKE_WATERMARK_EMBEDDING;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_ROLE;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_ROOT;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SELECT;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SET;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SHOW;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SLIMIT;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SOFFSET;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_STORAGEGROUP;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_TIMESERIES;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_TTL;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_UNLINK;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_UNSET;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_UPDATE;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_USER;
-import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_WHERE;
-
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.antlr.runtime.Token;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MetadataErrorException;
@@ -89,25 +28,8 @@ import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.constant.TqlParserConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
-import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
-import org.apache.iotdb.db.qp.logical.crud.FromOperator;
-import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
-import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
-import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
-import org.apache.iotdb.db.qp.logical.crud.UpdateOperator;
-import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
-import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
+import org.apache.iotdb.db.qp.logical.crud.*;
+import org.apache.iotdb.db.qp.logical.sys.*;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
@@ -122,6 +44,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
+
+import java.time.ZoneId;
+import java.util.*;
+
+import static org.apache.iotdb.db.qp.constant.SQLConstant.LESSTHAN;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.LESSTHANOREQUALTO;
+import static org.apache.iotdb.db.sql.parse.TqlParser.*;
 
 /**
  * This class receives an AstNode and transform it to an operator which is a logical plan.
@@ -770,48 +699,37 @@ public class LogicalGenerator {
     int childCount = astNode.getChildCount();
 
     // parse timeUnit
-    long value = parseTokenTime(astNode.getChild(0));
+    long value = parseTokenTime(astNode.getChild(1));
     ((QueryOperator) initializedOperator).setUnit(value);
 
-    // parse show intervals
-    AstNode intervalsNode = astNode.getChild(childCount - 1);
-    int intervalCount = intervalsNode.getChildCount();
-    List<Pair<Long, Long>> intervals = new ArrayList<>();
-    AstNode intervalNode;
+    // parse show interval
+    AstNode intervalNode = astNode.getChild(0).getChild(0);
     long startTime;
     long endTime;
-    for (int i = 0; i < intervalCount; i++) {
-      intervalNode = intervalsNode.getChild(i);
-      AstNode startNode = intervalNode.getChild(0);
-      if (startNode.getType() == TOK_DATETIME) {
-        startTime = parseTokenTime(startNode);
-      } else {
-        startTime = Long.parseLong(startNode.getText());
-      }
-      AstNode endNode = intervalNode.getChild(1);
-      if (endNode.getType() == TOK_DATETIME) {
-        endTime = parseTokenTime(endNode);
-      } else {
-        endTime = Long.parseLong(endNode.getText());
-      }
-      intervals.add(new Pair<>(startTime, endTime));
-    }
-
-    ((QueryOperator) initializedOperator).setIntervals(intervals);
-
-    // parse time origin
-    long originTime;
-    if (childCount == 3) {
-      AstNode originNode = astNode.getChild(1).getChild(0);
-      if (originNode.getType() == TOK_DATETIME) {
-        originTime = parseTokenTime(originNode);
-      } else {
-        originTime = Long.parseLong(originNode.getText());
-      }
+    AstNode startNode = intervalNode.getChild(0);
+    if (startNode.getType() == TOK_DATETIME) {
+      startTime = parseTokenTime(startNode);
     } else {
-      originTime = parseTimeFormat(SQLConstant.START_TIME_STR);
+      startTime = Long.parseLong(startNode.getText());
     }
-    ((QueryOperator) initializedOperator).setOrigin(originTime);
+    AstNode endNode = intervalNode.getChild(1);
+    if (endNode.getType() == TOK_DATETIME) {
+      endTime = parseTokenTime(endNode);
+    } else {
+      endTime = Long.parseLong(endNode.getText());
+    }
+
+    ((QueryOperator) initializedOperator).setStartTime(startTime);
+    ((QueryOperator) initializedOperator).setEndTime(endTime);
+
+    // parse sliding step
+    long slidingStep;
+    if (childCount == 3) {
+      slidingStep = parseTokenTime(astNode.getChild(2));
+    } else {
+      slidingStep = value;
+    }
+    ((QueryOperator) initializedOperator).setSlidingStep(slidingStep);
   }
 
   /**
@@ -862,7 +780,6 @@ public class LogicalGenerator {
           break;
       }
     }
-
     ((QueryOperator) initializedOperator).setFillTypes(fillTypes);
     ((QueryOperator) initializedOperator).setFill(true);
   }

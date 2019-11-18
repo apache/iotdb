@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -42,7 +39,10 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -56,8 +56,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * constructor.
    */
   public GroupByWithoutValueFilterDataSet(long jobId, List<Path> paths, long unit,
-                                          long origin, List<Pair<Long, Long>> mergedIntervals) {
-    super(jobId, paths, unit, origin, mergedIntervals);
+                                          long slidingStep, long startTime, long endTime) {
+    super(jobId, paths, unit, slidingStep, startTime, endTime);
     this.unSequenceReaderList = new ArrayList<>();
     this.sequenceReaderList = new ArrayList<>();
     this.timeFilter = null;

@@ -19,16 +19,12 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
@@ -36,7 +32,10 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -59,9 +58,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * constructor.
    */
-  public GroupByWithValueFilterDataSet(long jobId, List<Path> paths, long unit, long origin,
-      List<Pair<Long, Long>> mergedIntervals) {
-    super(jobId, paths, unit, origin, mergedIntervals);
+  public GroupByWithValueFilterDataSet(long jobId, List<Path> paths, long unit,
+                                       long slidingStep, long startTime, long endTime) {
+    super(jobId, paths, unit, slidingStep, startTime, endTime);
     this.allDataReaderList = new ArrayList<>();
     this.timeStampFetchSize = 10 * IoTDBDescriptor.getInstance().getConfig().getFetchSize();
   }
@@ -96,8 +95,10 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     int timeArrayLength = 0;
     if (hasCachedTimestamp) {
       if (timestamp < endTime) {
-        hasCachedTimestamp = false;
-        timestampArray[timeArrayLength++] = timestamp;
+        if (timestamp >= startTime) {
+          hasCachedTimestamp = false;
+          timestampArray[timeArrayLength++] = timestamp;
+        }
       } else {
         return constructRowRecord();
       }
