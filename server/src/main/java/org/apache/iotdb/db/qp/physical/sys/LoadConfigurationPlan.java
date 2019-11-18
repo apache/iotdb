@@ -15,25 +15,29 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
- package org.apache.iotdb.db.query.externalsort;
+package org.apache.iotdb.db.qp.physical.sys;
 
- import java.io.IOException;
- import org.apache.iotdb.db.query.reader.IPointReader;
- import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
+import java.util.List;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.read.common.Path;
 
+public class LoadConfigurationPlan extends PhysicalPlan {
 
- public class SingleSourceExternalSortJobPart extends ExternalSortJobPart {
+  public LoadConfigurationPlan() {
+    super(false);
+    this.setOperatorType(OperatorType.LOAD_CONFIGURATION);
+  }
 
-   private ChunkReaderWrap chunkReaderWrap;
+  @Override
+  public List<Path> getPaths() {
+    return null;
+  }
 
-   public SingleSourceExternalSortJobPart(ChunkReaderWrap chunkReaderWrap) {
-     super(ExternalSortJobPartType.SINGLE_SOURCE);
-     this.chunkReaderWrap = chunkReaderWrap;
-   }
-
-   @Override
-   public IPointReader executeForIPointReader() throws IOException {
-     return chunkReaderWrap.getIPointReader();
-   }
- }
+  @Override
+  public String toString() {
+    return getOperatorType().toString();
+  }
+}

@@ -273,6 +273,7 @@ K_UNSET
     : U N S E T
     ;
 
+
 K_DEVICE
     : D E V I C E
     ;
@@ -292,7 +293,12 @@ K_COMPLEX
 K_SIMPLE
     : S I M P L E 
     ;
-        
+
+K_CONFIGURATION
+    : C O N F I G U R A T I O N
+    ;
+
+
 //************** logical operator***********
 OPERATOR_AND
     : A N D

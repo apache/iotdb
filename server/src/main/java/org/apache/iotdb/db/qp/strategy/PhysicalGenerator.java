@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.qp.strategy;
 
 import java.util.ArrayList;
@@ -66,6 +65,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -161,8 +161,12 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_SHOW:
             ShowTTLOperator showTTLOperator = (ShowTTLOperator) operator;
             return new ShowTTLPlan(showTTLOperator.getStorageGroups());
+          default:
+            throw new LogicalOperatorException(String
+                .format("not supported operator type %s in ttl operation.", operator.getType()));
         }
-
+      case LOAD_CONFIGURATION:
+        return new LoadConfigurationPlan();
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }

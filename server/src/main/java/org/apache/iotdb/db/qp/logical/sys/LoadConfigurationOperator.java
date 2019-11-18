@@ -15,25 +15,17 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
- package org.apache.iotdb.db.query.externalsort;
+package org.apache.iotdb.db.qp.logical.sys;
 
- import java.io.IOException;
- import org.apache.iotdb.db.query.reader.IPointReader;
- import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.logical.RootOperator;
 
+public class LoadConfigurationOperator extends RootOperator {
 
- public class SingleSourceExternalSortJobPart extends ExternalSortJobPart {
-
-   private ChunkReaderWrap chunkReaderWrap;
-
-   public SingleSourceExternalSortJobPart(ChunkReaderWrap chunkReaderWrap) {
-     super(ExternalSortJobPartType.SINGLE_SOURCE);
-     this.chunkReaderWrap = chunkReaderWrap;
-   }
-
-   @Override
-   public IPointReader executeForIPointReader() throws IOException {
-     return chunkReaderWrap.getIPointReader();
-   }
- }
+  public LoadConfigurationOperator() {
+    super(SQLConstant.TOK_LOAD_CONFIGURATION);
+    this.operatorType = OperatorType.LOAD_CONFIGURATION;
+  }
+}

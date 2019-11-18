@@ -113,6 +113,7 @@ tokens{
     TOK_COMPLEX;
     TOK_SIMPLE;
     TOK_SCHEMA;
+    TOK_LOAD_CONFIGURATION;
 }
 
 @header{
@@ -127,13 +128,13 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
 Stack messages = new Stack<String>();
 private static HashMap<String, String> tokenNameMap;
 static {
-    tokenNameMap = new HashMap<String, String>();
-    tokenNameMap.put("K_AND", "AND");
-    tokenNameMap.put("K_OR", "OR");
-    tokenNameMap.put("K_NOT", "NOT");
-    tokenNameMap.put("K_LIKE", "LIKE");
-    tokenNameMap.put("K_BY", "BY");
-    tokenNameMap.put("K_GROUP", "GROUP");
+  tokenNameMap = new HashMap<String, String>();
+  tokenNameMap.put("K_AND", "AND");
+  tokenNameMap.put("K_OR", "OR");
+  tokenNameMap.put("K_NOT", "NOT");
+  tokenNameMap.put("K_LIKE", "LIKE");
+  tokenNameMap.put("K_BY", "BY");
+  tokenNameMap.put("K_GROUP", "GROUP");
 	tokenNameMap.put("K_FILL", "FILL");
 	tokenNameMap.put("K_LINEAR", "LINEAR");
 	tokenNameMap.put("K_PREVIOUS", "PREVIOUS");
@@ -285,6 +286,7 @@ sqlStatement
     : ddlStatement
     | dmlStatement
     | administrationStatement
+    | configurationStatement
     ;
 
 dmlStatement
@@ -793,6 +795,15 @@ rootOrId
     | ID
     ;
 
+configurationStatement
+    : loadConfigurationStatement
+    ;
+
+loadConfigurationStatement
+    : K_LOAD K_CONFIGURATION
+    -> ^(TOK_LOAD_CONFIGURATION)
+    ;
+
 /*
 ****
 *************
@@ -802,21 +813,18 @@ TTL
 */
 
 ttlStatement
-    :
-    setTTLStatement
+    : setTTLStatement
     | unsetTTLStatement
     | showTTLStatement
     ;
 
 setTTLStatement
-    :
-    K_SET K_TTL K_TO path=prefixPath time=INT
+    : K_SET K_TTL K_TO path=prefixPath time=INT
     -> ^(TOK_TTL TOK_SET $path $time)
     ;
 
 unsetTTLStatement
-    :
-     K_UNSET K_TTL K_TO path=prefixPath
+    : K_UNSET K_TTL K_TO path=prefixPath
     -> ^(TOK_TTL TOK_UNSET $path)
     ;
 

@@ -37,6 +37,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateDevicePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
 import org.apache.iotdb.db.query.fill.LinearFill;
@@ -526,5 +527,12 @@ public class PhysicalPlanTest {
         (CreateDevicePlan) processor.parseSQLToPhysicalPlan(sqlStr);
     Assert.assertEquals(String.format("deviceType: vehicle1%n" + "devicePath: root.vehicle.d5%n" ), 
         plan.toString());
+
+  @Test
+  public void testConfiguration() throws QueryProcessException, MetadataException {
+    String metadata = "load configuration";
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    LoadConfigurationPlan plan = (LoadConfigurationPlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals("LOAD_CONFIGURATION", plan.toString());
   }
 }

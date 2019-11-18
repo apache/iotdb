@@ -16,24 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
- package org.apache.iotdb.db.query.externalsort;
+package org.apache.iotdb.db.exception;
 
- import java.io.IOException;
- import org.apache.iotdb.db.query.reader.IPointReader;
- import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
+public class LoadConfigurationException extends Exception {
 
+  private static final long serialVersionUID = -1950532739374479184L;
 
- public class SingleSourceExternalSortJobPart extends ExternalSortJobPart {
+  public LoadConfigurationException(String message) {
+    super(message);
+  }
 
-   private ChunkReaderWrap chunkReaderWrap;
+  public LoadConfigurationException(String message, Throwable cause) {
+    super(message, cause);
+  }
 
-   public SingleSourceExternalSortJobPart(ChunkReaderWrap chunkReaderWrap) {
-     super(ExternalSortJobPartType.SINGLE_SOURCE);
-     this.chunkReaderWrap = chunkReaderWrap;
-   }
+  public LoadConfigurationException(Throwable cause) {
+    super(cause);
+  }
 
-   @Override
-   public IPointReader executeForIPointReader() throws IOException {
-     return chunkReaderWrap.getIPointReader();
-   }
- }
+}
