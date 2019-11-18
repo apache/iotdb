@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.qp.constant;
 
+import org.apache.iotdb.tsfile.read.common.Path;
+
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * this class contains several constants used in SQL.
@@ -102,6 +103,7 @@ public class SQLConstant {
   public static final int TOK_SET = 63;
   public static final int TOK_UNSET = 64;
   public static final int TOK_SHOW = 65;
+  public static final int TOK_LOAD_CONFIGURATION = 66;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
@@ -161,6 +163,8 @@ public class SQLConstant {
     tokenNames.put(TOK_SET, "TOK_SET");
     tokenNames.put(TOK_UNSET, "TOK_UNSET");
     tokenNames.put(TOK_SHOW, "TOK_SHOW");
+
+    tokenNames.put(TOK_LOAD_CONFIGURATION, "TOK_LOAD_CONFIGURATION");
   }
 
   static {

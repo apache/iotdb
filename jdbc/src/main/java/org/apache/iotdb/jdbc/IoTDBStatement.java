@@ -19,16 +19,21 @@
 
 package org.apache.iotdb.jdbc;
 
+import java.sql.BatchUpdateException;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.SQLWarning;
+import java.sql.Statement;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
-
-import java.sql.*;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
 
 public class IoTDBStatement implements Statement {
 
@@ -191,9 +196,7 @@ public class IoTDBStatement implements Statement {
     try {
       return executeSQL(sql);
     } catch (TException e) {
-      boolean flag = connection.reconnect();
-      reInit();
-      if (flag) {
+      if (reConnect()) {
         try {
           return executeSQL(sql);
         } catch (TException e2) {
@@ -293,7 +296,7 @@ public class IoTDBStatement implements Statement {
       }
     } else if (sqlToLowerCase.startsWith(COUNT_NODES_COMMAND_LOWERCASE)) {
       String[] cmdSplit = sql.split("\\s+", 4);
-      if (cmdSplit.length != 4 && !(cmdSplit[3].startsWith("level"))) {
+      if (!(cmdSplit.length == 4 && cmdSplit[3].startsWith("level"))) {
         throw new SQLException("Error format of \'COUNT NODES <PATH> LEVEL=<INTEGER>\'");
       } else {
         String path = cmdSplit[2];
@@ -332,9 +335,7 @@ public class IoTDBStatement implements Statement {
     try {
       return executeBatchSQL();
     } catch (TException e) {
-      boolean flag = connection.reconnect();
-      reInit();
-      if (flag) {
+      if (reConnect()) {
         try {
           return executeBatchSQL();
         } catch (TException e2) {
@@ -389,9 +390,7 @@ public class IoTDBStatement implements Statement {
     try {
       return executeQuerySQL(sql);
     } catch (TException e) {
-      boolean flag = connection.reconnect();
-      reInit();
-      if (flag) {
+      if (reConnect()) {
         try {
           return executeQuerySQL(sql);
         } catch (TException e2) {
@@ -429,9 +428,7 @@ public class IoTDBStatement implements Statement {
     try {
       return executeUpdateSQL(sql);
     } catch (TException e) {
-      boolean flag = connection.reconnect();
-      reInit();
-      if (flag) {
+      if (reConnect()) {
         try {
           return executeUpdateSQL(sql);
         } catch (TException e2) {
@@ -639,7 +636,25 @@ public class IoTDBStatement implements Statement {
     try {
       this.stmtId = client.requestStatementId();
     } catch (TException e) {
-      throw new SQLException("Cannot get id for statement", e);
+      if (reConnect()) {
+        try {
+          this.stmtId = client.requestStatementId();
+        } catch (TException e2) {
+          throw new SQLException(
+                  "Cannot get id for statement after reconnecting. please check server status",
+                  e2);
+        }
+      } else {
+        throw new SQLException(
+                "Cannot get id for statement after reconnecting. please check server status", e);
+      }
     }
+  }
+
+
+  private boolean reConnect(){
+    boolean flag = connection.reconnect();
+    reInit();
+    return flag;
   }
 }

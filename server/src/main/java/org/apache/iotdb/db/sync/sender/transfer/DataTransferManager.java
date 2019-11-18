@@ -14,6 +14,9 @@
  */
 package org.apache.iotdb.db.sync.sender.transfer;
 
+import static org.apache.iotdb.db.sync.conf.SyncConstant.CONFLICT_CODE;
+import static org.apache.iotdb.db.sync.conf.SyncConstant.SUCCESS_CODE;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
@@ -57,7 +60,7 @@ import org.apache.iotdb.db.sync.sender.recover.ISyncSenderLogger;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogger;
 import org.apache.iotdb.db.utils.SyncUtils;
-import org.apache.iotdb.service.sync.thrift.ResultStatus;
+import org.apache.iotdb.service.sync.thrift.SyncStatus;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.thrift.TException;
@@ -201,7 +204,6 @@ public class DataTransferManager implements IDataTransferManager {
         syncAll();
       } catch (SyncConnectionException | IOException | TException e) {
         logger.error("Sync failed", e);
-        stop();
       }
     }, SyncConstant.SYNC_PROCESS_DELAY, SyncConstant.SYNC_PROCESS_PERIOD, TimeUnit.SECONDS);
   }
@@ -269,7 +271,9 @@ public class DataTransferManager implements IDataTransferManager {
     TProtocol protocol = new TBinaryProtocol(transport);
     serviceClient = new SyncService.Client(protocol);
     try {
-      transport.open();
+      if (!transport.isOpen()) {
+        transport.open();
+      }
     } catch (TTransportException e) {
       logger.error("Cannot connect to the receiver.");
       throw new SyncConnectionException(e);
@@ -279,9 +283,9 @@ public class DataTransferManager implements IDataTransferManager {
   @Override
   public void confirmIdentity() throws SyncConnectionException {
     try (Socket socket = new Socket(config.getServerIp(), config.getServerPort())){
-      ResultStatus status = serviceClient
+      SyncStatus status = serviceClient
           .check(socket.getLocalAddress().getHostAddress(), getOrCreateUUID(config.getUuidPath()));
-      if (!status.success) {
+      if (status.code != SUCCESS_CODE) {
         throw new SyncConnectionException(
             "The receiver rejected the synchronization task because " + status.msg);
       }
@@ -367,8 +371,8 @@ public class DataTransferManager implements IDataTransferManager {
           md.update(bos.toByteArray());
           ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
           bos.reset();
-          ResultStatus status = serviceClient.syncData(buffToSend);
-          if (!status.success) {
+          SyncStatus status = serviceClient.syncData(buffToSend);
+          if (status.code != SUCCESS_CODE) {
             logger.error("Receiver failed to receive metadata because {}, retry.", status.msg);
             return false;
           }
@@ -379,8 +383,8 @@ public class DataTransferManager implements IDataTransferManager {
         md.update(bos.toByteArray());
         ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
         bos.reset();
-        ResultStatus status = serviceClient.syncData(buffToSend);
-        if (!status.success) {
+        SyncStatus status = serviceClient.syncData(buffToSend);
+        if (status.code != SUCCESS_CODE) {
           logger.error("Receiver failed to receive metadata because {}, retry.", status.msg);
           return false;
         }
@@ -398,8 +402,8 @@ public class DataTransferManager implements IDataTransferManager {
    * Check MD5 of schema to make sure that the receiver receives the schema correctly
    */
   private boolean checkMD5ForSchema(String md5OfSender) throws TException {
-    ResultStatus status = serviceClient.checkDataMD5(md5OfSender);
-    if (status.success && md5OfSender.equals(status.msg)) {
+    SyncStatus status = serviceClient.checkDataMD5(md5OfSender);
+    if (status.code == SUCCESS_CODE && md5OfSender.equals(status.msg)) {
       logger.info("Receiver has received schema successfully.");
       return true;
     } else {
@@ -448,8 +452,8 @@ public class DataTransferManager implements IDataTransferManager {
         lastLocalFilesMap.putIfAbsent(sgName, new HashSet<>());
         syncLog = new SyncSenderLogger(getSyncLogFile());
         try {
-          ResultStatus status = serviceClient.init(sgName);
-          if (!status.success) {
+          SyncStatus status = serviceClient.init(sgName);
+          if (status.code != SUCCESS_CODE) {
             throw new SyncConnectionException("Unable init receiver because " + status.msg);
           }
         } catch (TException | SyncConnectionException e) {
@@ -490,7 +494,7 @@ public class DataTransferManager implements IDataTransferManager {
     logger.info("Start to sync names of deleted files in storage group {}", sgName);
     for (File file : deletedFilesName) {
       try {
-        if (serviceClient.syncDeletedFileName(file.getName()).success) {
+        if (serviceClient.syncDeletedFileName(file.getName()).code == SUCCESS_CODE) {
           logger.info("Receiver has received deleted file name {} successfully.", file.getName());
           lastLocalFilesMap.get(sgName).remove(file);
           syncLog.finishSyncDeletedFileName(file);
@@ -579,11 +583,11 @@ public class DataTransferManager implements IDataTransferManager {
             md.update(buffer, 0, dataLength);
             ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
             bos.reset();
-            ResultStatus status = serviceClient.syncData(buffToSend);
-            if(status.errorCode == -2){
+            SyncStatus status = serviceClient.syncData(buffToSend);
+            if(status.code == CONFLICT_CODE){
               throw new SyncDeviceOwnerConflictException(status.msg);
             }
-            if (!status.success) {
+            if (status.code != SUCCESS_CODE) {
               logger.info("Receiver failed to receive data from {} because {}, retry.",
                   status.msg, snapshotFile.getAbsoluteFile());
               continue outer;
@@ -593,8 +597,8 @@ public class DataTransferManager implements IDataTransferManager {
 
         // the file is sent successfully
         String md5OfSender = (new BigInteger(1, md.digest())).toString(16);
-        ResultStatus status = serviceClient.checkDataMD5(md5OfSender);
-        if (status.success && md5OfSender.equals(status.msg)) {
+        SyncStatus status = serviceClient.checkDataMD5(md5OfSender);
+        if (status.code == SUCCESS_CODE && md5OfSender.equals(status.msg)) {
           logger.info("Receiver has received {} successfully.", snapshotFile.getAbsoluteFile());
           break;
         } else {

@@ -18,9 +18,14 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
@@ -38,8 +43,6 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import java.io.IOException;
-import java.util.*;
 
 /**
  * This QueryDataSet is used for GROUP_BY_DEVICE query result.
@@ -178,8 +181,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
           default:
             throw new IOException("unsupported DataSetType");
         }
-      } catch (ProcessorException | QueryFilterOptimizationException | StorageEngineException |
-          PathErrorException | IOException e) {
+      } catch (QueryProcessException | QueryFilterOptimizationException | StorageEngineException | IOException e) {
         throw new IOException(e);
       }
 

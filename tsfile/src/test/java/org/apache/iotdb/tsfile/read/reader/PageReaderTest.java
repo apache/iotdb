@@ -58,7 +58,7 @@ public class PageReaderTest {
         return Long.valueOf(Long.MAX_VALUE - i);
       }
     };
-    test.test();
+    test.test(TSDataType.INT64);
   }
 
   @Test
@@ -71,7 +71,7 @@ public class PageReaderTest {
         return i % 3 == 0 ? true : false;
       }
     };
-    test.test();
+    test.test(TSDataType.BOOLEAN);
   }
 
   @Test
@@ -84,7 +84,7 @@ public class PageReaderTest {
         return Integer.valueOf(i);
       }
     };
-    test.test();
+    test.test(TSDataType.INT32);
   }
 
   @Test
@@ -96,7 +96,7 @@ public class PageReaderTest {
         return Float.valueOf(i) / 10 - Float.valueOf(i) / 100;
       }
     };
-    test.test();
+    test.test(TSDataType.FLOAT);
 
     LoopWriteReadTest test2 = new LoopWriteReadTest("Test FLOAT", new SinglePrecisionEncoder(),
         new SinglePrecisionDecoder(), TSDataType.FLOAT, POINTS_COUNT_IN_ONE_PAGE) {
@@ -105,7 +105,7 @@ public class PageReaderTest {
         return Float.valueOf(i) / 100 - Float.valueOf(i) / 10;
       }
     };
-    test2.test();
+    test2.test(TSDataType.FLOAT);
   }
 
   @Test
@@ -117,7 +117,7 @@ public class PageReaderTest {
         return Double.valueOf(i) / 10 - Double.valueOf(i) / 100;
       }
     };
-    test.test();
+    test.test(TSDataType.DOUBLE);
 
     LoopWriteReadTest test2 = new LoopWriteReadTest("Test Double", new DoublePrecisionEncoder(),
         new DoublePrecisionDecoder(), TSDataType.DOUBLE, POINTS_COUNT_IN_ONE_PAGE) {
@@ -126,7 +126,7 @@ public class PageReaderTest {
         return Double.valueOf(i) / 1000 - Double.valueOf(i) / 100;
       }
     };
-    test2.test();
+    test2.test(TSDataType.DOUBLE);
   }
 
   @Test
@@ -139,7 +139,7 @@ public class PageReaderTest {
         return new Binary(new StringBuilder("TEST TEXT").append(i).toString());
       }
     };
-    test.test();
+    test.test(TSDataType.TEXT);
   }
 
   private abstract static class LoopWriteReadTest {
@@ -160,11 +160,12 @@ public class PageReaderTest {
       this.count = count;
     }
 
-    public void test() {
+    public void test(TSDataType dataType) {
       try {
         pageWriter = new PageWriter();
         pageWriter.setTimeEncoder(new DeltaBinaryEncoder.LongDeltaEncoder());
         pageWriter.setValueEncoder(this.encoder);
+        pageWriter.initStatistics(dataType);
         writeData();
 
         ByteBuffer page = ByteBuffer.wrap(pageWriter.getUncompressedBytes().array());

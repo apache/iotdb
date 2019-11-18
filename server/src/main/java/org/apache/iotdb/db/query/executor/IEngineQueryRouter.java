@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.query.executor;
 
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
+
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -40,14 +41,14 @@ public interface IEngineQueryRouter {
    * Execute physical plan.
    */
   QueryDataSet query(QueryExpression queryExpression, QueryContext context)
-      throws StorageEngineException, PathErrorException;
+      throws StorageEngineException, PathException;
 
   /**
    * Execute aggregation query.
    */
   QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, QueryContext context)
-      throws QueryFilterOptimizationException, StorageEngineException, IOException, PathErrorException, ProcessorException;
+      throws QueryFilterOptimizationException, StorageEngineException, IOException, QueryProcessException;
 
   /**
    * Execute groupBy query.
@@ -61,8 +62,9 @@ public interface IEngineQueryRouter {
   QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, long unit, long slidingStep, long startTime, long endTime,
       QueryContext context)
-      throws ProcessorException, QueryFilterOptimizationException, StorageEngineException,
-      PathErrorException, IOException;
+      throws QueryFilterOptimizationException, StorageEngineException,
+      QueryProcessException, IOException;
+
   /**
    * Execute fill query.
    *
@@ -71,6 +73,7 @@ public interface IEngineQueryRouter {
    * @param fillType type IFill map
    */
   QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
-      QueryContext context) throws StorageEngineException, PathErrorException, IOException;
+      QueryContext context)
+      throws StorageEngineException, QueryProcessException, IOException;
 
 }

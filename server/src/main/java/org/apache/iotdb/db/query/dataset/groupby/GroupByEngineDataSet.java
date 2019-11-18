@@ -16,11 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
@@ -71,9 +69,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     this.endTime = -1;
   }
 
-  protected void initAggreFuction(List<String> aggres)
-      throws PathErrorException, ProcessorException {
-
+  protected void initAggreFuction(List<String> aggres) throws PathException {
     List<TSDataType> types = new ArrayList<>();
     // construct AggregateFunctions
     for (int i = 0; i < paths.size(); i++) {

@@ -32,15 +32,14 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.ArgsErrorException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.OutOfTTLException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupException;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.OutOfTTLException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.QueryProcessor;
@@ -75,7 +74,7 @@ public class TTLTest {
 
   @Before
   public void setUp()
-      throws MetadataErrorException, ProcessorException, IOException, StartupException, PathErrorException {
+      throws MetadataException, IOException, StartupException, PathException, StorageGroupProcessorException {
     EnvironmentUtils.envSetUp();
     createSchemas();
   }
@@ -86,7 +85,8 @@ public class TTLTest {
     EnvironmentUtils.cleanEnv();
   }
 
-  private void createSchemas() throws MetadataErrorException, ProcessorException, PathErrorException {
+  private void createSchemas()
+      throws MetadataException, PathException, StorageGroupProcessorException {
     MManager.getInstance().setStorageGroupToMTree(sg1);
     MManager.getInstance().setStorageGroupToMTree(sg2);
     storageGroupProcessor = new StorageGroupProcessor(IoTDBDescriptor.getInstance().getConfig()
@@ -98,12 +98,12 @@ public class TTLTest {
   }
 
   @Test
-  public void testSetMetaTTL() throws IOException, PathErrorException, StorageGroupException {
+  public void testSetMetaTTL() throws IOException, PathException, StorageGroupException {
     // exception is expected when setting ttl to a non-exist storage group
     boolean caught = false;
     try {
       MManager.getInstance().setTTL(sg1 + ".notExist", ttl);
-    } catch (PathErrorException e) {
+    } catch (PathException e) {
       caught = true;
     }
     assertTrue(caught);
@@ -119,7 +119,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLWrite() throws QueryProcessorException {
+  public void testTTLWrite() throws QueryProcessException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(sg1);
     insertPlan.setTime(System.currentTimeMillis());
@@ -144,7 +144,7 @@ public class TTLTest {
     storageGroupProcessor.insert(insertPlan);
   }
 
-  private void prepareData() throws QueryProcessorException {
+  private void prepareData() throws QueryProcessException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(sg1);
     insertPlan.setTime(System.currentTimeMillis());
@@ -172,12 +172,13 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLRead() throws IOException, QueryProcessorException, StorageEngineException {
+  public void testTTLRead() throws IOException, QueryProcessException, StorageEngineException {
     prepareData();
 
     // files before ttl
-    QueryDataSource dataSource = storageGroupProcessor.query(sg1, s1, EnvironmentUtils.TEST_QUERY_CONTEXT
-        , null);
+    QueryDataSource dataSource = storageGroupProcessor
+        .query(sg1, s1, EnvironmentUtils.TEST_QUERY_CONTEXT
+            , null);
     List<TsFileResource> seqResource = dataSource.getSeqResources();
     List<TsFileResource> unseqResource = dataSource.getUnseqResources();
     assertEquals(4, seqResource.size());
@@ -201,7 +202,7 @@ public class TTLTest {
       BatchData batchData = reader.nextBatch();
       while (batchData.hasNext()) {
         batchData.next();
-        cnt ++;
+        cnt++;
       }
     }
     reader.close();
@@ -216,12 +217,11 @@ public class TTLTest {
     assertEquals(0, seqResource.size());
     assertEquals(0, unseqResource.size());
 
-
     QueryResourceManager.getInstance().endQueryForGivenJob(EnvironmentUtils.TEST_QUERY_JOB_ID);
   }
 
   @Test
-  public void testTTLRemoval() throws StorageEngineException, QueryProcessorException {
+  public void testTTLRemoval() throws StorageEngineException, QueryProcessException {
     prepareData();
 
     storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
@@ -247,9 +247,10 @@ public class TTLTest {
 
   @Test
   public void testParseSetTTL()
-      throws ArgsErrorException, MetadataErrorException, QueryProcessorException {
+      throws MetadataException, QueryProcessException {
     QueryProcessor queryProcessor = new QueryProcessor(new QueryProcessExecutor());
-    SetTTLPlan plan = (SetTTLPlan) queryProcessor.parseSQLToPhysicalPlan("SET TTL TO " + sg1 + " 10000");
+    SetTTLPlan plan = (SetTTLPlan) queryProcessor
+        .parseSQLToPhysicalPlan("SET TTL TO " + sg1 + " 10000");
     assertEquals(sg1, plan.getStorageGroup());
     assertEquals(10000, plan.getDataTTL());
 
@@ -260,7 +261,7 @@ public class TTLTest {
 
   @Test
   public void testParseShowTTL()
-      throws ArgsErrorException, MetadataErrorException, QueryProcessorException {
+      throws MetadataException, QueryProcessException {
     QueryProcessor queryProcessor = new QueryProcessor(new QueryProcessExecutor());
     ShowTTLPlan plan = (ShowTTLPlan) queryProcessor.parseSQLToPhysicalPlan("SHOW ALL TTL");
     assertTrue(plan.getStorageGroups().isEmpty());
@@ -269,13 +270,14 @@ public class TTLTest {
     sgs.add("root.sg1");
     sgs.add("root.sg2");
     sgs.add("root.sg3");
-    plan = (ShowTTLPlan) queryProcessor.parseSQLToPhysicalPlan("SHOW TTL ON root.sg1,root.sg2,root.sg3");
+    plan = (ShowTTLPlan) queryProcessor
+        .parseSQLToPhysicalPlan("SHOW TTL ON root.sg1,root.sg2,root.sg3");
     assertEquals(sgs, plan.getStorageGroups());
   }
 
   @Test
   public void testShowTTL()
-      throws IOException, PathErrorException, ProcessorException, QueryFilterOptimizationException, StorageEngineException {
+      throws IOException, QueryProcessException, QueryFilterOptimizationException, StorageEngineException {
     MManager.getInstance().setTTL(sg1, ttl);
 
     ShowTTLPlan plan = new ShowTTLPlan(Collections.emptyList());
@@ -291,7 +293,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLCleanFile() throws QueryProcessorException {
+  public void testTTLCleanFile() throws QueryProcessException {
     prepareData();
     storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
 

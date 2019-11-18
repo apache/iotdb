@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.qp.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.AbstractQueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -80,7 +80,7 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
+  public boolean processNonQuery(PhysicalPlan plan) throws QueryProcessException {
     switch (plan.getOperatorType()) {
       case DELETE:
         delete((DeletePlan) plan);
@@ -102,7 +102,7 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
   @Override
   public QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression,
       QueryContext context)
-      throws ProcessorException, IOException, PathErrorException, StorageEngineException,
+      throws PathException, IOException, StorageEngineException,
       QueryFilterOptimizationException {
     return null;
   }
@@ -111,7 +111,7 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
   public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
                               long unit, long slidingStep, long startTime, long endTime,
                               QueryContext context)
-          throws ProcessorException, IOException, PathErrorException,
+          throws IOException, PathException,
           StorageEngineException, QueryFilterOptimizationException {
     return null;
   }
@@ -119,7 +119,7 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
   @Override
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
       QueryContext context)
-      throws ProcessorException, IOException, PathErrorException, StorageEngineException {
+      throws IOException, PathException, StorageEngineException {
     return null;
   }
 
@@ -191,7 +191,7 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws ProcessorException {
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
     return null;
   }
 

@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,9 +31,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
+import org.apache.iotdb.db.service.UpgradeSevice;
+import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TsFileResource {
@@ -59,6 +65,7 @@ public class TsFileResource {
   private volatile boolean deleted = false;
   private volatile boolean isMerging = false;
 
+
   /**
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
    * process.
@@ -70,7 +77,7 @@ public class TsFileResource {
    */
   private ReadOnlyMemChunk readOnlyMemChunk;
 
-  private ReentrantReadWriteLock mergeQueryLock = new ReentrantReadWriteLock();
+  private ReentrantReadWriteLock writeQueryLock = new ReentrantReadWriteLock();
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
@@ -230,8 +237,14 @@ public class TsFileResource {
     return processor;
   }
 
-  public ReentrantReadWriteLock getMergeQueryLock() {
-    return mergeQueryLock;
+  public ReentrantReadWriteLock getWriteQueryLock() {
+    return writeQueryLock;
+  }
+
+  public void doUpgrade() {
+    if (UpgradeUtils.isNeedUpgrade(this)) {
+      UpgradeSevice.getINSTANCE().submitUpgradeTask(new UpgradeTask(this));
+    }
   }
 
   public void removeModFile() throws IOException {

@@ -41,11 +41,11 @@
 * 4-Config Manual
 * 5-Docker Image
 # Chapter 4: Client
-* 1-Command Line Interface(CLI)
+* 1-Command Line Interface (CLI)
 * 2-Programming - JDBC
 * 3-Programming - Session
-* 4-Programming - Other Language
-* 5-Programming - TsFile API (TimeSeries File Format)
+* 4-Programming - Other Languages
+* 5-Programming - TsFile API
 # Chapter 5: Operation Manual
 * 1-DDL (Data Definition Language)
 * 2-DML (Data Manipulation Language)
@@ -61,10 +61,10 @@
 * 7-Monitor and Log Tools
 # Chapter 7: Ecosystem Integration
 * 1-Grafana
-* 2-TsFile Hadoop Connector
-* 3-TsFile Spark Connector
-* 4-Spark IoTDB Connector
-* 5-TsFile Hive Connector
+* 2-MapReduce TsFile
+* 3-Spark TsFile
+* 4-Spark IoTDB
+* 5-Hive TsFile
 # Chapter 8: System Design (Developer)
 * 1-Hierarchy
 * 2-Files
