@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.compress.ICompressor.SnappyCompressor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor.SnappyUnCompressor;
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
 import org.apache.iotdb.tsfile.exception.write.PageException;
@@ -547,7 +548,19 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
         }
         break;
     }
-    modifiedPage.clear();
+    switch (compressionType) {
+      case UNCOMPRESSED:
+        modifiedPage.flip();
+        break;
+      case SNAPPY:
+        SnappyCompressor snappyCompressor = new SnappyCompressor();
+        try {
+          modifiedPage = ByteBuffer.wrap(snappyCompressor.compress(modifiedPage.array()));
+        } catch (IOException e) {
+          logger.error("failed to compress page as snappy", e);
+        }
+        break;
+    }
     return modifiedPage;
   }
 }
