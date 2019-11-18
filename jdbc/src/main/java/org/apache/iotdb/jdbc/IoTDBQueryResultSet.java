@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.jdbc;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.Clob;
@@ -43,7 +45,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.rpc.IoTDBRPCException;
@@ -77,11 +78,13 @@ public class IoTDBQueryResultSet implements ResultSet {
   private Map<String, Integer> columnInfoMap; // used because the server returns deduplicated columns
   private List<String> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   private RowRecord record;
-  private Iterator<RowRecord> recordItr;
   private int rowsFetched = 0;
   private int maxRows; // defined in TsfileStatement
   private int fetchSize;
   private boolean emptyResultSet = false;
+  
+  private TSQueryDataSet tsQueryDataSet = null;
+  private ByteBuffer byteBuffer = null;
 
   // 0 means it is not constrained in sql
   private int rowsLimit = 0;
@@ -406,7 +409,16 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public double getDouble(String columnName) throws SQLException {
-    return Double.parseDouble(getValueByName(columnName));
+    checkRecord();
+    int index = columnInfoMap.get(columnName) - 2;
+    Field field = record.getFields().get(index);
+    if (field.getDataType() != null) {
+      return field.getDoubleV();
+    }
+    else {
+      throw new SQLException(
+          String.format("The value got by %s (column name) is NULL.", columnName));
+    }
   }
 
   @Override
@@ -436,7 +448,16 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public float getFloat(String columnName) throws SQLException {
-    return Float.parseFloat(getValueByName(columnName));
+    checkRecord();
+    int index = columnInfoMap.get(columnName) - 2;
+    Field field = record.getFields().get(index);
+    if (field.getDataType() != null) {
+      return field.getFloatV();
+    }
+    else {
+      throw new SQLException(
+          String.format("The value got by %s (column name) is NULL.", columnName));
+    }
   }
 
   @Override
@@ -451,7 +472,16 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public int getInt(String columnName) throws SQLException {
-    return Integer.parseInt(getValueByName(columnName));
+    checkRecord();
+    int index = columnInfoMap.get(columnName) - 2;
+    Field field = record.getFields().get(index);
+    if (field.getDataType() != null) {
+      return field.getIntV();
+    }
+    else {
+      throw new SQLException(
+          String.format("The value got by %s (column name) is NULL.", columnName));
+    }
   }
 
   @Override
@@ -461,7 +491,19 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public long getLong(String columnName) throws SQLException {
-    return Long.parseLong(getValueByName(columnName));
+    checkRecord();
+    if (columnName.equals(TIMESTAMP_STR)) {
+      return record.getTimestamp();
+    }
+    int index = columnInfoMap.get(columnName) - 2;
+    Field field = record.getFields().get(index);
+    if (field.getDataType() != null) {
+      return field.getLongV();
+    }
+    else {
+      throw new SQLException(
+          String.format("The value got by %s (column name) is NULL.", columnName));
+    }
   }
 
   @Override
@@ -706,7 +748,7 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   // the next record rule without constraints
   private boolean nextWithoutConstraints(int limitFetchSize) throws SQLException {
-    if ((recordItr == null || !recordItr.hasNext()) && !emptyResultSet) {
+    if ((tsQueryDataSet == null || !byteBuffer.hasRemaining()) && !emptyResultSet) {
       int adaFetchSize = (limitFetchSize < fetchSize) ? limitFetchSize : fetchSize;
       TSFetchResultsReq req = new TSFetchResultsReq(sql, adaFetchSize, queryId);
 
@@ -720,10 +762,13 @@ public class IoTDBQueryResultSet implements ResultSet {
         if (!resp.hasResultSet) {
           emptyResultSet = true;
         } else {
-          TSQueryDataSet tsQueryDataSet = resp.getQueryDataSet();
-          List<RowRecord> records = Utils
-              .convertRowRecords(tsQueryDataSet, columnTypeDeduplicatedList);
-          recordItr = records.iterator();
+          tsQueryDataSet = resp.getQueryDataSet();
+          try {
+            byteBuffer = Utils
+                .convertResultBuffer(tsQueryDataSet, columnTypeDeduplicatedList);
+          } catch (IOException e) {
+            throw new IoTDBSQLException(e.getMessage());
+          }
         }
       } catch (TException e) {
         throw new SQLException(
@@ -734,8 +779,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     if (emptyResultSet) {
       return false;
     }
-
-    record = recordItr.next();
+    record = Utils.getRowRecord(byteBuffer, columnTypeDeduplicatedList);
     return true;
   }
 
@@ -1251,15 +1295,14 @@ public class IoTDBQueryResultSet implements ResultSet {
     if (columnName.equals(TIMESTAMP_STR)) {
       return String.valueOf(record.getTimestamp());
     }
-    int tmp = columnInfoMap.get(columnName);
-    int i = 0;
-    for (Field field : record.getFields()) {
-      i++;
-      if (i == tmp - 1) {
-        return field.getDataType() == null ? null : field.getStringValue();
-      }
+    int index = columnInfoMap.get(columnName) - 2;
+    Field field = record.getFields().get(index);
+    if (field != null) {
+      return field.getStringValue();
     }
-    return null;
+    else {
+      return null;
+    }
   }
 
   public boolean isIgnoreTimeStamp() {

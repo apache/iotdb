@@ -18,8 +18,11 @@
  */
 package org.apache.iotdb.jdbc;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.regex.Matcher;
@@ -83,21 +86,95 @@ public class Utils {
 
     return params;
   }
-
-  /**
-   * convert row records.
-   */
-  static List<RowRecord> convertRowRecords(TSQueryDataSet tsQueryDataSet,
-      List<String> columnTypeList) {
+  
+  static ByteBuffer convertResultBuffer(TSQueryDataSet tsQueryDataSet,
+      List<String> columnTypeList) throws IOException {
     int rowCount = tsQueryDataSet.getRowCount();
     ByteBuffer byteBuffer = tsQueryDataSet.bufferForValues();
+    DataOutputStream[] dataOutputStreams = new DataOutputStream[rowCount];
+    ByteArrayOutputStream[] byteArrayOutputStreams = new ByteArrayOutputStream[rowCount];
 
     // process time buffer
-    List<RowRecord> rowRecordList = processTimeAndCreateRowRecords(byteBuffer, rowCount);
-
+    processTimestamp(byteBuffer, rowCount, dataOutputStreams, byteArrayOutputStreams);
+    int valueOccupation = 0;
     for (String type : columnTypeList) {
+      TSDataType dataType = TSDataType.valueOf(type);
       for (int i = 0; i < rowCount; i++) {
-        Field field = null;
+        boolean is_empty = BytesUtils.byteToBool(byteBuffer.get());
+        if (is_empty) {
+          dataOutputStreams[i].writeBoolean(true);
+        } else {
+          dataOutputStreams[i].writeBoolean(false);
+          switch (dataType) {
+            case BOOLEAN:
+              boolean booleanValue = BytesUtils.byteToBool(byteBuffer.get());
+              dataOutputStreams[i].writeBoolean(booleanValue);
+              valueOccupation += 1;
+              break;
+            case INT32:
+              int intValue = byteBuffer.getInt();
+              dataOutputStreams[i].writeInt(intValue);
+              valueOccupation += 4;
+              break;
+            case INT64:
+              long longValue = byteBuffer.getLong();
+              dataOutputStreams[i].writeLong(longValue);
+              valueOccupation += 8;
+              break;
+            case FLOAT:
+              float floatValue = byteBuffer.getFloat();
+              dataOutputStreams[i].writeFloat(floatValue);
+              valueOccupation += 4;
+              break;
+            case DOUBLE:
+              double doubleValue = byteBuffer.getDouble();
+              dataOutputStreams[i].writeDouble(doubleValue);
+              valueOccupation += 8;
+              break;
+            case TEXT:
+              int binarySize = byteBuffer.getInt();
+              byte[] binaryValue = new byte[binarySize];
+              byteBuffer.get(binaryValue);
+              dataOutputStreams[i].writeInt(binarySize);
+              dataOutputStreams[i].write(binaryValue);
+              valueOccupation = valueOccupation + 4 + binaryValue.length;
+              break;
+            default:
+              throw new UnSupportedDataTypeException(
+                  String.format("Data type %s is not supported.", type));
+          }
+        }
+      }
+    }
+    valueOccupation += rowCount * 8;
+    valueOccupation += rowCount * columnTypeList.size();
+    ByteBuffer resultBuffer = ByteBuffer.allocate(valueOccupation);
+    for (int i = 0; i < rowCount; i++) {
+      resultBuffer.put(byteArrayOutputStreams[i].toByteArray());
+    }
+    resultBuffer.flip(); // PAY ATTENTION TO HERE
+    
+    return resultBuffer;
+  }
+
+  private static void processTimestamp(ByteBuffer byteBuffer, int rowCount, 
+      DataOutputStream[] dataOutputStreams, ByteArrayOutputStream[] byteArrayOutputStreams) 
+      throws IOException {
+    for (int i = 0; i < rowCount; i++) {
+      byteArrayOutputStreams[i] = new ByteArrayOutputStream();
+      dataOutputStreams[i] = new DataOutputStream(byteArrayOutputStreams[i]);
+      long timestamp = byteBuffer.getLong(); // byteBuffer has been flipped by the server side
+      dataOutputStreams[i].writeLong(timestamp);
+    }
+  }
+  
+  public static RowRecord getRowRecord(ByteBuffer byteBuffer, List<String> columnTypeList) 
+      throws BufferUnderflowException {
+    try {
+      long timestamp = byteBuffer.getLong();
+      RowRecord record = new RowRecord(timestamp);
+      Field field = null;
+      for (String type : columnTypeList) {
         boolean is_empty = BytesUtils.byteToBool(byteBuffer.get());
         if (is_empty) {
           field = new Field(null);
@@ -136,21 +213,13 @@ public class Utils {
                   String.format("Data type %s is not supported.", type));
           }
         }
-        rowRecordList.get(i).getFields().add(field);
+        record.getFields().add(field);
       }
+      return record;
     }
-    return rowRecordList;
-  }
-
-  private static List<RowRecord> processTimeAndCreateRowRecords(ByteBuffer byteBuffer,
-      int rowCount) {
-    List<RowRecord> rowRecordList = new ArrayList<>();
-    for (int i = 0; i < rowCount; i++) {
-      long timestamp = byteBuffer.getLong(); // byteBuffer has been flipped by the server side
-      RowRecord rowRecord = new RowRecord(timestamp);
-      rowRecordList.add(rowRecord);
+    catch (BufferUnderflowException e) {
+      return null;
     }
-    return rowRecordList;
   }
-
+  
 }
