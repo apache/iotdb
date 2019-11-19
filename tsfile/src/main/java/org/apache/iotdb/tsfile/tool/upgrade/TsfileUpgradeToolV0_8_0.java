@@ -453,18 +453,6 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
                     pageList.set(j, rewrite(pageList.get(j), tsDataType, compressionType,
                         pageHeaderList.get(j)));
                   }
-                  switch (compressionType) {
-                    case UNCOMPRESSED:
-                      break;
-                    case SNAPPY:
-                      SnappyUnCompressor snappyUnCompressor = new SnappyUnCompressor();
-                      pageHeaderList.get(j).setUncompressedSize(
-                          snappyUnCompressor.uncompress(pageList.get(j).array()).length);
-                      pageHeaderList.get(j).setCompressedSize(pageList.get(j).array().length);
-                      break;
-                    default:
-                      throw new CompressionTypeNotSupportedException(compressionType.toString());
-                  }
                   chunkWriter
                       .writePageHeaderAndDataIntoBuff(pageList.get(j), pageHeaderList.get(j));
                 }
