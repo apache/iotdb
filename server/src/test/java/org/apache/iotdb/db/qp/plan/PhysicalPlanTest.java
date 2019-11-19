@@ -39,6 +39,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
 import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
@@ -534,5 +535,21 @@ public class PhysicalPlanTest {
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     LoadConfigurationPlan plan = (LoadConfigurationPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals("LOAD_CONFIGURATION", plan.toString());
+  }
+
+  @Test
+  public void testShowDynamicParameter() throws QueryProcessException, MetadataException {
+    String metadata = "show dynamic parameter";
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    ShowPlan plan = (ShowPlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals("SHOW DYNAMIC_PARAMETER", plan.toString());
+  }
+
+  @Test
+  public void testShowFlushInfo() throws QueryProcessException, MetadataException {
+    String metadata = "show flush task info";
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    ShowPlan plan = (ShowPlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals("SHOW FLUSH_TASK_INFO", plan.toString());
   }
 }

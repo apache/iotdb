@@ -31,7 +31,7 @@ import org.apache.thrift.TException;
  * synchronized in <class>SyncFileManager</class>, these files are synchronized to the receiving end
  * to complete the synchronization task.
  */
-public interface IDataTransferManager {
+public interface ISyncClient {
 
   void init();
 

@@ -38,7 +38,9 @@ import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DATETIME;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DELETE;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DEVICE;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DROP;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DYNAMIC_PARAMETER;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_FILL;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_FLUSH_TASK_INFO;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_FROM;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_GRANT;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_GRANT_WATERMARK_EMBEDDING;
@@ -113,6 +115,7 @@ import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.LinearFill;
@@ -291,11 +294,27 @@ public class LogicalGenerator {
       case TOK_LOAD_CONFIGURATION:
         initializedOperator = new LoadConfigurationOperator();
         return;
+      case TOK_SHOW:
+        analyzeShow(astNode);
+        return;
       default:
         throw new QueryProcessException("Not supported TqlParser type " + token.getText());
     }
     for (Node node : astNode.getChildren()) {
       analyze((AstNode) node);
+    }
+  }
+
+  private void analyzeShow(AstNode astNode){
+    switch (astNode.getChild(0).getType()) {
+      case TOK_DYNAMIC_PARAMETER:
+        initializedOperator = new ShowOperator(SQLConstant.TOK_DYNAMIC_PARAMETER);
+        break;
+      case TOK_FLUSH_TASK_INFO:
+        initializedOperator = new ShowOperator(SQLConstant.TOK_FLUSH_TASK_INFO);
+        break;
+      default:
+        break;
     }
   }
 

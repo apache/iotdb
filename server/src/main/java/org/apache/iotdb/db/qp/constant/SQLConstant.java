@@ -108,6 +108,9 @@ public class SQLConstant {
   public static final int TOK_CREATE_DEVICE = 67;
   public static final int TOK_DEVICE_TEMPLATE_CREATE = 68;
 
+  public static final int TOK_FLUSH_TASK_INFO = 67;
+  public static final int TOK_DYNAMIC_PARAMETER = 68;
+
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
   public static final Map<Integer, Integer> reverseWords = new HashMap<>();
@@ -169,6 +172,8 @@ public class SQLConstant {
     tokenNames.put(TOK_CREATE_DEVICE, "TOK_CREATE_DEVICE");
     
     tokenNames.put(TOK_LOAD_CONFIGURATION, "TOK_LOAD_CONFIGURATION");
+    tokenNames.put(TOK_FLUSH_TASK_INFO, "TOK_FLUSH_TASK_INFO");
+    tokenNames.put(TOK_DYNAMIC_PARAMETER, "TOK_DYNAMIC_PARAMETER");
   }
 
   static {

@@ -72,9 +72,9 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DataTransferManager implements IDataTransferManager {
+public class SyncClient implements ISyncClient {
 
-  private static final Logger logger = LoggerFactory.getLogger(DataTransferManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(SyncClient.class);
 
   private static SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
 
@@ -114,11 +114,11 @@ public class DataTransferManager implements IDataTransferManager {
 
   private ScheduledExecutorService executorService;
 
-  private DataTransferManager() {
+  private SyncClient() {
     init();
   }
 
-  public static DataTransferManager getInstance() {
+  public static SyncClient getInstance() {
     return InstanceHolder.INSTANCE;
   }
 
@@ -127,7 +127,7 @@ public class DataTransferManager implements IDataTransferManager {
    */
   public static void main(String[] args) throws IOException {
     Thread.currentThread().setName(ThreadName.SYNC_CLIENT.getName());
-    IDataTransferManager fileSenderImpl = new DataTransferManager();
+    ISyncClient fileSenderImpl = new SyncClient();
     fileSenderImpl.verifySingleton();
     fileSenderImpl.startMonitor();
     fileSenderImpl.startTimedTask();
@@ -654,7 +654,7 @@ public class DataTransferManager implements IDataTransferManager {
 
   private static class InstanceHolder {
 
-    private static final DataTransferManager INSTANCE = new DataTransferManager();
+    private static final SyncClient INSTANCE = new SyncClient();
   }
 
   private File getSyncLogFile() {
@@ -666,6 +666,6 @@ public class DataTransferManager implements IDataTransferManager {
   }
 
   public void setConfig(SyncSenderConfig config) {
-    DataTransferManager.config = config;
+    SyncClient.config = config;
   }
 }
