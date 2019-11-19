@@ -17,23 +17,39 @@
  * under the License.
  *
  */
-
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.db.qp.physical.sys;
 
 import java.util.List;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.read.common.Path;
 
-public class ShowTTLOperator extends ShowOperator {
+public class ShowPlan extends PhysicalPlan {
 
-  private List<String> storageGroups;
+  private ShowContentType showContentType;
 
-  public ShowTTLOperator(List<String> storageGroups) {
-    super(SQLConstant.TOK_SHOW, OperatorType.TTL);
-    this.storageGroups = storageGroups;
+  public ShowPlan(ShowContentType showContentType){
+    super(true);
+    this.showContentType = showContentType;
+    setOperatorType(OperatorType.SHOW);
   }
 
-  public List<String> getStorageGroups() {
-    return storageGroups;
+  @Override
+  public List<Path> getPaths() {
+    return null;
   }
+
+  public ShowContentType getShowContentType() {
+    return showContentType;
+  }
+
+  @Override
+  public String toString() {
+    return String.format("%s %s", getOperatorType().toString(), showContentType);
+  }
+
+  public enum ShowContentType {
+    DYNAMIC_PARAMETER, FLUSH_TASK_INFO, TTL
+  }
+
 }
