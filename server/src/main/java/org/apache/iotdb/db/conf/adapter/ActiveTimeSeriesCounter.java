@@ -62,6 +62,8 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
     try {
       storageGroupHllMap.get(storageGroup).offer(device + measurement);
     } catch (Exception e) {
+      storageGroupHllMap.putIfAbsent(storageGroup, new HyperLogLog(LOG2M));
+      storageGroupHllMap.get(storageGroup).offer(device + measurement);
       LOGGER.error("Register active time series root.{}.{}.{} failed", storageGroup, device,
           measurement, e);
     }
