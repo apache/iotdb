@@ -29,6 +29,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.compress.ICompressor.SnappyCompressor;
+import org.apache.iotdb.tsfile.compress.IUnCompressor.SnappyUnCompressor;
+import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
@@ -41,6 +44,7 @@ import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsDigest;
 import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -150,7 +154,6 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
   }
 
   /**
-   *
    * @param movePosition whether move the position of the file reader after reading the magic header
    * to the end of the magic head string.
    */
@@ -437,6 +440,7 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
             for (int i = 0; i < chunkHeaders.size(); i++) {
               TSDataType tsDataType = chunkHeaders.get(i).getDataType();
               TSEncoding encodingType = chunkHeaders.get(i).getEncodingType();
+              CompressionType compressionType = chunkHeaders.get(i).getCompressionType();
               ChunkHeader chunkHeader = chunkHeaders.get(i);
               List<PageHeader> pageHeaderList = pageHeadersList.get(i);
               List<ByteBuffer> pageList = pagesList.get(i);
@@ -446,7 +450,19 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
                     schema.getMeasurementSchema(chunkHeader.getMeasurementID()));
                 for (int j = 0; j < pageHeaderList.size(); j++) {
                   if (encodingType.equals(TSEncoding.PLAIN)) {
-                    pageList.set(j, rewrite(pageList.get(j), tsDataType));
+                    pageList.set(j, rewrite(pageList.get(j), tsDataType, compressionType));
+                  }
+                  switch (compressionType) {
+                    case UNCOMPRESSED:
+                      break;
+                    case SNAPPY:
+                      SnappyUnCompressor snappyCompressor = new SnappyUnCompressor();
+                      pageHeaderList.get(j).setUncompressedSize(
+                          snappyCompressor.uncompress(pageList.get(j).array()).length);
+                      pageHeaderList.get(j).setCompressedSize(pageList.get(j).array().length);
+                      break;
+                    default:
+                      throw new CompressionTypeNotSupportedException(compressionType.toString());
                   }
                   chunkBuffer
                       .writePageHeaderAndDataIntoBuff(pageList.get(j), pageHeaderList.get(j));
@@ -485,7 +501,18 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
     }
   }
 
-  static ByteBuffer rewrite(ByteBuffer page, TSDataType tsDataType) {
+  static ByteBuffer rewrite(ByteBuffer page, TSDataType tsDataType,
+      CompressionType compressionType) {
+    switch (compressionType) {
+      case UNCOMPRESSED:
+        break;
+      case SNAPPY:
+        SnappyUnCompressor snappyUnCompressor = new SnappyUnCompressor();
+        page = ByteBuffer.wrap(snappyUnCompressor.uncompress(page.array()));
+        break;
+      default:
+        throw new CompressionTypeNotSupportedException(compressionType.toString());
+    }
     ByteBuffer modifiedPage = ByteBuffer.allocate(page.capacity());
 
     int timeBufferLength = ReadWriteForEncodingUtils.readUnsignedVarInt(page);
@@ -533,7 +560,21 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
         }
         break;
     }
-    modifiedPage.clear();
+    switch (compressionType) {
+      case UNCOMPRESSED:
+        modifiedPage.flip();
+        break;
+      case SNAPPY:
+        SnappyCompressor snappyCompressor = new SnappyCompressor();
+        try {
+          modifiedPage = ByteBuffer.wrap(snappyCompressor.compress(modifiedPage.array()));
+        } catch (IOException e) {
+          logger.error("failed to compress page as snappy", e);
+        }
+        break;
+      default:
+        throw new CompressionTypeNotSupportedException(compressionType.toString());
+    }
     return modifiedPage;
   }
 }
