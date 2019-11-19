@@ -63,8 +63,7 @@ public abstract class Decoder {
   public static Decoder getDecoderByType(TSEncoding type, TSDataType dataType) {
     // PLA and DFT encoding are not supported in current version
     if (type == TSEncoding.PLAIN) {
-      return (endian == EndianType.BIG_ENDIAN)? 
-          new PlainDecoder(EndianType.BIG_ENDIAN) : new PlainDecoder(EndianType.LITTLE_ENDIAN);
+      return new PlainDecoder(endian);
     } else if (type == TSEncoding.RLE) {
       switch (dataType) {
         case BOOLEAN:
