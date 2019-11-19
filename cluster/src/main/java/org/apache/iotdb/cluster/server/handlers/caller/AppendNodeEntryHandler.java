@@ -19,15 +19,14 @@
 package org.apache.iotdb.cluster.server.handlers.caller;
 
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.appendEntry_call;
-import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -35,12 +34,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AppendEntryHandler checks if the log is successfully appended by the quorum or some node has
+ * AppendNodeEntryHandler checks if the log is successfully appended by the quorum or some node has
  * rejected it for some reason when one node has finished the AppendEntryRequest.
+ * The target of the log is the single nodes, it requires the quorum of the nodes to reach
+ * consistency.
  */
-public class AppendEntryHandler implements AsyncMethodCallback<appendEntry_call> {
+public class AppendNodeEntryHandler implements AsyncMethodCallback<appendEntry_call> {
 
-  private static final Logger logger = LoggerFactory.getLogger(AppendEntryHandler.class);
+  private static final Logger logger = LoggerFactory.getLogger(AppendNodeEntryHandler.class);
 
   private RaftMember raftMember;
   private Log log;
@@ -48,7 +49,7 @@ public class AppendEntryHandler implements AsyncMethodCallback<appendEntry_call>
   private AtomicBoolean leaderShipStale;
   private Node follower;
 
-  public AppendEntryHandler(RaftMember raftMember) {
+  public AppendNodeEntryHandler(RaftMember raftMember) {
     this.raftMember = raftMember;
   }
 
@@ -71,18 +72,8 @@ public class AppendEntryHandler implements AsyncMethodCallback<appendEntry_call>
           }
         } else if (resp != RESPONSE_LOG_MISMATCH && resp != RESPONSE_PARTITION_TABLE_UNAVAILABLE) {
           // the leader ship is stale, wait for the new leader's heartbeat
-          synchronized (raftMember.getTerm()) {
-            long currTerm = raftMember.getTerm().get();
-            logger.debug("Received a rejection from {} because term is stale: {}/{}", follower,
-                currTerm, resp);
-            leaderShipStale.set(true);
-            // confirm that the heartbeat of the new leader hasn't come
-            if (currTerm < resp) {
-              raftMember.getTerm().set(resp);
-              raftMember.setCharacter(NodeCharacter.FOLLOWER);
-              raftMember.setLeader(null);
-            }
-          }
+          leaderShipStale.set(true);
+          raftMember.retireFromLeader(resp, follower);
           quorum.notifyAll();
         }
         // rejected because the follower's logs are stale or the follower has no cluster info, just

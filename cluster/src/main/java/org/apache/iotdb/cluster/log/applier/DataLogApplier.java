@@ -13,4 +13,9 @@ public class DataLogApplier implements LogApplier {
   public void apply(Log log) {
     //TODO-Cluster: implement
   }
+
+  @Override
+  public void revert(Log log) {
+    //TODO-Cluster: implement
+  }
 }

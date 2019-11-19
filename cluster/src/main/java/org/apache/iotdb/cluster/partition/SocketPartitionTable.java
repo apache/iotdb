@@ -32,6 +32,9 @@ public class SocketPartitionTable implements PartitionTable {
   private List<Node> nodeRing = new ArrayList<>();
   private Map<Node, List<Integer>> nodeSocketMap = new ConcurrentHashMap<>();
   private Map<Integer, Node> socketNodeMap = new ConcurrentHashMap<>();
+  // the nodes that each socket belongs to before a new node is added, used for the new node to
+  // find the data source
+  private Map<Integer, Node> previousNodeMap = new ConcurrentHashMap<>();
 
   // the data groups which the VNode of this node belongs to
   private List<PartitionGroup> localGroups;
@@ -191,7 +194,30 @@ public class SocketPartitionTable implements PartitionTable {
       }
     }
 
+    // the sockets movement is only done logically, the new node itself will pull data from the
+    // old node
+    moveSocketsToNew(node);
+
     return update;
+  }
+
+  private void moveSocketsToNew(Node node) {
+    List<Integer> newSockets = new ArrayList<>();
+    nodeSocketMap.put(node, newSockets);
+    int newAvg = SOCKET_NUM / nodeRing.size();
+    for (Entry<Node, List<Integer>> entry : nodeSocketMap.entrySet()) {
+      List<Integer> sockets = entry.getValue();
+      int transferNum = sockets.size() - newAvg;
+      if (transferNum > 0) {
+        List<Integer> socketsToMove = sockets.subList(sockets.size() - transferNum, sockets.size());
+        newSockets.addAll(socketsToMove);
+        for (Integer integer : socketsToMove) {
+          // record what node previously hold the integer
+          previousNodeMap.put(integer, entry.getKey());
+        }
+        socketsToMove.clear();
+      }
+    }
   }
 
   @Override
@@ -236,7 +262,12 @@ public class SocketPartitionTable implements PartitionTable {
   }
 
   @Override
-  public Collection<Node> getAllNodes() {
+  public List<Node> getAllNodes() {
     return nodeRing;
+  }
+
+  @Override
+  public Map<Integer, Node> getPreviousNodeMap() {
+    return previousNodeMap;
   }
 }

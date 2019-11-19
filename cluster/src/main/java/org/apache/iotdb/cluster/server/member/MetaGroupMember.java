@@ -11,17 +11,20 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
+import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.LogManager;
 import org.apache.iotdb.cluster.log.MemoryLogManager;
@@ -42,6 +45,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
 import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardAddNodeHandler;
 import org.apache.iotdb.cluster.server.heartbeat.HeartBeatThread;
@@ -64,7 +68,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private static final Logger logger = LoggerFactory.getLogger(MetaGroupMember.class);
   private static final int DEFAULT_JOIN_RETRY = 10;
   private static final String NODES_FILE_NAME = "nodes";
-  private static final int REPLICATION_NUM =
+  public static final int REPLICATION_NUM =
       ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
 
   private TProtocolFactory protocolFactory;
@@ -92,7 +96,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     this.protocolFactory = factory;
     clientFactory = new AsyncClient.Factory(new TAsyncClientManager(), factory);
     queryProcessor = new QueryProcessor(new QueryProcessExecutor());
-    allNodes = new HashSet<>();
+    allNodes = new ArrayList<>();
     loadIdentifier();
 
     initLogManager();
@@ -470,7 +474,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
         logger.info("Send the join request of {} to other nodes", node);
         // adding a node requires strong consistency, -2 for this node and the new node
-        AppendLogResult result = sendLogToFollowers(addNodeLog, allNodes.size() - 2);
+        AppendLogResult result = sendLogToAllGroups(addNodeLog);
         AddNodeResponse response = new AddNodeResponse();
 
         switch (result) {
@@ -502,6 +506,62 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
     }
     resultHandler.onError(new LeaderUnknownException());
+  }
+
+  /**
+   * Send the log the all data groups and return a success only when each group's quorum has
+   * accepted this log.
+   * @param log
+   * @return
+   */
+  private AppendLogResult sendLogToAllGroups(Log log) {
+    // each group is considered success if such members receive the log
+    int groupQuorum = REPLICATION_NUM / 2 + 1;
+    // each node will form a group
+    int nodeSize = allNodes.size();
+    int[] groupRemainings = new int[nodeSize];
+    for (int i = 0; i < groupRemainings.length; i++) {
+      groupRemainings[i] = groupQuorum;
+    }
+
+    AtomicBoolean leaderShipStale = new AtomicBoolean(false);
+    AppendEntryRequest request = new AppendEntryRequest();
+    request.setTerm(term.get());
+    request.setEntry(log.serialize());
+
+    synchronized (groupRemainings) {
+      for (int i = 0; i < nodeSize; i++) {
+        Node node = allNodes.get(i);
+        AsyncClient client = (AsyncClient) connectNode(node);
+        if (client != null) {
+          try {
+            client.appendEntry(request, new AppendGroupEntryHandler(groupRemainings, i, node,
+                leaderShipStale, log, this));
+          } catch (TException e) {
+            logger.error("Cannot send log to node {}", node, e);
+          }
+        }
+      }
+
+      try {
+        groupRemainings.wait(CONNECTION_TIME_OUT_MS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+
+    if (!leaderShipStale.get()) {
+      boolean succeed = true;
+      for (int remaining : groupRemainings) {
+        if (remaining > 0) {
+          return AppendLogResult.TIME_OUT;
+        }
+      }
+    } else {
+      return AppendLogResult.LEADERSHIP_STALE;
+    }
+
+    return AppendLogResult.OK;
   }
 
   /**

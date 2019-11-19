@@ -20,8 +20,12 @@
 package org.apache.iotdb.cluster.log;
 
 /**
- * LogApplier applies the log to the local node to make it take effect.
+ * LogApplier applies the log to the local node to make it take effect, or revert it if it should
+ * be undone.
  */
 public interface LogApplier {
+
   void apply(Log log);
+
+  void revert(Log log);
 }

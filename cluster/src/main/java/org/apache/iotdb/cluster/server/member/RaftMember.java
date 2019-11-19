@@ -6,7 +6,6 @@ package org.apache.iotdb.cluster.server.member;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -34,7 +33,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.LogCatchUpTask;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.handlers.caller.AppendEntryHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingSocket;
@@ -52,10 +51,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   Random random = new Random();
   Node thisNode;
-  Collection<Node> allNodes;
+  List<Node> allNodes;
 
   NodeCharacter character = NodeCharacter.ELECTOR;
-  private AtomicLong term = new AtomicLong(0);
+  AtomicLong term = new AtomicLong(0);
   Node leader;
   private long lastHeartBeatReceivedTime;
 
@@ -197,9 +196,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           logger.debug("Append a new log {}, new term:{}, new index:{}", log, localTerm,
               logManager.getLastLogIndex());
         } else if (lastLog.getPreviousLogIndex() == previousLogIndex
-            && lastLog.getPreviousLogTerm() < previousLogTerm) {
+            && lastLog.getPreviousLogTerm() <= previousLogTerm) {
           // the incoming log points to the previous log of the local last log, and its term is
-          // bigger than then local last log's, replace the local last log with it
+          // bigger than or equals to the local last log's, replace the local last log with it
           logManager.replaceLastLog(log);
           resultHandler.onComplete(Response.RESPONSE_AGREE);
           logger.debug("Replaced the last log with {}, new term:{}, new index:{}", log,
@@ -257,7 +256,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       for (Node node : allNodes) {
         AsyncClient client = connectNode(node);
         if (client != null) {
-          AppendEntryHandler handler = new AppendEntryHandler(this);
+          AppendNodeEntryHandler handler = new AppendNodeEntryHandler(this);
           handler.setFollower(node);
           handler.setQuorum(quorum);
           handler.setLeaderShipStale(leaderShipStale);
@@ -467,6 +466,20 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     setLastHeartBeatReceivedTime(System.currentTimeMillis());
     if (logger.isDebugEnabled()) {
       logger.debug("Received heartbeat from a valid leader {}", request.getLeader());
+    }
+  }
+
+  public void retireFromLeader(long newTerm, Node follower) {
+    synchronized (term) {
+      long currTerm = term.get();
+      logger.debug("Received a rejection from {} because term is stale: {}/{}", follower,
+          currTerm, newTerm);
+      // confirm that the heartbeat of the new leader hasn't come
+      if (currTerm < newTerm) {
+        term.set(newTerm);
+        setCharacter(NodeCharacter.FOLLOWER);
+        setLeader(null);
+      }
     }
   }
 }

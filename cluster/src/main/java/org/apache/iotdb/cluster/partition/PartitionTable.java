@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.partition;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
 /**
@@ -64,5 +65,11 @@ public interface PartitionTable {
 
   void deserialize(ByteBuffer buffer);
 
-  Collection<Node> getAllNodes();
+  List<Node> getAllNodes();
+
+  /**
+   *
+   * @return each socket's previous holder after a node addition.
+   */
+  Map<Integer, Node> getPreviousNodeMap();
 }
