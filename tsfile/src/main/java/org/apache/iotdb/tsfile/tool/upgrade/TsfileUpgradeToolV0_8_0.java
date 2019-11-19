@@ -456,9 +456,9 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
                     case UNCOMPRESSED:
                       break;
                     case SNAPPY:
-                      SnappyUnCompressor snappyCompressor = new SnappyUnCompressor();
+                      SnappyUnCompressor snappyUnCompressor = new SnappyUnCompressor();
                       pageHeaderList.get(j).setUncompressedSize(
-                          snappyCompressor.uncompress(pageList.get(j).array()).length);
+                          snappyUnCompressor.uncompress(pageList.get(j).array()).length);
                       pageHeaderList.get(j).setCompressedSize(pageList.get(j).array().length);
                       break;
                     default:
