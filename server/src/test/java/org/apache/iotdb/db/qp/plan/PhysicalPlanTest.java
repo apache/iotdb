@@ -528,6 +528,7 @@ public class PhysicalPlanTest {
         (CreateDevicePlan) processor.parseSQLToPhysicalPlan(sqlStr);
     Assert.assertEquals(String.format("deviceType: vehicle1%n" + "devicePath: root.vehicle.d5%n" ), 
         plan.toString());
+  }
 
   @Test
   public void testConfiguration() throws QueryProcessException, MetadataException {
