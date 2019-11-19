@@ -450,19 +450,8 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
                     schema.getMeasurementSchema(chunkHeader.getMeasurementID()));
                 for (int j = 0; j < pageHeaderList.size(); j++) {
                   if (encodingType.equals(TSEncoding.PLAIN)) {
-                    pageList.set(j, rewrite(pageList.get(j), tsDataType, compressionType));
-                  }
-                  switch (compressionType) {
-                    case UNCOMPRESSED:
-                      break;
-                    case SNAPPY:
-                      SnappyUnCompressor snappyUnCompressor = new SnappyUnCompressor();
-                      pageHeaderList.get(j).setUncompressedSize(
-                          snappyUnCompressor.uncompress(pageList.get(j).array()).length);
-                      pageHeaderList.get(j).setCompressedSize(pageList.get(j).array().length);
-                      break;
-                    default:
-                      throw new CompressionTypeNotSupportedException(compressionType.toString());
+                    pageList.set(j, rewrite(pageList.get(j), tsDataType, compressionType,
+                        pageHeaderList.get(j)));
                   }
                   chunkBuffer
                       .writePageHeaderAndDataIntoBuff(pageList.get(j), pageHeaderList.get(j));
@@ -502,7 +491,7 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
   }
 
   static ByteBuffer rewrite(ByteBuffer page, TSDataType tsDataType,
-      CompressionType compressionType) {
+      CompressionType compressionType, PageHeader pageHeader) {
     switch (compressionType) {
       case UNCOMPRESSED:
         break;
@@ -565,9 +554,11 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
         modifiedPage.flip();
         break;
       case SNAPPY:
+        pageHeader.setUncompressedSize(modifiedPage.array().length);
         SnappyCompressor snappyCompressor = new SnappyCompressor();
         try {
           modifiedPage = ByteBuffer.wrap(snappyCompressor.compress(modifiedPage.array()));
+          pageHeader.setCompressedSize(modifiedPage.array().length);
         } catch (IOException e) {
           logger.error("failed to compress page as snappy", e);
         }
