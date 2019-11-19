@@ -54,6 +54,12 @@
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-server</artifactId>
             <version>${project.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.clearspring.analytics</groupId>
+                    <artifactId>stream</artifactId>
+                </exclusion>
+            </exclusions>
             <scope>test</scope>
         </dependency>
         <dependency>
