@@ -112,6 +112,7 @@
 * IOTDB-301 Bug Fix: executing "count nodes root" in client gets "Msg:3"
 * Fix Dynamic Config when Creating Existing SG or Time-series
 * Fix start-walchecker scripts for letting user define the wal folder
+* Fix start script to set JAVA_HOME
 
 
 # Apache IoTDB (incubating) 0.8.1

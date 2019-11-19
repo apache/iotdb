@@ -48,8 +48,10 @@ After installation, there is a default user in IoTDB: `root`, and the
 default password is `root`. Users can use this username to try IoTDB Cli/Shell tool. The client startup script is the `start-client` file under the \$IOTDB\_HOME/bin folder. When starting the script, you need to specify the IP and PORT. (Make sure the IoTDB server is running properly when you use Cli/Shell tool to connect it.)
 
 Here is an example where the server is started locally and the user has not changed the running port. The default port is
-6667. If you need to connect to the remote server or changes
-the port number of the server running, set the specific IP and PORT at -h and -p.
+6667 </br>
+If you need to connect to the remote server or changes
+the port number of the server running, set the specific IP and PORT at -h and -p.</br>
+You also can set your own environment variable at the front of the start script ("/sbin/start-client.sh" for linux and "/sbin/start-client.bat" for windows)
 
 The Linux and MacOS system startup commands are as follows:
 
