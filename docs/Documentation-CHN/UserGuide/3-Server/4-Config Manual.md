@@ -307,6 +307,24 @@
 |默认值|LOCAL |
 |改后生效方式|重启服务器生效|
 
+* core\_site\_path
+
+|Name| core\_site\_path |
+|:---:|:---|
+|描述| 在Tsfile和相关数据文件存储到HDFS的情况下用于配置core-site.xml的绝对路径|
+|类型| String |
+|默认值|/etc/hadoop/conf/core-site.xml |
+|改后生效方式|重启服务器生效|
+
+* hdfs\_site\_path
+
+|Name| hdfs\_site\_path |
+|:---:|:---|
+|描述| 在Tsfile和相关数据文件存储到HDFS的情况下用于配置hdfs-site.xml的绝对路径|
+|类型| String |
+|默认值|/etc/hadoop/conf/hdfs-site.xml |
+|改后生效方式|重启服务器生效|
+
 * hdfs\_ip
 
 |名字| hdfs\_ip |

@@ -58,6 +58,8 @@ import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -149,6 +151,16 @@ public class PhysicalGenerator {
         }
       case LOAD_CONFIGURATION:
         return new LoadConfigurationPlan();
+      case SHOW:
+        switch (operator.getTokenIntType()){
+          case SQLConstant.TOK_DYNAMIC_PARAMETER:
+            return new ShowPlan(ShowContentType.DYNAMIC_PARAMETER);
+          case SQLConstant.TOK_FLUSH_TASK_INFO:
+            return new ShowPlan(ShowContentType.FLUSH_TASK_INFO);
+          default:
+            throw new LogicalOperatorException(String
+                .format("not supported operator type %s in show operation.", operator.getType()));
+        }
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }

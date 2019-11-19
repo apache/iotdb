@@ -20,7 +20,61 @@ package org.apache.iotdb.db.qp.strategy;
 
 import static org.apache.iotdb.db.qp.constant.SQLConstant.LESSTHAN;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.LESSTHANOREQUALTO;
-import static org.apache.iotdb.db.sql.parse.TqlParser.*;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_AND;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_EQ;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_GT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_GTE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_LT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_LTE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_NEQ;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_NOT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.OPERATOR_OR;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_ADD;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_AGGREGATE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_ALL;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_ALTER;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_CREATE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DATETIME;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DELETE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DROP;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_DYNAMIC_PARAMETER;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_FILL;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_FLUSH_TASK_INFO;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_FROM;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_GRANT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_GRANT_WATERMARK_EMBEDDING;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_GROUPBY;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_GROUPBY_DEVICE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_INSERT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LABEL;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LIMIT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LINEAR;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LINK;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LIST;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LOAD;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LOAD_CONFIGURATION;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PATH;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PREVIOUS;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PRIVILEGES;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PROPERTY;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_QUERY;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_REVOKE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_REVOKE_WATERMARK_EMBEDDING;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_ROLE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_ROOT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SELECT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SET;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SHOW;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SLIMIT;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_SOFFSET;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_STORAGEGROUP;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_TIMESERIES;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_TTL;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_UNLINK;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_UNSET;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_UPDATE;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_USER;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_WHERE;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -57,6 +111,7 @@ import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.LinearFill;
@@ -228,11 +283,27 @@ public class LogicalGenerator {
       case TOK_LOAD_CONFIGURATION:
         initializedOperator = new LoadConfigurationOperator();
         return;
+      case TOK_SHOW:
+        analyzeShow(astNode);
+        return;
       default:
         throw new QueryProcessException("Not supported TqlParser type " + token.getText());
     }
     for (Node node : astNode.getChildren()) {
       analyze((AstNode) node);
+    }
+  }
+
+  private void analyzeShow(AstNode astNode){
+    switch (astNode.getChild(0).getType()) {
+      case TOK_DYNAMIC_PARAMETER:
+        initializedOperator = new ShowOperator(SQLConstant.TOK_DYNAMIC_PARAMETER);
+        break;
+      case TOK_FLUSH_TASK_INFO:
+        initializedOperator = new ShowOperator(SQLConstant.TOK_FLUSH_TASK_INFO);
+        break;
+      default:
+        break;
     }
   }
 

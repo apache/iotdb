@@ -107,6 +107,8 @@ tokens{
     TOK_DATE_EXPR;
     TOK_DURATION;
     TOK_LOAD_CONFIGURATION;
+    TOK_DYNAMIC_PARAMETER;
+    TOK_FLUSH_TASK_INFO;
 }
 
 @header{
@@ -171,6 +173,13 @@ static {
 	tokenNameMap.put("K_LIST", "LIST");
 	tokenNameMap.put("K_TTL", "TTL");
 	tokenNameMap.put("K_UNSET", "UNSET");
+	tokenNameMap.put("K_CONFIGURATION", "CONFIGURATION");
+	tokenNameMap.put("K_FLUSH", "FLUSH");
+	tokenNameMap.put("K_TASK", "TASK");
+	tokenNameMap.put("K_DYNAMIC", "DYNAMIC");
+	tokenNameMap.put("K_PARAMETER", "PARAMETER");
+	tokenNameMap.put("K_INFO", "INFO");
+
 	// Operators
 	tokenNameMap.put("DOT", ".");
 	tokenNameMap.put("COLON", ":");
@@ -275,6 +284,7 @@ sqlStatement
     | dmlStatement
     | administrationStatement
     | configurationStatement
+    | showStatement
     ;
 
 dmlStatement
@@ -764,6 +774,21 @@ configurationStatement
 loadConfigurationStatement
     : K_LOAD K_CONFIGURATION
     -> ^(TOK_LOAD_CONFIGURATION)
+    ;
+
+showStatement
+    : showFlushTaskInfo
+    | showDynamicParameter
+    ;
+
+showFlushTaskInfo
+    : K_SHOW K_FLUSH K_TASK K_INFO
+    -> ^(TOK_SHOW TOK_FLUSH_TASK_INFO)
+    ;
+
+showDynamicParameter
+    : K_SHOW K_DYNAMIC K_PARAMETER
+    -> ^(TOK_SHOW TOK_DYNAMIC_PARAMETER)
     ;
 
 /*
