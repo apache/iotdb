@@ -39,13 +39,12 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class HDFSFile extends File {
 
+  private static final long serialVersionUID = -8419827359081949547L;
   private Path hdfsPath;
   private FileSystem fs;
   private static final Logger logger = LoggerFactory.getLogger(HDFSFile.class);
