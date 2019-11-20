@@ -18,8 +18,8 @@
 #
 
 FROM openjdk:11-jre
-RUN apt update \
-  && apt install wget unzip lsof procps maven thrift-compiler=0.9.1-2.1+b1 -y \
+RUN apt-get update \
+  && apt-get install wget unzip lsof procps maven thrift-compiler=0.9.1-2.1+b1 -y \
   && wget https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_linux-x64_bin.tar.gz -O jdk11.tar.gz \
   && tar -xzf jdk11.tar.gz \
   && rm -rf jdk11.tar.gz \
@@ -28,22 +28,22 @@ RUN apt update \
   && wget https://github.com/apache/incubator-iotdb/archive/master.zip \
   && unzip master.zip \
   && rm master.zip \
-  && cd incubator-iotdb-master \
-  && mvn package -pl server,client -am -Papache-release -DskipTests -Dthrift.download-url="http://www.apache.org/licenses/LICENSE-2.0.txt" -Dthrift.exec.absolute.path="/usr/bin/thrift" \
-  && cd target/ \
-  && unzip apache-iotdb-0.9.0-SNAPSHOT-incubating-bin.zip \
+WORKDIR incubator-iotdb-master
+RUN mvn package -Papache-release -DskipTests -Dthrift.download-url="http://www.apache.org/licenses/LICENSE-2.0.txt" -Dthrift.exec.absolute.path="/usr/bin/thrift"
+WORKDIR distributation/target/apache-iotdb-0.9.0-SNAPSHOT-incubating-bin/apache-iotdb-0.9.0-SNAPSHOT-incubating/
+RUN unzip apache-iotdb-0.9.0-SNAPSHOT-incubating-bin.zip \
   && mkdir /iotdb \
-  && mv apache-iotdb-0.9.0-SNAPSHOT-incubating/* /iotdb/ \
-  && cd ../../ \
-  && mvn clean \
+  && mv * /iotdb/ \
+WORKDIR /incubator-iotdb-master
+RUN mvn clean \
   && ls -lh ~/.m2 \
   && rm -rf ~/.m2 \
   && rm -rf /incubator-iotdb-master \
   && sed -i '119d' /iotdb/conf/logback.xml \
-  && apt remove wget maven unzip thrift-compiler -y \
-  && apt autoremove -y \
-  && apt purge --auto-remove -y \
-  && apt clean -y 
+  && apt-get remove wget maven unzip thrift-compiler -y \
+  && apt-get autoremove -y \
+  && apt-get purge --auto-remove -y \
+  && apt-get clean -y
 ENV JAVA_HOME  "/jdk-11.0.2"
 ENV PATH "$JAVA_HOME/bin:$PATH"
 EXPOSE 6667
