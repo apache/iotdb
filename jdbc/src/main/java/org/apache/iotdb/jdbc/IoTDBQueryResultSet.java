@@ -67,6 +67,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   private final String TIMESTAMP_STR = "Time";
   private static final String limitStr = "LIMIT";
   private static final String offsetStr = "OFFSET";
+  private static final int firstColumnTypeIndex = 2;
   private Statement statement = null;
   private String sql;
   private SQLWarning warningChain = null;
@@ -127,7 +128,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     this.columnInfoMap = new HashMap<>();
     this.columnInfoMap.put(TIMESTAMP_STR, 1);
     this.columnTypeDeduplicatedList = new ArrayList<>();
-    int index = 2;
+    int index = firstColumnTypeIndex;
     for (int i = 0; i < columnNameList.size(); i++) {
       String name = columnNameList.get(i);
       columnInfoList.add(name);
@@ -410,7 +411,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   @Override
   public double getDouble(String columnName) throws SQLException {
     checkRecord();
-    int index = columnInfoMap.get(columnName) - 2;
+    int index = columnInfoMap.get(columnName) - firstColumnTypeIndex;
     Field field = record.getFields().get(index);
     if (field.getDataType() != null) {
       return field.getDoubleV();
@@ -449,7 +450,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   @Override
   public float getFloat(String columnName) throws SQLException {
     checkRecord();
-    int index = columnInfoMap.get(columnName) - 2;
+    int index = columnInfoMap.get(columnName) - firstColumnTypeIndex;
     Field field = record.getFields().get(index);
     if (field.getDataType() != null) {
       return field.getFloatV();
@@ -473,7 +474,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   @Override
   public int getInt(String columnName) throws SQLException {
     checkRecord();
-    int index = columnInfoMap.get(columnName) - 2;
+    int index = columnInfoMap.get(columnName) - firstColumnTypeIndex;
     Field field = record.getFields().get(index);
     if (field.getDataType() != null) {
       return field.getIntV();
@@ -495,7 +496,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     if (columnName.equals(TIMESTAMP_STR)) {
       return record.getTimestamp();
     }
-    int index = columnInfoMap.get(columnName) - 2;
+    int index = columnInfoMap.get(columnName) - firstColumnTypeIndex;
     Field field = record.getFields().get(index);
     if (field.getDataType() != null) {
       return field.getLongV();
@@ -1295,7 +1296,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     if (columnName.equals(TIMESTAMP_STR)) {
       return String.valueOf(record.getTimestamp());
     }
-    int index = columnInfoMap.get(columnName) - 2;
+    int index = columnInfoMap.get(columnName) - firstColumnTypeIndex;
     Field field = record.getFields().get(index);
     if (field != null) {
       return field.getStringValue();

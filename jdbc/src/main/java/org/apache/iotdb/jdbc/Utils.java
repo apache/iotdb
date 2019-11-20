@@ -170,7 +170,7 @@ public class Utils {
   
   public static RowRecord getRowRecord(ByteBuffer byteBuffer, List<String> columnTypeList) 
       throws BufferUnderflowException {
-    try {
+    if (byteBuffer.hasRemaining()) {
       long timestamp = byteBuffer.getLong();
       RowRecord record = new RowRecord(timestamp);
       Field field = null;
@@ -217,7 +217,7 @@ public class Utils {
       }
       return record;
     }
-    catch (BufferUnderflowException e) {
+    else {
       return null;
     }
   }
