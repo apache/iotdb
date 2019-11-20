@@ -512,7 +512,7 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
     valueBuffer.position(timeBufferLength);
     valueBuffer.order(ByteOrder.LITTLE_ENDIAN);
 
-    modifiedPage.put(page.get(0));
+    ReadWriteForEncodingUtils.writeUnsignedVarInt(timeBufferLength, modifiedPage);
     modifiedPage.put(timeBuffer);
     modifiedPage.order(ByteOrder.BIG_ENDIAN);
     switch (tsDataType) {
