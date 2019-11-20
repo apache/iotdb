@@ -43,13 +43,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * LogReplayer finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads the
  * WALs from the logNode and redoes them into a given MemTable and ModificationFile.
  */
 public class LogReplayer {
-
+  Logger logger = LoggerFactory.getLogger(LogReplayer.class);
   private String logNodePrefix;
   private String insertFilePath;
   private ModificationFile modFile;
@@ -170,7 +172,13 @@ public class LogReplayer {
       dataTypes[i] = schema.getMeasurementDataType(measurementList[i]);
     }
     insertPlan.setDataTypes(dataTypes);
-    recoverMemTable.insert(insertPlan);
+    try {
+      recoverMemTable.insert(insertPlan);
+    } catch (Exception e) {
+      logger.error(
+          "occurs exception when replaying the record {} at timestamp {}: {}.(Will ignore the record)",
+          insertPlan.getPaths(), insertPlan.getTime(), e.getMessage());
+    }
   }
 
   @SuppressWarnings("unused")
