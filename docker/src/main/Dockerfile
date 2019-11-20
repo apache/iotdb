@@ -17,9 +17,9 @@
 # under the License.
 #
 
-FROM ubuntu:18.04
+FROM openjdk:11-jre
 RUN apt update \
-  && apt install wget unzip lsof maven thrift-compiler=0.9.1-2.1 -y \
+  && apt install wget unzip lsof maven thrift-compiler=0.9.1-2.1+b1 -y \
   && wget https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_linux-x64_bin.tar.gz -O jdk11.tar.gz \
   && tar -xzf jdk11.tar.gz \
   && rm -rf jdk11.tar.gz \
