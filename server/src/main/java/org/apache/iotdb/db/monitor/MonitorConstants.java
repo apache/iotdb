@@ -23,30 +23,32 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.monitor.collector.FileSize;
 
 public class MonitorConstants {
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   public static final String DATA_TYPE_INT64 = "INT64";
-  public static final String STAT_STORAGE_GROUP_PREFIX = "root.stats";
-  static final String FILENODE_PROCESSOR_CONST = "FILENODE_PROCESSOR_CONST";
-  private static final String FILENODE_MANAGER_CONST = "FILENODE_MANAGER_CONST";
-  static final String FILE_SIZE_CONST = "FILE_SIZE_CONST";
-  public static final String MONITOR_PATH_SEPARATOR = ".";
-  // statistic for file size statistic module
-  private static final String FILE_SIZE = "file_size";
-  public static final String FILE_SIZE_STORAGE_GROUP_NAME = STAT_STORAGE_GROUP_PREFIX
-      + MONITOR_PATH_SEPARATOR + FILE_SIZE;
-  // statistic for insert module
-  static final String FILE_NODE_MANAGER_PATH = "write.global";
-  public static final String FILE_NODE_PATH = "write";
+  public static final String MONITOR_STORAGE_GROUP = "root.monitor";
+
   /**
-   * Stat information.
+   * statistic for file size statistic module
    */
-  public static final String STAT_STORAGE_DELTA_NAME = STAT_STORAGE_GROUP_PREFIX
-      + MONITOR_PATH_SEPARATOR + FILE_NODE_MANAGER_PATH;
+  public static final String FILE_SIZE_METRIC_PREFIX = MONITOR_STORAGE_GROUP
+      + IoTDBConstant.PATH_SEPARATOR + "fileSize";
+
+  /**
+   * insert point count monitor metrics prefix
+   */
+  public static final String STORAGE_ENGINE_METRIC_PREFIX = MONITOR_STORAGE_GROUP
+      + IoTDBConstant.PATH_SEPARATOR + "write.global";
+
+  /**
+   * request count monitor metrics prefix
+   */
+  public static final String REQUEST_METRIC_PREFIX = MONITOR_STORAGE_GROUP
+      + IoTDBConstant.PATH_SEPARATOR + "request";
 
   /**
    * function for initializing stats values.
@@ -54,45 +56,44 @@ public class MonitorConstants {
    * @param constantsType produce initialization values for Statistics Params
    * @return HashMap contains all the Statistics Params
    */
-  static HashMap<String, AtomicLong> initValues(String constantsType) {
-    HashMap<String, AtomicLong> hashMap = new HashMap<>();
+  static HashMap<String, Object> initValues(String constantsType) {
+    HashMap<String, Object> hashMap = new HashMap<>();
     switch (constantsType) {
-      case FILENODE_PROCESSOR_CONST:
-        for (FileNodeProcessorStatConstants statConstant : FileNodeProcessorStatConstants
-            .values()) {
-          hashMap.put(statConstant.name(), new AtomicLong(0));
+      case MonitorConstants.STORAGE_ENGINE_METRIC_PREFIX:
+        for (StorageEngineMetrics metrics : StorageEngineMetrics.values()) {
+          hashMap.put(metrics.name(), new AtomicLong(0));
         }
         break;
-      case FILENODE_MANAGER_CONST:
-        hashMap = (HashMap<String, AtomicLong>) FileSize.getInstance().getStatParamsHashMap();
+      case MonitorConstants.FILE_SIZE_METRIC_PREFIX:
+        for (FileSizeMetrics kinds : FileSizeMetrics.values()) {
+          hashMap.put(kinds.name(), new AtomicLong(0));
+        }
         break;
-      case FILE_SIZE_CONST:
-        for (FileSizeConstants kinds : FileSizeConstants.values()) {
+      case MonitorConstants.REQUEST_METRIC_PREFIX:
+        for (TSServiceImplMetrics kinds : TSServiceImplMetrics.values()) {
           hashMap.put(kinds.name(), new AtomicLong(0));
         }
         break;
       default:
-
-        break;
     }
     return hashMap;
   }
 
-  public enum FileNodeManagerStatConstants {
-    TOTAL_POINTS, TOTAL_REQ_SUCCESS, TOTAL_REQ_FAIL, TOTAL_POINTS_SUCCESS, TOTAL_POINTS_FAIL
+  public enum StorageEngineMetrics {
+    OK_POINTS, FAIL_POINTS
   }
 
-  public enum FileNodeProcessorStatConstants {
-    TOTAL_REQ_SUCCESS, TOTAL_REQ_FAIL, TOTAL_POINTS_SUCCESS, TOTAL_POINTS_FAIL
+  public enum TSServiceImplMetrics {
+    TOTAL_REQ
   }
 
-  public enum OsStatConstants {
+  public enum OsMetrics {
     NETWORK_REC, NETWORK_SEND, CPU_USAGE, MEM_USAGE, IOTDB_MEM_SIZE, DISK_USAGE, DISK_READ_SPEED,
     DISK_WRITE_SPEED, DISK_TPS
   }
 
-  public enum FileSizeConstants {
-    // TODO add multi data dir monitor
+  public enum FileSizeMetrics {
+    // need add multi data dir monitor
     WAL(new File(config.getWalFolder()).getAbsolutePath()),
     SYS(new File(config.getSystemDir()).getAbsolutePath());
 
@@ -102,8 +103,9 @@ public class MonitorConstants {
 
     private String path;
 
-    FileSizeConstants(String path) {
+    FileSizeMetrics(String path) {
       this.path = path;
     }
   }
+
 }

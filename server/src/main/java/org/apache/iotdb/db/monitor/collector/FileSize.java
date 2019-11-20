@@ -20,24 +20,22 @@
 package org.apache.iotdb.db.monitor.collector;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.monitor.IStatistic;
 import org.apache.iotdb.db.monitor.MonitorConstants;
-import org.apache.iotdb.db.monitor.MonitorConstants.FileSizeConstants;
+import org.apache.iotdb.db.monitor.MonitorConstants.FileSizeMetrics;
 import org.apache.iotdb.db.monitor.StatMonitor;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -62,19 +60,19 @@ public class FileSize implements IStatistic {
   public Map<String, TSRecord> getAllStatisticsValue() {
     long curTime = System.currentTimeMillis();
     TSRecord tsRecord = StatMonitor
-        .convertToTSRecord(getStatParamsHashMap(), MonitorConstants.FILE_SIZE_STORAGE_GROUP_NAME,
+        .convertToTSRecord(getStatParamsHashMap(), MonitorConstants.FILE_SIZE_METRIC_PREFIX,
             curTime);
     HashMap<String, TSRecord> ret = new HashMap<>();
-    ret.put(MonitorConstants.FILE_SIZE_STORAGE_GROUP_NAME, tsRecord);
+    ret.put(MonitorConstants.FILE_SIZE_METRIC_PREFIX, tsRecord);
     return ret;
   }
 
   @Override
   public void registerStatMetadata() {
     Map<String, String> hashMap = new HashMap<>();
-    for (FileSizeConstants kind : FileSizeConstants.values()) {
-      String seriesPath = MonitorConstants.FILE_SIZE_STORAGE_GROUP_NAME
-          + MonitorConstants.MONITOR_PATH_SEPARATOR
+    for (FileSizeMetrics kind : FileSizeMetrics.values()) {
+      String seriesPath = MonitorConstants.FILE_SIZE_METRIC_PREFIX
+          + IoTDBConstant.PATH_SEPARATOR
           + kind.name();
       hashMap.put(seriesPath, MonitorConstants.DATA_TYPE_INT64);
       Path path = new Path(seriesPath);
@@ -90,21 +88,10 @@ public class FileSize implements IStatistic {
   }
 
   @Override
-  public List<String> getAllPathForStatistic() {
-    List<String> list = new ArrayList<>();
-    for (FileSizeConstants kind : MonitorConstants.FileSizeConstants.values()) {
-      list.add(
-          MonitorConstants.FILE_SIZE_STORAGE_GROUP_NAME + MonitorConstants.MONITOR_PATH_SEPARATOR
-              + kind.name());
-    }
-    return list;
-  }
-
-  @Override
-  public Map<String, AtomicLong> getStatParamsHashMap() {
-    Map<FileSizeConstants, Long> fileSizeMap = getFileSizesInByte();
-    Map<String, AtomicLong> statParamsMap = new HashMap<>();
-    for (FileSizeConstants kind : MonitorConstants.FileSizeConstants.values()) {
+  public Map<String, Object> getStatParamsHashMap() {
+    Map<FileSizeMetrics, Long> fileSizeMap = getFileSizesInByte();
+    Map<String, Object> statParamsMap = new HashMap<>();
+    for (FileSizeMetrics kind : FileSizeMetrics.values()) {
       statParamsMap.put(kind.name(), new AtomicLong(fileSizeMap.get(kind)));
     }
     return statParamsMap;
@@ -120,7 +107,7 @@ public class FileSize implements IStatistic {
     if (config.isEnableStatMonitor()) {
       StatMonitor statMonitor = StatMonitor.getInstance();
       registerStatMetadata();
-      statMonitor.registerStatistics(MonitorConstants.FILE_SIZE_STORAGE_GROUP_NAME, this);
+      statMonitor.registerStatistics(MonitorConstants.FILE_SIZE_METRIC_PREFIX, this);
     }
   }
 
@@ -129,16 +116,16 @@ public class FileSize implements IStatistic {
   }
 
   /**
-   * Return a map[FileSizeConstants, Long]. The key is the dir type and the value is the dir size in
+   * Return a map[FileSizeMetrics, Long]. The key is the dir type and the value is the dir size in
    * byte.
    *
-   * @return a map[FileSizeConstants, Long] with the dir type and the dir size in byte
+   * @return a map[FileSizeMetrics, Long] with the dir type and the dir size in byte
    */
-  public Map<FileSizeConstants, Long> getFileSizesInByte() {
-    EnumMap<FileSizeConstants, Long> fileSizes = new EnumMap<>(FileSizeConstants.class);
-    for (FileSizeConstants kinds : MonitorConstants.FileSizeConstants.values()) {
+  private Map<FileSizeMetrics, Long> getFileSizesInByte() {
+    EnumMap<FileSizeMetrics, Long> fileSizes = new EnumMap<>(FileSizeMetrics.class);
+    for (FileSizeMetrics kinds : FileSizeMetrics.values()) {
 
-      if (kinds.equals(FileSizeConstants.SYS)) {
+      if (kinds.equals(FileSizeMetrics.SYS)) {
         fileSizes.put(kinds, collectSeqFileSize(fileSizes, kinds));
       } else {
         File file = SystemFileFactory.INSTANCE.getFile(kinds.getPath());
@@ -158,7 +145,7 @@ public class FileSize implements IStatistic {
     return fileSizes;
   }
 
-  private long collectSeqFileSize(EnumMap<FileSizeConstants, Long> fileSizes, FileSizeConstants kinds) {
+  private long collectSeqFileSize(EnumMap<FileSizeMetrics, Long> fileSizes, FileSizeMetrics kinds) {
     long fileSize = INIT_VALUE_IF_FILE_NOT_EXIST;
     for (String sequenceDir : config.getDataDirs()) {
       if (sequenceDir.contains("unsequence")) {

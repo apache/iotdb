@@ -466,7 +466,7 @@ public class MManager {
           throw new MetadataException(e);
         }
 
-        if (MonitorConstants.STAT_STORAGE_GROUP_PREFIX.equals(storageGroupName)) {
+        if (MonitorConstants.MONITOR_STORAGE_GROUP.equals(storageGroupName)) {
           continue;
         }
         newSubPaths.add(eachSubPath);

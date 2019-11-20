@@ -34,12 +34,15 @@ import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -58,6 +61,10 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
+import org.apache.iotdb.db.monitor.IStatistic;
+import org.apache.iotdb.db.monitor.MonitorConstants;
+import org.apache.iotdb.db.monitor.MonitorConstants.TSServiceImplMetrics;
+import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
@@ -108,6 +115,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSStatusType;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -116,6 +124,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
@@ -125,13 +134,16 @@ import org.slf4j.LoggerFactory;
  * Thrift RPC implementation at server side.
  */
 
-public class TSServiceImpl implements TSIService.Iface, ServerContext {
+public class TSServiceImpl implements TSIService.Iface, ServerContext, IStatistic {
 
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
   private static final int MAX_SIZE = 200;
   private static final int DELETE_SIZE = 50;
   public static Vector<SqlArgument> sqlArgumentsList = new Vector<>();
+  private static AtomicLong requestNum = new AtomicLong(0);
+  private static final String METRIC_PREFIX = MonitorConstants.REQUEST_METRIC_PREFIX;
+  private StorageEngine storageEngine;
 
   protected QueryProcessor processor;
   // Record the username for every rpc connection. Username.get() is null if
@@ -154,6 +166,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   public TSServiceImpl() {
     processor = new QueryProcessor(new QueryProcessExecutor());
+    storageEngine = StorageEngine.getInstance();
+    if (config.isEnableStatMonitor()) {
+      StatMonitor statMonitor = StatMonitor.getInstance();
+      registerStatMetadata();
+      statMonitor.registerStatistics(METRIC_PREFIX, this);
+    }
   }
 
   @Override
@@ -521,6 +539,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSExecuteBatchStatementResp executeBatchStatement(TSExecuteBatchStatementReq req) {
     long t1 = System.currentTimeMillis();
+    requestNum.incrementAndGet();
     List<Integer> result = new ArrayList<>();
     try {
       if (!checkLogin()) {
@@ -593,6 +612,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
     long startTime = System.currentTimeMillis();
+    requestNum.incrementAndGet();
     TSExecuteStatementResp resp;
     SqlArgument sqlArgument;
     try {
@@ -683,7 +703,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getTSExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
-
+    requestNum.incrementAndGet();
     String statement = req.getStatement();
     PhysicalPlan physicalPlan;
     try {
@@ -992,6 +1012,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
         return getTSExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
       }
+
+      requestNum.incrementAndGet();
       String statement = req.getStatement();
       return executeUpdateStatement(statement);
     } catch (Exception e) {
@@ -1147,6 +1169,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getTSExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
 
+    requestNum.incrementAndGet();
     long stmtId = req.getStmtId();
     InsertPlan plan = (InsertPlan) operationStatus.get()
         .computeIfAbsent(stmtId, k -> new InsertPlan());
@@ -1181,6 +1204,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
 
+    requestNum.incrementAndGet();
     InsertPlan plan = new InsertPlan();
     plan.setDeviceId(req.getDeviceId());
     plan.setTime(req.getTimestamp());
@@ -1201,6 +1225,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
 
+    requestNum.incrementAndGet();
     DeletePlan plan = new DeletePlan();
     plan.setDeleteTime(req.getTimestamp());
     List<Path> paths = new ArrayList<>();
@@ -1225,6 +1250,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return getTSBatchExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR), null);
       }
 
+      requestNum.incrementAndGet();
       BatchInsertPlan batchInsertPlan = new BatchInsertPlan(req.deviceId, req.measurements);
       batchInsertPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
       batchInsertPlan.setColumns(QueryDataSetUtils
@@ -1273,6 +1299,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
 
+    requestNum.incrementAndGet();
     SetStorageGroupPlan plan = new SetStorageGroupPlan(new Path(storageGroup));
     TSStatus status = checkAuthority(plan);
     if (status != null) {
@@ -1287,6 +1314,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
+    requestNum.incrementAndGet();
     List<Path> storageGroupList = new ArrayList<>();
     for (String storageGroup : storageGroups) {
       storageGroupList.add(new Path(storageGroup));
@@ -1305,6 +1333,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
+    requestNum.incrementAndGet();
     CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.getPath()),
         TSDataType.values()[req.getDataType()], TSEncoding.values()[req.getEncoding()],
         CompressionType.values()[req.compressor], new HashMap<>());
@@ -1321,6 +1350,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
+    requestNum.incrementAndGet();
     List<Path> pathList = new ArrayList<>();
     for (String path : paths) {
       pathList.add(new Path(path));
@@ -1351,6 +1381,50 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
     }
     return null;
+  }
+
+  @Override
+  public Map<String, TSRecord> getAllStatisticsValue() {
+    long curTime = System.currentTimeMillis();
+    TSRecord tsRecord = StatMonitor
+        .convertToTSRecord(getStatParamsHashMap(), METRIC_PREFIX,
+            curTime);
+    HashMap<String, TSRecord> ret = new HashMap<>();
+    ret.put(METRIC_PREFIX, tsRecord);
+    return ret;
+  }
+
+  @Override
+  public void registerStatMetadata() {
+    Map<String, String> hashMap = new HashMap<>();
+    for (TSServiceImplMetrics kind : TSServiceImplMetrics.values()) {
+      String seriesPath = METRIC_PREFIX
+          + IoTDBConstant.PATH_SEPARATOR
+          + kind.name();
+      hashMap.put(seriesPath, MonitorConstants.DATA_TYPE_INT64);
+      Path path = new Path(seriesPath);
+      try {
+        storageEngine.addTimeSeries(path, TSDataType.valueOf(MonitorConstants.DATA_TYPE_INT64),
+            TSEncoding.valueOf("RLE"), CompressionType.valueOf(
+                TSFileDescriptor.getInstance().getConfig().getCompressor()),
+            Collections.emptyMap());
+      } catch (StorageEngineException e) {
+        logger.error("Register File Size Stats into storageEngine Failed.", e);
+      }
+    }
+    StatMonitor.getInstance().registerStatStorageGroup(hashMap);
+  }
+
+  @Override
+  public Map<String, Object> getStatParamsHashMap() {
+    Map<TSServiceImplMetrics, Long> fileSizeMap = new EnumMap<>(TSServiceImplMetrics.class);
+    fileSizeMap.put(TSServiceImplMetrics.TOTAL_REQ, requestNum.get());
+    requestNum.set(0);
+    Map<String, Object> statParamsMap = new HashMap<>();
+    for (TSServiceImplMetrics kind : MonitorConstants.TSServiceImplMetrics.values()) {
+      statParamsMap.put(kind.name(), new AtomicLong(fileSizeMap.get(kind)));
+    }
+    return statParamsMap;
   }
 
   private TSStatus executePlan(PhysicalPlan plan) {

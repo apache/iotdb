@@ -19,18 +19,16 @@
 
 package org.apache.iotdb.db.monitor;
 
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 
 public interface IStatistic {
 
   /**
    * Get A HashMap that contains the module seriesPaths and their statistics measurement.
-   * @return A HashMap that contains the module seriesPath like: root.stats.write.global,
-   *        and its value is TSRecord format contains all statistics measurement
+   *
+   * @return A HashMap that contains the module seriesPath like: root.stats.write.global, and its
+   * value is TSRecord format contains all statistics measurement
    */
   Map<String, TSRecord> getAllStatisticsValue();
 
@@ -41,7 +39,8 @@ public interface IStatistic {
 
   /**
    * Get a HashMap contains the names and values of the statistics parameters.
+   *
    * @return a HashMap contains the names and values of the statistics parameters
    */
-  Map<String, AtomicLong> getStatParamsHashMap();
+  Map<String, Object> getStatParamsHashMap();
 }

@@ -25,7 +25,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
-import org.apache.iotdb.db.monitor.MonitorConstants.FileSizeConstants;
+import org.apache.iotdb.db.monitor.MonitorConstants.FileSizeMetrics;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -36,7 +36,7 @@ public class FileSizeTest {
 
   private static final String TEST_FILE_CONTENT = "FileSize UT test file";
   private static final String TEST_FILE_PATH =
-      FileSizeConstants.SYS.getPath() + File.separatorChar + "schemaFile";
+      FileSizeMetrics.SYS.getPath() + File.separatorChar + "schemaFile";
 
   @Before
   public void setUp() throws Exception {
@@ -71,7 +71,7 @@ public class FileSizeTest {
       e.printStackTrace();
     }
 
-    dataSizeBefore = FileSize.getInstance().getFileSizesInByte().get(FileSizeConstants.SYS);
+    dataSizeBefore = FileSize.getInstance().getFileSizesInByte().get(FileSizeMetrics.SYS);
     byte[] contentInBytes = TEST_FILE_CONTENT.getBytes();
     // insert something into the test file under data dir
     try (FileOutputStream fileOutputStream = new FileOutputStream(testFile)) {
@@ -82,7 +82,7 @@ public class FileSizeTest {
       e.printStackTrace();
     }
     // calculate the delta of data dir file size
-    dataSizeAfter = FileSize.getInstance().getFileSizesInByte().get(FileSizeConstants.SYS);
+    dataSizeAfter = FileSize.getInstance().getFileSizesInByte().get(FileSizeMetrics.SYS);
     long deltaSize = dataSizeAfter - dataSizeBefore;
 
     if (isWriteSuccess) {
