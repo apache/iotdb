@@ -319,18 +319,16 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public boolean getBoolean(String columnName) throws SQLException {
-    String b = getValueByName(columnName);
-    if (b == null) {
+    checkRecord();
+    int index = columnInfoMap.get(columnName) - firstColumnTypeIndex;
+    Field field = record.getFields().get(index);
+    if (field.getDataType() != null) {
+      return field.getBoolV();
+    }
+    else {
       throw new SQLException(
           String.format("The value got by %s (column name) is NULL.", columnName));
     }
-    if ("0".equalsIgnoreCase(b.trim())) {
-      return false;
-    }
-    if ("1".equalsIgnoreCase(b.trim())) {
-      return true;
-    }
-    return Boolean.parseBoolean(b);
   }
 
   @Override
