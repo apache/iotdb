@@ -217,12 +217,6 @@ The following classes are modified from Apache Hive, which is under Apache Licen
 
 ------------
 
-The following class is modified from Maven Wrapper
-
-./.mvn/wrapper/MavenWrapperDownloader.java
-
-------------
-
 The following class is modified from Apache commons-collections
 
 ./tsfile/src/main/java/org/apache/iotdb/tsfile/utils/Murmur128Hash.java

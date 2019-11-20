@@ -24,13 +24,12 @@ import java.util.List;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 
-public class ShowTTLOperator extends RootOperator {
+public class ShowTTLOperator extends ShowOperator {
 
   private List<String> storageGroups;
 
   public ShowTTLOperator(List<String> storageGroups) {
-    super(SQLConstant.TOK_SHOW);
-    this.operatorType = OperatorType.TTL;
+    super(SQLConstant.TOK_SHOW, OperatorType.TTL);
     this.storageGroups = storageGroups;
   }
 

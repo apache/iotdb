@@ -28,7 +28,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.exception.SysCheckException;
+import org.apache.iotdb.db.exception.SystemCheckException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.writelog.io.LogWriter;
 import org.junit.Test;
@@ -41,14 +41,14 @@ public class WalCheckerTest {
     boolean caught = false;
     try {
       checker.doCheck();
-    } catch (SysCheckException e) {
+    } catch (SystemCheckException e) {
       caught = true;
     }
     assertTrue(caught);
   }
 
   @Test
-  public void testEmpty() throws IOException, SysCheckException {
+  public void testEmpty() throws IOException, SystemCheckException {
     File tempRoot = new File("root");
     tempRoot.mkdir();
 
@@ -61,7 +61,7 @@ public class WalCheckerTest {
   }
 
   @Test
-  public void testNormalCheck() throws IOException, SysCheckException {
+  public void testNormalCheck() throws IOException, SystemCheckException {
     File tempRoot = new File("root");
     tempRoot.mkdir();
 
@@ -94,7 +94,7 @@ public class WalCheckerTest {
   }
 
   @Test
-  public void testAbnormalCheck() throws IOException, SysCheckException {
+  public void testAbnormalCheck() throws IOException, SystemCheckException {
     File tempRoot = new File("root");
     tempRoot.mkdir();
 
@@ -130,7 +130,7 @@ public class WalCheckerTest {
   }
 
   @Test
-  public void testOneDamagedCheck() throws IOException, SysCheckException {
+  public void testOneDamagedCheck() throws IOException, SystemCheckException {
     File tempRoot = new File("root");
     tempRoot.mkdir();
 

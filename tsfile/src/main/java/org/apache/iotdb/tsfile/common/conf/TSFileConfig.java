@@ -53,6 +53,8 @@ public class TSFileConfig {
   public static final String CONFIG_FILE_NAME = "iotdb-engine.properties";
   public static final String MAGIC_STRING = "TsFile";
   public static final String VERSION_NUMBER = "000001";
+  public static final String OLD_MAGIC_STRING = "TsFilev0.8.0";
+  public static final String OLD_VERSION = "v0.8.0";
 
   /**
    * Bloom filter constrain
@@ -141,6 +143,14 @@ public class TSFileConfig {
    * Default storage is in local file system
    */
   private FSType TSFileStorageFs = FSType.LOCAL;
+  /**
+   * Default core-site.xml file path is /etc/hadoop/conf/core-site.xml
+   */
+  private String coreSitePath = "/etc/hadoop/conf/core-site.xml";
+  /**
+   * Default hdfs-site.xml file path is /etc/hadoop/conf/hdfs-site.xml
+   */
+  private String hdfsSitePath = "/etc/hadoop/conf/hdfs-site.xml";
   /**
    * Default hdfs ip is localhost
    */
@@ -369,6 +379,22 @@ public class TSFileConfig {
 
   public void setTSFileStorageFs(String TSFileStorageFs) {
     this.TSFileStorageFs = FSType.valueOf(TSFileStorageFs);
+  }
+
+  public String getCoreSitePath() {
+    return coreSitePath;
+  }
+
+  public void setCoreSitePath(String coreSitePath) {
+    this.coreSitePath = coreSitePath;
+  }
+
+  public String getHdfsSitePath() {
+    return hdfsSitePath;
+  }
+
+  public void setHdfsSitePath(String hdfsSitePath) {
+    this.hdfsSitePath = hdfsSitePath;
   }
 
   public String[] getHdfsIp() {

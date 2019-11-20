@@ -131,9 +131,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
     } catch (InterruptedException | ClassNotFoundException |
         IllegalAccessException | InstantiationException e) {
       Thread.currentThread().interrupt();
-      String errorMessage = String
-          .format("Failed to start %s", this.getID().getName());
-      throw new StartupException(errorMessage, e);
+      throw new StartupException(this.getID().getName(), e.getMessage());
     }
 
     logger.info("{}: start {} successfully, listening on ip {} port {}", IoTDBConstant.GLOBAL_DB_NAME,

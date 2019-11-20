@@ -21,7 +21,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -52,10 +52,10 @@ public class QueryPlan extends PhysicalPlan {
   /**
    * Check if all paths exist.
    */
-  public void checkPaths(IQueryProcessExecutor executor) throws QueryProcessorException {
+  public void checkPaths(IQueryProcessExecutor executor) throws QueryProcessException {
     for (Path path : paths) {
       if (!executor.judgePathExists(path)) {
-        throw new QueryProcessorException("Path doesn't exist: " + path);
+        throw new QueryProcessException("Path doesn't exist: " + path);
       }
     }
   }

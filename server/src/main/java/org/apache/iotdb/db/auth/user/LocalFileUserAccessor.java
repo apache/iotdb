@@ -78,7 +78,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
       File newProfile = SystemFileFactory.INSTANCE.getFile(
           userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
       if (newProfile.exists() && newProfile.isFile()) {
-        if(!newProfile.renameTo(userProfile)) {
+        if (!newProfile.renameTo(userProfile)) {
           logger.error("New profile renaming not succeed.");
         }
         userProfile = newProfile;
@@ -106,7 +106,18 @@ public class LocalFileUserAccessor implements IUserAccessor {
         roleList.add(userName);
       }
       user.setRoleList(roleList);
-      user.setUseWaterMark(dataInputStream.readInt() != 0);
+
+      // for online upgrading, profile for 0.8.x does not contain waterMark
+      long userProfileLength = userProfile.length();
+      try {
+        user.setUseWaterMark(dataInputStream.readInt() != 0);
+      } catch (EOFException e1) {
+        user.setUseWaterMark(false);
+        try (RandomAccessFile file = new RandomAccessFile(userProfile, "rw")) {
+          file.seek(userProfileLength);
+          file.writeInt(0);
+        }
+      }
       return user;
     } catch (Exception e) {
       throw new IOException(e);
@@ -122,7 +133,8 @@ public class LocalFileUserAccessor implements IUserAccessor {
   public void saveUser(User user) throws IOException {
     File userProfile = SystemFileFactory.INSTANCE.getFile(
         userDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
-    try(BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(userProfile))) {
+    try (BufferedOutputStream outputStream = new BufferedOutputStream(
+        new FileOutputStream(userProfile))) {
       try {
         IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
         IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
@@ -144,7 +156,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
               .writeString(outputStream, user.getRoleList().get(i), STRING_ENCODING,
                   encodingBufferLocal);
         }
-        IOUtils.writeInt(outputStream, user.isUseWaterMark()? 1 : 0, encodingBufferLocal);
+        IOUtils.writeInt(outputStream, user.isUseWaterMark() ? 1 : 0, encodingBufferLocal);
         outputStream.flush();
 
       } catch (Exception e) {

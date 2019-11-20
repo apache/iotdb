@@ -18,6 +18,28 @@
  */
 package org.apache.iotdb.db.service;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.ITEM;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PARAMETER;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PRIVILEGE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.ROLE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.TTL;
+import static org.apache.iotdb.db.conf.IoTDBConstant.USER;
+import static org.apache.iotdb.db.conf.IoTDBConstant.VALUE;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Vector;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -25,14 +47,15 @@ import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.CompressionRatio;
-import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
-import org.apache.iotdb.db.exception.*;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.QueryInBatchStatementException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.QueryProcessor;
@@ -44,14 +67,47 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.*;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
+import org.apache.iotdb.service.rpc.thrift.TSHandleIdentifier;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSInsertReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertionReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TSStatusType;
+import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -64,16 +120,6 @@ import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.time.ZoneId;
-import java.util.*;
-import java.util.regex.Pattern;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 
 /**
  * Thrift RPC implementation at server side.
@@ -171,32 +217,38 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       zoneIds.remove();
     }
     // clear the statementId counter
-    if (statementIdGenerator.get() != null)
+    if (statementIdGenerator.get() != null) {
       statementIdGenerator.remove();
+    }
     // clear the queryId counter
-    if (queryIdGenerator.get() != null)
+    if (queryIdGenerator.get() != null) {
       queryIdGenerator.remove();
+    }
     // clear all cached physical plans of the connection
-    if (operationStatus.get() != null)
+    if (operationStatus.get() != null) {
       operationStatus.remove();
+    }
     // clear all cached ResultSets of the connection
-    if (queryDataSets.get() != null)
+    if (queryDataSets.get() != null) {
       queryDataSets.remove();
+    }
     // clear all cached query context of the connection
     if (contextMapLocal.get() != null) {
       try {
         for (QueryContext context : contextMapLocal.get().values()) {
-            QueryResourceManager.getInstance().endQueryForGivenJob(context.getJobId());
+          QueryResourceManager.getInstance().endQueryForGivenJob(context.getJobId());
         }
         contextMapLocal.remove();
       } catch (StorageEngineException e) {
         logger.error("Error in closeSession : ", e);
-        return new TSStatus(getStatus(TSStatusCode.CLOSE_OPERATION_ERROR, "Error in closeOperation"));
+        return new TSStatus(
+            getStatus(TSStatusCode.CLOSE_OPERATION_ERROR, "Error in closeOperation"));
       }
     }
     // clear the statementId to queryId map
-    if (statementId2QueryId.get() != null)
+    if (statementId2QueryId.get() != null) {
       statementId2QueryId.remove();
+    }
 
     return new TSStatus(tsStatus);
   }
@@ -215,8 +267,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         long stmtId = req.getStmtId();
         Set<Long> queryIdSet = statementId2QueryId.get().get(stmtId);
         if (queryIdSet != null) {
-          for (long queryId : queryIdSet)
+          for (long queryId : queryIdSet) {
             releaseQueryResource(queryId);
+          }
           statementId2QueryId.get().remove(stmtId);
         }
       }
@@ -235,21 +288,21 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   /**
    * release single operation resource
-   * @param queryId
-   * @throws StorageEngineException
    */
   private void releaseQueryResource(long queryId) throws StorageEngineException {
 
     // remove the corresponding Physical Plan
-    if (operationStatus.get() != null)
+    if (operationStatus.get() != null) {
       operationStatus.get().remove(queryId);
+    }
     // remove the corresponding Dataset
-    if (queryDataSets.get() != null)
+    if (queryDataSets.get() != null) {
       queryDataSets.get().remove(queryId);
+    }
     // remove the corresponding query context and query resource
     if (contextMapLocal.get() != null && contextMapLocal.get().containsKey(queryId)) {
       QueryResourceManager.getInstance()
-              .endQueryForGivenJob(contextMapLocal.get().remove(queryId).getJobId());
+          .endQueryForGivenJob(contextMapLocal.get().remove(queryId).getJobId());
     }
   }
 
@@ -338,14 +391,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
           break;
         default:
-          status = getStatus(TSStatusCode.FETCH_METADATA_ERROR, req.getType());
+          status = getStatus(TSStatusCode.METADATA_ERROR, req.getType());
           break;
       }
-    } catch (PathErrorException | MetadataErrorException | OutOfMemoryError | SQLException e) {
+    } catch (QueryProcessException | MetadataException | OutOfMemoryError | SQLException e) {
       logger
           .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()), e);
       Thread.currentThread().interrupt();
-      status = getStatus(TSStatusCode.FETCH_METADATA_ERROR, e.getMessage());
+      status = getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
       resp.setStatus(status);
       return resp;
     }
@@ -354,7 +407,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private Map<String, String> getNodeTimeseriesNum(List<String> nodes)
-      throws MetadataErrorException {
+      throws MetadataException {
     Map<String, String> nodeColumnsNum = new HashMap<>();
     for (String columnPath : nodes) {
       nodeColumnsNum.put(columnPath, Integer.toString(getPaths(columnPath).size()));
@@ -373,9 +426,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private Set<String> getAllDevices() throws SQLException {
     return MManager.getInstance().getAllDevices();
   }
-  
-  private Set<String> getChildPaths(String path) throws PathErrorException {
-	  return MManager.getInstance().getChildNodePathInNextLevel(path);
+
+  private Set<String> getChildPaths(String path) throws PathException {
+    return MManager.getInstance().getChildNodePathInNextLevel(path);
   }
 
   private String getVersion() throws SQLException {
@@ -383,7 +436,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private List<List<String>> getTimeSeriesForPath(String path)
-      throws PathErrorException {
+      throws PathException {
     return MManager.getInstance().getShowTimeseriesPath(path);
   }
 
@@ -391,8 +444,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return MManager.getInstance().getMetadataInString();
   }
 
-  public static TSDataType getSeriesType(String path)
-      throws PathErrorException {
+  public static TSDataType getSeriesType(String path) throws QueryProcessException {
     switch (path.toLowerCase()) {
       // authorization queries
       case ROLE:
@@ -425,15 +477,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         case StatisticConstant.SUM:
           return TSDataType.DOUBLE;
         default:
-          throw new PathErrorException(
+          throw new QueryProcessException(
               "aggregate does not support " + aggrType + " function.");
       }
     }
     return MManager.getInstance().getSeriesType(path);
   }
 
-  protected List<String> getPaths(String path)
-      throws MetadataErrorException {
+  protected List<String> getPaths(String path) throws MetadataException {
     return MManager.getInstance().getPaths(path);
   }
 
@@ -506,7 +557,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
-        throw new QueryInBatchStmtException("Query statement not allowed in batch: " + statement);
+        throw new QueryInBatchStatementException(statement);
       }
       TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan);
       if (resp.getStatus().getStatusType().getCode() == TSStatusCode.SUCCESS_STATUS
@@ -517,19 +568,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         batchErrorMessage.append(resp.getStatus().getStatusType().getCode()).append("\n");
         return false;
       }
-    } catch (MetadataErrorException e) {
+    } catch (MetadataException e) {
       logger.error("Error occurred when executing {}, check metadata error: ", statement, e);
       result.add(Statement.EXECUTE_FAILED);
-      batchErrorMessage.append(TSStatusCode.FETCH_METADATA_ERROR.getStatusCode()).append("\n");
+      batchErrorMessage.append(TSStatusCode.METADATA_ERROR.getStatusCode()).append("\n");
       return false;
-    } catch (QueryProcessorException e) {
+    } catch (QueryProcessException e) {
       logger.error(
           "Error occurred when executing {}, meet error while parsing SQL to physical plan: ",
           statement, e);
       result.add(Statement.EXECUTE_FAILED);
       batchErrorMessage.append(TSStatusCode.SQL_PARSE_ERROR.getStatusCode()).append("\n");
       return false;
-    } catch (QueryInBatchStmtException e) {
+    } catch (QueryInBatchStatementException e) {
       logger.error("Error occurred when executing {}, query statement not allowed: ", statement, e);
       result.add(Statement.EXECUTE_FAILED);
       batchErrorMessage.append(TSStatusCode.QUERY_NOT_ALLOWED.getStatusCode()).append("\n");
@@ -556,34 +607,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             getStatus(TSStatusCode.SUCCESS_STATUS, "ADMIN_COMMAND_SUCCESS"));
       }
 
-      if (execShowFlushInfo(statement)) {
-        String msg = String.format(
-            "There are %d flush tasks, %d flush tasks are in execution and %d flush tasks are waiting for execution.",
-            FlushTaskPoolManager.getInstance().getTotalTasks(),
-            FlushTaskPoolManager.getInstance().getWorkingTasksNumber(),
-            FlushTaskPoolManager.getInstance().getWaitingTasksNumber());
-        return getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS, msg));
-      }
-
-      if (execShowDynamicParameters(statement)) {
-        String msg = String.format(
-            "Memtable size threshold: %dB, Memtable number: %d, Tsfile size threshold: %dB, Compression ratio: %f,"
-                + " Storage group number: %d, Timeseries number: %d, Maximal timeseries number among storage groups: %d",
-            IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold(),
-            IoTDBDescriptor.getInstance().getConfig().getMaxMemtableNumber(),
-            IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold(),
-            CompressionRatio.getInstance().getRatio(),
-            MManager.getInstance().getAllStorageGroupNames().size(),
-            IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries(),
-            MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups());
-        return getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS, msg));
-      }
-
-      if (execSetConsistencyLevel(statement)) {
-        return getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS,
-            "Execute set consistency level successfully"));
-      }
-
       PhysicalPlan physicalPlan;
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
@@ -600,11 +623,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       } else {
         return executeUpdateStatement(physicalPlan);
       }
-    } catch (MetadataErrorException e) {
+    } catch (MetadataException e) {
       logger.error("check metadata error: ", e);
-      return getTSExecuteStatementResp(getStatus(TSStatusCode.FETCH_METADATA_ERROR,
+      return getTSExecuteStatementResp(getStatus(TSStatusCode.METADATA_ERROR,
           "Check metadata error: " + e.getMessage()));
-    } catch (SQLException | QueryProcessorException e) {
+    } catch (QueryProcessException e) {
       logger.error("meet error while parsing SQL to physical plan: ", e);
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR,
           "Statement format is not right: " + e.getMessage()));
@@ -615,52 +638,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  /**
-   * Show flush info
-   */
-  private boolean execShowFlushInfo(String statement) {
-    if (statement == null) {
-      return false;
-    }
-    statement = statement.toLowerCase().trim();
-    return Pattern.matches(IoTDBConstant.SHOW_FLUSH_TASK_INFO, statement);
-  }
-
-  /**
-   * Show dynamic parameters
-   */
-  private boolean execShowDynamicParameters(String statement) {
-    if (statement == null) {
-      return false;
-    }
-    statement = statement.toLowerCase().trim();
-    return Pattern.matches(IoTDBConstant.SHOW_DYNAMIC_PARAMETERS, statement);
-  }
-
-  /**
-   * Set consistency level
-   */
-  private boolean execSetConsistencyLevel(String statement) throws SQLException {
-    if (statement == null) {
-      return false;
-    }
-    statement = statement.toLowerCase().trim();
-    if (Pattern.matches(IoTDBConstant.SET_READ_CONSISTENCY_LEVEL_PATTERN, statement)) {
-      throw new SQLException(
-          "IoTDB Stand-alone version does not support setting read-insert consistency level");
-    } else {
-      return false;
-    }
-  }
-
   private TSExecuteStatementResp executeQueryStatement(long statementId, PhysicalPlan plan) {
     long t1 = System.currentTimeMillis();
     try {
       TSExecuteStatementResp resp;
       if (plan instanceof AuthorPlan) {
         resp = executeAuthQuery(plan);
-      } else if (plan instanceof ShowTTLPlan) {
-        resp = executeShowTTL();
+      } else if (plan instanceof ShowPlan) {
+        resp = executeShow((ShowPlan) plan);
       } else {
         resp = executeDataQuery(plan);
       }
@@ -671,11 +656,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // generate the queryId for the operation
       long queryId = generateQueryId();
       // put it into the corresponding Set
-      Set<Long> queryIdSet = statementId2QueryId.get().computeIfAbsent(statementId, k -> new HashSet<>());
+      Set<Long> queryIdSet = statementId2QueryId.get()
+          .computeIfAbsent(statementId, k -> new HashSet<>());
       queryIdSet.add(queryId);
 
       TSHandleIdentifier operationId = new TSHandleIdentifier(
-          ByteBuffer.wrap(username.get().getBytes()), ByteBuffer.wrap("PASS".getBytes()), queryId);
+          ByteBuffer.wrap(username.get().getBytes()), ByteBuffer.wrap("PASS".getBytes()),
+          queryId);
       TSOperationHandle operationHandle = new TSOperationHandle(operationId, true);
       resp.setOperationHandle(operationHandle);
 
@@ -701,7 +688,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     PhysicalPlan physicalPlan;
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-    } catch (QueryProcessorException | MetadataErrorException e) {
+    } catch (QueryProcessException | MetadataException e) {
       logger.error("meet error while parsing SQL to physical plan!", e);
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     }
@@ -713,7 +700,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return executeQueryStatement(req.statementId, physicalPlan);
   }
 
-  private List<String> queryColumnsType(List<String> columns) throws PathErrorException {
+  private List<String> queryColumnsType(List<String> columns) throws QueryProcessException {
     List<String> columnTypes = new ArrayList<>();
     for (String column : columns) {
       columnTypes.add(getSeriesType(column).toString());
@@ -721,6 +708,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return columnTypes;
   }
 
+  private TSExecuteStatementResp executeShow(ShowPlan showPlan) throws Exception {
+    switch (showPlan.getShowContentType()) {
+      case TTL:
+        return executeShowTTL();
+      case FLUSH_TASK_INFO:
+        return executeShowFlushTaskInfo();
+      case DYNAMIC_PARAMETER:
+        return executeShowDynamicParameter();
+      default:
+        logger.error("Unsupported show content type: {}", showPlan.getShowContentType());
+        throw new Exception("Unsupported show content type:" + showPlan.getShowContentType());
+    }
+  }
 
   private TSExecuteStatementResp executeShowTTL() {
     TSExecuteStatementResp resp =
@@ -732,6 +732,36 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     columns.add(TTL);
     columnTypes.add(TSDataType.TEXT.toString());
     columnTypes.add(TSDataType.INT64.toString());
+    resp.setColumns(columns);
+    resp.setDataTypeList(columnTypes);
+    return resp;
+  }
+
+  private TSExecuteStatementResp executeShowFlushTaskInfo() {
+    TSExecuteStatementResp resp =
+        getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS));
+    resp.setIgnoreTimeStamp(true);
+    List<String> columns = new ArrayList<>();
+    List<String> columnTypes = new ArrayList<>();
+    columns.add(ITEM);
+    columns.add(VALUE);
+    columnTypes.add(TSDataType.TEXT.toString());
+    columnTypes.add(TSDataType.TEXT.toString());
+    resp.setColumns(columns);
+    resp.setDataTypeList(columnTypes);
+    return resp;
+  }
+
+  private TSExecuteStatementResp executeShowDynamicParameter() {
+    TSExecuteStatementResp resp =
+        getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS));
+    resp.setIgnoreTimeStamp(true);
+    List<String> columns = new ArrayList<>();
+    List<String> columnTypes = new ArrayList<>();
+    columns.add(PARAMETER);
+    columns.add(VALUE);
+    columnTypes.add(TSDataType.TEXT.toString());
+    columnTypes.add(TSDataType.TEXT.toString());
     resp.setColumns(columns);
     resp.setDataTypeList(columnTypes);
     return resp;
@@ -774,7 +804,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private TSExecuteStatementResp executeDataQuery(PhysicalPlan plan)
-      throws AuthException, TException, PathErrorException {
+      throws AuthException, TException, QueryProcessException {
     List<Path> paths = plan.getPaths();
     List<String> respColumns = new ArrayList<>();
 
@@ -932,8 +962,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private QueryDataSet createNewDataSet(long queryId, TSFetchResultsReq req)
-      throws PathErrorException, QueryFilterOptimizationException, StorageEngineException,
-      ProcessorException, IOException {
+      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException {
     PhysicalPlan physicalPlan = operationStatus.get().get(queryId);
 
     QueryDataSet queryDataSet;
@@ -942,8 +971,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     initContextMap();
     contextMapLocal.get().put(req.queryId, context);
 
-    queryDataSet = processor.getExecutor().processQuery(physicalPlan,
-        context);
+    queryDataSet = processor.getExecutor().processQuery(physicalPlan, context);
 
     queryDataSets.get().put(req.queryId, queryDataSet);
     return queryDataSet;
@@ -991,9 +1019,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  private boolean executeNonQuery(PhysicalPlan plan) throws ProcessorException {
+  private boolean executeNonQuery(PhysicalPlan plan) throws QueryProcessException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-      throw new ProcessorException(
+      throw new QueryProcessException(
           "Current system mode is read-only, does not support non-query operation");
     }
     return processor.getExecutor().processNonQuery(plan);
@@ -1004,7 +1032,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     PhysicalPlan physicalPlan;
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-    } catch (QueryProcessorException | MetadataErrorException e) {
+    } catch (QueryProcessException | MetadataException e) {
       logger.error("meet error while parsing SQL to physical plan!", e);
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     }
@@ -1120,7 +1148,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     long stmtId = req.getStmtId();
-    InsertPlan plan = (InsertPlan) operationStatus.get().computeIfAbsent(stmtId, k -> new InsertPlan());
+    InsertPlan plan = (InsertPlan) operationStatus.get()
+        .computeIfAbsent(stmtId, k -> new InsertPlan());
 
     // the old parameter will be used if new parameter is not set
     if (req.isSetDeviceId()) {
@@ -1307,7 +1336,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public long requestStatementId() {
     long statementId = statementIdGenerator.get();
-    statementIdGenerator.set(statementId+1);
+    statementIdGenerator.set(statementId + 1);
     return statementId;
   }
 
@@ -1328,19 +1357,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     boolean execRet;
     try {
       execRet = executeNonQuery(plan);
-    } catch (ProcessorException e) {
+    } catch (QueryProcessException e) {
       logger.debug("meet error while processing non-query. ", e);
-      if (e.getCause() instanceof OutOfTTLException) {
-        return getStatus(TSStatusCode.OUT_OF_TTL_ERROR, e.getMessage());
-      } else if (e.getCause() instanceof NotStorageGroupException) {
-        return getStatus(TSStatusCode.NOT_A_STORAGE_GROUP_ERROR, e.getMessage());
-      } else if (e.getMessage().contains("exist")) {
-        return getStatus(TSStatusCode.TIMESERIES_NOT_EXIST_ERROR, e.getMessage());
-      } else {
-          return getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
-        }
-      }
-
+      return new TSStatus(new TSStatusType(e.getErrorCode(), e.getMessage()));
+    }
 
     return execRet ? getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
         : getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1348,7 +1368,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private long generateQueryId() {
     long queryId = queryIdGenerator.get();
-    queryIdGenerator.set(queryId+1);
+    queryIdGenerator.set(queryId + 1);
     return queryId;
   }
 }
