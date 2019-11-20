@@ -93,7 +93,7 @@ matrix:
       language: c
       name: win-oraclejdk11
       before_install:
-        - choco install openjdk11 -y
+        - choco install openjdk11 -params 'installdir=c:\\java11' -y
         - wget --no-check-certificate https://www-eu.apache.org/dist/maven/maven-3/3.6.2/binaries/apache-maven-3.6.2-bin.zip
         - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.2-bin.zip -o/c/mvn362
         - mkdir C:\hadoop\bin
@@ -120,9 +120,9 @@ matrix:
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -o C:\hadoop\bin
 
       before_script:
-        #- export "JAVA_HOME=/c/jdk8"
-        #- export "PATH=/c/jdk8/bin:$PATH"
-        #- export "PATH=/c/jdk8/jre/bin:$PATH"
+        - export "JAVA_HOME=/c/jdk11"
+        - export "PATH=/c/jdk11/bin:$PATH"
+        - export "PATH=/c/jdk11/jre/bin:$PATH"
         - export "MAVEN_HOME=/c/mvn362/apache-maven-3.6.2"
         - export "M2_HOME=/c/mvn362/apache-maven-3.6.2"
         - export "PATH=/c/mvn362/apache-maven-3.6.2/bin:$PATH"
