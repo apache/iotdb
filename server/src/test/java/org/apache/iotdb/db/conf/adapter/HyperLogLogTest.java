@@ -32,9 +32,8 @@ import org.junit.Test;
 
 public class HyperLogLogTest {
 
-  @Ignore
   @Test
-  public void testStreamlibHll() {
+  public void testStreamLibHll() {
     final int seed = 12345;
     // data on which to calculate distinct count
     Random random = new Random(seed);
@@ -43,15 +42,15 @@ public class HyperLogLogTest {
     String[] avgErrors = new String[floor.length];
     int testNum = 1000;
 
-    for (int floorIndex = 0; floorIndex < floor.length; floorIndex++) {
+    for (double v : floor) {
       double errorSum = 0;
       for (int testIndex = 0; testIndex < testNum; testIndex++) {
         final ArrayList<Integer> list = new ArrayList<>();
         for (int i = 0; i < sampleSize; i++) {
-          list.add(random.nextInt((int) (sampleSize * floor[floorIndex])));
+          list.add(random.nextInt((int) (sampleSize * v)));
         }
         Set<Integer> set = new HashSet<>();
-        ICardinality card = new HyperLogLog(13);
+        ICardinality card = new HyperLogLog(ActiveTimeSeriesCounter.LOG2M);
         for (int a : list) {
           set.add(a);
           card.offer(a);
@@ -59,13 +58,8 @@ public class HyperLogLogTest {
         double p = (card.cardinality() - set.size()) / (double) set.size();
         errorSum += Math.abs(p);
       }
-      // allow 1% error
+      // allow average error rate less than 1%
       assertEquals(0, errorSum / testNum, 0.01);
-      avgErrors[floorIndex] = String.format("%.5f", errorSum / testNum);
     }
-    System.out.println(Arrays.toString(avgErrors));
-    // output: [0.00299, 0.00914, 0.00331, 0.00294, 0.00348, 0.00450, 0.00605, 0.00581, 0.00580, 0.00585, 0.00668, 0.00672, 0.00748, 0.00753, 0.00742]
-    // time cost: 11s
   }
-
 }

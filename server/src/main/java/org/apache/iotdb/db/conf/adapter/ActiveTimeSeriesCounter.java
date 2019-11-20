@@ -46,7 +46,7 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
   /**
    * LOG2M decide the precision of the HyperLogLog algorithm
    */
-  private static final int LOG2M = 13;
+  static final int LOG2M = 13;
 
   private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -59,11 +59,12 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
 
   @Override
   public void offer(String storageGroup, String device, String measurement) {
+    String path = device + "." + measurement;
     try {
-      storageGroupHllMap.get(storageGroup).offer(device + measurement);
+      storageGroupHllMap.get(storageGroup).offer(path);
     } catch (Exception e) {
       storageGroupHllMap.putIfAbsent(storageGroup, new HyperLogLog(LOG2M));
-      storageGroupHllMap.get(storageGroup).offer(device + measurement);
+      storageGroupHllMap.get(storageGroup).offer(path);
       LOGGER.error("Register active time series root.{}.{}.{} failed", storageGroup, device,
           measurement, e);
     }
@@ -73,25 +74,29 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
   public void updateActiveRatio(String storageGroup) {
     lock.writeLock().lock();
     try {
-      // update the active time series number in the newest memtable to be flushed
-      activeTimeSeriesNumMap.put(storageGroup, storageGroupHllMap.get(storageGroup).cardinality());
+      long activeTimeSeriesNum = storageGroupHllMap.get(storageGroup).cardinality();
+      if (activeTimeSeriesNum != activeTimeSeriesNumMap.get(storageGroup)) {
+        // update the active time series number in the newest memtable to be flushed
+        activeTimeSeriesNumMap.put(storageGroup, activeTimeSeriesNum);
+
+        double totalActiveTsNum = 0;
+        LOGGER.debug("{}: updating active ratio", Thread.currentThread().getName());
+        for (double number : activeTimeSeriesNumMap.values()) {
+          totalActiveTsNum += number;
+        }
+        for (Map.Entry<String, Long> entry : activeTimeSeriesNumMap.entrySet()) {
+          double activeRatio = 0;
+          if (totalActiveTsNum > 0) {
+            activeRatio = entry.getValue() / totalActiveTsNum;
+          }
+          activeRatioMap.put(entry.getKey(), activeRatio);
+          LOGGER.debug("{}: storage group {} has an active ratio: {}",
+              Thread.currentThread().getName(),
+              entry.getKey(), activeRatio);
+        }
+      }
       // initialize the HLL counter
       storageGroupHllMap.put(storageGroup, new HyperLogLog(LOG2M));
-
-      double totalActiveTsNum = 0;
-      LOGGER.debug("{}: updating active ratio", Thread.currentThread().getName());
-      for (double number : activeTimeSeriesNumMap.values()) {
-        totalActiveTsNum += number;
-      }
-      for (Map.Entry<String, Long> entry : activeTimeSeriesNumMap.entrySet()) {
-        double activeRatio = 0;
-        if (totalActiveTsNum > 0) {
-          activeRatio = entry.getValue() / totalActiveTsNum;
-        }
-        activeRatioMap.put(entry.getKey(), activeRatio);
-        LOGGER.debug("{}: storage group {} has active ratio {}", Thread.currentThread().getName(),
-            entry.getKey(), activeRatio);
-      }
     } catch (Exception e) {
       LOGGER.error("Update {} active ratio failed", storageGroup, e);
     } finally {
