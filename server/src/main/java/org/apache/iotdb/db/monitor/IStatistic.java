@@ -40,13 +40,6 @@ public interface IStatistic {
   void registerStatMetadata();
 
   /**
-   * Get all module's statistics parameters as a time-series seriesPath.
-   *
-   * @return a list of string like "root.stats.xxx.statisticsParams",
-   */
-  List<String> getAllPathForStatistic();
-
-  /**
    * Get a HashMap contains the names and values of the statistics parameters.
    * @return a HashMap contains the names and values of the statistics parameters
    */

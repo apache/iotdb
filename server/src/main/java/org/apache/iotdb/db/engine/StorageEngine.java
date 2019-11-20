@@ -34,6 +34,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -51,6 +52,8 @@ import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
+import org.apache.iotdb.db.monitor.IStatistic;
+import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -64,14 +67,25 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class StorageEngine implements IService {
+public class StorageEngine implements IService, IStatistic {
 
   private final Logger logger;
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000;
+
+  /**
+   * the monitored metric's time series path prefix of this class
+   */
+  private static final String MONITOR_METRIC_PREFIX = MonitorConstants.STAT_STORAGE_DELTA_NAME;
+
+  /**
+   *
+   */
+  private static AtomicLong insertPoint = new AtomicLong(0);
 
   /**
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
@@ -437,4 +451,18 @@ public class StorageEngine implements IService {
     getProcessor(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
   }
 
+  @Override
+  public Map<String, TSRecord> getAllStatisticsValue() {
+    return null;
+  }
+
+  @Override
+  public void registerStatMetadata() {
+
+  }
+
+  @Override
+  public Map<String, AtomicLong> getStatParamsHashMap() {
+    return null;
+  }
 }
