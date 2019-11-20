@@ -149,7 +149,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     String[] splited = sql.toUpperCase().split("\\s+");
     List<String> arraySplited = Arrays.asList(splited);
     try {
-      int posLimit = arraySplited.indexOf(limitStr);
+      int posLimit = arraySplited.indexOf(LIMIT_STR);
       if (posLimit != -1) {
         rowsLimit = Integer.parseInt(splited[posLimit + 1]);
 
@@ -162,7 +162,7 @@ public class IoTDBQueryResultSet implements ResultSet {
         }
 
         // check if OFFSET is constrained after LIMIT has been constrained
-        int posOffset = arraySplited.indexOf(offsetStr);
+        int posOffset = arraySplited.indexOf(OFFSET_STR);
         if (posOffset != -1) {
           // NOTE that OFFSET <OFFSETValue>: OFFSETValue is ensured to be a non-negative
           // integer by the server side
