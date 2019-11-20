@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
@@ -31,9 +32,9 @@ import org.apache.iotdb.cluster.log.MemoryLogManager;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
 import org.apache.iotdb.cluster.log.meta.AddNodeLog;
-import org.apache.iotdb.cluster.partition.SocketPartitionTable;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.partition.SocketPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
@@ -47,7 +48,7 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
-import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardAddNodeHandler;
+import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardAddNodeRequestHandler;
 import org.apache.iotdb.cluster.server.heartbeat.HeartBeatThread;
 import org.apache.iotdb.cluster.server.heartbeat.MetaHeartBeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
@@ -100,7 +101,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     loadIdentifier();
 
     initLogManager();
-    dataMemberFactory = new Factory(protocolFactory, dataLogManager);
+    dataMemberFactory = new Factory(protocolFactory, dataLogManager, this);
     initDataServers();
   }
 
@@ -390,12 +391,18 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   @Override
   public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
-    if (idNodeMap == null) {
+    if (partitionTable == null) {
       // this node lacks information of the cluster and refuse to work
       logger.debug("This node is blind to the cluster and cannot accept logs");
       resultHandler.onComplete(Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE);
       return;
     }
+
+    logger.debug("Received an AppendEntryRequest");
+    if (!checkRequestTerm(request, resultHandler)) {
+      return;
+    }
+
     super.appendEntry(request, resultHandler);
   }
 
@@ -471,9 +478,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         addNodeLog.setNodeIdentifier(node.getNodeIdentifier());
 
         logManager.appendLog(addNodeLog);
+        // add node is instantly applied
+        metaLogApplier.apply(addNodeLog);
 
         logger.info("Send the join request of {} to other nodes", node);
-        // adding a node requires strong consistency, -2 for this node and the new node
         AppendLogResult result = sendLogToAllGroups(addNodeLog);
         AddNodeResponse response = new AddNodeResponse();
 
@@ -515,28 +523,32 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return
    */
   private AppendLogResult sendLogToAllGroups(Log log) {
+    List<Node> nodeRing = partitionTable.getAllNodes();
+
     // each group is considered success if such members receive the log
     int groupQuorum = REPLICATION_NUM / 2 + 1;
     // each node will form a group
-    int nodeSize = allNodes.size();
+    int nodeSize = nodeRing.size();
     int[] groupRemainings = new int[nodeSize];
     for (int i = 0; i < groupRemainings.length; i++) {
       groupRemainings[i] = groupQuorum;
     }
 
+    AtomicLong newLeaderTerm = new AtomicLong(term.get());
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
     AppendEntryRequest request = new AppendEntryRequest();
     request.setTerm(term.get());
     request.setEntry(log.serialize());
 
     synchronized (groupRemainings) {
+      // ask a vote from every node
       for (int i = 0; i < nodeSize; i++) {
-        Node node = allNodes.get(i);
+        Node node = nodeRing.get(i);
         AsyncClient client = (AsyncClient) connectNode(node);
         if (client != null) {
           try {
             client.appendEntry(request, new AppendGroupEntryHandler(groupRemainings, i, node,
-                leaderShipStale, log, this));
+                leaderShipStale, log, newLeaderTerm));
           } catch (TException e) {
             logger.error("Cannot send log to node {}", node, e);
           }
@@ -552,6 +564,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
     if (!leaderShipStale.get()) {
       boolean succeed = true;
+      // if all quorums of all groups have received this log, it is considered succeeded.
       for (int remaining : groupRemainings) {
         if (remaining > 0) {
           return AppendLogResult.TIME_OUT;
@@ -574,7 +587,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     TSMetaService.AsyncClient client = (TSMetaService.AsyncClient) connectNode(leader);
     if (client != null) {
       try {
-        client.addNode(node, new ForwardAddNodeHandler(resultHandler));
+        client.addNode(node, new ForwardAddNodeRequestHandler(resultHandler));
         return true;
       } catch (TException e) {
         logger.warn("Cannot connect to node {}", node, e);
@@ -684,4 +697,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   public PartitionTable getPartitionTable() {
     return partitionTable;
   }
+
+
 }

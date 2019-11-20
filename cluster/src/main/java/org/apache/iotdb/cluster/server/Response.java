@@ -16,6 +16,7 @@ public class Response {
   public static final long RESPONSE_REJECT = -3;
   public static final long RESPONSE_PARTITION_TABLE_UNAVAILABLE = -4;
   public static final long RESPONSE_IDENTIFIER_CONFLICT = -5;
+  public static final long RESPONSE_NO_CONNECTION = -6;
 
   private Response() {
     // enum class

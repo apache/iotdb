@@ -23,11 +23,11 @@ import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient.addNode_cal
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 
-public class ForwardAddNodeHandler implements AsyncMethodCallback<addNode_call> {
+public class ForwardAddNodeRequestHandler implements AsyncMethodCallback<addNode_call> {
 
   private AsyncMethodCallback resultHandler;
 
-  public ForwardAddNodeHandler(AsyncMethodCallback resultHandler) {
+  public ForwardAddNodeRequestHandler(AsyncMethodCallback resultHandler) {
     this.resultHandler = resultHandler;
   }
 

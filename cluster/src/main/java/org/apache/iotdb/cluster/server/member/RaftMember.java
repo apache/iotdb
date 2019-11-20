@@ -156,10 +156,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
   }
 
-  @Override
-  public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
-
-    logger.debug("Received an AppendEntryRequest");
+  boolean checkRequestTerm(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
     long leaderTerm = request.getTerm();
     long localTerm;
 
@@ -170,7 +167,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       if (leaderTerm < localTerm) {
         logger.debug("Rejected the AppendEntryRequest for term: {}/{}", leaderTerm, localTerm);
         resultHandler.onComplete(localTerm);
-        return;
+        return false;
       } else if (leaderTerm > localTerm) {
         term.set(leaderTerm);
         localTerm = leaderTerm;
@@ -179,42 +176,57 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         }
       }
     }
-
     logger.debug("Accepted the AppendEntryRequest for term: {}", localTerm);
+    return true;
+  }
+
+  long appendEntry(Log log) {
+    synchronized (logManager) {
+      Log lastLog = logManager.getLastLog();
+      long previousLogIndex = log.getPreviousLogIndex();
+      long previousLogTerm = log.getPreviousLogTerm();
+
+      if (lastLog == null ||
+          lastLog.getCurrLogIndex() == previousLogIndex && lastLog.getCurrLogTerm() == previousLogTerm) {
+        // the incoming log points to the local last log, append it
+        logManager.appendLog(log);
+        if (logger.isDebugEnabled()) {
+          logger.debug("Append a new log {}, new term:{}, new index:{}", log, term.get(),
+              logManager.getLastLogIndex());
+        }
+        return Response.RESPONSE_AGREE;
+      } else if (lastLog.getPreviousLogIndex() == previousLogIndex
+          && lastLog.getPreviousLogTerm() <= previousLogTerm) {
+        // the incoming log points to the previous log of the local last log, and its term is
+        // bigger than or equals to the local last log's, replace the local last log with it
+        logManager.replaceLastLog(log);
+        logger.debug("Replaced the last log with {}, new term:{}, new index:{}", log,
+            previousLogTerm, previousLogIndex);
+        return Response.RESPONSE_AGREE;
+      } else {
+        // the incoming log points to an illegal position, reject it
+        logger.debug("Cannot append the log because the last log does not match, "
+                + "local:term[{}],index[{}],previousTerm[{}],previousIndex[{}], "
+                + "request:term[{}],index[{}],previousTerm[{}],previousIndex[{}]",
+            lastLog.getCurrLogTerm(), lastLog.getCurrLogIndex(),
+            lastLog.getPreviousLogTerm(), lastLog.getPreviousLogIndex(),
+            log.getCurrLogTerm(), log.getPreviousLogIndex(),
+            previousLogTerm, previousLogIndex);
+        return Response.RESPONSE_LOG_MISMATCH;
+      }
+    }
+  }
+
+  @Override
+  public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
+    logger.debug("Received an AppendEntryRequest");
+    if (!checkRequestTerm(request, resultHandler)) {
+      return;
+    }
+
     try {
       Log log = LogParser.getINSTANCE().parse(request.entry);
-      synchronized (logManager) {
-        Log lastLog = logManager.getLastLog();
-        long previousLogIndex = log.getPreviousLogIndex();
-        long previousLogTerm = log.getPreviousLogTerm();
-
-        if (lastLog == null ||
-            lastLog.getCurrLogIndex() == previousLogIndex && lastLog.getCurrLogTerm() == previousLogTerm) {
-          // the incoming log points to the local last log, append it
-          logManager.appendLog(log);
-          resultHandler.onComplete(Response.RESPONSE_AGREE);
-          logger.debug("Append a new log {}, new term:{}, new index:{}", log, localTerm,
-              logManager.getLastLogIndex());
-        } else if (lastLog.getPreviousLogIndex() == previousLogIndex
-            && lastLog.getPreviousLogTerm() <= previousLogTerm) {
-          // the incoming log points to the previous log of the local last log, and its term is
-          // bigger than or equals to the local last log's, replace the local last log with it
-          logManager.replaceLastLog(log);
-          resultHandler.onComplete(Response.RESPONSE_AGREE);
-          logger.debug("Replaced the last log with {}, new term:{}, new index:{}", log,
-              previousLogTerm, previousLogIndex);
-        } else {
-          // the incoming log points to an illegal position, reject it
-          resultHandler.onComplete(Response.RESPONSE_LOG_MISMATCH);
-          logger.debug("Cannot append the log because the last log does not match, "
-                  + "local:term[{}],index[{}],previousTerm[{}],previousIndex[{}], "
-                  + "request:term[{}],index[{}],previousTerm[{}],previousIndex[{}]",
-              lastLog.getCurrLogTerm(), lastLog.getCurrLogIndex(),
-              lastLog.getPreviousLogTerm(), lastLog.getPreviousLogIndex(),
-              log.getCurrLogTerm(), log.getPreviousLogIndex(),
-              previousLogTerm, previousLogIndex);
-        }
-      }
+      resultHandler.onComplete(appendEntry(log));
     } catch (UnknownLogTypeException e) {
       resultHandler.onError(e);
     }
@@ -246,44 +258,49 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     logger.debug("Sending a log to followers: {}", log);
 
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
+    AtomicLong newLeaderTerm = new AtomicLong(term.get());
 
     AppendEntryRequest request = new AppendEntryRequest();
     request.setTerm(term.get());
     request.setEntry(log.serialize());
 
-    // synchronized: avoid concurrent modification
-    synchronized (allNodes) {
-      for (Node node : allNodes) {
-        AsyncClient client = connectNode(node);
-        if (client != null) {
-          AppendNodeEntryHandler handler = new AppendNodeEntryHandler(this);
-          handler.setFollower(node);
-          handler.setQuorum(quorum);
-          handler.setLeaderShipStale(leaderShipStale);
-          handler.setLog(log);
-          try {
-            client.appendEntry(request, handler);
-          } catch (Exception e) {
-            logger.warn("Cannot append log to node {}", node, e);
+    synchronized (quorum) {
+      // synchronized: avoid concurrent modification
+      synchronized (allNodes) {
+        for (Node node : allNodes) {
+          AsyncClient client = connectNode(node);
+          if (client != null) {
+            AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
+            handler.setReceiver(node);
+            handler.setQuorum(quorum);
+            handler.setLeaderShipStale(leaderShipStale);
+            handler.setLog(log);
+            handler.setReceiverTerm(newLeaderTerm);
+            try {
+              client.appendEntry(request, handler);
+            } catch (Exception e) {
+              logger.warn("Cannot append log to node {}", node, e);
+            }
           }
         }
       }
-    }
 
-    synchronized (quorum) {
-      if (quorum.get() != 0 && !leaderShipStale.get()) {
-        try {
-          quorum.wait(CONNECTION_TIME_OUT_MS);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          return AppendLogResult.TIME_OUT;
-        }
+      try {
+        quorum.wait(CONNECTION_TIME_OUT_MS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
       }
     }
 
     if (leaderShipStale.get()) {
+      retireFromLeader(newLeaderTerm.get());
       return AppendLogResult.LEADERSHIP_STALE;
     }
+
+    if (quorum.get() > 0) {
+      return AppendLogResult.TIME_OUT;
+    }
+
     return AppendLogResult.OK;
   }
 
@@ -469,11 +486,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
   }
 
-  public void retireFromLeader(long newTerm, Node follower) {
+  public void retireFromLeader(long newTerm) {
     synchronized (term) {
       long currTerm = term.get();
-      logger.debug("Received a rejection from {} because term is stale: {}/{}", follower,
-          currTerm, newTerm);
       // confirm that the heartbeat of the new leader hasn't come
       if (currTerm < newTerm) {
         term.set(newTerm);

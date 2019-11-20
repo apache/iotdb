@@ -33,11 +33,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   private Node thisVNode;
   // the data port of each node in this group
   private Map<Node, Integer> dataPortMap = new ConcurrentHashMap<>();
+  private MetaGroupMember metaGroupMember;
 
   private DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisVNode,
-      LogManager logManager) throws IOException {
+      LogManager logManager, MetaGroupMember metaGroupMember) throws IOException {
     this.thisNode = thisVNode;
     this.logManager = logManager;
+    this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
     clientFactory = new TSDataService.AsyncClient.Factory(new TAsyncClientManager(), factory);
     queryProcessor = new QueryProcessor(new QueryProcessExecutor());
@@ -82,21 +84,23 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * is also the identifier of this data group.
    */
   public Node getHeader() {
-    return ((PartitionGroup) allNodes).get(0);
+    return allNodes.get(0);
   }
 
   public static class Factory {
     private TProtocolFactory protocolFactory;
     private LogManager logManager;
+    private MetaGroupMember metaGroupMember;
 
-    Factory(TProtocolFactory protocolFactory, LogManager logManager) {
+    Factory(TProtocolFactory protocolFactory, LogManager logManager, MetaGroupMember metaGroupMember) {
       this.protocolFactory = protocolFactory;
       this.logManager = logManager;
+      this.metaGroupMember = metaGroupMember;
     }
 
     public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode)
         throws IOException {
-      return new DataGroupMember(protocolFactory, partitionGroup, thisNode, logManager);
+      return new DataGroupMember(protocolFactory, partitionGroup, thisNode, logManager, metaGroupMember);
     }
   }
 
@@ -106,10 +110,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   public synchronized void addNode(Node node) {
     synchronized (allNodes) {
-      List<Node> allNodeList = (List<Node>) allNodes;
+      List<Node> allNodeList = allNodes;
       Node firstNode = allNodeList.get(0);
       Node lastNode = allNodeList.get(allNodeList.size() - 1);
-
 
       boolean crossTail = lastNode.nodeIdentifier < firstNode.nodeIdentifier;
     }

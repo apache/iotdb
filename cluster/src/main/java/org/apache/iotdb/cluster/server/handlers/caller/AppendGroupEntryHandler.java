@@ -5,16 +5,13 @@
 package org.apache.iotdb.cluster.server.handlers.caller;
 
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE;
 import static org.apache.iotdb.cluster.server.member.MetaGroupMember.REPLICATION_NUM;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.appendEntry_call;
-import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -32,20 +29,20 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<appendEntry_
   private static final Logger logger = LoggerFactory.getLogger(AppendGroupEntryHandler.class);
 
   private Log log;
-  private int[] groupRemainings;
+  private int[] groupReceived;
   private int headerNodeIndex;
   private Node headerNode;
   private AtomicBoolean leaderShipStale;
-  private RaftMember raftMember;
+  private AtomicLong newLeaderTerm;
 
-  public AppendGroupEntryHandler(int[] groupRemainings, int headerNodeIndex,
-      Node headerNode, AtomicBoolean leaderShipStale, Log log, RaftMember raftMember) {
-    this.groupRemainings = groupRemainings;
+  public AppendGroupEntryHandler(int[] groupReceived, int headerNodeIndex,
+      Node headerNode, AtomicBoolean leaderShipStale, Log log, AtomicLong newLeaderTerm) {
+    this.groupReceived = groupReceived;
     this.headerNodeIndex = headerNodeIndex;
     this.headerNode = headerNode;
     this.leaderShipStale = leaderShipStale;
     this.log = log;
-    this.raftMember = raftMember;
+    this.newLeaderTerm = newLeaderTerm;
   }
 
   @Override
@@ -63,49 +60,56 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<appendEntry_
       return;
     }
 
-    synchronized (groupRemainings) {
-      if (resp == RESPONSE_AGREE) {
-        logger.debug("Node {} has accepted log {}", headerNode, log);
-        // this node is contained in REPLICATION_NUM groups, minus the counter for those nodes
-        int startIndex = headerNodeIndex;
-        for (int i = 0; i < REPLICATION_NUM; i++) {
-          int nodeIndex = headerNodeIndex - i;
-          if (nodeIndex < 0) {
-            nodeIndex += groupRemainings.length;
-          }
-          groupRemainings[nodeIndex] --;
-        }
-
-        // examine if all groups has agreed
-        boolean allAgreed = true;
-        for (int remaining : groupRemainings) {
-          if (remaining > 0) {
-            allAgreed = false;
-            break;
-          }
-        }
-        if (allAgreed) {
-          // wake up the parent thread to receive welcome the new node
-          groupRemainings.notifyAll();
-        }
-      } else if (resp != RESPONSE_LOG_MISMATCH && resp != RESPONSE_PARTITION_TABLE_UNAVAILABLE) {
+    if (resp == RESPONSE_AGREE) {
+      processAgreement();
+    } else if (resp > 0) {
+      synchronized (groupReceived) {
         // the leader ship is stale, wait for the new leader's heartbeat
-        raftMember.retireFromLeader(resp, headerNode);
+        long previousNewTerm = newLeaderTerm.get();
+        if (previousNewTerm < resp) {
+          newLeaderTerm.set(resp);
+        }
         leaderShipStale.set(true);
-        groupRemainings.notifyAll();
+        groupReceived.notifyAll();
       }
-      // rejected because the follower's logs are stale or the follower has no cluster info, just
-      // wait for the heartbeat to handle
+    }
+    // rejected because the follower's logs are stale or the follower has no cluster info, just
+    // wait for the heartbeat to handle
+  }
 
+  private void processAgreement() {
+    synchronized (groupReceived) {
+      logger.debug("Node {} has accepted log {}", headerNode, log);
+      // this node is contained in REPLICATION_NUM groups, minus the counter for those nodes
+      int startIndex = headerNodeIndex;
+      for (int i = 0; i < REPLICATION_NUM; i++) {
+        int nodeIndex = headerNodeIndex - i;
+        if (nodeIndex < 0) {
+          nodeIndex += groupReceived.length;
+        }
+        groupReceived[nodeIndex] --;
+      }
 
+      // examine if all groups has agreed
+      boolean allAgreed = true;
+      for (int remaining : groupReceived) {
+        if (remaining > 0) {
+          allAgreed = false;
+          break;
+        }
+      }
+      if (allAgreed) {
+        // wake up the parent thread to receive welcome the new node
+        groupReceived.notifyAll();
+      }
     }
   }
 
   @Override
   public void onError(Exception exception) {
-    synchronized (groupRemainings) {
+    synchronized (groupReceived) {
       logger.error("Cannot send the add node request to node {}", headerNode, exception);
-      groupRemainings.notifyAll();
+      groupReceived.notifyAll();
     }
   }
 }

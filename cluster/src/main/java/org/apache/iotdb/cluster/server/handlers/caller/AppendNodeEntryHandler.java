@@ -19,15 +19,13 @@
 package org.apache.iotdb.cluster.server.handlers.caller;
 
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.appendEntry_call;
-import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -43,15 +41,11 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<appendEntry_c
 
   private static final Logger logger = LoggerFactory.getLogger(AppendNodeEntryHandler.class);
 
-  private RaftMember raftMember;
+  private AtomicLong receiverTerm;
   private Log log;
   private AtomicInteger quorum;
   private AtomicBoolean leaderShipStale;
-  private Node follower;
-
-  public AppendNodeEntryHandler(RaftMember raftMember) {
-    this.raftMember = raftMember;
-  }
+  private Node receiver;
 
   @Override
   public void onComplete(appendEntry_call response) {
@@ -65,18 +59,23 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<appendEntry_c
         if (resp == RESPONSE_AGREE) {
           int remaining = quorum.decrementAndGet();
           logger.debug("Received an agreement from {} for {}, remaining votes to succeed: {}",
-              follower, log, remaining);
+              receiver, log, remaining);
           if (remaining == 0) {
             logger.debug("Log {} is accepted by the quorum", log);
             quorum.notifyAll();
           }
-        } else if (resp != RESPONSE_LOG_MISMATCH && resp != RESPONSE_PARTITION_TABLE_UNAVAILABLE) {
+        } else if (resp > 0) {
           // the leader ship is stale, wait for the new leader's heartbeat
+          long prevReceiverTerm = receiverTerm.get();
+          logger.debug("Received a rejection from {} because term is stale: {}/{}", receiver,
+              prevReceiverTerm, resp);
+          if (resp > prevReceiverTerm) {
+            receiverTerm.set(resp);
+          }
           leaderShipStale.set(true);
-          raftMember.retireFromLeader(resp, follower);
           quorum.notifyAll();
         }
-        // rejected because the follower's logs are stale or the follower has no cluster info, just
+        // rejected because the receiver's logs are stale or the receiver has no cluster info, just
         // wait for the heartbeat to handle
       }
     } catch (TException e) {
@@ -86,7 +85,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<appendEntry_c
 
   @Override
   public void onError(Exception exception) {
-    logger.warn("Cannot append log {} to {}", log, follower, exception);
+    logger.warn("Cannot append log {} to {}", log, receiver, exception);
   }
 
   public Log getLog() {
@@ -113,11 +112,15 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<appendEntry_c
     this.leaderShipStale = leaderShipStale;
   }
 
-  public Node getFollower() {
-    return follower;
+  public Node getReceiver() {
+    return receiver;
   }
 
-  public void setFollower(Node follower) {
-    this.follower = follower;
+  public void setReceiver(Node follower) {
+    this.receiver = follower;
+  }
+
+  public void setReceiverTerm(AtomicLong receiverTerm) {
+    this.receiverTerm = receiverTerm;
   }
 }

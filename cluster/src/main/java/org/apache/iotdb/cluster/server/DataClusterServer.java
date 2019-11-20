@@ -6,6 +6,7 @@ package org.apache.iotdb.cluster.server;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.exception.NoHeaderVNodeException;
@@ -35,7 +36,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   private int port;
   private PartitionTable partitionTable;
   private DataGroupMember.Factory dataMemberFactory;
-  private Node thisVNode;
+  private Node thisNode;
 
   public DataClusterServer(int port, DataGroupMember.Factory dataMemberFactory) {
     this.port = port;
@@ -52,15 +53,15 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       DataGroupMember member = headerGroupMap.get(header);
       if (member == null) {
         logger.info("Received a request from unregistered header {}", header);
-        if (thisVNode != null && partitionTable != null) {
+        if (thisNode != null && partitionTable != null) {
           synchronized (partitionTable) {
             // it may be that the header and this node are in the same group, but it is the first time
             // the header contacts this node
             PartitionGroup partitionGroup = partitionTable.getHeaderGroup(header);
-            if (partitionGroup.contains(thisVNode)) {
+            if (partitionGroup.contains(thisNode)) {
               // the two nodes are in the same group, create a new data member
               try {
-                member = dataMemberFactory.create(partitionGroup, thisVNode);
+                member = dataMemberFactory.create(partitionGroup, thisNode);
                 headerGroupMap.put(header, member);
                 logger.info("Created a member for header {}", header);
               } catch (IOException e) {
@@ -165,4 +166,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     this.partitionTable = partitionTable;
   }
 
+  public Collection<Node> getAllHeaders() {
+    return headerGroupMap.keySet();
+  }
 }
