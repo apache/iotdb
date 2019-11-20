@@ -66,8 +66,8 @@ public class IoTDBQueryResultSet implements ResultSet {
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(IoTDBQueryResultSet.class);
   private static final String TIMESTAMP_STR = "Time";
   private static final int START_INDEX = 2;
-  private static final String limitStr = "LIMIT";
-  private static final String offsetStr = "OFFSET";
+  private static final String LIMIT_STR = "LIMIT";
+  private static final String OFFSET_STR = "OFFSET";
   private Statement statement = null;
   private String sql;
   private SQLWarning warningChain = null;
