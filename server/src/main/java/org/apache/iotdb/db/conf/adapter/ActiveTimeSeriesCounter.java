@@ -22,6 +22,7 @@ import com.clearspring.analytics.stream.cardinality.HyperLogLog;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,14 +60,13 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
 
   @Override
   public void offer(String storageGroup, String device, String measurement) {
-    String path = device + "." + measurement;
+    String path = device + IoTDBConstant.PATH_SEPARATOR + measurement;
     try {
       storageGroupHllMap.get(storageGroup).offer(path);
     } catch (Exception e) {
       storageGroupHllMap.putIfAbsent(storageGroup, new HyperLogLog(LOG2M));
       storageGroupHllMap.get(storageGroup).offer(path);
-      LOGGER.error("Register active time series root.{}.{}.{} failed", storageGroup, device,
-          measurement, e);
+      LOGGER.error("Register active time series root.{}.{} failed", storageGroup, path, e);
     }
   }
 
@@ -110,9 +110,6 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
     double ratio;
     try {
       ratio = activeRatioMap.get(storageGroup);
-    } catch (Exception e) {
-      LOGGER.error("Get {} active ratio failed", storageGroup, e);
-      return 0;
     } finally {
       lock.writeLock().unlock();
     }
