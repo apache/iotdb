@@ -54,15 +54,23 @@ public class IoTDBConstant {
   public static final String MIN_TIME = "min_time";
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
 
-  // for cluster, set read consistency level
-  public static final String SET_READ_CONSISTENCY_LEVEL_PATTERN = "set\\s+read.*level.*";
+  // show info
+  public static final String ITEM = "                             item";
+  public static final String PARAMETER = "                                          parameter";
+  public static final String VALUE = "value";
 
-  public static final String SHOW_FLUSH_TASK_INFO = "show\\s+flush\\s+task\\s+info";
+  public static final String ROLE = "role";
+  public static final String USER = "user";
+  public static final String PRIVILEGE = "privilege";
 
-  public static final String SHOW_DYNAMIC_PARAMETERS = "show\\s+dynamic\\s+parameters";
+  public static final String STORAGE_GROUP = "storage group";
+  public static final String TTL = "ttl";
 
-  public static final String ROLE = "Role";
-  public static final String USER = "User";
-  public static final String PRIVILEGE = "Privilege";
+  // data folder name
+  public static final String SEQUENCE_FLODER_NAME = "sequence";
+  public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
+  public static final String TSFILE_NAME_SEPARATOR = "-";
+
+  public static final int MEMTABLE_NUM_IN_EACH_STORAGE_GROUP = 4;
 
 }

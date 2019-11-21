@@ -29,7 +29,7 @@ import java.time.format.DateTimeParseException;
 import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 
 public class DatetimeUtils {
 
@@ -444,7 +444,7 @@ public class DatetimeUtils {
       }
       return instant.toEpochMilli();
     } catch (DateTimeParseException e) {
-      throw new LogicalOperatorException(e);
+      throw new LogicalOperatorException(e.getMessage());
     }
   }
 
@@ -475,6 +475,66 @@ public class DatetimeUtils {
     return getInstantWithPrecision(str, timestampPrecision);
   }
 
+  /**
+   * convert duration string to millisecond, microsecond or nanosecond.
+   */
+  public static long convertDurationStrToLong(long value, String unit, String timestampPrecision) {
+    DurationUnit durationUnit = DurationUnit.valueOf(unit);
+    long res = value;
+    switch (durationUnit) {
+      case y:
+        res *= 365 * 86400_000L;
+        break;
+      case mo:
+        res *= 30 * 86400_000L;
+        break;
+      case w:
+        res *= 7 * 86400_000L;
+        break;
+      case d:
+        res *= 86400_000L;
+        break;
+      case h:
+        res *= 3600_000L;
+        break;
+      case m:
+        res *= 60_000L;
+        break;
+      case s:
+        res *= 1_000L;
+        break;
+      default:
+        break;
+    }
+
+    if (timestampPrecision.equals("us")) {
+      if (unit.equals(DurationUnit.ns)) {
+        return value / 1000;
+      } else if (unit.equals(DurationUnit.us)) {
+        return value;
+      } else {
+        return res * 1000;
+      }
+    } else if (timestampPrecision.equals("ns")) {
+      if (unit.equals(DurationUnit.ns)) {
+        return value;
+      } else if (unit.equals(DurationUnit.us)) {
+        return value * 1000;
+      } else {
+        return res * 1000_000;
+      }
+    } else {
+      if (unit.equals(DurationUnit.ns)) {
+        return value / 1000_0000;
+      } else if (unit.equals(DurationUnit.us)) {
+        return value / 1000;
+      } else {
+        return res;
+      }
+    }
+
+  }
+
   public static ZoneOffset toZoneOffset(ZoneId zoneId) {
     return zoneId.getRules().getOffset(Instant.now());
   }
@@ -482,5 +542,9 @@ public class DatetimeUtils {
   public static ZonedDateTime convertMillsecondToZonedDateTime(long millisecond) {
     return ZonedDateTime.ofInstant(Instant.ofEpochMilli(millisecond),
         IoTDBDescriptor.getInstance().getConfig().getZoneID());
+  }
+
+  public enum DurationUnit {
+    y, mo, w, d, h, m, s, ms, us, ns
   }
 }

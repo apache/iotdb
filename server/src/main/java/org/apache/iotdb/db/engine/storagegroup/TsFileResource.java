@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,17 +31,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
+import org.apache.iotdb.db.service.UpgradeSevice;
+import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TsFileResource {
 
+  // tsfile
   private File file;
 
   public static final String RESOURCE_SUFFIX = ".resource";
-  public static final String TEMP_SUFFIX = ".temp";
+  static final String TEMP_SUFFIX = ".temp";
 
   /**
    * device -> start time
@@ -55,19 +62,22 @@ public class TsFileResource {
   private ModificationFile modFile;
 
   private volatile boolean closed = false;
+  private volatile boolean deleted = false;
+  private volatile boolean isMerging = false;
+
 
   /**
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
    * process.
    */
-  private List<ChunkMetaData> chunkMetaDatas;
+  private List<ChunkMetaData> chunkMetaDataList;
 
   /**
    * Mem chunk data. Only be set in a temporal TsFileResource in a query process.
    */
   private ReadOnlyMemChunk readOnlyMemChunk;
 
-  private ReentrantReadWriteLock mergeQueryLock = new ReentrantReadWriteLock();
+  private ReentrantReadWriteLock writeQueryLock = new ReentrantReadWriteLock();
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
@@ -98,11 +108,11 @@ public class TsFileResource {
       Map<String, Long> startTimeMap,
       Map<String, Long> endTimeMap,
       ReadOnlyMemChunk readOnlyMemChunk,
-      List<ChunkMetaData> chunkMetaDatas) {
+      List<ChunkMetaData> chunkMetaDataList) {
     this.file = file;
     this.startTimeMap = startTimeMap;
     this.endTimeMap = endTimeMap;
-    this.chunkMetaDatas = chunkMetaDatas;
+    this.chunkMetaDataList = chunkMetaDataList;
     this.readOnlyMemChunk = readOnlyMemChunk;
   }
 
@@ -170,8 +180,8 @@ public class TsFileResource {
       endTimeMap.put(device, time);
   }
 
-  public List<ChunkMetaData> getChunkMetaDatas() {
-    return chunkMetaDatas;
+  public List<ChunkMetaData> getChunkMetaDataList() {
+    return chunkMetaDataList;
   }
 
   public ReadOnlyMemChunk getReadOnlyMemChunk() {
@@ -183,6 +193,10 @@ public class TsFileResource {
       modFile = new ModificationFile(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
     }
     return modFile;
+  }
+
+  public void setFile(File file) {
+    this.file = file;
   }
 
   public boolean containsDevice(String deviceId) {
@@ -201,10 +215,6 @@ public class TsFileResource {
     return startTimeMap;
   }
 
-  public void setEndTimeMap(Map<String, Long> endTimeMap) {
-    this.endTimeMap = endTimeMap;
-  }
-
   public Map<String, Long> getEndTimeMap() {
     return endTimeMap;
   }
@@ -220,15 +230,21 @@ public class TsFileResource {
       modFile = null;
     }
     processor = null;
-    chunkMetaDatas = null;
+    chunkMetaDataList = null;
   }
 
   public TsFileProcessor getUnsealedFileProcessor() {
     return processor;
   }
 
-  public ReentrantReadWriteLock getMergeQueryLock() {
-    return mergeQueryLock;
+  public ReentrantReadWriteLock getWriteQueryLock() {
+    return writeQueryLock;
+  }
+
+  public void doUpgrade() {
+    if (UpgradeUtils.isNeedUpgrade(this)) {
+      UpgradeSevice.getINSTANCE().submitUpgradeTask(new UpgradeTask(this));
+    }
   }
 
   public void removeModFile() throws IOException {
@@ -266,5 +282,38 @@ public class TsFileResource {
 
   public void setClosed(boolean closed) {
     this.closed = closed;
+  }
+
+  public boolean isDeleted() {
+    return deleted;
+  }
+
+  public void setDeleted(boolean deleted) {
+    this.deleted = deleted;
+  }
+
+  public boolean isMerging() {
+    return isMerging;
+  }
+
+  public void setMerging(boolean merging) {
+    isMerging = merging;
+  }
+
+  /**
+   * check if any of the device lives over the given time bound
+   * @param timeLowerBound
+   */
+  public boolean stillLives(long timeLowerBound) {
+    if (timeLowerBound == Long.MAX_VALUE) {
+      return true;
+    }
+    for (long endTime : endTimeMap.values()) {
+      // the file cannot be deleted if any device still lives
+      if (endTime >= timeLowerBound) {
+        return true;
+      }
+    }
+    return false;
   }
 }

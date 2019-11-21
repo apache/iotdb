@@ -22,21 +22,24 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSDataValue;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
 import org.apache.iotdb.service.rpc.thrift.TSStatusType;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,7 +58,52 @@ public class UtilsTest {
   public void testParseURL() throws IoTDBURLException {
     String userName = "test";
     String userPwd = "test";
-    String host = "localhost";
+    String host1 = "localhost";
+    int port = 6667;
+    Properties properties = new Properties();
+    properties.setProperty(Config.AUTH_USER, userName);
+    properties.setProperty(Config.AUTH_PASSWORD, userPwd);
+    IoTDBConnectionParams params = Utils
+        .parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host1, port),
+            properties);
+    assertEquals(params.getHost(), host1);
+    assertEquals(params.getPort(), port);
+    assertEquals(params.getUsername(), userName);
+    assertEquals(params.getPassword(), userPwd);
+
+    //don't contain / in the end of url
+    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host1, port),
+            properties);
+    assertEquals(params.getHost(), host1);
+    assertEquals(params.getPort(), port);
+
+    //use a domain
+    String host2 = "google.com";
+    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host2, port),
+        properties);
+    assertEquals(params.getHost(), host2);
+    assertEquals(params.getPort(), port);
+
+    //use a different domain
+    String host3 = "www.google.com";
+    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host3, port),
+        properties);
+    assertEquals(params.getHost(), host3);
+    assertEquals(params.getPort(), port);
+
+    //use a ip
+    String host4 = "1.2.3.4";
+    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host4, port),
+        properties);
+    assertEquals(params.getHost(), host4);
+    assertEquals(params.getPort(), port);
+  }
+
+  @Test(expected = NumberFormatException.class)
+  public void testParseWrongDomain() throws IoTDBURLException {
+    String userName = "test";
+    String userPwd = "test";
+    String host = "www.::google.com";
     int port = 6667;
     Properties properties = new Properties();
     properties.setProperty(Config.AUTH_USER, userName);
@@ -63,23 +111,49 @@ public class UtilsTest {
     IoTDBConnectionParams params = Utils
         .parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host, port),
             properties);
-    assertEquals(params.getHost(), host);
-    assertEquals(params.getPort(), port);
-    assertEquals(params.getUsername(), userName);
-    assertEquals(params.getPassword(), userPwd);
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseWrongIP() throws IoTDBURLException {
+    String userName = "test";
+    String userPwd = "test";
+    String host = "1.2.3.";
+    int port = 6667;
+    Properties properties = new Properties();
+    properties.setProperty(Config.AUTH_USER, userName);
+    properties.setProperty(Config.AUTH_PASSWORD, userPwd);
+    IoTDBConnectionParams params = Utils
+        .parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host, port),
+            properties);
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseWrongPort() throws IoTDBURLException {
+    String userName = "test";
+    String userPwd = "test";
+    String host = "localhost";
+    int port = 66699999;
+    Properties properties = new Properties();
+    properties.setProperty(Config.AUTH_USER, userName);
+    properties.setProperty(Config.AUTH_PASSWORD, userPwd);
+    IoTDBConnectionParams params = Utils
+        .parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host, port),
+            properties);
   }
 
   @Test
   public void testVerifySuccess() {
     try {
-      TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
+      TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          "");
       RpcUtils.verifySuccess(new TSStatus(successStatus));
     } catch (Exception e) {
       fail();
     }
 
     try {
-      TSStatusType errorStatus = new TSStatusType(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), "");
+      TSStatusType errorStatus = new TSStatusType(
+          TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), "");
       RpcUtils.verifySuccess(new TSStatus(errorStatus));
     } catch (Exception e) {
       return;
@@ -88,56 +162,107 @@ public class UtilsTest {
   }
 
   @Test
-  public void testConvertRowRecords() {
-    final int DATA_TYPE_NUM = 6;
+  public void testConvertRowRecords() throws IOException {
     Object[][] input = {
-        {100L, "sensor1_boolean", TSDataType.BOOLEAN, false, "sensor1_int32", TSDataType.INT32,
-            100, "sensor1_int64", TSDataType.INT64, 9999999999L, "sensor1_float", TSDataType.FLOAT,
-            1.23f,
-            "sensor1_double", TSDataType.DOUBLE, 1004234.435d, "sensor1_text", TSDataType.TEXT,
-            "iotdb-jdbc",},
-        {200L, "sensor2_boolean", TSDataType.BOOLEAN, true, "sensor2_int32", TSDataType.INT32, null,
-            "sensor2_int64", TSDataType.INT64, -9999999999L, "sensor2_float", TSDataType.FLOAT,
-            null,
-            "sensor2_double", TSDataType.DOUBLE, -1004234.435d, "sensor2_text", TSDataType.TEXT,
-            null,},
-        {300L, "sensor3_boolean", TSDataType.BOOLEAN, null, "sensor3_int32", TSDataType.INT32, -100,
-            "sensor3_int64", TSDataType.INT64, null, "sensor3_float", TSDataType.FLOAT, -1.23f,
-            "sensor3_double", TSDataType.DOUBLE, null, "sensor3_text", TSDataType.TEXT,
-            "jdbc-iotdb",},};
-    TSQueryDataSet tsQueryDataSet = new TSQueryDataSet(new ArrayList<>());
-    for (Object[] item : input) {
-      TSRowRecord record = new TSRowRecord();
-      record.setTimestamp((long) item[0]);
-      List<String> keys = new ArrayList<>();
-      List<TSDataValue> values = new ArrayList<>();
-      for (int i = 0; i < DATA_TYPE_NUM; i++) {
-        keys.add((String) item[3 * i + 1]);
-        TSDataValue value = new TSDataValue(false);
-        if (item[3 * i + 3] == null) {
-          value.setIs_empty(true);
-        } else {
-          if (i == 0) {
-            value.setBool_val((boolean) item[3 * i + 3]);
-          } else if (i == 1) {
-            value.setInt_val((int) item[3 * i + 3]);
-          } else if (i == 2) {
-            value.setLong_val((long) item[3 * i + 3]);
-          } else if (i == 3) {
-            value.setFloat_val((float) item[3 * i + 3]);
-          } else if (i == 4) {
-            value.setDouble_val((double) item[3 * i + 3]);
-          } else {
-            value.setBinary_val(ByteBuffer.wrap(((String) item[3 * i + 3]).getBytes()));
-          }
-          value.setType(item[3 * i + 2].toString());
-        }
-        values.add(value);
-      }
-      record.setValues(values);
-      tsQueryDataSet.getRecords().add(record);
+        {100L, "sensor1_boolean", TSDataType.BOOLEAN, false,
+            "sensor1_int32", TSDataType.INT32, 100,
+            "sensor1_int64", TSDataType.INT64, 9999999999L,
+            "sensor1_float", TSDataType.FLOAT, 1.23f,
+            "sensor1_double", TSDataType.DOUBLE, 1004234.435d,
+            "sensor1_text", TSDataType.TEXT, "iotdb-jdbc",},
+        {200L, "sensor2_boolean", TSDataType.BOOLEAN, true,
+            "sensor2_int32", null, null,
+            "sensor2_int64", TSDataType.INT64, -9999999999L,
+            "sensor2_float", null, null,
+            "sensor2_double", TSDataType.DOUBLE, -1004234.435d,
+            "sensor2_text", null, null,},
+        {300L, "sensor3_boolean", null, null,
+            "sensor3_int32", TSDataType.INT32, -100,
+            "sensor3_int64", null, null,
+            "sensor3_float", TSDataType.FLOAT, -1.23f,
+            "sensor3_double", null, null,
+            "sensor3_text", TSDataType.TEXT, "jdbc-iotdb",},};
+
+    // create the TSQueryDataSet in the similar way as the server does
+    TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
+    int rowCount = input.length;
+    tsQueryDataSet.setRowCount(rowCount);
+    int columnNum = 6;
+    int columnNumWithTime = columnNum + 1;
+    DataOutputStream[] dataOutputStreams = new DataOutputStream[columnNumWithTime];
+    ByteArrayOutputStream[] byteArrayOutputStreams = new ByteArrayOutputStream[columnNumWithTime];
+    for (int i = 0; i < columnNumWithTime; i++) {
+      byteArrayOutputStreams[i] = new ByteArrayOutputStream();
+      dataOutputStreams[i] = new DataOutputStream(byteArrayOutputStreams[i]);
     }
-    List<RowRecord> convertlist = Utils.convertRowRecords(tsQueryDataSet);
+    int valueOccupation = 0;
+    for (int i = 0; i < rowCount; i++) {
+      Object[] row = input[i];
+      // use columnOutput to write byte array
+      dataOutputStreams[0].writeLong((long) row[0]);
+      for (int k = 0; k < columnNum; k++) {
+        DataOutputStream dataOutputStream = dataOutputStreams[k + 1]; // DO NOT FORGET +1
+        Object type = row[1 + 3 * k + 1];
+        Object value = row[1 + 3 * k + 2];
+        if (type == null) {
+          dataOutputStream.writeBoolean(true); // is_empty true
+        } else {
+          dataOutputStream.writeBoolean(false); // is_empty false
+          TSDataType dataType = (TSDataType) type;
+          switch (dataType) {
+            case INT32:
+              dataOutputStream.writeInt((int) value);
+              valueOccupation += 4;
+              break;
+            case INT64:
+              dataOutputStream.writeLong((long) value);
+              valueOccupation += 8;
+              break;
+            case FLOAT:
+              dataOutputStream.writeFloat((float) value);
+              valueOccupation += 4;
+              break;
+            case DOUBLE:
+              dataOutputStream.writeDouble((double) value);
+              valueOccupation += 8;
+              break;
+            case BOOLEAN:
+              dataOutputStream.writeBoolean((boolean) value);
+              valueOccupation += 1;
+              break;
+            case TEXT:
+              Binary binaryValue = new Binary((String) value);
+              dataOutputStream.writeInt(binaryValue.getLength());
+              dataOutputStream.write(binaryValue.getValues());
+              valueOccupation = valueOccupation + 4 + binaryValue.getLength();
+              break;
+            default:
+              throw new UnSupportedDataTypeException(
+                  String.format("Data type %s is not supported.", type));
+          }
+        }
+      }
+    }
+    // calculate total valueOccupation
+    valueOccupation += rowCount * 8; // note the timestamp column needn't the boolean is_empty
+    valueOccupation += rowCount * columnNum; // for all is_empty
+    ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation);
+    for (ByteArrayOutputStream byteArrayOutputStream : byteArrayOutputStreams) {
+      valueBuffer.put(byteArrayOutputStream.toByteArray());
+    }
+    valueBuffer.flip(); // PAY ATTENTION TO HERE
+    tsQueryDataSet.setValues(valueBuffer);
+    tsQueryDataSet.setRowCount(rowCount);
+
+    // begin convert
+    List<String> columnTypeList = new ArrayList<>();
+    columnTypeList.add(TSDataType.BOOLEAN.toString());
+    columnTypeList.add(TSDataType.INT32.toString());
+    columnTypeList.add(TSDataType.INT64.toString());
+    columnTypeList.add(TSDataType.FLOAT.toString());
+    columnTypeList.add(TSDataType.DOUBLE.toString());
+    columnTypeList.add(TSDataType.TEXT.toString());
+    List<RowRecord> convertlist = Utils.convertRowRecords(tsQueryDataSet, columnTypeList);
     int index = 0;
     for (RowRecord r : convertlist) {
       assertEquals(input[index][0], r.getTimestamp());
@@ -146,37 +271,37 @@ public class UtilsTest {
       for (Field f : fields) {
         if (j == 0) {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getBoolV());
           }
         } else if (j == 1) {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getIntV());
           }
         } else if (j == 2) {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getLongV());
           }
         } else if (j == 3) {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getFloatV());
           }
         } else if (j == 4) {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getDoubleV());
           }
         } else {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getStringValue());
           }

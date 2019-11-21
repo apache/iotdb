@@ -29,9 +29,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
+import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
@@ -44,16 +47,17 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseTsFileCallBack;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTablePool;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -135,11 +139,14 @@ public class TsFileProcessor {
    * @param insertPlan physical plan of insertion
    * @return succeed or fail
    */
-  public boolean insert(InsertPlan insertPlan) throws QueryProcessorException {
+  public boolean insert(InsertPlan insertPlan) throws QueryProcessException {
 
     if (workMemTable == null) {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
     }
+
+    // insert insertPlan to the work memtable
+    workMemTable.insert(insertPlan);
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
@@ -149,6 +156,7 @@ public class TsFileProcessor {
         return false;
       }
     }
+
     // update start time of this memtable
     tsFileResource.updateStartTime(insertPlan.getDeviceId(), insertPlan.getTime());
     //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
@@ -157,17 +165,18 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(insertPlan.getDeviceId(), insertPlan.getTime());
     }
 
-    // insert insertPlan to the work memtable
-    workMemTable.insert(insertPlan);
-
     return true;
   }
 
   public boolean insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes,
-      Integer[] results) throws QueryProcessorException {
+      Integer[] results) throws QueryProcessException {
+
     if (workMemTable == null) {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
     }
+
+    // insert insertPlan to the work memtable
+    workMemTable.insertBatch(batchInsertPlan, indexes);
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
@@ -190,8 +199,6 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
     }
 
-    // insert insertPlan to the work memtable
-    workMemTable.insertBatch(batchInsertPlan, indexes);
     return true;
   }
 
@@ -223,8 +230,23 @@ public class TsFileProcessor {
 
 
   boolean shouldFlush() {
-    return workMemTable != null && workMemTable.memSize() > IoTDBDescriptor.getInstance()
-        .getConfig().getMemtableSizeThreshold();
+    return workMemTable != null
+        && workMemTable.memSize() > getMemtableSizeThresholdBasedOnSeriesNum();
+  }
+
+  /**
+   * <p>In the dynamic parameter adjustment module{@link IoTDBConfigDynamicAdapter}, it calculated
+   * the average size of each metatable{@link IoTDBConfigDynamicAdapter#tryToAdaptParameters()}.
+   * However, considering that the number of timeseries between storage groups may vary greatly,
+   * it's inappropriate to judge whether to flush the memtable according to the average memtable
+   * size. We need to adjust it according to the number of timeseries in a specific storage group.
+   *
+   */
+  private long getMemtableSizeThresholdBasedOnSeriesNum() {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    long memTableSize = (long) (config.getMemtableSizeThreshold() * config.getMaxMemtableNumber()
+        / IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP * ActiveTimeSeriesCounter.getInstance().getActiveRatio(storageGroupName));
+    return Math.max(memTableSize, config.getMemtableSizeThreshold());
   }
 
 
@@ -551,13 +573,14 @@ public class TsFileProcessor {
           continue;
         }
         ReadOnlyMemChunk memChunk = flushingMemTable
-            .query(deviceId, measurementId, dataType, props);
+            .query(deviceId, measurementId, dataType, props, context.getQueryTimeLowerBound());
         if (memChunk != null) {
           memSeriesLazyMerger.addMemSeries(memChunk);
         }
       }
       if (workMemTable != null) {
-        ReadOnlyMemChunk memChunk = workMemTable.query(deviceId, measurementId, dataType, props);
+        ReadOnlyMemChunk memChunk = workMemTable.query(deviceId, measurementId, dataType, props,
+            context.getQueryTimeLowerBound());
         if (memChunk != null) {
           memSeriesLazyMerger.addMemSeries(memChunk);
         }
@@ -575,6 +598,8 @@ public class TsFileProcessor {
           .getVisibleMetadataList(deviceId, measurementId, dataType);
       QueryUtils.modifyChunkMetaData(chunkMetaDataList,
           modifications);
+
+      chunkMetaDataList.removeIf(context::chunkNotSatisfy);
 
       return new Pair<>(timeValuePairSorter, chunkMetaDataList);
     } finally {

@@ -170,12 +170,12 @@ public class NoStatistics extends Statistics<Long> {
   }
 
   @Override
-  void fill(InputStream inputStream) {
+  void deserialize(InputStream inputStream) {
     // NoStatistics does not make any statistics
   }
 
   @Override
-  void fill(ByteBuffer byteBuffer) {
+  void deserialize(ByteBuffer byteBuffer) {
     // NoStatistics does not make any statistics
   }
 }

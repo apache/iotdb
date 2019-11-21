@@ -25,22 +25,26 @@ import java.util.*;
 
 public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
 
-  public static final String GET_STRING_COLUMN = "COLUMN";
-  public static final String GET_STRING_STORAGE_GROUP = "STORAGE_GROUP";
-  public static final String GET_STRING_TIMESERIES_NUM = "TIMESERIES_NUM";
-  public static final String GET_STRING_NODES_NUM = "NODE_NUM";
-  public static final String GET_STRING_NODE_PATH = "NODE_PATH";
-  public static final String GET_STRING_NODE_TIMESERIES_NUM = "NODE_TIMESERIES_NUM";
-  public static final String GET_STRING_TIMESERIES_NAME = "Timeseries";
-  public static final String GET_STRING_DEVICES = "DEVICES";
-  public static final String GET_STRING_TIMESERIES_STORAGE_GROUP = "Storage Group";
+  private static final String GET_STRING_COLUMN = "COLUMN";
+  private static final String GET_STRING_STORAGE_GROUP = "STORAGE_GROUP";
+  private static final String GET_STRING_TIMESERIES_NUM = "TIMESERIES_NUM";
+  private static final String GET_STRING_NODES_NUM = "NODE_NUM";
+  private static final String GET_STRING_NODE_PATH = "NODE_PATH";
+  private static final String GET_STRING_NODE_TIMESERIES_NUM = "NODE_TIMESERIES_NUM";
+  private static final String GET_STRING_TIMESERIES_NAME = "Timeseries";
+  private static final String GET_STRING_DEVICES = "DEVICES";
+  private static final String GET_STRING_TIMESERIES_STORAGE_GROUP = "Storage Group";
+  private static final String GET_STRING_CHILD_PATHS = "Child Paths";
+
   public static final String GET_STRING_TIMESERIES_DATATYPE = "DataType";
-  public static final String GET_STRING_TIMESERIES_ENCODING = "Encoding";
+  private static final String GET_STRING_TIMESERIES_ENCODING = "Encoding";
   private Iterator<?> columnItr;
   private MetadataType type;
   private String currentColumn;
   private String currentStorageGroup;
   private String currentDevice;
+  private String currentChildPath;
+  private String currentVersion;
   private List<String> currentTimeseries;
   private List<String> timeseriesNumList;
   private List<String> nodesNumList;
@@ -58,7 +62,7 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   /**
    * Constructor used for the result of DatabaseMetadata.getColumns()
    */
-  public IoTDBMetadataResultSet(Object object, MetadataType type) throws SQLException {
+  IoTDBMetadataResultSet(Object object, MetadataType type) throws SQLException {
     this.type = type;
     switch (type) {
       case COLUMN:
@@ -79,6 +83,12 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         showLabels = new String[]{"Device"};
         columnItr = devicesSet.iterator();
         break;
+      case CHILD_PATHS:
+        Set<String> childPathsSet = (Set<String>) object;
+        colCount = 1;
+        showLabels = new String[]{"Child Paths"};
+        columnItr = childPathsSet.iterator();
+        break;
       case TIMESERIES:
         List<List<String>> showTimeseriesList = (List<List<String>>) object;
         colCount = 4;
@@ -87,7 +97,7 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         columnItr = showTimeseriesList.iterator();
         break;
       case COUNT_TIMESERIES:
-        String tsNum = (String) object.toString();
+        String tsNum = object.toString();
         timeseriesNumList = new ArrayList<>();
         timeseriesNumList.add(tsNum);
         colCount = 1;
@@ -95,7 +105,7 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         columnItr = timeseriesNumList.iterator();
         break;
       case COUNT_NODES:
-        String ndNum = (String) object.toString();
+        String ndNum = object.toString();
         nodesNumList = new ArrayList<>();
         nodesNumList.add(ndNum);
         colCount = 1;
@@ -107,6 +117,14 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         colCount = 2;
         showLabels = new String[]{"column", "count"};
         columnItr = nodeTimeseriesNumMap.entrySet().iterator();
+        break;
+      case VERSION:
+        String version = (String) object;
+        colCount = 1;
+        showLabels = new String[]{version};
+        Set<String> versionSet = new HashSet<>();
+        versionSet.add(version);
+        columnItr = versionSet.iterator();
         break;
       default:
         throw new SQLException("TsfileMetadataResultSet constructor is wrongly used.");
@@ -229,12 +247,12 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   }
 
   @Override
-  public ResultSetMetaData getMetaData() throws SQLException {
+  public ResultSetMetaData getMetaData() {
     return new IoTDBMetadataResultMetadata(showLabels);
   }
 
   @Override
-  public boolean next() throws SQLException {
+  public boolean next() {
     boolean hasNext = columnItr.hasNext();
     if (hasNext) {
       switch (type) {
@@ -250,6 +268,9 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         case DEVICES:
           currentDevice = (String) columnItr.next();
           break;
+        case CHILD_PATHS:
+          currentChildPath = (String) columnItr.next();
+          break;
         case COUNT_TIMESERIES:
           timeseriesNum = (String) columnItr.next();
           break;
@@ -260,6 +281,10 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
           Map.Entry pair = (Map.Entry) columnItr.next();
           currentNode = (String) pair.getKey();
           currentNodeTimeseriesNum = (String) pair.getValue();
+          break;
+        case VERSION:
+          currentVersion = (String) columnItr.next();
+          hasNext = false;
           break;
         default:
           break;
@@ -315,6 +340,10 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         if (columnIndex == 1) {
           return getString(GET_STRING_DEVICES);
         }
+      case CHILD_PATHS:
+        if (columnIndex == 1) {
+          return getString(GET_STRING_CHILD_PATHS);
+        }
       case COUNT_TIMESERIES:
         if (columnIndex == 1) {
           return getString(GET_STRING_TIMESERIES_NUM);
@@ -333,7 +362,7 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   }
 
   @Override
-  public String getString(String columnName) throws SQLException {
+  public String getString(String columnName) {
     // use special key word to judge return content
     switch (columnName) {
       case GET_STRING_STORAGE_GROUP:
@@ -350,6 +379,8 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         return currentColumn;
       case GET_STRING_DEVICES:
         return currentDevice;
+      case GET_STRING_CHILD_PATHS:
+        return currentChildPath;
       case GET_STRING_TIMESERIES_NUM:
         return timeseriesNum;
       case GET_STRING_NODES_NUM:
@@ -375,7 +406,7 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   }
 
   @Override
-  public int getType() throws SQLException {
+  public int getType() {
     return type.ordinal();
   }
 
@@ -395,6 +426,7 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   }
 
   public enum MetadataType {
-    STORAGE_GROUP, TIMESERIES, COLUMN, DEVICES, COUNT_TIMESERIES, COUNT_NODES, COUNT_NODE_TIMESERIES
+    STORAGE_GROUP, TIMESERIES, COLUMN, DEVICES, CHILD_PATHS, 
+    COUNT_TIMESERIES, COUNT_NODES, COUNT_NODE_TIMESERIES, VERSION
   }
 }

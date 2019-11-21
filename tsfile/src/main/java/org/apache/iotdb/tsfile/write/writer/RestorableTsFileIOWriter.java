@@ -110,7 +110,6 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     }
   }
 
-  @Override
   public Map<String, MeasurementSchema> getKnownSchema() {
     return knownSchemas;
   }

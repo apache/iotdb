@@ -25,7 +25,9 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -43,7 +45,15 @@ public class ReadWriteIOUtils {
   private static final int DOUBLE_LEN = 8;
   private static final int FLOAT_LEN = 4;
 
-  private ReadWriteIOUtils(){}
+  private static final byte[] magicStringBytes;
+
+  static {
+    magicStringBytes = BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING);
+  }
+
+  private ReadWriteIOUtils() {
+  }
+
   /**
    * read a bool from inputStream.
    */
@@ -61,16 +71,29 @@ public class ReadWriteIOUtils {
   }
 
   /**
+   * read bytes array in given size
+   *
+   * @param buffer buffer
+   * @param size size
+   * @return bytes array
+   */
+  public static byte[] readBytes(ByteBuffer buffer, int size) {
+    byte[] res = new byte[size];
+    buffer.get(res);
+    return res;
+  }
+
+  /**
    * write if the object not equals null. Eg, object eauals null, then write false.
    */
-  public static int writeIsNull(Object object, OutputStream outputStream) throws IOException {
+  public static int writeIsNotNull(Object object, OutputStream outputStream) throws IOException {
     return write(object != null, outputStream);
   }
 
   /**
    * write if the object not equals null. Eg, object eauals null, then write false.
    */
-  public static int writeIsNull(Object object, ByteBuffer buffer) {
+  public static int writeIsNotNull(Object object, ByteBuffer buffer) {
     return write(object != null, buffer);
   }
 
@@ -471,7 +494,7 @@ public class ReadWriteIOUtils {
   /**
    * read string from byteBuffer with user define length.
    */
-  public static String readStringWithoutLength(ByteBuffer buffer, int length) {
+  public static String readStringWithLength(ByteBuffer buffer, int length) {
     byte[] bytes = new byte[length];
     buffer.get(bytes, 0, length);
     return new String(bytes, 0, length);
@@ -707,5 +730,30 @@ public class ReadWriteIOUtils {
   public static TSFreqType readFreqType(ByteBuffer buffer) {
     short n = readShort(buffer);
     return TSFreqType.deserialize(n);
+  }
+
+  /**
+   * to check whether the byte buffer is reach the magic string
+   * this method doesn't change the position of the byte buffer
+   *
+   * @param byteBuffer byte buffer
+   * @return whether the byte buffer is reach the magic string
+   */
+  public static boolean checkIfMagicString(ByteBuffer byteBuffer) {
+    byteBuffer.mark();
+    boolean res = Arrays.equals(readBytes(byteBuffer, magicStringBytes.length), magicStringBytes);
+    byteBuffer.reset();
+    return res;
+  }
+
+  /**
+   * to check whether the inputStream is reach the magic string
+   * this method doesn't change the position of the inputStream
+   *
+   * @param inputStream inputStream
+   * @return whether the inputStream is reach the magic string
+   */
+  public static boolean checkIfMagicString(InputStream inputStream) throws IOException {
+    return inputStream.available() <= magicStringBytes.length;
   }
 }

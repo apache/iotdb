@@ -19,13 +19,15 @@
 package org.apache.iotdb.db.metadata;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.StorageGroupException;
+import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -51,8 +53,7 @@ public class MManagerImproveTest {
 
     for (int j = 0; j < DEVICE_NUM; j++) {
       for (int i = 0; i < TIMESERIES_NUM; i++) {
-        String p = new StringBuilder().append("root.t1.v2.d").append(j).append(".s").append(i)
-            .toString();
+        String p = "root.t1.v2.d" + j + ".s" + i;
         mManager.addPathToMTree(p, "TEXT", "RLE");
       }
     }
@@ -68,13 +69,13 @@ public class MManagerImproveTest {
   public void checkSetUp() {
     mManager = MManager.getInstance();
 
-    assertEquals(true, mManager.pathExist("root.t1.v2.d3.s5"));
-    assertEquals(false, mManager.pathExist("root.t1.v2.d9.s" + TIMESERIES_NUM));
-    assertEquals(false, mManager.pathExist("root.t10"));
+    assertTrue(mManager.pathExist("root.t1.v2.d3.s5"));
+    assertFalse(mManager.pathExist("root.t1.v2.d9.s" + TIMESERIES_NUM));
+    assertFalse(mManager.pathExist("root.t10"));
   }
 
   @Test
-  public void analyseTimeCost() throws PathErrorException, StorageGroupException {
+  public void analyseTimeCost() throws PathException, StorageGroupException {
     mManager = MManager.getInstance();
 
     long startTime, endTime;
@@ -94,7 +95,7 @@ public class MManagerImproveTest {
 
     startTime = System.currentTimeMillis();
     for (int i = 0; i < 100000; i++) {
-      assertEquals(true, mManager.pathExist(path));
+      assertTrue(mManager.pathExist(path));
     }
     endTime = System.currentTimeMillis();
     path_exist += endTime - startTime;
@@ -111,7 +112,7 @@ public class MManagerImproveTest {
 
     startTime = System.currentTimeMillis();
     for (int i = 0; i < 100000; i++) {
-      assertEquals(true, mManager.checkFileLevel(paths));
+      assertTrue(mManager.checkFileLevel(paths));
     }
     endTime = System.currentTimeMillis();
     check_filelevel += endTime - startTime;
@@ -131,33 +132,33 @@ public class MManagerImproveTest {
     logger.debug("get series type:\t" + get_seriestype);
   }
 
-  public void doOriginTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, StorageGroupException {
+  private void doOriginTest(String deviceId, List<String> measurementList)
+      throws PathException, StorageGroupException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
-      assertEquals(true, mManager.pathExist(path));
+      assertTrue(mManager.pathExist(path));
       List<Path> paths = new ArrayList<>();
       paths.add(new Path(path));
-      assertEquals(true, mManager.checkFileLevel(paths));
+      assertTrue(mManager.checkFileLevel(paths));
       TSDataType dataType = mManager.getSeriesType(path);
       assertEquals(TSDataType.TEXT, dataType);
     }
   }
 
-  public void doPathLoopOnceTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, StorageGroupException {
+  private void doPathLoopOnceTest(String deviceId, List<String> measurementList)
+      throws PathException, StorageGroupException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       List<Path> paths = new ArrayList<>();
       paths.add(new Path(path));
-      assertEquals(true, mManager.checkFileLevel(paths));
+      assertTrue(mManager.checkFileLevel(paths));
       TSDataType dataType = mManager.getSeriesTypeWithCheck(path);
       assertEquals(TSDataType.TEXT, dataType);
     }
   }
 
-  public void doDealdeviceIdOnceTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, StorageGroupException {
+  private void doDealdeviceIdOnceTest(String deviceId, List<String> measurementList)
+      throws PathException, StorageGroupException {
     boolean isFileLevelChecked;
     List<Path> tempList = new ArrayList<>();
     tempList.add(new Path(deviceId));
@@ -169,31 +170,31 @@ public class MManagerImproveTest {
     MNode node = mManager.getNodeByPath(deviceId);
 
     for (String measurement : measurementList) {
-      assertEquals(true, mManager.pathExist(node, measurement));
+      assertTrue(mManager.pathExist(node, measurement));
       List<Path> paths = new ArrayList<>();
       paths.add(new Path(measurement));
       if (!isFileLevelChecked) {
         isFileLevelChecked = mManager.checkFileLevel(node, paths);
       }
-      assertEquals(true, isFileLevelChecked);
+      assertTrue(isFileLevelChecked);
       TSDataType dataType = mManager.getSeriesType(node, measurement);
       assertEquals(TSDataType.TEXT, dataType);
     }
   }
 
-  public void doRemoveListTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, StorageGroupException {
+  private void doRemoveListTest(String deviceId, List<String> measurementList)
+      throws PathException, StorageGroupException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
-      assertEquals(true, mManager.pathExist(path));
-      assertEquals(true, mManager.checkFileLevel(path));
+      assertTrue(mManager.pathExist(path));
+      assertTrue(mManager.checkFileLevel(path));
       TSDataType dataType = mManager.getSeriesType(path);
       assertEquals(TSDataType.TEXT, dataType);
     }
   }
 
-  public void doAllImproveTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, StorageGroupException {
+  private void doAllImproveTest(String deviceId, List<String> measurementList)
+      throws PathException, StorageGroupException {
     boolean isFileLevelChecked;
     try {
       isFileLevelChecked = mManager.checkFileLevel(deviceId);
@@ -206,26 +207,26 @@ public class MManagerImproveTest {
       if (!isFileLevelChecked) {
         isFileLevelChecked = mManager.checkFileLevelWithCheck(node, measurement);
       }
-      assertEquals(true, isFileLevelChecked);
+      assertTrue(isFileLevelChecked);
       TSDataType dataType = mManager.getSeriesTypeWithCheck(node, measurement);
       assertEquals(TSDataType.TEXT, dataType);
     }
   }
 
-  public void doCacheTest(String deviceId, List<String> measurementList)
-      throws CacheException, PathErrorException {
+  private void doCacheTest(String deviceId, List<String> measurementList)
+      throws CacheException, PathException {
     MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
-    for (int i = 0; i < measurementList.size(); i++) {
-      assertEquals(true, node.hasChild(measurementList.get(i)));
-      MNode measurementNode = node.getChild(measurementList.get(i));
-      assertEquals(true, measurementNode.isLeaf());
+    for (String s : measurementList) {
+      assertTrue(node.hasChild(s));
+      MNode measurementNode = node.getChild(s);
+      assertTrue(measurementNode.isLeaf());
       TSDataType dataType = measurementNode.getSchema().getType();
       assertEquals(TSDataType.TEXT, dataType);
     }
   }
 
   @Test
-  public void improveTest() throws PathErrorException, StorageGroupException, CacheException {
+  public void improveTest() throws PathException, StorageGroupException, CacheException {
     mManager = MManager.getInstance();
 
     long startTime, endTime;

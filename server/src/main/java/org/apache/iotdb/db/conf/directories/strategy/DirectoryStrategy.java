@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.conf.directories.strategy;
 
+import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.slf4j.Logger;
@@ -35,7 +37,7 @@ public abstract class DirectoryStrategy {
   /**
    * All the folders of data files, should be init once the subclass is created.
    */
-  protected List<String> folders;
+  List<String> folders = new ArrayList<>();
 
   /**
    * To init folders. Do not recommend to overwrite.
@@ -43,9 +45,7 @@ public abstract class DirectoryStrategy {
    *
    * @param folders the folders from conf
    */
-  public void init(List<String> folders) throws DiskSpaceInsufficientException {
-    this.folders = folders;
-
+  public void setFolders(List<String> folders) throws DiskSpaceInsufficientException {
     boolean hasSpace = false;
     for (String folder : folders) {
       if (CommonUtils.hasSpace(folder)) {
@@ -54,9 +54,11 @@ public abstract class DirectoryStrategy {
       }
     }
     if (!hasSpace) {
-      throw new DiskSpaceInsufficientException(
-          String.format("All disks of folders %s are full, can't init.", folders));
+      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+      throw new DiskSpaceInsufficientException(folders);
     }
+
+    this.folders = folders;
   }
 
   /**
@@ -66,23 +68,4 @@ public abstract class DirectoryStrategy {
    */
   public abstract int nextFolderIndex() throws DiskSpaceInsufficientException;
 
-  /**
-   * Return the actual string value of a folder by its index.
-   *
-   * @param index the index of the folder
-   * @return the string value of the folder
-   */
-  public String getTsFileFolder(int index) {
-    return folders.get(index);
-  }
-
-  // only used by test
-  public String getFolderForTest() {
-    return getTsFileFolder(0);
-  }
-
-  // only used by test
-  public void setFolderForTest(String path) {
-    folders.set(0, path);
-  }
 }

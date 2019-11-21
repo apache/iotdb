@@ -19,20 +19,14 @@
 
 package org.apache.iotdb.db.exception;
 
-public class MergeException extends Exception{
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public MergeException() {
-  }
+public class MergeException extends ProcessException {
 
-  public MergeException(String message) {
-    super(message);
-  }
-
-  public MergeException(String message, Throwable cause) {
-    super(message, cause);
-  }
+  private static final long serialVersionUID = 5445240999141374140L;
 
   public MergeException(Throwable cause) {
-    super(cause);
+    super(cause.getMessage());
+    errorCode = TSStatusCode.MERGE_ERROR.getStatusCode();
   }
 }

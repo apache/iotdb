@@ -125,5 +125,5 @@ public interface IChunkWriter {
 
   TSDataType getDataType();
 
-  int getPtNum();
+  long getPtNum();
 }

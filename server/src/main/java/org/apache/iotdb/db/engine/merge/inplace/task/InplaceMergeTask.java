@@ -31,7 +31,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.MetadataErrorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -102,7 +102,7 @@ public class InplaceMergeTask implements Callable<Void> {
     return null;
   }
 
-  private void doMerge() throws IOException, MetadataErrorException {
+  private void doMerge() throws IOException, MetadataException {
     if (logger.isInfoEnabled()) {
       logger.info("{} starts to merge {} seqFiles, {} unseqFiles", taskName,
           resource.getSeqFiles().size(), resource.getUnseqFiles().size());
@@ -163,6 +163,10 @@ public class InplaceMergeTask implements Callable<Void> {
       File mergeFile = FSFactoryProducer.getFSFactory()
           .getFile(seqFile.getFile().getPath() + MERGE_SUFFIX);
       mergeFile.delete();
+      seqFile.setMerging(false);
+    }
+    for (TsFileResource unseqFile : resource.getUnseqFiles()) {
+      unseqFile.setMerging(false);
     }
 
     File logFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, InplaceMergeLogger.MERGE_LOG_NAME);

@@ -1,15 +1,19 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
- * agreements.  See the NOTICE file distributed with this work for additional information regarding
- * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with the License.  You may obtain
- * a copy of the License at
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied.  See the License for the specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.db.conf.adapter;
@@ -77,7 +81,7 @@ public class IoTDBConfigDynamicAdapterTest {
             CONFIG.getMemtableSizeThreshold());
         assertEquals(CONFIG.getMaxMemtableNumber(), memTableNum);
       } catch (ConfigAdjusterException e) {
-        assertEquals("The IoTDB system load is too large to create storage group.", e.getMessage());
+        assertEquals("IoTDB system load is too large to create storage group", e.getMessage());
         //System.out.println("it has created " + i + " storage groups.");
         assertEquals(CONFIG.getMaxMemtableNumber(), memTableNum);
         break;
@@ -108,7 +112,7 @@ public class IoTDBConfigDynamicAdapterTest {
         assertEquals(IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries(),
             totalTimeseries);
       } catch (ConfigAdjusterException e) {
-        assertEquals("The IoTDB system load is too large to add timeseries.", e.getMessage());
+        assertEquals("IoTDB system load is too large to add timeseries", e.getMessage());
         //System.out.println("it has added " + i + " timeseries.");
         assertEquals(IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries(),
             totalTimeseries);
@@ -130,7 +134,7 @@ public class IoTDBConfigDynamicAdapterTest {
         MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(i / 30 + 1);
       }
     } catch (ConfigAdjusterException e) {
-      assertEquals("The IoTDB system load is too large to add timeseries.", e.getMessage());
+      assertEquals("IoTDB system load is too large to add timeseries", e.getMessage());
     }
     int j =0;
     try {
@@ -140,7 +144,7 @@ public class IoTDBConfigDynamicAdapterTest {
         MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups() + 1);
       }
     } catch (ConfigAdjusterException e ) {
-      assertEquals("The IoTDB system load is too large to add timeseries.", e.getMessage());
+      assertEquals("IoTDB system load is too large to add timeseries", e.getMessage());
     }
   }
 }

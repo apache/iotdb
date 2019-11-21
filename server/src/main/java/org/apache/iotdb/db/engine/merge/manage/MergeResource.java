@@ -19,42 +19,40 @@
 
 package org.apache.iotdb.db.engine.merge.manage;
 
+import static org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask.MERGE_SUFFIX;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.CachedUnseqResourceMergeReader;
 import org.apache.iotdb.db.utils.MergeUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-
-import static org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask.MERGE_SUFFIX;
 
 /**
  * MergeResource manages files and caches of readers, writers, MeasurementSchemas and
  * modifications to avoid unnecessary object creations and file openings.
  */
 public class MergeResource {
-
-  private static final Logger logger = LoggerFactory.getLogger(MergeResource.class);
 
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> unseqFiles;
@@ -65,12 +63,28 @@ public class MergeResource {
   private Map<String, MeasurementSchema> measurementSchemaMap = new HashMap<>();
   private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
 
+  private long timeLowerBound = Long.MIN_VALUE;
+
   private boolean cacheDeviceMeta = false;
 
   public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    this.seqFiles = seqFiles.stream().filter(TsFileResource::isClosed).collect(Collectors.toList());
+    this.seqFiles = seqFiles.stream().filter(this::filterResource)
+        .collect(Collectors.toList());
+    this.unseqFiles = unseqFiles.stream().filter(this::filterResource)
+        .collect(Collectors.toList());
+  }
+
+  private boolean filterResource(TsFileResource res) {
+    return res.isClosed() && !res.isDeleted() && res.stillLives(timeLowerBound);
+  }
+
+  public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
+      long timeLowerBound) {
+    this.timeLowerBound = timeLowerBound;
+    this.seqFiles =
+        seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
     this.unseqFiles =
-        unseqFiles.stream().filter(TsFileResource::isClosed).collect(Collectors.toList());
+        unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
   }
 
   public void clear() throws IOException {
@@ -164,22 +178,16 @@ public class MergeResource {
   /**
    * Construct the a new or get an existing ChunkWriter of a measurement. Different timeseries of
    * the same measurement shares the same instance.
-   * @param measurementSchema
-   * @return
    */
   public IChunkWriter getChunkWriter(MeasurementSchema measurementSchema) {
-    return chunkWriterCache.computeIfAbsent(measurementSchema,
-        schema -> new ChunkWriterImpl(new ChunkBuffer(schema),
-            TSFileDescriptor.getInstance().getConfig().getPageCheckSizeThreshold()));
+    return chunkWriterCache.computeIfAbsent(measurementSchema, ChunkWriterImpl::new);
   }
 
   /**
    * Get the modifications of a timeseries in the ModificationFile of a TsFile. Once the
    * modifications of the timeseries are found out, they will be removed from the list to boost
    * the next query, so two calls of the same file and timeseries are forbidden.
-   * @param tsFileResource
    * @param path name of the time series
-   * @return
    */
   public List<Modification> getModifications(TsFileResource tsFileResource, Path path) {
     // copy from TsFileResource so queries are not affected
@@ -239,10 +247,6 @@ public class MergeResource {
   public void setUnseqFiles(
       List<TsFileResource> unseqFiles) {
     this.unseqFiles = unseqFiles;
-  }
-
-  public Map<String, MeasurementSchema> getMeasurementSchemaMap() {
-    return measurementSchemaMap;
   }
 
   public void removeOutdatedSeqReaders() throws IOException {

@@ -18,15 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -37,6 +28,10 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import java.sql.*;
+
+import static org.junit.Assert.*;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
@@ -99,6 +94,21 @@ public class IoTDBMultiSeriesIT {
         statement.execute(sql);
       }
 
+      statement.execute("SET STORAGE GROUP TO root.fans");
+      statement.execute("CREATE TIMESERIES root.fans.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE");
+      statement.execute("CREATE TIMESERIES root.fans.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE");
+
+      // insert of data time range : 1-1000 into fans
+      for (int time = 1; time < 1000; time++) {
+
+        String sql = String
+            .format("insert into root.fans.d0(timestamp,s0) values(%s,%s)", time, time % 70);
+        statement.execute(sql);
+        sql = String
+            .format("insert into root.fans.d0(timestamp,s1) values(%s,%s)", time, time % 40);
+        statement.execute(sql);
+      }
+
       // insert large amount of data time range : 13700 ~ 24000
       for (int time = 13700; time < 24000; time++) {
 
@@ -153,6 +163,7 @@ public class IoTDBMultiSeriesIT {
       }
 
       statement.execute("flush");
+
 
       // sequential data, memory data
       for (int time = 200000; time < 201000; time++) {
@@ -214,6 +225,33 @@ public class IoTDBMultiSeriesIT {
   // "select * from root.vehicle" : test select wild data
   @Test
   public void selectAllTest() throws ClassNotFoundException {
+    String selectSql = "select * from root";
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(selectSql);
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString("root.fans.d0.s0")
+                  + "," + resultSet.getString("root.fans.d0.s1");
+          cnt++;
+        }
+        assertEquals(24399, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  // "select * from root.vehicle" : test select wild data
+  @Test
+  public void selectAllFromVehicleTest() throws ClassNotFoundException {
     String selectSql = "select * from root.vehicle";
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -345,7 +383,7 @@ public class IoTDBMultiSeriesIT {
       statement.execute("select s10 from root.vehicle.d0");
       fail("not throw exception when select unknown time series");
     } catch (SQLException e) {
-      assertEquals("Execute statement error: Path: \"root.vehicle.d0.s10\" doesn't correspond to any known time series", e.getMessage());
+      assertEquals("Statement format is not right: Path: \"root.vehicle.d0.s10\" doesn't correspond to any known time series", e.getMessage());
     }
   }
 
@@ -359,7 +397,7 @@ public class IoTDBMultiSeriesIT {
       statement.execute("select s1 from root.vehicle.d0 where s0 < 111 and s10 < 111");
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
-      assertEquals("Execute statement error: Path: \"root.vehicle.d0.s10\" doesn't correspond to any known time series", e.getMessage());
+      assertEquals("Statement format is not right: Path: \"root.vehicle.d0.s10\" doesn't correspond to any known time series", e.getMessage());
     }
   }
 
@@ -373,7 +411,7 @@ public class IoTDBMultiSeriesIT {
       statement.execute("select s1 from root.vehicle.d0 where root.vehicle.d0.s0 < 111 and root.vehicle.d0.s10 < 111");
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
-      assertEquals("Execute statement error: Path: \"root.vehicle.d0.s10\" doesn't correspond to any known time series", e.getMessage());
+      assertEquals("Statement format is not right: Path: [root.vehicle.d0.s10] doesn't correspond to any known time series", e.getMessage());
     }
   }
 }

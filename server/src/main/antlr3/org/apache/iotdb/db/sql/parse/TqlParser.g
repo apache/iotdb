@@ -102,6 +102,14 @@ tokens{
     TOK_PROPERTY_VALUE;
     TOK_GROUPBY_DEVICE;
     TOK_SELECT_INDEX;
+    TOK_TTL;
+    TOK_UNSET;
+    TOK_SHOW;
+    TOK_DATE_EXPR;
+    TOK_DURATION;
+    TOK_LOAD_CONFIGURATION;
+    TOK_DYNAMIC_PARAMETER;
+    TOK_FLUSH_TASK_INFO;
 }
 
 @header{
@@ -116,13 +124,13 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
 Stack messages = new Stack<String>();
 private static HashMap<String, String> tokenNameMap;
 static {
-    tokenNameMap = new HashMap<String, String>();
-    tokenNameMap.put("K_AND", "AND");
-    tokenNameMap.put("K_OR", "OR");
-    tokenNameMap.put("K_NOT", "NOT");
-    tokenNameMap.put("K_LIKE", "LIKE");
-    tokenNameMap.put("K_BY", "BY");
-    tokenNameMap.put("K_GROUP", "GROUP");
+  tokenNameMap = new HashMap<String, String>();
+  tokenNameMap.put("K_AND", "AND");
+  tokenNameMap.put("K_OR", "OR");
+  tokenNameMap.put("K_NOT", "NOT");
+  tokenNameMap.put("K_LIKE", "LIKE");
+  tokenNameMap.put("K_BY", "BY");
+  tokenNameMap.put("K_GROUP", "GROUP");
 	tokenNameMap.put("K_FILL", "FILL");
 	tokenNameMap.put("K_LINEAR", "LINEAR");
 	tokenNameMap.put("K_PREVIOUS", "PREVIOUS");
@@ -164,6 +172,15 @@ static {
 	tokenNameMap.put("K_DISABLE", "DISABLE");
 	tokenNameMap.put("K_ALL", "ALL");
 	tokenNameMap.put("K_LIST", "LIST");
+	tokenNameMap.put("K_TTL", "TTL");
+	tokenNameMap.put("K_UNSET", "UNSET");
+	tokenNameMap.put("K_CONFIGURATION", "CONFIGURATION");
+	tokenNameMap.put("K_FLUSH", "FLUSH");
+	tokenNameMap.put("K_TASK", "TASK");
+	tokenNameMap.put("K_DYNAMIC", "DYNAMIC");
+	tokenNameMap.put("K_PARAMETER", "PARAMETER");
+	tokenNameMap.put("K_INFO", "INFO");
+
 	// Operators
 	tokenNameMap.put("DOT", ".");
 	tokenNameMap.put("COLON", ":");
@@ -267,6 +284,8 @@ sqlStatement
     : ddlStatement
     | dmlStatement
     | administrationStatement
+    | configurationStatement
+    | showStatement
     ;
 
 dmlStatement
@@ -281,7 +300,7 @@ ddlStatement
     : createTimeseries
     | deleteTimeseries
     | setStorageGroup
-    | deleteStorageGroup // todo to implement
+    | deleteStorageGroup
     | createProperty
     | addLabel
     | deleteLabel
@@ -293,6 +312,7 @@ ddlStatement
     | dropIndex
     | mergeStatement
     | listStatement
+    | ttlStatement
     ;
 
 administrationStatement
@@ -324,6 +344,7 @@ timeseriesPath
 nodeNameWithoutStar
     : INT
     | ID
+    | STRING_LITERAL
     ;
 
 attributeClauses
@@ -378,12 +399,12 @@ deleteStatement
     ;
 
 insertColumnSpec
-    : LR_BRACKET K_TIMESTAMP (COMMA ID)* RR_BRACKET
-    -> ^(TOK_INSERT_COLUMNS TOK_TIME ID*)
+    : LR_BRACKET K_TIMESTAMP (COMMA nodeNameWithoutStar)* RR_BRACKET
+    -> ^(TOK_INSERT_COLUMNS TOK_TIME nodeNameWithoutStar*)
     ;
 
 insertValuesSpec
-    : LR_BRACKET date (COMMA constant)* RR_BRACKET -> ^(TOK_INSERT_VALUES date constant*)
+    : LR_BRACKET dateFormat (COMMA constant)* RR_BRACKET -> ^(TOK_INSERT_VALUES dateFormat constant*)
     | LR_BRACKET INT (COMMA constant)* RR_BRACKET -> ^(TOK_INSERT_VALUES INT constant*)
     ;
 
@@ -406,6 +427,7 @@ nodeName
     : ID
     | INT
     | STAR
+    | STRING_LITERAL
     ;
 
 fromClause
@@ -457,7 +479,7 @@ comparisonOperator
     ;
 
 constant
-    : date -> ^(TOK_CONSTANT date)
+    : dateExpr=dateExpression -> ^(TOK_DATE_EXPR $dateExpr)
     | ID -> ^(TOK_CONSTANT ID)
     | MINUS? realLiteral -> ^(TOK_CONSTANT MINUS? realLiteral)
     | MINUS? INT -> ^(TOK_CONSTANT MINUS? INT)
@@ -507,20 +529,28 @@ groupByDeviceClause
     -> ^(TOK_GROUPBY_DEVICE)
     ;
 
-date
-    : DATETIME -> ^(TOK_DATETIME DATETIME)
+dateFormat
+    : datetime=DATETIME -> ^(TOK_DATETIME $datetime)
     | K_NOW LR_BRACKET RR_BRACKET -> ^(TOK_DATETIME K_NOW)
+    ;
+
+durationExpr
+    : duration=DURATION -> ^(TOK_DURATION $duration)
+    ;
+
+dateExpression
+    : dateFormat ((PLUS^ | MINUS^) durationExpr)*
     ;
 
 groupByClause
     : K_GROUP K_BY LR_BRACKET
-      INT ID (COMMA timeValue)?
+      durationExpr (COMMA timeValue)?
       COMMA timeInterval (COMMA timeInterval)* RR_BRACKET
-      -> ^(TOK_GROUPBY ^(TOK_TIMEUNIT INT ID) ^(TOK_TIMEORIGIN timeValue)? ^(TOK_TIMEINTERVAL timeInterval+))
+      -> ^(TOK_GROUPBY durationExpr ^(TOK_TIMEORIGIN timeValue)? ^(TOK_TIMEINTERVAL timeInterval+))
     ;
 
 timeValue
-    : date
+    : dateFormat
     | INT
     ;
 
@@ -542,13 +572,13 @@ typeClause
     ;
 
 previousClause
-    : K_PREVIOUS (COMMA INT ID)?
-    -> ^(TOK_PREVIOUS ^(TOK_TIMEUNIT INT ID)?)
+    : K_PREVIOUS (COMMA durationExpr)?
+    -> ^(TOK_PREVIOUS durationExpr?)
     ;
 
 linearClause
-    : K_LINEAR (COMMA previousTimeValue = INT previousTimeUnit = ID COMMA behindTimeValue = INT behindTimeUnit = ID)?
-    -> ^(TOK_LINEAR (^(TOK_TIMEUNIT $previousTimeValue $previousTimeUnit) ^(TOK_TIMEUNIT $behindTimeValue $behindTimeUnit))?)
+    : K_LINEAR (COMMA aheadDuration=durationExpr COMMA behindDuration=durationExpr)?
+    -> ^(TOK_LINEAR ($aheadDuration $behindDuration)?)
     ;
 
 dataType
@@ -734,4 +764,61 @@ revokeWatermarkEmbedding
 rootOrId
     : K_ROOT
     | ID
+    ;
+
+configurationStatement
+    : loadConfigurationStatement
+    ;
+
+loadConfigurationStatement
+    : K_LOAD K_CONFIGURATION
+    -> ^(TOK_LOAD_CONFIGURATION)
+    ;
+
+showStatement
+    : showFlushTaskInfo
+    | showDynamicParameter
+    ;
+
+showFlushTaskInfo
+    : K_SHOW K_FLUSH K_TASK K_INFO
+    -> ^(TOK_SHOW TOK_FLUSH_TASK_INFO)
+    ;
+
+showDynamicParameter
+    : K_SHOW K_DYNAMIC K_PARAMETER
+    -> ^(TOK_SHOW TOK_DYNAMIC_PARAMETER)
+    ;
+
+/*
+****
+*************
+TTL
+*************
+****
+*/
+
+ttlStatement
+    : setTTLStatement
+    | unsetTTLStatement
+    | showTTLStatement
+    ;
+
+setTTLStatement
+    : K_SET K_TTL K_TO path=prefixPath time=INT
+    -> ^(TOK_TTL TOK_SET $path $time)
+    ;
+
+unsetTTLStatement
+    : K_UNSET K_TTL K_TO path=prefixPath
+    -> ^(TOK_TTL TOK_UNSET $path)
+    ;
+
+showTTLStatement
+    :
+    K_SHOW K_TTL K_ON prefixPath (COMMA prefixPath)*
+    -> ^(TOK_TTL TOK_SHOW prefixPath+)
+    |
+    K_SHOW K_ALL K_TTL
+    -> ^(TOK_TTL TOK_SHOW)
     ;

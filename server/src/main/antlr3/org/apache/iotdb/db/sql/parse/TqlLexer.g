@@ -265,6 +265,38 @@ K_WATERMARK_EMBEDDING
     : W A T E R M A R K '_' E M B E D D I N G
     ;
 
+K_TTL
+    : T T L
+    ;
+
+K_UNSET
+    : U N S E T
+    ;
+
+K_CONFIGURATION
+    : C O N F I G U R A T I O N
+    ;
+
+K_FLUSH
+    : F L U S H
+    ;
+
+K_TASK
+    : T A S K
+    ;
+
+K_DYNAMIC
+    : D Y N A M I C
+    ;
+
+K_PARAMETER
+    : P A R A M E T E R
+    ;
+
+K_INFO
+    : I N F O
+    ;
+
 //************** logical operator***********
 OPERATOR_AND
     : A N D
@@ -537,4 +569,9 @@ WS  :   ( ' '
         | '\r'
         | '\n'
         ) {$channel=HIDDEN;}
+    ;
+
+DURATION
+    :
+    (NUM+ (Y|M O|W|D|H|M|S|M S|U S|N S))+
     ;

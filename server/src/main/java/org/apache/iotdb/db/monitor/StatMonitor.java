@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -31,10 +31,11 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeManagerStatConstants;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeProcessorStatConstants;
@@ -89,7 +90,7 @@ public class StatMonitor implements IService {
         if (!mmanager.pathExist(prefix)) {
           mmanager.setStorageGroupToMTree(prefix);
         }
-      } catch (MetadataErrorException e) {
+      } catch (MetadataException e) {
         logger.error("MManager cannot set storage group to MTree.", e);
       }
     }
@@ -166,11 +167,12 @@ public class StatMonitor implements IService {
 
         if (!mManager.pathExist(entry.getKey())) {
           mManager.addPathToMTree(new Path(entry.getKey()), TSDataType.valueOf(entry.getValue()),
-              TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
+              TSEncoding.valueOf("RLE"),
+              CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
               Collections.emptyMap());
         }
       }
-    } catch (MetadataErrorException | PathErrorException e) {
+    } catch (MetadataException | PathException e) {
       logger.error("Initialize the metadata error.", e);
     }
   }
@@ -310,10 +312,7 @@ public class StatMonitor implements IService {
         activate();
       }
     } catch (Exception e) {
-      String errorMessage = String
-          .format("Failed to start %s because of %s", this.getID().getName(),
-              e.getMessage());
-      throw new StartupException(errorMessage);
+      throw new StartupException(this.getID().getName(), e.getMessage());
     }
   }
 
@@ -388,7 +387,7 @@ public class StatMonitor implements IService {
           numInsert.incrementAndGet();
           pointNum = entry.getValue().dataPointList.size();
           numPointsInsert.addAndGet(pointNum);
-        } catch (StorageEngineException e) {
+        } catch (StorageEngineException | QueryProcessException e) {
           numInsertError.incrementAndGet();
           logger.error("Inserting stat points error.", e);
         }

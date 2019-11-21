@@ -24,9 +24,9 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
@@ -81,7 +81,7 @@ public class AggregateEngineExecutor {
    * @param context query context
    */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
-      throws StorageEngineException, IOException, PathErrorException, ProcessorException {
+      throws StorageEngineException, IOException, QueryProcessException {
     Filter timeFilter = null;
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
@@ -100,6 +100,8 @@ public class AggregateEngineExecutor {
 
       QueryDataSource queryDataSource = QueryResourceManager.getInstance()
           .getQueryDataSource(selectedSeries.get(i), context);
+      // add additional time filter if TTL is set
+      timeFilter = queryDataSource.updateTimeFilter(timeFilter);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
       IAggregateReader seqResourceIterateReader;
@@ -112,7 +114,8 @@ public class AggregateEngineExecutor {
       }
 
       // unseq reader for all chunk groups in unSeqFile, memory
-      IPointReader unseqResourceMergeReader= new UnseqResourceMergeReader(queryDataSource.getSeriesPath(),
+      IPointReader unseqResourceMergeReader = new UnseqResourceMergeReader(
+          queryDataSource.getSeriesPath(),
           queryDataSource.getUnseqResources(), context, timeFilter);
 
       readersOfSequenceData.add(seqResourceIterateReader);
@@ -139,7 +142,7 @@ public class AggregateEngineExecutor {
    */
   private AggreResultData aggregateWithoutValueFilter(AggregateFunction function,
       IAggregateReader sequenceReader, IPointReader unSequenceReader, Filter filter)
-      throws IOException, ProcessorException {
+      throws IOException, QueryProcessException {
     if (function instanceof MaxTimeAggrFunc || function instanceof LastAggrFunc) {
       return handleLastMaxTimeWithOutTimeGenerator(function, sequenceReader, unSequenceReader,
           filter);
@@ -174,7 +177,7 @@ public class AggregateEngineExecutor {
    */
   private boolean canUseHeader(AggregateFunction function, PageHeader pageHeader,
       IPointReader unSequenceReader, Filter filter)
-      throws IOException, ProcessorException {
+      throws IOException, QueryProcessException {
     // if page data is memory data.
     if (pageHeader == null) {
       return false;
@@ -206,7 +209,7 @@ public class AggregateEngineExecutor {
    */
   private AggreResultData handleLastMaxTimeWithOutTimeGenerator(AggregateFunction function,
       IAggregateReader sequenceReader, IPointReader unSequenceReader, Filter timeFilter)
-      throws IOException, ProcessorException {
+      throws IOException, QueryProcessException {
     long lastBatchTimeStamp = Long.MIN_VALUE;
     boolean isChunkEnd = false;
     while (sequenceReader.hasNext()) {
@@ -257,7 +260,7 @@ public class AggregateEngineExecutor {
    * @param context query context.
    */
   public QueryDataSet executeWithValueFilter(QueryContext context)
-      throws StorageEngineException, PathErrorException, IOException, ProcessorException {
+      throws StorageEngineException, PathException, IOException {
 
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(expression, context);
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();

@@ -29,6 +29,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBRPCException;
@@ -81,7 +84,7 @@ public class IoTDBSessionIT {
     insert_via_sql();
     query3();
 
-//    insertRowBatchTest();
+//    insertRowBatchTest1();
     deleteData();
 
     query();
@@ -96,6 +99,28 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
 
     deleteStorageGroupTest();
+
+    // Test batch insertions when creating schema automatically is enabled
+    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    conf.setAutoCreateSchemaEnabled(true);
+
+    // set storage group but do not create timeseries
+    session.setStorageGroup("root.sg3");
+    insertRowBatchTest1("root.sg3.d1");
+
+    // create timeseries but do not set storage group
+    session.createTimeseries("root.sg4.d1.s1", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg4.d1.s2", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg4.d1.s3", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    insertRowBatchTest1("root.sg4.d1");
+
+    // do not set storage group and create timeseries
+    insertRowBatchTest1("root.sg5.d1");
+
+    conf.setAutoCreateSchemaEnabled(false);
 
     session.close();
   }
@@ -124,13 +149,13 @@ public class IoTDBSessionIT {
     }
   }
 
-  private void insertRowBatch() throws IoTDBSessionException {
+  private void insertRowBatchTest1(String deviceId) throws IoTDBSessionException {
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
     schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
-    RowBatch rowBatch = schema.createRowBatch("root.sg1.d1", 100);
+    RowBatch rowBatch = schema.createRowBatch(deviceId, 100);
 
     long[] timestamps = rowBatch.timestamps;
     Object[] values = rowBatch.values;
@@ -279,5 +304,60 @@ public class IoTDBSessionIT {
   private void insert_via_sql() throws TException, IoTDBRPCException {
     session.executeNonQueryStatement(
         "insert into root.sg1.d1(timestamp,s1, s2, s3) values(100, 1,2,3)");
+  }
+
+  @Test
+  public void checkPathTest()
+      throws ClassNotFoundException, SQLException, IoTDBSessionException, TException, IoTDBRPCException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    //test set sg
+    checkSetSG(session, "root.vehicle", true);
+    checkSetSG(session, "root.123456", true);
+    checkSetSG(session, "root._1234", true);
+    checkSetSG(session, "root._vehicle", true);
+    checkSetSG(session, "root.\tvehicle", false);
+    checkSetSG(session, "root.\nvehicle", false);
+    checkSetSG(session, "root..vehicle", false);
+    checkSetSG(session, "root.1234a4", false);
+    checkSetSG(session, "root.+12345", true);
+    checkSetSG(session, "root.-12345", true);
+    checkSetSG(session, "root.%12345", false);
+    checkSetSG(session, "root.a{12345}", false);
+
+    //test create timeseries
+    checkCreateTimeseries(session, "root.vehicle.d0.s0", true);
+    checkCreateTimeseries(session, "root.vehicle.1110.s0", true);
+    checkCreateTimeseries(session, "root.vehicle.d0.1220", true);
+    checkCreateTimeseries(session, "root.vehicle._1234.s0", true);
+    checkCreateTimeseries(session, "root.vehicle.+1245.-1256", true);
+    checkCreateTimeseries(session, "root.vehicle./d0.s0", false);
+    checkCreateTimeseries(session, "root.vehicle.d\t0.s0", false);
+    checkCreateTimeseries(session, "root.vehicle.!d\t0.s0", false);
+    checkCreateTimeseries(session, "root.vehicle.d{dfewrew0}.s0", false);
+
+    session.close();
+  }
+
+  private void checkSetSG(Session session, String sg, boolean correctStatus){
+    boolean status = true;
+    try {
+      session.setStorageGroup(sg);
+    } catch (IoTDBSessionException e) {
+      status = false;
+    }
+    assertEquals(status, correctStatus);
+  }
+
+  private void checkCreateTimeseries(Session session, String timeseris, boolean correctStatus){
+    boolean status = true;
+    try {
+      session.createTimeseries(timeseris, TSDataType.INT64, TSEncoding.RLE,
+          CompressionType.SNAPPY);
+    } catch (IoTDBSessionException e) {
+      status = false;
+    }
+    assertEquals(status, correctStatus);
   }
 }

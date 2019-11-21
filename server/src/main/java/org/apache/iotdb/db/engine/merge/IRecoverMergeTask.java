@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.engine.merge;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 
 public interface IRecoverMergeTask {
-  void recoverMerge(boolean continueMerge) throws IOException, MetadataErrorException;
+  void recoverMerge(boolean continueMerge) throws IOException, MetadataException;
 }

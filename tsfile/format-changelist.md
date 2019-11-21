@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,7 +19,17 @@
 
 -->
 
-## 0.8.0 (version-0) -> version-1
-format: #PR ID change
-#409 Genius_pig Delete a current version and add a number version.
-* 
+# 0.8.0 (version-0) -> version-1
+
+Last Updated on October 27th, 2019 by Lei Rui.
+
+| PR#   | Name                                                         | Author          | Changes                                                      |
+| ---- | ------------------------------------------------------------ | --------------- | ------------------------------------------------------------ |
+| 258  | [IOTDB-143]Development of merge                              | jt2594838       | Add totalChunkNum and invalidChunkNum to TsFileMetaData.     |
+| 409  | \[IOTDB-165\]\[TsFile\] Delete a current version and add a number version and an exception. | Genius_pig      | (1) Delete a current version in TsFileMetaData; <br />(2) Change the TsFile magic number from 12 bytes to: 6 bytes magic string ("TsFile") + 6 bytes version number ({"000001", "000002", ""000003"}) ("v0.8.0" is the first version (we treat it as "000000"));<br />(3) The tail of a TsFile only has "TsFile" magic string, without the version number. |
+| 466  | [IOTDB-208] Bloom filter                                     | SilverNarcissus | Add four fields for the bloom filter to TsFileMetaData: 1) bit vector byte array length, 2) bit vector byte array, 3) the number of bits, 4) the number of hash functions. |
+
+
+
+
+

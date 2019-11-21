@@ -32,7 +32,7 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.MetadataErrorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
@@ -90,7 +90,7 @@ public class LogAnalyzer {
    * @return a Status indicating the completed stage of the last merge.
    * @throws IOException
    */
-  public Status analyze() throws IOException, MetadataErrorException {
+  public Status analyze() throws IOException, MetadataException {
     status = Status.NONE;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
       currLine = bufferedReader.readLine();

@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -39,7 +39,7 @@ public interface IMemTable {
   Map<String, Map<String, IWritableMemChunk>> getMemTableMap();
 
   void write(String deviceId, String measurement, TSDataType dataType,
-      long insertTime, String insertValue);
+      long insertTime, Object objectValue);
 
   void write(BatchInsertPlan batchInsertPlan, List<Integer> indexes);
 
@@ -53,12 +53,12 @@ public interface IMemTable {
    */
   long memSize();
 
-  void insert(InsertPlan insertPlan) throws QueryProcessorException;
+  void insert(InsertPlan insertPlan) throws QueryProcessException;
 
-  void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes) throws QueryProcessorException;
+  void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes) throws QueryProcessException;
 
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      Map<String, String> props);
+      Map<String, String> props, long timeLowerBound);
 
   /**
    * putBack all the memory resources.
