@@ -66,7 +66,8 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
     } catch (Exception e) {
       storageGroupHllMap.putIfAbsent(storageGroup, new HyperLogLog(LOG2M));
       storageGroupHllMap.get(storageGroup).offer(path);
-      LOGGER.error("Register active time series root.{}.{} failed", storageGroup, path, e);
+      LOGGER.error("Storage group {} registers active time series {} failed", storageGroup, path,
+          e);
     }
   }
 
@@ -110,6 +111,9 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
     double ratio;
     try {
       ratio = activeRatioMap.get(storageGroup);
+    } catch (Exception e) {
+      ratio = 0;
+      LOGGER.error("Get active ratio failed", e);
     } finally {
       lock.writeLock().unlock();
     }
