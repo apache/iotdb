@@ -170,7 +170,6 @@ public class MergeOverLapTest extends MergeTest {
         }
       }
       assertEquals(expected, cnt);
-      assertEquals(1000, cnt);
     } finally {
       tsFilesReader.close();
     }

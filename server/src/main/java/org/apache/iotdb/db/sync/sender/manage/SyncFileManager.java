@@ -32,7 +32,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
+import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
+import org.apache.iotdb.db.engine.merge.squeeze.task.SqueezeMergeTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
@@ -116,7 +117,8 @@ public class SyncFileManager implements ISyncFileManager {
         }
         if (new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists() && !new File(
             file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists() && !new File(
-            file.getAbsolutePath() + MergeTask.MERGE_SUFFIX).exists()) {
+            file.getAbsolutePath() + InplaceMergeTask.MERGE_SUFFIX).exists() && !new File(
+            file.getAbsolutePath() + SqueezeMergeTask.MERGE_SUFFIX).exists()) {
           currentSealedLocalFilesMap.get(sgName).add(file);
         }
       }

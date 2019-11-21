@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.utils.MergeUtils;
+import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,6 +110,9 @@ public abstract class BaseFileSelector implements IMergeFileSelector{
     while (unseqIndex < resource.getUnseqFiles().size() && timeConsumption < timeLimit) {
       // select next unseq files
       TsFileResource unseqFile = resource.getUnseqFiles().get(unseqIndex);
+      if (UpgradeUtils.isNeedUpgrade(unseqFile)) {
+        continue;
+      }
 
       selectOverlappedSeqFiles(unseqFile);
 
@@ -179,6 +183,9 @@ public abstract class BaseFileSelector implements IMergeFileSelector{
 
     for (Integer seqFileIdx : tmpSelectedSeqIterable) {
       TsFileResource seqFile = resource.getSeqFiles().get(seqFileIdx);
+      if (UpgradeUtils.isNeedUpgrade(seqFile)) {
+        return Long.MAX_VALUE;
+      }
       fileReadCost = seqMeasurement.measure(seqFile);
       if (fileReadCost > tempMaxSeqFileCost) {
         // memory used when read data from a seq file:
