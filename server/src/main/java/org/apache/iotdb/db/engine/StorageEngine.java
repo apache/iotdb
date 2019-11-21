@@ -244,15 +244,15 @@ public class StorageEngine implements IService, IStatistic {
     } catch (StorageEngineException e) {
       logger.warn("get StorageGroupProcessor of device {} failed, because {}",
           insertPlan.getDeviceId(), e.getMessage(), e);
-      failPoint.addAndGet(insertPlan.getMeasurements().length);
+      addFailPoint(insertPlan.getMeasurements().length);
       throw new StorageEngineException(e);
     }
 
     try {
       storageGroupProcessor.insert(insertPlan);
-      okPoint.addAndGet(insertPlan.getMeasurements().length);
+      addOkPoint(insertPlan.getMeasurements().length);
     } catch (QueryProcessException e) {
-      failPoint.addAndGet(insertPlan.getMeasurements().length);
+      addFailPoint(insertPlan.getMeasurements().length);
       throw new QueryProcessException(e);
     }
   }
@@ -272,16 +272,16 @@ public class StorageEngine implements IService, IStatistic {
       logger.warn("get StorageGroupProcessor of device {} failed, because {}",
           batchInsertPlan.getDeviceId(),
           e.getMessage(), e);
-      failPoint.addAndGet(pointsNumber);
+      addFailPoint(pointsNumber);
       throw new StorageEngineException(e);
     }
 
     try {
       Integer[] result = storageGroupProcessor.insertBatch(batchInsertPlan);
-      okPoint.addAndGet(pointsNumber);
+      addOkPoint(pointsNumber);
       return result;
     } catch (QueryProcessException e) {
-      failPoint.addAndGet(pointsNumber);
+      addFailPoint(pointsNumber);
       throw new StorageEngineException(e);
     }
   }
@@ -509,9 +509,21 @@ public class StorageEngine implements IService, IStatistic {
     okPoint.set(0);
     failPoint.set(0);
     Map<String, Object> statParamsMap = new HashMap<>();
-    for (StorageEngineMetrics kind : MonitorConstants.StorageEngineMetrics.values()) {
+    for (StorageEngineMetrics kind: MonitorConstants.StorageEngineMetrics.values()) {
       statParamsMap.put(kind.name(), new AtomicLong(fileSizeMap.get(kind)));
     }
     return statParamsMap;
+  }
+
+  private void addOkPoint(long count) {
+    if (config.isEnableStatMonitor()) {
+      okPoint.addAndGet(count);
+    }
+  }
+
+  private void addFailPoint(long count) {
+    if (config.isEnableStatMonitor()) {
+      failPoint.addAndGet(count);
+    }
   }
 }

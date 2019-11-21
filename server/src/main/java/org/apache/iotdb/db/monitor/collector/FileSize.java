@@ -121,7 +121,7 @@ public class FileSize implements IStatistic {
    *
    * @return a map[FileSizeMetrics, Long] with the dir type and the dir size in byte
    */
-  private Map<FileSizeMetrics, Long> getFileSizesInByte() {
+  Map<FileSizeMetrics, Long> getFileSizesInByte() {
     EnumMap<FileSizeMetrics, Long> fileSizes = new EnumMap<>(FileSizeMetrics.class);
     for (FileSizeMetrics kinds : FileSizeMetrics.values()) {
 

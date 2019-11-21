@@ -539,7 +539,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext, IStatisti
   @Override
   public TSExecuteBatchStatementResp executeBatchStatement(TSExecuteBatchStatementReq req) {
     long t1 = System.currentTimeMillis();
-    requestNum.incrementAndGet();
+    addRequestNum();
     List<Integer> result = new ArrayList<>();
     try {
       if (!checkLogin()) {
@@ -612,7 +612,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext, IStatisti
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
     long startTime = System.currentTimeMillis();
-    requestNum.incrementAndGet();
+    addRequestNum();
     TSExecuteStatementResp resp;
     SqlArgument sqlArgument;
     try {
@@ -703,7 +703,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext, IStatisti
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getTSExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
-    requestNum.incrementAndGet();
+    addRequestNum();
     String statement = req.getStatement();
     PhysicalPlan physicalPlan;
     try {
@@ -1013,7 +1013,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext, IStatisti
         return getTSExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
       }
 
-      requestNum.incrementAndGet();
+      addRequestNum();
       String statement = req.getStatement();
       return executeUpdateStatement(statement);
     } catch (Exception e) {
@@ -1169,7 +1169,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext, IStatisti
       return getTSExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
 
-    requestNum.incrementAndGet();
+    addRequestNum();
     long stmtId = req.getStmtId();
     InsertPlan plan = (InsertPlan) operationStatus.get()
         .computeIfAbsent(stmtId, k -> new InsertPlan());
@@ -1204,7 +1204,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext, IStatisti
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
 
-    requestNum.incrementAndGet();
+    addRequestNum();
     InsertPlan plan = new InsertPlan();
     plan.setDeviceId(req.getDeviceId());
     plan.setTime(req.getTimestamp());
@@ -1225,7 +1225,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext, IStatisti
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
 
-    requestNum.incrementAndGet();
+    addRequestNum();
     DeletePlan plan = new DeletePlan();
     plan.setDeleteTime(req.getTimestamp());
     List<Path> paths = new ArrayList<>();
@@ -1250,7 +1250,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext, IStatisti
         return getTSBatchExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR), null);
       }
 
-      requestNum.incrementAndGet();
+      addRequestNum();
       BatchInsertPlan batchInsertPlan = new BatchInsertPlan(req.deviceId, req.measurements);
       batchInsertPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
       batchInsertPlan.setColumns(QueryDataSetUtils
@@ -1299,7 +1299,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext, IStatisti
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
 
-    requestNum.incrementAndGet();
+    addRequestNum();
     SetStorageGroupPlan plan = new SetStorageGroupPlan(new Path(storageGroup));
     TSStatus status = checkAuthority(plan);
     if (status != null) {
@@ -1314,7 +1314,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext, IStatisti
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
-    requestNum.incrementAndGet();
+    addRequestNum();
     List<Path> storageGroupList = new ArrayList<>();
     for (String storageGroup : storageGroups) {
       storageGroupList.add(new Path(storageGroup));
@@ -1333,7 +1333,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext, IStatisti
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
-    requestNum.incrementAndGet();
+    addRequestNum();
     CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.getPath()),
         TSDataType.values()[req.getDataType()], TSEncoding.values()[req.getEncoding()],
         CompressionType.values()[req.compressor], new HashMap<>());
@@ -1350,7 +1350,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext, IStatisti
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
-    requestNum.incrementAndGet();
+    addRequestNum();
     List<Path> pathList = new ArrayList<>();
     for (String path : paths) {
       pathList.add(new Path(path));
@@ -1444,6 +1444,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext, IStatisti
     long queryId = queryIdGenerator.get();
     queryIdGenerator.set(queryId + 1);
     return queryId;
+  }
+
+  private void addRequestNum() {
+    if (config.isEnableStatMonitor()) {
+      requestNum.incrementAndGet();
+    }
   }
 }
 
