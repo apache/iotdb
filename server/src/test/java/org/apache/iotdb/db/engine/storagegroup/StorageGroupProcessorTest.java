@@ -25,7 +25,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.ArrayList;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
+import org.apache.iotdb.db.engine.merge.MergeFileStrategy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 
@@ -36,6 +38,7 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.JobFileManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -180,6 +183,8 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testMerge() throws QueryProcessorException {
+    MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
+    IoTDBDescriptor.getInstance().getConfig().setMergeFileStrategy(MergeFileStrategy.INPLACE_MAX_SERIES_NUM);
 
     mergeLock = new AtomicLong(0);
     for (int j = 21; j <= 30; j++) {
@@ -213,6 +218,7 @@ public class StorageGroupProcessorTest {
     for (TsFileResource resource : queryDataSource.getUnseqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
+    IoTDBDescriptor.getInstance().getConfig().setMergeFileStrategy(strategy);
   }
 
   class DummySGP extends StorageGroupProcessor {

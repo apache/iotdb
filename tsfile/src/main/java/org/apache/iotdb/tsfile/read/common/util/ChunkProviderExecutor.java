@@ -22,18 +22,15 @@ package org.apache.iotdb.tsfile.read.common.util;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.ServiceType;
 
-public class ChunkProviderExecutor implements IService {
+public class ChunkProviderExecutor {
 
   private static ChunkProviderExecutor INSTANCE = new ChunkProviderExecutor();
 
-  private ExecutorService providerThreadPool =
-      Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+  private ExecutorService providerThreadPool;
 
   private ChunkProviderExecutor() {
+    start();
   }
 
   public static ChunkProviderExecutor getINSTANCE() {
@@ -44,25 +41,15 @@ public class ChunkProviderExecutor implements IService {
     providerThreadPool.submit(providerTask);
   }
 
+  public void start() {
+    providerThreadPool =
+        Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+  }
+
   public void close() {
     providerThreadPool.shutdownNow();
     while (!providerThreadPool.isTerminated()) {
       // wait
     }
-  }
-
-  @Override
-  public void start() throws StartupException {
-
-  }
-
-  @Override
-  public void stop() {
-    close();
-  }
-
-  @Override
-  public ServiceType getID() {
-    return ServiceType.CHUNK_PROVIDER_SERVICE;
   }
 }

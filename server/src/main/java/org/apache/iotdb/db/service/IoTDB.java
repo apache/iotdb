@@ -105,7 +105,6 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(MergeManager.getINSTANCE());
     registerManager.register(CacheHitRatioMonitor.getInstance());
     registerManager.register(MetricsService.getInstance());
-    registerManager.register(ChunkProviderExecutor.getINSTANCE());
     JMXService.registerMBean(getInstance(), mbeanName);
 
     logger.info("IoTDB is set up.");
@@ -115,6 +114,7 @@ public class IoTDB implements IoTDBMBean {
     logger.info("Deactivating IoTDB...");
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
+    ChunkProviderExecutor.getINSTANCE().close();
     logger.info("IoTDB is deactivated.");
   }
 

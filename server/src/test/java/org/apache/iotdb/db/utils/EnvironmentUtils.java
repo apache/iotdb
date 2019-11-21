@@ -40,6 +40,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
+import org.apache.iotdb.tsfile.read.common.util.ChunkProviderExecutor;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,6 +98,8 @@ public class EnvironmentUtils {
     config.setTsFileSizeThreshold(oldTsFileThreshold);
     config.setMemtableSizeThreshold(oldGroupSizeInByte);
     IoTDBConfigDynamicAdapter.getInstance().reset();
+
+    ChunkProviderExecutor.getINSTANCE().close();
   }
 
   public static void cleanAllDir() throws IOException {
@@ -161,6 +164,7 @@ public class EnvironmentUtils {
     FlushManager.getInstance().start();
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+    ChunkProviderExecutor.getINSTANCE().start();
   }
 
   private static void createAllDir() {
