@@ -80,7 +80,7 @@ public class FileSize implements IStatistic {
         storageEngine.addTimeSeries(path, TSDataType.valueOf(MonitorConstants.DATA_TYPE_INT64),
             TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
             Collections.emptyMap());
-      } catch (StorageEngineException e) {
+      } catch (StorageEngineException  e) {
         logger.error("Register File Size Stats into storageEngine Failed.", e);
       }
     }
@@ -98,13 +98,12 @@ public class FileSize implements IStatistic {
   }
 
   private static class FileSizeHolder {
-
     private static final FileSize INSTANCE = new FileSize();
   }
 
   private FileSize() {
-    storageEngine = StorageEngine.getInstance();
     if (config.isEnableStatMonitor()) {
+      storageEngine = StorageEngine.getInstance();
       StatMonitor statMonitor = StatMonitor.getInstance();
       registerStatMetadata();
       statMonitor.registerStatistics(MonitorConstants.FILE_SIZE_METRIC_PREFIX, this);

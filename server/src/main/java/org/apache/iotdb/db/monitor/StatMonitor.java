@@ -151,7 +151,7 @@ public class StatMonitor implements IService {
   }
 
   public void recovery() {
-    // // restore the FildeNode Manager TOTAL_POINTS statistics info
+    // currently we do not persist monitor metrics data
   }
 
   private void activate() {
@@ -282,23 +282,7 @@ public class StatMonitor implements IService {
         long currentTimeMillis = System.currentTimeMillis();
         HashMap<String, TSRecord> tsRecordHashMap = new HashMap<>();
         for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
-          if (entry.getValue() == null) {
-            switch (entry.getKey()) {
-              case MonitorConstants.STORAGE_ENGINE_METRIC_PREFIX:
-                tsRecordHashMap.put(entry.getKey(),
-                    convertToTSRecord(
-                        MonitorConstants.initValues(MonitorConstants.STORAGE_ENGINE_METRIC_PREFIX),
-                        entry.getKey(), currentTimeMillis));
-                break;
-              case MonitorConstants.FILE_SIZE_METRIC_PREFIX:
-                tsRecordHashMap.put(entry.getKey(),
-                    convertToTSRecord(
-                        MonitorConstants.initValues(MonitorConstants.FILE_SIZE_METRIC_PREFIX),
-                        entry.getKey(), currentTimeMillis));
-                break;
-              default:
-            }
-          } else {
+          if (entry.getValue() != null) {
             tsRecordHashMap.putAll(entry.getValue().getAllStatisticsValue());
           }
         }

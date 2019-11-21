@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.monitor;
 
 import java.io.File;
-import java.util.HashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -30,7 +28,7 @@ public class MonitorConstants {
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   public static final String DATA_TYPE_INT64 = "INT64";
-  public static final String MONITOR_STORAGE_GROUP = "root.monitor";
+  public static final String MONITOR_STORAGE_GROUP = "root.MONITOR";
 
   /**
    * statistic for file size statistic module
@@ -49,35 +47,6 @@ public class MonitorConstants {
    */
   public static final String REQUEST_METRIC_PREFIX = MONITOR_STORAGE_GROUP
       + IoTDBConstant.PATH_SEPARATOR + "request";
-
-  /**
-   * function for initializing stats values.
-   *
-   * @param constantsType produce initialization values for Statistics Params
-   * @return HashMap contains all the Statistics Params
-   */
-  static HashMap<String, Object> initValues(String constantsType) {
-    HashMap<String, Object> hashMap = new HashMap<>();
-    switch (constantsType) {
-      case MonitorConstants.STORAGE_ENGINE_METRIC_PREFIX:
-        for (StorageEngineMetrics metrics : StorageEngineMetrics.values()) {
-          hashMap.put(metrics.name(), new AtomicLong(0));
-        }
-        break;
-      case MonitorConstants.FILE_SIZE_METRIC_PREFIX:
-        for (FileSizeMetrics kinds : FileSizeMetrics.values()) {
-          hashMap.put(kinds.name(), new AtomicLong(0));
-        }
-        break;
-      case MonitorConstants.REQUEST_METRIC_PREFIX:
-        for (TSServiceImplMetrics kinds : TSServiceImplMetrics.values()) {
-          hashMap.put(kinds.name(), new AtomicLong(0));
-        }
-        break;
-      default:
-    }
-    return hashMap;
-  }
 
   public enum StorageEngineMetrics {
     OK_POINTS, FAIL_POINTS
