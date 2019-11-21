@@ -31,7 +31,7 @@ RUN apt-get update \
 WORKDIR incubator-iotdb-master
 RUN mvn package -Papache-release -DskipTests -Dthrift.download-url="http://www.apache.org/licenses/LICENSE-2.0.txt" -Dthrift.exec.absolute.path="/usr/bin/thrift"
 WORKDIR distributation/target/apache-iotdb-0.9.0-SNAPSHOT-incubating-bin/apache-iotdb-0.9.0-SNAPSHOT-incubating/
-RUN mkdir /iotdb
+RUN mkdir /iotdb \
   && mv * /iotdb/ \
 WORKDIR /incubator-iotdb-master
 RUN mvn clean \
