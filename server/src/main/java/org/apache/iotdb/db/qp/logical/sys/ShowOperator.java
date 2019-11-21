@@ -17,23 +17,18 @@
  * under the License.
  *
  */
-
 package org.apache.iotdb.db.qp.logical.sys;
 
-import java.util.List;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 
-public class ShowTTLOperator extends ShowOperator {
+public class ShowOperator extends RootOperator {
 
-  private List<String> storageGroups;
-
-  public ShowTTLOperator(List<String> storageGroups) {
-    super(SQLConstant.TOK_SHOW, OperatorType.TTL);
-    this.storageGroups = storageGroups;
+  public ShowOperator(int tokenIntType) {
+    this(tokenIntType, OperatorType.SHOW);
   }
 
-  public List<String> getStorageGroups() {
-    return storageGroups;
+  public ShowOperator(int tokenIntType, OperatorType operatorType) {
+    super(tokenIntType);
+    this.operatorType = operatorType;
   }
 }

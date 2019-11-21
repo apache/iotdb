@@ -277,6 +277,26 @@ K_CONFIGURATION
     : C O N F I G U R A T I O N
     ;
 
+K_FLUSH
+    : F L U S H
+    ;
+
+K_TASK
+    : T A S K
+    ;
+
+K_DYNAMIC
+    : D Y N A M I C
+    ;
+
+K_PARAMETER
+    : P A R A M E T E R
+    ;
+
+K_INFO
+    : I N F O
+    ;
+
 //************** logical operator***********
 OPERATOR_AND
     : A N D

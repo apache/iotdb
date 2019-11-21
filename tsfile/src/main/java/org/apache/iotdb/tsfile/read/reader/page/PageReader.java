@@ -79,9 +79,6 @@ public class PageReader {
     timeBuffer.limit(timeBufferLength);
 
     valueBuffer = pageData.slice();
-    if (pageData.order() == ByteOrder.LITTLE_ENDIAN) {
-      valueBuffer.order(ByteOrder.LITTLE_ENDIAN);
-    }
     valueBuffer.position(timeBufferLength);
   }
 
