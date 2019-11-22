@@ -144,6 +144,7 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
     // memory used to cache the metadata before the new file is closed
     // but writing data into a new file may generate the same amount of metadata in memory
     fileCost += calculateMetadataSize(seqFile);
+    logger.debug("File cost of {} is {}", seqFile, fileCost);
     return fileCost;
   }
 

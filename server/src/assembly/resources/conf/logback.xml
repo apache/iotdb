@@ -173,7 +173,7 @@
     <logger level="info" name="org.apache.iotdb.db.cost.statistic">
         <appender-ref ref="FILE_COST_MEASURE"/>
     </logger>
-    <logger level="debug" name="org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter">
-        <appender-ref ref="FILE_DYNAMIC_PARAMETER"/>
+    <logger level="debug" name="org.apache.iotdb.db.engine.merge">
+        <appender-ref ref="FILEALL"/>
     </logger>
 </configuration>
