@@ -1205,7 +1205,7 @@ public class StorageGroupProcessor {
       File mergeLog, TsFileResource newFile) {
     logger.info("{} a merge task is ending...", storageGroupName);
 
-    if (unseqFiles.isEmpty()) {
+    if (seqFiles.isEmpty() && unseqFiles.isEmpty()) {
       // merge runtime exception arose, just end this merge
       mergeLock.writeLock().lock();
       try {
