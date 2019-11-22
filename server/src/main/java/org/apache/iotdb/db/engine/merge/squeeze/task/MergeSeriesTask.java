@@ -186,9 +186,12 @@ class MergeSeriesTask {
     long currFileVersion =
         Long.parseLong(
             resource.getSeqFiles().get(0).getFile().getName().replace(TSFILE_SUFFIX, "").split(TSFILE_SEPARATOR)[1]);
+    long prevMergeNum =
+            Long.parseLong(
+                    resource.getSeqFiles().get(0).getFile().getName().replace(TSFILE_SUFFIX, "").split(TSFILE_SEPARATOR)[2]);
     File parent = resource.getSeqFiles().get(0).getFile().getParentFile();
     File newFile = FSFactoryProducer.getFSFactory().getFile(parent,
-        System.currentTimeMillis() + TSFILE_SEPARATOR + currFileVersion + TSFILE_SUFFIX + MERGE_SUFFIX);
+        System.currentTimeMillis() + TSFILE_SEPARATOR + currFileVersion + TSFILE_SEPARATOR + (prevMergeNum + 1) + TSFILE_SUFFIX + MERGE_SUFFIX);
     newFileWriter = new RestorableTsFileIOWriter(newFile);
     newResource = new TsFileResource(newFile);
   }
