@@ -41,7 +41,7 @@ public class LocalFileUserAccessorTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    testFolder = new File("test/");
+    testFolder = new File("target", "test");
     testFolder.mkdirs();
     accessor = new LocalFileUserAccessor(testFolder.getPath());
   }

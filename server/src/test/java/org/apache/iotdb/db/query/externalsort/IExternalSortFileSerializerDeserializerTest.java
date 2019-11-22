@@ -43,7 +43,7 @@ public class IExternalSortFileSerializerDeserializerTest {
 
   @Test
   public void testFIX_LENGTH() throws IOException {
-    String rootPath = "tmpFile2";
+    String rootPath = "target/tmpdir/tmpFile2";
     String filePath = rootPath;
     int count = 10000;
     testReadWrite(genTimeValuePairs(count, TSDataType.BOOLEAN), count, rootPath, filePath,

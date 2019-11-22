@@ -39,7 +39,7 @@ public abstract class ReaderTestHelper {
   protected String deviceId = "root.vehicle.d0";
   protected String measurementId = "s0";
   protected StorageGroupProcessor storageGroupProcessor;
-  private String systemDir = "data/info";
+  private String systemDir = "target/data/info";
 
   static {
     MManager.getInstance().init();

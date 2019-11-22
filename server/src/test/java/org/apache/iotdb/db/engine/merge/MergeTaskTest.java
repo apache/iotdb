@@ -48,7 +48,7 @@ public class MergeTaskTest extends MergeTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException, PathException {
     super.setUp();
-    tempSGDir = new File("tempSG");
+    tempSGDir = new File("target/tmpdir/tempSG");
     tempSGDir.mkdirs();
   }
 

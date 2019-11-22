@@ -49,7 +49,7 @@ public class DirectoryStrategyTest {
   public void setUp() throws DiskSpaceInsufficientException, IOException {
     dataDirList = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      dataDirList.add("data" + i);
+      dataDirList.add("target/data" + i);
     }
 
     fullDirIndexSet = new HashSet<>();

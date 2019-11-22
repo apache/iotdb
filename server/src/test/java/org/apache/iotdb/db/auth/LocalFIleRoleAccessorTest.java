@@ -40,7 +40,7 @@ public class LocalFIleRoleAccessorTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    testFolder = new File("test/");
+    testFolder = new File("target","test");
     testFolder.mkdirs();
     accessor = new LocalFileRoleAccessor(testFolder.getPath());
   }

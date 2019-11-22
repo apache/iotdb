@@ -39,7 +39,7 @@ public class LocalFileRoleManagerTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    testFolder = new File("test/");
+    testFolder = new File("target", "test");
     testFolder.mkdirs();
     manager = new LocalFileRoleManager(testFolder.getPath());
   }

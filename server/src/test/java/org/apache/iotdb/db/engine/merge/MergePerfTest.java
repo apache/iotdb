@@ -37,7 +37,7 @@ public class MergePerfTest extends MergeTest{
 
   public void test() throws Exception {
     MManager.getInstance().init();
-    tempSGDir = new File("tempSG");
+    tempSGDir = new File("target/tmpdir/tempSG");
     tempSGDir.mkdirs();
     setUp();
     timeConsumption = System.currentTimeMillis();

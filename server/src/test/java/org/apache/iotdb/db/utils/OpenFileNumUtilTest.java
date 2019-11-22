@@ -66,7 +66,7 @@ public class OpenFileNumUtilTest {
     openFileNumUtil.setPid(testProcessID);
     String dataFilePath = OpenFileNumStatistics.DIGEST_OPEN_FILE_NUM.getPath().get(0);
     String userDir = System.getProperty("user.dir");
-    currDir = userDir + File.separator + testProcessID;
+    currDir = userDir + File.separator + "target" + File.separator + testProcessID;
     testDataDirRoot = new File(currDir);
     currDir = currDir + File.separator + dataFilePath;
     File testDataDir = new File(currDir);

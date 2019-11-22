@@ -33,7 +33,7 @@ public class ModificationFileTest {
 
   @Test
   public void readMyWrite() {
-    String tempFileName = "mod.temp";
+    String tempFileName = "target/mod.temp";
     Modification[] modifications = new Modification[]{
         new Deletion(new Path("d1", "s1"), 1, 1),
         new Deletion(new Path("d1", "s2"), 2, 2),
@@ -67,7 +67,7 @@ public class ModificationFileTest {
 
   @Test
   public void testAbort() {
-    String tempFileName = "mod.temp";
+    String tempFileName = "target/mod.temp";
     Modification[] modifications = new Modification[]{
         new Deletion(new Path("d1", "s1"), 1, 1),
         new Deletion(new Path("d1", "s2"), 2, 2),

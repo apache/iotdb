@@ -39,7 +39,7 @@ import org.junit.Test;
 
 public class ExternalSortEngineTest {
 
-  private String baseDir = "externalSortTestTmp/";
+  private String baseDir = "target/externalSortTestTmp/";
   private long queryId = EnvironmentUtils.TEST_QUERY_JOB_ID;
   private SimpleExternalSortEngine engine;
   private String preBaseDir;

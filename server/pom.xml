@@ -143,6 +143,9 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <skipTests>${iotdb.ut.skip}</skipTests>
+                    <systemProperties>
+                        <IOTDB_CONF>src/test/resources</IOTDB_CONF>
+                    </systemProperties>
                 </configuration>
             </plugin>
             <plugin>

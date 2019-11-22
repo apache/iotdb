@@ -54,7 +54,7 @@ public class DeviceMetaDataCacheTest {
   private String measurementId4 = "s4";
   private String measurementId5 = "s5";
   private StorageGroupProcessor storageGroupProcessor;
-  private String systemDir = "data/info";
+  private String systemDir = "target/data/info";
 
   static {
     MManager.getInstance().init();

@@ -45,7 +45,7 @@ import org.junit.Test;
 public class StorageGroupProcessorTest {
 
   private String storageGroup = "root.vehicle.d0";
-  private String systemDir = "data/info";
+  private String systemDir = "target/data/info";
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
   private StorageGroupProcessor processor;
@@ -65,7 +65,7 @@ public class StorageGroupProcessorTest {
   public void tearDown() throws Exception {
     processor.syncDeleteDataFiles();
     EnvironmentUtils.cleanEnv();
-    EnvironmentUtils.cleanDir("data");
+    EnvironmentUtils.cleanDir("target/data");
     MergeManager.getINSTANCE().stop();
   }
 

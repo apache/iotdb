@@ -657,7 +657,7 @@ public class IoTDBConfig {
     return indexFileDir;
   }
 
-  private void setIndexFileDir(String indexFileDir) {
+  void setIndexFileDir(String indexFileDir) {
     this.indexFileDir = indexFileDir;
   }
 

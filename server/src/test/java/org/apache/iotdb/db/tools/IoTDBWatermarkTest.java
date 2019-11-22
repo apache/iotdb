@@ -47,8 +47,8 @@ import org.junit.Test;
 public class IoTDBWatermarkTest {
 
   private static IoTDB daemon;
-  private static String filePath1 = "watermarked_query_result.csv";
-  private static String filePath2 = "notWatermarked_query_result.csv";
+  private static String filePath1 = "target/watermarked_query_result.csv";
+  private static String filePath2 = "target/notWatermarked_query_result.csv";
   private static PrintWriter writer1;
   private static PrintWriter writer2;
   private static String secretKey = "ASDFGHJKL";

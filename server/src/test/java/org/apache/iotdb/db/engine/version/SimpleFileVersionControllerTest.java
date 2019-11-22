@@ -31,7 +31,7 @@ import org.junit.Test;
 public class SimpleFileVersionControllerTest {
   @Test
   public void test() throws IOException {
-    String tempFilePath = "version.tmp";
+    String tempFilePath = "target/version.tmp";
 
     try {
       if (!new File(tempFilePath).mkdir()) {

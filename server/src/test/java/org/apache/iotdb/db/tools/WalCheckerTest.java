@@ -49,7 +49,7 @@ public class WalCheckerTest {
 
   @Test
   public void testEmpty() throws IOException, SystemCheckException {
-    File tempRoot = new File("root");
+    File tempRoot = new File("target", "root");
     tempRoot.mkdir();
 
     try {
@@ -62,7 +62,7 @@ public class WalCheckerTest {
 
   @Test
   public void testNormalCheck() throws IOException, SystemCheckException {
-    File tempRoot = new File("root");
+    File tempRoot = new File("target", "root");
     tempRoot.mkdir();
 
     try {
@@ -95,7 +95,7 @@ public class WalCheckerTest {
 
   @Test
   public void testAbnormalCheck() throws IOException, SystemCheckException {
-    File tempRoot = new File("root");
+    File tempRoot = new File("target", "root");
     tempRoot.mkdir();
 
     try {
@@ -131,7 +131,7 @@ public class WalCheckerTest {
 
   @Test
   public void testOneDamagedCheck() throws IOException, SystemCheckException {
-    File tempRoot = new File("root");
+    File tempRoot = new File("target", "root");
     tempRoot.mkdir();
 
     try {

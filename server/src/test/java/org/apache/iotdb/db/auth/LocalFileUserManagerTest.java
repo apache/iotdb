@@ -41,7 +41,7 @@ public class LocalFileUserManagerTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    testFolder = new File("test/");
+    testFolder = new File("target", "test");
     testFolder.mkdirs();
     manager = new LocalFileUserManager(testFolder.getPath());
   }
