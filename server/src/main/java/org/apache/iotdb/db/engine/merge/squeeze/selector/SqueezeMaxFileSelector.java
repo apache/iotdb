@@ -68,14 +68,17 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
     tmpFirstOverlapIdx = Integer.MAX_VALUE;
     tmpLastOverlapIdx = Integer.MIN_VALUE;
 
+    logger.info("Select using tight bound:{}", useTightBound);
     super.selectByUnseq(useTightBound);
     logger.info("After selecting by unseq, first seq index:{}, last seq index:{}", firstOverlapIdx, lastOverlapIdx);
     if (firstOverlapIdx <= lastOverlapIdx) {
       // selectByUnseq has found candidates, check if we can extend the selection
+      logger.info("Try extending the seq files");
       extendCurrentSelection(useTightBound);
       logger.info("After seq extension, first seq index:{}, last seq index:{}", firstOverlapIdx, lastOverlapIdx);
     } else {
       // try selecting only seq files as candidates
+      logger.info("Try selecting only seq files");
       selectBySeq(useTightBound);
       logger.info("After seq selection, first seq index:{}, last seq index:{}", firstOverlapIdx, lastOverlapIdx);
     }
@@ -88,11 +91,13 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
     for (int i = 0; i < resource.getSeqFiles().size() - 1 && timeConsumption < timeLimit; i ++) {
       // try to find candidates starting from i
       TsFileResource seqFile = resource.getSeqFiles().get(i);
+      logger.debug("Try selecting seq file {}/{}, {}", i, resource.getSeqFiles().size() - 1, seqFile);
       long fileCost = calculateSeqFileCost(seqFile, useTightBound);
       if (fileCost < memoryBudget) {
         firstOverlapIdx = i;
         lastOverlapIdx = i;
         totalCost = fileCost;
+        logger.debug("Seq file {} can fit memory, search from it", seqFile);
         extendCurrentSelection(useTightBound);
         if (lastOverlapIdx > firstOverlapIdx) {
           // if candidates starting from i are found, return
@@ -101,7 +106,10 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
           totalCost = 0;
           firstOverlapIdx = Integer.MAX_VALUE;
           lastOverlapIdx = Integer.MIN_VALUE;
+          logger.debug("The next file of {} cannot fit memory together, search the next file", seqFile);
         }
+      } else {
+        logger.info("File {} cannot fie memory {}/{}", seqFile, fileCost, memoryBudget);
       }
       timeConsumption = System.currentTimeMillis() - startTime;
     }
@@ -112,8 +120,8 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
   private void extendCurrentSelection(boolean useTightBound) throws IOException {
     for (int i = lastOverlapIdx + 1; i < resource.getSeqFiles().size() && timeConsumption < timeLimit; i++) {
       TsFileResource seqFile = resource.getSeqFiles().get(i);
-      long fileCost = calculateSeqFileCost(seqFile, useTightBound);
       logger.debug("Try extending seq file {}", seqFile);
+      long fileCost = calculateSeqFileCost(seqFile, useTightBound);
 
       if (fileCost + totalCost < memoryBudget) {
         maxSeqFileCost = tempMaxSeqFileCost;

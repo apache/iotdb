@@ -62,7 +62,7 @@ public abstract class BaseFileSelector implements IMergeFileSelector{
   protected int seqSelectedNum;
 
   protected TmpSelectedSeqIterable tmpSelectedSeqIterable;
-  protected long startTime = System.currentTimeMillis();
+  protected long startTime = 0;
   protected long timeConsumption = 0;
   protected long timeLimit = 0;
 
