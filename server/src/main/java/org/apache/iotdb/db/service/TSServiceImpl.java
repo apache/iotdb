@@ -35,7 +35,6 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -166,8 +165,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext, IStatisti
 
   public TSServiceImpl() {
     processor = new QueryProcessor(new QueryProcessExecutor());
-    storageEngine = StorageEngine.getInstance();
     if (config.isEnableStatMonitor()) {
+      storageEngine = StorageEngine.getInstance();
       StatMonitor statMonitor = StatMonitor.getInstance();
       registerStatMetadata();
       statMonitor.registerStatistics(METRIC_PREFIX, this);
@@ -1385,10 +1384,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext, IStatisti
 
   @Override
   public Map<String, TSRecord> getAllStatisticsValue() {
-    long curTime = System.currentTimeMillis();
     TSRecord tsRecord = StatMonitor
-        .convertToTSRecord(getStatParamsHashMap(), METRIC_PREFIX,
-            curTime);
+        .convertToTSRecord(getStatParamsHashMap(), METRIC_PREFIX);
     HashMap<String, TSRecord> ret = new HashMap<>();
     ret.put(METRIC_PREFIX, tsRecord);
     return ret;
@@ -1409,21 +1406,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext, IStatisti
                 TSFileDescriptor.getInstance().getConfig().getCompressor()),
             Collections.emptyMap());
       } catch (StorageEngineException e) {
-        logger.error("Register File Size Stats into storageEngine Failed.", e);
+        logger.error("Register metrics of {} into storageEngine failed",
+            this.getClass().getName(), e);
       }
     }
-    StatMonitor.getInstance().registerStatStorageGroup(hashMap);
+    StatMonitor.getInstance().registerMonitorTimeSeries(hashMap);
   }
 
   @Override
   public Map<String, Object> getStatParamsHashMap() {
-    Map<TSServiceImplMetrics, Long> fileSizeMap = new EnumMap<>(TSServiceImplMetrics.class);
-    fileSizeMap.put(TSServiceImplMetrics.TOTAL_REQ, requestNum.get());
-    requestNum.set(0);
     Map<String, Object> statParamsMap = new HashMap<>();
-    for (TSServiceImplMetrics kind : MonitorConstants.TSServiceImplMetrics.values()) {
-      statParamsMap.put(kind.name(), new AtomicLong(fileSizeMap.get(kind)));
-    }
+    statParamsMap.put(TSServiceImplMetrics.TOTAL_REQ.name(), requestNum.get());
+    requestNum.set(0);
     return statParamsMap;
   }
 

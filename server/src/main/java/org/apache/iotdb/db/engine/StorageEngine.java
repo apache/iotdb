@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -471,10 +470,8 @@ public class StorageEngine implements IService, IStatistic {
 
   @Override
   public Map<String, TSRecord> getAllStatisticsValue() {
-    long curTime = System.currentTimeMillis();
     TSRecord tsRecord = StatMonitor
-        .convertToTSRecord(getStatParamsHashMap(), MONITOR_METRIC_PREFIX,
-            curTime);
+        .convertToTSRecord(getStatParamsHashMap(), MONITOR_METRIC_PREFIX);
     HashMap<String, TSRecord> ret = new HashMap<>();
     ret.put(MONITOR_METRIC_PREFIX, tsRecord);
     return ret;
@@ -495,23 +492,19 @@ public class StorageEngine implements IService, IStatistic {
                 TSFileDescriptor.getInstance().getConfig().getCompressor()),
             Collections.emptyMap());
       } catch (StorageEngineException e) {
-        logger.error("Register {} into Monitor Failed.", this.getClass().getName(), e);
+        logger.error("Register metrics of {} into Monitor Failed.", this.getClass().getName(), e);
       }
     }
-    StatMonitor.getInstance().registerStatStorageGroup(hashMap);
+    StatMonitor.getInstance().registerMonitorTimeSeries(hashMap);
   }
 
   @Override
   public Map<String, Object> getStatParamsHashMap() {
-    Map<StorageEngineMetrics, Long> fileSizeMap = new EnumMap<>(StorageEngineMetrics.class);
-    fileSizeMap.put(StorageEngineMetrics.OK_POINTS, okPoint.get());
-    fileSizeMap.put(StorageEngineMetrics.FAIL_POINTS, failPoint.get());
+    Map<String, Object> statParamsMap = new HashMap<>();
+    statParamsMap.put(StorageEngineMetrics.OK_POINTS.name(), okPoint.get());
+    statParamsMap.put(StorageEngineMetrics.FAIL_POINTS.name(), failPoint.get());
     okPoint.set(0);
     failPoint.set(0);
-    Map<String, Object> statParamsMap = new HashMap<>();
-    for (StorageEngineMetrics kind: MonitorConstants.StorageEngineMetrics.values()) {
-      statParamsMap.put(kind.name(), new AtomicLong(fileSizeMap.get(kind)));
-    }
     return statParamsMap;
   }
 

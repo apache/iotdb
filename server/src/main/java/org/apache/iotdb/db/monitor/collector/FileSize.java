@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -58,10 +57,8 @@ public class FileSize implements IStatistic {
 
   @Override
   public Map<String, TSRecord> getAllStatisticsValue() {
-    long curTime = System.currentTimeMillis();
     TSRecord tsRecord = StatMonitor
-        .convertToTSRecord(getStatParamsHashMap(), MonitorConstants.FILE_SIZE_METRIC_PREFIX,
-            curTime);
+        .convertToTSRecord(getStatParamsHashMap(), MonitorConstants.FILE_SIZE_METRIC_PREFIX);
     HashMap<String, TSRecord> ret = new HashMap<>();
     ret.put(MonitorConstants.FILE_SIZE_METRIC_PREFIX, tsRecord);
     return ret;
@@ -84,7 +81,7 @@ public class FileSize implements IStatistic {
         logger.error("Register File Size Stats into storageEngine Failed.", e);
       }
     }
-    StatMonitor.getInstance().registerStatStorageGroup(hashMap);
+    StatMonitor.getInstance().registerMonitorTimeSeries(hashMap);
   }
 
   @Override
@@ -92,7 +89,7 @@ public class FileSize implements IStatistic {
     Map<FileSizeMetrics, Long> fileSizeMap = getFileSizesInByte();
     Map<String, Object> statParamsMap = new HashMap<>();
     for (FileSizeMetrics kind : FileSizeMetrics.values()) {
-      statParamsMap.put(kind.name(), new AtomicLong(fileSizeMap.get(kind)));
+      statParamsMap.put(kind.name(), fileSizeMap.get(kind));
     }
     return statParamsMap;
   }
@@ -105,7 +102,6 @@ public class FileSize implements IStatistic {
     if (config.isEnableStatMonitor()) {
       storageEngine = StorageEngine.getInstance();
       StatMonitor statMonitor = StatMonitor.getInstance();
-      registerStatMetadata();
       statMonitor.registerStatistics(MonitorConstants.FILE_SIZE_METRIC_PREFIX, this);
     }
   }
@@ -124,7 +120,7 @@ public class FileSize implements IStatistic {
     EnumMap<FileSizeMetrics, Long> fileSizes = new EnumMap<>(FileSizeMetrics.class);
     for (FileSizeMetrics kinds : FileSizeMetrics.values()) {
 
-      if (kinds.equals(FileSizeMetrics.SYS)) {
+      if (kinds.equals(FileSizeMetrics.SEQUENCE)) {
         fileSizes.put(kinds, collectSeqFileSize(fileSizes, kinds));
       } else {
         File file = SystemFileFactory.INSTANCE.getFile(kinds.getPath());

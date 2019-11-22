@@ -36,7 +36,7 @@ public class FileSizeTest {
 
   private static final String TEST_FILE_CONTENT = "FileSize UT test file";
   private static final String TEST_FILE_PATH =
-      FileSizeMetrics.SYS.getPath() + File.separatorChar + "schemaFile";
+      FileSizeMetrics.SEQUENCE.getPath() + File.separatorChar + "schemaFile";
 
   @Before
   public void setUp() throws Exception {
@@ -71,7 +71,7 @@ public class FileSizeTest {
       e.printStackTrace();
     }
 
-    dataSizeBefore = FileSize.getInstance().getFileSizesInByte().get(FileSizeMetrics.SYS);
+    dataSizeBefore = FileSize.getInstance().getFileSizesInByte().get(FileSizeMetrics.SEQUENCE);
     byte[] contentInBytes = TEST_FILE_CONTENT.getBytes();
     // insert something into the test file under data dir
     try (FileOutputStream fileOutputStream = new FileOutputStream(testFile)) {
@@ -82,7 +82,7 @@ public class FileSizeTest {
       e.printStackTrace();
     }
     // calculate the delta of data dir file size
-    dataSizeAfter = FileSize.getInstance().getFileSizesInByte().get(FileSizeMetrics.SYS);
+    dataSizeAfter = FileSize.getInstance().getFileSizesInByte().get(FileSizeMetrics.SEQUENCE);
     long deltaSize = dataSizeAfter - dataSizeBefore;
 
     if (isWriteSuccess) {

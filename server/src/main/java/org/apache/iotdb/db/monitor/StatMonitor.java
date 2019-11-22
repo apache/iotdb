@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -40,6 +39,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileSizeMetrics;
 import org.apache.iotdb.db.monitor.MonitorConstants.StorageEngineMetrics;
 import org.apache.iotdb.db.monitor.MonitorConstants.TSServiceImplMetrics;
+import org.apache.iotdb.db.monitor.collector.FileSize;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -109,18 +109,18 @@ public class StatMonitor implements IService {
    *
    * @param hashMap key is the stat name, values is the stat value object
    * @param statGroupDeltaName is the deviceId seriesPath of this module
-   * @param curTime current time stamp
    * @return TSRecord contains the DataPoints of a statGroupDeltaName
    */
   public static TSRecord convertToTSRecord(Map<String, Object> hashMap,
-      String statGroupDeltaName, long curTime) {
-    TSRecord tsRecord = new TSRecord(curTime, statGroupDeltaName);
+      String statGroupDeltaName) {
+    TSRecord tsRecord = new TSRecord(0, statGroupDeltaName);
     tsRecord.dataPointList = new ArrayList<>();
     for (Map.Entry<String, Object> entry : hashMap.entrySet()) {
-      if(entry.getValue() instanceof AtomicLong){
-        AtomicLong value = (AtomicLong) entry.getValue();
-        tsRecord.dataPointList.add(new LongDataPoint(entry.getKey(), value.get()));
+      if(entry.getValue() instanceof Long){
+        long value = (long) entry.getValue();
+        tsRecord.dataPointList.add(new LongDataPoint(entry.getKey(), value));
       }
+      // add other type data point if needed
     }
     return tsRecord;
   }
@@ -130,7 +130,7 @@ public class StatMonitor implements IService {
    *
    * @param hashMap series path and data type pair, for example: [root.stat.file.size.DATA, INT64]
    */
-  public synchronized void registerStatStorageGroup(Map<String, String> hashMap) {
+  public synchronized void registerMonitorTimeSeries(Map<String, String> hashMap) {
     MManager mManager = MManager.getInstance();
     try {
       for (Map.Entry<String, String> entry : hashMap.entrySet()) {
@@ -155,6 +155,7 @@ public class StatMonitor implements IService {
   }
 
   private void activate() {
+    FileSize.getInstance().registerStatMetadata();
     service = IoTDBThreadPoolFactory.newScheduledThreadPool(1,
         ThreadName.STAT_MONITOR.getName());
     service.scheduleAtFixedRate(

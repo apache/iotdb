@@ -14,6 +14,7 @@
  */
 package org.apache.iotdb.db.metrics.server;
 
+import com.sun.management.OperatingSystemMXBean;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
@@ -26,12 +27,12 @@ import java.util.List;
 import java.util.StringTokenizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.sun.management.OperatingSystemMXBean;
 
 public class ServerArgument {
 
   private static final Logger logger = LoggerFactory.getLogger(ServerArgument.class);
-  private static final int CPUTIME = 1000;
+  private static final int CPU_TIME = 1000;
+  private static final int CPU_ABNORMAL_VALUE = -1;
 
   private String host;
   private int port;
@@ -57,6 +58,9 @@ public class ServerArgument {
     this.freeMemory = freeMemory();
     this.maxMemory = maxMemory();
     this.cpuRatio = getCpuRatio();
+    if (!osName.toLowerCase().contains("windows") && !osName.contains("linux")) {
+      logger.warn("Can't get the cpu ratio,because this OS:{} is not support", osName);
+    }
   }
 
   private String inferHostname() {
@@ -66,7 +70,7 @@ public class ServerArgument {
     } catch (UnknownHostException e) {
       logger.error("The host is unknow", e);
     }
-    return ia.getHostName();
+    return ia != null ? ia.getHostName() : null;
   }
 
   private String osName() {
@@ -75,38 +79,34 @@ public class ServerArgument {
 
   private int totalCores() {
     OperatingSystemMXBean osmxb = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-    int freeCores = osmxb.getAvailableProcessors();
-    return freeCores;
+    return osmxb.getAvailableProcessors();
   }
 
-  private long totalMemory() {
+  long totalMemory() {
     return Runtime.getRuntime().totalMemory() / 1024 / 1024;
   }
 
-  private long freeMemory() {
+  long freeMemory() {
     return Runtime.getRuntime().freeMemory() / 1024 / 1024;
   }
 
-  private long maxMemory() {
+  long maxMemory() {
     return Runtime.getRuntime().maxMemory() / 1024 / 1024;
   }
 
-  private long totalPhysicalMemory() {
+  long totalPhysicalMemory() {
     OperatingSystemMXBean osmxb = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-    long totalMemorySize = osmxb.getTotalPhysicalMemorySize() / 1024 / 1024;
-    return totalMemorySize;
+    return osmxb.getTotalPhysicalMemorySize() / 1024 / 1024;
   }
 
-  private long usedPhysicalMemory() {
+  long usedPhysicalMemory() {
     OperatingSystemMXBean osmxb = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-    long usedMemorySize = (osmxb.getTotalPhysicalMemorySize() - osmxb.getFreePhysicalMemorySize()) / 1024 / 1024;
-    return usedMemorySize;
+    return (osmxb.getTotalPhysicalMemorySize() - osmxb.getFreePhysicalMemorySize()) / 1024 / 1024;
   }
 
-  private long freePhysicalMemory() {
+  long freePhysicalMemory() {
     OperatingSystemMXBean osmxb = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-    long freeMemorySize = osmxb.getFreePhysicalMemorySize() / 1024 / 1024;
-    return freeMemorySize;
+    return osmxb.getFreePhysicalMemorySize() / 1024 / 1024;
   }
 
   public int getPort() {
@@ -154,15 +154,14 @@ public class ServerArgument {
   }
 
   public int getCpuRatio() {
-    String osName = System.getProperty("os.name").toLowerCase();
+    String osNameStr = System.getProperty("os.name").toLowerCase();
     cpuRatio = 0;
-    if (osName.indexOf("windows") >= 0) {
+    if (osNameStr.contains("windows")) {
       cpuRatio = getCpuRatioForWindows();
-    } else if (osName.indexOf("linux") >= 0) {
+    } else if (osNameStr.contains("linux")) {
       cpuRatio = getCpuRateForLinux();
     } else {
-      cpuRatio = 500;
-      logger.warn("Can't get the cpu ratio,because this OS:{} is not support",osName);
+      cpuRatio = CPU_ABNORMAL_VALUE;
     }
     return cpuRatio;
   }
@@ -173,7 +172,7 @@ public class ServerArgument {
   private int getCpuRateForLinux() {
     try {
       long[] c0 = readLinuxCpu();
-      Thread.sleep(CPUTIME);
+      Thread.sleep(CPU_TIME);
       long[] c1 = readLinuxCpu();
       if (c0 != null && c1 != null) {
         long idleCpuTime = c1[0] - c0[0];
@@ -199,7 +198,7 @@ public class ServerArgument {
       String procCmd = System.getenv("windir") + "\\system32\\wbem\\wmic.exe process get Caption,CommandLine,"
           + "KernelModeTime,ReadOperationCount,ThreadCount,UserModeTime,WriteOperationCount";
       long[] c0 = readWinCpu(Runtime.getRuntime().exec(procCmd));
-      Thread.sleep(CPUTIME);
+      Thread.sleep(CPU_TIME);
       long[] c1 = readWinCpu(Runtime.getRuntime().exec(procCmd));
       if (c0 != null && c1 != null) {
         long idletime = c1[0] - c0[0];

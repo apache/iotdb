@@ -48,6 +48,12 @@ public class MonitorConstants {
   public static final String REQUEST_METRIC_PREFIX = MONITOR_STORAGE_GROUP
       + IoTDBConstant.PATH_SEPARATOR + "request";
 
+  /**
+   * system resource monitor metrics prefix
+   */
+  public static final String SYSTEM_METRIC_PREFIX = MONITOR_STORAGE_GROUP
+      + IoTDBConstant.PATH_SEPARATOR + "system";
+
   public enum StorageEngineMetrics {
     OK_POINTS, FAIL_POINTS
   }
@@ -56,15 +62,21 @@ public class MonitorConstants {
     TOTAL_REQ
   }
 
-  public enum OsMetrics {
-    NETWORK_REC, NETWORK_SEND, CPU_USAGE, MEM_USAGE, IOTDB_MEM_SIZE, DISK_USAGE, DISK_READ_SPEED,
-    DISK_WRITE_SPEED, DISK_TPS
+  public enum SystemMetrics {
+    CPU_USAGE,
+    FREE_MEM,
+    MAX_MEM,
+    TOTAL_MEM,
+    TOTAL_PHYSICAL_MEM,
+    FREE_PHYSICAL_MEM,
+    USED_PHYSICAL_MEM,
+    // NETWORK_REC, NETWORK_SEND,  DISK_USAGE, DISK_READ_SPEED, DISK_WRITE_SPEED, DISK_TPS
   }
 
   public enum FileSizeMetrics {
     // need add multi data dir monitor
     WAL(new File(config.getWalFolder()).getAbsolutePath()),
-    SYS(new File(config.getSystemDir()).getAbsolutePath());
+    SEQUENCE("");
 
     public String getPath() {
       return path;
