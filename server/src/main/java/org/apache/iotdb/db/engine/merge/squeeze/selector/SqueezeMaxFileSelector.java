@@ -142,6 +142,7 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
     long fileCost = 0;
     long fileReadCost = useTightBound ? calculateTightSeqMemoryCost(seqFile) :
         calculateMetadataSize(seqFile);
+    logger.debug("File read cost of {} is {}", seqFile, fileReadCost);
     if (fileReadCost > tempMaxSeqFileCost) {
       // memory used when read data from a seq file:
       // only one file will be read at the same time, so only the largest one is recorded here

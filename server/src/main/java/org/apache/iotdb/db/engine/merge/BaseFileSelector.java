@@ -152,6 +152,7 @@ public abstract class BaseFileSelector implements IMergeFileSelector{
       long[] chunkNums = MergeUtils.findTotalAndLargestSeriesChunkNum(seqFile, resource.getFileReader(seqFile));
       long totalChunkNum = chunkNums[0];
       long maxChunkNum = chunkNums[1];
+      logger.debug("File {} has {} chunks, max chunk num {}", seqFile, totalChunkNum, maxChunkNum);
       cost = measurement.measure(seqFile) * maxChunkNum / totalChunkNum;
       maxSeriesQueryCostMap.put(seqFile, cost);
       logger.debug(LOG_FILE_COST, seqFile, cost);

@@ -20,19 +20,13 @@
 package org.apache.iotdb.db.utils;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Set;
+import java.util.*;
+import java.util.function.BiFunction;
+
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.*;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -74,19 +68,6 @@ public class MergeUtils {
       default:
         throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
     }
-  }
-
-  private static List<Path> collectFileSeries(TsFileSequenceReader sequenceReader) throws IOException {
-    TsFileMetaData metaData = sequenceReader.readFileMetadata();
-    Set<String> deviceIds = metaData.getDeviceMap().keySet();
-    Set<String> measurements = metaData.getMeasurementSchema().keySet();
-    List<Path> paths = new ArrayList<>();
-    for (String deviceId : deviceIds) {
-      for (String measurement : measurements) {
-        paths.add(new Path(deviceId, measurement));
-      }
-    }
-    return paths;
   }
 
   public static long collectFileSizes(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
@@ -144,12 +125,24 @@ public class MergeUtils {
       throws IOException {
     long totalChunkNum = 0;
     long maxChunkNum = Long.MIN_VALUE;
-    List<Path> paths = collectFileSeries(sequenceReader);
+    Map<String, Long> seriesChunkNums = new HashMap<>();
+    TsFileMetaData metaData = sequenceReader.readFileMetadata();
+    for (TsDeviceMetadataIndex tsDeviceMetadataIndex : metaData.getDeviceMap().values()) {
+      TsDeviceMetadata deviceMetadata = sequenceReader.readTsDeviceMetaData(tsDeviceMetadataIndex);
+      List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
+      if (!chunkGroupMetaDataList.isEmpty()) {
+        String device = chunkGroupMetaDataList.get(0).getDeviceID();
+        for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
+          for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+            seriesChunkNums.compute(device + chunkMetaData.getMeasurementUid(), (s, aLong) -> aLong == null ? 1 : aLong + 1);
+            totalChunkNum ++;
+          }
+        }
+      }
+    }
 
-    for (Path path : paths) {
-      List<ChunkMetaData> chunkMetaDataList = sequenceReader.getChunkMetadataList(path);
-      totalChunkNum += chunkMetaDataList.size();
-      maxChunkNum = chunkMetaDataList.size() > maxChunkNum ? chunkMetaDataList.size() : maxChunkNum;
+    for (Map.Entry<String, Long> stringLongEntry : seriesChunkNums.entrySet()) {
+      maxChunkNum = Math.max(maxChunkNum, stringLongEntry.getValue());
     }
     logger.debug("In file {}, total chunk num {}, series max chunk num {}", tsFileResource,
         totalChunkNum, maxChunkNum);
