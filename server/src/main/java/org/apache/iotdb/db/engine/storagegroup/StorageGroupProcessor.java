@@ -24,7 +24,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -524,10 +523,9 @@ public class StorageGroupProcessor {
       baseDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
     }
     fsFactory.getFile(baseDir, storageGroupName).mkdirs();
-
-    String filePath = Paths.get(baseDir, storageGroupName,
+    String filePath = baseDir + File.separator + storageGroupName + File.separator +
         System.currentTimeMillis() + IoTDBConstant.TSFILE_NAME_SEPARATOR + versionController
-            .nextVersion()).toString() + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0" + TSFILE_SUFFIX;
+        .nextVersion() + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0" + TSFILE_SUFFIX;
 
     if (sequence) {
       return new TsFileProcessor(storageGroupName, fsFactory.getFile(filePath),

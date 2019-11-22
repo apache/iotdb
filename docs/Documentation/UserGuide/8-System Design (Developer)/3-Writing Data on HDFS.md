@@ -52,6 +52,24 @@ Edit user config in `iotdb-engine.properties`. Related configurations are:
 |Default|LOCAL |
 |Effective|After restart system|
 
+* core\_site\_path
+
+|Name| core\_site\_path |
+|:---:|:---|
+|Description| Absolute file path of core-site.xml if Tsfile and related data files are stored in HDFS.|
+|Type| String |
+|Default|/etc/hadoop/conf/core-site.xml |
+|Effective|After restart system|
+
+* hdfs\_site\_path
+
+|Name| hdfs\_site\_path |
+|:---:|:---|
+|Description| Absolute file path of hdfs-site.xml if Tsfile and related data files are stored in HDFS.|
+|Type| String |
+|Default|/etc/hadoop/conf/hdfs-site.xml |
+|Effective|After restart system|
+
 * hdfs\_ip
 
 |Name| hdfs\_ip |
