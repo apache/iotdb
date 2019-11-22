@@ -38,7 +38,7 @@ public class TSFHadoopTest {
 
   private TSFInputFormat inputFormat = null;
 
-  private String tsfilePath = "example_mr.tsfile";
+  private String tsfilePath = "target/example_mr.tsfile";
 
   @Before
   public void setUp() throws Exception {
