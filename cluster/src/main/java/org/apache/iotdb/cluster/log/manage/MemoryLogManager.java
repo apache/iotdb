@@ -1,36 +1,25 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license agreements.  See the NOTICE file distributed with this work for additional information regarding copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at      http://www.apache.org/licenses/LICENSE-2.0  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the specific language governing permissions and limitations under the License.
  */
 
-package org.apache.iotdb.cluster.log;
+package org.apache.iotdb.cluster.log.manage;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.log.LogManager;
+import org.apache.iotdb.cluster.log.Snapshot;
 
 // TODO-Cluster: implement a serializable LogManager
-public class MemoryLogManager implements LogManager {
+public abstract class MemoryLogManager implements LogManager {
 
-  private long commitLogIndex = -1;
+  long commitLogIndex = -1;
 
-  private Deque<Log> logBuffer = new ArrayDeque<>();
+  Deque<Log> logBuffer = new ArrayDeque<>();
   private LogApplier logApplier;
 
   public MemoryLogManager(LogApplier logApplier) {
@@ -104,12 +93,12 @@ public class MemoryLogManager implements LogManager {
   }
 
   @Override
-  public Snapshot getSnapshot() {
-    return null;
+  public Log getLastLog() {
+    return logBuffer.isEmpty()? null : logBuffer.getLast();
   }
 
   @Override
-  public Log getLastLog() {
-    return logBuffer.isEmpty()? null : logBuffer.getLast();
+  public LogApplier getApplier() {
+    return logApplier;
   }
 }

@@ -7,7 +7,9 @@ package org.apache.iotdb.cluster.server;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.exception.NoHeaderVNodeException;
 import org.apache.iotdb.cluster.exception.NotInSameGroupException;
@@ -18,9 +20,12 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncProcessor;
+import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -36,7 +41,6 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   private int port;
   private PartitionTable partitionTable;
   private DataGroupMember.Factory dataMemberFactory;
-  private Node thisNode;
 
   public DataClusterServer(int port, DataGroupMember.Factory dataMemberFactory) {
     this.port = port;
@@ -142,6 +146,39 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
+  public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
+    if (!request.isSetHeader()) {
+      resultHandler.onError(new NoHeaderVNodeException());
+      return;
+    }
+
+    Node header = request.getHeader();
+    DataGroupMember member = getDataMember(header);
+    if (member == null) {
+      resultHandler.onError(new NotInSameGroupException(header, thisNode));
+    } else {
+      member.sendSnapshot(request, resultHandler);
+    }
+  }
+
+  @Override
+  public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler)
+      throws TException {
+    if (!request.isSetHeader()) {
+      resultHandler.onError(new NoHeaderVNodeException());
+      return;
+    }
+
+    Node header = request.getHeader();
+    DataGroupMember member = getDataMember(header);
+    if (member == null) {
+      resultHandler.onError(new NotInSameGroupException(header, thisNode));
+    } else {
+      member.pullSnapshot(request, resultHandler);
+    }
+  }
+
+  @Override
   AsyncProcessor getProcessor() {
     return new AsyncProcessor(this);
   }
@@ -160,6 +197,21 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   String getServerClientName() {
     return "DataServerThread-";
+  }
+
+  public void addNode(Node node) {
+    Iterator<Entry<Node, DataGroupMember>> entryIterator = headerGroupMap.entrySet().iterator();
+    synchronized (headerGroupMap) {
+      while (entryIterator.hasNext()) {
+        Entry<Node, DataGroupMember> entry = entryIterator.next();
+        DataGroupMember dataGroupMember = entry.getValue();
+        boolean shouldLeave = dataGroupMember.addNode(node);
+        if (shouldLeave) {
+          entryIterator.remove();
+          dataGroupMember.stop();
+        }
+      }
+    }
   }
 
   public void setPartitionTable(PartitionTable partitionTable) {

@@ -50,4 +50,11 @@ public class MetaHeartBeatThread extends HeartBeatThread {
 
     super.sendHeartbeat(node, client);
   }
+
+  @Override
+  void startElection() {
+    electionRequest.setLastLogTerm(raftMember.getLogManager().getLastLogTerm());
+    electionRequest.setLastLogIndex(raftMember.getLogManager().getCommitLogIndex());
+    super.startElection();
+  }
 }

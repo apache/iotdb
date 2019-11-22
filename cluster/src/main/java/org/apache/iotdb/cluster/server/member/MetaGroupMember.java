@@ -27,10 +27,10 @@ import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.cluster.log.LogManager;
-import org.apache.iotdb.cluster.log.MemoryLogManager;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
+import org.apache.iotdb.cluster.log.manage.SingleSnapshotLogManager;
+import org.apache.iotdb.cluster.log.manage.SingleSnapshotLogManager.SimpleSnapshot;
 import org.apache.iotdb.cluster.log.meta.AddNodeLog;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -41,6 +41,7 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
+import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
 import org.apache.iotdb.cluster.server.DataClusterServer;
@@ -84,7 +85,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private DataClusterServer dataClusterServer;
 
   // all data servers in this node shares the same partitioned data log manager
-  private LogManager dataLogManager;
   private LogApplier metaLogApplier = new MetaLogApplier(this);
   private LogApplier dataLogApplier = new DataLogApplier();
   private DataGroupMember.Factory dataMemberFactory;
@@ -101,14 +101,13 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     loadIdentifier();
 
     initLogManager();
-    dataMemberFactory = new Factory(protocolFactory, dataLogManager, this);
+    dataMemberFactory = new Factory(protocolFactory, this, dataLogApplier);
     initDataServers();
   }
 
   @Override
   void initLogManager() {
-    logManager = new MemoryLogManager(metaLogApplier);
-    dataLogManager = new MemoryLogManager(dataLogApplier);
+    logManager = new SingleSnapshotLogManager(metaLogApplier);
   }
 
   @Override
@@ -181,14 +180,24 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   public void applyAddNode(Node newNode) {
-    if (!allNodes.contains(newNode)) {
-      synchronized (allNodes) {
+    synchronized (allNodes) {
+      if (!allNodes.contains(newNode)) {
         registerNodeIdentifier(newNode, newNode.getNodeIdentifier());
         allNodes.add(newNode);
         saveNodes();
         // update the partition table
+        PartitionGroup newGroup;
         synchronized (partitionTable) {
-          partitionTable.addNode(newNode);
+          newGroup = partitionTable.addNode(newNode);
+        }
+        // TODO-Cluster serialize the table to the persist store
+        dataClusterServer.addNode(newNode);
+        if (newGroup.contains(thisNode)) {
+          try {
+            dataClusterServer.addDataGroupMember(dataMemberFactory.create(newGroup, thisNode));
+          } catch (IOException e) {
+            logger.error("Fail to create data member for new header {}", newNode, e);
+          }
         }
       }
     }
@@ -223,6 +232,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           setCharacter(NodeCharacter.FOLLOWER);
           setLastHeartBeatReceivedTime(System.currentTimeMillis());
           heartBeatService.submit(new HeartBeatThread(this));
+          // TODO-Cluster: pull data from the previous socket holders
           return;
         }
       } catch (TException e) {
@@ -260,6 +270,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         ByteBuffer partitionTableBuffer = ByteBuffer.wrap(resp.getPartitionTableBytes());
         partitionTable = new SocketPartitionTable(thisNode);
         partitionTable.deserialize(partitionTableBuffer);
+        partitionTable.setPreviousNodeMap(resp.getPreviousHolders());
 
         allNodes = partitionTable.getAllNodes();
         logger.info("Received cluster nodes from the leader: {}", allNodes);
@@ -316,7 +327,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         response.setRequirePartitionTable(true);
       }
     }
-    super.processValidHeartbeatReq(request, response, leaderTerm);
   }
 
   @Override
@@ -333,7 +343,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     if (response.isRequirePartitionTable()) {
       addBlindNode(receiver);
     }
-    super.processValidHeartbeatResp(response, receiver);
   }
 
   /**
@@ -398,12 +407,17 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       return;
     }
 
-    logger.debug("Received an AppendEntryRequest");
-    if (!checkRequestTerm(request, resultHandler)) {
-      return;
-    }
-
     super.appendEntry(request, resultHandler);
+  }
+
+  @Override
+  long appendEntry(Log log) {
+    long resp = super.appendEntry(log);
+
+    if (resp == Response.RESPONSE_AGREE && log instanceof AddNodeLog) {
+      metaLogApplier.apply(log);
+    }
+    return resp;
   }
 
   public Map<Integer, Node> getIdNodeMap() {
@@ -492,6 +506,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
               response.setPartitionTableBytes(partitionTable.serialize());
             }
             response.setRespNum((int) Response.RESPONSE_AGREE);
+            response.setPreviousHolders(partitionTable.getPreviousNodeMap());
             resultHandler.onComplete(response);
             logManager.commitLog(logManager.getLastLogIndex());
             return;
@@ -698,5 +713,15 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     return partitionTable;
   }
 
-
+  @Override
+  public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
+    SimpleSnapshot snapshot = new SimpleSnapshot();
+    try {
+      snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
+      applySnapshot(snapshot);
+      resultHandler.onComplete(null);
+    } catch (Exception e) {
+      resultHandler.onError(e);
+    }
+  }
 }

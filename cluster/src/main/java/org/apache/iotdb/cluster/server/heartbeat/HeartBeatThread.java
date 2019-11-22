@@ -36,7 +36,7 @@ public class HeartBeatThread implements Runnable {
 
   private RaftMember raftMember;
   HeartBeatRequest request = new HeartBeatRequest();
-  private ElectionRequest electionRequest = new ElectionRequest();
+  ElectionRequest electionRequest = new ElectionRequest();
 
   private Random random = new Random();
 
@@ -90,8 +90,8 @@ public class HeartBeatThread implements Runnable {
   private void sendHeartBeats() {
     synchronized (raftMember.getTerm()) {
       request.setTerm(raftMember.getTerm().get());
-      request.setCommitLogIndex(raftMember.getLogManager().getLastLogTerm());
       request.setLeader(raftMember.getThisNode());
+      request.setCommitLogIndex(raftMember.getLogManager().getLastLogTerm());
 
       sendHeartBeats(raftMember.getAllNodes());
     }
@@ -113,7 +113,6 @@ public class HeartBeatThread implements Runnable {
   }
 
   void sendHeartbeat(Node node, AsyncClient client) {
-
     try {
       client.sendHeartBeat(request, new HeartBeatHandler(raftMember, node));
     } catch (Exception e) {
@@ -140,7 +139,7 @@ public class HeartBeatThread implements Runnable {
   }
 
   // start one round of election
-  private void startElection() {
+  void startElection() {
     synchronized (raftMember.getTerm()) {
       long nextTerm = raftMember.getTerm().incrementAndGet();
       int quorumNum = raftMember.getAllNodes().size() / 2;
@@ -150,8 +149,6 @@ public class HeartBeatThread implements Runnable {
       AtomicInteger quorum = new AtomicInteger(quorumNum);
 
       electionRequest.setTerm(nextTerm);
-      electionRequest.setLastLogTerm(raftMember.getLogManager().getLastLogTerm());
-      electionRequest.setLastLogIndex(raftMember.getLogManager().getCommitLogIndex());
 
       requestVote(raftMember.getAllNodes(), electionRequest, nextTerm, quorum,
           electionTerminated, electionValid);

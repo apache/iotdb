@@ -93,7 +93,7 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
         terminated.set(true);
         if (voterTerm < currTerm) {
           // the rejection from a node with a smaller term means the log of this node falls behind
-          logger.info("Election {} rejected: The node has stale logs", currTerm);
+          logger.info("Election {} rejected: code {}", currTerm, voterTerm);
         } else {
           // the election is rejected by a node with a bigger term, update current term to it
           raftMember.getTerm().set(voterTerm);

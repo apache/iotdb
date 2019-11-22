@@ -65,6 +65,12 @@ public class PhysicalPlanLog extends Log {
     plan.deserializeFrom(buffer);
   }
 
+  @Override
+  public int calculateSocket() {
+    // TODO-Cluster implement
+    return 0;
+  }
+
   public PhysicalPlan getPlan() {
     return plan;
   }

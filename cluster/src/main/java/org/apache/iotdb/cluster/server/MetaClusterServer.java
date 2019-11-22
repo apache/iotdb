@@ -25,10 +25,13 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -47,7 +50,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   private IoTDB ioTDB;
 
 
-  public MetaClusterServer() throws IOException, TTransportException {
+  public MetaClusterServer() throws IOException {
     super();
     member = new MetaGroupMember(protocolFactory, thisNode);
     member.loadNodes();
@@ -122,6 +125,17 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   @Override
   public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
     member.appendEntry(request, resultHandler);
+  }
+
+  @Override
+  public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
+    member.sendSnapshot(request, resultHandler);
+  }
+
+  @Override
+  public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler)
+      throws TException {
+    member.pullSnapshot(request, resultHandler);
   }
 
 }

@@ -34,16 +34,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * CatchUpHandler check the result of appending a log in a catch-up task and decide to abort the
+ * LogCatchUpHandler check the result of appending a log in a catch-up task and decide to abort the
  * catch up or not.
  */
-public class CatchUpHandler implements AsyncMethodCallback<appendEntry_call> {
+public class LogCatchUpHandler implements AsyncMethodCallback<appendEntry_call> {
 
-  private static final Logger logger = LoggerFactory.getLogger(CatchUpHandler.class);
+  private static final Logger logger = LoggerFactory.getLogger(LogCatchUpHandler.class);
 
   private Node follower;
   private Log log;
-  private AtomicBoolean aborted;
   private AtomicBoolean appendSucceed;
   private RaftMember raftMember;
 
@@ -53,17 +52,17 @@ public class CatchUpHandler implements AsyncMethodCallback<appendEntry_call> {
       logger.debug("Received a catch-up result of {} from {}", log, follower);
       long resp = response.getResult();
       if (resp == RESPONSE_AGREE) {
-        synchronized (aborted) {
+        synchronized (appendSucceed) {
           appendSucceed.set(true);
-          aborted.notifyAll();
+          appendSucceed.notifyAll();
         }
         logger.debug("Succeeded to send log {}", log);
       } else if (resp == RESPONSE_LOG_MISMATCH) {
         // this is not probably possible
         logger.error("Log mismatch occurred when sending log {}", log);
-        synchronized (aborted) {
-          aborted.set(true);
-          aborted.notifyAll();
+        synchronized (appendSucceed) {
+          appendSucceed.set(false);
+          appendSucceed.notifyAll();
         }
       } else {
         // the follower's term has updated, which means a new leader is elected
@@ -75,9 +74,9 @@ public class CatchUpHandler implements AsyncMethodCallback<appendEntry_call> {
             raftMember.getTerm().set(currTerm);
           }
         }
-        synchronized (aborted) {
-          aborted.set(true);
-          aborted.notifyAll();
+        synchronized (appendSucceed) {
+          appendSucceed.set(false);
+          appendSucceed.notifyAll();
         }
         logger.warn("Catch-up aborted because leadership is lost");
       }
@@ -88,19 +87,15 @@ public class CatchUpHandler implements AsyncMethodCallback<appendEntry_call> {
 
   @Override
   public void onError(Exception exception) {
-    synchronized (aborted) {
-      aborted.set(true);
-      aborted.notifyAll();
+    synchronized (appendSucceed) {
+      appendSucceed.set(false);
+      appendSucceed.notifyAll();
     }
     logger.warn("Catch-up fails when sending log {}", log, exception);
   }
 
   public void setLog(Log log) {
     this.log = log;
-  }
-
-  public void setAborted(AtomicBoolean aborted) {
-    this.aborted = aborted;
   }
 
   public void setAppendSucceed(AtomicBoolean appendSucceed) {

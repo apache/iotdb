@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.log;
 
 
+import java.nio.ByteBuffer;
 
 /**
  * As we can only hold a certain amount of logs in memory, when the logs' size exceed the memory
@@ -30,6 +31,10 @@ package org.apache.iotdb.cluster.log;
  * historical logs, depending on the implementation.
  */
 //TODO-CLuster: implement the Snapshot mechanism
-public class Snapshot {
+public abstract class Snapshot {
+
+  public abstract ByteBuffer serialize();
+
+  public abstract void deserialize(ByteBuffer buffer);
 
 }

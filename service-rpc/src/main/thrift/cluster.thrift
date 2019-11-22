@@ -25,8 +25,8 @@ typedef i64 long
 
 // leader -> follower
 struct HeartBeatRequest {
-  1: required long term // leader's
-  2: required long commitLogIndex  // leader's
+  1: required long term // leader's meta log
+  2: required long commitLogIndex  // leader's meta log
   3: required Node leader
   4: required bool requireIdentifier
   5: required bool regenerateIdentifier
@@ -40,9 +40,9 @@ struct HeartBeatRequest {
 
 // follower -> leader
 struct HeartBeatResponse {
-  1: required long term // follower's
-  2: optional long lastLogIndex // follower's
-  3: optional long lastLogTerm
+  1: required long term
+  2: optional long lastLogIndex // follower's meta log
+  3: optional long lastLogTerm // follower's meta log
   // used to perform a catch up when necessary
   4: optional Node follower
   5: optional int followeIdentifier
@@ -62,6 +62,8 @@ struct ElectionRequest {
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
   4: optional Node header
+  5: optional long dataLogLastIndex
+  6: optional long dataLogLastTerm
 }
 
 // leader -> follower
@@ -89,6 +91,8 @@ struct AddNodeResponse {
   // add new node
   1: required int respNum
   2: optional binary partitionTableBytes
+  // previous holders of the sockets assigned to the new node
+  3: optional map<int, Node> previousHolders
 }
 
 struct Node {
@@ -96,6 +100,22 @@ struct Node {
   2: required int port
   3: required int nodeIdentifier
   4: required int dataPort
+}
+
+struct SendSnapshotRequest {
+  1: required binary snapshotBytes
+  // for data group
+  2: optional Node header
+}
+
+struct PullSnapshotRequest {
+  1: required list<int> requiredSockets
+  // for data group
+  2: optional Node header
+}
+
+struct PullSnapshotResp {
+  1: required binary snapshotBytes
 }
 
 service RaftService {
@@ -142,7 +162,12 @@ service RaftService {
   **/
   long appendEntry(1:AppendEntryRequest request)
 
+  void sendSnapshot(1:SendSnapshotRequest request)
+
+  PullSnapshotResp pullSnapshot(1:PullSnapshotRequest request)
 }
+
+
 
 service TSDataService extends RaftService {
 

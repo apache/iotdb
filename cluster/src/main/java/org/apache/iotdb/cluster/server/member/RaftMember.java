@@ -22,6 +22,8 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogManager;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.catchup.SnapshotCatchUpTask;
+import org.apache.iotdb.cluster.log.manage.SingleSnapshotLogManager.SimpleSnapshot;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -30,7 +32,7 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
-import org.apache.iotdb.cluster.server.LogCatchUpTask;
+import org.apache.iotdb.cluster.log.catchup.LogCatchUpTask;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
@@ -77,7 +79,13 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     catchUpService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
   }
 
-  abstract void initLogManager();
+  public LogManager getLogManager() {
+    return logManager;
+  }
+
+  void initLogManager() {
+
+  }
 
   public void stop() {
     if (heartBeatService == null) {
@@ -106,6 +114,24 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         }
       } else {
         processValidHeartbeatReq(request, response, leaderTerm);
+
+        response.setTerm(Response.RESPONSE_AGREE);
+        response.setFollower(thisNode);
+        response.setLastLogIndex(logManager.getLastLogIndex());
+        response.setLastLogTerm(logManager.getLastLogTerm());
+
+        synchronized (logManager) {
+          logManager.commitLog(request.getCommitLogIndex());
+        }
+        term.set(leaderTerm);
+        setLeader(request.getLeader());
+        if (character != NodeCharacter.FOLLOWER) {
+          setCharacter(NodeCharacter.FOLLOWER);
+        }
+        setLastHeartBeatReceivedTime(System.currentTimeMillis());
+        if (logger.isDebugEnabled()) {
+          logger.debug("Received heartbeat from a valid leader {}", request.getLeader());
+        }
       }
       resultHandler.onComplete(response);
     }
@@ -113,50 +139,20 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   @Override
   public void startElection(ElectionRequest electionRequest, AsyncMethodCallback resultHandler) {
-    long thatTerm = electionRequest.getTerm();
-    long thatLastLogId = electionRequest.getLastLogIndex();
-    long thatLastLogTerm = electionRequest.getLastLogTerm();
-    logger.info("Received an election request, term:{}, lastLogId:{}, lastLogTerm:{}", thatTerm,
-        thatLastLogId, thatLastLogTerm);
-
-
-
     synchronized (term) {
-      long response;
       long thisTerm = term.get();
       if (character != NodeCharacter.ELECTOR) {
         // only elector votes
         resultHandler.onComplete(thisTerm);
         return;
       }
-      // reject the election if one of the four holds:
-      // 1. the term of the candidate is no bigger than the voter's
-      // 2. the lastLogIndex of the candidate is smaller than the voter's
-      // 3. the lastLogIndex of the candidate equals to the voter's but its lastLogTerm is
-      // smaller than the voter's
-      long lastLogIndex = logManager.getLastLogIndex();
-      long lastLogTerm = logManager.getLastLogTerm();
-      if (thatTerm <= thisTerm
-          || thatLastLogId < lastLogIndex
-          || (thatLastLogId == lastLogIndex && thatLastLogTerm < lastLogTerm)) {
-        logger.debug("Rejected an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
-            thatTerm, thisTerm, thatLastLogId, lastLogIndex, thatLastLogTerm, lastLogTerm);
-        response = thisTerm;
-      } else {
-        logger.debug("Accepted an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
-            thatTerm, thisTerm, thatLastLogId, lastLogIndex, thatLastLogTerm, lastLogTerm);
-        term.set(thatTerm);
-        response = Response.RESPONSE_AGREE;
-        setCharacter(NodeCharacter.FOLLOWER);
-        lastHeartBeatReceivedTime = System.currentTimeMillis();
-        leader = null;
-      }
+      long response = processElectionRequest(electionRequest);
       logger.info("Sending response to the elector");
       resultHandler.onComplete(response);
     }
   }
 
-  boolean checkRequestTerm(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
+  private boolean checkRequestTerm(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
     long leaderTerm = request.getTerm();
     long localTerm;
 
@@ -181,6 +177,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   long appendEntry(Log log) {
+    long resp;
     synchronized (logManager) {
       Log lastLog = logManager.getLastLog();
       long previousLogIndex = log.getPreviousLogIndex();
@@ -194,7 +191,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           logger.debug("Append a new log {}, new term:{}, new index:{}", log, term.get(),
               logManager.getLastLogIndex());
         }
-        return Response.RESPONSE_AGREE;
+        resp = Response.RESPONSE_AGREE;
       } else if (lastLog.getPreviousLogIndex() == previousLogIndex
           && lastLog.getPreviousLogTerm() <= previousLogTerm) {
         // the incoming log points to the previous log of the local last log, and its term is
@@ -202,7 +199,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         logManager.replaceLastLog(log);
         logger.debug("Replaced the last log with {}, new term:{}, new index:{}", log,
             previousLogTerm, previousLogIndex);
-        return Response.RESPONSE_AGREE;
+        resp = Response.RESPONSE_AGREE;
       } else {
         // the incoming log points to an illegal position, reject it
         logger.debug("Cannot append the log because the last log does not match, "
@@ -212,9 +209,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
             lastLog.getPreviousLogTerm(), lastLog.getPreviousLogIndex(),
             log.getCurrLogTerm(), log.getPreviousLogIndex(),
             previousLogTerm, previousLogIndex);
-        return Response.RESPONSE_LOG_MISMATCH;
+        resp = Response.RESPONSE_LOG_MISMATCH;
       }
     }
+    return resp;
   }
 
   @Override
@@ -308,59 +306,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     OK, TIME_OUT, LEADERSHIP_STALE
   }
 
-  /**
-   * Update the followers' log by sending logs whose index >= followerLastLogIndex to the follower.
-   * If some of the logs are not in memory, also send the snapshot.
-   * @param follower
-   * @param followerLastLogIndex
-   */
-  private void catchUp(Node follower, long followerLastLogIndex) {
-    // for one follower, there is at most one ongoing catch-up
-    synchronized (follower) {
-      // check if the last catch-up is still ongoing
-      Long lastCatchupResp = lastCatchUpResponseTime.get(follower);
-      if (lastCatchupResp != null
-          && System.currentTimeMillis() - lastCatchupResp < CONNECTION_TIME_OUT_MS) {
-        logger.debug("Last catch up of {} is ongoing", follower);
-        return;
-      } else {
-        // record the start of the catch-up
-        lastCatchUpResponseTime.put(follower, System.currentTimeMillis());
-      }
-    }
-    if (followerLastLogIndex == -1) {
-      // if the follower does not have any logs, send from the first one
-      followerLastLogIndex = 0;
-    }
-
-    AsyncClient client = connectNode(follower);
-    if (client != null) {
-      List<Log> logs;
-      boolean allLogsValid;
-      Snapshot snapshot = null;
-      synchronized (logManager) {
-        allLogsValid = logManager.logValid(followerLastLogIndex);
-        logs = logManager.getLogs(followerLastLogIndex, logManager.getLastLogIndex());
-        if (!allLogsValid) {
-          snapshot = logManager.getSnapshot();
-        }
-      }
-
-      if (allLogsValid) {
-        if (logger.isDebugEnabled()) {
-          logger.debug("Make {} catch up with {} cached logs", follower, logs.size());
-        }
-        catchUpService.submit(new LogCatchUpTask(logs, follower, this));
-      } else {
-        logger.debug("Logs in {} are too old, catch up with snapshot", follower);
-        // TODO-Cluster doCatchUp(logs, node, snapshot);
-      }
-    } else {
-      lastCatchUpResponseTime.remove(follower);
-      logger.warn("Catch-up failed: node {} is currently unavailable", follower);
-    }
-  }
-
   abstract AsyncClient getAsyncClient(TNonblockingTransport transport);
 
   public AsyncClient connectNode(Node node) {
@@ -401,10 +346,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return term;
   }
 
-  public LogManager getLogManager() {
-    return logManager;
-  }
-
   public long getLastHeartBeatReceivedTime() {
     return lastHeartBeatReceivedTime;
   }
@@ -415,10 +356,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   public void setTerm(AtomicLong term) {
     this.term = term;
-  }
-
-  public void setLogManager(LogManager logManager) {
-    this.logManager = logManager;
   }
 
   public void setLastHeartBeatReceivedTime(long lastHeartBeatReceivedTime) {
@@ -443,18 +380,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
 
   public void processValidHeartbeatResp(HeartBeatResponse response, Node receiver) {
-    Node follower = response.getFollower();
-    long lastLogIdx = response.getLastLogIndex();
-    long lastLogTerm = response.getLastLogTerm();
-    long localLastLogIdx = getLogManager().getLastLogIndex();
-    long localLastLogTerm = getLogManager().getLastLogTerm();
-    logger.debug("Node {} is still alive, log index: {}/{}, log term: {}/{}", follower, lastLogIdx
-        ,localLastLogIdx, lastLogTerm, localLastLogTerm);
 
-    if (localLastLogIdx > lastLogIdx ||
-        lastLogIdx == localLastLogIdx && localLastLogTerm > lastLogTerm) {
-      catchUp(follower, lastLogIdx);
-    }
   }
 
   /**
@@ -463,30 +389,12 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   public void onElectionWins() {
 
   }
-
   void processValidHeartbeatReq(HeartBeatRequest request, HeartBeatResponse response,
       long leaderTerm) {
 
-    response.setTerm(Response.RESPONSE_AGREE);
-    response.setFollower(thisNode);
-    response.setLastLogIndex(logManager.getLastLogIndex());
-    response.setLastLogTerm(logManager.getLastLogTerm());
-
-    synchronized (logManager) {
-      logManager.commitLog(request.getCommitLogIndex());
-    }
-    term.set(leaderTerm);
-    setLeader(request.getLeader());
-    if (character != NodeCharacter.FOLLOWER) {
-      setCharacter(NodeCharacter.FOLLOWER);
-    }
-    setLastHeartBeatReceivedTime(System.currentTimeMillis());
-    if (logger.isDebugEnabled()) {
-      logger.debug("Received heartbeat from a valid leader {}", request.getLeader());
-    }
   }
 
-  public void retireFromLeader(long newTerm) {
+  private void retireFromLeader(long newTerm) {
     synchronized (term) {
       long currTerm = term.get();
       // confirm that the heartbeat of the new leader hasn't come
@@ -495,6 +403,104 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         setCharacter(NodeCharacter.FOLLOWER);
         setLeader(null);
       }
+    }
+  }
+
+  long processElectionRequest(ElectionRequest electionRequest) {
+    // reject the election if one of the four holds:
+    // 1. the term of the candidate is no bigger than the voter's
+    // 2. the lastLogIndex of the candidate is smaller than the voter's
+    // 3. the lastLogIndex of the candidate equals to the voter's but its lastLogTerm is
+    // smaller than the voter's
+    long thatTerm = electionRequest.getTerm();
+    long thatLastLogId = electionRequest.getLastLogIndex();
+    long thatLastLogTerm = electionRequest.getLastLogTerm();
+    logger.info("Received an election request, term:{}, lastLogId:{}, lastLogTerm:{}", thatTerm,
+        thatLastLogId, thatLastLogTerm);
+
+    long lastLogIndex = logManager.getLastLogIndex();
+    long lastLogTerm = logManager.getLastLogTerm();
+    long thisTerm = term.get();
+    return verifyElector(thisTerm, lastLogIndex, lastLogTerm, thatTerm, thatLastLogId, thatLastLogTerm);
+  }
+
+  long verifyElector(long thisTerm, long thisLastLogIndex, long thisLastLogTerm,
+      long thatTerm, long thatLastLogId, long thatLastLogTerm) {
+    long response;
+    if (thatTerm <= thisTerm
+        || thatLastLogTerm < thisLastLogTerm
+        || (thatLastLogTerm == thisLastLogTerm && thatLastLogId < thisLastLogIndex)) {
+      logger.debug("Rejected an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
+          thatTerm, thisTerm, thatLastLogId, thisLastLogIndex, thatLastLogTerm, thisLastLogTerm);
+      response = thisTerm;
+    } else {
+      logger.debug("Accepted an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
+          thatTerm, thisTerm, thatLastLogId, thisLastLogIndex, thatLastLogTerm, thisLastLogTerm);
+      term.set(thatTerm);
+      response = Response.RESPONSE_AGREE;
+      setCharacter(NodeCharacter.FOLLOWER);
+      lastHeartBeatReceivedTime = System.currentTimeMillis();
+      leader = null;
+    }
+    return response;
+  }
+
+  /**
+   * Update the followers' log by sending logs whose index >= followerLastLogIndex to the follower.
+   * If some of the logs are not in memory, also send the snapshot.
+   * @param follower
+   * @param followerLastLogIndex
+   */
+  public void catchUp(Node follower, long followerLastLogIndex) {
+    // for one follower, there is at most one ongoing catch-up
+    synchronized (follower) {
+      // check if the last catch-up is still ongoing
+      Long lastCatchupResp = lastCatchUpResponseTime.get(follower);
+      if (lastCatchupResp != null
+          && System.currentTimeMillis() - lastCatchupResp < CONNECTION_TIME_OUT_MS) {
+        logger.debug("Last catch up of {} is ongoing", follower);
+        return;
+      } else {
+        // record the start of the catch-up
+        lastCatchUpResponseTime.put(follower, System.currentTimeMillis());
+      }
+    }
+    if (followerLastLogIndex == -1) {
+      // if the follower does not have any logs, send from the first one
+      followerLastLogIndex = 0;
+    }
+
+    RaftService.AsyncClient client = connectNode(follower);
+    if (client != null) {
+      List<Log> logs;
+      boolean allLogsValid;
+      Snapshot snapshot = null;
+      synchronized (logManager) {
+        allLogsValid = logManager.logValid(followerLastLogIndex);
+        logs = logManager.getLogs(followerLastLogIndex, logManager.getLastLogIndex());
+        if (!allLogsValid) {
+          snapshot = logManager.getSnapshot();
+        }
+      }
+
+      if (allLogsValid) {
+        if (logger.isDebugEnabled()) {
+          logger.debug("Make {} catch up with {} cached logs", follower, logs.size());
+        }
+        catchUpService.submit(new LogCatchUpTask(logs, follower, this));
+      } else {
+        logger.debug("Logs in {} are too old, catch up with snapshot", follower);
+        catchUpService.submit(new SnapshotCatchUpTask(logs, snapshot, follower, this));
+      }
+    } else {
+      lastCatchUpResponseTime.remove(follower);
+      logger.warn("Catch-up failed: node {} is currently unavailable", follower);
+    }
+  }
+
+  void applySnapshot(SimpleSnapshot snapshot) {
+    for (Log log : snapshot.getSnapshot()) {
+      logManager.getApplier().apply(log);
     }
   }
 }

@@ -101,4 +101,9 @@ public class AddNodeLog extends Log {
     port = buffer.getInt();
     nodeIdentifier = buffer.getInt();
   }
+
+  @Override
+  public int calculateSocket() {
+    return 0;
+  }
 }
