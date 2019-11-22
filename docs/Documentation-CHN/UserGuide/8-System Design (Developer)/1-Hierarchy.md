@@ -163,8 +163,6 @@ PageHeader 结构
 |开始时间(startTime)|long|
 |结束时间(endTime)|long|
 |数据类型(tsDataType)|short|
-|版本(version)|long|
-|删除时间(deletedAt)|long|
 |chunk的统计信息|TsDigest|
 
 ###### TsDigest
