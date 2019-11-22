@@ -62,14 +62,22 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
   }
 
   public void select(boolean useTightBound) throws IOException {
-    super.selectByUnseq(useTightBound);
+    firstOverlapIdx = Integer.MAX_VALUE;
+    lastOverlapIdx = Integer.MIN_VALUE;
 
+    tmpFirstOverlapIdx = Integer.MAX_VALUE;
+    tmpLastOverlapIdx = Integer.MIN_VALUE;
+
+    super.selectByUnseq(useTightBound);
+    logger.info("After selecting by unseq, first seq index:{}, last seq index:{}", firstOverlapIdx, lastOverlapIdx);
     if (firstOverlapIdx <= lastOverlapIdx) {
       // selectByUnseq has found candidates, check if we can extend the selection
       extendCurrentSelection(useTightBound);
+      logger.info("After seq extension, first seq index:{}, last seq index:{}", firstOverlapIdx, lastOverlapIdx);
     } else {
       // try selecting only seq files as candidates
       selectBySeq(useTightBound);
+      logger.info("After seq selection, first seq index:{}, last seq index:{}", firstOverlapIdx, lastOverlapIdx);
     }
     for (int i = firstOverlapIdx; i <= lastOverlapIdx; i++) {
       selectedSeqFiles.add(resource.getSeqFiles().get(i));
@@ -77,7 +85,7 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
   }
 
   private void selectBySeq(boolean useTightBound) throws IOException {
-    for (int i = 0; i < resource.getSeqFiles().size() - 1; i ++) {
+    for (int i = 0; i < resource.getSeqFiles().size() - 1 && timeConsumption < timeLimit; i ++) {
       // try to find candidates starting from i
       TsFileResource seqFile = resource.getSeqFiles().get(i);
       long fileCost = calculateSeqFileCost(seqFile, useTightBound);
@@ -95,24 +103,29 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
           lastOverlapIdx = Integer.MIN_VALUE;
         }
       }
+      timeConsumption = System.currentTimeMillis() - startTime;
     }
   }
 
   // if we have selected seqFiles[3] to seqFiles[6], check if we can add seqFiles[7] into the
   // selection without exceeding the budget
   private void extendCurrentSelection(boolean useTightBound) throws IOException {
-    for (int i = lastOverlapIdx + 1; i < resource.getSeqFiles().size(); i++) {
+    for (int i = lastOverlapIdx + 1; i < resource.getSeqFiles().size() && timeConsumption < timeLimit; i++) {
       TsFileResource seqFile = resource.getSeqFiles().get(i);
       long fileCost = calculateSeqFileCost(seqFile, useTightBound);
+      logger.debug("Try extending seq file {}", seqFile);
 
       if (fileCost + totalCost < memoryBudget) {
         maxSeqFileCost = tempMaxSeqFileCost;
         totalCost += fileCost;
         lastOverlapIdx++;
+        logger.debug("Extended seq file {}", seqFile);
       } else {
         tempMaxSeqFileCost = maxSeqFileCost;
+        logger.debug("Cannot extend seq file {}", seqFile);
         break;
       }
+      timeConsumption = System.currentTimeMillis() - startTime;
     }
   }
 

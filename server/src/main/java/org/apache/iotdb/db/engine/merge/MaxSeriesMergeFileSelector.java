@@ -22,6 +22,8 @@ package org.apache.iotdb.db.engine.merge;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
@@ -48,6 +50,10 @@ public class MaxSeriesMergeFileSelector<T extends IMergeFileSelector> implements
   private int concurrentMergeNum;
   private long totalCost;
 
+  private long startTime;
+  private long timeConsumption;
+  private long timeLimit;
+
 
   public MaxSeriesMergeFileSelector(T baseSelector) {
     this.baseSelector = baseSelector;
@@ -56,7 +62,9 @@ public class MaxSeriesMergeFileSelector<T extends IMergeFileSelector> implements
 
   @Override
   public void select() throws MergeException {
-    long startTime = System.currentTimeMillis();
+    startTime = System.currentTimeMillis();
+    timeLimit = IoTDBDescriptor.getInstance().getConfig().getMergeFileSelectionTimeBudget();
+    timeConsumption = 0;
     try {
       logger.info("Selecting merge candidates from {} seqFile, {} unseqFiles",
           resource.getSeqFiles().size(),
@@ -126,7 +134,7 @@ public class MaxSeriesMergeFileSelector<T extends IMergeFileSelector> implements
   private void binSearch() throws IOException, MergeException {
     int lb = 0;
     int ub = MAX_SERIES_NUM + 1;
-    while (true) {
+    while (timeConsumption < timeLimit) {
       int mid = (lb + ub) / 2;
       if (mid == lb) {
         break;
@@ -151,6 +159,7 @@ public class MaxSeriesMergeFileSelector<T extends IMergeFileSelector> implements
         lastTotalMemoryCost = baseSelector.getTotalCost();
         lb = mid;
       }
+      timeConsumption = System.currentTimeMillis() - startTime;
     }
     concurrentMergeNum = lb;
     totalCost = lastTotalMemoryCost;

@@ -62,10 +62,18 @@ public abstract class BaseFileSelector implements IMergeFileSelector{
   protected int seqSelectedNum;
 
   protected TmpSelectedSeqIterable tmpSelectedSeqIterable;
+  protected long startTime = System.currentTimeMillis();
+  protected long timeConsumption = 0;
+  protected long timeLimit = 0;
 
   @Override
   public void select() throws MergeException {
-    long startTime = System.currentTimeMillis();
+    startTime = System.currentTimeMillis();
+    timeConsumption = 0;
+    timeLimit = IoTDBDescriptor.getInstance().getConfig().getMergeFileSelectionTimeBudget();
+    if (timeLimit < 0) {
+      timeLimit = Long.MAX_VALUE;
+    }
     try {
       logger.info("Selecting merge candidates from {} seqFile, {} unseqFiles",
           resource.getSeqFiles().size(), resource.getUnseqFiles().size());
@@ -101,12 +109,7 @@ public abstract class BaseFileSelector implements IMergeFileSelector{
     totalCost = 0;
 
     int unseqIndex = 0;
-    long startTime = System.currentTimeMillis();
-    long timeConsumption = 0;
-    long timeLimit = IoTDBDescriptor.getInstance().getConfig().getMergeFileSelectionTimeBudget();
-    if (timeLimit < 0) {
-      timeLimit = Long.MAX_VALUE;
-    }
+
     while (unseqIndex < resource.getUnseqFiles().size() && timeConsumption < timeLimit) {
       // select next unseq files
       TsFileResource unseqFile = resource.getUnseqFiles().get(unseqIndex);
