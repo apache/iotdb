@@ -34,7 +34,7 @@
   - The format is `int size` plus `String literal`. Size can be zero.
   - Size equals the number of bytes this string will take, and it may not equal to the length of the string. 
   - For example "sensor_1" will be stored as `00 00 00 08` plus the encoding(ASCII) of "sensor_1".
-  - Note that for the "Magic String"(file signature) "TsFilev0.8.0", the size(12) and encoding(ASCII)
+  - Note that for the "Magic String"(file signature) "TsFile000001", the size(12) and encoding(ASCII)
     is fixed so there is no need to put the size before this string literal.
 - **Data Type Hardcode**
   - 0: BOOLEAN
