@@ -49,10 +49,10 @@ public class TSFHiveInputFormatTest {
   private long startOffset;
   private long endOffset;
   private String[] measurementIds;
-  private String filePath = "test.tsfile";
+  private String filePath = "target/test.tsfile";
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp(){
     TsFileTestHelper.writeTsFile(filePath);
     inputFormat = new TSFHiveInputFormat();
     job = new JobConf();

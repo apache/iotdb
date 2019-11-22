@@ -39,7 +39,7 @@ public class TSFHiveRecordReaderTest {
 
   private TSFHiveRecordReader tsfHiveRecordReader;
   private String deviceId;
-  private String filePath = "test.tsfile";
+  private String filePath = "target/test.tsfile";
 
 
   @Before
