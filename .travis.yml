@@ -91,9 +91,9 @@ matrix:
 
     - os: windows
       language: c
-      name: win-oraclejdk8
+      name: win-openjdk11
       before_install:
-        - choco install jdk8 -params 'installdir=c:\\jdk8'
+        -  choco install openjdk11 --version=11.0.4.111 -y
         - wget --no-check-certificate https://www-eu.apache.org/dist/maven/maven-3/3.6.2/binaries/apache-maven-3.6.2-bin.zip
         - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.2-bin.zip -o/c/mvn362
         - mkdir C:\hadoop\bin
@@ -120,9 +120,9 @@ matrix:
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -o C:\hadoop\bin
 
       before_script:
-        - export "JAVA_HOME=/c/jdk8"
-        - export "PATH=/c/jdk8/bin:$PATH"
-        - export "PATH=/c/jdk8/jre/bin:$PATH"
+        - export "JAVA_HOME=/C/Program Files/OpenJDK/openjdk-11u-11.0.4_11"
+        - export "PATH=$JAVA_HOME/bin:$PATH"
+        - export "PATH=$JAVA_HOME/jre/bin:$PATH"
         - export "MAVEN_HOME=/c/mvn362/apache-maven-3.6.2"
         - export "M2_HOME=/c/mvn362/apache-maven-3.6.2"
         - export "PATH=/c/mvn362/apache-maven-3.6.2/bin:$PATH"
@@ -133,7 +133,7 @@ matrix:
         - mvn -version
         # Output something every 10 minutes or Travis kills the job
         - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
-        - mvn -B clean integration-test
+        - travis_wait 40 mvn -B clean integration-test
         # Killing background sleep loop
         - kill %1
 
