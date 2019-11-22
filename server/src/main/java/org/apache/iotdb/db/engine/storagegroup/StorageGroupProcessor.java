@@ -1028,7 +1028,7 @@ public class StorageGroupProcessor {
         }
         return;
       }
-      if (unSequenceFileList.isEmpty() || sequenceFileList.isEmpty()) {
+      if (unSequenceFileList.isEmpty() && sequenceFileList.isEmpty()) {
         logger.info("{} no files to be merged", storageGroupName);
         return;
       }
