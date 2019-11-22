@@ -59,6 +59,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
@@ -140,10 +141,31 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       case LOAD_CONFIGURATION:
         IoTDBDescriptor.getInstance().loadHotModifiedProps();
         return true;
+      case LOAD_FILES:
+        operateLoadFiles((OperateFilePlan) plan);
+        return true;
+      case REMOVE_FILE:
+        operateRemoveFile((OperateFilePlan) plan);
+        return true;
+      case MOVE_FILE:
+        operateMoveFile((OperateFilePlan) plan);
+        return true;
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
     }
+  }
+
+  private void operateLoadFiles(OperateFilePlan plan){
+
+  }
+
+  private void operateRemoveFile(OperateFilePlan plan){
+
+  }
+
+  private void operateMoveFile(OperateFilePlan plan){
+
   }
 
   private void operateTTL(SetTTLPlan plan) throws QueryProcessException {

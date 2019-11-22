@@ -36,6 +36,7 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
@@ -510,5 +511,51 @@ public class PhysicalPlanTest {
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     ShowPlan plan = (ShowPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals("SHOW FLUSH_TASK_INFO", plan.toString());
+  }
+
+  @Test
+  public void testLoadFiles() throws QueryProcessException, MetadataException {
+    String metadata = "load /user/iotdb/data/213213441243-1-2.tsfile";
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(
+        "OperateFilePlan{file=/user/iotdb/data/213213441243-1-2.tsfile, targetDir= null, operatorType=LOAD_FILES}",
+        plan.toString());
+    metadata = "load C:\\\\iotdb\\\\data\\\\213213441243-1-2.tsfile";
+    plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(
+        "OperateFilePlan{file=C:\\\\iotdb\\\\data\\\\213213441243-1-2.tsfile, targetDir= null, operatorType=LOAD_FILES}",
+        plan.toString());
+  }
+
+  @Test
+  public void testRemoveFile() throws QueryProcessException, MetadataException {
+    String metadata = "remove /user/iotdb/data/213213441243-1-2.tsfile";
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(
+        "OperateFilePlan{file=/user/iotdb/data/213213441243-1-2.tsfile, targetDir= null, operatorType=REMOVE_FILE}",
+        plan.toString());
+    metadata = "remove C:\\\\iotdb\\\\data\\\\213213441243-1-2.tsfile";
+    plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(
+        "OperateFilePlan{file=C:\\\\iotdb\\\\data\\\\213213441243-1-2.tsfile, targetDir= null, operatorType=REMOVE_FILE}",
+        plan.toString());
+
+  }
+
+  @Test
+  public void testMoveFile() throws QueryProcessException, MetadataException {
+    String metadata = "move /user/iotdb/data/213213441243-1-2.tsfile /user/backup";
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(
+        "OperateFilePlan{file=/user/iotdb/data/213213441243-1-2.tsfile, targetDir=/user/backup, operatorType=MOVE_FILE}",
+        plan.toString());
+    metadata = "move C:\\\\iotdb\\\\data\\\\213213441243-1-2.tsfile C:\\\\backup";
+    plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(
+        "OperateFilePlan{file=C:\\\\iotdb\\\\data\\\\213213441243-1-2.tsfile, targetDir=C:\\\\backup, operatorType=MOVE_FILE}",
+        plan.toString());
   }
 }

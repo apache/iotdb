@@ -261,6 +261,14 @@ K_LOAD
     : L O A D
     ;
 
+K_REMOVE
+    : R E M O V E
+    ;
+
+K_MOVE
+    : M O V E
+    ;
+
 K_WATERMARK_EMBEDDING
     : W A T E R M A R K '_' E M B E D D I N G
     ;
@@ -451,12 +459,9 @@ INT
     : NUM+
     ;
 
-fragment
-NUM
+fragment NUM
     :   '0'..'9'
     ;
-
-
 
 
 // ***************************
@@ -574,4 +579,12 @@ WS  :   ( ' '
 DURATION
     :
     (NUM+ (Y|M O|W|D|H|M|S|M S|U S|N S))+
+    ;
+
+FILE
+    :  (('a'..'z'| 'A'..'Z')(':')?)* (('\\' | '/')+ PATH_FRAGMENT) +
+    ;
+
+fragment PATH_FRAGMENT
+    : ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'-'|'.')*
     ;

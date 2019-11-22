@@ -110,6 +110,9 @@ tokens{
     TOK_LOAD_CONFIGURATION;
     TOK_DYNAMIC_PARAMETER;
     TOK_FLUSH_TASK_INFO;
+    TOK_LOAD_FILES;
+    TOK_REMOVE_FILE;
+    TOK_MOVE_FILE;
 }
 
 @header{
@@ -286,6 +289,7 @@ sqlStatement
     | administrationStatement
     | configurationStatement
     | showStatement
+    | operateFileStatement
     ;
 
 dmlStatement
@@ -775,6 +779,14 @@ loadConfigurationStatement
     -> ^(TOK_LOAD_CONFIGURATION)
     ;
 
+/*
+****
+*************
+Show info
+*************
+****
+*/
+
 showStatement
     : showFlushTaskInfo
     | showDynamicParameter
@@ -793,11 +805,39 @@ showDynamicParameter
 /*
 ****
 *************
-TTL
+Operate file
 *************
 ****
 */
 
+operateFileStatement
+    : loadFiles
+    | removeFile
+    | moveFile
+    ;
+
+loadFiles
+    : K_LOAD path=FILE
+    -> ^(TOK_LOAD_FILES $path)
+    ;
+
+removeFile
+    : K_REMOVE filename=FILE
+    -> ^(TOK_REMOVE_FILE $filename)
+    ;
+
+moveFile
+    : K_MOVE filename=FILE dir=FILE
+    -> ^(TOK_MOVE_FILE $filename $dir)
+    ;
+
+/*
+****
+*************
+TTL
+*************
+****
+*/
 ttlStatement
     : setTTLStatement
     | unsetTTLStatement

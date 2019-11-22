@@ -53,11 +53,14 @@ import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LINK;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LIST;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LOAD;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LOAD_CONFIGURATION;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_LOAD_FILES;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_MOVE_FILE;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PATH;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PREVIOUS;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PRIVILEGES;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_PROPERTY;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_QUERY;
+import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_REMOVE_FILE;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_REVOKE;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_REVOKE_WATERMARK_EMBEDDING;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_ROLE;
@@ -76,6 +79,7 @@ import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_UPDATE;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_USER;
 import static org.apache.iotdb.db.sql.parse.TqlParser.TOK_WHERE;
 
+import java.io.File;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -108,7 +112,10 @@ import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
+import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
+import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
@@ -285,6 +292,16 @@ public class LogicalGenerator {
         return;
       case TOK_SHOW:
         analyzeShow(astNode);
+        return;
+      case TOK_LOAD_FILES:
+        initializedOperator = new LoadFilesOperator(new File(astNode.getChild(0).getText()));
+        return;
+      case TOK_REMOVE_FILE:
+        initializedOperator = new RemoveFileOperator(new File(astNode.getChild(0).getText()));
+        return;
+      case TOK_MOVE_FILE:
+        initializedOperator = new MoveFileOperator(new File(astNode.getChild(0).getText()),
+            new File(astNode.getChild(1).getText()));
         return;
       default:
         throw new QueryProcessException("Not supported TqlParser type " + token.getText());
