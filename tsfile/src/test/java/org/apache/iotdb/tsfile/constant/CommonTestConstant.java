@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.utils;
+package org.apache.iotdb.tsfile.constant;
 
 import java.util.Random;
 

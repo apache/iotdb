@@ -26,6 +26,7 @@ import java.util.Scanner;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.constant.OutputTestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -42,7 +43,7 @@ public class FileGenerator {
   public static int ROW_COUNT = 1000;
   public static TsFileWriter innerWriter;
   public static String inputDataFile;
-  public static String outputDataFile = "target/perTestOutputData.tsfile";
+  public static String outputDataFile = OutputTestConstant.BASE_OUTPUT_PATH.concat("perTestOutputData.tsfile");
   public static String errorOutputDataFile;
   public static Schema schema;
   public static int oldMaxNumberOfPointsInPage;
@@ -65,8 +66,8 @@ public class FileGenerator {
   }
 
   public static void prepare() throws IOException {
-    inputDataFile = "target/perTestInputData";
-    errorOutputDataFile = "target/perTestErrorOutputData.tsfile";
+    inputDataFile = OutputTestConstant.BASE_OUTPUT_PATH.concat("perTestInputData");
+    errorOutputDataFile = OutputTestConstant.BASE_OUTPUT_PATH.concat("perTestErrorOutputData.tsfile");
     generateTestData();
     generateSampleInputDataFile();
   }

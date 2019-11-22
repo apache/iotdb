@@ -29,6 +29,7 @@ import java.util.Random;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
+import org.apache.iotdb.tsfile.constant.OutputTestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -74,9 +75,9 @@ public class WriteTest {
 
   @Before
   public void prepare() throws IOException, WriteProcessException {
-    inputDataFile = "target/writeTestInputData";
-    outputDataFile = "target/writeTestOutputData.tsfile";
-    errorOutputDataFile = "target/writeTestErrorOutputData.tsfile";
+    inputDataFile = OutputTestConstant.BASE_OUTPUT_PATH.concat("writeTestInputData");
+    outputDataFile = OutputTestConstant.BASE_OUTPUT_PATH.concat("writeTestOutputData.tsfile");
+    errorOutputDataFile = OutputTestConstant.BASE_OUTPUT_PATH.concat("writeTestErrorOutputData.tsfile");
     // for each row, flush page forcely
     prePageSize = conf.getPageSizeInByte();
     conf.setPageSizeInByte(0);

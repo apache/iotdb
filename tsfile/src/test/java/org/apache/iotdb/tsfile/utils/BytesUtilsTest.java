@@ -27,6 +27,8 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
+import org.apache.iotdb.tsfile.constant.CommonTestConstant;
 import org.junit.Test;
 
 public class BytesUtilsTest {

@@ -30,6 +30,7 @@ import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
+import org.apache.iotdb.tsfile.constant.OutputTestConstant;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -54,7 +55,7 @@ public class TsFileGeneratorForTest {
   private static final Logger LOG = LoggerFactory.getLogger(TsFileGeneratorForTest.class);
   public static TsFileWriter innerWriter;
   public static String inputDataFile;
-  public static String outputDataFile = "target/testTsFile.tsfile";
+  public static String outputDataFile = OutputTestConstant.BASE_OUTPUT_PATH.concat("testTsFile.tsfile");
   public static String errorOutputDataFile;
   private static int rowCount;
   private static int chunkGroupSize;
@@ -76,8 +77,8 @@ public class TsFileGeneratorForTest {
   }
 
   public static void prepare(int minrowCount, int maxRowCount) throws IOException {
-    inputDataFile = "target/perTestInputData";
-    errorOutputDataFile = "target/perTestErrorOutputData.tsfile";
+    inputDataFile = OutputTestConstant.BASE_OUTPUT_PATH.concat("perTestInputData");
+    errorOutputDataFile = OutputTestConstant.BASE_OUTPUT_PATH.concat("perTestErrorOutputData.tsfile");
     generateSampleInputDataFile(minrowCount, maxRowCount);
   }
 
