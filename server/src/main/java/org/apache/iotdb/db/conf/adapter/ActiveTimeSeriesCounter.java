@@ -66,7 +66,7 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
     } catch (Exception e) {
       storageGroupHllMap.putIfAbsent(storageGroup, new HyperLogLog(LOG2M));
       storageGroupHllMap.get(storageGroup).offer(path);
-      LOGGER.error("Storage group {} registers active time series {} failed", storageGroup, path,
+      LOGGER.warn("Storage group {} registers active time series {} failed", storageGroup, path,
           e);
     }
   }
@@ -99,7 +99,7 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
       // initialize the HLL counter
       storageGroupHllMap.put(storageGroup, new HyperLogLog(LOG2M));
     } catch (Exception e) {
-      LOGGER.error("Update {} active ratio failed", storageGroup, e);
+      LOGGER.warn("Update {} active ratio failed", storageGroup, e);
     } finally {
       lock.writeLock().unlock();
     }

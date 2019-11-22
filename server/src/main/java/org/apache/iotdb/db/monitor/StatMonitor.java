@@ -151,7 +151,7 @@ public class StatMonitor implements IService {
   }
 
   public void recovery() {
-    // currently we do not persist monitor metrics data
+    // currently we do not need do extra work to recovery
   }
 
   private void activate() {
