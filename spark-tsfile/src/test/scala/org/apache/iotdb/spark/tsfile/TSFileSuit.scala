@@ -36,7 +36,7 @@ import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 class TSFileSuit extends FunSuite with BeforeAndAfterAll {
 
-  private val baseFolder = "suitTestBaseDir"
+  private val baseFolder = "target/suitTestBaseDir"
   private val tsfileFolder1 = baseFolder + "/tsfileFolder1"
   private val tsfile1 = tsfileFolder1 + "/test1.tsfile"
   private val tsfile2 = tsfileFolder1 + "/test2.tsfile"

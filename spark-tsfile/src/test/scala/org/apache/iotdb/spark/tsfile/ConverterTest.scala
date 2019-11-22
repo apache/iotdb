@@ -40,7 +40,7 @@ import org.junit.Assert
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 class ConverterTest extends FunSuite with BeforeAndAfterAll {
-  private val tsfileFolder = "../spark/src/test/resources/ConverterTest"
+  private val tsfileFolder = "target/ConverterTest"
   private val tsfilePath1: String = tsfileFolder + "/test_1.tsfile"
   private val tsfilePath2: String = tsfileFolder + "/test_2.tsfile"
   private var spark: SparkSession = _
