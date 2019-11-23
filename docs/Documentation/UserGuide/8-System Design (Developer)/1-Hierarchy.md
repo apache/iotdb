@@ -56,10 +56,10 @@
   - 0: UNCOMPRESSED
   - 1: SNAPPY
   - 2: GZIP
-  - 3: LZO
-  - 4: SDT
-  - 5: PAA
-  - 6: PLA
+  - 3: LZO (not implement now)
+  - 4: SDT (not implement now)
+  - 5: PAA (not implement now)
+  - 6: PLA (not implement now)
 - **TsDigest Statistics Type Hardcode**
   - 0: min_value
   - 1: max_value
