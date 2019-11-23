@@ -54,10 +54,10 @@
   - 0: UNCOMPRESSED
   - 1: SNAPPY
   - 2: GZIP
-  - 3: LZO
-  - 4: SDT
-  - 5: PAA
-  - 6: PLA
+  - 3: LZO (暂未实现)
+  - 4: SDT (暂未实现)
+  - 5: PAA (暂未实现)
+  - 6: PLA (暂未实现)
 - **TsDigest 统计类型的编码**
   - 0: min_value
   - 1: max_value
