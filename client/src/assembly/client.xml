@@ -28,13 +28,13 @@
     <includeBaseDirectory>false</includeBaseDirectory>
     <dependencySets>
         <dependencySet>
-            <outputDirectory>lib</outputDirectory>
+            <outputDirectory>./lib</outputDirectory>
         </dependencySet>
     </dependencySets>
     <fileSets>
         <fileSet>
             <directory>src/assembly/resources</directory>
-            <outputDirectory>/</outputDirectory>
+            <outputDirectory>./</outputDirectory>
         </fileSet>
     </fileSets>
 </assembly>
