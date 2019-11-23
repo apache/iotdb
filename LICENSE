@@ -222,6 +222,6 @@ The following class is modified from Maven Wrapper, which is under Apache Licens
 
 ------------
 
-The following class is modified from Maven Wrapper
+The following class is modified from Maven Wrapper, which is under Apache License 2.0:
 
 ./.mvn/wrapper/MavenWrapperDownloader.java
