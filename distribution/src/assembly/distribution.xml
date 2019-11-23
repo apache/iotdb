@@ -31,37 +31,42 @@
             <includes>
                 <include>*:zip:*</include>
             </includes>
-            <outputDirectory>/</outputDirectory>
+            <outputDirectory>./</outputDirectory>
             <unpack>true</unpack>
         </dependencySet>
     </dependencySets>
     <files>
         <file>
             <source>${maven.multiModuleProjectDirectory}/README.md</source>
+            <outputDirectory>./</outputDirectory>
         </file>
         <file>
             <source>${maven.multiModuleProjectDirectory}/LICENSE-binary</source>
             <destName>LICENSE</destName>
+            <outputDirectory>./</outputDirectory>
         </file>
         <file>
             <source>${maven.multiModuleProjectDirectory}/NOTICE-binary</source>
             <destName>NOTICE</destName>
+            <outputDirectory>./</outputDirectory>
         </file>
         <file>
             <source>${maven.multiModuleProjectDirectory}/DISCLAIMER</source>
+            <outputDirectory>./</outputDirectory>
         </file>
         <file>
             <source>${maven.multiModuleProjectDirectory}/RELEASE_NOTES.md</source>
+            <outputDirectory>./</outputDirectory>
         </file>
     </files>
     <fileSets>
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/licenses</directory>
-            <outputDirectory>licenses</outputDirectory>
+            <outputDirectory>./licenses</outputDirectory>
         </fileSet>
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/docs</directory>
-            <outputDirectory>docs</outputDirectory>
+            <outputDirectory>./docs</outputDirectory>
         </fileSet>
     </fileSets>
 </assembly>
