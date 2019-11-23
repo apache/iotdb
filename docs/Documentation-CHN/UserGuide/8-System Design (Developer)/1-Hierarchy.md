@@ -23,7 +23,7 @@
 
 ## 1. TsFile 设计
 
-  本章是关于 TsFile 的设计细节.
+  本章是关于 TsFile 的设计细节。
 
 ### 1.1 变量的存储
 
@@ -31,7 +31,7 @@
   - 比如： `int` `0x8` 将会被存储为 `00 00 00 08`, 而不是 `08 00 00 00`
 - **可变长的字符串类型**
   - 存储的方式是以一个 `int` 类型的 `Size` + 字符串组成。`Size` 的值可以为 0。
-  - `Size` 指的是字符串所占的字节数，它并不一定等于字符串的长度. 
+  - `Size` 指的是字符串所占的字节数，它并不一定等于字符串的长度。 
   - 举例来说，"sensor_1" 这个字符串将被存储为 `00 00 00 08` + "sensor_1" (ASCII编码)。
   - 另外需要注意的一点是 "Magic String"（文件签名）"TsFile000001", 因为他的 `Size(12)` 和 ASCII 编码值是固定的，所以没有必要在这个字符串前的写入 `Size` 值。
 - **数据类型的编码**
@@ -73,22 +73,22 @@
 
 #### 1.2.1 文件签名和版本号
 
-TsFile 是由 6 个字节的 "Magic String" (`TsFile`) 和 6 个字节的版本号 (`000001`)组成.
+TsFile 是由 6 个字节的 "Magic String" (`TsFile`) 和 6 个字节的版本号 (`000001`)组成。
 
 
 #### 1.2.2 数据文件
 
 TsFile文件的内容可以划分为两个部分: 数据和元数据。数据和元数据之间是由一个字节的 `0x02` 做为分隔符。
 
-`ChunkGroup` 存储的是一个数组类型的数据，每一个 `ChunkGroup` 代表了一个 *设备(device)*.
+`ChunkGroup` 存储的是一个数组类型的数据，每一个 `ChunkGroup` 代表了一个 *设备(device)*。
 
 ##### ChunkGroup
 
-`ChunkGroup` 包含一个数组(array)类型的 `Chunk` 和 `ChunkFooter`, 其中每个 `Chunk` 之间使用一个字节的 `0x00` 做为分隔符。
+`ChunkGroup` 由若干个 `Chunk`, 一个字节的分隔符 `0x00` 和 一个`ChunkFooter`组成。
 
 ##### Chunk
 
-一个 `Chunk` 代表了一个 *sensor* , 即传感器.在 `ChunkHeader` 和后面数组类型的 `Page` 之间使用一个字节的 `0x01` 做为分隔符。
+一个 `Chunk` 代表了一个*传感器(sensor)*。`Chunk` 是由一个字节的分隔符 `0x01`, 一个 `ChunkHeader` 和若干个 `Page` 构成。
 
 ##### ChunkHeader
 
@@ -104,7 +104,7 @@ TsFile文件的内容可以划分为两个部分: 数据和元数据。数据和
 
 ##### Page
 
-一个 `Page` 页存储了 `Chunk` 的一些数据. 它包含一个 `PageHeader` 和实际的数据(time-value 编码的键值对)。
+一个 `Page` 页存储了 `Chunk` 的一些数据。 它包含一个 `PageHeader` 和实际的数据(time-value 编码的键值对)。
 
 PageHeader 结构
 
@@ -167,11 +167,11 @@ PageHeader 结构
 
 ###### TsDigest
 
-目前有五项统计数据: `min_value, max_value, first_value, last_value, sum_value`.
+目前有五项统计数据: `min_value, max_value, first_value, last_value, sum_value`。
 
-在 v0.8.0 版本中, 统计数据使用 name-value 编码的键值对. 也就是 `Map<String, ByteBuffer> statistics`. name使用的一个字符串类型(需要注意的是字符串前有个长度标识). 对于值来讲，它有可能是很多种类型，所以需要用 integer 类型用来描述值的长度. 比如, 如果 `min_value` 是一个 integer 类型的 0, 那么在 TsFile 中将被存储为 [9 "min_value" 4 0].
+在 v0.8.0 版本中, 统计数据使用 name-value 编码的键值对。 也就是 `Map<String, ByteBuffer> statistics`。 name使用的一个字符串类型(需要注意的是字符串前有个长度标识)。 对于值来讲，它有可能是很多种类型，所以需要用 integer 类型用来描述值的长度。 比如, 如果 `min_value` 是一个 integer 类型的 0, 那么在 TsFile 中将被存储为 [9 "min_value" 4 0]。
 
-下面是一个调用 `TsDigest.deserializeFrom(buffer)` 方法后的数据示例. 在 v0.8.0 版本中, 我们会得到 
+下面是一个调用 `TsDigest.deserializeFrom(buffer)` 方法后的数据示例。在 v0.8.0 版本中, 我们会得到 
 
 ```
 Map<String, ByteBuffer> statistics = {
@@ -184,7 +184,7 @@ Map<String, ByteBuffer> statistics = {
 ```
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/63765352-664a4280-c8fb-11e9-869e-859edf6d00bb.png">
 
-在 v0.9.0 版本中, 为了提高空间和时间的效率，存储的结构被修改为数组的形式. 也就是 `ByteBuffer[] statistics`. 用固定的位置代表某一个具体的统计信息, 在 StatisticType 中定义的顺序如下:
+在 v0.9.0 版本中, 为了提高空间和时间的效率，存储的结构被修改为数组的形式。也就是 `ByteBuffer[] statistics`。用固定的位置代表某一个具体的统计信息, 在 StatisticType 中定义的顺序如下:
 
 ```
 enum StatisticType {
@@ -221,7 +221,7 @@ ByteBuffer[] statistics = [
 
 ##### 1.2.3.2 TsFileMetaData
 
-上节讲到的是 `TsDeviceMetadatas` 紧跟其后的数据是 `TsFileMetaData`.
+上节讲到的是 `TsDeviceMetadatas` 紧跟其后的数据是 `TsFileMetaData`。
 
 |成员|类型|
 |:---:|:---:|
@@ -258,7 +258,7 @@ ByteBuffer[] statistics = [
 |附带参数的数量|int|
 |所有附带的参数(props)|String, String pair|
 
-如果附带的参数数量大于 0, 传感器的附带参数会以一个数组形式的 <String, String> 键值对存储.
+如果附带的参数数量大于 0, 传感器的附带参数会以一个数组形式的 <String, String> 键值对存储。
 
 比如说: "max_point_number""2".
 
@@ -277,7 +277,7 @@ TsFile 是以6个字节的magic string (`TsFile`) 作为结束.
 
 #### 1.3.1 TsFileResource 打印工具
 
-该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.9.0-SNAPSHOT\tools` 目录中.
+该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.9.0-SNAPSHOT\tools` 目录中。
 
 使用方式:
 
@@ -308,7 +308,7 @@ analyzing the resource file finished.
 
 #### 1.3.2 TsFile 描述工具
 
-该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.9.0-SNAPSHOT\tools` 目录中.
+该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.9.0-SNAPSHOT\tools` 目录中。
 
 使用方式:
 
@@ -318,7 +318,7 @@ Windows:
 .\print-tsfile-sketch.bat <TsFile文件路径> (<输出文件的存储路径>) 
 ```
 
-- 注意: 如果没有设置输出文件的存储路径, 将使用 "TsFile_sketch_view.txt" 做为默认值. 
+- 注意: 如果没有设置输出文件的存储路径, 将使用 "TsFile_sketch_view.txt" 做为默认值。
 
 Linux or MacOs:
 
@@ -326,7 +326,7 @@ Linux or MacOs:
 ./print-tsfile-sketch.sh <TsFile文件路径> (<输出文件的存储路径>) 
 ```
 
-- 注意: 如果没有设置输出文件的存储路径, 将使用 "TsFile_sketch_view.txt" 做为默认值. 
+- 注意: 如果没有设置输出文件的存储路径, 将使用 "TsFile_sketch_view.txt" 做为默认值。 
 
 在Windows系统中的示例:
 
