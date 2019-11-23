@@ -33,7 +33,7 @@
   - 存储的方式是以一个 `int` 类型的 `Size` + 字符串组成。`Size` 的值可以为 0。
   - `Size` 指的是字符串所占的字节数，它并不一定等于字符串的长度。 
   - 举例来说，"sensor_1" 这个字符串将被存储为 `00 00 00 08` + "sensor_1" (ASCII编码)。
-  - 另外需要注意的一点是 "Magic String"（文件签名）"TsFile000001", 因为他的 `Size(12)` 和 ASCII 编码值是固定的，所以没有必要在这个字符串前的写入 `Size` 值。
+  - 另外需要注意的一点是文件签名 "TsFile000001" (`Magic String` + `Version`), 因为他的 `Size(12)` 和 ASCII 编码值是固定的，所以没有必要在这个字符串前的写入 `Size` 值。
 - **数据类型的编码**
   - 0: BOOLEAN
   - 1: INT32 (`int`)
@@ -80,7 +80,7 @@ TsFile 是由 6 个字节的 "Magic String" (`TsFile`) 和 6 个字节的版本�
 
 TsFile文件的内容可以划分为两个部分: 数据和元数据。数据和元数据之间是由一个字节的 `0x02` 做为分隔符。
 
-`ChunkGroup` 存储的是一个数组类型的数据，每一个 `ChunkGroup` 代表了一个 *设备(device)*。
+`ChunkGroup` 存储的是一个数组类型的数据，每一个 `ChunkGroup` 存储了一个 *设备(device)* 的数据。
 
 ##### ChunkGroup
 
@@ -88,7 +88,7 @@ TsFile文件的内容可以划分为两个部分: 数据和元数据。数据和
 
 ##### Chunk
 
-一个 `Chunk` 代表了一个*传感器(sensor)*。`Chunk` 是由一个字节的分隔符 `0x01`, 一个 `ChunkHeader` 和若干个 `Page` 构成。
+一个 `Chunk` 存储了一个 *传感器(sensor)* 的数据。`Chunk` 是由一个字节的分隔符 `0x01`, 一个 `ChunkHeader` 和若干个 `Page` 构成。
 
 ##### ChunkHeader
 
