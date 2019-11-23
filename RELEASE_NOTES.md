@@ -19,6 +19,13 @@
 
 -->
 
+# Apache IoTDB (incubating) 0.8.2
+
+This is a bug-fix version of 0.8.1
+
+- [IOTDB-264] lack checking datatype before writing WAL
+- NOTICE and LICENSE file update
+
 # Apache IoTDB (incubating) 0.8.1
 
 This is a bug-fix version of 0.8.0
