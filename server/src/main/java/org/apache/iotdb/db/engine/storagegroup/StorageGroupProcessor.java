@@ -1173,6 +1173,9 @@ public class StorageGroupProcessor {
         seqFile.remove();
         seqFile.getWriteQueryLock().writeLock().unlock();
       }
+      File newTsFile = newFile.getFile();
+      newTsFile.renameTo(new File(newTsFile.getParent(), newTsFile.getName().replace(SqueezeMergeTask.MERGE_SUFFIX, "")));
+      newFile.serialize();
       mergeLog.delete();
     } catch (IOException e) {
       logger.error("{} fails to do the after merge action,", storageGroupName, e);

@@ -120,7 +120,6 @@ class MergeSeriesTask {
     }
 
     newFileWriter.endFile(new Schema(newFileWriter.getKnownSchema()));
-    newResource.serialize();
     // the new file is ready to replace the old ones, write logs so we will not need to start from
     // the beginning after system failure
     mergeLogger.logAllTsEnd();
