@@ -575,8 +575,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return false;
     } catch (QueryProcessException e) {
       logger.info(
-          "Error occurred when executing {}, meet error while parsing SQL to physical plan: ",
-          statement, e);
+          "Error occurred when executing {}, meet error while parsing SQL to physical plan: {}",
+          statement, e.getMessage());
       result.add(Statement.EXECUTE_FAILED);
       batchErrorMessage.append(TSStatusCode.SQL_PARSE_ERROR.getStatusCode()).append("\n");
       return false;
@@ -628,11 +628,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getTSExecuteStatementResp(getStatus(TSStatusCode.METADATA_ERROR,
           "Check metadata error: " + e.getMessage()));
     } catch (QueryProcessException e) {
-      logger.info("meet error while parsing SQL to physical plan: ", e);
+      System.out.println(e.getMessage());
+      logger.info("meet error while parsing SQL to physical plan: {}", e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR,
           "Statement format is not right: " + e.getMessage()));
     } catch (StorageEngineException e) {
-      logger.info("meet error while parsing SQL to physical plan: ", e);
+      logger.info("meet error while parsing SQL to physical plan: {}", e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR,
           e.getMessage()));
     }
@@ -689,7 +690,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
     } catch (QueryProcessException | MetadataException e) {
-      logger.info("meet error while parsing SQL to physical plan!", e);
+      logger.info("meet error while parsing SQL to physical plan: {}", e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     }
 
@@ -1033,7 +1034,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
     } catch (QueryProcessException | MetadataException e) {
-      logger.info("meet error while parsing SQL to physical plan!", e);
+      logger.info("meet error while parsing SQL to physical plan: {}", e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     }
 
