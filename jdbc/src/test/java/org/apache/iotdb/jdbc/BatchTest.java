@@ -18,14 +18,10 @@
  */
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.*;
-import org.apache.thrift.TException;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.when;
 
 import java.sql.BatchUpdateException;
 import java.sql.SQLException;
@@ -33,11 +29,18 @@ import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.when;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TSStatusType;
+import org.apache.thrift.TException;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 public class BatchTest {
 
@@ -46,11 +49,10 @@ public class BatchTest {
   @Mock
   private TSIService.Iface client;
   @Mock
-  private TS_SessionHandle sessHandle;
-  @Mock
-  private IoTDBStatement statement;
-  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
-  private TSStatusType errorStatus = new TSStatusType(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), "");
+  private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+      "");
+  private TSStatusType errorStatus = new TSStatusType(
+      TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), "");
   private TSStatus Status_SUCCESS = new TSStatus(successStatus);
   private TSStatus Status_ERROR = new TSStatus(errorStatus);
   private TSExecuteBatchStatementResp resp;
@@ -60,7 +62,7 @@ public class BatchTest {
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
     when(connection.createStatement())
-        .thenReturn(new IoTDBStatement(connection, client, sessHandle, zoneID, 1L));
+        .thenReturn(new IoTDBStatement(connection, client, zoneID, 1L));
 
   }
 
@@ -98,17 +100,17 @@ public class BatchTest {
     statement.addBatch(
         "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE");
     statement
-        .addBatch("insert into root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)");
+        .addBatch("INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(1509465600000,TRUE)");
     statement
-        .addBatch("insert into root.ln.wf01.wt01(timestamp,status) values(1509465660000,true)");
+        .addBatch("INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(1509465660000,TRUE)");
     statement
-        .addBatch("insert into root.ln.wf01.wt01(timestamp,status) vvvvvv(1509465720000,false)");
+        .addBatch("INSERT INTO root.ln.wf01.wt01(timestamp,status) vvvvvv(1509465720000,FALSE)");
     statement.addBatch(
-        "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600000,25.957603)");
+        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) VALUES(1509465600000,25.957603)");
     statement.addBatch(
-        "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465660000,24.359503)");
+        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) VALUES(1509465660000,24.359503)");
     statement.addBatch(
-        "insert into root.ln.wf01.wt01(timestamp,temperature) vvvvvv(1509465720000,20.092794)");
+        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) vvvvvv(1509465720000,20.092794)");
     result = statement.executeBatch();
     assertEquals(result.length, resExpected.size());
     for (int i = 0; i < resExpected.size(); i++) {

@@ -40,7 +40,15 @@ import java.util.Properties;
 import java.util.concurrent.Executor;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -51,10 +59,10 @@ import org.slf4j.LoggerFactory;
 
 
 public class IoTDBConnection implements Connection {
+
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
   private final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1;
   public TSIService.Iface client = null;
-  TS_SessionHandle sessionHandle = null;
   private IoTDBConnectionParams params;
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
@@ -74,10 +82,9 @@ public class IoTDBConnection implements Connection {
     params = Utils.parseUrl(url, info);
 
     openTransport();
-    if(Config.rpcThriftCompressionEnable) {
+    if (Config.rpcThriftCompressionEnable) {
       client = new TSIService.Client(new TCompactProtocol(transport));
-    }
-    else {
+    } else {
       client = new TSIService.Client(new TBinaryProtocol(transport));
     }
     // open client session
@@ -112,11 +119,12 @@ public class IoTDBConnection implements Connection {
     if (isClosed) {
       return;
     }
-    TSCloseSessionReq req = new TSCloseSessionReq(sessionHandle);
+    TSCloseSessionReq req = new TSCloseSessionReq();
     try {
       client.closeSession(req);
     } catch (TException e) {
-      throw new SQLException("Error occurs when closing session at server. Maybe server is down.", e);
+      throw new SQLException("Error occurs when closing session at server. Maybe server is down.",
+          e);
     } finally {
       isClosed = true;
       if (transport != null) {
@@ -160,7 +168,7 @@ public class IoTDBConnection implements Connection {
     if (isClosed) {
       throw new SQLException("Cannot create statement because connection is closed");
     }
-    return new IoTDBStatement(this, client, sessionHandle, zoneId);
+    return new IoTDBStatement(this, client, zoneId);
   }
 
   @Override
@@ -175,7 +183,7 @@ public class IoTDBConnection implements Connection {
       throw new SQLException(String.format("Statements with ResultSet type %d are not supported",
           resultSetType));
     }
-    return new IoTDBStatement(this, client, sessionHandle, zoneId);
+    return new IoTDBStatement(this, client, zoneId);
   }
 
   @Override
@@ -326,9 +334,9 @@ public class IoTDBConnection implements Connection {
   @Override
   public PreparedStatement prepareStatement(String sql) throws SQLException {
     if (sql.equalsIgnoreCase("INSERT")) {
-      return new IoTDBPreparedInsertionStatement(this, client, sessionHandle, zoneId);
+      return new IoTDBPreparedInsertionStatement(this, client, zoneId);
     }
-    return new IoTDBPreparedStatement(this, client, sessionHandle, sql, zoneId);
+    return new IoTDBPreparedStatement(this, client, sql, zoneId);
   }
 
   @Override
@@ -423,7 +431,6 @@ public class IoTDBConnection implements Connection {
                 protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
       }
       setProtocol(openResp.getServerProtocolVersion());
-      sessionHandle = openResp.getSessionHandle();
 
       if (zoneId != null) {
         setTimeZone(zoneId.toString());
@@ -445,10 +452,9 @@ public class IoTDBConnection implements Connection {
         if (transport != null) {
           transport.close();
           openTransport();
-          if(Config.rpcThriftCompressionEnable) {
+          if (Config.rpcThriftCompressionEnable) {
             client = new TSIService.Client(new TCompactProtocol(transport));
-          }
-          else {
+          } else {
             client = new TSIService.Client(new TBinaryProtocol(transport));
           }
           openSession();

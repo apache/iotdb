@@ -74,24 +74,14 @@ enum TSProtocolVersion {
   IOTDB_SERVICE_PROTOCOL_V1,
 }
 
-// Client-side handle to persistent session information on the server-side.
-// In current version, it is not used.
-struct TS_SessionHandle {
-  1: required TSHandleIdentifier sessionId
-}
-
-
 struct TSOpenSessionResp {
   1: required TSStatus status
 
   // The protocol version that the server is using.
   2: required TSProtocolVersion serverProtocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1
 
-  // Session Handle
-  3: optional TS_SessionHandle sessionHandle
-
   // The configuration settings for this session.
-  4: optional map<string, string> configuration
+  3: optional map<string, string> configuration
 }
 
 // OpenSession()
@@ -107,7 +97,6 @@ struct TSOpenSessionReq {
 // Closes the specified session and frees any resources currently allocated to that session.
 // Any open operations in that session will be canceled.
 struct TSCloseSessionReq {
-  1: required TS_SessionHandle sessionHandle
 }
 
 // ExecuteStatement()
@@ -116,14 +105,11 @@ struct TSCloseSessionReq {
 // The returned OperationHandle can be used to check on the status of the statement, and to fetch results once the
 // statement has finished executing.
 struct TSExecuteStatementReq {
-  // The session to execute the statement against
-  1: required TS_SessionHandle sessionHandle
-
   // The statement to be executed (DML, DDL, SET, etc)
-  2: required string statement
+  1: required string statement
 
   // statementId
-  3: required i64 statementId
+  2: required i64 statementId
 }
 
 
@@ -134,11 +120,8 @@ struct TSExecuteBatchStatementResp{
 }
 
 struct TSExecuteBatchStatementReq{
-  // The session to execute the statement against
-  1: required TS_SessionHandle sessionHandle
-
   // The statements to be executed (DML, DDL, SET, etc)
-  2: required list<string> statements
+  1: required list<string> statements
 }
 
 

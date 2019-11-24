@@ -22,12 +22,10 @@ package org.apache.iotdb.jdbc;
 import java.sql.SQLException;
 import java.time.ZoneId;
 import java.util.List;
-
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
 import org.apache.iotdb.service.rpc.thrift.TSInsertionReq;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.thrift.TException;
 
 public class IoTDBPreparedInsertionStatement extends IoTDBPreparedStatement {
@@ -35,9 +33,8 @@ public class IoTDBPreparedInsertionStatement extends IoTDBPreparedStatement {
   private TSInsertionReq req = new TSInsertionReq();
 
   public IoTDBPreparedInsertionStatement(IoTDBConnection connection,
-      Iface client,
-      TS_SessionHandle sessionHandle, ZoneId zoneId) throws SQLException {
-    super(connection, client, sessionHandle, zoneId);
+      Iface client, ZoneId zoneId) throws SQLException {
+    super(connection, client, zoneId);
     req.setStmtId(stmtId);
   }
 
@@ -50,7 +47,8 @@ public class IoTDBPreparedInsertionStatement extends IoTDBPreparedStatement {
       req.unsetMeasurements();
       req.unsetTimestamp();
       req.unsetValues();
-      return resp.getStatus().getStatusType().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+      return resp.getStatus().getStatusType().getCode() == TSStatusCode.SUCCESS_STATUS
+          .getStatusCode();
     } catch (TException e) {
       throw new SQLException(e);
     }
