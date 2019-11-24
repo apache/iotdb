@@ -323,7 +323,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     checkRecord();
     int index = columnInfoMap.get(columnName) - START_INDEX;
     Field field = record.getFields().get(index);
-    if (field.getDataType() != null && field.getDataType() != TSDataType.BOOLEAN) {
+    if (field.getDataType() != null && field.getDataType() == TSDataType.BOOLEAN) {
       return field.getBoolV();
     }
     else {
@@ -412,7 +412,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     checkRecord();
     int index = columnInfoMap.get(columnName) - START_INDEX;
     Field field = record.getFields().get(index);
-    if (field.getDataType() != null && field.getDataType() != TSDataType.DOUBLE) {
+    if (field.getDataType() != null && field.getDataType() == TSDataType.DOUBLE) {
       return field.getDoubleV();
     }
     else {
@@ -451,7 +451,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     checkRecord();
     int index = columnInfoMap.get(columnName) - START_INDEX;
     Field field = record.getFields().get(index);
-    if (field.getDataType() != null && field.getDataType() != TSDataType.FLOAT) {
+    if (field.getDataType() != null && field.getDataType() == TSDataType.FLOAT) {
       return field.getFloatV();
     }
     else {
@@ -475,7 +475,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     checkRecord();
     int index = columnInfoMap.get(columnName) - START_INDEX;
     Field field = record.getFields().get(index);
-    if (field.getDataType() != null && field.getDataType() != TSDataType.INT32) {
+    if (field.getDataType() != null && field.getDataType() == TSDataType.INT32) {
       return field.getIntV();
     }
     else {
@@ -497,7 +497,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     }
     int index = columnInfoMap.get(columnName) - START_INDEX;
     Field field = record.getFields().get(index);
-    if (field.getDataType() != null && field.getDataType() != TSDataType.INT64) {
+    if (field.getDataType() != null && field.getDataType() == TSDataType.INT64) {
       return field.getLongV();
     }
     else {
