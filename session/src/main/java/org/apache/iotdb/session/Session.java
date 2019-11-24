@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,11 +18,32 @@
  */
 package org.apache.iotdb.session;
 
+import static org.apache.iotdb.session.Config.PATH_MATCHER;
+
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSInsertReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -36,14 +57,6 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.SQLException;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Pattern;
-
-import static org.apache.iotdb.session.Config.PATH_MATCHER;
-
 public class Session {
 
   private static final Logger logger = LoggerFactory.getLogger(Session.class);
@@ -53,7 +66,6 @@ public class Session {
   private String username;
   private String password;
   private TSIService.Iface client = null;
-  private TS_SessionHandle sessionHandle = null;
   private TSocket transport;
   private boolean isClosed = true;
   private ZoneId zoneId;
@@ -115,8 +127,6 @@ public class Session {
                 protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
       }
 
-      sessionHandle = openResp.getSessionHandle();
-
       statementId = client.requestStatementId();
 
       if (zoneId != null) {
@@ -140,7 +150,7 @@ public class Session {
     if (isClosed) {
       return;
     }
-    TSCloseSessionReq req = new TSCloseSessionReq(sessionHandle);
+    TSCloseSessionReq req = new TSCloseSessionReq();
     try {
       client.closeSession(req);
     } catch (TException e) {
@@ -341,13 +351,13 @@ public class Session {
           + "\" is not a query statement, you should use executeNonQueryStatement method instead.");
     }
 
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, statementId);
+    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sql, statementId);
     TSExecuteStatementResp execResp = client.executeStatement(execReq);
 
     RpcUtils.verifySuccess(execResp.getStatus());
     operationHandle = execResp.getOperationHandle();
     return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
-            operationHandle.getOperationId().getQueryId(), client, operationHandle);
+        operationHandle.getOperationId().getQueryId(), client, operationHandle);
   }
 
   /**
@@ -361,7 +371,7 @@ public class Session {
           + "\" is a query statement, you should use executeQueryStatement method instead.");
     }
 
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, statementId);
+    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sql, statementId);
     TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
     operationHandle = execResp.getOperationHandle();
 
