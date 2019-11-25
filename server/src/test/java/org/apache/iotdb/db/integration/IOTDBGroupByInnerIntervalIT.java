@@ -21,11 +21,15 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
 
 import static org.apache.iotdb.db.integration.Constant.*;
 import static org.junit.Assert.*;
@@ -230,6 +234,50 @@ public class IOTDBGroupByInnerIntervalIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void negativeOrZeroTimeInterval() {
+
+    try (Connection connection = DriverManager.
+            getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+              "select count(temperature), sum(temperature), avg(temperature) from "
+                      + "root.ln.wf01.wt01 where time > 3"
+                      + "GROUP BY ([1, 30], 0ms)");
+      fail();
+    } catch (Exception e) {
+      assertTrue(e instanceof IoTDBSQLException);
+    }
+
+    try (Connection connection = DriverManager.
+            getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+              "select count(temperature), sum(temperature), avg(temperature) from "
+                      + "root.ln.wf01.wt01 where time > 3"
+                      + "GROUP BY ([1, 30], -1ms)");
+      fail();
+    } catch (Exception e) {
+      assertTrue(e instanceof IoTDBSQLException);
+    }
+  }
+
+  @Test
+  public void slidingStepLessThanTimeInterval() {
+
+    try (Connection connection = DriverManager.
+            getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+              "select count(temperature), sum(temperature), avg(temperature) from "
+                      + "root.ln.wf01.wt01 where time > 3"
+                      + "GROUP BY ([1, 30], 2ms, 1ms)");
+      fail();
+    } catch (Exception e) {
+      assertTrue(e instanceof IoTDBSQLException);
     }
   }
 

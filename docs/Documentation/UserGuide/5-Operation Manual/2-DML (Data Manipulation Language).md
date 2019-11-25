@@ -147,17 +147,17 @@ The execution result of this SQL statement is as follows:
 This section mainly introduces the related examples of down-frequency aggregation query, 
 using the [GROUP BY clause](/#/Documents/progress/chap5/sec4), 
 which is used to partition the result set according to the user's given partitioning conditions and aggregate the partitioned result set. 
-IoTDB supports partitioning result sets according to time interval and customized sliding step whose default value is equal to time interval and must be larger than time interval, and by default results are sorted by time in ascending order. 
+IoTDB supports partitioning result sets according to time interval and customized sliding step which should not be smaller than the time interval and defaults to equal the time interval if not set. And by default results are sorted by time in ascending order. 
 You can also use the [Java JDBC](/#/Documents/progress/chap4/sec2) standard interface to execute related queries.
 
 The GROUP BY statement provides users with three types of specified parameters:
 
 * Parameter 1: The display window on the time axis
-* Parameter 2: Time interval for dividing the time axis
-* Parameter 3: Time sliding step (optional)
+* Parameter 2: Time interval for dividing the time axis(should be positive)
+* Parameter 3: Time sliding step (optional and should not be smaller than the time interval and defaults to equal the time interval if not set)
 
-The actual meanings of the three types of parameters are shown in Figure 3.2 below. 
-Among them, the paramter 3 is optional. 
+The actual meanings of the three types of parameters are shown in Figure 5.2 below. 
+Among them, the parameter 3 is optional. 
 Next we will give three typical examples of frequency reduction aggregation: 
 parameter 3 not specified, 
 parameter 3 specified, 
@@ -167,7 +167,7 @@ and value filtering conditions specified.
 
 **Figure 5.2 The actual meanings of the three types of parameters**</center>
 
-#### Down-Frequency Aggregate Query without Specifying the sliding step length
+#### Down-Frequency Aggregate Query without Specifying the Sliding Step Length
 The SQL statement is:
 
 ```
@@ -187,7 +187,7 @@ Since there is data for each time period in the result range to be displayed, th
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116068-eed51b00-0ac5-11ea-9731-b5a45c5cd224.png"></center>
 
-#### Down-Frequency Aggregate Query Specifying the sliding step
+#### Down-Frequency Aggregate Query Specifying the Sliding Step Length
 The SQL statement is:
 
 ```
@@ -232,7 +232,7 @@ Then the system will use the time and value filtering condition in the WHERE cla
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116088-001e2780-0ac6-11ea-9a01-dc45271d1dad.png"></center>
 
-It is worth noting that the path after SELECT in GROUP BY statement must be aggregate function, otherwise the system will give the corresponding error prompt, as shown below:
+The path after SELECT in GROUP BY statement must be aggregate function, otherwise the system will give the corresponding error prompt, as shown below:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116099-0b715300-0ac6-11ea-8074-84e04797b8c7.png"></center>
 
