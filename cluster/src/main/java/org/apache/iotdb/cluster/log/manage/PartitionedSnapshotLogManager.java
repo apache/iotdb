@@ -4,24 +4,20 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.Snapshot;
-import org.apache.iotdb.cluster.log.manage.SingleSnapshotLogManager.SimpleSnapshot;
+import org.apache.iotdb.cluster.log.SimpleSnapshot;
 
 public class PartitionedSnapshotLogManager extends MemoryLogManager {
 
-  private Map<Integer, List<Log>> socketSnapshots = new HashMap<>();
+  private Map<Integer, SimpleSnapshot> socketSnapshots = new HashMap<>();
+  private long snapshotLastLogId;
+  private long snapshotLastLogTerm;
 
   public PartitionedSnapshotLogManager(LogApplier logApplier) {
     super(logApplier);
@@ -30,17 +26,25 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
   @Override
   public Snapshot getSnapshot() {
     PartitionedSnapshot partitionedSnapshot = new PartitionedSnapshot();
-    for (Entry<Integer, List<Log>> entry : socketSnapshots.entrySet()) {
-      partitionedSnapshot.putSnapshot(entry.getKey(), new SimpleSnapshot(entry.getValue()));
+    for (Entry<Integer, SimpleSnapshot> entry : socketSnapshots.entrySet()) {
+      partitionedSnapshot.putSnapshot(entry.getKey(), entry.getValue());
     }
-    return null;
+    partitionedSnapshot.setLastLogId(snapshotLastLogId);
+    partitionedSnapshot.setLastLogTerm(snapshotLastLogTerm);
+    return partitionedSnapshot;
   }
 
   @Override
   public void takeSnapshot() {
     while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
       Log log = logBuffer.removeFirst();
-      socketSnapshots.computeIfAbsent(log.calculateSocket(), s -> new ArrayList<>()).add(log);
+      socketSnapshots.computeIfAbsent(log.calculateSocket(), s -> new SimpleSnapshot()).add(log);
+      snapshotLastLogId = log.getCurrLogIndex();
+      snapshotLastLogTerm = log.getCurrLogTerm();
     }
+  }
+
+  public void setSnapshot(SimpleSnapshot snapshot, int socket) {
+    socketSnapshots.put(socket, snapshot);
   }
 }

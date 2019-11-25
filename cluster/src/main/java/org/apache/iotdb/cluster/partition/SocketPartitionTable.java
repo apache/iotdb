@@ -11,6 +11,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +35,7 @@ public class SocketPartitionTable implements PartitionTable {
   private Map<Integer, Node> socketNodeMap = new ConcurrentHashMap<>();
   // the nodes that each socket belongs to before a new node is added, used for the new node to
   // find the data source
-  private Map<Integer, Node> previousNodeMap = new ConcurrentHashMap<>();
+  private Map<Node, Map<Integer, Node>> previousNodeMap = new ConcurrentHashMap<>();
 
   // the data groups which the VNode of this node belongs to
   private List<PartitionGroup> localGroups;
@@ -194,6 +195,7 @@ public class SocketPartitionTable implements PartitionTable {
   private void moveSocketsToNew(Node node) {
     List<Integer> newSockets = new ArrayList<>();
     nodeSocketMap.put(node, newSockets);
+    Map<Integer, Node> previousHolders = new HashMap<>();
     int newAvg = SOCKET_NUM / nodeRing.size();
     for (Entry<Node, List<Integer>> entry : nodeSocketMap.entrySet()) {
       List<Integer> sockets = entry.getValue();
@@ -203,11 +205,12 @@ public class SocketPartitionTable implements PartitionTable {
         newSockets.addAll(socketsToMove);
         for (Integer integer : socketsToMove) {
           // record what node previously hold the integer
-          previousNodeMap.put(integer, entry.getKey());
+          previousHolders.put(integer, entry.getKey());
         }
         socketsToMove.clear();
       }
     }
+    previousNodeMap.put(node, previousHolders);
   }
 
   @Override
@@ -257,14 +260,14 @@ public class SocketPartitionTable implements PartitionTable {
   }
 
   @Override
-  public Map<Integer, Node> getPreviousNodeMap() {
-    return previousNodeMap;
+  public Map<Integer, Node> getPreviousNodeMap(Node node) {
+    return previousNodeMap.get(node);
   }
 
   @Override
   public void setPreviousNodeMap(
-      Map<Integer, Node> previousNodeMap) {
-    this.previousNodeMap = previousNodeMap;
+      Node node, Map<Integer, Node> previousNodeMap) {
+    this.previousNodeMap.put(node, previousNodeMap);
   }
 
   @Override

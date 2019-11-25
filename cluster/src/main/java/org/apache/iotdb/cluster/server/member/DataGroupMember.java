@@ -8,22 +8,36 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iotdb.cluster.exception.LeaderUnknownException;
+import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.cluster.log.LogManager;
 import org.apache.iotdb.cluster.log.PartitionedSnapshot;
+import org.apache.iotdb.cluster.log.RemoteSimpleSnapshot;
+import org.apache.iotdb.cluster.log.SimpleSnapshot;
+import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
-import org.apache.iotdb.cluster.log.manage.SingleSnapshotLogManager.SimpleSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
+import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
+import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPullSnapshotHandler;
 import org.apache.iotdb.cluster.server.heartbeat.HeartBeatThread;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
@@ -44,8 +58,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   private Map<Node, Integer> dataPortMap = new ConcurrentHashMap<>();
   private MetaGroupMember metaGroupMember;
 
+  private ExecutorService pullSnapshotService;
+  private PartitionedSnapshotLogManager logManager;
+
   private DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
-      LogManager logManager, MetaGroupMember metaGroupMember) throws IOException {
+      PartitionedSnapshotLogManager logManager, MetaGroupMember metaGroupMember) throws IOException {
     this.thisNode = thisNode;
     this.logManager = logManager;
     this.metaGroupMember = metaGroupMember;
@@ -58,6 +75,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   public void start() throws TTransportException {
     super.start();
     heartBeatService.submit(new HeartBeatThread(this));
+    pullSnapshotService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+  }
+
+  @Override
+  public void stop() {
+    super.stop();
+    pullSnapshotService.shutdownNow();
+    pullSnapshotService = null;
   }
 
   @Override
@@ -179,8 +204,119 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     for (Integer socket : sockets) {
       SimpleSnapshot subSnapshot = (SimpleSnapshot) snapshot.getSnapshot(socket);
       if (subSnapshot != null) {
-        applySnapshot(subSnapshot);
+        applySnapshot(subSnapshot, socket);
       }
+    }
+    logManager.setLastLogId(snapshot.getLastLogId());
+    logManager.setLastLogTerm(snapshot.getLastLogTerm());
+  }
+
+  private void applySnapshot(SimpleSnapshot snapshot, int socket) {
+    synchronized (logManager) {
+      for (Log log : snapshot.getSnapshot()) {
+        logManager.getApplier().apply(log);
+      }
+      logManager.setSnapshot(snapshot, socket);
+    }
+  }
+
+  @Override
+  public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
+    if (character != NodeCharacter.LEADER) {
+      // forward the request to the leader
+      if (leader != null) {
+        AsyncClient client = connectNode(leader);
+        try {
+          client.pullSnapshot(request, new ForwardPullSnapshotHandler(resultHandler));
+        } catch (TException e) {
+          resultHandler.onError(e);
+        }
+      } else {
+        resultHandler.onError(new LeaderUnknownException());
+      }
+      return;
+    }
+
+    // this synchronized should work with the one in AppendEntry when a log is going to commit,
+    // which may prevent the newly arrived data from being invisible to the new header.
+    synchronized (logManager) {
+      logManager.takeSnapshot();
+      int requiredSocket = request.getRequiredSocket();
+      PartitionedSnapshot allSnapshot = (PartitionedSnapshot) logManager.getSnapshot();
+      Snapshot snapshot = allSnapshot.getSnapshot(requiredSocket);
+      PullSnapshotResp resp = new PullSnapshotResp();
+      resp.setSnapshotBytes(snapshot.serialize());
+      resultHandler.onComplete(resp);
+    }
+  }
+
+  public void pullSnapshots(List<Integer> sockets) {
+    synchronized (logManager) {
+      PartitionedSnapshot snapshot = (PartitionedSnapshot) logManager.getSnapshot();
+      Map<Integer, Node> prevHolders = metaGroupMember.getPartitionTable().getPreviousNodeMap(thisNode);
+
+      for (int socket : sockets) {
+        Node node = prevHolders.get(socket);
+        if (snapshot.getSnapshot(socket) == null) {
+          Future<SimpleSnapshot> snapshotFuture =
+              pullSnapshotService.submit(new PullSnapshotTask(node, socket, this,
+                  metaGroupMember.getPartitionTable().getHeaderGroup(node)));
+          logManager.setSnapshot(new RemoteSimpleSnapshot(snapshotFuture), socket);
+        }
+      }
+    }
+  }
+
+  class PullSnapshotTask implements Callable<SimpleSnapshot> {
+    Node header;
+    int socket;
+    DataGroupMember newMember;
+    List<Node> oldMembers;
+
+    PullSnapshotTask(Node header, int socket,
+        DataGroupMember member, List<Node> oldMembers) {
+      this.header = header;
+      this.socket = socket;
+      this.newMember = member;
+      this.oldMembers = oldMembers;
+    }
+
+    @Override
+    public SimpleSnapshot call() {
+      PullSnapshotRequest request = new PullSnapshotRequest();
+      request.setHeader(header);
+      request.setRequiredSocket(socket);
+      AtomicReference<SimpleSnapshot> snapshotRef = new AtomicReference<>();
+      boolean finished = false;
+      int nodeIndex = -1;
+      while (!finished) {
+        try {
+          // sequentially pick up a replication that may have this socket
+          nodeIndex = (nodeIndex + 1) % oldMembers.size();
+          TSDataService.AsyncClient client =
+              (TSDataService.AsyncClient) newMember.connectNode(oldMembers.get(nodeIndex));
+          if (client == null) {
+            Thread.sleep(CONNECTION_TIME_OUT_MS);
+          } else {
+            synchronized (snapshotRef) {
+              client.pullSnapshot(request, new PullSnapshotHandler(snapshotRef));
+              snapshotRef.wait(CONNECTION_TIME_OUT_MS);
+            }
+            SimpleSnapshot result = snapshotRef.get();
+            if (result != null) {
+              newMember.applySnapshot(result, socket);
+              finished = true;
+            }
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          logger.error("Unexpected interruption when pulling socket {}", socket, e);
+          finished = true;
+        } catch (TException e) {
+          logger.debug("Cannot pull socket {} from {}, retry", socket, header, e);
+        }
+      }
+      return snapshotRef.get();
     }
   }
 }

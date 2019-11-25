@@ -89,4 +89,8 @@ public interface LogManager {
   void takeSnapshot();
 
   LogApplier getApplier();
+
+  void setLastLogId(long lastLogId);
+
+  void setLastLogTerm(long lastLogTerm);
 }

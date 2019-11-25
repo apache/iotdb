@@ -8,70 +8,63 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
+import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class PartitionedSnapshot extends Snapshot {
+public class SimpleSnapshot extends Snapshot {
 
-  private Map<Integer, Snapshot> socketSnapshots;
+  private static final Logger logger = LoggerFactory.getLogger(SimpleSnapshot.class);
+  List<Log> snapshot;
 
-  public PartitionedSnapshot() {
-    socketSnapshots = new HashMap<>();
+  public SimpleSnapshot() {
   }
 
-  private PartitionedSnapshot(
-      Map<Integer, Snapshot> socketSnapshots) {
-    this.socketSnapshots = socketSnapshots;
-  }
-
-  public void putSnapshot(int socket, Snapshot snapshot) {
-    socketSnapshots.put(socket, snapshot);
-  }
-
-  private Snapshot getPartitionSnapshot(int socket) {
-    return socketSnapshots.get(socket);
+  public SimpleSnapshot(List<Log> snapshot) {
+    this.snapshot = snapshot;
+    this.lastLogId = snapshot.get(snapshot.size() - 1).getCurrLogIndex();
+    this.lastLogTerm = snapshot.get(snapshot.size() - 1).getCurrLogTerm();
   }
 
   @Override
   public ByteBuffer serialize() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
-
     try {
-      dataOutputStream.writeInt(socketSnapshots.size());
-      for (Entry<Integer, Snapshot> entry : socketSnapshots.entrySet()) {
-        dataOutputStream.writeInt(entry.getKey());
-        dataOutputStream.write(entry.getValue().serialize().array());
+      dataOutputStream.writeInt(snapshot.size());
+      for (Log log : snapshot) {
+        outputStream.write(log.serialize().array());
       }
     } catch (IOException e) {
       // unreachable
     }
-
     return ByteBuffer.wrap(outputStream.toByteArray());
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-   int size = buffer.getInt();
+    snapshot = new ArrayList<>();
+    int size = buffer.getInt();
     for (int i = 0; i < size; i++) {
-      int socket = buffer.getInt();
-      SimpleSnapshot snapshot = new SimpleSnapshot();
-      snapshot.deserialize(buffer);
-      socketSnapshots.put(socket, snapshot);
+      try {
+        snapshot.add(LogParser.getINSTANCE().parse(buffer));
+      } catch (UnknownLogTypeException e) {
+        logger.error("Cannot recognize log", e);
+      }
     }
+    this.lastLogId = snapshot.get(snapshot.size() - 1).getCurrLogIndex();
+    this.lastLogTerm = snapshot.get(snapshot.size() - 1).getCurrLogTerm();
   }
 
-  public PartitionedSnapshot getSubSnapshots(List<Integer> sockets) {
-    Map<Integer, Snapshot> subSnapshots = new HashMap<>();
-    for (Integer socket : sockets) {
-      subSnapshots.put(socket, getPartitionSnapshot(socket));
-    }
-    return new PartitionedSnapshot(subSnapshots);
+  public List<Log> getSnapshot() {
+    return snapshot;
   }
 
-  public Snapshot getSnapshot(int socket) {
-    return socketSnapshots.get(socket);
+  public void add(Log log) {
+    snapshot.add(log);
+    lastLogId = log.getCurrLogIndex();
+    lastLogTerm = log.getCurrLogTerm();
   }
 }

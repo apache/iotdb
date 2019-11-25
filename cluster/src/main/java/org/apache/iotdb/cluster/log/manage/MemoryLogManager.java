@@ -12,28 +12,29 @@ import java.util.List;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.LogManager;
-import org.apache.iotdb.cluster.log.Snapshot;
 
 // TODO-Cluster: implement a serializable LogManager
 public abstract class MemoryLogManager implements LogManager {
 
   long commitLogIndex = -1;
+  private long lastLogId = -1;
+  private long lastLogTerm = -1;
 
   Deque<Log> logBuffer = new ArrayDeque<>();
   private LogApplier logApplier;
 
-  public MemoryLogManager(LogApplier logApplier) {
+  MemoryLogManager(LogApplier logApplier) {
     this.logApplier = logApplier;
   }
 
   @Override
   public long getLastLogIndex() {
-    return logBuffer.isEmpty() ? -1 : logBuffer.getLast().getCurrLogIndex();
+    return lastLogId;
   }
 
   @Override
   public long getLastLogTerm() {
-    return logBuffer.isEmpty() ? -1 : logBuffer.getLast().getCurrLogTerm();
+    return lastLogTerm;
   }
 
   @Override
@@ -44,12 +45,16 @@ public abstract class MemoryLogManager implements LogManager {
   @Override
   public void appendLog(Log log) {
     logBuffer.addLast(log);
+    lastLogId = log.getCurrLogIndex();
+    lastLogTerm = log.getCurrLogTerm();
   }
 
   @Override
   public void removeLastLog() {
     if (!logBuffer.isEmpty()) {
-      logBuffer.removeLast();
+      Log log = logBuffer.removeLast();
+      lastLogId = log.getPreviousLogIndex();
+      lastLogTerm = log.getPreviousLogTerm();
     }
   }
 
@@ -57,6 +62,8 @@ public abstract class MemoryLogManager implements LogManager {
   public void replaceLastLog(Log log) {
     logBuffer.removeLast();
     logBuffer.addLast(log);
+    lastLogId = log.getCurrLogIndex();
+    lastLogTerm = log.getCurrLogTerm();
   }
 
   @Override
@@ -100,5 +107,15 @@ public abstract class MemoryLogManager implements LogManager {
   @Override
   public LogApplier getApplier() {
     return logApplier;
+  }
+
+  @Override
+  public void setLastLogId(long lastLogId) {
+    this.lastLogId = lastLogId;
+  }
+
+  @Override
+  public void setLastLogTerm(long lastLogTerm) {
+    this.lastLogTerm = lastLogTerm;
   }
 }

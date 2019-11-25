@@ -70,11 +70,9 @@ public interface PartitionTable {
    *
    * @return each socket's previous holder after a node addition.
    */
-  Map<Integer, Node> getPreviousNodeMap();
+  Map<Integer, Node> getPreviousNodeMap(Node node);
 
-
-  void setPreviousNodeMap(
-      Map<Integer, Node> previousNodeMap);
+  void setPreviousNodeMap(Node node, Map<Integer, Node> previousNodeMap);
 
   List<Integer> getNodeSockets(Node header);
 }

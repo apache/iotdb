@@ -23,7 +23,6 @@ import org.apache.iotdb.cluster.log.LogManager;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.catchup.SnapshotCatchUpTask;
-import org.apache.iotdb.cluster.log.manage.SingleSnapshotLogManager.SimpleSnapshot;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -183,8 +182,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       long previousLogIndex = log.getPreviousLogIndex();
       long previousLogTerm = log.getPreviousLogTerm();
 
-      if (lastLog == null ||
-          lastLog.getCurrLogIndex() == previousLogIndex && lastLog.getCurrLogTerm() == previousLogTerm) {
+      if (logManager.getLastLogIndex() == previousLogIndex && logManager.getLastLogTerm() == previousLogTerm) {
         // the incoming log points to the local last log, append it
         logManager.appendLog(log);
         if (logger.isDebugEnabled()) {
@@ -192,7 +190,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
               logManager.getLastLogIndex());
         }
         resp = Response.RESPONSE_AGREE;
-      } else if (lastLog.getPreviousLogIndex() == previousLogIndex
+      } else if (lastLog != null && lastLog.getPreviousLogIndex() == previousLogIndex
           && lastLog.getPreviousLogTerm() <= previousLogTerm) {
         // the incoming log points to the previous log of the local last log, and its term is
         // bigger than or equals to the local last log's, replace the local last log with it
@@ -201,12 +199,14 @@ public abstract class RaftMember implements RaftService.AsyncIface {
             previousLogTerm, previousLogIndex);
         resp = Response.RESPONSE_AGREE;
       } else {
+        long lastPrevLogTerm = lastLog == null ? -1 : lastLog.getPreviousLogTerm();
+        long lastPrevLogId = lastLog == null ? -1 : lastLog.getPreviousLogIndex();
         // the incoming log points to an illegal position, reject it
         logger.debug("Cannot append the log because the last log does not match, "
                 + "local:term[{}],index[{}],previousTerm[{}],previousIndex[{}], "
                 + "request:term[{}],index[{}],previousTerm[{}],previousIndex[{}]",
-            lastLog.getCurrLogTerm(), lastLog.getCurrLogIndex(),
-            lastLog.getPreviousLogTerm(), lastLog.getPreviousLogIndex(),
+            logManager.getLastLogTerm(), logManager.getLastLogIndex(),
+            lastPrevLogTerm, lastPrevLogId,
             log.getCurrLogTerm(), log.getPreviousLogIndex(),
             previousLogTerm, previousLogIndex);
         resp = Response.RESPONSE_LOG_MISMATCH;

@@ -8,9 +8,12 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.iotdb.cluster.exception.NoHeaderVNodeException;
 import org.apache.iotdb.cluster.exception.NotInSameGroupException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -25,7 +28,6 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncProcessor;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -42,7 +44,10 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   private PartitionTable partitionTable;
   private DataGroupMember.Factory dataMemberFactory;
 
+
+
   public DataClusterServer(int port, DataGroupMember.Factory dataMemberFactory) {
+    super();
     this.port = port;
     this.dataMemberFactory = dataMemberFactory;
   }
@@ -162,8 +167,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler)
-      throws TException {
+  public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
     if (!request.isSetHeader()) {
       resultHandler.onError(new NoHeaderVNodeException());
       return;
@@ -220,5 +224,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   public Collection<Node> getAllHeaders() {
     return headerGroupMap.keySet();
+  }
+
+  public void pullSnapshots() {
+    List<Integer> sockets = partitionTable.getNodeSockets(thisNode);
+    DataGroupMember dataGroupMember = getDataMember(thisNode);
+    dataGroupMember.pullSnapshots(sockets);
   }
 }

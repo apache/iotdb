@@ -4,18 +4,11 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
-import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.cluster.log.LogParser;
+import org.apache.iotdb.cluster.log.SimpleSnapshot;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +16,7 @@ import org.slf4j.LoggerFactory;
 public class SingleSnapshotLogManager extends MemoryLogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(SingleSnapshotLogManager.class);
-  private Deque<Log> snapshot = new ArrayDeque<>();
+  private List<Log> snapshot = new ArrayList<>();
 
   public SingleSnapshotLogManager(LogApplier logApplier) {
     super(logApplier);
@@ -32,7 +25,7 @@ public class SingleSnapshotLogManager extends MemoryLogManager {
   @Override
   public void takeSnapshot() {
     while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
-      snapshot.addLast(logBuffer.removeFirst());
+      snapshot.add(logBuffer.removeFirst());
     }
   }
 
@@ -41,46 +34,7 @@ public class SingleSnapshotLogManager extends MemoryLogManager {
     return new SimpleSnapshot(new ArrayList<>(this.snapshot));
   }
 
-  public static class SimpleSnapshot extends Snapshot {
-    private List<Log> snapshot;
-
-    public SimpleSnapshot() {
-    }
-
-    SimpleSnapshot(List<Log> snapshot) {
-      this.snapshot = snapshot;
-    }
-
-    @Override
-    public ByteBuffer serialize() {
-      ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-      DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
-      try {
-        dataOutputStream.writeInt(snapshot.size());
-        for (Log log : snapshot) {
-          outputStream.write(log.serialize().array());
-        }
-      } catch (IOException e) {
-        // unreachable
-      }
-      return ByteBuffer.wrap(outputStream.toByteArray());
-    }
-
-    @Override
-    public void deserialize(ByteBuffer buffer) {
-      snapshot = new ArrayList<>();
-      int size = buffer.getInt();
-      for (int i = 0; i < size; i++) {
-        try {
-          snapshot.add(LogParser.getINSTANCE().parse(buffer));
-        } catch (UnknownLogTypeException e) {
-          logger.error("Cannot recognize log", e);
-        }
-      }
-    }
-
-    public List<Log> getSnapshot() {
-      return snapshot;
-    }
+  public void setSnapshot(SimpleSnapshot snapshot) {
+    this.snapshot = snapshot.getSnapshot();
   }
 }

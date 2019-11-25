@@ -109,7 +109,7 @@ struct SendSnapshotRequest {
 }
 
 struct PullSnapshotRequest {
-  1: required list<int> requiredSockets
+  1: required int requiredSocket
   // for data group
   2: optional Node header
 }
