@@ -497,10 +497,4 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       logger.warn("Catch-up failed: node {} is currently unavailable", follower);
     }
   }
-
-  void applySnapshot(SimpleSnapshot snapshot) {
-    for (Log log : snapshot.getSnapshot()) {
-      logManager.getApplier().apply(log);
-    }
-  }
 }

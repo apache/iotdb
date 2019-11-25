@@ -142,7 +142,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   public synchronized boolean addNode(Node node) {
     synchronized (allNodes) {
-
       int insertIndex = -1;
       for (int i = 0; i < allNodes.size() - 1; i++) {
         Node prev = allNodes.get(i);
@@ -159,6 +158,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         allNodes.add(insertIndex, node);
         // if the local node is the last node and the insertion succeeds, this node should leave
         // the group
+        logger.debug("Node {} is inserted into the data group {}", node, this);
         return allNodes.indexOf(thisNode) == allNodes.size() - 1;
       }
       return false;
@@ -192,6 +192,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     PartitionedSnapshot snapshot = new PartitionedSnapshot();
     try {
       snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
+      logger.debug("Received a snapshot {}", snapshot);
       applySnapshot(snapshot);
       resultHandler.onComplete(null);
     } catch (Exception e) {
@@ -200,15 +201,17 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   private void applySnapshot(PartitionedSnapshot snapshot) {
-    List<Integer> sockets = metaGroupMember.getPartitionTable().getNodeSockets(getHeader());
-    for (Integer socket : sockets) {
-      SimpleSnapshot subSnapshot = (SimpleSnapshot) snapshot.getSnapshot(socket);
-      if (subSnapshot != null) {
-        applySnapshot(subSnapshot, socket);
+    synchronized (logManager) {
+      List<Integer> sockets = metaGroupMember.getPartitionTable().getNodeSockets(getHeader());
+      for (Integer socket : sockets) {
+        SimpleSnapshot subSnapshot = (SimpleSnapshot) snapshot.getSnapshot(socket);
+        if (subSnapshot != null) {
+          applySnapshot(subSnapshot, socket);
+        }
       }
+      logManager.setLastLogId(snapshot.getLastLogId());
+      logManager.setLastLogTerm(snapshot.getLastLogTerm());
     }
-    logManager.setLastLogId(snapshot.getLastLogId());
-    logManager.setLastLogTerm(snapshot.getLastLogTerm());
   }
 
   private void applySnapshot(SimpleSnapshot snapshot, int socket) {
@@ -223,6 +226,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
     if (character != NodeCharacter.LEADER) {
+      logger.debug("Forwarding a pull snapshot request to the leader {}", leader);
       // forward the request to the leader
       if (leader != null) {
         AsyncClient client = connectNode(leader);
@@ -246,14 +250,17 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       Snapshot snapshot = allSnapshot.getSnapshot(requiredSocket);
       PullSnapshotResp resp = new PullSnapshotResp();
       resp.setSnapshotBytes(snapshot.serialize());
+      logger.debug("Sending snapshot {} to the requester", snapshot);
       resultHandler.onComplete(resp);
     }
   }
 
   public void pullSnapshots(List<Integer> sockets) {
     synchronized (logManager) {
+      logger.info("Pulling sockets {} from remote", sockets);
       PartitionedSnapshot snapshot = (PartitionedSnapshot) logManager.getSnapshot();
       Map<Integer, Node> prevHolders = metaGroupMember.getPartitionTable().getPreviousNodeMap(thisNode);
+      logger.debug("Holders of each socket: {}", prevHolders);
 
       for (int socket : sockets) {
         Node node = prevHolders.get(socket);
@@ -268,10 +275,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   class PullSnapshotTask implements Callable<SimpleSnapshot> {
-    Node header;
+
     int socket;
+    // the new member created by a node addition
     DataGroupMember newMember;
+    // the nodes the may hold the target socket
     List<Node> oldMembers;
+    // the header of the old members
+    Node header;
 
     PullSnapshotTask(Node header, int socket,
         DataGroupMember member, List<Node> oldMembers) {
@@ -291,11 +302,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       int nodeIndex = -1;
       while (!finished) {
         try {
-          // sequentially pick up a replication that may have this socket
+          // sequentially pick up a node that may have this socket
           nodeIndex = (nodeIndex + 1) % oldMembers.size();
           TSDataService.AsyncClient client =
               (TSDataService.AsyncClient) newMember.connectNode(oldMembers.get(nodeIndex));
           if (client == null) {
+            // network is bad, wait and retry
             Thread.sleep(CONNECTION_TIME_OUT_MS);
           } else {
             synchronized (snapshotRef) {
@@ -304,6 +316,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
             }
             SimpleSnapshot result = snapshotRef.get();
             if (result != null) {
+              if (logger.isInfoEnabled()) {
+                logger.info("Received a snapshot {} of socket {} from {}", snapshotRef.get(),
+                    socket, oldMembers.get(nodeIndex));
+              }
               newMember.applySnapshot(result, socket);
               finished = true;
             }

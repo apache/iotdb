@@ -27,10 +27,10 @@ import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.log.SimpleSnapshot;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
 import org.apache.iotdb.cluster.log.manage.SingleSnapshotLogManager;
-import org.apache.iotdb.cluster.log.SimpleSnapshot;
 import org.apache.iotdb.cluster.log.meta.AddNodeLog;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -90,7 +90,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private LogApplier dataLogApplier = new DataLogApplier();
   private DataGroupMember.Factory dataMemberFactory;
 
-  private boolean blockElection = false;
+  private SingleSnapshotLogManager logManager;
 
   public MetaGroupMember(TProtocolFactory factory, Node thisNode)
       throws IOException {
@@ -160,7 +160,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   private void loadNode(String url) {
     String[] split = url.split(":");
-    if (split.length != 3) {
+    if (split.length != 4) {
       logger.warn("Incorrect node url: {}", url);
       return;
     }
@@ -168,11 +168,13 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     String ip = split[1];
     try {
       int identifier = Integer.parseInt(split[0]);
-      int port = Integer.parseInt(split[2]);
+      int metaPort = Integer.parseInt(split[2]);
+      int dataPort = Integer.parseInt(split[3]);
       Node node = new Node();
       node.setIp(ip);
-      node.setPort(port);
+      node.setPort(metaPort);
       node.setNodeIdentifier(identifier);
+      node.setDataPort(dataPort);
       allNodes.add(node);
       idNodeMap.put(identifier, node);
     } catch (NumberFormatException e) {
@@ -655,7 +657,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private synchronized void saveNodes() {
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(NODES_FILE_NAME))){
       for (Node node : allNodes) {
-        writer.write(node.getNodeIdentifier() + ":" + node.ip + ":" + node.port);
+        writer.write(node.getNodeIdentifier() + ":" + node.ip + ":" + node.port + ":" + node.dataPort);
         writer.newLine();
       }
     } catch (IOException e) {
@@ -703,18 +705,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     dataClusterServer.setPartitionTable(partitionTable);
     for (PartitionGroup partitionGroup : partitionGroups) {
       DataGroupMember dataGroupMember = dataMemberFactory.create(partitionGroup, thisNode);
-      dataClusterServer.addDataGroupMember(dataGroupMember);
       dataGroupMember.start();
+      dataClusterServer.addDataGroupMember(dataGroupMember);
     }
     logger.info("Data group members are ready");
-  }
-
-  public void setBlockElection(boolean blockElection) {
-    this.blockElection = blockElection;
-  }
-
-  public boolean isBlockElection() {
-    return blockElection;
   }
 
   public PartitionTable getPartitionTable() {
@@ -738,7 +732,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       for (Log log : snapshot.getSnapshot()) {
         logManager.getApplier().apply(log);
       }
-      ((SingleSnapshotLogManager) logManager).setSnapshot(snapshot);
+      logManager.setSnapshot(snapshot);
     }
     logManager.setLastLogTerm(snapshot.getLastLogTerm());
     logManager.setLastLogId(snapshot.getLastLogId());

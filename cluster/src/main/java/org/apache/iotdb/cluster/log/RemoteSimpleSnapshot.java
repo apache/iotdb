@@ -48,10 +48,12 @@ public class RemoteSimpleSnapshot extends SimpleSnapshot {
   private void getRemoteSnapshot() {
     if (snapshot == null) {
       try {
+        logger.info("Waiting for the remote snapshot");
         snapshot = remoteSnapshot.get().snapshot;
         if (snapshot == null) {
           snapshot = new ArrayList<>();
         }
+        logger.info("The remote snapshot is ready");
       } catch (InterruptedException | ExecutionException e) {
         Thread.currentThread().interrupt();
         logger.error("Cannot get remote snapshot", e);
