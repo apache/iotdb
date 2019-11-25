@@ -733,7 +733,7 @@ public class LogicalGenerator {
     } else {
       slidingStep = value;
     }
-    if (slidingStep <= value) {
+    if (slidingStep < value) {
       throw new LogicalOperatorException("The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
     }
 
