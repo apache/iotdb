@@ -1173,8 +1173,11 @@ public class StorageGroupProcessor {
         seqFile.remove();
         seqFile.getWriteQueryLock().writeLock().unlock();
       }
-      File newTsFile = newFile.getFile();
-      newTsFile.renameTo(new File(newTsFile.getParent(), newTsFile.getName().replace(SqueezeMergeTask.MERGE_SUFFIX, "")));
+      File oldTsFile = newFile.getFile();
+      File newTsFile = new File(oldTsFile.getParent(),
+          oldTsFile.getName().replace(SqueezeMergeTask.MERGE_SUFFIX, ""));
+      oldTsFile.renameTo(newTsFile);
+      newFile.setFile(newTsFile);
       newFile.serialize();
       mergeLog.delete();
     } catch (IOException e) {
