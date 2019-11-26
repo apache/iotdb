@@ -29,6 +29,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
@@ -255,6 +256,13 @@ public class TsFileResource {
   public void remove() {
     file.delete();
     fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).delete();
+    fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
+  }
+
+  public void moveTo(File targetDir) throws IOException {
+    FileUtils.moveFile(file, new File(targetDir, file.getName()));
+    FileUtils.moveFile(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
+        new File(targetDir, file.getName() + RESOURCE_SUFFIX));
     fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
   }
 

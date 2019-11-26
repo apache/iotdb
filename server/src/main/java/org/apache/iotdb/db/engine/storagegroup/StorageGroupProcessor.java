@@ -59,8 +59,8 @@ import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.MergeException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
@@ -70,10 +70,9 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.JobFileManager;
-import org.apache.iotdb.db.utils.UpgradeUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -297,7 +296,8 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void recoverUnseqFiles(List<TsFileResource> tsFiles) throws StorageGroupProcessorException {
+  private void recoverUnseqFiles(List<TsFileResource> tsFiles)
+      throws StorageGroupProcessorException {
     for (TsFileResource tsFileResource : tsFiles) {
       unSequenceFileList.add(tsFileResource);
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-",
@@ -1295,29 +1295,30 @@ public class StorageGroupProcessor {
    *
    * Secondly, delete the tsfile and .resource file.
    *
-   * @param deletedTsfile tsfile to be deleted
-   * @UsedBy sync module.
+   * @param tsfieToBeDeleted tsfile to be deleted
+   * @return whether the file to be deleted exists.
+   * @UsedBy sync module, load external tsfile module.
    */
-  public void deleteTsfile(File deletedTsfile) {
+  public boolean deleteTsfile(File tsfieToBeDeleted) {
     writeLock();
     mergeLock.writeLock().lock();
-    TsFileResource deletedTsFileResource = null;
+    TsFileResource tsFileResourceToBeDeleted = null;
     try {
       Iterator<TsFileResource> sequenceIterator = sequenceFileList.iterator();
       while (sequenceIterator.hasNext()) {
         TsFileResource sequenceResource = sequenceIterator.next();
-        if (sequenceResource.getFile().getName().equals(deletedTsfile.getName())) {
-          deletedTsFileResource = sequenceResource;
+        if (sequenceResource.getFile().getName().equals(tsfieToBeDeleted.getName())) {
+          tsFileResourceToBeDeleted = sequenceResource;
           sequenceIterator.remove();
           break;
         }
       }
-      if (deletedTsFileResource == null) {
+      if (tsFileResourceToBeDeleted == null) {
         Iterator<TsFileResource> unsequenceIterator = unSequenceFileList.iterator();
         while (unsequenceIterator.hasNext()) {
           TsFileResource unsequenceResource = unsequenceIterator.next();
-          if (unsequenceResource.getFile().getName().equals(deletedTsfile.getName())) {
-            deletedTsFileResource = unsequenceResource;
+          if (unsequenceResource.getFile().getName().equals(tsfieToBeDeleted.getName())) {
+            tsFileResourceToBeDeleted = unsequenceResource;
             unsequenceIterator.remove();
             break;
           }
@@ -1327,18 +1328,74 @@ public class StorageGroupProcessor {
       mergeLock.writeLock().unlock();
       writeUnlock();
     }
-    if (deletedTsFileResource == null) {
-      return;
+    if (tsFileResourceToBeDeleted == null) {
+      return false;
     }
-    deletedTsFileResource.getWriteQueryLock().writeLock().lock();
+    tsFileResourceToBeDeleted.getWriteQueryLock().writeLock().lock();
     try {
-      logger.info("Delete tsfile {} in sync loading process.", deletedTsFileResource.getFile());
-      deletedTsFileResource.remove();
+      tsFileResourceToBeDeleted.remove();
+      logger.info("Delete tsfile {} successfully.", tsFileResourceToBeDeleted.getFile());
     } finally {
-      deletedTsFileResource.getWriteQueryLock().writeLock().unlock();
+      tsFileResourceToBeDeleted.getWriteQueryLock().writeLock().unlock();
     }
+    return true;
   }
 
+
+  /**
+   * Move tsfile to the target directory if it exists.
+   *
+   * Firstly, remove the TsFileResource from sequenceFileList/unSequenceFileList.
+   *
+   * Secondly, move the tsfile and .resource file to the target directory.
+   *
+   * @param fileToBeMoved tsfile to be moved
+   * @return whether the file to be moved exists.
+   * @UsedBy load external tsfile module.
+   */
+  public boolean moveTsfile(File fileToBeMoved, File targetDir) throws IOException {
+    writeLock();
+    mergeLock.writeLock().lock();
+    TsFileResource tsFileResourceToBeMoved = null;
+    try {
+      Iterator<TsFileResource> sequenceIterator = sequenceFileList.iterator();
+      while (sequenceIterator.hasNext()) {
+        TsFileResource sequenceResource = sequenceIterator.next();
+        if (sequenceResource.getFile().getName().equals(fileToBeMoved.getName())) {
+          tsFileResourceToBeMoved = sequenceResource;
+          sequenceIterator.remove();
+          break;
+        }
+      }
+      if (tsFileResourceToBeMoved == null) {
+        Iterator<TsFileResource> unsequenceIterator = unSequenceFileList.iterator();
+        while (unsequenceIterator.hasNext()) {
+          TsFileResource unsequenceResource = unsequenceIterator.next();
+          if (unsequenceResource.getFile().getName().equals(fileToBeMoved.getName())) {
+            tsFileResourceToBeMoved = unsequenceResource;
+            unsequenceIterator.remove();
+            break;
+          }
+        }
+      }
+    } finally {
+      mergeLock.writeLock().unlock();
+      writeUnlock();
+    }
+    if (tsFileResourceToBeMoved == null) {
+      return false;
+    }
+    tsFileResourceToBeMoved.getWriteQueryLock().writeLock().lock();
+    try {
+      tsFileResourceToBeMoved.moveTo(targetDir);
+      logger
+          .info("Move tsfile {} to target dir {} successfully.", tsFileResourceToBeMoved.getFile(),
+              targetDir.getPath());
+    } finally {
+      tsFileResourceToBeMoved.getWriteQueryLock().writeLock().unlock();
+    }
+    return true;
+  }
 
   public TsFileProcessor getWorkSequenceTsFileProcessor() {
     return workSequenceTsFileProcessor;

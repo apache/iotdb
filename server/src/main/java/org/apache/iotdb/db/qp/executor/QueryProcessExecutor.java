@@ -22,6 +22,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PRIVILEGE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ROLE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.USER;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,8 +39,9 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
@@ -67,6 +69,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
@@ -156,16 +159,68 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
   }
 
-  private void operateLoadFiles(OperateFilePlan plan){
-
+  private void operateLoadFiles(OperateFilePlan plan) throws QueryProcessException {
+    File file = plan.getFile();
+    if (!file.exists()) {
+      throw new QueryProcessException(
+          String.format("File path %s doesn't exists.", file.getPath()));
+    }
+    if (file.isDirectory()) {
+      recursionFileDir(file);
+    } else {
+      loadFile(file);
+    }
   }
 
-  private void operateRemoveFile(OperateFilePlan plan){
-
+  private void recursionFileDir(File curFile) throws QueryProcessException {
+    File[] files = curFile.listFiles();
+    for (File file : files) {
+      if (file.isDirectory()) {
+        recursionFileDir(file);
+      } else {
+        loadFile(file);
+      }
+    }
   }
 
-  private void operateMoveFile(OperateFilePlan plan){
+  private void loadFile(File file) throws QueryProcessException {
+    TsFileResource tsFileResource = new TsFileResource(file);
+    try {
+      FileLoaderUtils.checkTsFileResource(tsFileResource);
+      //TODO check version and metadata
+    } catch (IOException e) {
+      throw new QueryProcessException(
+          String.format("Cannot load file %s because %s", file.getAbsolutePath(), e.getMessage()));
+    }
+  }
 
+  private void operateRemoveFile(OperateFilePlan plan) throws QueryProcessException {
+    try {
+      if (!StorageEngine.getInstance().deleteTsfile(plan.getFile())) {
+        throw new QueryProcessException(
+            String.format("File %s doesn't exists.", plan.getFile().getName()));
+      }
+    } catch (StorageEngineException e) {
+      throw new QueryProcessException(
+          String.format("Cannot remove file because %s", e.getMessage()));
+    }
+  }
+
+  private void operateMoveFile(OperateFilePlan plan) throws QueryProcessException {
+    if (!plan.getTargetDir().exists() || !plan.getTargetDir().isDirectory()) {
+      throw new QueryProcessException(
+          String.format("Target dir %s is invalid.", plan.getTargetDir().getPath()));
+    }
+    try {
+      if (!StorageEngine.getInstance().moveTsfile(plan.getFile(), plan.getTargetDir())) {
+        throw new QueryProcessException(
+            String.format("File %s doesn't exists.", plan.getFile().getName()));
+      }
+    } catch (StorageEngineException | IOException e) {
+      throw new QueryProcessException(
+          String.format("Cannot move file %s to target directory %s because %s",
+              plan.getFile().getPath(), plan.getTargetDir().getPath(), e.getMessage()));
+    }
   }
 
   private void operateTTL(SetTTLPlan plan) throws QueryProcessException {

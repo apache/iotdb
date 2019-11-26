@@ -337,6 +337,7 @@ public class StorageEngine implements IService {
 
   /**
    * count all Tsfiles which need to be upgraded
+   *
    * @return total num of the tsfiles which need to be upgraded
    */
   public int countUpgradeFiles() {
@@ -433,8 +434,14 @@ public class StorageEngine implements IService {
         .loadNewTsFile(newTsFileResource);
   }
 
-  public void deleteTsfile(File deletedTsfile) throws StorageEngineException {
-    getProcessor(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
+  public boolean deleteTsfile(File deletedTsfile) throws StorageEngineException {
+    return getProcessor(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
+  }
+
+  public boolean moveTsfile(File deletedTsfile, File targetDir)
+      throws StorageEngineException, IOException {
+    return getProcessor(deletedTsfile.getParentFile().getName())
+        .moveTsfile(deletedTsfile, targetDir);
   }
 
 }
