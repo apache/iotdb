@@ -39,8 +39,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.TsDigest;
-import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -208,16 +206,16 @@ public class TsFileIOWriter {
     }
 
     // TODO add your statistics
-    ByteBuffer[] statisticsArray = new ByteBuffer[StatisticType.getTotalTypeNum()];
-    statisticsArray[StatisticType.max_value.ordinal()] = ByteBuffer.wrap(statistics.getMaxBytes());
-    statisticsArray[StatisticType.min_value.ordinal()] = ByteBuffer.wrap(statistics.getMinBytes());
-    statisticsArray[StatisticType.first_value.ordinal()] = ByteBuffer
+    ByteBuffer[] statisticsArray = new ByteBuffer[Statistics.StatisticType.getTotalTypeNum()];
+    statisticsArray[Statistics.StatisticType.max_value.ordinal()] = ByteBuffer.wrap(statistics.getMaxBytes());
+    statisticsArray[Statistics.StatisticType.min_value.ordinal()] = ByteBuffer.wrap(statistics.getMinBytes());
+    statisticsArray[Statistics.StatisticType.first_value.ordinal()] = ByteBuffer
         .wrap(statistics.getFirstBytes());
-    statisticsArray[StatisticType.last_value.ordinal()] = ByteBuffer
+    statisticsArray[Statistics.StatisticType.last_value.ordinal()] = ByteBuffer
         .wrap(statistics.getLastBytes());
-    statisticsArray[StatisticType.sum_value.ordinal()] = ByteBuffer.wrap(statistics.getSumBytes());
+    statisticsArray[Statistics.StatisticType.sum_value.ordinal()] = ByteBuffer.wrap(statistics.getSumBytes());
 
-    TsDigest tsDigest = new TsDigest();
+    Statistics tsDigest = Statistics.getStatsByType(tsDataType);
 
     tsDigest.setStatistics(statisticsArray);
 
