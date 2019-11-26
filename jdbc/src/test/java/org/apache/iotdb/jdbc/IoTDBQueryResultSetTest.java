@@ -229,7 +229,7 @@ public class IoTDBQueryResultSetTest {
               + "103,null,199,null,null,\n"
               + "105,11.11,199,33333,11.11,\n"
               + "1000,1000.11,55555,22222,1000.11,\n"; // Note the LIMIT&OFFSET clause takes effect
-      Assert.assertEquals(resultStr.toString(), standard);
+      Assert.assertEquals(standard, resultStr.toString());
     }
   }
 
