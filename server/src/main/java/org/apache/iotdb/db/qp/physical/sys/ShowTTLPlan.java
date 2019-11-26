@@ -5,18 +5,15 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import java.util.List;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-public class ShowTTLPlan extends PhysicalPlan {
+public class ShowTTLPlan extends ShowPlan {
 
   private List<String> storageGroups;
 
   public ShowTTLPlan(List<String> storageGroups) {
-    super(true);
+    super(ShowContentType.TTL);
     this.storageGroups = storageGroups;
-    setOperatorType(OperatorType.TTL);
   }
 
   @Override

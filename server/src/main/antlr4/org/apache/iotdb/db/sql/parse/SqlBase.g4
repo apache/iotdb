@@ -67,6 +67,8 @@ statement
     | UNSET TTL TO path=prefixPath #unsetTTLStatement
     | SHOW TTL ON prefixPath (COMMA prefixPath)* #showTTLStatement
     | SHOW ALL TTL #showAllTTLStatement
+    | SHOW FLUSH TASK INFO #showFlushTaskInfo
+    | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | LOAD CONFIGURATION #loadConfigurationStatement
     | SELECT INDEX func=ID //not suppert yet
     LR_BRACKET
@@ -586,6 +588,26 @@ UNSET
 
 TTL
     : T T L
+    ;
+
+FLUSH
+    : F L U S H
+    ;
+
+TASK
+    : T A S K
+    ;
+
+INFO
+    : I N F O
+    ;
+
+DYNAMIC
+    : D Y N A M I C
+    ;
+
+PARAMETER
+    : P A R A M E T E R
     ;
 //============================
 // End of the keywords list

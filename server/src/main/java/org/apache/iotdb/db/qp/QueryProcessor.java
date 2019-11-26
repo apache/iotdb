@@ -93,6 +93,7 @@ public class QueryProcessor {
       case REVOKE_WATERMARK_EMBEDDING:
       case TTL:
       case LOAD_CONFIGURATION:
+      case SHOW:
         return operator;
       case QUERY:
       case UPDATE:

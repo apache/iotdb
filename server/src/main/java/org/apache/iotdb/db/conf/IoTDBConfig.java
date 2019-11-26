@@ -396,6 +396,16 @@ public class IoTDBConfig {
   private FSType tsFileStorageFs = FSType.LOCAL;
 
   /**
+   * Default core-site.xml file path is /etc/hadoop/conf/core-site.xml
+   */
+  private String coreSitePath = "/etc/hadoop/conf/core-site.xml";
+
+  /**
+   * Default hdfs-site.xml file path is /etc/hadoop/conf/hdfs-site.xml
+   */
+  private String hdfsSitePath = "/etc/hadoop/conf/hdfs-site.xml";
+
+  /**
    * Default HDFS ip is localhost
    */
   private String hdfsIp = "localhost";
@@ -424,7 +434,6 @@ public class IoTDBConfig {
    * Default DFS client failover proxy provider is "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider"
    */
   private String dfsClientFailoverProxyProvider = "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider";
-
 
   /**
    * whether use kerberos to authenticate hdfs
@@ -1157,6 +1166,22 @@ public class IoTDBConfig {
 
   public void setTsFileStorageFs(String tsFileStorageFs) {
     this.tsFileStorageFs = FSType.valueOf(tsFileStorageFs);
+  }
+
+  public String getCoreSitePath() {
+    return coreSitePath;
+  }
+
+  public void setCoreSitePath(String coreSitePath) {
+    this.coreSitePath = coreSitePath;
+  }
+
+  public String getHdfsSitePath() {
+    return hdfsSitePath;
+  }
+
+  public void setHdfsSitePath(String hdfsSitePath) {
+    this.hdfsSitePath = hdfsSitePath;
   }
 
   public String[] getHdfsIp() {

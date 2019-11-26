@@ -43,22 +43,13 @@ import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.db.qp.logical.crud.UpdateOperator;
-import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.db.qp.logical.sys.*;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
-import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
-import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
-import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.db.sql.parse.SqlBaseBaseListener;
+import org.apache.iotdb.db.sql.parse.SqlBaseParser;
 import org.apache.iotdb.db.sql.parse.SqlBaseParser.AddLabelContext;
 import org.apache.iotdb.db.sql.parse.SqlBaseParser.AlterUserContext;
 import org.apache.iotdb.db.sql.parse.SqlBaseParser.AndExpressionContext;
@@ -169,6 +160,18 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterLoadConfigurationStatement(LoadConfigurationStatementContext ctx) {
     super.enterLoadConfigurationStatement(ctx);
     initializedOperator = new LoadConfigurationOperator();
+  }
+
+  @Override
+  public void enterShowDynamicParameter(SqlBaseParser.ShowDynamicParameterContext ctx) {
+    super.enterShowDynamicParameter(ctx);
+    initializedOperator = new ShowOperator(SQLConstant.TOK_DYNAMIC_PARAMETER);
+  }
+
+  @Override
+  public void enterShowFlushTaskInfo(SqlBaseParser.ShowFlushTaskInfoContext ctx) {
+    super.enterShowFlushTaskInfo(ctx);
+    initializedOperator = new ShowOperator(SQLConstant.TOK_FLUSH_TASK_INFO);
   }
 
   @Override
