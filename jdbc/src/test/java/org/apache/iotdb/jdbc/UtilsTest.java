@@ -29,7 +29,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
@@ -262,9 +261,10 @@ public class UtilsTest {
     columnTypeList.add(TSDataType.FLOAT.toString());
     columnTypeList.add(TSDataType.DOUBLE.toString());
     columnTypeList.add(TSDataType.TEXT.toString());
-    List<RowRecord> convertlist = Utils.convertRowRecords(tsQueryDataSet, columnTypeList);
+    ByteBuffer resultBuffer = Utils.convertResultBuffer(tsQueryDataSet, columnTypeList);
+    RowRecord r = Utils.getRowRecord(resultBuffer, columnTypeList);
     int index = 0;
-    for (RowRecord r : convertlist) {
+    while (r != null) {
       assertEquals(input[index][0], r.getTimestamp());
       List<Field> fields = r.getFields();
       int j = 0;
@@ -309,6 +309,7 @@ public class UtilsTest {
         j++;
       }
       index++;
+      r = Utils.getRowRecord(resultBuffer, columnTypeList);
     }
   }
 
