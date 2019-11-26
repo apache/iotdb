@@ -141,6 +141,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 显示设备语句
+
 ```
 SHOW DEVICES
 Eg: IoTDB > SHOW DEVICES
@@ -148,6 +149,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 显示ROOT节点的子节点名称语句
+
 ```
 SHOW CHILD PATHS
 Eg: IoTDB > SHOW CHILD PATHS
@@ -155,6 +157,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 显示子节点名称语句
+
 ```
 SHOW CHILD PATHS <Path>
 Eg: IoTDB > SHOW CHILD PATHS root
@@ -510,11 +513,11 @@ Eg. SELECT MAX_VALUE(status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHER
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
-* MEAN
-
+* AVG
+原有的 `MEAN` 方法在 `v0.9.0` 版本更名为 `AVG`。
 ```
-SELECT MEAN (Path) (COMMA MEAN (Path))* FROM <FromClause> [WHERE <WhereClause>]?
-Eg. SELECT MEAN (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+SELECT AVG (Path) (COMMA AVG (Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT AVG (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 

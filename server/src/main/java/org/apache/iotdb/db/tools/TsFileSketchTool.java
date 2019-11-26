@@ -33,10 +33,9 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.TsDigest;
-import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -220,7 +219,7 @@ public class TsFileSketchTool {
     pw.println(str);
   }
 
-  private static String statisticByteBufferToString(TSDataType tsDataType, TsDigest tsDigest) {
+  private static String statisticByteBufferToString(TSDataType tsDataType, Statistics tsDigest) {
     ByteBuffer[] statistics = tsDigest.getStatistics();
     if (statistics == null) {
       return "TsDigest:[]";
@@ -229,7 +228,7 @@ public class TsFileSketchTool {
     str.append("TsDigest:[");
     for (int i = 0; i < statistics.length - 1; i++) {
       ByteBuffer value = statistics[i];
-      str.append(StatisticType.values()[i]);
+      str.append(Statistics.StatisticType.values()[i]);
       str.append(":");
       if (value == null) {
         str.append("null");
@@ -261,7 +260,7 @@ public class TsFileSketchTool {
       str.append(",");
     }
     // Note that the last statistic of StatisticType is sum_value, which is double.
-    str.append(StatisticType.values()[statistics.length - 1]);
+    str.append(Statistics.StatisticType.values()[statistics.length - 1]);
     str.append(":");
     ByteBuffer value = statistics[statistics.length - 1];
     if (value == null) {
