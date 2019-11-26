@@ -398,7 +398,6 @@ For example, "select s0,s0,s1 from root.sg.* group by device" is not equal to "s
    - select count(*) from root.vehicle group by device
    - select sum(*) from root.vehicle GROUP BY (20ms,0,[2,50]) group by device
    - select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) group by device
-
 ```
 
 
@@ -610,13 +609,13 @@ Eg. SELECT MAX_VALUE(status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHER
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
-* MEAN
+* AVG(Rename from `MEAN` at `V0.9.0`)
 
-The MEAN function returns the arithmetic mean value of the choosen timeseries over a specified period of time. The timeseries must be int32, int64, float, double type, and the other types are not to be calculated. The result is a double type number.
+The AVG function returns the arithmetic mean value of the choosen timeseries over a specified period of time. The timeseries must be int32, int64, float, double type, and the other types are not to be calculated. The result is a double type number.
 
 ```
-SELECT MEAN (Path) (COMMA MEAN (Path))* FROM <FromClause> [WHERE <WhereClause>]?
-Eg. SELECT MEAN (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+SELECT AVG (Path) (COMMA AVG (Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT AVG (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
