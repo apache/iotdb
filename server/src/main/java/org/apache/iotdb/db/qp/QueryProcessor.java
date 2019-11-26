@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.qp;
 
+import java.time.ZoneId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.ArgsErrorException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
-import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
-import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.IllegalASTFormatException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.RootOperator;
@@ -43,8 +43,6 @@ import org.apache.iotdb.db.sql.parse.AstNode;
 import org.apache.iotdb.db.sql.parse.ParseException;
 import org.apache.iotdb.db.sql.parse.ParseUtils;
 
-import java.time.ZoneId;
-
 /**
  * provide a integration method for other user.
  */
@@ -61,35 +59,29 @@ public class QueryProcessor {
   }
 
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
-      throws QueryProcessorException, ArgsErrorException,
-      MetadataErrorException {
+      throws QueryProcessException, MetadataException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     return parseSQLToPhysicalPlan(sqlStr, config.getZoneID());
   }
 
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
-      throws QueryProcessorException, ArgsErrorException,
-      MetadataErrorException {
+      throws MetadataException, QueryProcessException {
     AstNode astNode = parseSQLToAST(sqlStr);
     Operator operator = parseASTToOperator(astNode, zoneId);
     operator = logicalOptimize(operator, executor);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator(executor);
-    PhysicalPlan qp = physicalGenerator.transformToPhysicalPlan(operator);
-    return qp;
+    return physicalGenerator.transformToPhysicalPlan(operator);
   }
 
   /**
    * Convert ast tree to Operator which type maybe {@code SFWOperator} or {@code AuthorOperator}
    *
-   * @param astNode
-   *            - input ast tree
+   * @param astNode - input ast tree
    * @return - RootOperator has four subclass:Query/Insert/Delete/Update/Author
-   * @throws QueryProcessorException
-   *             exception in converting sql to operator
-   * @throws ArgsErrorException
+   * @throws IllegalASTFormatException exception in converting sql to operator
    */
   private RootOperator parseASTToOperator(AstNode astNode, ZoneId zoneId)
-      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+      throws QueryProcessException, MetadataException {
     LogicalGenerator generator = new LogicalGenerator(zoneId);
     return generator.getLogicalPlan(astNode);
   }
@@ -97,11 +89,9 @@ public class QueryProcessor {
   /**
    * Given a SQL statement and generate an ast tree
    *
-   * @param sqlStr
-   *            input sql command
+   * @param sqlStr input sql command
    * @return ast tree
-   * @throws IllegalASTFormatException
-   *             exception in sql parsing
+   * @throws IllegalASTFormatException exception in sql parsing
    */
   private AstNode parseSQLToAST(String sqlStr) throws IllegalASTFormatException {
     AstNode astTree;
@@ -109,9 +99,7 @@ public class QueryProcessor {
     try {
       astTree = ParseGenerator.generateAST(sqlStr);
     } catch (ParseException e) {
-      // e.printStackTrace();
-      throw new IllegalASTFormatException(
-          "parsing error,statement: " + sqlStr, e);
+      throw new IllegalASTFormatException(sqlStr, e.getMessage());
     }
     return ParseUtils.findRootNonNullToken(astTree);
   }
@@ -119,12 +107,9 @@ public class QueryProcessor {
   /**
    * given an unoptimized logical operator tree and return a optimized result.
    *
-   * @param operator
-   *            unoptimized logical operator
-   * @param executor
+   * @param operator unoptimized logical operator
    * @return optimized logical operator
-   * @throws LogicalOptimizeException
-   *             exception in logical optimizing
+   * @throws LogicalOptimizeException exception in logical optimizing
    */
   private Operator logicalOptimize(Operator operator, IQueryProcessExecutor executor)
       throws LogicalOperatorException {
@@ -143,6 +128,8 @@ public class QueryProcessor {
       case GRANT_WATERMARK_EMBEDDING:
       case REVOKE_WATERMARK_EMBEDDING:
       case TTL:
+      case LOAD_CONFIGURATION:
+      case SHOW:
         return operator;
       case QUERY:
       case UPDATE:
@@ -150,19 +137,16 @@ public class QueryProcessor {
         SFWOperator root = (SFWOperator) operator;
         return optimizeSFWOperator(root, executor);
       default:
-        throw new LogicalOperatorException("unknown operator type:" + operator.getType());
+        throw new LogicalOperatorException(operator.getType().toString(), "");
     }
   }
 
   /**
    * given an unoptimized select-from-where operator and return an optimized result.
    *
-   * @param root
-   *            unoptimized select-from-where operator
-   * @param executor
+   * @param root unoptimized select-from-where operator
    * @return optimized select-from-where operator
-   * @throws LogicalOptimizeException
-   *             exception in SFW optimizing
+   * @throws LogicalOptimizeException exception in SFW optimizing
    */
   private SFWOperator optimizeSFWOperator(SFWOperator root, IQueryProcessExecutor executor)
       throws LogicalOperatorException {

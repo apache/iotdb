@@ -20,38 +20,51 @@
 package org.apache.iotdb.rpc;
 
 public enum TSStatusCode {
-  SUCCESS_STATUS(200, ""),
-  STILL_EXECUTING_STATUS(201, ""),
-  INVALID_HANDLE_STATUS(202, ""),
-  TIMESERIES_NOT_EXIST_ERROR(301, "Timeseries does not exist"),
-  UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR(302, "Unsupported fetch metadata operation"),
-  FETCH_METADATA_ERROR(303, "Failed to fetch metadata"),
-  CHECK_FILE_LEVEL_ERROR(304, "Meet error while checking file level"),
-  OUT_OF_TTL_ERROR(305, "timestamp falls out of TTL"),
-  EXECUTE_STATEMENT_ERROR(400, "Execute statement error"),
-  SQL_PARSE_ERROR(401, "Meet error while parsing SQL"),
-  GENERATE_TIME_ZONE_ERROR(402, "Meet error while generating time zone"),
-  SET_TIME_ZONE_ERROR(403, "Meet error while setting time zone"),
-  NOT_A_STORAGE_GROUP_ERROR(404, "Given path is not a storage group"),
-  INTERNAL_SERVER_ERROR(500, "Internal server error"),
-  WRONG_LOGIN_PASSWORD_ERROR(600,  "Username or password is wrong"),
-  NOT_LOGIN_ERROR(601, "Has not logged in"),
-  NO_PERMISSION_ERROR(602, "No permissions for this operation"),
-  UNINITIALIZED_AUTH_ERROR(603, "Uninitialized authorizer");
+  SUCCESS_STATUS(200),
+  STILL_EXECUTING_STATUS(201),
+  INVALID_HANDLE_STATUS(202),
+  TIMESERIES_ALREADY_EXIST_ERROR(300),
+  TIMESERIES_NOT_EXIST_ERROR(301),
+  UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR(302),
+  METADATA_ERROR(303),
+  CHECK_FILE_LEVEL_ERROR(304),
+  OUT_OF_TTL_ERROR(305),
+  CONFIG_ADJUSTER(306),
+  MERGE_ERROR(307),
+  SYSTEM_CHECK_ERROR(308),
+  SYNC_DEVICE_OWNER_CONFLICT_ERROR(309),
+  SYNC_CONNECTION_EXCEPTION(310),
+  STORAGE_GROUP_PROCESSOR_ERROR(311),
+  STORAGE_GROUP_ERROR(312),
+  STORAGE_ENGINE_ERROR(313),
+  EXECUTE_STATEMENT_ERROR(400),
+  SQL_PARSE_ERROR(401),
+  GENERATE_TIME_ZONE_ERROR(402),
+  SET_TIME_ZONE_ERROR(403),
+  NOT_STORAGE_GROUP_ERROR(404),
+  QUERY_NOT_ALLOWED(405),
+  AST_FORMAT_ERROR(406),
+  LOGICAL_OPERATOR_ERROR(407),
+  LOGICAL_OPTIMIZE_ERROR(408),
+  UNSUPPORTED_FILL_TYPE_ERROR(409),
+  PATH_ERROR(410),
+  INTERNAL_SERVER_ERROR(500),
+  CLOSE_OPERATION_ERROR(501),
+  READ_ONLY_SYSTEM_ERROR(502),
+  DISK_SPACE_INSUFFICIENT_ERROR(503),
+  START_UP_ERROR(504),
+  WRONG_LOGIN_PASSWORD_ERROR(600),
+  NOT_LOGIN_ERROR(601),
+  NO_PERMISSION_ERROR(602),
+  UNINITIALIZED_AUTH_ERROR(603);
 
   private int statusCode;
-  private String statusMessage;
 
-  TSStatusCode(int statusCode, String statusMessage) {
+  TSStatusCode(int statusCode) {
     this.statusCode = statusCode;
-    this.statusMessage = statusMessage;
   }
 
   public int getStatusCode() {
     return statusCode;
-  }
-
-  public String getStatusMessage() {
-    return statusMessage;
   }
 }

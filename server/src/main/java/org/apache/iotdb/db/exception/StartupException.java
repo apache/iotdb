@@ -18,17 +18,24 @@
  */
 package org.apache.iotdb.db.exception;
 
-public class StartupException extends Exception {
+import org.apache.iotdb.rpc.TSStatusCode;
+
+public class StartupException extends ProcessException {
 
   private static final long serialVersionUID = -8591716406230730147L;
 
-  public StartupException(String msg) {
-    super(msg);
+  public StartupException(String name, String message) {
+    super(String.format("Failed to start [%s], because [%s]", name, message));
+    errorCode = TSStatusCode.START_UP_ERROR.getStatusCode();
   }
 
-  public StartupException(String msg, Throwable cause) {
-    super(msg, cause);
+  public StartupException(Throwable cause) {
+    super(cause.getMessage());
+    errorCode = TSStatusCode.START_UP_ERROR.getStatusCode();
   }
 
-  public StartupException(Throwable cause) {super(cause);}
+  public StartupException(String message) {
+    super(message);
+    errorCode = TSStatusCode.START_UP_ERROR.getStatusCode();
+  }
 }

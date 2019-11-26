@@ -29,12 +29,19 @@ Before starting to use IoTDB, you need to config the configuration files first. 
 In total, we provide users three kinds of configurations module: 
 
 * environment configuration file (`iotdb-env.bat`, `iotdb-env.sh`). The default configuration file for the environment configuration item. Users can configure the relevant system configuration items of JAVA-JVM in the file.
-* system configuration file (`tsfile-format.properties`, `iotdb-engine.properties`). 
-	* `tsfile-format.properties`: The default configuration file for the IoTDB file layer configuration item. Users can configure the information about the TsFile, such as the data size written to the disk per time(`group_size_in_byte`). 
-	* `iotdb-engine.properties`: The default configuration file for the IoTDB engine layer configuration item. Users can configure the IoTDB engine related parameters in the file, such as JDBC service listening port (`rpc_port`), unsequence data storage directory (`unsequence_data_dir`), etc.
+* system configuration file (`iotdb-engine.properties`). 
+	* `iotdb-engine.properties`: The default configuration file for the IoTDB engine layer configuration item. Users can configure the IoTDB engine related parameters in the file, such as JDBC service listening port (`rpc_port`), unsequence data storage directory (`unsequence_data_dir`), etc. What's more, Users can configure the information about the TsFile, such as the data size written to the disk per time(`group_size_in_byte`). 
+                                                                                                                                                                                                                                                                                                                   	
 * log configuration file (`logback.xml`)
 
 The configuration files of the three configuration items are located in the IoTDB installation directory: `$IOTDB_HOME/conf` folder.
+
+### Hot Modification Configuration
+
+For the convenience of users, IoTDB server provides users with hot modification function, that is, modifying some configuration parameters in `iotdb engine. Properties` during the system operation and applying them to the system immediately. 
+In the parameters described below, these parameters whose way of `Effective` is `trigger` support hot modification.
+
+Trigger way: The client sends the command `load configuration` to the IoTDB server. See Chapter 4 for the usage of the client.
 
 ### IoTDB Environment Configuration File
 
@@ -90,7 +97,7 @@ The detail of each variables are as follows:
 |Description|Data compression method|
 |Type|Enum String : “UNCOMPRESSED”, “SNAPPY”|
 |Default| UNCOMPRESSED |
-|Effective|Immediately|
+|Effective|Trigger|
 
 * group\_size\_in\_byte
 
@@ -99,7 +106,7 @@ The detail of each variables are as follows:
 |Description|The data size written to the disk per time|
 |Type|Int32|
 |Default| 134217728 |
-|Effective|Immediately|
+|Effective|Trigger|
 
 * page\_size\_in\_byte
 
@@ -108,7 +115,7 @@ The detail of each variables are as follows:
 |Description|The maximum size of a single page written in memory when each column in memory is written (in bytes)|
 |Type|Int32|
 |Default| 65536 |
-|Effective|Immediately|
+|Effective|Trigger|
 
 * max\_number\_of\_points\_in\_page
 
@@ -117,7 +124,7 @@ The detail of each variables are as follows:
 |Description|The maximum number of data points (timestamps - valued groups) contained in a page|
 |Type|Int32|
 |Default| 1048576 |
-|Effective|Immediately|
+|Effective|Trigger|
 
 * max\_string\_length
 
@@ -126,7 +133,7 @@ The detail of each variables are as follows:
 |Description|The maximum length of a single string (number of character)|
 |Type|Int32|
 |Default| 128 |
-|Effective|Immediately|
+|Effective|Trigger|
 
 * time\_series\_data\_type
 
@@ -135,7 +142,7 @@ The detail of each variables are as follows:
 |Description|Timestamp data type|
 |Type|Enum String: "INT32", "INT64"|
 |Default| Int64 |
-|Effective|Immediately|
+|Effective|Trigger|
 
 * time\_encoder
 
@@ -144,7 +151,7 @@ The detail of each variables are as follows:
 |Description| Encoding type of time column|
 |Type|Enum String: “TS_2DIFF”,“PLAIN”,“RLE”|
 |Default| TS_2DIFF |
-|Effective|Immediately|
+|Effective|Trigger|
 
 * value\_encoder
 
@@ -153,7 +160,7 @@ The detail of each variables are as follows:
 |Description| Encoding type of value column|
 |Type|Enum String: “TS_2DIFF”,“PLAIN”,“RLE”|
 |Default| PLAIN |
-|Effective|Immediately|
+|Effective|Trigger|
 
 * float_precision
 
@@ -162,7 +169,7 @@ The detail of each variables are as follows:
 |Description| The precision of the floating point number.(The number of digits after the decimal point) |
 |Type|Int32|
 |Default| The default is 2 digits. Note: The 32-bit floating point number has a decimal precision of 7 bits, and the 64-bit floating point number has a decimal precision of 15 bits. If the setting is out of the range, it will have no practical significance. |
-|Effective|Immediately|
+|Effective|Trigger|
 
 #### Engine Layer
 
@@ -191,7 +198,7 @@ The detail of each variables are as follows:
 |Description| The time zone in which the server is located, the default is Beijing time (+8) |
 |Type|Time Zone String|
 |Default| +08:00 |
-|Effective|After restart system|
+|Effective|Trigger|
 
 * base\_dir
 
@@ -206,10 +213,10 @@ The detail of each variables are as follows:
 
 |Name| data\_dirs |
 |:---:|:---|
-|Description| The directories of data files. Multiple directories are separated by comma. See the [multi\_dir\_strategy](/#/Documents/progress/chap4/sec2) configuration item for data distribution strategy. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
+|Description| The directories of data files. Multiple directories are separated by comma. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
 |Type|String[]|
 |Default| data/data |
-|Effective|After restart system|
+|Effective|Trigger|
 
 * wal\_dir
 
@@ -227,7 +234,7 @@ The detail of each variables are as follows:
 |Description| Whether to enable the pre-write log. The default value is true(enabled), and false means closed. |
 |Type|Bool|
 |Default| true |
-|Effective|After restart system|
+|Effective|Trigger|
 
 * multi\_dir\_strategy
 
@@ -236,7 +243,7 @@ The detail of each variables are as follows:
 |Description| IoTDB's strategy for selecting directories for TsFile in tsfile_dir. You can use a simple class name or a full name of the class. The system provides the following three strategies: <br>1. SequenceStrategy: IoTDB selects the directory from tsfile\_dir in order, traverses all the directories in tsfile\_dir in turn, and keeps counting;<br>2. MaxDiskUsableSpaceFirstStrategy: IoTDB first selects the directory with the largest free disk space in tsfile\_dir;<br>3. MinFolderOccupiedSpaceFirstStrategy: IoTDB prefers the directory with the least space used in tsfile\_dir;<br>4. <UserDfineStrategyPackage> (user-defined policy)<br>You can complete a user-defined policy in the following ways:<br>1. Inherit the cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy class and implement its own Strategy method;<br>2. Fill in the configuration class with the full class name of the implemented class (package name plus class name, UserDfineStrategyPackage);<br>3. Add the jar file to the project. |
 |Type|String|
 |Default| MaxDiskUsableSpaceFirstStrategy |
-|Effective|After restart system|
+|Effective|Trigger|
 
 * tsfile\_size\_threshold
 
@@ -254,7 +261,7 @@ The detail of each variables are as follows:
 |Description| After the WAL reaches this value, it is flushed to disk, and it is possible to lose at most flush_wal_threshold operations. |
 |Type|Int32|
 |Default| 10000 |
-|Effective|After restart system|
+|Effective|Trigger|
 
 * force\_wal\_period\_in\_ms
 
@@ -263,7 +270,7 @@ The detail of each variables are as follows:
 |Description| The period during which the log is periodically forced to flush to disk(in milliseconds) |
 |Type|Int32|
 |Default| 10 |
-|Effective|After restart system|
+|Effective|Trigger|
 
 * fetch\_size
 
@@ -337,6 +344,24 @@ The detail of each variables are as follows:
 |Default|LOCAL |
 |Effective|After restart system|
 
+* core\_site\_path
+
+|Name| core\_site\_path |
+|:---:|:---|
+|Description| Absolute file path of core-site.xml if Tsfile and related data files are stored in HDFS.|
+|Type| String |
+|Default|/etc/hadoop/conf/core-site.xml |
+|Effective|After restart system|
+
+* hdfs\_site\_path
+
+|Name| hdfs\_site\_path |
+|:---:|:---|
+|Description| Absolute file path of hdfs-site.xml if Tsfile and related data files are stored in HDFS.|
+|Type| String |
+|Default|/etc/hadoop/conf/hdfs-site.xml |
+|Effective|After restart system|
+
 * hdfs\_ip
 
 |Name| hdfs\_ip |
@@ -389,4 +414,32 @@ The detail of each variables are as follows:
 |Description| Proxy provider if using Hadoop HA and enabling automatic failover|
 |Type| String |
 |Default|org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider |
+|Effective|After restart system|
+
+
+* hdfs\_use\_kerberos
+
+|Name| hdfs\_use\_kerberos |
+|:---:|:---|
+|Description| Whether use kerberos to authenticate hdfs|
+|Type| String |
+|Default|false |
+|Effective|After restart system|
+
+* kerberos\_keytab\_file_path
+
+|Name| kerberos\_keytab\_file_path |
+|:---:|:---|
+|Description| Full path of kerberos keytab file|
+|Type| String |
+|Default|/path |
+|Effective|After restart system|
+
+* kerberos\_principal
+
+|Name| kerberos\_principal |
+|:---:|:---|
+|Description| Kerberos pricipal|
+|Type| String |
+|Default|your principal |
 |Effective|After restart system|

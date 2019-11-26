@@ -30,6 +30,18 @@ In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a S
 
 All of these statements are write in IoTDB's own syntax, for details about the syntax composition, please check the `Reference` section.
 
+### Show Version
+
+```sql
+show version
+```
+
+```
++---------------------------------------------------------------------------+
+|                                                             0.9.0-SNAPSHOT|
++---------------------------------------------------------------------------+
+It costs 0.001s
+```
 
 ### Schema Statement
 
@@ -139,11 +151,27 @@ Note: This statement can be used in IoTDB Client and JDBC.
 
 * Show Devices Statement
 ```
-SHOW DEVICE
+SHOW DEVICES
 Eg: IoTDB > SHOW DEVICES
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
+* Show Child Paths of Root Statement
+```
+SHOW CHILD PATHS
+Eg: IoTDB > SHOW CHILD PATHS
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+* Show Child Paths Statement
+```
+SHOW CHILD PATHS <Path>
+Eg: IoTDB > SHOW CHILD PATHS root
+Eg: IoTDB > SHOW CHILD PATHS root.ln
+Eg: IoTDB > SHOW CHILD PATHS root.ln.wf01
+Note: The path can only be prefix path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
 ### Data Management Statement
 
 * Insert Record Statement

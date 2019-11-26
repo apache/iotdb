@@ -52,6 +52,24 @@ Edit user config in `iotdb-engine.properties`. Related configurations are:
 |Default|LOCAL |
 |Effective|After restart system|
 
+* core\_site\_path
+
+|Name| core\_site\_path |
+|:---:|:---|
+|Description| Absolute file path of core-site.xml if Tsfile and related data files are stored in HDFS.|
+|Type| String |
+|Default|/etc/hadoop/conf/core-site.xml |
+|Effective|After restart system|
+
+* hdfs\_site\_path
+
+|Name| hdfs\_site\_path |
+|:---:|:---|
+|Description| Absolute file path of hdfs-site.xml if Tsfile and related data files are stored in HDFS.|
+|Type| String |
+|Default|/etc/hadoop/conf/hdfs-site.xml |
+|Effective|After restart system|
+
 * hdfs\_ip
 
 |Name| hdfs\_ip |
@@ -104,6 +122,33 @@ Edit user config in `iotdb-engine.properties`. Related configurations are:
 |Description| Proxy provider if using Hadoop HA and enabling automatic failover|
 |Type| String |
 |Default|org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider |
+|Effective|After restart system|
+
+* hdfs\_use\_kerberos
+
+|Name| hdfs\_use\_kerberos |
+|:---:|:---|
+|Description| Whether use kerberos to authenticate hdfs|
+|Type| String |
+|Default|false |
+|Effective|After restart system|
+
+* kerberos\_keytab\_file_path
+
+|Name| kerberos\_keytab\_file_path |
+|:---:|:---|
+|Description| Full path of kerberos keytab file|
+|Type| String |
+|Default|/path |
+|Effective|After restart system|
+
+* kerberos\_principal
+
+|Name| kerberos\_principal |
+|:---:|:---|
+|Description| Kerberos pricipal|
+|Type| String |
+|Default|your principal |
 |Effective|After restart system|
 
 Start server, and Tsfile will be stored on HDFS.

@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.conf.directories.strategy;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -46,7 +48,7 @@ public class DirectoryStrategyTest {
   Set<Integer> fullDirIndexSet;
 
   @Before
-  public void setUp() throws DiskSpaceInsufficientException, IOException {
+  public void setUp() throws IOException {
     dataDirList = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
       dataDirList.add("data" + i);
@@ -73,7 +75,7 @@ public class DirectoryStrategyTest {
   @Test
   public void testSequenceStrategy() throws DiskSpaceInsufficientException {
     SequenceStrategy sequenceStrategy = new SequenceStrategy();
-    sequenceStrategy.init(dataDirList);
+    sequenceStrategy.setFolders(dataDirList);
 
     // loop two times of data dir size to fully loop
     int index = 0;
@@ -89,7 +91,7 @@ public class DirectoryStrategyTest {
   @Test
   public void testMaxDiskUsableSpaceFirstStrategy() throws DiskSpaceInsufficientException {
     MaxDiskUsableSpaceFirstStrategy maxDiskUsableSpaceFirstStrategy = new MaxDiskUsableSpaceFirstStrategy();
-    maxDiskUsableSpaceFirstStrategy.init(dataDirList);
+    maxDiskUsableSpaceFirstStrategy.setFolders(dataDirList);
 
     int maxIndex = getIndexOfMaxSpace();
     for (int i = 0; i < dataDirList.size(); i++) {
@@ -120,7 +122,7 @@ public class DirectoryStrategyTest {
   public void testMinFolderOccupiedSpaceFirstStrategy()
       throws DiskSpaceInsufficientException, IOException {
     MinFolderOccupiedSpaceFirstStrategy minFolderOccupiedSpaceFirstStrategy = new MinFolderOccupiedSpaceFirstStrategy();
-    minFolderOccupiedSpaceFirstStrategy.init(dataDirList);
+    minFolderOccupiedSpaceFirstStrategy.setFolders(dataDirList);
 
     int minIndex = getIndexOfMinOccupiedSpace();
     for (int i = 0; i < dataDirList.size(); i++) {
@@ -148,6 +150,25 @@ public class DirectoryStrategyTest {
   }
 
   @Test
+  public void testRandomOnDiskUsableSpaceStrategy()
+      throws DiskSpaceInsufficientException {
+    RandomOnDiskUsableSpaceStrategy randomOnDiskUsableSpaceStrategy = new RandomOnDiskUsableSpaceStrategy();
+    randomOnDiskUsableSpaceStrategy.setFolders(dataDirList);
+
+    for (int i = 0; i < dataDirList.size(); i++) {
+      assertFalse(fullDirIndexSet.contains(randomOnDiskUsableSpaceStrategy.nextFolderIndex()));
+    }
+
+    int newFullIndex = randomOnDiskUsableSpaceStrategy.nextFolderIndex();
+    PowerMockito.when(CommonUtils.getUsableSpace(dataDirList.get(newFullIndex))).thenReturn(0L);
+    for (int i = 0; i < dataDirList.size(); i++) {
+      int index = randomOnDiskUsableSpaceStrategy.nextFolderIndex();
+      assertFalse(fullDirIndexSet.contains(index));
+      assertTrue(newFullIndex != index);
+    }
+  }
+
+  @Test
   public void testAllDiskFull() {
     for (int i = 0; i < dataDirList.size(); i++) {
       PowerMockito.when(CommonUtils.hasSpace(dataDirList.get(i))).thenReturn(false);
@@ -155,21 +176,21 @@ public class DirectoryStrategyTest {
 
     SequenceStrategy sequenceStrategy = new SequenceStrategy();
     try {
-      sequenceStrategy.init(dataDirList);
+      sequenceStrategy.setFolders(dataDirList);
       fail();
     } catch (DiskSpaceInsufficientException e) {
     }
 
     MaxDiskUsableSpaceFirstStrategy maxDiskUsableSpaceFirstStrategy = new MaxDiskUsableSpaceFirstStrategy();
     try {
-      maxDiskUsableSpaceFirstStrategy.init(dataDirList);
+      maxDiskUsableSpaceFirstStrategy.setFolders(dataDirList);
       fail();
     } catch (DiskSpaceInsufficientException e) {
     }
 
     MinFolderOccupiedSpaceFirstStrategy minFolderOccupiedSpaceFirstStrategy = new MinFolderOccupiedSpaceFirstStrategy();
     try {
-      minFolderOccupiedSpaceFirstStrategy.init(dataDirList);
+      minFolderOccupiedSpaceFirstStrategy.setFolders(dataDirList);
       fail();
     } catch (DiskSpaceInsufficientException e) {
     }

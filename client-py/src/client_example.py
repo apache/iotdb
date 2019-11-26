@@ -17,6 +17,7 @@
 #
 
 import sys, struct
+
 sys.path.append("../target")
 
 from thrift.protocol import TBinaryProtocol
@@ -26,44 +27,45 @@ from rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertionReq, \
     TSBatchInsertionReq, TSExecuteStatementReq, \
     TS_SessionHandle, TSHandleIdentifier, TSOpenSessionReq, TSQueryDataSet, \
     TSFetchResultsReq, TSCloseOperationReq, \
-    TSCloseSessionReq, TSProtocolVersion
+    TSCloseSessionReq
+from rpc.ttypes import TSProtocolVersion
 
 TSDataType = {
-    'BOOLEAN' : 0,
-    'INT32' : 1,
-    'INT64' : 2,
-    'FLOAT' : 3,
-    'DOUBLE' : 4,
-    'TEXT' : 5
+    'BOOLEAN': 0,
+    'INT32': 1,
+    'INT64': 2,
+    'FLOAT': 3,
+    'DOUBLE': 4,
+    'TEXT': 5
 }
 
 TSEncoding = {
-    'PLAIN' : 0,
-    'PLAIN_DICTIONARY' : 1,
-    'RLE' : 2,
-    'DIFF' : 3,
-    'TS_2DIFF' : 4,
-    'BITMAP' : 5,
-    'GORILLA' : 6,
-    'REGULAR' : 7
+    'PLAIN': 0,
+    'PLAIN_DICTIONARY': 1,
+    'RLE': 2,
+    'DIFF': 3,
+    'TS_2DIFF': 4,
+    'BITMAP': 5,
+    'GORILLA': 6,
+    'REGULAR': 7
 }
 
 Compressor = {
-    'UNCOMPRESSED' : 0,
-    'SNAPPY' : 1,
-    'GZIP' : 2,
-    'LZO' : 3,
-    'SDT' : 4,
-    'PAA' : 5,
-    'PLA' : 6
+    'UNCOMPRESSED': 0,
+    'SNAPPY': 1,
+    'GZIP': 2,
+    'LZO': 3,
+    'SDT': 4,
+    'PAA': 5,
+    'PLA': 6
 }
 
 
 def convertQueryDataSet(queryDataSet, dataTypeList):
     bytes = queryDataSet.values
     row_count = queryDataSet.rowCount
-    time_bytes = bytes[:8*row_count]
-    value_bytes = bytes[8*row_count:]
+    time_bytes = bytes[:8 * row_count]
+    value_bytes = bytes[8 * row_count:]
     time_unpack_str = '>' + str(row_count) + 'q'
     records = []
     times = struct.unpack(time_unpack_str, time_bytes)
@@ -79,7 +81,7 @@ def convertQueryDataSet(queryDataSet, dataTypeList):
                 records[j].append('null')
             else:
                 if type == 'BOOLEAN':
-                    value = value_bytes[0]
+                    value = value_bytes[:1]
                     value_bytes = value_bytes[1:]
                     records[j].append(struct.unpack('>?', value)[0])
                 elif type == 'INT32':
@@ -183,9 +185,9 @@ if __name__ == '__main__':
     # insert a single row
     values = ["1", "11", "1.1", "11.1", "TRUE", "\'text0\'"]
     timestamp = 1
-    status = client.insertRow(TSInsertionReq(deviceId, measurements,
-                                             values, timestamp, stmtId))
-    print(status.statusType)
+    status = client.insert(TSInsertionReq(deviceId, measurements,
+                                          values, timestamp, stmtId))
+    print(status.status)
 
     # insert multiple rows, this interface is more efficient
     values = bytearray()
@@ -201,10 +203,15 @@ if __name__ == '__main__':
     # IoTDB use big endian in rpc
     value_pack_str = '>3q3i3d3f3bi7si7si7s'
     time_pack_str = '>3q'
+    encoding = 'utf-8'
     values.extend(struct.pack(value_pack_str, 2, 3, 4, 22, 33, 44, 2.2, 3.3,
                               4.4, 22.2, 33.3, 44.4, True, True, False,
-                              len('\'text1\''), '\'text1\'', len('\'text2\''),
-                              '\'text2\'', len('\'text3\''), '\'text3\''))
+                              len(bytes('\'text1\'', encoding)),
+                              bytes('\'text1\'', encoding),
+                              len(bytes('\'text2\'', encoding)),
+                              bytes('\'text2\'', encoding),
+                              len(bytes('\'text3\'', encoding)),
+                              bytes('\'text3\'', encoding)))
     times.extend(struct.pack(time_pack_str, 2, 3, 4))
     resp = client.insertBatch(TSBatchInsertionReq(deviceId, measurements, values,
                                                   times, dataTypes, rowCnt))
@@ -212,7 +219,7 @@ if __name__ == '__main__':
     print(status.statusType)
 
     # execute deletion (or other statements)
-    resp = client.executeStatement(TSExecuteStatementReq(handle, "DELETE FROM root.group1 where time < 2"))
+    resp = client.executeStatement(TSExecuteStatementReq(handle, "DELETE FROM root.group1 where time < 2", stmtId))
     status = resp.status
     print(status.statusType)
 
@@ -220,8 +227,7 @@ if __name__ == '__main__':
     stmt = "SELECT * FROM root.group1"
     fetchSize = 2
     # this is also for resource control, make sure different queries will not use the same id at the same time
-    queryId = 1
-    resp = client.executeQueryStatement(TSExecuteStatementReq(handle, stmt))
+    resp = client.executeQueryStatement(TSExecuteStatementReq(handle, stmt, stmtId))
     # headers
     dataTypeList = resp.dataTypeList
     print(resp.columns)
@@ -230,6 +236,8 @@ if __name__ == '__main__':
     stmtHandle = resp.operationHandle
     status = resp.status
     print(status.statusType)
+
+    queryId = resp.operationHandle.operationId.queryId
     while True:
         rst = client.fetchResults(TSFetchResultsReq(stmt, fetchSize, queryId)).queryDataSet
         records = convertQueryDataSet(rst, dataTypeList)
@@ -243,5 +251,3 @@ if __name__ == '__main__':
 
     # and do not forget to close the session before exiting
     client.closeSession(TSCloseSessionReq(handle))
-
-

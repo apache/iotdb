@@ -107,6 +107,9 @@ tokens{
     TOK_SHOW;
     TOK_DATE_EXPR;
     TOK_DURATION;
+    TOK_LOAD_CONFIGURATION;
+    TOK_DYNAMIC_PARAMETER;
+    TOK_FLUSH_TASK_INFO;
 }
 
 @header{
@@ -121,13 +124,13 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
 Stack messages = new Stack<String>();
 private static HashMap<String, String> tokenNameMap;
 static {
-    tokenNameMap = new HashMap<String, String>();
-    tokenNameMap.put("K_AND", "AND");
-    tokenNameMap.put("K_OR", "OR");
-    tokenNameMap.put("K_NOT", "NOT");
-    tokenNameMap.put("K_LIKE", "LIKE");
-    tokenNameMap.put("K_BY", "BY");
-    tokenNameMap.put("K_GROUP", "GROUP");
+  tokenNameMap = new HashMap<String, String>();
+  tokenNameMap.put("K_AND", "AND");
+  tokenNameMap.put("K_OR", "OR");
+  tokenNameMap.put("K_NOT", "NOT");
+  tokenNameMap.put("K_LIKE", "LIKE");
+  tokenNameMap.put("K_BY", "BY");
+  tokenNameMap.put("K_GROUP", "GROUP");
 	tokenNameMap.put("K_FILL", "FILL");
 	tokenNameMap.put("K_LINEAR", "LINEAR");
 	tokenNameMap.put("K_PREVIOUS", "PREVIOUS");
@@ -171,6 +174,13 @@ static {
 	tokenNameMap.put("K_LIST", "LIST");
 	tokenNameMap.put("K_TTL", "TTL");
 	tokenNameMap.put("K_UNSET", "UNSET");
+	tokenNameMap.put("K_CONFIGURATION", "CONFIGURATION");
+	tokenNameMap.put("K_FLUSH", "FLUSH");
+	tokenNameMap.put("K_TASK", "TASK");
+	tokenNameMap.put("K_DYNAMIC", "DYNAMIC");
+	tokenNameMap.put("K_PARAMETER", "PARAMETER");
+	tokenNameMap.put("K_INFO", "INFO");
+
 	// Operators
 	tokenNameMap.put("DOT", ".");
 	tokenNameMap.put("COLON", ":");
@@ -274,6 +284,8 @@ sqlStatement
     : ddlStatement
     | dmlStatement
     | administrationStatement
+    | configurationStatement
+    | showStatement
     ;
 
 dmlStatement
@@ -754,6 +766,30 @@ rootOrId
     | ID
     ;
 
+configurationStatement
+    : loadConfigurationStatement
+    ;
+
+loadConfigurationStatement
+    : K_LOAD K_CONFIGURATION
+    -> ^(TOK_LOAD_CONFIGURATION)
+    ;
+
+showStatement
+    : showFlushTaskInfo
+    | showDynamicParameter
+    ;
+
+showFlushTaskInfo
+    : K_SHOW K_FLUSH K_TASK K_INFO
+    -> ^(TOK_SHOW TOK_FLUSH_TASK_INFO)
+    ;
+
+showDynamicParameter
+    : K_SHOW K_DYNAMIC K_PARAMETER
+    -> ^(TOK_SHOW TOK_DYNAMIC_PARAMETER)
+    ;
+
 /*
 ****
 *************
@@ -763,21 +799,18 @@ TTL
 */
 
 ttlStatement
-    :
-    setTTLStatement
+    : setTTLStatement
     | unsetTTLStatement
     | showTTLStatement
     ;
 
 setTTLStatement
-    :
-    K_SET K_TTL K_TO path=prefixPath time=INT
+    : K_SET K_TTL K_TO path=prefixPath time=INT
     -> ^(TOK_TTL TOK_SET $path $time)
     ;
 
 unsetTTLStatement
-    :
-     K_UNSET K_TTL K_TO path=prefixPath
+    : K_UNSET K_TTL K_TO path=prefixPath
     -> ^(TOK_TTL TOK_UNSET $path)
     ;
 

@@ -42,13 +42,13 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageEngineFailureException;
-import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
@@ -58,6 +58,7 @@ import org.apache.iotdb.db.query.control.JobFileManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -85,7 +86,6 @@ public class StorageEngine implements IService {
 
   private static final ExecutorService recoveryThreadPool = IoTDBThreadPoolFactory
       .newFixedThreadPool(Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
-  ;
 
   private static final StorageEngine INSTANCE = new StorageEngine();
 
@@ -102,27 +102,32 @@ public class StorageEngine implements IService {
     try {
       FileUtils.forceMkdir(SystemFileFactory.INSTANCE.getFile(systemDir));
     } catch (IOException e) {
-      throw new StorageEngineFailureException("create system directory failed!");
+      throw new StorageEngineFailureException(e);
     }
 
+    // recover upgrade process
+    UpgradeUtils.recoverUpgrade();
     /*
      * recover all storage group processors.
      */
+
     List<MNode> sgNodes = MManager.getInstance().getAllStorageGroups();
     List<Future> futures = new ArrayList<>();
     for (MNode storageGroup : sgNodes) {
       futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
-          StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,storageGroup.getFullPath());
-          processor.setDataTTL(storageGroup.getDataTTL());
-          processorMap.put(storageGroup.getFullPath(), processor);
-          logger.info("Storage Group Processor {} is recovered successfully",storageGroup.getFullPath());
+        StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
+            storageGroup.getFullPath());
+        processor.setDataTTL(storageGroup.getDataTTL());
+        processorMap.put(storageGroup.getFullPath(), processor);
+        logger.info("Storage Group Processor {} is recovered successfully",
+            storageGroup.getFullPath());
         return null;
       }));
     }
-    for (Future future: futures) {
+    for (Future future : futures) {
       try {
         future.get();
-      } catch (Exception e) {
+      } catch (InterruptedException | ExecutionException e) {
         throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
       }
     }
@@ -185,7 +190,7 @@ public class StorageEngine implements IService {
         }
       }
       return processor;
-    } catch (StorageGroupException | ProcessorException | PathErrorException e) {
+    } catch (StorageGroupException | StorageGroupProcessorException | PathException e) {
       logger.error("Fail to get StorageGroupProcessor {}", storageGroupName, e);
       throw new StorageEngineException(e);
     }
@@ -204,25 +209,24 @@ public class StorageEngine implements IService {
    * insert an InsertPlan to a storage group.
    *
    * @param insertPlan physical plan of insertion
-   * @return true if and only if this insertion succeeds
    */
-  public boolean insert(InsertPlan insertPlan) throws ProcessorException {
+  public void insert(InsertPlan insertPlan)
+      throws StorageEngineException, QueryProcessException {
 
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(insertPlan.getDeviceId());
-    } catch (Exception e) {
+    } catch (StorageEngineException e) {
       logger.warn("get StorageGroupProcessor of device {} failed, because {}",
-          insertPlan.getDeviceId(),
-          e.getMessage(), e);
-      throw new ProcessorException(e);
+          insertPlan.getDeviceId(), e.getMessage(), e);
+      throw new StorageEngineException(e);
     }
 
     // TODO monitor: update statistics
     try {
-      return storageGroupProcessor.insert(insertPlan);
-    } catch (QueryProcessorException e) {
-      throw new ProcessorException(e);
+      storageGroupProcessor.insert(insertPlan);
+    } catch (QueryProcessException e) {
+      throw new QueryProcessException(e);
     }
   }
 
@@ -235,7 +239,7 @@ public class StorageEngine implements IService {
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(batchInsertPlan.getDeviceId());
-    } catch (Exception e) {
+    } catch (StorageEngineException e) {
       logger.warn("get StorageGroupProcessor of device {} failed, because {}",
           batchInsertPlan.getDeviceId(),
           e.getMessage(), e);
@@ -245,7 +249,7 @@ public class StorageEngine implements IService {
     // TODO monitor: update statistics
     try {
       return storageGroupProcessor.insertBatch(batchInsertPlan);
-    } catch (QueryProcessorException e) {
+    } catch (QueryProcessException e) {
       throw new StorageEngineException(e);
     }
   }
@@ -277,7 +281,7 @@ public class StorageEngine implements IService {
     try {
       storageGroupProcessor.delete(deviceId, measurementId, timestamp);
     } catch (IOException e) {
-      throw new StorageEngineException(e);
+      throw new StorageEngineException(e.getMessage());
     }
   }
 
@@ -308,7 +312,7 @@ public class StorageEngine implements IService {
    * transmission module</b>
    *
    * @param storageGroupName the seriesPath of storage group
-   * @param appendFile       the appended tsfile information
+   * @param appendFile the appended tsfile information
    */
   @SuppressWarnings("unused") // reimplement sync module
   public boolean appendFileToStorageGroupProcessor(String storageGroupName,
@@ -322,13 +326,40 @@ public class StorageEngine implements IService {
    * get all overlap TsFiles which are conflict with the appendFile.
    *
    * @param storageGroupName the seriesPath of storage group
-   * @param appendFile       the appended tsfile information
+   * @param appendFile the appended tsfile information
    */
   @SuppressWarnings("unused") // reimplement sync module
   public List<String> getOverlapFiles(String storageGroupName, TsFileResource appendFile,
       String uuid) throws StorageEngineException {
     // TODO reimplement sync module
     return Collections.emptyList();
+  }
+
+  /**
+   * count all Tsfiles which need to be upgraded
+   * @return total num of the tsfiles which need to be upgraded
+   */
+  public int countUpgradeFiles() {
+    int totalUpgradeFileNum = 0;
+    for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
+      totalUpgradeFileNum += storageGroupProcessor.countUpgradeFiles();
+    }
+    return totalUpgradeFileNum;
+  }
+
+  /**
+   * upgrade all storage groups.
+   *
+   * @throws StorageEngineException StorageEngineException
+   */
+  public void upgradeAll() throws StorageEngineException {
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new StorageEngineException(
+          "Current system mode is read only, does not support file upgrade");
+    }
+    for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
+      storageGroupProcessor.upgrade();
+    }
   }
 
   /**

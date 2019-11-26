@@ -217,7 +217,8 @@ The following classes are modified from Apache Hive, which is under Apache Licen
 
 ------------
 
-The following class is modified from Maven Wrapper
+The following class is copied from maven-wrapper (https://github.com/takari/maven-wrapper),
+which is under Apache License 2.0:
 
 ./.mvn/wrapper/MavenWrapperDownloader.java
 

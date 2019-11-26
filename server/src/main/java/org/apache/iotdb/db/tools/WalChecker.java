@@ -27,7 +27,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.exception.SysCheckException;
+import org.apache.iotdb.db.exception.SystemCheckException;
 import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,13 +51,13 @@ public class WalChecker {
   /**
    * check the root wal dir and find the damaged files
    * @return a list of damaged files.
-   * @throws SysCheckException if the root wal dir does not exist.
+   * @throws SystemCheckException if the root wal dir does not exist.
    */
-  public List<File> doCheck() throws SysCheckException {
+  public List<File> doCheck() throws SystemCheckException {
     File walFolderFile = SystemFileFactory.INSTANCE.getFile(walFolder);
     logger.info("Checking folder: {}", walFolderFile.getAbsolutePath());
     if(!walFolderFile.exists() || !walFolderFile.isDirectory()) {
-      throw new SysCheckException(String.format("%s is not a directory", walFolder));
+      throw new SystemCheckException(walFolder);
     }
 
     File[] storageWalFolders = walFolderFile.listFiles();
@@ -125,7 +125,7 @@ public class WalChecker {
    *
    * @param args walRootDirectory
    */
-  public static void main(String[] args) throws SysCheckException {
+  public static void main(String[] args) throws SystemCheckException {
     if (args.length < 1) {
       logger.error("No enough args: require the walRootDirectory");
       return;

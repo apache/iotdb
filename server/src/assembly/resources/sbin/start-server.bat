@@ -22,7 +22,8 @@ echo ````````````````````````
 echo Starting IoTDB
 echo ````````````````````````
 
-PATH %PATH%;%JAVA_HOME%\bin\
+
+set PATH="%JAVA_HOME%\bin\";%PATH%
 set "FULL_VERSION="
 set "MAJOR_VERSION="
 set "MINOR_VERSION="
@@ -79,7 +80,7 @@ set JAVA_OPTS=-ea^
 set CLASSPATH="%IOTDB_HOME%\lib"
 
 @REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
-set CLASSPATH=%CLASSPATH%;"%IOTDB_HOME%\lib\*"
+for %%i in ("%IOTDB_HOME%\lib\*.jar") do call :append "%%i"
 set CLASSPATH=%CLASSPATH%;iotdb.IoTDB
 goto okClasspath
 

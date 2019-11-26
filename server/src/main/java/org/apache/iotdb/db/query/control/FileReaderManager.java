@@ -164,27 +164,31 @@ public class FileReaderManager implements IService {
    * Increase the reference count of the reader specified by filePath. Only when the reference count
    * of a reader equals zero, the reader can be closed and removed.
    */
-  synchronized void increaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
+  void increaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
     // TODO : this should be called in get()
-    if (!isClosed) {
-      unclosedReferenceMap.computeIfAbsent(tsFile, k -> new AtomicInteger()).getAndIncrement();
-    } else {
-      closedReferenceMap.computeIfAbsent(tsFile, k -> new AtomicInteger()).getAndIncrement();
+    tsFile.getWriteQueryLock().readLock().lock();
+    synchronized (this) {
+      if (!isClosed) {
+        unclosedReferenceMap.computeIfAbsent(tsFile, k -> new AtomicInteger()).getAndIncrement();
+      } else {
+        closedReferenceMap.computeIfAbsent(tsFile, k -> new AtomicInteger()).getAndIncrement();
+      }
     }
-    tsFile.getMergeQueryLock().readLock().lock();
   }
 
   /**
    * Decrease the reference count of the reader specified by filePath. This method is latch-free.
    * Only when the reference count of a reader equals zero, the reader can be closed and removed.
    */
-  synchronized void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
-    if (!isClosed && unclosedReferenceMap.containsKey(tsFile)) {
-      unclosedReferenceMap.get(tsFile).getAndDecrement();
-    } else if (closedReferenceMap.containsKey(tsFile)){
-      closedReferenceMap.get(tsFile).getAndDecrement();
+  void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
+    synchronized (this) {
+      if (!isClosed && unclosedReferenceMap.containsKey(tsFile)) {
+        unclosedReferenceMap.get(tsFile).getAndDecrement();
+      } else if (closedReferenceMap.containsKey(tsFile)){
+        closedReferenceMap.get(tsFile).getAndDecrement();
+      }
     }
-    tsFile.getMergeQueryLock().readLock().unlock();
+    tsFile.getWriteQueryLock().readLock().unlock();
   }
 
   /**

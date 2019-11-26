@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
-import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.logical.Operator;
 
 /**

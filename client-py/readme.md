@@ -20,7 +20,7 @@
 -->
 
 # Python connection
-## introduction
+## Introduction
 This is an example of how to connect to IoTDB with python, using the thrift rpc interfaces. Things 
 are almost the same on Windows or Linux, but pay attention to the difference like path separator.
 
