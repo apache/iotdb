@@ -65,9 +65,6 @@ public class MonitorConstants {
   public enum SystemMetrics {
     CPU_USAGE,
     FREE_MEM,
-    MAX_MEM,
-    TOTAL_MEM,
-    TOTAL_PHYSICAL_MEM,
     FREE_PHYSICAL_MEM,
     USED_PHYSICAL_MEM,
     // NETWORK_REC, NETWORK_SEND,  DISK_USAGE, DISK_READ_SPEED, DISK_WRITE_SPEED, DISK_TPS
@@ -76,7 +73,7 @@ public class MonitorConstants {
   public enum FileSizeMetrics {
     // need add multi data dir monitor
     WAL(new File(config.getWalFolder()).getAbsolutePath()),
-    SEQUENCE("");
+    DATA("");
 
     public String getPath() {
       return path;

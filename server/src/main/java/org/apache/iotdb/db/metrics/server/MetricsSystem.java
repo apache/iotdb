@@ -140,9 +140,6 @@ public class MetricsSystem implements IStatistic {
     Map<String, Object> statParamsMap = new HashMap<>();
     statParamsMap.put(SystemMetrics.CPU_USAGE.name(), (long) serverArgument.getCpuRatio());
     statParamsMap.put(SystemMetrics.FREE_MEM.name(), serverArgument.freeMemory());
-    statParamsMap.put(SystemMetrics.MAX_MEM.name(), serverArgument.maxMemory());
-    statParamsMap.put(SystemMetrics.TOTAL_MEM.name(), serverArgument.totalMemory());
-    statParamsMap.put(SystemMetrics.TOTAL_PHYSICAL_MEM.name(), serverArgument.totalPhysicalMemory());
     statParamsMap.put(SystemMetrics.FREE_PHYSICAL_MEM.name(), serverArgument.freePhysicalMemory());
     statParamsMap.put(SystemMetrics.USED_PHYSICAL_MEM.name(), serverArgument.usedPhysicalMemory());
     return statParamsMap;

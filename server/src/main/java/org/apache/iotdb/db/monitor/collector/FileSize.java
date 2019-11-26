@@ -120,7 +120,7 @@ public class FileSize implements IStatistic {
     EnumMap<FileSizeMetrics, Long> fileSizes = new EnumMap<>(FileSizeMetrics.class);
     for (FileSizeMetrics kinds : FileSizeMetrics.values()) {
 
-      if (kinds.equals(FileSizeMetrics.SEQUENCE)) {
+      if (kinds.equals(FileSizeMetrics.DATA)) {
         fileSizes.put(kinds, collectSeqFileSize(fileSizes, kinds));
       } else {
         File file = SystemFileFactory.INSTANCE.getFile(kinds.getPath());
@@ -143,9 +143,6 @@ public class FileSize implements IStatistic {
   private long collectSeqFileSize(EnumMap<FileSizeMetrics, Long> fileSizes, FileSizeMetrics kinds) {
     long fileSize = INIT_VALUE_IF_FILE_NOT_EXIST;
     for (String sequenceDir : config.getDataDirs()) {
-      if (sequenceDir.contains("unsequence")) {
-        continue;
-      }
       File settledFile = SystemFileFactory.INSTANCE.getFile(sequenceDir);
       if (settledFile.exists()) {
         try {
