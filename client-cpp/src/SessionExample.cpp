@@ -46,7 +46,16 @@ int main()
         values.push_back("3");
         session->insert(deviceId, time, measurements, values);
     }
-    
+
+    SessionDataSet* dataSet = session->executeQueryStatement("select * from root.sg1.d1");
+    dataSet->setBatchSize(1024); // default is 512
+    while (dataSet->hasNext())
+    {
+        printf("%s",dataSet->next().toString().c_str());
+    }
+
+    dataSet->closeOperationHandle();
+
     vector<string> del;
     del.push_back("root.sg1.d1.s1");
     session->deleteData(del, 99);
@@ -56,7 +65,7 @@ int main()
     paths.push_back("root.sg1.d1.s1");
     paths.push_back("root.sg1.d1.s2");
     paths.push_back("root.sg1.d1.s3");
-    session->deleteTimeseries(paths);
+  //  session->deleteTimeseries(paths);
     
     session->deleteStorageGroup("root.sg1");
     

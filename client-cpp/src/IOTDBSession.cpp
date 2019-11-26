@@ -16,16 +16,173 @@
  * specific language governing permissions and limitations
  * under the License.
  */
- 
+
 #include "IOTDBSession.h"
-
-
 
 void verifySuccess(TSStatus status)
 {
-    if (status.statusType.code != 200) 
+    if (status.statusType.code != 200)
     {
         throw IoTDBSessionException(status.statusType.message);
+    }
+}
+
+vector<RowRecord> convertRowRecords(TSQueryDataSet tsQueryDataSet,vector<string> columnTypeList)
+{
+    int rowCount = tsQueryDataSet.rowCount;
+    MyStringStream byteBuffer(tsQueryDataSet.values);
+    vector<RowRecord> rowRecordList;
+    map<string,TSDataType> stringtoTSDataType;
+    stringtoTSDataType["BOOLEAN"] = BOOLEAN;
+    stringtoTSDataType["INT32"] = INT32;
+    stringtoTSDataType["INT64"] = INT64;
+    stringtoTSDataType["FLOAT"] = FLOAT;
+    stringtoTSDataType["DOUBLE"] = DOUBLE;
+    stringtoTSDataType["TEXT"] = TEXT;
+    for (int i = 0; i < rowCount; i++)
+    {
+        long long timestamp = byteBuffer.getLong();
+        RowRecord * rowRecord = new RowRecord(timestamp);
+        rowRecordList.push_back(*rowRecord);
+    }
+    for (int j = 0; j < columnTypeList.size(); j++)
+    {
+        string type = columnTypeList[j];
+        for (int i = 0; i < rowCount; i++)
+        {
+            Field *field;
+            bool is_empty = byteBuffer.getBool();
+            if (is_empty)
+            {
+                field = new Field(NULLTYPE);
+            }
+            else
+            {
+                TSDataType dataType = stringtoTSDataType[type];
+                field = new Field(dataType);
+                switch (dataType)
+                {
+                    case BOOLEAN:{
+                        bool booleanValue = byteBuffer.getBool();
+                        field->boolV = booleanValue;
+                        break;
+                    }
+                    case INT32:{
+                        int intValue = byteBuffer.getInt();
+                        field->intV = intValue;
+                        break;
+                    }
+                    case INT64: {
+                        long long longValue = byteBuffer.getLong();
+                        field->longV = longValue;
+                        break;
+                    }
+                    case FLOAT:{
+                        float floatValue = byteBuffer.getFloat();
+                        field->floatV = floatValue;
+                        break;
+                    }
+                    case DOUBLE:{
+                        double doubleValue = byteBuffer.getDouble();
+                        field->doubleV = doubleValue;
+                        break;
+                    }
+                    case TEXT: {
+                        string stringValue = byteBuffer.getString();
+                        field->stringV = stringValue;
+                        break;
+                    }
+                    default:
+                    {
+                        char buf[111];
+                        sprintf(buf,"Data type %s is not supported.",type.c_str());
+                        throw IoTDBSessionException(buf);
+                    }
+                }
+            }
+            rowRecordList[i].fields.push_back(*field);
+        }
+    }
+    return rowRecordList;
+}
+
+int SessionDataSet::getBatchSize()
+{
+    return batchSize;
+}
+
+void SessionDataSet::setBatchSize(int batchSize)
+{
+    this->batchSize = batchSize;
+}
+
+bool SessionDataSet::hasNext()
+{
+    return getFlag || nextWithoutConstraints(sql, queryId);
+}
+
+RowRecord SessionDataSet::next()
+{
+    if (!getFlag)
+    {
+        nextWithoutConstraints(sql, queryId);
+    }
+    getFlag = false;
+    return record;
+}
+
+bool SessionDataSet::nextWithoutConstraints(string sql, long long queryId)
+{
+    if ((recordItr == -1 || recordItr == records.size()))
+    {
+        shared_ptr<TSFetchResultsReq> req(new TSFetchResultsReq());
+        req->__set_statement(sql);
+        req->__set_fetch_size(batchSize);
+        req->__set_queryId(queryId);
+        shared_ptr<TSFetchResultsResp> resp(new TSFetchResultsResp());
+        try
+        {
+            client->fetchResults(*resp,*req);
+            verifySuccess(resp->status);
+            if (!resp->hasResultSet)
+            {
+                return false;
+            }
+            else
+            {
+                TSQueryDataSet tsQueryDataSet = resp->queryDataSet;
+                records = convertRowRecords(tsQueryDataSet, columnTypeDeduplicatedList);
+                recordItr = 0;
+            }
+        }
+        catch (IoTDBSessionException e)
+        {
+            char buf[111];
+            sprintf(buf,"Cannot fetch result from server, because of network connection : %s",e.what());
+            throw IoTDBSessionException(buf);
+        }
+    }
+    record = records[recordItr++];
+    getFlag = true;
+    return true;
+}
+
+void SessionDataSet::closeOperationHandle()
+{
+    shared_ptr<TSCloseOperationReq> req(new TSCloseOperationReq());
+    req->__set_queryId(queryId);
+    req->__set_operationHandle(operationHandle);
+    shared_ptr<TSStatus> resp(new TSStatus());
+    try
+    {
+        client->closeOperation(*resp,*req);
+        verifySuccess(*resp);
+    }
+    catch (IoTDBSessionException e)
+    {
+        char buf[111];
+        sprintf(buf,"Error occurs for close opeation in server side. The reason is  %s",e.what());
+        throw IoTDBSessionException(buf);
     }
 }
 
@@ -70,22 +227,22 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs)
         shared_ptr<TSIServiceIf> tmp3(new TSIServiceClient(tmp2));
         client = tmp3;
     }
-    shared_ptr<TSOpenSessionReq> openReq(new TSOpenSessionReq());
-    openReq->__set_client_protocol(TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V1);
-    openReq->__set_username(username);
-    openReq->__set_password(password);
+    shared_ptr<TSOpenSessionReq> req(new TSOpenSessionReq());
+    req->__set_client_protocol(TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V1);
+    req->__set_username(username);
+    req->__set_password(password);
     try 
     {
-        shared_ptr<TSOpenSessionResp> openResp(new TSOpenSessionResp());
-        client->openSession(*openResp,*openReq);
-        verifySuccess(openResp->status);
-        if (protocolVersion != openResp->serverProtocolVersion) 
+        shared_ptr<TSOpenSessionResp> resp(new TSOpenSessionResp());
+        client->openSession(*resp,*req);
+        verifySuccess(resp->status);
+        if (protocolVersion != resp->serverProtocolVersion) 
         {
             char buf[111];
             sprintf(buf,"Protocol not supported.");
             throw IoTDBSessionException(buf);
         }
-        sessionHandle = openResp->sessionHandle;
+        sessionHandle = resp->sessionHandle;
     } 
     catch (IoTDBSessionException e) 
     {
@@ -127,17 +284,17 @@ void Session::close()
 
  
 
-TSStatus Session::insert(string deviceId, long long time, vector<string> measurements, vector<string> values)
+TSStatus Session::insert(string deviceId,  long long time, vector<string> measurements, vector<string> values)
 {
-    shared_ptr<TSInsertReq> request(new TSInsertReq());
-    request->__set_deviceId(deviceId);
-    request->__set_timestamp(time);
-    request->__set_measurements(measurements);
-    request->__set_values(values);
+    shared_ptr<TSInsertReq> req(new TSInsertReq());
+    req->__set_deviceId(deviceId);
+    req->__set_timestamp(time);
+    req->__set_measurements(measurements);
+    req->__set_values(values);
     shared_ptr<TSStatus> resp(new TSStatus());
     try 
     {
-        client->insertRow(*resp,*request);
+        client->insertRow(*resp,*req);
         verifySuccess(*resp);
     } 
     catch (IoTDBSessionException e) 
@@ -149,7 +306,7 @@ TSStatus Session::insert(string deviceId, long long time, vector<string> measure
 
 
 
-TSStatus Session::deleteData(string path, long long time) 
+TSStatus Session::deleteData(string path,  long long time)
 {
     vector<string> paths;
     paths.push_back(path);
@@ -158,15 +315,15 @@ TSStatus Session::deleteData(string path, long long time)
 
 
 
-TSStatus Session::deleteData(vector<string> deviceId, long long time) 
+TSStatus Session::deleteData(vector<string> deviceId, long long time)
 {
-    shared_ptr<TSDeleteDataReq> request(new TSDeleteDataReq());
-    request->__set_paths(deviceId);
-    request->__set_timestamp(time);
+    shared_ptr<TSDeleteDataReq> req(new TSDeleteDataReq());
+    req->__set_paths(deviceId);
+    req->__set_timestamp(time);
     shared_ptr<TSStatus> resp(new TSStatus());
     try 
     {
-        client->deleteData(*resp,*request);
+        client->deleteData(*resp,*req);
         verifySuccess(*resp);
     } 
     catch (IoTDBSessionException e) 
@@ -221,15 +378,15 @@ TSStatus Session::deleteStorageGroups(vector<string> storageGroups)
 
 TSStatus Session::createTimeseries(string path, TSDataType dataType, TSEncoding encoding, CompressionType compressor) 
 {
-    shared_ptr<TSCreateTimeseriesReq> request(new TSCreateTimeseriesReq());
-    request->__set_path(path);
-    request->__set_dataType(dataType);
-    request->__set_encoding(encoding);
-    request->__set_compressor(compressor);
+    shared_ptr<TSCreateTimeseriesReq> req(new TSCreateTimeseriesReq());
+    req->__set_path(path);
+    req->__set_dataType(dataType);
+    req->__set_encoding(encoding);
+    req->__set_compressor(compressor);
     shared_ptr<TSStatus> resp(new TSStatus());
     try 
     {
-        client->createTimeseries(*resp,*request);
+        client->createTimeseries(*resp,*req);
         verifySuccess(*resp);
     } 
     catch (IoTDBSessionException e) 
@@ -291,7 +448,7 @@ void Session::setTimeZone(string zoneId)
     shared_ptr<TSSetTimeZoneReq> req(new TSSetTimeZoneReq());
     req->__set_timeZone(zoneId);
     shared_ptr<TSStatus> resp(new TSStatus());
-    try 
+    try
     {
         client->setTimeZone(*resp,*req);
         verifySuccess(*resp);
@@ -303,3 +460,38 @@ void Session::setTimeZone(string zoneId)
     this->zoneId = zoneId;
 }
 
+
+SessionDataSet* Session::executeQueryStatement(string sql)
+{
+    shared_ptr<TSExecuteStatementReq> req(new TSExecuteStatementReq());
+    req->__set_sessionHandle(sessionHandle);
+    req->__set_statement(sql);
+    shared_ptr<TSExecuteStatementResp> resp(new TSExecuteStatementResp());
+    try
+    {
+        client->executeStatement(*resp,*req);
+        verifySuccess(resp->status);
+    } 
+    catch (IoTDBSessionException e) 
+    {
+        throw IoTDBSessionException(e.what());
+    }
+    return new SessionDataSet(sql, resp->columns, resp->dataTypeList,resp->operationHandle.operationId.queryId, client, resp->operationHandle);
+}
+
+void Session::executeNonQueryStatement(string sql)
+{
+    shared_ptr<TSExecuteStatementReq> req(new TSExecuteStatementReq());
+    req->__set_sessionHandle(sessionHandle);
+    req->__set_statement(sql);
+    shared_ptr<TSExecuteStatementResp> resp(new TSExecuteStatementResp());
+    try
+    {
+        client->executeStatement(*resp,*req);
+        verifySuccess(resp->status);
+    }
+    catch (IoTDBSessionException e)
+    {
+        throw IoTDBSessionException(e.what());
+    }
+}

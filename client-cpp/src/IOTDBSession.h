@@ -47,19 +47,140 @@ class IoTDBSessionException : public exception
     private:
         string message;
 };
-
-
-enum CompressionType 
+enum CompressionType
 {
     UNCOMPRESSED, SNAPPY, GZIP, LZO, SDT, PAA, PLA
 };
-enum TSDataType 
+enum TSDataType
 {
-    BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT
+    BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, NULLTYPE
 };
-enum TSEncoding 
+enum TSEncoding
 {
     PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, BITMAP, GORILLA, REGULAR
+};
+class Field
+{
+public:
+    TSDataType dataType;
+    bool boolV;
+    int intV;
+    long long longV;
+    float floatV;
+    double doubleV;
+    string stringV;
+    Field(TSDataType a)
+    {
+        dataType = a;
+    }
+};
+
+class RowRecord
+{
+public:
+    long long timestamp;
+    vector<Field> fields;
+    RowRecord(long long timestamp)
+    {
+        this->timestamp = timestamp;
+    }
+    RowRecord()
+    {
+        this->timestamp = -1;
+    }
+    string toString()
+    {
+        char buf[111];
+        sprintf(buf,"%lld",timestamp);
+        string ret = buf;
+        for (int i = 0; i < fields.size(); i++)
+        {
+            ret.append("\t");
+            TSDataType dataType = fields[i].dataType;
+            switch (dataType)
+            {
+                case BOOLEAN:{
+                    if (fields[i].boolV) ret.append("true");
+                    else ret.append("false");
+                    break;
+                }
+                case INT32:{
+                    char buf[111];
+                    sprintf(buf,"%d",fields[i].intV);
+                    ret.append(buf);
+                    break;
+                }
+                case INT64: {
+                    char buf[111];
+                    sprintf(buf,"%lld",fields[i].longV);
+                    ret.append(buf);
+                    break;
+                }
+                case FLOAT:{
+                    char buf[111];
+                    sprintf(buf,"%f",fields[i].floatV);
+                    ret.append(buf);
+                    break;
+                }
+                case DOUBLE:{
+                    char buf[111];
+                    sprintf(buf,"%lf",fields[i].doubleV);
+                    ret.append(buf);
+                    break;
+                }
+                case TEXT: {
+                    ret.append(fields[i].stringV);
+                    break;
+                }
+                case NULLTYPE:{
+                    ret.append("NULL");
+                }
+            }
+        }
+        ret.append("\n");
+        return ret;
+    }
+};
+
+class SessionDataSet
+{
+private:
+    bool getFlag = false;
+    string sql;
+    long long queryId;
+    RowRecord record;
+    shared_ptr<TSIServiceIf> client;
+    int batchSize = 512;
+    vector<string> columnTypeDeduplicatedList;
+    TSOperationHandle operationHandle;
+    int recordItr = -1;
+    vector<RowRecord> records;
+public:
+    SessionDataSet(string sql, vector<string> columnNameList, vector<string> columnTypeList, long long queryId, shared_ptr<TSIServiceIf> client, TSOperationHandle operationHandle)
+    {
+        this->sql = sql;
+        this->queryId = queryId;
+        this->client = client;
+        this->operationHandle = operationHandle;
+        map<string,bool> columnSet;
+        for (int i = 0; i < columnNameList.size(); i++)
+        {
+            string name = columnNameList[i];
+            if (!columnSet[name])
+            {
+                columnSet[name] = 1;
+                columnTypeDeduplicatedList.push_back(columnTypeList[i]);
+            }
+        }
+    }
+    int getBatchSize();
+    void setBatchSize(int batchSize);
+    bool hasNext();
+    RowRecord next();
+    bool nextWithoutConstraints(string sql, long long queryId);
+    void closeOperationHandle();
+
+
 };
 
 
@@ -75,6 +196,7 @@ class Session
         TS_SessionHandle sessionHandle;
         shared_ptr<apache::thrift::transport::TSocket> transport;
         bool isClosed = true;
+        long long queryId = 0;
         string zoneId;
         
     public:
@@ -101,6 +223,84 @@ class Session
         TSStatus createTimeseries(string path, TSDataType dataType, TSEncoding encoding, CompressionType compressor);
         TSStatus deleteTimeseries(string path);
         TSStatus deleteTimeseries(vector<string> paths);
+        SessionDataSet* executeQueryStatement(string sql);
+        void executeNonQueryStatement(string sql);
         string getTimeZone();
         void setTimeZone(string zoneId);
 };
+
+class MyStringStream {
+private:
+    char * getchar(int len)
+    {
+        char * ret = new char[len];
+        for (int i = pos; i < pos + len; i++)
+            ret[pos + len - 1 - i] = str[i];
+        pos += len;
+        return ret;
+    }
+public:
+    string str;
+    int pos;
+
+    MyStringStream(string str) {
+        this->str = str;
+        this->pos = 0;
+    }
+
+    int getInt()
+    {
+        char * data = getchar(4);
+        int ret = *(int *)data;
+  //      delete []data;
+        return ret;
+    }
+
+    long long getLong()
+    {
+        char * data = getchar(8);
+        long long ret = *(long long *)data;
+    //    delete []data;
+        return ret;
+    }
+
+    float getFloat()
+    {
+        char * data = getchar(4);
+        float ret = *(float *)data;
+     //   delete []data;
+        return ret;
+    }
+
+    double getDouble()
+    {
+        char * data = getchar(8);
+        double ret = *(double *)data;
+    //    delete []data;
+        return ret;
+    }
+
+    char getChar()
+    {
+        char * data = getchar(1);
+        char ret = *(char *)data;
+     //   delete []data;
+        return ret;
+    }
+
+    bool getBool()
+    {
+        char bo = getChar();
+        return bo == 1;
+    }
+
+    string getString()
+    {
+        int len = getInt();
+        string ret;
+        for (int i = 0; i < len ; i++) ret.append(1,getChar());
+        return ret;
+    }
+};
+
+
