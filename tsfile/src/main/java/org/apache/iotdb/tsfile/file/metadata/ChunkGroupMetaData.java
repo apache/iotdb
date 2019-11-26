@@ -91,38 +91,6 @@ public class ChunkGroupMetaData {
   }
 
   /**
-   * deserialize from InputStream.
-   *
-   * @param inputStream inputStream
-   * @return ChunkGroupMetaData object
-   * @throws IOException IOException
-   */
-  public static ChunkGroupMetaData deserializeFrom(InputStream inputStream) throws IOException {
-    ChunkGroupMetaData chunkGroupMetaData = new ChunkGroupMetaData();
-
-    chunkGroupMetaData.deviceID = ReadWriteIOUtils.readString(inputStream);
-    chunkGroupMetaData.startOffsetOfChunkGroup = ReadWriteIOUtils.readLong(inputStream);
-    chunkGroupMetaData.endOffsetOfChunkGroup = ReadWriteIOUtils.readLong(inputStream);
-    chunkGroupMetaData.version = ReadWriteIOUtils.readLong(inputStream);
-
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    chunkGroupMetaData.serializedSize = Integer.BYTES
-            + chunkGroupMetaData.deviceID.getBytes(TSFileConfig.STRING_CHARSET).length
-            + Integer.BYTES + Long.BYTES + Long.BYTES + Long.BYTES;
-
-    List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
-
-    for (int i = 0; i < size; i++) {
-      ChunkMetaData metaData = ChunkMetaData.deserializeFrom(inputStream);
-      chunkMetaDataList.add(metaData);
-      chunkGroupMetaData.serializedSize += metaData.getSerializedSize();
-    }
-    chunkGroupMetaData.chunkMetaDataList = chunkMetaDataList;
-
-    return chunkGroupMetaData;
-  }
-
-  /**
    * deserialize from ByteBuffer.
    *
    * @param buffer ByteBuffer
@@ -231,25 +199,4 @@ public class ChunkGroupMetaData {
     return byteLen;
   }
 
-  /**
-   * serialize to ByteBuffer.
-   *
-   * @param buffer ByteBuffer
-   * @return byte length
-   * @throws IOException IOException
-   */
-  public int serializeTo(ByteBuffer buffer) throws IOException {
-    int byteLen = 0;
-
-    byteLen += ReadWriteIOUtils.write(deviceID, buffer);
-    byteLen += ReadWriteIOUtils.write(startOffsetOfChunkGroup, buffer);
-    byteLen += ReadWriteIOUtils.write(endOffsetOfChunkGroup, buffer);
-    byteLen += ReadWriteIOUtils.write(version, buffer);
-
-    byteLen += ReadWriteIOUtils.write(chunkMetaDataList.size(), buffer);
-    for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
-      byteLen += chunkMetaData.serializeTo(buffer);
-    }
-    return byteLen;
-  }
 }

@@ -56,30 +56,6 @@ public class TsDeviceMetadata {
     // allowed to clair an empty TsDeviceMetadata whose fields will be assigned later.
   }
 
-  /**
-   * deserialize from the inputstream.
-   *
-   * @param inputStream -input stream to deserialize
-   * @return -device meta data
-   */
-  public static TsDeviceMetadata deserializeFrom(InputStream inputStream) throws IOException {
-    TsDeviceMetadata deviceMetadata = new TsDeviceMetadata();
-
-    deviceMetadata.startTime = ReadWriteIOUtils.readLong(inputStream);
-    deviceMetadata.endTime = ReadWriteIOUtils.readLong(inputStream);
-
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    if (size > 0) {
-      List<ChunkGroupMetaData> chunkGroupMetaDataList = new ArrayList<>();
-      for (int i = 0; i < size; i++) {
-        chunkGroupMetaDataList.add(ChunkGroupMetaData.deserializeFrom(inputStream));
-      }
-      deviceMetadata.chunkGroupMetadataList = chunkGroupMetaDataList;
-    }
-
-    deviceMetadata.reCalculateSerializedSize();
-    return deviceMetadata;
-  }
 
   /**
    * deserialize from the given buffer.
@@ -117,17 +93,6 @@ public class TsDeviceMetadata {
     for (ChunkGroupMetaData meta : chunkGroupMetadataList) {
       serializedSize += meta.getSerializedSize();
     }
-  }
-
-  /**
-   * set the ChunkGroupMetadataList and recalculate serialized size.
-   *
-   * @param chunkGroupMetadataList -use to set the ChunkGroupMetadataList and recalculate serialized
-   * size
-   */
-  public void setChunkGroupMetadataList(List<ChunkGroupMetaData> chunkGroupMetadataList) {
-    this.chunkGroupMetadataList = chunkGroupMetadataList;
-    reCalculateSerializedSize();
   }
 
   /**
@@ -187,29 +152,6 @@ public class TsDeviceMetadata {
     return byteLen;
   }
 
-  /**
-   * get the byte length of the given buffer.
-   *
-   * @param buffer -buffer to determine the byte length
-   * @return -byte length
-   */
-  public int serializeTo(ByteBuffer buffer) throws IOException {
-    int byteLen = 0;
-
-    byteLen += ReadWriteIOUtils.write(startTime, buffer);
-    byteLen += ReadWriteIOUtils.write(endTime, buffer);
-
-    if (chunkGroupMetadataList == null) {
-      byteLen += ReadWriteIOUtils.write(0, buffer);
-    } else {
-      byteLen += ReadWriteIOUtils.write(chunkGroupMetadataList.size(), buffer);
-      for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetadataList) {
-        byteLen += chunkGroupMetaData.serializeTo(buffer);
-      }
-    }
-
-    return byteLen;
-  }
 
   @Override
   public String toString() {

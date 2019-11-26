@@ -217,9 +217,9 @@ public class TsFileIOWriter {
 
     Statistics tsDigest = Statistics.getStatsByType(tsDataType);
 
-    tsDigest.setStatistics(statisticsArray);
+    tsDigest.setStatisticBuffers(statisticsArray);
 
-    currentChunkMetaData.setDigest(tsDigest);
+    currentChunkMetaData.setStatistics(tsDigest);
 
     return header.getSerializedSize();
   }
@@ -232,7 +232,7 @@ public class TsFileIOWriter {
     currentChunkMetaData = new ChunkMetaData(chunkHeader.getMeasurementID(),
         chunkHeader.getDataType(), out.getPosition(), chunkMetadata.getStartTime(),
         chunkMetadata.getEndTime());
-    currentChunkMetaData.setDigest(chunkMetadata.getDigest());
+    currentChunkMetaData.setStatistics(chunkMetadata.getStatistics());
     chunkHeader.serializeTo(out.wrapAsStream());
     out.write(chunk.getData());
     endChunk(chunkMetadata.getNumOfPoints());

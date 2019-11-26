@@ -25,9 +25,9 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 /**
- * class to construct digest.
+ * class to construct statistics.
  */
-public class DigestForFilter {
+public class StatisticsForFilter {
 
   private ByteBuffer minValue;
   private ByteBuffer maxValue;
@@ -44,7 +44,7 @@ public class DigestForFilter {
    * @param maxValue MUST be ByteBuffer
    * @param type time series data type
    */
-  public DigestForFilter(long minTime, long maxTime, ByteBuffer minValue, ByteBuffer maxValue,
+  public StatisticsForFilter(long minTime, long maxTime, ByteBuffer minValue, ByteBuffer maxValue,
       TSDataType type) {
     this.minTime = minTime;
     this.maxTime = maxTime;
@@ -62,7 +62,7 @@ public class DigestForFilter {
    * @param maxValue MUST be byte[]
    * @param type time series data type
    */
-  public DigestForFilter(long minTime, long maxTime, byte[] minValue, byte[] maxValue,
+  public StatisticsForFilter(long minTime, long maxTime, byte[] minValue, byte[] maxValue,
       TSDataType type) {
     this.minTime = minTime;
     this.maxTime = maxTime;

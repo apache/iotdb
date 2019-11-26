@@ -110,7 +110,7 @@ public class TsFileSketchTool {
                 + chunkMetaData.getEndTime() + "], tsDataType:" + chunkMetaData.getTsDataType()
                 + ", \n" + String.format("%20s", "") + " \t" + statisticByteBufferToString(
                 chunkMetaData.getTsDataType(),
-                chunkMetaData.getDigest()));
+                chunkMetaData.getStatistics()));
         printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 1");
         printlnBoth(pw, String.format("%20s", "") + "|\t\t[ChunkHeader]");
         Chunk chunk = reader.readMemChunk(chunkMetaData);
@@ -220,7 +220,7 @@ public class TsFileSketchTool {
   }
 
   private static String statisticByteBufferToString(TSDataType tsDataType, Statistics tsDigest) {
-    ByteBuffer[] statistics = tsDigest.getStatistics();
+    ByteBuffer[] statistics = tsDigest.getStatisticBuffers();
     if (statistics == null) {
       return "TsDigest:[]";
     }

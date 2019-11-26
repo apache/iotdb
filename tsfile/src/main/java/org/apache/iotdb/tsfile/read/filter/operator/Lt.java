@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
+import org.apache.iotdb.tsfile.read.filter.StatisticsForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
@@ -37,14 +37,14 @@ public class Lt<T extends Comparable<T>> extends UnaryFilter<T> {
   }
 
   @Override
-  public boolean satisfy(DigestForFilter digest) {
+  public boolean satisfy(StatisticsForFilter statistics) {
     if (filterType == FilterType.TIME_FILTER) {
-      return ((Long) value) > digest.getMinTime();
+      return ((Long) value) > statistics.getMinTime();
     } else {
-      if (digest.isMinValueNull()) {
+      if (statistics.isMinValueNull()) {
         return true;
       }
-      return value.compareTo(digest.getMinValue()) > 0;
+      return value.compareTo(statistics.getMinValue()) > 0;
     }
   }
 

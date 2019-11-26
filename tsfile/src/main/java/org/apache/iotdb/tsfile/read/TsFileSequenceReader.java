@@ -285,23 +285,6 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
-   * @return get the position after the last chunk group in the file
-   */
-  public long getPositionOfFirstDeviceMetaIndex() throws IOException {
-    TsFileMetaData metaData = readFileMetadata();
-    Optional<Long> data = metaData.getDeviceMap().values().stream()
-        .map(TsDeviceMetadataIndex::getOffset)
-        .min(Comparator.comparing(Long::valueOf));
-    if (data.isPresent()) {
-      return data.get();
-    } else {
-      //no real data
-      return TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
-          .getBytes().length;
-    }
-  }
-
-  /**
    * this function does not modify the position of the file reader.
    */
   public TsDeviceMetadata readTsDeviceMetaData(TsDeviceMetadataIndex index) throws IOException {
@@ -673,8 +656,8 @@ public class TsFileSequenceReader implements AutoCloseable {
             statisticsArray[Statistics.StatisticType.sum_value.ordinal()] = ByteBuffer
                 .wrap(chunkStatistics.getSumBytes());
             Statistics tsDigest = Statistics.getStatsByType(dataType);
-            tsDigest.setStatistics(statisticsArray);
-            currentChunk.setDigest(tsDigest);
+            tsDigest.setStatisticBuffers(statisticsArray);
+            currentChunk.setStatistics(tsDigest);
             chunks.add(currentChunk);
             numOfPoints = 0;
             chunkCnt++;

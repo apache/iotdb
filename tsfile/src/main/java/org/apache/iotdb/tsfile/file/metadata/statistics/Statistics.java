@@ -24,9 +24,6 @@ import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
@@ -37,7 +34,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This class is used for recording statistic information of each measurement in a delta file. While
- * writing processing, the processor records the digest information. Statistics includes maximum,
+ * writing processing, the processor records the statistics information. Statistics includes maximum,
  * minimum and null value count up to version 0.0.1.<br> Each data type extends this Statistic as
  * super class.<br>
  *
@@ -51,7 +48,7 @@ public abstract class Statistics<T> {
    */
   protected boolean isEmpty = true;
 
-  private ByteBuffer[] statistics;
+  private ByteBuffer[] buffers;
 
   /**
    * size of valid values in statistics. Note that some values in statistics can be null and thus
@@ -59,7 +56,7 @@ public abstract class Statistics<T> {
    */
   private int validSizeOfArray = 0;
 
-  private int digestSerializedSize = Integer.BYTES; // initialize for number of statistics
+  private int statisticsSerializedSize = Integer.BYTES; // initialize for number of statistics
 
   /**
    * static method providing statistic instance for respective data type.
@@ -142,7 +139,7 @@ public abstract class Statistics<T> {
   public abstract ByteBuffer getSumBytebuffer();
 
   /**
-   * merge parameter to this statistic. Including
+   * merge parameter to this statistic
    *
    * @param stats input statistics
    * @throws StatisticsClassException cannot merge statistics
@@ -322,66 +319,6 @@ public abstract class Statistics<T> {
     return ReadWriteIOUtils.write(0, outputStream);
   }
 
-  public static int serializeNullTo(ByteBuffer buffer) {
-    return ReadWriteIOUtils.write(0, buffer);
-  }
-
-  /**
-   * use given input stream to deserialize.
-   *
-   * @param inputStream -given input stream
-   * @return -an instance of TsDigest
-   */
-  public static Statistics deserializeFrom(InputStream inputStream, TSDataType dataType) throws IOException {
-    Statistics digest = getStatsByType(dataType);
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    digest.validSizeOfArray = size;
-    digest.digestSerializedSize = Integer.BYTES;
-    if (size > 0) {
-      digest.statistics = new ByteBuffer[StatisticType.getTotalTypeNum()];
-      ByteBuffer value;
-      // check if it's an old version of TsFile
-      String key = "";
-      if (TSFileDescriptor.getInstance().getConfig().getEndian().equals(EndianType.LITTLE_ENDIAN.toString())) {
-        for (int i = 0; i < size; i++) {
-          key = ReadWriteIOUtils.readString(inputStream);
-          value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(inputStream);
-          short n;
-          switch (key) {
-            case "min_value":
-              n = 0;
-              break;
-            case "max_value":
-              n = 1;
-              break;
-            case "first":
-              n = 2;
-              break;
-            case "last":
-              n = 3;
-              break;
-            case "sum":
-              n = 4;
-              break;
-            default:
-              n = -1;
-          }
-          digest.statistics[n] = value;
-          digest.digestSerializedSize += Short.BYTES + Integer.BYTES + value.remaining();
-        }
-      }
-      else {
-        for (int i = 0; i < size; i++) {
-          short n = ReadWriteIOUtils.readShort(inputStream);
-          value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(inputStream);
-          digest.statistics[n] = value;
-          digest.digestSerializedSize += Short.BYTES + Integer.BYTES + value.remaining();
-        }
-      }
-    } // else left digest.statistics as null
-    return digest;
-  }
-
   /**
    * use given buffer to deserialize.
    *
@@ -389,12 +326,12 @@ public abstract class Statistics<T> {
    * @return -an instance of TsDigest
    */
   public static Statistics deserializeFrom(ByteBuffer buffer, TSDataType dataType) {
-    Statistics digest = getStatsByType(dataType);
+    Statistics statistics = getStatsByType(dataType);
     int size = ReadWriteIOUtils.readInt(buffer);
-    digest.validSizeOfArray = size;
-    digest.digestSerializedSize = Integer.BYTES;
+    statistics.validSizeOfArray = size;
+    statistics.statisticsSerializedSize = Integer.BYTES;
     if (size > 0) {
-      digest.statistics = new ByteBuffer[StatisticType.getTotalTypeNum()];
+      statistics.buffers = new ByteBuffer[StatisticType.getTotalTypeNum()];
       ByteBuffer value;
       // check if it's old version of TsFile
       buffer.mark();
@@ -425,8 +362,8 @@ public abstract class Statistics<T> {
             default:
               n = -1;
           }
-          digest.statistics[n] = value;
-          digest.digestSerializedSize += Short.BYTES + Integer.BYTES + value.remaining();
+          statistics.buffers[n] = value;
+          statistics.statisticsSerializedSize += Short.BYTES + Integer.BYTES + value.remaining();
         }
       }
       else {
@@ -434,23 +371,23 @@ public abstract class Statistics<T> {
         for (int i = 0; i < size; i++) {
           short n = ReadWriteIOUtils.readShort(buffer);
           value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer);
-          digest.statistics[n] = value;
-          digest.digestSerializedSize += Short.BYTES + Integer.BYTES + value.remaining();
+          statistics.buffers[n] = value;
+          statistics.statisticsSerializedSize += Short.BYTES + Integer.BYTES + value.remaining();
         }
       }
-    } // else left digest.statistics as null
+    } // else left statistics as null
 
-    return digest;
+    return statistics;
   }
 
   private void reCalculate() {
     validSizeOfArray = 0;
-    digestSerializedSize = Integer.BYTES;
-    if (statistics != null) {
-      for (ByteBuffer value : statistics) {
+    statisticsSerializedSize = Integer.BYTES;
+    if (buffers != null) {
+      for (ByteBuffer value : buffers) {
         if (value != null) {
           // StatisticType serialized value, byteBuffer.capacity and byteBuffer.array
-          digestSerializedSize += Short.BYTES + Integer.BYTES + value.remaining();
+          statisticsSerializedSize += Short.BYTES + Integer.BYTES + value.remaining();
           validSizeOfArray++;
         }
       }
@@ -460,23 +397,23 @@ public abstract class Statistics<T> {
   /**
    * get statistics of the current object.
    */
-  public ByteBuffer[] getStatistics() {
-    return statistics; //TODO unmodifiable
+  public ByteBuffer[] getStatisticBuffers() {
+    return buffers; //TODO unmodifiable
   }
 
-  public void setStatistics(ByteBuffer[] statistics) throws IOException {
-    if (statistics != null && statistics.length != StatisticType.getTotalTypeNum()) {
+  public void setStatisticBuffers(ByteBuffer[] buffers) throws IOException {
+    if (buffers != null && buffers.length != StatisticType.getTotalTypeNum()) {
       throw new IOException(String.format(
         "The length of array of statistics doesn't equal StatisticType.getTotalTypeNum() %d",
         StatisticType.getTotalTypeNum()));
     }
-    this.statistics = statistics;
+    this.buffers = buffers;
     reCalculate(); // DO NOT REMOVE THIS
   }
 
   @Override
   public String toString() {
-    return statistics != null ? Arrays.toString(statistics) : "";
+    return buffers != null ? Arrays.toString(buffers) : "";
   }
 
   /**
@@ -491,32 +428,10 @@ public abstract class Statistics<T> {
       byteLen += ReadWriteIOUtils.write(0, outputStream);
     } else {
       byteLen += ReadWriteIOUtils.write(validSizeOfArray, outputStream);
-      for (int i = 0; i < statistics.length; i++) {
-        if (statistics[i] != null) {
+      for (int i = 0; i < buffers.length; i++) {
+        if (buffers[i] != null) {
           byteLen += ReadWriteIOUtils.write((short) i, outputStream);
-          byteLen += ReadWriteIOUtils.write(statistics[i], outputStream);
-        }
-      }
-    }
-    return byteLen;
-  }
-
-  /**
-   * use given buffer to serialize.
-   *
-   * @param buffer -given buffer
-   * @return -byte length
-   */
-  public int serializeTo(ByteBuffer buffer) {
-    int byteLen = 0;
-    if (validSizeOfArray == 0) {
-      byteLen += ReadWriteIOUtils.write(0, buffer);
-    } else {
-      byteLen += ReadWriteIOUtils.write(validSizeOfArray, buffer);
-      for (int i = 0; i < statistics.length; i++) {
-        if (statistics[i] != null) {
-          byteLen += ReadWriteIOUtils.write((short) i, buffer);
-          byteLen += ReadWriteIOUtils.write(statistics[i], buffer);
+          byteLen += ReadWriteIOUtils.write(buffers[i], outputStream);
         }
       }
     }
@@ -528,8 +443,8 @@ public abstract class Statistics<T> {
    *
    * @return -serializedSize
    */
-  public int getDigestSerializedSize() {
-    return digestSerializedSize;
+  public int getStatisticsSerializedSize() {
+    return statisticsSerializedSize;
   }
 
   @Override
@@ -540,20 +455,20 @@ public abstract class Statistics<T> {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    Statistics digest = (Statistics) o;
-    if (digestSerializedSize != digest.digestSerializedSize || validSizeOfArray != digest.validSizeOfArray
-      || ((statistics == null) ^ (digest.statistics == null))) {
+    Statistics statistics = (Statistics) o;
+    if (statisticsSerializedSize != statistics.statisticsSerializedSize || validSizeOfArray != statistics.validSizeOfArray
+      || ((this.buffers == null) ^ (statistics.buffers == null))) {
       return false;
     }
 
-    if (statistics != null) {
-      for (int i = 0; i < statistics.length; i++) {
-        if ((statistics[i] == null) ^ (digest.statistics[i] == null)) {
+    if (this.buffers != null) {
+      for (int i = 0; i < this.buffers.length; i++) {
+        if ((this.buffers[i] == null) ^ (statistics.buffers[i] == null)) {
           // one is null and the other is not null
           return false;
         }
-        if (statistics[i] != null) {
-          if (!statistics[i].equals(digest.statistics[i])) {
+        if (this.buffers[i] != null) {
+          if (!this.buffers[i].equals(statistics.buffers[i])) {
             return false;
           }
         }

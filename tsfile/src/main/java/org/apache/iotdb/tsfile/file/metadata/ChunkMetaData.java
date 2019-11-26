@@ -90,30 +90,6 @@ public class ChunkMetaData {
     this.endTime = endTime;
   }
 
-  /**
-   * deserialize from InputStream.
-   *
-   * @param inputStream InputStream
-   * @return ChunkMetaData object
-   * @throws IOException IOException
-   */
-  public static ChunkMetaData deserializeFrom(InputStream inputStream) throws IOException {
-    ChunkMetaData chunkMetaData = new ChunkMetaData();
-
-    chunkMetaData.measurementUid = ReadWriteIOUtils.readString(inputStream);
-
-    chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(inputStream);
-
-    chunkMetaData.numOfPoints = ReadWriteIOUtils.readLong(inputStream);
-    chunkMetaData.startTime = ReadWriteIOUtils.readLong(inputStream);
-    chunkMetaData.endTime = ReadWriteIOUtils.readLong(inputStream);
-
-    chunkMetaData.tsDataType = ReadWriteIOUtils.readDataType(inputStream);
-
-    chunkMetaData.valuesStatistics = Statistics.deserializeFrom(inputStream, chunkMetaData.tsDataType);
-
-    return chunkMetaData;
-  }
 
   /**
    * deserialize from ByteBuffer.
@@ -146,7 +122,7 @@ public class ChunkMetaData {
             4 * Long.BYTES + // 4 long: offsetOfChunkHeader, numOfPoints, startTime, endTime
             TSDataType.getSerializedSize() + // TSDataType
             (valuesStatistics == null ? Statistics.getNullDigestSize()
-                    : valuesStatistics.getDigestSerializedSize()));
+                    : valuesStatistics.getStatisticsSerializedSize()));
     serializedSize += measurementUid.getBytes(TSFileConfig.STRING_CHARSET).length;  // measurementUid
     return serializedSize;
   }
@@ -177,12 +153,12 @@ public class ChunkMetaData {
     return measurementUid;
   }
 
-  public Statistics getDigest() {
+  public Statistics getStatistics() {
     return valuesStatistics;
   }
 
-  public void setDigest(Statistics digest) {
-    this.valuesStatistics = digest;
+  public void setStatistics(Statistics statistics) {
+    this.valuesStatistics = statistics;
 
   }
 
@@ -231,30 +207,6 @@ public class ChunkMetaData {
       byteLen += Statistics.serializeNullTo(outputStream);
     } else {
       byteLen += valuesStatistics.serializeTo(outputStream);
-    }
-    return byteLen;
-  }
-
-  /**
-   * serialize to ByteBuffer.
-   *
-   * @param buffer ByteBuffer
-   * @return length
-   */
-  public int serializeTo(ByteBuffer buffer) {
-    int byteLen = 0;
-
-    byteLen += ReadWriteIOUtils.write(measurementUid, buffer);
-    byteLen += ReadWriteIOUtils.write(offsetOfChunkHeader, buffer);
-    byteLen += ReadWriteIOUtils.write(numOfPoints, buffer);
-    byteLen += ReadWriteIOUtils.write(startTime, buffer);
-    byteLen += ReadWriteIOUtils.write(endTime, buffer);
-    byteLen += ReadWriteIOUtils.write(tsDataType, buffer);
-
-    if (valuesStatistics == null) {
-      byteLen += Statistics.serializeNullTo(buffer);
-    } else {
-      byteLen += valuesStatistics.serializeTo(buffer);
     }
     return byteLen;
   }

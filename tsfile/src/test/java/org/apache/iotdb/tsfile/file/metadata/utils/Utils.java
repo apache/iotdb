@@ -71,13 +71,13 @@ public class Utils {
     }
   }
 
-  public static void isTwoTsDigestEqual(Statistics digestA, Statistics digestB, String name) {
-    if ((digestA == null) ^ (digestB == null)) {
+  public static void isTwoTsDigestEqual(Statistics statisticsA, Statistics statisticsB, String name) {
+    if ((statisticsA == null) ^ (statisticsB == null)) {
       System.out.println("error");
       fail(String.format("one of %s is null", name));
     }
-    if (digestA != null) {
-      Assert.assertEquals(digestA, digestB);
+    if (statisticsA != null) {
+      Assert.assertEquals(statisticsA, statisticsB);
     }
   }
 
@@ -118,9 +118,9 @@ public class Utils {
       assertTrue(metadata1.getNumOfPoints() == metadata2.getNumOfPoints());
       assertTrue(metadata1.getStartTime() == metadata2.getStartTime());
       assertTrue(metadata1.getEndTime() == metadata2.getEndTime());
-      assertNotNull(metadata1.getDigest());
-      assertNotNull(metadata2.getDigest());
-      Utils.isTwoTsDigestEqual(metadata1.getDigest(), metadata2.getDigest(), "TsDigest");
+      assertNotNull(metadata1.getStatistics());
+      assertNotNull(metadata2.getStatistics());
+      Utils.isTwoTsDigestEqual(metadata1.getStatistics(), metadata2.getStatistics(), "TsDigest");
     }
   }
 

@@ -417,8 +417,8 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
             statisticsArray[Statistics.StatisticType.sum_value.ordinal()] = ByteBuffer
                 .wrap(chunkStatistics.getSumBytes());
             Statistics tsDigest = Statistics.getStatsByType(dataType);
-            tsDigest.setStatistics(statisticsArray);
-            currentChunkMetaData.setDigest(tsDigest);
+            tsDigest.setStatisticBuffers(statisticsArray);
+            currentChunkMetaData.setStatistics(tsDigest);
             chunkMetaDataList.add(currentChunkMetaData);
             numOfPoints = 0;
             pageHeadersList.add(pageHeaders);

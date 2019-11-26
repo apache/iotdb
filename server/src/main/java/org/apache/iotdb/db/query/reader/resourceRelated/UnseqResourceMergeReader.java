@@ -39,7 +39,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
-import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
+import org.apache.iotdb.tsfile.read.filter.StatisticsForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 /**
@@ -100,15 +100,15 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
         if (filter != null) {
           ByteBuffer minValue = null;
           ByteBuffer maxValue = null;
-          ByteBuffer[] statistics = chunkMetaData.getDigest().getStatistics();
+          ByteBuffer[] statistics = chunkMetaData.getStatistics().getStatisticBuffers();
           if (statistics != null) {
             minValue = statistics[Statistics.StatisticType.min_value.ordinal()]; // note still CAN be null
             maxValue = statistics[Statistics.StatisticType.max_value.ordinal()]; // note still CAN be null
           }
 
-          DigestForFilter digest = new DigestForFilter(chunkMetaData.getStartTime(),
+          StatisticsForFilter statisticsForFilter = new StatisticsForFilter(chunkMetaData.getStartTime(),
               chunkMetaData.getEndTime(), minValue, maxValue, chunkMetaData.getTsDataType());
-          if (!filter.satisfy(digest)) {
+          if (!filter.satisfy(statisticsForFilter)) {
             continue;
           }
         }

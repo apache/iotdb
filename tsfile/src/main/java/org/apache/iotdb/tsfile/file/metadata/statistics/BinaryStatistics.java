@@ -204,7 +204,7 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  void deserialize(ByteBuffer byteBuffer) throws IOException {
+  void deserialize(ByteBuffer byteBuffer) {
     this.min = new Binary(
         ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(byteBuffer).array());
     this.max = new Binary(
