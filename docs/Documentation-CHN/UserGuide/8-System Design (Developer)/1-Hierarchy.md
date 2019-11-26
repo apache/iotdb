@@ -34,14 +34,14 @@
   - `Size` 指的是字符串所占的字节数，它并不一定等于字符串的长度。 
   - 举例来说，"sensor_1" 这个字符串将被存储为 `00 00 00 08` + "sensor_1" (ASCII编码)。
   - 另外需要注意的一点是文件签名 "TsFile000001" (`Magic String` + `Version`), 因为他的 `Size(12)` 和 ASCII 编码值是固定的，所以没有必要在这个字符串前的写入 `Size` 值。
-- **数据类型的编码**
+- **数据类型**
   - 0: BOOLEAN
   - 1: INT32 (`int`)
   - 2: INT64 (`long`)
   - 3: FLOAT
   - 4: DOUBLE
   - 5: TEXT (`String`)
-- **编码类型的编码**
+- **编码类型**
   - 0: PLAIN
   - 1: PLAIN_DICTIONARY
   - 2: RLE
@@ -50,7 +50,7 @@
   - 5: BITMAP
   - 6: GORILLA
   - 7: REGULAR 
-- **压缩类型的编码**
+- **压缩类型**
   - 0: UNCOMPRESSED
   - 1: SNAPPY
   - 2: GZIP
@@ -58,7 +58,7 @@
   - 4: SDT (暂未实现)
   - 5: PAA (暂未实现)
   - 6: PLA (暂未实现)
-- **TsDigest 统计类型的编码**
+- **预聚合信息**
   - 0: min_value
   - 1: max_value
   - 2: first_value
@@ -80,7 +80,7 @@ TsFile 是由 6 个字节的 "Magic String" (`TsFile`) 和 6 个字节的版本�
 
 TsFile文件的内容可以划分为两个部分: 数据和元数据。数据和元数据之间是由一个字节的 `0x02` 做为分隔符。
 
-`ChunkGroup` 存储的是一个数组类型的数据，每一个 `ChunkGroup` 存储了一个 *设备(device)* 的数据。
+`ChunkGroup` 存储了一个 *设备(device)* 一段时间的数据。
 
 ##### ChunkGroup
 
