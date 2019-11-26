@@ -37,6 +37,7 @@ RUN ls -lh ~/.m2 \
   && apt-get purge --auto-remove -y \
   && apt-get clean -y
 EXPOSE 31999
+EXPOSE 6667
 VOLUME /iotdb/data
 VOLUME /iotdb/logs
 #ENTRYPOINT ["/iotdb/bin/start-server.sh"]
