@@ -97,6 +97,7 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TSHandleIdentifier;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSInsertInBatchReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
@@ -154,6 +155,46 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   public TSServiceImpl() {
     processor = new QueryProcessor(new QueryProcessExecutor());
+  }
+
+  public static TSDataType getSeriesType(String path) throws QueryProcessException {
+    switch (path.toLowerCase()) {
+      // authorization queries
+      case ROLE:
+      case USER:
+      case PRIVILEGE:
+      case STORAGE_GROUP:
+        return TSDataType.TEXT;
+      case TTL:
+        return TSDataType.INT64;
+      default:
+        // do nothing
+    }
+
+    if (path.contains("(") && !path.startsWith("(") && path.endsWith(")")) {
+      // aggregation
+      int leftBracketIndex = path.indexOf('(');
+      String aggrType = path.substring(0, leftBracketIndex);
+      String innerPath = path.substring(leftBracketIndex + 1, path.length() - 1);
+      switch (aggrType.toLowerCase()) {
+        case StatisticConstant.MIN_TIME:
+        case StatisticConstant.MAX_TIME:
+        case StatisticConstant.COUNT:
+          return TSDataType.INT64;
+        case StatisticConstant.LAST:
+        case StatisticConstant.FIRST:
+        case StatisticConstant.MIN_VALUE:
+        case StatisticConstant.MAX_VALUE:
+          return getSeriesType(innerPath);
+        case StatisticConstant.AVG:
+        case StatisticConstant.SUM:
+          return TSDataType.DOUBLE;
+        default:
+          throw new QueryProcessException(
+              "aggregate does not support " + aggrType + " function.");
+      }
+    }
+    return MManager.getInstance().getSeriesType(path);
   }
 
   @Override
@@ -284,7 +325,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     return new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
   }
-
 
   /**
    * release single operation resource
@@ -442,46 +482,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private String getMetadataInString() {
     return MManager.getInstance().getMetadataInString();
-  }
-
-  public static TSDataType getSeriesType(String path) throws QueryProcessException {
-    switch (path.toLowerCase()) {
-      // authorization queries
-      case ROLE:
-      case USER:
-      case PRIVILEGE:
-      case STORAGE_GROUP:
-        return TSDataType.TEXT;
-      case TTL:
-        return TSDataType.INT64;
-      default:
-        // do nothing
-    }
-
-    if (path.contains("(") && !path.startsWith("(") && path.endsWith(")")) {
-      // aggregation
-      int leftBracketIndex = path.indexOf('(');
-      String aggrType = path.substring(0, leftBracketIndex);
-      String innerPath = path.substring(leftBracketIndex + 1, path.length() - 1);
-      switch (aggrType.toLowerCase()) {
-        case StatisticConstant.MIN_TIME:
-        case StatisticConstant.MAX_TIME:
-        case StatisticConstant.COUNT:
-          return TSDataType.INT64;
-        case StatisticConstant.LAST:
-        case StatisticConstant.FIRST:
-        case StatisticConstant.MIN_VALUE:
-        case StatisticConstant.MAX_VALUE:
-          return getSeriesType(innerPath);
-        case StatisticConstant.AVG:
-        case StatisticConstant.SUM:
-          return TSDataType.DOUBLE;
-        default:
-          throw new QueryProcessException(
-              "aggregate does not support " + aggrType + " function.");
-      }
-    }
-    return MManager.getInstance().getSeriesType(path);
   }
 
   protected List<String> getPaths(String path) throws MetadataException {
@@ -1173,6 +1173,35 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()));
     }
   }
+
+  @Override
+  public TSStatus insertRowInBatch(TSInsertInBatchReq req) {
+    if (!checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
+    }
+
+    TSStatus status = null;
+    for (int i = 0; i < req.deviceIds.size(); i++) {
+      InsertPlan plan = new InsertPlan();
+      plan.setDeviceId(req.getDeviceIds().get(i));
+      plan.setTime(req.getTimestamps().get(i));
+      plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
+      plan.setValues(req.getValuesList().get(i).toArray(new String[0]));
+      status = checkAuthority(plan);
+      if (status != null) {
+        return new TSStatus(status);
+      }
+
+      status = executePlan(plan);
+      if (status.getStatusType().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+    }
+
+    return status;
+  }
+
 
   @Override
   public TSStatus insertRow(TSInsertReq req) {

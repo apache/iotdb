@@ -18,11 +18,33 @@
  */
 package org.apache.iotdb.session;
 
+import static org.apache.iotdb.session.Config.PATH_MATCHER;
+
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSInsertInBatchReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -35,14 +57,6 @@ import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.sql.SQLException;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Pattern;
-
-import static org.apache.iotdb.session.Config.PATH_MATCHER;
 
 public class Session {
 
@@ -57,7 +71,6 @@ public class Session {
   private TSocket transport;
   private boolean isClosed = true;
   private ZoneId zoneId;
-  private TSOperationHandle operationHandle;
   private long statementId;
 
 
@@ -154,7 +167,12 @@ public class Session {
     }
   }
 
-  public synchronized TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch)
+  /**
+   * use batch interface to insert data
+   *
+   * @param rowBatch data batch
+   */
+  public TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch)
       throws IoTDBSessionException {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.deviceId = rowBatch.deviceId;
@@ -173,7 +191,39 @@ public class Session {
     }
   }
 
-  public synchronized TSStatus insert(String deviceId, long time, List<String> measurements,
+  /**
+   * insert data in batch format, which can reduce the overhead of network
+   */
+  public TSStatus insertInBatch(List<String> deviceIds, List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
+      throws IoTDBSessionException {
+    // check params size
+    int len = deviceIds.size();
+    if(len != times.size() || len != measurementsList.size() || len != valuesList.size()){
+      throw new IllegalArgumentException("deviceIds, times, measurementsList and valuesList 's size should be equal");
+    }
+
+    TSInsertInBatchReq request = new TSInsertInBatchReq();
+    request.setDeviceIds(deviceIds);
+    request.setTimestamps(times);
+    request.setMeasurementsList(measurementsList);
+    request.setValuesList(valuesList);
+
+    try {
+      return checkAndReturn(client.insertRowInBatch(request));
+    } catch (TException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
+  /**
+   * insert data in one row, if you want improve your performance, please use insertInBatch method
+   * or insertBatch method
+   * @see Session#insertInBatch(List, List, List, List)
+   * @see Session#insertBatch(RowBatch)
+   */
+  public TSStatus insert(String deviceId, long time, List<String> measurements,
       List<String> values)
       throws IoTDBSessionException {
     TSInsertReq request = new TSInsertReq();
@@ -194,7 +244,7 @@ public class Session {
    *
    * @param path timeseries to delete, should be a whole path
    */
-  synchronized TSStatus deleteTimeseries(String path) throws IoTDBSessionException {
+  public TSStatus deleteTimeseries(String path) throws IoTDBSessionException {
     List<String> paths = new ArrayList<>();
     paths.add(path);
     return deleteTimeseries(paths);
@@ -205,7 +255,7 @@ public class Session {
    *
    * @param paths timeseries to delete, should be a whole path
    */
-  public synchronized TSStatus deleteTimeseries(List<String> paths) throws IoTDBSessionException {
+  public TSStatus deleteTimeseries(List<String> paths) throws IoTDBSessionException {
     try {
       return checkAndReturn(client.deleteTimeseries(paths));
     } catch (TException e) {
@@ -219,7 +269,7 @@ public class Session {
    * @param path data in which time series to delete
    * @param time data with time stamp less than or equal to time will be deleted
    */
-  public synchronized TSStatus deleteData(String path, long time) throws IoTDBSessionException {
+  public TSStatus deleteData(String path, long time) throws IoTDBSessionException {
     List<String> paths = new ArrayList<>();
     paths.add(path);
     return deleteData(paths, time);
@@ -231,7 +281,7 @@ public class Session {
    * @param paths data in which time series to delete
    * @param time data with time stamp less than or equal to time will be deleted
    */
-  synchronized TSStatus deleteData(List<String> paths, long time)
+  public TSStatus deleteData(List<String> paths, long time)
       throws IoTDBSessionException {
     TSDeleteDataReq request = new TSDeleteDataReq();
     request.setPaths(paths);
@@ -244,7 +294,7 @@ public class Session {
     }
   }
 
-  public synchronized TSStatus setStorageGroup(String storageGroupId) throws IoTDBSessionException {
+  public TSStatus setStorageGroup(String storageGroupId) throws IoTDBSessionException {
     checkPathValidity(storageGroupId);
     try {
       return checkAndReturn(client.setStorageGroup(storageGroupId));
@@ -254,14 +304,14 @@ public class Session {
   }
 
 
-  synchronized TSStatus deleteStorageGroup(String storageGroup)
+  public TSStatus deleteStorageGroup(String storageGroup)
       throws IoTDBSessionException {
     List<String> groups = new ArrayList<>();
     groups.add(storageGroup);
     return deleteStorageGroups(groups);
   }
 
-  synchronized TSStatus deleteStorageGroups(List<String> storageGroup)
+  public TSStatus deleteStorageGroups(List<String> storageGroup)
       throws IoTDBSessionException {
     try {
       return checkAndReturn(client.deleteStorageGroups(storageGroup));
@@ -270,7 +320,7 @@ public class Session {
     }
   }
 
-  public synchronized TSStatus createTimeseries(String path, TSDataType dataType,
+  public TSStatus createTimeseries(String path, TSDataType dataType,
       TSEncoding encoding, CompressionType compressor) throws IoTDBSessionException {
     checkPathValidity(path);
     TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
@@ -345,9 +395,9 @@ public class Session {
     TSExecuteStatementResp execResp = client.executeStatement(execReq);
 
     RpcUtils.verifySuccess(execResp.getStatus());
-    operationHandle = execResp.getOperationHandle();
     return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
-            operationHandle.getOperationId().getQueryId(), client, operationHandle);
+        execResp.getOperationHandle().getOperationId().getQueryId(), client,
+        execResp.getOperationHandle());
   }
 
   /**
@@ -363,8 +413,6 @@ public class Session {
 
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, statementId);
     TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
-    operationHandle = execResp.getOperationHandle();
-
     RpcUtils.verifySuccess(execResp.getStatus());
   }
 
