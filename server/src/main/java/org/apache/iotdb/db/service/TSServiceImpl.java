@@ -171,7 +171,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       status = authorizer.login(req.getUsername(), req.getPassword());
     } catch (AuthException e) {
-      logger.error("meet error while logging in.", e);
+      logger.info("meet error while logging in.", e);
       status = false;
     }
     TSStatus tsStatus;
@@ -574,14 +574,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       batchErrorMessage.append(TSStatusCode.METADATA_ERROR.getStatusCode()).append("\n");
       return false;
     } catch (QueryProcessException e) {
-      logger.error(
-          "Error occurred when executing {}, meet error while parsing SQL to physical plan: ",
-          statement, e);
+      logger.info(
+          "Error occurred when executing {}, meet error while parsing SQL to physical plan: {}",
+          statement, e.getMessage());
       result.add(Statement.EXECUTE_FAILED);
       batchErrorMessage.append(TSStatusCode.SQL_PARSE_ERROR.getStatusCode()).append("\n");
       return false;
     } catch (QueryInBatchStatementException e) {
-      logger.error("Error occurred when executing {}, query statement not allowed: ", statement, e);
+      logger.info("Error occurred when executing {}, query statement not allowed: ", statement, e);
       result.add(Statement.EXECUTE_FAILED);
       batchErrorMessage.append(TSStatusCode.QUERY_NOT_ALLOWED.getStatusCode()).append("\n");
       return false;
@@ -628,11 +628,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getTSExecuteStatementResp(getStatus(TSStatusCode.METADATA_ERROR,
           "Check metadata error: " + e.getMessage()));
     } catch (QueryProcessException e) {
-      logger.error("meet error while parsing SQL to physical plan: ", e);
+      logger.info("meet error while parsing SQL to physical plan: {}", e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR,
           "Statement format is not right: " + e.getMessage()));
     } catch (StorageEngineException e) {
-      logger.error("meet error while parsing SQL to physical plan: ", e);
+      logger.info("meet error while parsing SQL to physical plan: {}", e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR,
           e.getMessage()));
     }
@@ -689,7 +689,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
     } catch (QueryProcessException | MetadataException e) {
-      logger.error("meet error while parsing SQL to physical plan!", e);
+      logger.info("meet error while parsing SQL to physical plan: {}", e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     }
 
@@ -1033,7 +1033,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
     } catch (QueryProcessException | MetadataException e) {
-      logger.error("meet error while parsing SQL to physical plan!", e);
+      logger.info("meet error while parsing SQL to physical plan: {}", e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     }
 
@@ -1258,7 +1258,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             Arrays.asList(results));
       }
     } catch (Exception e) {
-      logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.info("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSBatchExecuteStatementResp(
           getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()), null);
     } finally {
