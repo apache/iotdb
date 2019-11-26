@@ -55,11 +55,6 @@
 - **Compressing Type Hardcode**
   - 0: UNCOMPRESSED
   - 1: SNAPPY
-  - 2: GZIP
-  - 3: LZO (not implement now)
-  - 4: SDT (not implement now)
-  - 5: PAA (not implement now)
-  - 6: PLA (not implement now)
 - **TsDigest Statistics Type Hardcode**
   - 0: min_value
   - 1: max_value
@@ -103,7 +98,7 @@ A `Chunk` represents a *sensor*. There is a byte `0x01` as the marker, following
 |Number of pages|int|
 |Compression Type|short|
 |Encoding Type|short|
-|Max Tombstone Time|long|
+|Max Tombstone Time(unused)|long|
 
 ##### Page
 

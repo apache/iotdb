@@ -53,11 +53,6 @@
 - **压缩类型**
   - 0: UNCOMPRESSED
   - 1: SNAPPY
-  - 2: GZIP
-  - 3: LZO (暂未实现)
-  - 4: SDT (暂未实现)
-  - 5: PAA (暂未实现)
-  - 6: PLA (暂未实现)
 - **预聚合信息**
   - 0: min_value
   - 1: max_value
@@ -100,7 +95,7 @@ TsFile文件的内容可以划分为两个部分: 数据和元数据。数据和
 |包含的page数量(numOfPages)|int|
 |压缩类型(compressionType)|short|
 |编码类型(encodingType)|short|
-|Max Tombstone Time|long|
+|Max Tombstone Time(暂时没用)|long|
 
 ##### Page
 
