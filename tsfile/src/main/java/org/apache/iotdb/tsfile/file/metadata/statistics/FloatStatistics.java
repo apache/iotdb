@@ -32,8 +32,8 @@ public class FloatStatistics extends Statistics<Float> {
   private float min;
   private float max;
   private float first;
-  private double sum;
   private float last;
+  private double sum;
 
   @Override
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {

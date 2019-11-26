@@ -326,21 +326,18 @@ public class ChunkWriterImpl implements IChunkWriter {
    *
    * @param writer     the specified IOWriter
    * @param statistics the chunk statistics
-   * @return the data size of this chunk
    * @throws IOException exception in IO
    */
-  public long writeAllPagesOfChunkToTsFile(TsFileIOWriter writer, Statistics<?> statistics)
+  public void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer, Statistics<?> statistics)
       throws IOException {
     if (chunkPointCount == 0) {
-      return 0;
+      return;
     }
 
     // start to write this column chunk
-    int headerSize = writer
-        .startFlushChunk(measurementSchema, compressor.getType(), measurementSchema.getType(),
+    writer.startFlushChunk(measurementSchema, compressor.getType(), measurementSchema.getType(),
             measurementSchema.getEncodingType(), statistics, chunkMaxTime,
-            chunkMinTime, pageBuffer.size(),
-            numOfPages);
+            chunkMinTime, pageBuffer.size(), numOfPages);
 
     long dataOffset = writer.getPos();
 
@@ -355,7 +352,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     }
 
     writer.endChunk(chunkPointCount);
-    return headerSize + dataSize;
   }
 
   /**
@@ -363,13 +359,11 @@ public class ChunkWriterImpl implements IChunkWriter {
    *
    * @return the max possible allocated size currently
    */
-  public long estimateMaxPageMemSize() {
+  private long estimateMaxPageMemSize() {
     // return the sum of size of buffer and page max size
-    return (long) (pageBuffer.size() + estimateMaxPageHeaderSize());
-  }
-
-  private int estimateMaxPageHeaderSize() {
-    return PageHeader.calculatePageHeaderSize(measurementSchema.getType());
+    return (long) (pageBuffer.size() +
+        PageHeader.calculatePageHeaderSizeWithoutStatistics() +
+        pageWriter.getStatistics().getSerializedSize());
   }
 
   /**
@@ -377,7 +371,7 @@ public class ChunkWriterImpl implements IChunkWriter {
    *
    * @return current data size that the writer has serialized.
    */
-  public long getCurrentDataSize() {
+  private long getCurrentDataSize() {
     return pageBuffer.size();
   }
 }

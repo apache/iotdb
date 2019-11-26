@@ -418,18 +418,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type);
   }
 
-  /**
-   * read the page's header.
-   *
-   * @param dataType given tsfile data type
-   * @param position the file offset of this chunk's header
-   * @param markerRead true if the offset does not contains the marker , otherwise false
-   */
-  private PageHeader readPageHeader(TSDataType dataType, long position, boolean markerRead)
-      throws IOException {
-    return PageHeader.deserializeFrom(dataType, tsFileInput, position, markerRead);
-  }
-
   public long position() throws IOException {
     return tsFileInput.position();
   }
@@ -441,14 +429,6 @@ public class TsFileSequenceReader implements AutoCloseable {
   public void skipPageData(PageHeader header) throws IOException {
     tsFileInput.position(tsFileInput.position() + header.getCompressedSize());
   }
-
-  /**
-   *
-   */
-  public long skipPageData(PageHeader header, long position) throws IOException {
-    return position + header.getCompressedSize();
-  }
-
 
   public ByteBuffer readPage(PageHeader header, CompressionType type) throws IOException {
     return readPage(header, type, -1);

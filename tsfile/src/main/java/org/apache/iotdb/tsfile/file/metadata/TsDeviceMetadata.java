@@ -32,12 +32,6 @@ import java.util.List;
 public class TsDeviceMetadata {
 
   /**
-   * size of ChunkGroupMetadataBlock in byte.
-   **/
-  private int serializedSize =
-      2 * Long.BYTES + Integer.BYTES;// this field does not need to be serialized.
-
-  /**
    * start time for a device.
    **/
   private long startTime = Long.MAX_VALUE;
@@ -63,7 +57,7 @@ public class TsDeviceMetadata {
    * @param buffer -buffer to deserialize
    * @return -device meta data
    */
-  public static TsDeviceMetadata deserializeFrom(ByteBuffer buffer) throws IOException {
+  public static TsDeviceMetadata deserializeFrom(ByteBuffer buffer) {
     TsDeviceMetadata deviceMetadata = new TsDeviceMetadata();
 
     deviceMetadata.startTime = ReadWriteIOUtils.readLong(buffer);
@@ -78,21 +72,7 @@ public class TsDeviceMetadata {
       deviceMetadata.chunkGroupMetadataList = chunkGroupMetaDataList;
     }
 
-    deviceMetadata.reCalculateSerializedSize();
     return deviceMetadata;
-  }
-
-  public int getSerializedSize() {
-    return serializedSize;
-  }
-
-  private void reCalculateSerializedSize() {
-    serializedSize = 2 * Long.BYTES + // startTime , endTime
-        Integer.BYTES; // size of chunkGroupMetadataList
-
-    for (ChunkGroupMetaData meta : chunkGroupMetadataList) {
-      serializedSize += meta.getSerializedSize();
-    }
   }
 
   /**
@@ -102,7 +82,6 @@ public class TsDeviceMetadata {
    */
   public void addChunkGroupMetaData(ChunkGroupMetaData chunkGroup) {
     chunkGroupMetadataList.add(chunkGroup);
-    serializedSize += chunkGroup.getSerializedSize();
     for (ChunkMetaData chunkMetaData : chunkGroup.getChunkMetaDataList()) {
       // update startTime and endTime
       startTime = Long.min(startTime, chunkMetaData.getStartTime());
@@ -155,7 +134,7 @@ public class TsDeviceMetadata {
 
   @Override
   public String toString() {
-    return "TsDeviceMetadata{" + "serializedSize=" + serializedSize + ", startTime=" + startTime
+    return "TsDeviceMetadata{" + " startTime=" + startTime
         + ", endTime="
         + endTime + ", chunkGroupMetadataList=" + chunkGroupMetadataList + '}';
   }

@@ -42,8 +42,7 @@ public class PageHeaderTest {
   public static final long MAX_TIMESTAMO = 523372036854775806L;
   public static final long MIN_TIMESTAMO = 423372036854775806L;
   public static final TSDataType DATA_TYPE = TSDataType.TEXT;
-  public static final int OFFSET = 123456;
-  final String PATH = "target/outputPageHeader.tsfile";
+  private final String PATH = "target/outputPageHeader.tsfile";
 
   @Before
   public void setUp() {
@@ -58,7 +57,7 @@ public class PageHeaderTest {
   }
 
   @Test
-  public void testWriteIntoFile() throws IOException {
+  public void testWriteIntoFile() {
     PageHeader header = TestHelper.createSimplePageHeader();
     serialized(header);
     PageHeader readHeader = deSerialized();
@@ -108,58 +107,5 @@ public class PageHeaderTest {
       }
     }
   }
-
-  @Test
-  public void testReadWithOffset() throws IOException {
-    PageHeader header = TestHelper.createSimplePageHeader();
-    serialized(header, OFFSET);
-    PageHeader readHeader = deSerialized(OFFSET);
-    Utils.isPageHeaderEqual(header, readHeader);
-    serialized(readHeader);
-  }
-
-  private PageHeader deSerialized(int offset) {
-    TsFileInput input = null;
-    PageHeader header = null;
-    try {
-      input = new DefaultTsFileInput(Paths.get(PATH));
-      header = PageHeader.deserializeFrom(DATA_TYPE, input, offset, true);
-      return header;
-    } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      if (input != null) {
-        try {
-          input.close();
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-      }
-    }
-    return header;
-  }
-
-  private void serialized(PageHeader header, int offset) {
-    File file = new File(PATH);
-    if (file.exists()) {
-      Assert.assertTrue(file.delete());
-    }
-    FileOutputStream fos = null;
-    FileChannel fc = null;
-    try {
-      fos = new FileOutputStream(file);
-      fos.write(new byte[offset]);
-      header.serializeTo(fos);
-    } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      if (fos != null) {
-        try {
-          fos.close();
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-      }
-    }
-  }
+  
 }

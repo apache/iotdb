@@ -202,7 +202,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  void deserialize(ByteBuffer byteBuffer) throws IOException {
+  void deserialize(ByteBuffer byteBuffer) {
     this.min = ReadWriteIOUtils.readBool(byteBuffer);
     this.max = ReadWriteIOUtils.readBool(byteBuffer);
     this.first = ReadWriteIOUtils.readBool(byteBuffer);

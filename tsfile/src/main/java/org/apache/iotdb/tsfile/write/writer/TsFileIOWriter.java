@@ -108,23 +108,6 @@ public class TsFileIOWriter {
     startFile();
   }
 
-  /**
-   * for writing data into an existing and incomplete Tsfile. The caller need to guarantee existing
-   * data in the TsFileOutput matches the given metadata list
-   *
-   * @param out the target output
-   * @param chunkGroupMetaDataList existing chunkgroups' metadata
-   * @throws IOException if I/O error occurs
-   */
-  public TsFileIOWriter(TsFileOutput out, List<ChunkGroupMetaData> chunkGroupMetaDataList)
-      throws IOException {
-    this.out = FSFactoryProducer.getFileOutputFactory()
-        .getTsFileOutput(file.getPath(), false); //NOTE overwrite false here
-    this.chunkGroupMetaDataList = chunkGroupMetaDataList;
-    if (chunkGroupMetaDataList.isEmpty()) {
-      startFile();
-    }
-  }
 
   /**
    * Writes given bytes to output stream. This method is called when total memory size exceeds the
@@ -182,10 +165,9 @@ public class TsFileIOWriter {
    * @param maxTime - maximum timestamp of the whole series in this stage
    * @param minTime - minimum timestamp of the whole series in this stage
    * @param dataSize - the serialized size of all pages
-   * @return the serialized size of CHunkHeader
    * @throws IOException if I/O error occurs
    */
-  public int startFlushChunk(MeasurementSchema descriptor, CompressionType compressionCodecName,
+  public void startFlushChunk(MeasurementSchema descriptor, CompressionType compressionCodecName,
       TSDataType tsDataType, TSEncoding encodingType, Statistics<?> statistics, long maxTime,
       long minTime, int dataSize, int numOfPages) throws IOException {
 
@@ -220,8 +202,6 @@ public class TsFileIOWriter {
     tsDigest.setStatisticBuffers(statisticsArray);
 
     currentChunkMetaData.setStatistics(tsDigest);
-
-    return header.getSerializedSize();
   }
 
   /**

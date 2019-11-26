@@ -56,8 +56,6 @@ public abstract class Statistics<T> {
    */
   private int validSizeOfArray = 0;
 
-  private int statisticsSerializedSize = Integer.BYTES; // initialize for number of statistics
-
   /**
    * static method providing statistic instance for respective data type.
    *
@@ -311,10 +309,6 @@ public abstract class Statistics<T> {
     return length;
   }
 
-  public static int getNullDigestSize() {
-    return Integer.BYTES;
-  }
-
   public static int serializeNullTo(OutputStream outputStream) throws IOException {
     return ReadWriteIOUtils.write(0, outputStream);
   }
@@ -329,7 +323,6 @@ public abstract class Statistics<T> {
     Statistics statistics = getStatsByType(dataType);
     int size = ReadWriteIOUtils.readInt(buffer);
     statistics.validSizeOfArray = size;
-    statistics.statisticsSerializedSize = Integer.BYTES;
     if (size > 0) {
       statistics.buffers = new ByteBuffer[StatisticType.getTotalTypeNum()];
       ByteBuffer value;
@@ -363,7 +356,6 @@ public abstract class Statistics<T> {
               n = -1;
           }
           statistics.buffers[n] = value;
-          statistics.statisticsSerializedSize += Short.BYTES + Integer.BYTES + value.remaining();
         }
       }
       else {
@@ -372,7 +364,6 @@ public abstract class Statistics<T> {
           short n = ReadWriteIOUtils.readShort(buffer);
           value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer);
           statistics.buffers[n] = value;
-          statistics.statisticsSerializedSize += Short.BYTES + Integer.BYTES + value.remaining();
         }
       }
     } // else left statistics as null
@@ -380,14 +371,12 @@ public abstract class Statistics<T> {
     return statistics;
   }
 
-  private void reCalculate() {
+  private void reCalculateValidSize() {
     validSizeOfArray = 0;
-    statisticsSerializedSize = Integer.BYTES;
     if (buffers != null) {
       for (ByteBuffer value : buffers) {
         if (value != null) {
           // StatisticType serialized value, byteBuffer.capacity and byteBuffer.array
-          statisticsSerializedSize += Short.BYTES + Integer.BYTES + value.remaining();
           validSizeOfArray++;
         }
       }
@@ -408,7 +397,7 @@ public abstract class Statistics<T> {
         StatisticType.getTotalTypeNum()));
     }
     this.buffers = buffers;
-    reCalculate(); // DO NOT REMOVE THIS
+    reCalculateValidSize(); // DO NOT REMOVE THIS
   }
 
   @Override
@@ -438,14 +427,6 @@ public abstract class Statistics<T> {
     return byteLen;
   }
 
-  /**
-   * get the serializedSize of the current object.
-   *
-   * @return -serializedSize
-   */
-  public int getStatisticsSerializedSize() {
-    return statisticsSerializedSize;
-  }
 
   @Override
   public boolean equals(Object o) {
@@ -456,7 +437,7 @@ public abstract class Statistics<T> {
       return false;
     }
     Statistics statistics = (Statistics) o;
-    if (statisticsSerializedSize != statistics.statisticsSerializedSize || validSizeOfArray != statistics.validSizeOfArray
+    if (validSizeOfArray != statistics.validSizeOfArray
       || ((this.buffers == null) ^ (statistics.buffers == null))) {
       return false;
     }

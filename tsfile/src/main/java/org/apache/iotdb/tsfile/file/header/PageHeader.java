@@ -26,7 +26,6 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.NoStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class PageHeader {
@@ -34,16 +33,12 @@ public class PageHeader {
   private int uncompressedSize;
   private int compressedSize;
   private int numOfValues;
-  private Statistics statistics;
   private long maxTimestamp;
   private long minTimestamp;
-
-  // this field does not need to be serialized.
-  private int serializedSize;
+  private Statistics statistics;
 
   public PageHeader(int uncompressedSize, int compressedSize, int numOfValues,
-      Statistics statistics,
-      long maxTimestamp, long minTimestamp) {
+      Statistics statistics, long maxTimestamp, long minTimestamp) {
     this.uncompressedSize = uncompressedSize;
     this.compressedSize = compressedSize;
     this.numOfValues = numOfValues;
@@ -54,15 +49,12 @@ public class PageHeader {
     }
     this.maxTimestamp = maxTimestamp;
     this.minTimestamp = minTimestamp;
-    serializedSize = calculatePageHeaderSize();
   }
 
-  public static int calculatePageHeaderSize(TSDataType type) {
-    return calculatePageHeaderSizeWithoutStatistics() + Statistics.getStatsByType(type).getSerializedSize();
-  }
 
   public static int calculatePageHeaderSizeWithoutStatistics() {
-    return 3 * Integer.BYTES + 2 * Long.BYTES;
+    return 3 * Integer.BYTES // uncompressedSize, compressedSize, numOfValues
+        + 2 * Long.BYTES;  // maxTimestamp, minTimestamp
   }
 
   public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType)
@@ -89,60 +81,6 @@ public class PageHeader {
         minTimestamp);
   }
 
-  /**
-   * deserialize from TsFileInput.
-   *
-   * @param dataType data type
-   * @param input TsFileInput
-   * @param offset offset
-   * @param markerRead read marker (boolean type)
-   * @return CHUNK_HEADER object
-   * @throws IOException IOException
-   */
-  public static PageHeader deserializeFrom(TSDataType dataType, TsFileInput input, long offset,
-      boolean markerRead)
-      throws IOException {
-    long offsetVar = offset;
-    if (!markerRead) {
-      offsetVar++;
-    }
-
-    if (dataType == TSDataType.TEXT) {
-      int sizeWithoutStatistics = calculatePageHeaderSizeWithoutStatistics();
-      ByteBuffer bufferWithoutStatistics = ByteBuffer.allocate(sizeWithoutStatistics);
-      ReadWriteIOUtils.readAsPossible(input, offsetVar, bufferWithoutStatistics);
-      bufferWithoutStatistics.flip();
-      offsetVar += sizeWithoutStatistics;
-
-      Statistics statistics = Statistics.deserialize(input, offsetVar, dataType);
-      return deserializePartFrom(statistics, bufferWithoutStatistics);
-    } else {
-      int size = calculatePageHeaderSize(dataType);
-      ByteBuffer buffer = ByteBuffer.allocate(size);
-      ReadWriteIOUtils.readAsPossible(input, offsetVar, buffer);
-      buffer.flip();
-      return deserializeFrom(buffer, dataType);
-    }
-  }
-
-  private static PageHeader deserializePartFrom(Statistics statistics, ByteBuffer buffer) {
-    int uncompressedSize = ReadWriteIOUtils.readInt(buffer);
-    int compressedSize = ReadWriteIOUtils.readInt(buffer);
-    int numOfValues = ReadWriteIOUtils.readInt(buffer);
-    long maxTimestamp = ReadWriteIOUtils.readLong(buffer);
-    long minTimestamp = ReadWriteIOUtils.readLong(buffer);
-    return new PageHeader(uncompressedSize, compressedSize, numOfValues, statistics, maxTimestamp,
-        minTimestamp);
-  }
-
-  public int calculatePageHeaderSize() {
-    return 3 * Integer.BYTES + 2 * Long.BYTES + statistics.getSerializedSize();
-  }
-
-  public int getSerializedSize() {
-    return serializedSize;
-  }
-
   public int getUncompressedSize() {
     return uncompressedSize;
   }
@@ -163,10 +101,6 @@ public class PageHeader {
     return numOfValues;
   }
 
-  public void setNumOfValues(int numOfValues) {
-    this.numOfValues = numOfValues;
-  }
-
   public Statistics getStatistics() {
     return statistics;
   }
@@ -175,16 +109,8 @@ public class PageHeader {
     return maxTimestamp;
   }
 
-  public void setMaxTimestamp(long maxTimestamp) {
-    this.maxTimestamp = maxTimestamp;
-  }
-
   public long getMinTimestamp() {
     return minTimestamp;
-  }
-
-  public void setMinTimestamp(long minTimestamp) {
-    this.minTimestamp = minTimestamp;
   }
 
   public int serializeTo(OutputStream outputStream) throws IOException {
@@ -204,6 +130,6 @@ public class PageHeader {
         + compressedSize
         + ", numOfValues=" + numOfValues + ", statistics=" + statistics + ", maxTimestamp="
         + maxTimestamp
-        + ", minTimestamp=" + minTimestamp + ", serializedSize=" + serializedSize + '}';
+        + ", minTimestamp=" + minTimestamp + '}';
   }
 }

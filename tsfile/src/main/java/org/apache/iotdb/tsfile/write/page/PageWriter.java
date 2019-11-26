@@ -334,12 +334,10 @@ public class PageWriter {
 
   /**
    * write the page header and data into the PageWriter's output stream.
-   *
-   * @return byte size of the page header and uncompressed data in the page body.
    */
-  public int writePageHeaderAndDataIntoBuff(PublicBAOS pageBuffer) throws IOException {
+  public void writePageHeaderAndDataIntoBuff(PublicBAOS pageBuffer) throws IOException {
     if (pointNumber == 0) {
-      return 0;
+      return;
     }
 
     ByteBuffer pageData = getUncompressedBytes();
@@ -361,7 +359,6 @@ public class PageWriter {
     // write the page header to IOWriter
     PageHeader header = new PageHeader(uncompressedSize, compressedSize, pointNumber, statistics,
         pageMaxTime, pageMinTime);
-    int headerSize = header.getSerializedSize();
     header.serializeTo(pageBuffer);
 
     // write page content to temp PBAOS
@@ -374,7 +371,6 @@ public class PageWriter {
       }
       logger.debug("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
     }
-    return headerSize + uncompressedSize;
   }
 
   /**
