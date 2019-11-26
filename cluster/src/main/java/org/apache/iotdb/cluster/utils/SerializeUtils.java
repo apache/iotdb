@@ -51,9 +51,9 @@ public class SerializeUtils {
     int ipLength = buffer.getInt();
     byte[] ipBytes = new byte[ipLength];
     buffer.get(ipBytes);
-    node.ip = new String(ipBytes);
-    node.port = buffer.getInt();
-    node.nodeIdentifier = buffer.getInt();
-    node.dataPort = buffer.getInt();
+    node.setIp(new String(ipBytes));
+    node.setPort(buffer.getInt());
+    node.setNodeIdentifier(buffer.getInt());
+    node.setDataPort(buffer.getInt());
   }
 }

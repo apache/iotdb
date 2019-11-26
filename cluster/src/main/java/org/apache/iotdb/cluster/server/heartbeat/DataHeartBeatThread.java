@@ -29,6 +29,8 @@ public class DataHeartBeatThread extends HeartBeatThread {
   @Override
   void startElection() {
     electionRequest.setHeader(dataGroupMember.getHeader());
+    electionRequest.setLastLogIndex(dataGroupMember.getMetaGroupMember().getLogManager().getLastLogIndex());
+    electionRequest.setLastLogTerm(dataGroupMember.getMetaGroupMember().getLogManager().getLastLogTerm());
     electionRequest.setDataLogLastIndex(dataGroupMember.getLogManager().getLastLogIndex());
     electionRequest.setDataLogLastTerm(dataGroupMember.getLogManager().getLastLogTerm());
     super.startElection();

@@ -53,7 +53,6 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   public MetaClusterServer() throws IOException {
     super();
     member = new MetaGroupMember(protocolFactory, thisNode);
-    member.loadNodes();
     // TODO-Cluster: check the initial cluster size and refuse to start when the size < #replication
   }
 
@@ -133,8 +132,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
-  public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler)
-      throws TException {
+  public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
     member.pullSnapshot(request, resultHandler);
   }
 

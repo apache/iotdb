@@ -25,8 +25,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.appendEntry_call;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +35,7 @@ import org.slf4j.LoggerFactory;
  * The target of the log is the single nodes, it requires the quorum of the nodes to reach
  * consistency.
  */
-public class AppendNodeEntryHandler implements AsyncMethodCallback<appendEntry_call> {
+public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
 
   private static final Logger logger = LoggerFactory.getLogger(AppendNodeEntryHandler.class);
 
@@ -48,38 +46,34 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<appendEntry_c
   private Node receiver;
 
   @Override
-  public void onComplete(appendEntry_call response) {
-    try {
-      if (leaderShipStale.get()) {
-        // someone has rejected this log because the leadership is stale
-        return;
-      }
-      long resp = response.getResult();
-      synchronized (quorum) {
-        if (resp == RESPONSE_AGREE) {
-          int remaining = quorum.decrementAndGet();
-          logger.debug("Received an agreement from {} for {}, remaining votes to succeed: {}",
-              receiver, log, remaining);
-          if (remaining == 0) {
-            logger.debug("Log {} is accepted by the quorum", log);
-            quorum.notifyAll();
-          }
-        } else if (resp > 0) {
-          // the leader ship is stale, wait for the new leader's heartbeat
-          long prevReceiverTerm = receiverTerm.get();
-          logger.debug("Received a rejection from {} because term is stale: {}/{}", receiver,
-              prevReceiverTerm, resp);
-          if (resp > prevReceiverTerm) {
-            receiverTerm.set(resp);
-          }
-          leaderShipStale.set(true);
+  public void onComplete(Long response) {
+    if (leaderShipStale.get()) {
+      // someone has rejected this log because the leadership is stale
+      return;
+    }
+    long resp = response;
+    synchronized (quorum) {
+      if (resp == RESPONSE_AGREE) {
+        int remaining = quorum.decrementAndGet();
+        logger.debug("Received an agreement from {} for {}, remaining votes to succeed: {}",
+            receiver, log, remaining);
+        if (remaining == 0) {
+          logger.debug("Log {} is accepted by the quorum", log);
           quorum.notifyAll();
         }
-        // rejected because the receiver's logs are stale or the receiver has no cluster info, just
-        // wait for the heartbeat to handle
+      } else if (resp > 0) {
+        // the leader ship is stale, wait for the new leader's heartbeat
+        long prevReceiverTerm = receiverTerm.get();
+        logger.debug("Received a rejection from {} because term is stale: {}/{}", receiver,
+            prevReceiverTerm, resp);
+        if (resp > prevReceiverTerm) {
+          receiverTerm.set(resp);
+        }
+        leaderShipStale.set(true);
+        quorum.notifyAll();
       }
-    } catch (TException e) {
-      onError(e);
+      // rejected because the receiver's logs are stale or the receiver has no cluster info, just
+      // wait for the heartbeat to handle
     }
   }
 

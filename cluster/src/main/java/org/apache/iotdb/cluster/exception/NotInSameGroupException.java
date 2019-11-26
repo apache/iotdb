@@ -4,12 +4,13 @@
 
 package org.apache.iotdb.cluster.exception;
 
+import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
 public class NotInSameGroupException extends Exception {
 
-  public NotInSameGroupException(Node header, Node thisNode) {
-    super(String.format("Header [%s] and this node [%s] are not in the same data group", header,
+  public NotInSameGroupException(List<Node> group, Node thisNode) {
+    super(String.format("Header %s and this node [%s] are not in the same data group", group,
         thisNode));
   }
 }

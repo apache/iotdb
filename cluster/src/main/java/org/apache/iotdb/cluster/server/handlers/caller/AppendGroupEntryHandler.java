@@ -11,8 +11,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.appendEntry_call;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +22,7 @@ import org.slf4j.LoggerFactory;
  * data groups agree, even if the actually agreed nodes can be less than quorum, because the same
  * nodes may say "yes" for multiple groups.
  */
-public class AppendGroupEntryHandler implements AsyncMethodCallback<appendEntry_call> {
+public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
 
   private static final Logger logger = LoggerFactory.getLogger(AppendGroupEntryHandler.class);
 
@@ -46,19 +44,13 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<appendEntry_
   }
 
   @Override
-  public void onComplete(appendEntry_call response) {
+  public void onComplete(Long response) {
     if (leaderShipStale.get()) {
       // someone has rejected this log because the leadership is stale
       return;
     }
 
-    long resp;
-    try {
-      resp = response.getResult();
-    } catch (TException e) {
-      onError(e);
-      return;
-    }
+    long resp = response;
 
     if (resp == RESPONSE_AGREE) {
       processAgreement();

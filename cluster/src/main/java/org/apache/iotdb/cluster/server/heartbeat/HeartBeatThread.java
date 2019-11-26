@@ -29,19 +29,21 @@ import org.slf4j.LoggerFactory;
 public class HeartBeatThread implements Runnable {
 
   private static final Logger logger = LoggerFactory.getLogger(HeartBeatThread.class);
-  private static final long HEART_BEAT_INTERVAL_MS = 1000L;
+  private static final long HEART_BEAT_INTERVAL_MS = 3000L;
   // a failed election will restart in 5s~10s
   private static final long ELECTION_LEAST_TIME_OUT_MS = 5 * 1000L;
   private static final long ELECTION_RANDOM_TIME_OUT_MS = 5 * 1000L;
 
   private RaftMember raftMember;
+  private String memberName;
   HeartBeatRequest request = new HeartBeatRequest();
   ElectionRequest electionRequest = new ElectionRequest();
 
   private Random random = new Random();
 
-  public HeartBeatThread(RaftMember raftMember) {
+  HeartBeatThread(RaftMember raftMember) {
     this.raftMember = raftMember;
+    memberName = raftMember.getName();
   }
 
   @Override
@@ -52,7 +54,6 @@ public class HeartBeatThread implements Runnable {
         switch (raftMember.getCharacter()) {
           case LEADER:
             // send heartbeats to the followers
-            logger.debug("Send heartbeat to the followers");
             sendHeartBeats();
             Thread.sleep(HEART_BEAT_INTERVAL_MS);
             break;
@@ -62,11 +63,11 @@ public class HeartBeatThread implements Runnable {
                 .getLastHeartBeatReceivedTime();
             if (heartBeatInterval >= CONNECTION_TIME_OUT_MS) {
               // the leader is considered dead, an election will be started in the next loop
-              logger.debug("The leader {} timed out", raftMember.getLeader());
+              logger.debug("{}: The leader {} timed out", memberName, raftMember.getLeader());
               raftMember.setCharacter(NodeCharacter.ELECTOR);
               raftMember.setLeader(null);
             } else {
-              logger.debug("Heartbeat is still valid");
+              logger.debug("{}: Heartbeat is still valid", memberName);
               Thread.sleep(CONNECTION_TIME_OUT_MS);
             }
             break;
@@ -80,11 +81,11 @@ public class HeartBeatThread implements Runnable {
         Thread.currentThread().interrupt();
         break;
       } catch (Exception e) {
-        logger.error("Unexpected heartbeat exception:", e);
+        logger.error("{}: Unexpected heartbeat exception:", memberName, e);
       }
     }
 
-    logger.info("Heart beat thread exits");
+    logger.info("{}: Heart beat thread exits", memberName);
   }
 
   private void sendHeartBeats() {
@@ -98,6 +99,9 @@ public class HeartBeatThread implements Runnable {
   }
 
   private void sendHeartBeats(Collection<Node> nodes) {
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: Send heartbeat to {} followers", memberName, nodes.size());
+    }
     for (Node node : nodes) {
       if (raftMember.getCharacter() != NodeCharacter.LEADER) {
         // if the character changes, abort the remaining heart beats
@@ -105,18 +109,18 @@ public class HeartBeatThread implements Runnable {
       }
 
       AsyncClient client = raftMember.connectNode(node);
-      if (client == null) {
-        return;
+      if (client != null) {
+        sendHeartbeat(node, client);
       }
-      sendHeartbeat(node, client);
     }
   }
 
   void sendHeartbeat(Node node, AsyncClient client) {
     try {
+      logger.debug("{}: Sending heartbeat to {}", memberName, node);
       client.sendHeartBeat(request, new HeartBeatHandler(raftMember, node));
     } catch (Exception e) {
-      logger.warn("Cannot send heart beat to node {}", node, e);
+      logger.warn("{}: Cannot send heart beat to node {}", memberName, node, e);
     }
   }
 
@@ -128,11 +132,11 @@ public class HeartBeatThread implements Runnable {
       startElection();
       long electionWait = ELECTION_LEAST_TIME_OUT_MS + Math.abs(random.nextLong() % ELECTION_RANDOM_TIME_OUT_MS);
       try {
-        logger.info("Sleep {}ms until next election", electionWait);
+        logger.info("{}: Sleep {}ms until next election", memberName, electionWait);
         Thread.sleep(electionWait);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.error("Election is unexpectedly interrupted:", e);
+        logger.error("{}: Election is unexpectedly interrupted:", memberName, e);
       }
     }
     raftMember.setLastHeartBeatReceivedTime(System.currentTimeMillis());
@@ -143,7 +147,7 @@ public class HeartBeatThread implements Runnable {
     synchronized (raftMember.getTerm()) {
       long nextTerm = raftMember.getTerm().incrementAndGet();
       int quorumNum = raftMember.getAllNodes().size() / 2;
-      logger.info("Election {} starts, quorum: {}", nextTerm, quorumNum);
+      logger.info("{}: Election {} starts, quorum: {}", memberName, nextTerm, quorumNum);
       AtomicBoolean electionTerminated = new AtomicBoolean(false);
       AtomicBoolean electionValid = new AtomicBoolean(false);
       AtomicInteger quorum = new AtomicInteger(quorumNum);
@@ -154,16 +158,17 @@ public class HeartBeatThread implements Runnable {
           electionTerminated, electionValid);
 
       try {
-        logger.info("Wait for {}ms until election time out", CONNECTION_TIME_OUT_MS);
+        logger.info("{}: Wait for {}ms until election time out", memberName,
+            CONNECTION_TIME_OUT_MS);
         raftMember.getTerm().wait(CONNECTION_TIME_OUT_MS);
       } catch (InterruptedException e) {
-        logger.info("Election {} times out", nextTerm);
+        logger.info("{}: Election {} times out", memberName, nextTerm);
         Thread.currentThread().interrupt();
       }
 
       electionTerminated.set(true);
       if (electionValid.get()) {
-        logger.info("Election {} accepted", nextTerm);
+        logger.info("{}: Election {} accepted", memberName, nextTerm);
         raftMember.setCharacter(NodeCharacter.LEADER);
         raftMember.setLeader(raftMember.getThisNode());
       }
@@ -176,13 +181,13 @@ public class HeartBeatThread implements Runnable {
     for (Node node : nodes) {
       AsyncClient client = raftMember.connectNode(node);
       if (client != null) {
-        logger.info("Requesting a vote from {}", node);
+        logger.info("{}: Requesting a vote from {}", memberName, node);
         ElectionHandler handler = new ElectionHandler(raftMember, node, nextTerm, quorum,
             electionTerminated, electionValid);
         try {
           client.startElection(request, handler);
         } catch (Exception e) {
-          logger.error("Cannot request a vote from {}", node, e);
+          logger.error("{}: Cannot request a vote from {}", memberName, node, e);
         }
       }
     }

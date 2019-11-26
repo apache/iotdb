@@ -29,6 +29,7 @@ public class MetaLogApplier implements LogApplier {
       newNode.setIp(addNodeLog.getIp());
       newNode.setPort(addNodeLog.getPort());
       newNode.setNodeIdentifier(addNodeLog.getNodeIdentifier());
+      newNode.setDataPort(addNodeLog.getDataPort());
       member.applyAddNode(newNode);
     } else {
       // TODO-Cluster support more types of logs

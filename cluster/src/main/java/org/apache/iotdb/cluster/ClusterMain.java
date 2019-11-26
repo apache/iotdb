@@ -19,6 +19,7 @@
 package org.apache.iotdb.cluster;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;

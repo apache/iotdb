@@ -117,6 +117,8 @@ public class IoTDBDescriptor {
             + " use default value");
       }
 
+      conf.setEnableMetricService(Boolean.parseBoolean(properties.getProperty(
+          "enable_metric_service", Boolean.toString(conf.isEnableMetricService()))));
       conf.setMetricsPort(Integer.parseInt(properties.getProperty("metrics_port",
           Integer.toString(conf.getMetricsPort()))));
       

@@ -4,11 +4,10 @@
 
 package org.apache.iotdb.cluster.server.handlers.forwarder;
 
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.pullSnapshot_call;
-import org.apache.thrift.TException;
+import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.thrift.async.AsyncMethodCallback;
 
-public class ForwardPullSnapshotHandler implements AsyncMethodCallback<pullSnapshot_call> {
+public class ForwardPullSnapshotHandler implements AsyncMethodCallback<PullSnapshotResp> {
 
   private AsyncMethodCallback resultHandler;
 
@@ -17,12 +16,8 @@ public class ForwardPullSnapshotHandler implements AsyncMethodCallback<pullSnaps
   }
 
   @Override
-  public void onComplete(pullSnapshot_call response) {
-    try {
-      resultHandler.onComplete(response.getResult());
-    } catch (TException e) {
-      resultHandler.onError(e);
-    }
+  public void onComplete(PullSnapshotResp response) {
+    resultHandler.onComplete(response);
   }
 
   @Override

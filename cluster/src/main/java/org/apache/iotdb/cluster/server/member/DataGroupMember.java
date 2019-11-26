@@ -6,6 +6,7 @@ package org.apache.iotdb.cluster.server.member;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.security.acl.LastOwnerException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -34,7 +35,7 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPullSnapshotHandler;
-import org.apache.iotdb.cluster.server.heartbeat.HeartBeatThread;
+import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.thrift.TException;
@@ -53,7 +54,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   private TSDataService.AsyncClient.Factory clientFactory;
 
-  private Node thisNode;
   // the data port of each node in this group
   private Map<Node, Integer> dataPortMap = new ConcurrentHashMap<>();
   private MetaGroupMember metaGroupMember;
@@ -63,8 +63,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   private DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
       PartitionedSnapshotLogManager logManager, MetaGroupMember metaGroupMember) throws IOException {
+    super("Data(" + nodes.getHeader().nodeIdentifier + ")");
     this.thisNode = thisNode;
     this.logManager = logManager;
+    super.logManager = logManager;
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
     clientFactory = new TSDataService.AsyncClient.Factory(new TAsyncClientManager(), factory);
@@ -74,7 +76,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void start() throws TTransportException {
     super.start();
-    heartBeatService.submit(new HeartBeatThread(this));
+    heartBeatService.submit(new DataHeartBeatThread(this));
     pullSnapshotService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
   }
 
@@ -101,7 +103,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       client = getAsyncClient(new TNonblockingSocket(node.getIp(), node.getDataPort(),
           CONNECTION_TIME_OUT_MS));
     } catch (IOException e) {
-      logger.warn("Cannot connect to node {}", node, e);
+      logger.warn("{} cannot connect to node {}", name, node, e);
     }
     return client;
   }
@@ -141,6 +143,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @return true if this node should leave the group
    */
   public synchronized boolean addNode(Node node) {
+    // when a new node is added, start an election instantly to avoid the stale leader still
+    // taking the leadership
+    synchronized (term) {
+      term.incrementAndGet();
+      setCharacter(NodeCharacter.ELECTOR);
+      leader = null;
+      setLastHeartBeatReceivedTime(System.currentTimeMillis());
+    }
     synchronized (allNodes) {
       int insertIndex = -1;
       for (int i = 0; i < allNodes.size() - 1; i++) {
@@ -158,7 +168,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         allNodes.add(insertIndex, node);
         // if the local node is the last node and the insertion succeeds, this node should leave
         // the group
-        logger.debug("Node {} is inserted into the data group {}", node, this);
+        logger.debug("{}: Node {} is inserted into the data group {}", name, node, this);
         return allNodes.indexOf(thisNode) == allNodes.size() - 1;
       }
       return false;
@@ -169,22 +179,38 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   long processElectionRequest(ElectionRequest electionRequest) {
     // to be a data group leader, a node should also be qualified to be the meta group leader
     // which guarantees the data group leader has the newest partition table.
-    long metaResponse = metaGroupMember.processElectionRequest(electionRequest);
+    long thatMetaTerm = electionRequest.getTerm();
+    long thatMetaLastLogId = electionRequest.getLastLogIndex();
+    long thatMetaLastLogTerm = electionRequest.getLastLogTerm();
+    logger.info("{} received an election request, term:{}, metaLastLogId:{}, metaLastLogTerm:{}",
+        name, thatMetaTerm, thatMetaLastLogId, thatMetaLastLogTerm);
+
+    long thisMetaLastLogIndex = metaGroupMember.getLogManager().getLastLogIndex();
+    long thisMetaLastLogTerm = metaGroupMember.getLogManager().getLastLogTerm();
+    long thisMetaTerm = metaGroupMember.getTerm().get();
+
+    long metaResponse = verifyElector(thisMetaTerm, thisMetaLastLogIndex, thisMetaLastLogTerm,
+        thatMetaTerm, thatMetaLastLogId, thatMetaLastLogTerm);
     if (metaResponse != Response.RESPONSE_AGREE) {
       return Response.RESPONSE_META_LOG_STALE;
     }
 
     // check data logs
-    long thatTerm = electionRequest.getTerm();
-    long thatLastLogId = electionRequest.getDataLogLastIndex();
-    long thatLastLogTerm = electionRequest.getDataLogLastTerm();
-    logger.info("Received an election request, term:{}, lastLogId:{}, lastLogTerm:{}", thatTerm,
-        thatLastLogId, thatLastLogTerm);
+    long thatDataTerm = electionRequest.getTerm();
+    long thatDataLastLogId = electionRequest.getDataLogLastIndex();
+    long thatDataLastLogTerm = electionRequest.getDataLogLastTerm();
+    logger.info("{} received an election request, term:{}, dataLastLogId:{}, dataLastLogTerm:{}",
+        name, thatDataTerm, thatDataLastLogId, thatDataLastLogTerm);
 
-    long lastLogIndex = logManager.getLastLogIndex();
-    long lastLogTerm = logManager.getLastLogTerm();
-    long thisTerm = term.get();
-    return verifyElector(thisTerm, lastLogIndex, lastLogTerm, thatTerm, thatLastLogId, thatLastLogTerm);
+    long resp = verifyElector(term.get(), logManager.getLastLogIndex(),
+        logManager.getLastLogTerm(), thatDataTerm, thatDataLastLogId, thatDataLastLogTerm);
+    if (resp == Response.RESPONSE_AGREE) {
+      term.set(thatDataTerm);
+      setCharacter(NodeCharacter.FOLLOWER);
+      lastHeartBeatReceivedTime = System.currentTimeMillis();
+      leader = null;
+    }
+    return resp;
   }
 
   @Override
@@ -192,7 +218,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     PartitionedSnapshot snapshot = new PartitionedSnapshot();
     try {
       snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
-      logger.debug("Received a snapshot {}", snapshot);
+      logger.debug("{} received a snapshot {}", name, snapshot);
       applySnapshot(snapshot);
       resultHandler.onComplete(null);
     } catch (Exception e) {
@@ -226,9 +252,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
     if (character != NodeCharacter.LEADER) {
-      logger.debug("Forwarding a pull snapshot request to the leader {}", leader);
       // forward the request to the leader
       if (leader != null) {
+        logger.debug("{} forwarding a pull snapshot request to the leader {}", name, leader);
         AsyncClient client = connectNode(leader);
         try {
           client.pullSnapshot(request, new ForwardPullSnapshotHandler(resultHandler));
@@ -236,7 +262,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
           resultHandler.onError(e);
         }
       } else {
-        resultHandler.onError(new LeaderUnknownException());
+        PullSnapshotResp resp = new PullSnapshotResp();
+        resp.setSnapshotBytes((byte[]) null);
+        resultHandler.onComplete(resp);
       }
       return;
     }
@@ -250,17 +278,17 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       Snapshot snapshot = allSnapshot.getSnapshot(requiredSocket);
       PullSnapshotResp resp = new PullSnapshotResp();
       resp.setSnapshotBytes(snapshot.serialize());
-      logger.debug("Sending snapshot {} to the requester", snapshot);
+      logger.debug("{} sending snapshot {} to the requester", name, snapshot);
       resultHandler.onComplete(resp);
     }
   }
 
-  public void pullSnapshots(List<Integer> sockets) {
+  public void pullSnapshots(List<Integer> sockets, Node newNode) {
     synchronized (logManager) {
-      logger.info("Pulling sockets {} from remote", sockets);
+      logger.info("{} pulling sockets {} from remote", name, sockets);
       PartitionedSnapshot snapshot = (PartitionedSnapshot) logManager.getSnapshot();
-      Map<Integer, Node> prevHolders = metaGroupMember.getPartitionTable().getPreviousNodeMap(thisNode);
-      logger.debug("Holders of each socket: {}", prevHolders);
+      Map<Integer, Node> prevHolders = metaGroupMember.getPartitionTable().getPreviousNodeMap(newNode);
+      logger.debug("{}: Holders of each socket: {}", name, prevHolders);
 
       for (int socket : sockets) {
         Node node = prevHolders.get(socket);
@@ -317,22 +345,29 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
             SimpleSnapshot result = snapshotRef.get();
             if (result != null) {
               if (logger.isInfoEnabled()) {
-                logger.info("Received a snapshot {} of socket {} from {}", snapshotRef.get(),
+                logger.info("{} received a snapshot {} of socket {} from {}", name,
+                    snapshotRef.get(),
                     socket, oldMembers.get(nodeIndex));
               }
               newMember.applySnapshot(result, socket);
               finished = true;
+            } else {
+              Thread.sleep(PULL_SNAPSHOT_RETRY_INTERVAL);
             }
           }
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
-          logger.error("Unexpected interruption when pulling socket {}", socket, e);
+          logger.error("{}: Unexpected interruption when pulling socket {}", name, socket, e);
           finished = true;
         } catch (TException e) {
-          logger.debug("Cannot pull socket {} from {}, retry", socket, header, e);
+          logger.debug("{} cannot pull socket {} from {}, retry", name, socket, header, e);
         }
       }
       return snapshotRef.get();
     }
+  }
+
+  public MetaGroupMember getMetaGroupMember() {
+    return metaGroupMember;
   }
 }

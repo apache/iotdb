@@ -75,7 +75,7 @@
         <spark.version>2.4.3</spark.version>
         <common.io.version>2.5</common.io.version>
         <commons.collections4>4.0</commons.collections4>
-        <thrift.version>0.9.3</thrift.version>
+        <thrift.version>0.12.0</thrift.version>
         <airline.version>0.8</airline.version>
         <jackson.version>2.8.8</jackson.version>
         <antlr3.version>3.5.2</antlr3.version>
@@ -815,7 +815,7 @@
                 </os>
             </activation>
             <properties>
-                <thrift.download-url>https://github.com/ccascone/mvn-thrift-compiler/raw/1.0_${thrift.version}/exe/thrift-linux-x86_64.exe</thrift.download-url>
+                <thrift.download-url>https://raw.githubusercontent.com/jt2594838/mvn-thrift-compiler/master/thrift_linux.exe</thrift.download-url>
                 <thrift.executable>thrift-${thrift.version}-unix-x86_64</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
@@ -830,7 +830,7 @@
                 </os>
             </activation>
             <properties>
-                <thrift.download-url>https://github.com/ccascone/mvn-thrift-compiler/raw/1.0_${thrift.version}/exe/thrift-osx-x86_64.exe</thrift.download-url>
+                <thrift.download-url>https://raw.githubusercontent.com/jt2594838/mvn-thrift-compiler/master/thrift_mac.exe</thrift.download-url>
                 <thrift.executable>thrift-${thrift.version}-osx-x86_64</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>

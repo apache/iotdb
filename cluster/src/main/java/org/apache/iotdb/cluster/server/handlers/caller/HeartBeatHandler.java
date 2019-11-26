@@ -23,10 +23,8 @@ import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.sendHeartBeat_call;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,40 +33,35 @@ import org.slf4j.LoggerFactory;
  * HeartBeatHandler check the response of a heartbeat and decide whether to start a catch-up or
  * give up the leadership due to the term is stale.
  */
-public class HeartBeatHandler implements AsyncMethodCallback<sendHeartBeat_call> {
+public class HeartBeatHandler implements AsyncMethodCallback<HeartBeatResponse> {
 
   private static final Logger logger = LoggerFactory.getLogger(HeartBeatHandler.class);
 
   private RaftMember raftMember;
+  private String memberName;
   private Node receiver;
 
   public HeartBeatHandler(RaftMember raftMember, Node node) {
     this.raftMember = raftMember;
     this.receiver = node;
+    this.memberName = raftMember.getName();
   }
 
   @Override
-  public void onComplete(sendHeartBeat_call resp) {
-    logger.debug("Received a heartbeat response");
-    HeartBeatResponse response;
-    try {
-      response = resp.getResult();
-    } catch (TException e) {
-      onError(e);
-      return;
-    }
-
-    long followerTerm = response.getTerm();
+  public void onComplete(HeartBeatResponse resp) {
+    logger.debug("{}: Received a heartbeat response", memberName);
+    long followerTerm = resp.getTerm();
     if (followerTerm == RESPONSE_AGREE) {
       // current leadership is still valid
-      raftMember.processValidHeartbeatResp(response, receiver);
+      raftMember.processValidHeartbeatResp(resp, receiver);
 
-      Node follower = response.getFollower();
-      long lastLogIdx = response.getLastLogIndex();
-      long lastLogTerm = response.getLastLogTerm();
+      Node follower = resp.getFollower();
+      long lastLogIdx = resp.getLastLogIndex();
+      long lastLogTerm = resp.getLastLogTerm();
       long localLastLogIdx = raftMember.getLogManager().getLastLogIndex();
       long localLastLogTerm = raftMember.getLogManager().getLastLogTerm();
-      logger.debug("Node {} is still alive, log index: {}/{}, log term: {}/{}", follower, lastLogIdx
+      logger.debug("{}: Node {} is still alive, log index: {}/{}, log term: {}/{}",
+          memberName, follower, lastLogIdx
           ,localLastLogIdx, lastLogTerm, localLastLogTerm);
 
       if (localLastLogIdx > lastLogIdx ||
@@ -80,8 +73,8 @@ public class HeartBeatHandler implements AsyncMethodCallback<sendHeartBeat_call>
       synchronized (raftMember.getTerm()) {
         long currTerm = raftMember.getTerm().get();
         if (currTerm < followerTerm) {
-          logger.info("Losing leadership because current term {} is smaller than {}", currTerm,
-              followerTerm);
+          logger.info("{}: Losing leadership because current term {} is smaller than {}",
+              memberName, currTerm, followerTerm);
           raftMember.getTerm().set(followerTerm);
           raftMember.setCharacter(NodeCharacter.FOLLOWER);
           raftMember.setLeader(null);
@@ -93,6 +86,7 @@ public class HeartBeatHandler implements AsyncMethodCallback<sendHeartBeat_call>
 
   @Override
   public void onError(Exception exception) {
-    logger.error("Heart beat error, receiver {}, {}", receiver, exception.getMessage());
+    logger.error("{}: Heart beat error, receiver {}, {}", memberName, receiver,
+        exception.getMessage());
   }
 }

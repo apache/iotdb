@@ -47,6 +47,8 @@ public class IoTDBConfig {
    */
   private int metricsPort = 8181;
 
+  private boolean enableMetricService = false;
+
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
 
@@ -485,6 +487,14 @@ public class IoTDBConfig {
 
   public String[] getDataDirs() {
     return dataDirs;
+  }
+
+  public boolean isEnableMetricService() {
+    return enableMetricService;
+  }
+
+  public void setEnableMetricService(boolean enableMetricService) {
+    this.enableMetricService = enableMetricService;
   }
 
   public int getMetricsPort() {

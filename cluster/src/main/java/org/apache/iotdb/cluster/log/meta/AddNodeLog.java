@@ -29,6 +29,7 @@ public class AddNodeLog extends Log {
   private String ip;
   private int port;
   private int nodeIdentifier;
+  private int dataPort;
 
   public String getIp() {
     return ip;
@@ -54,15 +55,23 @@ public class AddNodeLog extends Log {
     this.nodeIdentifier = nodeIdentifier;
   }
 
+  public int getDataPort() {
+    return dataPort;
+  }
+
+  public void setDataPort(int dataPort) {
+    this.dataPort = dataPort;
+  }
+
   @Override
   public ByteBuffer serialize() {
     byte[] ipBytes = ip.getBytes();
 
     // marker(byte), previous index(long), previous term(long), curr index(long), curr term(long)
-    // ipLength(int), inBytes(byte[]), port(int), identifier(int)
+    // ipLength(int), inBytes(byte[]), port(int), identifier(int), dataPort(int)
     int totalSize =
               Byte.BYTES  + Long.BYTES + Long.BYTES + Long.BYTES + Long.BYTES +
-              Integer.BYTES + ipBytes.length + Integer.BYTES + Integer.BYTES;
+              Integer.BYTES + ipBytes.length + Integer.BYTES + Integer.BYTES + Integer.BYTES;
     byte[] buffer = new byte[totalSize];
 
     ByteBuffer byteBuffer = ByteBuffer.wrap(buffer);
@@ -78,6 +87,7 @@ public class AddNodeLog extends Log {
     byteBuffer.put(ipBytes);
     byteBuffer.putInt(port);
     byteBuffer.putInt(nodeIdentifier);
+    byteBuffer.putInt(dataPort);
 
     byteBuffer.flip();
     return byteBuffer;
@@ -100,6 +110,7 @@ public class AddNodeLog extends Log {
     ip = new String(ipBytes);
     port = buffer.getInt();
     nodeIdentifier = buffer.getInt();
+    dataPort = buffer.getInt();
   }
 
   @Override

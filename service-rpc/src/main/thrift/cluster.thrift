@@ -115,7 +115,7 @@ struct PullSnapshotRequest {
 }
 
 struct PullSnapshotResp {
-  1: required binary snapshotBytes
+  1: optional binary snapshotBytes
 }
 
 service RaftService {

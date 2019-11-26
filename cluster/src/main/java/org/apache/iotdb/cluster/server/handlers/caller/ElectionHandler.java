@@ -24,9 +24,7 @@ import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.startElection_call;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,11 +33,12 @@ import org.slf4j.LoggerFactory;
  * ElectionHandler checks the result from a voter and decides whether the election goes on,
  * succeeds or fails.
  */
-public class ElectionHandler implements AsyncMethodCallback<startElection_call> {
+public class ElectionHandler implements AsyncMethodCallback<Long> {
 
   private static final Logger logger = LoggerFactory.getLogger(ElectionHandler.class);
 
   private RaftMember raftMember;
+  private String memberName;
   private Node voter;
   private long currTerm;
   private AtomicInteger quorum;
@@ -55,20 +54,15 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
     this.quorum = quorum;
     this.terminated = terminated;
     this.electionValid = electionValid;
+    this.memberName = raftMember.getName();
   }
 
   @Override
-  public void onComplete(startElection_call resp) {
-    logger.info("Received an election response");
-    long voterTerm;
-    try {
-      voterTerm = resp.getResult();
-    } catch (TException e) {
-      onError(e);
-      return;
-    }
+  public void onComplete(Long resp) {
+    logger.info("{}: Received an election response", memberName);
+    long voterTerm = resp;
 
-    logger.info("Election response term {} from {}", voterTerm, voter);
+    logger.info("{}: Election response term {} from {}", memberName, voterTerm, voter);
     synchronized (raftMember.getTerm()) {
       if (terminated.get()) {
         // a voter has rejected this election, which means the term or the log id falls behind
@@ -78,14 +72,15 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
 
       if (voterTerm == RESPONSE_AGREE) {
         long remaining = quorum.decrementAndGet();
-        logger.info("Received a for vote from {}, reaming votes to succeed: {}", voter, remaining);
+        logger.info("{}: Received a for vote from {}, reaming votes to succeed: {}",
+            memberName, voter, remaining);
         if (remaining == 0) {
           // the election is valid
           electionValid.set(true);
           terminated.set(true);
           raftMember.getTerm().notifyAll();
           raftMember.onElectionWins();
-          logger.info("Election {} is wined", currTerm);
+          logger.info("{}: Election {} is wined", memberName, currTerm);
         }
         // still need more votes
       } else {
@@ -93,12 +88,12 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
         terminated.set(true);
         if (voterTerm < currTerm) {
           // the rejection from a node with a smaller term means the log of this node falls behind
-          logger.info("Election {} rejected: code {}", currTerm, voterTerm);
+          logger.info("{}: Election {} rejected: code {}", memberName, currTerm, voterTerm);
         } else {
           // the election is rejected by a node with a bigger term, update current term to it
           raftMember.getTerm().set(voterTerm);
-          logger.info("Election {} rejected: The term of this node is no bigger than {}",
-              currTerm, voterTerm);
+          logger.info("{}: Election {} rejected: The term of this node is no bigger than {}",
+              memberName, currTerm, voterTerm);
         }
         raftMember.getTerm().notifyAll();
       }
@@ -107,6 +102,6 @@ public class ElectionHandler implements AsyncMethodCallback<startElection_call> 
 
   @Override
   public void onError(Exception exception) {
-    logger.warn("A voter {} encountered an error:", voter, exception);
+    logger.warn("{}: A voter {} encountered an error:", memberName, voter, exception);
   }
 }

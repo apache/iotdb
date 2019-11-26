@@ -7,13 +7,11 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.sendSnapshot_call;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SnapshotCatchUpHandler implements AsyncMethodCallback<sendSnapshot_call> {
+public class SnapshotCatchUpHandler implements AsyncMethodCallback<Void> {
 
   private static final Logger logger = LoggerFactory.getLogger(SnapshotCatchUpHandler.class);
 
@@ -29,15 +27,10 @@ public class SnapshotCatchUpHandler implements AsyncMethodCallback<sendSnapshot_
   }
 
   @Override
-  public void onComplete(sendSnapshot_call response) {
-    try {
-      response.getResult();
-      synchronized (succeed) {
-        succeed.set(true);
-        succeed.notifyAll();
-      }
-    } catch (TException e) {
-      onError(e);
+  public void onComplete(Void resp) {
+    synchronized (succeed) {
+      succeed.set(true);
+      succeed.notifyAll();
     }
   }
 

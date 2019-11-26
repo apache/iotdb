@@ -49,6 +49,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
 
   static final int CONNECTION_TIME_OUT_MS = 20 * 1000;
+  static final int PULL_SNAPSHOT_RETRY_INTERVAL = 5 * 1000;
+
+  String name;
 
   Random random = new Random();
   Node thisNode;
@@ -57,7 +60,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   NodeCharacter character = NodeCharacter.ELECTOR;
   AtomicLong term = new AtomicLong(0);
   Node leader;
-  private long lastHeartBeatReceivedTime;
+  long lastHeartBeatReceivedTime;
 
   LogManager logManager;
 
@@ -68,13 +71,17 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   QueryProcessor queryProcessor;
 
+  RaftMember(String name) {
+    this.name = name;
+  }
+
   public void start() throws TTransportException {
     if (heartBeatService != null) {
       return;
     }
 
     heartBeatService =
-        Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "HeartBeatThread"));
+        Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, name + "-HeartBeatThread"));
     catchUpService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
   }
 
@@ -99,7 +106,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   @Override
   public void sendHeartBeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
-    logger.debug("Received a heartbeat");
+    logger.debug("{} received a heartbeat", name);
     synchronized (term) {
       long thisTerm = term.get();
       long leaderTerm = request.getTerm();
@@ -109,7 +116,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         // the leader is invalid
         response.setTerm(thisTerm);
         if (logger.isDebugEnabled()) {
-          logger.debug("Received a heartbeat from a stale leader {}", request.getLeader());
+          logger.debug("{} received a heartbeat from a stale leader {}", name, request.getLeader());
         }
       } else {
         processValidHeartbeatReq(request, response, leaderTerm);
@@ -129,7 +136,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         }
         setLastHeartBeatReceivedTime(System.currentTimeMillis());
         if (logger.isDebugEnabled()) {
-          logger.debug("Received heartbeat from a valid leader {}", request.getLeader());
+          logger.debug("{} received heartbeat from a valid leader {}", name, request.getLeader());
         }
       }
       resultHandler.onComplete(response);
@@ -146,7 +153,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         return;
       }
       long response = processElectionRequest(electionRequest);
-      logger.info("Sending response to the elector");
+      logger.info("{} sending response to the elector", name);
       resultHandler.onComplete(response);
     }
   }
@@ -160,7 +167,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       // leader term
       localTerm = term.get();
       if (leaderTerm < localTerm) {
-        logger.debug("Rejected the AppendEntryRequest for term: {}/{}", leaderTerm, localTerm);
+        logger.debug("{} rejected the AppendEntryRequest for term: {}/{}", name, leaderTerm,
+            localTerm);
         resultHandler.onComplete(localTerm);
         return false;
       } else if (leaderTerm > localTerm) {
@@ -171,7 +179,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         }
       }
     }
-    logger.debug("Accepted the AppendEntryRequest for term: {}", localTerm);
+    logger.debug("{} accepted the AppendEntryRequest for term: {}",name, localTerm);
     return true;
   }
 
@@ -186,7 +194,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         // the incoming log points to the local last log, append it
         logManager.appendLog(log);
         if (logger.isDebugEnabled()) {
-          logger.debug("Append a new log {}, new term:{}, new index:{}", log, term.get(),
+          logger.debug("{} append a new log {}, new term:{}, new index:{}", name, log, term.get(),
               logManager.getLastLogIndex());
         }
         resp = Response.RESPONSE_AGREE;
@@ -195,16 +203,17 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         // the incoming log points to the previous log of the local last log, and its term is
         // bigger than or equals to the local last log's, replace the local last log with it
         logManager.replaceLastLog(log);
-        logger.debug("Replaced the last log with {}, new term:{}, new index:{}", log,
+        logger.debug("{} replaced the last log with {}, new term:{}, new index:{}", name, log,
             previousLogTerm, previousLogIndex);
         resp = Response.RESPONSE_AGREE;
       } else {
         long lastPrevLogTerm = lastLog == null ? -1 : lastLog.getPreviousLogTerm();
         long lastPrevLogId = lastLog == null ? -1 : lastLog.getPreviousLogIndex();
         // the incoming log points to an illegal position, reject it
-        logger.debug("Cannot append the log because the last log does not match, "
+        logger.debug("{} cannot append the log because the last log does not match, "
                 + "local:term[{}],index[{}],previousTerm[{}],previousIndex[{}], "
                 + "request:term[{}],index[{}],previousTerm[{}],previousIndex[{}]",
+            name,
             logManager.getLastLogTerm(), logManager.getLastLogIndex(),
             lastPrevLogTerm, lastPrevLogId,
             log.getCurrLogTerm(), log.getPreviousLogIndex(),
@@ -217,7 +226,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   @Override
   public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
-    logger.debug("Received an AppendEntryRequest");
+    logger.debug("{} received an AppendEntryRequest", name);
     if (!checkRequestTerm(request, resultHandler)) {
       return;
     }
@@ -253,7 +262,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   // synchronized: logs are serialized
   private synchronized AppendLogResult sendLogToFollowers(Log log, AtomicInteger quorum) {
-    logger.debug("Sending a log to followers: {}", log);
+    logger.debug("{} sending a log to followers: {}", name, log);
 
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
     AtomicLong newLeaderTerm = new AtomicLong(term.get());
@@ -277,7 +286,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
             try {
               client.appendEntry(request, handler);
             } catch (Exception e) {
-              logger.warn("Cannot append log to node {}", node, e);
+              logger.warn("{} cannot append log to node {}", name, node, e);
             }
           }
         }
@@ -318,7 +327,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       client = getAsyncClient(new TNonblockingSocket(node.getIp(), node.getPort(),
           CONNECTION_TIME_OUT_MS));
     } catch (IOException e) {
-      logger.warn("Cannot connect to node {}", node, e);
+      logger.warn("{} cannot connect to node {}", name, node, e);
     }
     return client;
   }
@@ -334,7 +343,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   public void setCharacter(NodeCharacter character) {
-    logger.info("This node has become a {}", character);
+    logger.info("{} has become a {}", name, character);
     this.character = character;
   }
 
@@ -415,13 +424,22 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     long thatTerm = electionRequest.getTerm();
     long thatLastLogId = electionRequest.getLastLogIndex();
     long thatLastLogTerm = electionRequest.getLastLogTerm();
-    logger.info("Received an election request, term:{}, lastLogId:{}, lastLogTerm:{}", thatTerm,
+    logger.info("{} received an election request, term:{}, metaLastLogId:{}, metaLastLogTerm:{}",
+        name, thatTerm,
         thatLastLogId, thatLastLogTerm);
 
     long lastLogIndex = logManager.getLastLogIndex();
     long lastLogTerm = logManager.getLastLogTerm();
     long thisTerm = term.get();
-    return verifyElector(thisTerm, lastLogIndex, lastLogTerm, thatTerm, thatLastLogId, thatLastLogTerm);
+
+    long resp = verifyElector(thisTerm, lastLogIndex, lastLogTerm, thatTerm, thatLastLogId, thatLastLogTerm);
+    if (resp == Response.RESPONSE_AGREE) {
+      term.set(thatTerm);
+      setCharacter(NodeCharacter.FOLLOWER);
+      lastHeartBeatReceivedTime = System.currentTimeMillis();
+      leader = null;
+    }
+    return resp;
   }
 
   long verifyElector(long thisTerm, long thisLastLogIndex, long thisLastLogTerm,
@@ -430,17 +448,15 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     if (thatTerm <= thisTerm
         || thatLastLogTerm < thisLastLogTerm
         || (thatLastLogTerm == thisLastLogTerm && thatLastLogId < thisLastLogIndex)) {
-      logger.debug("Rejected an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
-          thatTerm, thisTerm, thatLastLogId, thisLastLogIndex, thatLastLogTerm, thisLastLogTerm);
+      logger.debug("{} rejected an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
+          name, thatTerm, thisTerm, thatLastLogId, thisLastLogIndex, thatLastLogTerm,
+          thisLastLogTerm);
       response = thisTerm;
     } else {
-      logger.debug("Accepted an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
-          thatTerm, thisTerm, thatLastLogId, thisLastLogIndex, thatLastLogTerm, thisLastLogTerm);
-      term.set(thatTerm);
+      logger.debug("{} accepted an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
+          name, thatTerm, thisTerm, thatLastLogId, thisLastLogIndex, thatLastLogTerm,
+          thisLastLogTerm);
       response = Response.RESPONSE_AGREE;
-      setCharacter(NodeCharacter.FOLLOWER);
-      lastHeartBeatReceivedTime = System.currentTimeMillis();
-      leader = null;
     }
     return response;
   }
@@ -458,7 +474,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       Long lastCatchupResp = lastCatchUpResponseTime.get(follower);
       if (lastCatchupResp != null
           && System.currentTimeMillis() - lastCatchupResp < CONNECTION_TIME_OUT_MS) {
-        logger.debug("Last catch up of {} is ongoing", follower);
+        logger.debug("{}: last catch up of {} is ongoing", name, follower);
         return;
       } else {
         // record the start of the catch-up
@@ -485,16 +501,20 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
       if (allLogsValid) {
         if (logger.isDebugEnabled()) {
-          logger.debug("Make {} catch up with {} cached logs", follower, logs.size());
+          logger.debug("{} makes {} catch up with {} cached logs", name, follower, logs.size());
         }
         catchUpService.submit(new LogCatchUpTask(logs, follower, this));
       } else {
-        logger.debug("Logs in {} are too old, catch up with snapshot", follower);
+        logger.debug("{}: Logs in {} are too old, catch up with snapshot", name, follower);
         catchUpService.submit(new SnapshotCatchUpTask(logs, snapshot, follower, this));
       }
     } else {
       lastCatchUpResponseTime.remove(follower);
-      logger.warn("Catch-up failed: node {} is currently unavailable", follower);
+      logger.warn("{}: Catch-up failed: node {} is currently unavailable", name, follower);
     }
+  }
+
+  public String getName() {
+    return name;
   }
 }

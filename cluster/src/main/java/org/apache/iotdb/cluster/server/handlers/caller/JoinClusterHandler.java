@@ -22,8 +22,6 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient.addNode_call;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +29,7 @@ import org.slf4j.LoggerFactory;
 /**
  * JoinClusterHandler wakes up the main thread when the response of joining a cluster has arrived.
  */
-public class JoinClusterHandler implements AsyncMethodCallback<addNode_call> {
+public class JoinClusterHandler implements AsyncMethodCallback<AddNodeResponse> {
 
   private static final Logger logger = LoggerFactory.getLogger(JoinClusterHandler.class);
 
@@ -39,16 +37,11 @@ public class JoinClusterHandler implements AsyncMethodCallback<addNode_call> {
   private AtomicReference<AddNodeResponse> response;
 
   @Override
-  public void onComplete(addNode_call call) {
-    try {
-      AddNodeResponse resp = call.getResult();
-      logger.info("Received a join cluster response {} from {}", resp, contact);
-      synchronized (response) {
-        response.set(resp);
-        response.notifyAll();
-      }
-    } catch (TException e) {
-      onError(e);
+  public void onComplete(AddNodeResponse resp) {
+    logger.info("Received a join cluster response {} from {}", resp.getRespNum(), contact);
+    synchronized (response) {
+      response.set(resp);
+      response.notifyAll();
     }
   }
 

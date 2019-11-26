@@ -89,6 +89,9 @@ public class ClusterDescriptor {
       config.setLocalMetaPort(Integer.parseInt(properties.getProperty("LOCAL_META_PORT",
           String.valueOf(config.getLocalMetaPort()))));
 
+      config.setLocalDataPort(Integer.parseInt(properties.getProperty("LOCAL_DATA_PORT",
+          Integer.toString(config.getLocalDataPort()))));
+
       config.setMaxConcurrentClientNum(Integer.parseInt(properties.getProperty(
           "MAX_CONCURRENT_CLIENT_NUM", String.valueOf(config.getMaxConcurrentClientNum()))));
 

@@ -127,6 +127,7 @@ public class SocketPartitionTable implements PartitionTable {
       currIndex = nextIndex(currIndex);
       Node curr = nodeRing.get(currIndex);
       ret.add(curr);
+      remaining--;
     }
     return ret;
   }
@@ -152,7 +153,7 @@ public class SocketPartitionTable implements PartitionTable {
 
 
   @Override
-  public PartitionGroup addNode(Node node) {
+  public synchronized PartitionGroup addNode(Node node) {
     nodeRing.add(node);
     nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
 
@@ -194,7 +195,6 @@ public class SocketPartitionTable implements PartitionTable {
 
   private void moveSocketsToNew(Node node) {
     List<Integer> newSockets = new ArrayList<>();
-    nodeSocketMap.put(node, newSockets);
     Map<Integer, Node> previousHolders = new HashMap<>();
     int newAvg = SOCKET_NUM / nodeRing.size();
     for (Entry<Node, List<Integer>> entry : nodeSocketMap.entrySet()) {
@@ -210,6 +210,7 @@ public class SocketPartitionTable implements PartitionTable {
         socketsToMove.clear();
       }
     }
+    nodeSocketMap.put(node, newSockets);
     previousNodeMap.put(node, previousHolders);
   }
 

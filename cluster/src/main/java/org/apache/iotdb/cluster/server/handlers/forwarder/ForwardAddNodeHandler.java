@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.cluster.server.handlers.forwarder;
 
+import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient.addNode_call;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 
-public class ForwardAddNodeHandler implements AsyncMethodCallback<addNode_call> {
+public class ForwardAddNodeHandler implements AsyncMethodCallback<AddNodeResponse> {
 
   private AsyncMethodCallback resultHandler;
 
@@ -32,12 +33,8 @@ public class ForwardAddNodeHandler implements AsyncMethodCallback<addNode_call> 
   }
 
   @Override
-  public void onComplete(addNode_call response) {
-    try {
-      resultHandler.onComplete(response.getResult());
-    } catch (TException e) {
-      resultHandler.onError(e);
-    }
+  public void onComplete(AddNodeResponse response) {
+    resultHandler.onComplete(response);
   }
 
   @Override

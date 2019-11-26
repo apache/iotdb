@@ -5,16 +5,13 @@
 package org.apache.iotdb.cluster.server.handlers.caller;
 
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.SimpleSnapshot;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.pullSnapshot_call;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PullSnapshotHandler implements AsyncMethodCallback<pullSnapshot_call> {
+public class PullSnapshotHandler implements AsyncMethodCallback<PullSnapshotResp> {
 
   private static final Logger logger = LoggerFactory.getLogger(PullSnapshotHandler.class);
   private AtomicReference<SimpleSnapshot> resultRef;
@@ -24,17 +21,14 @@ public class PullSnapshotHandler implements AsyncMethodCallback<pullSnapshot_cal
   }
 
   @Override
-  public void onComplete(pullSnapshot_call response) {
-    try {
-      PullSnapshotResp result = response.getResult();
-      SimpleSnapshot snapshot = new SimpleSnapshot();
-      snapshot.deserialize(result.snapshotBytes);
-      synchronized (resultRef) {
+  public void onComplete(PullSnapshotResp response) {
+    synchronized (resultRef) {
+      if (response.getSnapshotBytes() != null) {
+        SimpleSnapshot snapshot = new SimpleSnapshot();
+        snapshot.deserialize(response.snapshotBytes);
         resultRef.set(snapshot);
-        resultRef.notifyAll();
       }
-    } catch (TException e) {
-      onError(e);
+      resultRef.notifyAll();
     }
   }
 

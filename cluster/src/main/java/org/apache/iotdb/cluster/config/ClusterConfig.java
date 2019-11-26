@@ -26,13 +26,13 @@ public class ClusterConfig {
 
   static final String CONFIG_NAME = "iotdb-cluster.properties";
 
-  private String localIP = "localhost";
+  private String localIP = "127.0.0.1";
   private int localMetaPort = 9003;
   private int localDataPort = 40010;
 
   // each one is {IP | domain name}:{meta port}
-  private List<String> seedNodeUrls = Arrays.asList("localhost:9003", "localhost"
-      + ":9004", "localhost:9005");
+  private List<String> seedNodeUrls = Arrays.asList("127.0.0.1:9003:40010", "127.0.0.1"
+      + ":9004:40011", "127.0.0.1:9005:40012");
 
   private boolean isRpcThriftCompressionEnabled = true;
   private int maxConcurrentClientNum = 1024;
@@ -100,5 +100,9 @@ public class ClusterConfig {
 
   public void setPartitionInterval(long partitionInterval) {
     this.partitionInterval = partitionInterval;
+  }
+
+  public void setLocalDataPort(int localDataPort) {
+    this.localDataPort = localDataPort;
   }
 }

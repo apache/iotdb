@@ -25,10 +25,8 @@ import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient.appendEntry_call;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,51 +35,49 @@ import org.slf4j.LoggerFactory;
  * LogCatchUpHandler check the result of appending a log in a catch-up task and decide to abort the
  * catch up or not.
  */
-public class LogCatchUpHandler implements AsyncMethodCallback<appendEntry_call> {
+public class LogCatchUpHandler implements AsyncMethodCallback<Long> {
 
   private static final Logger logger = LoggerFactory.getLogger(LogCatchUpHandler.class);
 
   private Node follower;
   private Log log;
   private AtomicBoolean appendSucceed;
+  private String memberName;
   private RaftMember raftMember;
 
   @Override
-  public void onComplete(appendEntry_call response) {
-    try {
-      logger.debug("Received a catch-up result of {} from {}", log, follower);
-      long resp = response.getResult();
-      if (resp == RESPONSE_AGREE) {
-        synchronized (appendSucceed) {
-          appendSucceed.set(true);
-          appendSucceed.notifyAll();
-        }
-        logger.debug("Succeeded to send log {}", log);
-      } else if (resp == RESPONSE_LOG_MISMATCH) {
-        // this is not probably possible
-        logger.error("Log mismatch occurred when sending log {}", log);
-        synchronized (appendSucceed) {
-          appendSucceed.set(false);
-          appendSucceed.notifyAll();
-        }
-      } else {
-        // the follower's term has updated, which means a new leader is elected
-        synchronized (raftMember.getTerm()) {
-          long currTerm = raftMember.getTerm().get();
-          if (currTerm < resp) {
-            logger.debug("Received a rejection because term is stale: {}/{}", currTerm, resp);
-            raftMember.setCharacter(NodeCharacter.FOLLOWER);
-            raftMember.getTerm().set(currTerm);
-          }
-        }
-        synchronized (appendSucceed) {
-          appendSucceed.set(false);
-          appendSucceed.notifyAll();
-        }
-        logger.warn("Catch-up aborted because leadership is lost");
+  public void onComplete(Long response) {
+    logger.debug("{}: Received a catch-up result of {} from {}", memberName, log, follower);
+    long resp = response;
+    if (resp == RESPONSE_AGREE) {
+      synchronized (appendSucceed) {
+        appendSucceed.set(true);
+        appendSucceed.notifyAll();
       }
-    } catch (TException e) {
-      onError(e);
+      logger.debug("{}: Succeeded to send log {}", memberName, log);
+    } else if (resp == RESPONSE_LOG_MISMATCH) {
+      // this is not probably possible
+      logger.error("{}: Log mismatch occurred when sending log {}", memberName, log);
+      synchronized (appendSucceed) {
+        appendSucceed.set(false);
+        appendSucceed.notifyAll();
+      }
+    } else {
+      // the follower's term has updated, which means a new leader is elected
+      synchronized (raftMember.getTerm()) {
+        long currTerm = raftMember.getTerm().get();
+        if (currTerm < resp) {
+          logger.debug("{}: Received a rejection because term is stale: {}/{}", memberName,
+              currTerm, resp);
+          raftMember.setCharacter(NodeCharacter.FOLLOWER);
+          raftMember.getTerm().set(currTerm);
+        }
+      }
+      synchronized (appendSucceed) {
+        appendSucceed.set(false);
+        appendSucceed.notifyAll();
+      }
+      logger.warn("{}: Catch-up aborted because leadership is lost", memberName);
     }
   }
 
@@ -91,7 +87,7 @@ public class LogCatchUpHandler implements AsyncMethodCallback<appendEntry_call> 
       appendSucceed.set(false);
       appendSucceed.notifyAll();
     }
-    logger.warn("Catch-up fails when sending log {}", log, exception);
+    logger.warn("{}: Catch-up fails when sending log {}", memberName, log, exception);
   }
 
   public void setLog(Log log) {
@@ -104,6 +100,7 @@ public class LogCatchUpHandler implements AsyncMethodCallback<appendEntry_call> 
 
   public void setRaftMember(RaftMember raftMember) {
     this.raftMember = raftMember;
+    this.memberName = raftMember.getName();
   }
 
   public void setFollower(Node follower) {
