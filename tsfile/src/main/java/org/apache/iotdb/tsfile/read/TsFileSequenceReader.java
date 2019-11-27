@@ -28,7 +28,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
@@ -296,8 +295,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       deviceMetadata = deviceMetadataMap.get(index);
     }
     if (deviceMetadata == null) {
-      deviceMetadata = TsDeviceMetadata.deserializeFrom(readData(index.getOffset()
-          , index.getLen()));
+      deviceMetadata = TsDeviceMetadata.deserializeFrom(readData(index.getOffset(), index.getLen()));
       if (cacheDeviceMetadata) {
         deviceMetadataMap.put(index, deviceMetadata);
       }
@@ -602,8 +600,8 @@ public class TsFileSequenceReader implements AutoCloseable {
             if (header.getNumOfPages() > 0) {
               PageHeader pageHeader = this.readPageHeader(header.getDataType());
               numOfPoints += pageHeader.getNumOfValues();
-              startTimeOfChunk = pageHeader.getMinTimestamp();
-              endTimeOfChunk = pageHeader.getMaxTimestamp();
+              startTimeOfChunk = pageHeader.getStartTime();
+              endTimeOfChunk = pageHeader.getEndTime();
               chunkStatistics.mergeStatistics(pageHeader.getStatistics());
               this.skipPageData(pageHeader);
             }
@@ -617,27 +615,12 @@ public class TsFileSequenceReader implements AutoCloseable {
             if (header.getNumOfPages() > 1) {
               PageHeader pageHeader = this.readPageHeader(header.getDataType());
               numOfPoints += pageHeader.getNumOfValues();
-              endTimeOfChunk = pageHeader.getMaxTimestamp();
+              endTimeOfChunk = pageHeader.getEndTime();
               chunkStatistics.mergeStatistics(pageHeader.getStatistics());
               this.skipPageData(pageHeader);
             }
             currentChunk = new ChunkMetaData(measurementID, dataType, fileOffsetOfChunk,
-                startTimeOfChunk, endTimeOfChunk);
-            currentChunk.setNumOfPoints(numOfPoints);
-            ByteBuffer[] statisticsArray = new ByteBuffer[Statistics.StatisticType.getTotalTypeNum()];
-            statisticsArray[Statistics.StatisticType.min_value.ordinal()] = ByteBuffer
-                .wrap(chunkStatistics.getMinBytes());
-            statisticsArray[Statistics.StatisticType.max_value.ordinal()] = ByteBuffer
-                .wrap(chunkStatistics.getMaxBytes());
-            statisticsArray[Statistics.StatisticType.first_value.ordinal()] = ByteBuffer
-                .wrap(chunkStatistics.getFirstBytes());
-            statisticsArray[Statistics.StatisticType.last_value.ordinal()] = ByteBuffer
-                .wrap(chunkStatistics.getLastBytes());
-            statisticsArray[Statistics.StatisticType.sum_value.ordinal()] = ByteBuffer
-                .wrap(chunkStatistics.getSumBytes());
-            Statistics tsDigest = Statistics.getStatsByType(dataType);
-            tsDigest.setStatisticBuffers(statisticsArray);
-            currentChunk.setStatistics(tsDigest);
+                startTimeOfChunk, endTimeOfChunk, chunkStatistics, numOfPoints);
             chunks.add(currentChunk);
             numOfPoints = 0;
             chunkCnt++;

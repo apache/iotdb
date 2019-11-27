@@ -28,10 +28,12 @@ import org.junit.Test;
 
 public class DigestFilterTest {
 
-  private StatisticsForFilter statistics1 = new StatisticsForFilter(1L, 100L, BytesUtils.intToBytes(1),
-      BytesUtils.intToBytes(100), TSDataType.INT32);
-  private StatisticsForFilter statistics2 = new StatisticsForFilter(101L, 200L, BytesUtils.intToBytes(101),
-      BytesUtils.intToBytes(200), TSDataType.INT32);
+  private StatisticsForFilter statistics1 = new StatisticsForFilter(1L, 100L,
+      ByteBuffer.wrap(BytesUtils.intToBytes(1)),
+      ByteBuffer.wrap(BytesUtils.intToBytes(100)), TSDataType.INT32);
+  private StatisticsForFilter statistics2 = new StatisticsForFilter(101L, 200L,
+      ByteBuffer.wrap(BytesUtils.intToBytes(101)),
+      ByteBuffer.wrap(BytesUtils.intToBytes(200)), TSDataType.INT32);
   private StatisticsForFilter statistics3 = new StatisticsForFilter(101L, 200L, (ByteBuffer) null, null,
       TSDataType.INT32);
 

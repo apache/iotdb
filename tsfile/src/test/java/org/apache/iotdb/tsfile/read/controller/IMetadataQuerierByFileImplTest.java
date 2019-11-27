@@ -46,7 +46,7 @@ public class IMetadataQuerierByFileImplTest {
   private ArrayList<long[]> d2chunkGroupMetaDataOffsetList = new ArrayList<>();
 
   @Before
-  public void before() throws InterruptedException, WriteProcessException, IOException {
+  public void before() throws IOException {
     TsFileGeneratorForTest.generateFile(1000000, 1024 * 1024, 10000);
     reader = new TsFileSequenceReader(FILE_PATH);
 

@@ -65,7 +65,7 @@ public class TestHelper {
   }
 
 
-  public static PageHeader createSimplePageHeader() {
+  public static PageHeader createTestPageHeader() {
     Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
     statistics.setEmpty(false);
     return new PageHeader(PageHeaderTest.UNCOMPRESSED_SIZE,

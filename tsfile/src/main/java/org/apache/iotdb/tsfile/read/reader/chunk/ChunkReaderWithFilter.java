@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.tsfile.read.reader.chunk;
 
+import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.filter.StatisticsForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -34,13 +36,24 @@ public class ChunkReaderWithFilter extends ChunkReader {
 
   @Override
   public boolean pageSatisfied(PageHeader pageHeader) {
-    if (pageHeader.getMaxTimestamp() < deletedAt) {
+    if (pageHeader.getEndTime() < deletedAt) {
       return false;
     }
-    StatisticsForFilter statistics = new StatisticsForFilter(pageHeader.getMinTimestamp(),
-        pageHeader.getMaxTimestamp(),
-        pageHeader.getStatistics().getMinBytebuffer(),
-        pageHeader.getStatistics().getMaxBytebuffer(),
+
+    if (chunkHeader.getDataType() == TSDataType.TEXT || chunkHeader.getDataType() == TSDataType.BOOLEAN) {
+      StatisticsForFilter statisticsForFilter = new StatisticsForFilter(
+          pageHeader.getStartTime(),
+          pageHeader.getEndTime(),
+          null, null,
+          chunkHeader.getDataType()
+      );
+      return filter.satisfy(statisticsForFilter);
+    }
+
+    StatisticsForFilter statistics = new StatisticsForFilter(pageHeader.getStartTime(),
+        pageHeader.getEndTime(),
+        pageHeader.getStatistics().getMinValueBuffer(),
+        pageHeader.getStatistics().getMaxValueBuffer(),
         chunkHeader.getDataType());
     return filter.satisfy(statistics);
   }

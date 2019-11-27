@@ -63,7 +63,7 @@ public class ChunkMetaData {
    */
   private long deletedAt = Long.MIN_VALUE;
 
-  private Statistics valuesStatistics;
+  private Statistics statistics;
 
   private ChunkMetaData() {
   }
@@ -76,14 +76,18 @@ public class ChunkMetaData {
    * @param fileOffset file offset
    * @param startTime chunk start time
    * @param endTime chunk end time
+   * @param statistics value statistics
+   * @param numOfPoints points in this chunk
    */
   public ChunkMetaData(String measurementUid, TSDataType tsDataType, long fileOffset,
-      long startTime, long endTime) {
+      long startTime, long endTime, Statistics statistics, long numOfPoints) {
     this.measurementUid = measurementUid;
     this.tsDataType = tsDataType;
     this.offsetOfChunkHeader = fileOffset;
     this.startTime = startTime;
     this.endTime = endTime;
+    this.statistics = statistics;
+    this.numOfPoints = numOfPoints;
   }
 
   @Override
@@ -113,12 +117,7 @@ public class ChunkMetaData {
   }
 
   public Statistics getStatistics() {
-    return valuesStatistics;
-  }
-
-  public void setStatistics(Statistics statistics) {
-    this.valuesStatistics = statistics;
-
+    return statistics;
   }
 
   public long getStartTime() {
@@ -137,7 +136,7 @@ public class ChunkMetaData {
     this.endTime = endTime;
   }
 
-  public TSDataType getTsDataType() {
+  public TSDataType getDataType() {
     return tsDataType;
   }
 
@@ -157,12 +156,7 @@ public class ChunkMetaData {
     byteLen += ReadWriteIOUtils.write(startTime, outputStream);
     byteLen += ReadWriteIOUtils.write(endTime, outputStream);
     byteLen += ReadWriteIOUtils.write(tsDataType, outputStream);
-
-    if (valuesStatistics == null) {
-      byteLen += Statistics.serializeNullTo(outputStream);
-    } else {
-      byteLen += valuesStatistics.serialize(outputStream);
-    }
+    byteLen += statistics.serialize(outputStream);
     return byteLen;
   }
 
@@ -182,7 +176,7 @@ public class ChunkMetaData {
     chunkMetaData.endTime = ReadWriteIOUtils.readLong(buffer);
     chunkMetaData.tsDataType = ReadWriteIOUtils.readDataType(buffer);
 
-    chunkMetaData.valuesStatistics = Statistics.deserializeFrom(buffer, chunkMetaData.tsDataType);
+    chunkMetaData.statistics = Statistics.deserialize(buffer, chunkMetaData.tsDataType);
 
     return chunkMetaData;
   }
@@ -220,6 +214,6 @@ public class ChunkMetaData {
         deletedAt == that.deletedAt &&
         Objects.equals(measurementUid, that.measurementUid) &&
         tsDataType == that.tsDataType &&
-        Objects.equals(valuesStatistics, that.valuesStatistics);
+        Objects.equals(statistics, that.statistics);
   }
 }

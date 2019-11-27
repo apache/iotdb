@@ -163,20 +163,6 @@ public class PageWriter {
   /**
    * write a time value pair into encoder
    */
-  public void write(long time, BigDecimal value) {
-    ++pointNumber;
-    this.pageMaxTime = time;
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = time;
-    }
-    timeEncoder.encode(time, timeOut);
-    valueEncoder.encode(value, valueOut);
-    statistics.updateStats(value);
-  }
-
-  /**
-   * write a time value pair into encoder
-   */
   public void write(long time, Binary value) {
     ++pointNumber;
     this.pageMaxTime = time;
@@ -256,22 +242,6 @@ public class PageWriter {
    * write time series into encoder
    */
   public void write(long[] timestamps, double[] values, int batchSize) {
-    pointNumber += batchSize;
-    this.pageMaxTime = timestamps[batchSize - 1];
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = timestamps[0];
-    }
-    for (int i = 0; i < batchSize; i++) {
-      timeEncoder.encode(timestamps[i], timeOut);
-      valueEncoder.encode(values[i], valueOut);
-    }
-    statistics.updateStats(values);
-  }
-
-  /**
-   * write time series into encoder
-   */
-  public void write(long[] timestamps, BigDecimal[] values, int batchSize) {
     pointNumber += batchSize;
     this.pageMaxTime = timestamps[batchSize - 1];
     if (pageMinTime == Long.MIN_VALUE) {

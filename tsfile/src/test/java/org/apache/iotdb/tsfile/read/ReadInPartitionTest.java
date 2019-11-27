@@ -68,7 +68,7 @@ public class ReadInPartitionTest {
 
 
   @Before
-  public void before() throws InterruptedException, WriteProcessException, IOException {
+  public void before() throws IOException {
     TsFileGeneratorForTest.generateFile(1000000, 1024 * 1024, 10000);
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
     roTsFile = new ReadOnlyTsFile(reader);

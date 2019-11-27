@@ -380,8 +380,8 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
               PageHeader pageHeader = this.readPageHeader(header.getDataType());
               pageHeaders.add(pageHeader);
               numOfPoints += pageHeader.getNumOfValues();
-              startTimeOfChunk = pageHeader.getMinTimestamp();
-              endTimeOfChunk = pageHeader.getMaxTimestamp();
+              startTimeOfChunk = pageHeader.getStartTime();
+              endTimeOfChunk = pageHeader.getEndTime();
               chunkStatistics.mergeStatistics(pageHeader.getStatistics());
               pages.add(readData(-1, pageHeader.getCompressedSize()));
             }
@@ -396,29 +396,13 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
               PageHeader pageHeader = this.readPageHeader(header.getDataType());
               pageHeaders.add(pageHeader);
               numOfPoints += pageHeader.getNumOfValues();
-              endTimeOfChunk = pageHeader.getMaxTimestamp();
+              endTimeOfChunk = pageHeader.getEndTime();
               chunkStatistics.mergeStatistics(pageHeader.getStatistics());
               pages.add(readData(-1, pageHeader.getCompressedSize()));
             }
 
             currentChunkMetaData = new ChunkMetaData(header.getMeasurementID(), dataType,
-                fileOffsetOfChunk,
-                startTimeOfChunk, endTimeOfChunk);
-            currentChunkMetaData.setNumOfPoints(numOfPoints);
-            ByteBuffer[] statisticsArray = new ByteBuffer[Statistics.StatisticType.getTotalTypeNum()];
-            statisticsArray[Statistics.StatisticType.min_value.ordinal()] = ByteBuffer
-                .wrap(chunkStatistics.getMinBytes());
-            statisticsArray[Statistics.StatisticType.max_value.ordinal()] = ByteBuffer
-                .wrap(chunkStatistics.getMaxBytes());
-            statisticsArray[Statistics.StatisticType.first_value.ordinal()] = ByteBuffer
-                .wrap(chunkStatistics.getFirstBytes());
-            statisticsArray[Statistics.StatisticType.last_value.ordinal()] = ByteBuffer
-                .wrap(chunkStatistics.getLastBytes());
-            statisticsArray[Statistics.StatisticType.sum_value.ordinal()] = ByteBuffer
-                .wrap(chunkStatistics.getSumBytes());
-            Statistics tsDigest = Statistics.getStatsByType(dataType);
-            tsDigest.setStatisticBuffers(statisticsArray);
-            currentChunkMetaData.setStatistics(tsDigest);
+                fileOffsetOfChunk, startTimeOfChunk, endTimeOfChunk, chunkStatistics, numOfPoints);
             chunkMetaDataList.add(currentChunkMetaData);
             numOfPoints = 0;
             pageHeadersList.add(pageHeaders);

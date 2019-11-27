@@ -53,24 +53,6 @@ public class StatisticsForFilter {
     this.type = type;
   }
 
-  /**
-   * constructor of DigestForFilter with byte[] minValue and maxValue.
-   *
-   * @param minTime min timestamp
-   * @param maxTime max timestamp
-   * @param minValue MUST be byte[]
-   * @param maxValue MUST be byte[]
-   * @param type time series data type
-   */
-  public StatisticsForFilter(long minTime, long maxTime, byte[] minValue, byte[] maxValue,
-      TSDataType type) {
-    this.minTime = minTime;
-    this.maxTime = maxTime;
-    this.minValue = ByteBuffer.wrap(minValue);
-    this.maxValue = ByteBuffer.wrap(maxValue);
-    this.type = type;
-  }
-
   @SuppressWarnings("unchecked")
   private <T extends Comparable<T>> T getValue(ByteBuffer value) {
     switch (type) {
@@ -120,31 +102,6 @@ public class StatisticsForFilter {
    */
   public <T extends Comparable<T>> T getMaxValue() {
     return getValue(maxValue);
-  }
-
-  /**
-   * get type class.
-   *
-   * @return type class, i.g. Long.class
-   */
-  public Class<?> getTypeClass() {
-    switch (type) {
-      case INT32:
-        return Integer.class;
-      case INT64:
-        return Long.class;
-      case FLOAT:
-        return Float.class;
-      case DOUBLE:
-        return Double.class;
-      case TEXT:
-        return String.class;
-      case BOOLEAN:
-        return Boolean.class;
-      default:
-        throw new UnSupportFilterDataTypeException(
-            "DigestForFilter unsupported datatype : " + type.toString());
-    }
   }
 
   public TSDataType getType() {

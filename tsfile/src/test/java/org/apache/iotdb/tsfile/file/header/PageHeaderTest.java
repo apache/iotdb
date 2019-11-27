@@ -23,13 +23,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.channels.FileChannel;
-import java.nio.file.Paths;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.file.metadata.utils.Utils;
-import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
-import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -41,7 +37,7 @@ public class PageHeaderTest {
   public static final int NUM_OF_VALUES = 10000;
   public static final long MAX_TIMESTAMO = 523372036854775806L;
   public static final long MIN_TIMESTAMO = 423372036854775806L;
-  public static final TSDataType DATA_TYPE = TSDataType.TEXT;
+  public static final TSDataType DATA_TYPE = TSDataType.INT64;
   private final String PATH = "target/outputPageHeader.tsfile";
 
   @Before
@@ -58,7 +54,7 @@ public class PageHeaderTest {
 
   @Test
   public void testWriteIntoFile() {
-    PageHeader header = TestHelper.createSimplePageHeader();
+    PageHeader header = TestHelper.createTestPageHeader();
     serialized(header);
     PageHeader readHeader = deSerialized();
     Utils.isPageHeaderEqual(header, readHeader);
@@ -107,5 +103,5 @@ public class PageHeaderTest {
       }
     }
   }
-  
+
 }

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
@@ -35,7 +34,7 @@ import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
@@ -98,18 +97,31 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
       for (ChunkMetaData chunkMetaData : metaDataList) {
 
         if (filter != null) {
-          ByteBuffer minValue = null;
-          ByteBuffer maxValue = null;
-          ByteBuffer[] statistics = chunkMetaData.getStatistics().getStatisticBuffers();
-          if (statistics != null) {
-            minValue = statistics[Statistics.StatisticType.min_value.ordinal()]; // note still CAN be null
-            maxValue = statistics[Statistics.StatisticType.max_value.ordinal()]; // note still CAN be null
-          }
 
-          StatisticsForFilter statisticsForFilter = new StatisticsForFilter(chunkMetaData.getStartTime(),
-              chunkMetaData.getEndTime(), minValue, maxValue, chunkMetaData.getTsDataType());
-          if (!filter.satisfy(statisticsForFilter)) {
-            continue;
+          if (chunkMetaData.getDataType() == TSDataType.TEXT || chunkMetaData.getDataType() == TSDataType.BOOLEAN) {
+            StatisticsForFilter statisticsForFilter = new StatisticsForFilter(
+                chunkMetaData.getStartTime(),
+                chunkMetaData.getEndTime(),
+                null, null,
+                chunkMetaData.getDataType()
+            );
+            if (!filter.satisfy(statisticsForFilter)) {
+              continue;
+            }
+
+          } else {
+
+            StatisticsForFilter statisticsForFilter = new StatisticsForFilter(
+                chunkMetaData.getStartTime(),
+                chunkMetaData.getEndTime(),
+                chunkMetaData.getStatistics().getMinValueBuffer(),
+                chunkMetaData.getStatistics().getMaxValueBuffer(),
+                chunkMetaData.getDataType()
+            );
+
+            if (!filter.satisfy(statisticsForFilter)) {
+              continue;
+            }
           }
         }
         // create and add DiskChunkReader

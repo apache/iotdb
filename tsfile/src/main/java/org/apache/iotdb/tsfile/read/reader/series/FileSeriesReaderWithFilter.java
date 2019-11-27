@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics.StatisticType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.StatisticsForFilter;
@@ -51,16 +51,25 @@ public class FileSeriesReaderWithFilter extends FileSeriesReader {
 
   @Override
   protected boolean chunkSatisfied(ChunkMetaData chunkMetaData) {
-    ByteBuffer minValue = null;
-    ByteBuffer maxValue = null;
-    ByteBuffer[] statistics = chunkMetaData.getStatistics().getStatisticBuffers();
-    if (statistics != null) {
-      minValue = statistics[StatisticType.min_value.ordinal()]; // note still CAN be null
-      maxValue = statistics[StatisticType.max_value.ordinal()]; // note still CAN be null
+
+    if (chunkMetaData.getDataType() == TSDataType.TEXT || chunkMetaData.getDataType() == TSDataType.BOOLEAN) {
+      StatisticsForFilter statisticsForFilter = new StatisticsForFilter(
+          chunkMetaData.getStartTime(),
+          chunkMetaData.getEndTime(),
+          null, null,
+          chunkMetaData.getDataType()
+      );
+      return filter.satisfy(statisticsForFilter);
     }
 
-    StatisticsForFilter statisticsForFilter = new StatisticsForFilter(chunkMetaData.getStartTime(),
-        chunkMetaData.getEndTime(), minValue, maxValue, chunkMetaData.getTsDataType());
+    StatisticsForFilter statisticsForFilter = new StatisticsForFilter(
+        chunkMetaData.getStartTime(),
+        chunkMetaData.getEndTime(),
+        chunkMetaData.getStatistics().getMinValueBuffer(),
+        chunkMetaData.getStatistics().getMaxValueBuffer(),
+        chunkMetaData.getDataType()
+    );
+
     return filter.satisfy(statisticsForFilter);
   }
 

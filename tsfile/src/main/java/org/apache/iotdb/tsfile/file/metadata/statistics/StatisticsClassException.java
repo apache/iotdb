@@ -27,4 +27,9 @@ public class StatisticsClassException extends TsFileRuntimeException {
   public StatisticsClassException(Class<?> className1, Class<?> className2) {
     super("tsfile-file Statistics classes mismatched: " + className1 + " vs. " + className2);
   }
+
+  public StatisticsClassException(String message) {
+    super(message);
+  }
+
 }

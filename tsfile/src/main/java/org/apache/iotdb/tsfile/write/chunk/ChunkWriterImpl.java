@@ -19,7 +19,6 @@
 package org.apache.iotdb.tsfile.write.chunk;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
@@ -135,12 +134,6 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void write(long time, BigDecimal value) {
-    pageWriter.write(time, value);
-    checkPageSizeAndMayOpenANewPage();
-  }
-
-  @Override
   public void write(long time, Binary value) {
     pageWriter.write(time, value);
     checkPageSizeAndMayOpenANewPage();
@@ -172,12 +165,6 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long[] timestamps, double[] values, int batchSize) {
-    pageWriter.write(timestamps, values, batchSize);
-    checkPageSizeAndMayOpenANewPage();
-  }
-
-  @Override
-  public void write(long[] timestamps, BigDecimal[] values, int batchSize) {
     pageWriter.write(timestamps, values, batchSize);
     checkPageSizeAndMayOpenANewPage();
   }
@@ -288,12 +275,12 @@ public class ChunkWriterImpl implements IChunkWriter {
 
     // 1. update time statistics
     if (this.chunkMinTime == Long.MIN_VALUE) {
-      this.chunkMinTime = header.getMinTimestamp();
+      this.chunkMinTime = header.getStartTime();
     }
     if (this.chunkMinTime == Long.MIN_VALUE) {
       throw new PageException("No valid data point in this page");
     }
-    this.chunkMaxTime = header.getMaxTimestamp();
+    this.chunkMaxTime = header.getEndTime();
 
     // write the page header to pageBuffer
     try {
@@ -337,7 +324,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     // start to write this column chunk
     writer.startFlushChunk(measurementSchema, compressor.getType(), measurementSchema.getType(),
             measurementSchema.getEncodingType(), statistics, chunkMaxTime,
-            chunkMinTime, pageBuffer.size(), numOfPages);
+            chunkMinTime, pageBuffer.size(), numOfPages, chunkPointCount);
 
     long dataOffset = writer.getPos();
 
@@ -351,7 +338,7 @@ public class ChunkWriterImpl implements IChunkWriter {
               + " " + pageBuffer.size());
     }
 
-    writer.endChunk(chunkPointCount);
+    writer.endCurrentChunk();
   }
 
   /**

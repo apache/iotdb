@@ -46,7 +46,7 @@ public class MinValueAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    Comparable<Object> minVal = (Comparable<Object>) pageHeader.getStatistics().getMin();
+    Comparable<Object> minVal = (Comparable<Object>) pageHeader.getStatistics().getMinValue();
     updateResult(minVal);
   }
 

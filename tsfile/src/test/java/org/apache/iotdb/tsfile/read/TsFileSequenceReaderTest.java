@@ -46,8 +46,8 @@ public class TsFileSequenceReaderTest {
   private ReadOnlyTsFile tsFile;
 
   @Before
-  public void before() throws InterruptedException, WriteProcessException, IOException {
-    int rowCount = 1000;
+  public void before() throws IOException {
+    int rowCount = 100;
     FileGenerator.generateFile(rowCount, 10000);
     TsFileSequenceReader fileReader = new TsFileSequenceReader(FILE_PATH);
     tsFile = new ReadOnlyTsFile(fileReader);
