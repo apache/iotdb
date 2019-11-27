@@ -50,7 +50,7 @@ public class TSFHiveInputFormatTest {
   private long startOffset;
   private long endOffset;
   private String[] measurementIds;
-  private String filePath = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
+  private String filePath = "target/test.tsfile";
 
   @Before
   public void setUp(){
