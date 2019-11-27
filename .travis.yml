@@ -156,11 +156,11 @@ matrix:
         - kill %1
     - os: linux
       name: linux-openjdk8
-      dist: trusty
+      dist: xenial
       jdk: openjdk8
     - os: linux
       name: linux-oraclejdk8
-      dist: trusty
+      dist: xenial
       jdk: oraclejdk8
 #    - os: linux
 #      name: linux-oraclejdk11
@@ -189,5 +189,6 @@ script:
   - java -version
   - ./mvnw.sh -B -ntp apache-rat:check
   - ./mvnw.sh -B -ntp clean integration-test
+
 
 after_success:
