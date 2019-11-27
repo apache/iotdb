@@ -814,7 +814,7 @@
                 </os>
             </activation>
             <properties>
-                <thrift.download-url>https://raw.githubusercontent.com/jt2594838/mvn-thrift-compiler/master/thrift_0.12.0_0.13.0_linux.exe</thrift.download-url>
+                <thrift.download-url>https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_linux.exe</thrift.download-url>
                 <thrift.executable>thrift_0.12.0_0.13.0_linux.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
@@ -829,9 +829,7 @@
                 </os>
             </activation>
             <properties>
-                <thrift.download-url>
-                    https://raw.githubusercontent.com/jt2594838/mvn-thrift-compiler/master/thrift_0.12.0_0.13.0_mac.exe
-                    </thrift.download-url>
+                <thrift.download-url>https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_mac.exe</thrift.download-url>
                 <thrift.executable>thrift_0.12.0_0.13.0_mac.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
