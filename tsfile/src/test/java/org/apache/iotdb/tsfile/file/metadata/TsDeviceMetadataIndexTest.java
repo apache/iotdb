@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import org.apache.iotdb.tsfile.constant.OutputTestConstant;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.utils.Utils;
 import org.junit.After;
 import org.junit.Before;
@@ -41,7 +41,7 @@ public class TsDeviceMetadataIndexTest {
   private long endTime = 200;
 
   private File file;
-  private String path = OutputTestConstant.BASE_OUTPUT_PATH.concat("TsDeviceMetadataIndex.tsfile");
+  private String path = TestConstant.BASE_OUTPUT_PATH.concat("TsDeviceMetadataIndex.tsfile");
 
   @Before
   public void setUp() {

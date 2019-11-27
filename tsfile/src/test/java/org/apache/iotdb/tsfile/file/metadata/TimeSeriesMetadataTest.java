@@ -23,7 +23,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-import org.apache.iotdb.tsfile.constant.OutputTestConstant;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -34,7 +34,7 @@ public class TimeSeriesMetadataTest {
 
   public static final String measurementUID = "sensor01";
   public static final int typeLength = 1024;
-  final String PATH = OutputTestConstant.BASE_OUTPUT_PATH.concat("outputTimeSeries.tsfile");
+  final String PATH = TestConstant.BASE_OUTPUT_PATH.concat("outputTimeSeries.tsfile");
 
   @Before
   public void setUp() {

@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.junit.After;
@@ -51,7 +53,7 @@ public class DirectoryStrategyTest {
   public void setUp() throws IOException {
     dataDirList = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      dataDirList.add("target/data" + i);
+      dataDirList.add(TestConstant.OUTPUT_DATA_DIR + i);
     }
 
     fullDirIndexSet = new HashSet<>();

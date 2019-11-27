@@ -25,13 +25,14 @@ import static org.junit.Assert.assertEquals;
 import java.io.File;
 import java.io.IOException;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class SimpleFileVersionControllerTest {
   @Test
   public void test() throws IOException {
-    String tempFilePath = "target/version.tmp";
+    String tempFilePath = TestConstant.BASE_OUTPUT_PATH.concat("version.tmp");
 
     try {
       if (!new File(tempFilePath).mkdir()) {

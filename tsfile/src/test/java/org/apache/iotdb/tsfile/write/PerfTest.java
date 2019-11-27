@@ -31,7 +31,7 @@ import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
-import org.apache.iotdb.tsfile.constant.OutputTestConstant;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -42,8 +42,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -175,9 +173,9 @@ public class PerfTest {
     ch.qos.logback.classic.Logger logger = loggerContext.getLogger("root");
     logger.setLevel(Level.toLevel("info"));
 
-    inputDataFile = OutputTestConstant.BASE_OUTPUT_PATH.concat("perTestInputData");
-    outputDataFile = OutputTestConstant.BASE_OUTPUT_PATH.concat("perTestOutputData.tsfile");
-    errorOutputDataFile = OutputTestConstant.BASE_OUTPUT_PATH.concat("perTestErrorOutputData.tsfile");
+    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestInputData");
+    outputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestOutputData.tsfile");
+    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestErrorOutputData.tsfile");
     schema = generateTestData();
     generateSampleInputDataFile();
   }

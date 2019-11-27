@@ -28,6 +28,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
@@ -54,7 +56,7 @@ public class TsFileProcessorTest {
 
   private TsFileProcessor processor;
   private String storageGroup = "storage_group1";
-  private String filePath = "target/tmpdir/data/testUnsealedTsFileProcessor.tsfile";
+  private String filePath = TestConstant.OUTPUT_DATA_DIR.concat("testUnsealedTsFileProcessor.tsfile");
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
   private TSDataType dataType = TSDataType.INT32;
@@ -71,7 +73,7 @@ public class TsFileProcessorTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    EnvironmentUtils.cleanDir("target/tmpdir/data");
+    EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
   }
 
   @Test

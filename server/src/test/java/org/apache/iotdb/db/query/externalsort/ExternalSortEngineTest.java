@@ -24,6 +24,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -39,7 +41,7 @@ import org.junit.Test;
 
 public class ExternalSortEngineTest {
 
-  private String baseDir = "target/externalSortTestTmp/";
+  private String baseDir = TestConstant.BASE_OUTPUT_PATH.concat("externalSortTestTmp").concat(File.separator);
   private long queryId = EnvironmentUtils.TEST_QUERY_JOB_ID;
   private SimpleExternalSortEngine engine;
   private String preBaseDir;

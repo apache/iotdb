@@ -23,7 +23,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-import org.apache.iotdb.tsfile.constant.OutputTestConstant;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.file.metadata.utils.Utils;
 import org.junit.After;
@@ -34,7 +34,7 @@ public class TsDeviceMetadataTest {
 
   public static final long START_TIME = 523372036854775806L;
   public static final long END_TIME = 523372036854775806L;
-  final String PATH = OutputTestConstant.BASE_OUTPUT_PATH.concat("outputDevice.tsfile");
+  final String PATH = TestConstant.BASE_OUTPUT_PATH.concat("outputDevice.tsfile");
 
   @Before
   public void setUp() {

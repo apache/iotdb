@@ -25,6 +25,7 @@ import java.util
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput
+import org.apache.iotdb.spark.constant.TestConstant
 import org.apache.iotdb.spark.tool.TsFileWriteTool
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType
@@ -40,7 +41,7 @@ import org.junit.Assert
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 class ConverterTest extends FunSuite with BeforeAndAfterAll {
-  private val tsfileFolder = "target/ConverterTest"
+  private val tsfileFolder = TestConstant.BASE_OUTPUT_PATH.concat("ConverterTest")
   private val tsfilePath1: String = tsfileFolder + "/test_1.tsfile"
   private val tsfilePath2: String = tsfileFolder + "/test_2.tsfile"
   private var spark: SparkSession = _

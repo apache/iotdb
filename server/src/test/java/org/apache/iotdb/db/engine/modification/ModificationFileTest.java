@@ -25,6 +25,8 @@ import static org.junit.Assert.fail;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -33,7 +35,7 @@ public class ModificationFileTest {
 
   @Test
   public void readMyWrite() {
-    String tempFileName = "target/mod.temp";
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.temp");
     Modification[] modifications = new Modification[]{
         new Deletion(new Path("d1", "s1"), 1, 1),
         new Deletion(new Path("d1", "s2"), 2, 2),
@@ -67,7 +69,7 @@ public class ModificationFileTest {
 
   @Test
   public void testAbort() {
-    String tempFileName = "target/mod.temp";
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.temp");
     Modification[] modifications = new Modification[]{
         new Deletion(new Path("d1", "s1"), 1, 1),
         new Deletion(new Path("d1", "s2"), 2, 2),

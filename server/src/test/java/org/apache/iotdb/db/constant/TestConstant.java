@@ -17,8 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.constant;
+package org.apache.iotdb.db.constant;
 
-public class OutputTestConstant {
-    public static final String BASE_OUTPUT_PATH = "target/";
+import java.io.File;
+import java.util.Random;
+
+public class TestConstant {
+    public static final String BASE_OUTPUT_PATH = "target".concat(File.separator);
+    public static final String OUTPUT_DATA_DIR = BASE_OUTPUT_PATH.concat("data").concat(File.separator);
 }

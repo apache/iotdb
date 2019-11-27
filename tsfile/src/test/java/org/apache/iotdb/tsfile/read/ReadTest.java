@@ -24,7 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.iotdb.tsfile.constant.OutputTestConstant;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -46,7 +46,7 @@ import org.junit.Test;
 
 public class ReadTest {
 
-  private static String fileName = OutputTestConstant.BASE_OUTPUT_PATH.concat("perTestOutputData.tsfile");
+  private static String fileName = TestConstant.BASE_OUTPUT_PATH.concat("perTestOutputData.tsfile");
   private static ReadOnlyTsFile roTsFile = null;
 
   @Before
