@@ -32,18 +32,18 @@ vector<RowRecord> convertRowRecords(TSQueryDataSet tsQueryDataSet,vector<string>
     int rowCount = tsQueryDataSet.rowCount;
     MyStringStream byteBuffer(tsQueryDataSet.values);
     vector<RowRecord> rowRecordList;
-    map<string,TSDataType> stringtoTSDataType;
-    stringtoTSDataType["BOOLEAN"] = BOOLEAN;
-    stringtoTSDataType["INT32"] = INT32;
-    stringtoTSDataType["INT64"] = INT64;
-    stringtoTSDataType["FLOAT"] = FLOAT;
-    stringtoTSDataType["DOUBLE"] = DOUBLE;
-    stringtoTSDataType["TEXT"] = TEXT;
+    map<string,TSDataType::TSDataType> stringtoTSDataType;
+    stringtoTSDataType["BOOLEAN"] = TSDataType::BOOLEAN;
+    stringtoTSDataType["INT32"] = TSDataType::INT32;
+    stringtoTSDataType["INT64"] = TSDataType::INT64;
+    stringtoTSDataType["FLOAT"] = TSDataType::FLOAT;
+    stringtoTSDataType["DOUBLE"] = TSDataType::DOUBLE;
+    stringtoTSDataType["TEXT"] = TSDataType::TEXT;
     for (int i = 0; i < rowCount; i++)
     {
         long long timestamp = byteBuffer.getLong();
-        RowRecord * rowRecord = new RowRecord(timestamp);
-        rowRecordList.push_back(*rowRecord);
+        RowRecord rowRecord(timestamp);
+        rowRecordList.push_back(rowRecord);
     }
     for (int j = 0; j < columnTypeList.size(); j++)
     {
@@ -54,40 +54,40 @@ vector<RowRecord> convertRowRecords(TSQueryDataSet tsQueryDataSet,vector<string>
             bool is_empty = byteBuffer.getBool();
             if (is_empty)
             {
-                field = new Field(NULLTYPE);
+                field = new Field(TSDataType::NULLTYPE);
             }
             else
             {
-                TSDataType dataType = stringtoTSDataType[type];
+                TSDataType::TSDataType dataType = stringtoTSDataType[type];
                 field = new Field(dataType);
                 switch (dataType)
                 {
-                    case BOOLEAN:{
+                    case TSDataType::BOOLEAN:{
                         bool booleanValue = byteBuffer.getBool();
                         field->boolV = booleanValue;
                         break;
                     }
-                    case INT32:{
+                    case TSDataType::INT32:{
                         int intValue = byteBuffer.getInt();
                         field->intV = intValue;
                         break;
                     }
-                    case INT64: {
+                    case TSDataType::INT64: {
                         long long longValue = byteBuffer.getLong();
                         field->longV = longValue;
                         break;
                     }
-                    case FLOAT:{
+                    case TSDataType::FLOAT:{
                         float floatValue = byteBuffer.getFloat();
                         field->floatV = floatValue;
                         break;
                     }
-                    case DOUBLE:{
+                    case TSDataType::DOUBLE:{
                         double doubleValue = byteBuffer.getDouble();
                         field->doubleV = doubleValue;
                         break;
                     }
-                    case TEXT: {
+                    case TSDataType::TEXT: {
                         string stringValue = byteBuffer.getString();
                         field->stringV = stringValue;
                         break;
@@ -101,6 +101,7 @@ vector<RowRecord> convertRowRecords(TSQueryDataSet tsQueryDataSet,vector<string>
                 }
             }
             rowRecordList[i].fields.push_back(*field);
+            delete field;
         }
     }
     return rowRecordList;
@@ -376,7 +377,7 @@ TSStatus Session::deleteStorageGroups(vector<string> storageGroups)
 
 
 
-TSStatus Session::createTimeseries(string path, TSDataType dataType, TSEncoding encoding, CompressionType compressor) 
+TSStatus Session::createTimeseries(string path, TSDataType::TSDataType dataType, TSEncoding::TSEncoding encoding, CompressionType::CompressionType compressor)
 {
     shared_ptr<TSCreateTimeseriesReq> req(new TSCreateTimeseriesReq());
     req->__set_path(path);
@@ -488,6 +489,111 @@ void Session::executeNonQueryStatement(string sql)
     try
     {
         client->executeStatement(*resp,*req);
+        verifySuccess(resp->status);
+    }
+    catch (IoTDBSessionException e)
+    {
+        throw IoTDBSessionException(e.what());
+    }
+}
+void Session::insertBatch(string deviceId, int rowCount, vector<string> measurements, vector<TSDataType::TSDataType> types, vector<long long> timestamps, vector<vector<string> > values)
+{
+    vector<vector<Field> >Fieldvalues;
+    for (int i = 0; i < rowCount; i++)
+    {
+        vector<Field> ins;
+        Fieldvalues.push_back(ins);
+        for (int j = 0; j < measurements.size(); j++)
+        {
+            Field tmp(types[j]);
+            switch (types[j])
+            {
+                case TSDataType::BOOLEAN: {
+                    transform(values[i][j].begin(),values[i][j].end(),values[i][j].begin(),::tolower);
+                    if (values[i][j] == "true")
+                        tmp.boolV = true;
+                    else
+                        tmp.boolV = false;
+                    break;
+                }
+                case TSDataType::INT32: {
+                    tmp.intV = stoi(values[i][j]);
+                    break;
+                }
+                case TSDataType::INT64: {
+                    tmp.longV = stoll(values[i][j]);
+                    break;
+                }
+                case TSDataType::FLOAT: {
+                    tmp.floatV = stof(values[i][j]);
+                    break;
+                }
+                case TSDataType::DOUBLE: {
+                    tmp.doubleV = stod(values[i][j]);
+                    break;
+                }
+                case TSDataType::TEXT: {
+                    tmp.stringV = values[i][j];
+                    break;
+                }
+            }
+            Fieldvalues[i].push_back(tmp);
+        }
+    }
+    insertBatch(deviceId, rowCount, measurements, types, timestamps, Fieldvalues);
+}
+
+void Session::insertBatch(string deviceId, int rowCount, vector<string> measurements, vector<TSDataType::TSDataType> types, vector<long long> timestamps, vector<vector<Field> > values)
+{
+    shared_ptr<TSBatchInsertionReq> req(new TSBatchInsertionReq());
+    req->__set_deviceId(deviceId);
+    req->__set_size(rowCount);
+    req->__set_measurements(measurements);
+    vector<int> dataTypes;
+    for (int i=0;i<types.size();i++)
+        dataTypes.push_back((int)types[i]);
+    req->__set_types(dataTypes);
+    MyStringStream tim("");
+    for (int i = 0; i < rowCount; i++)
+        tim.putLong(timestamps[i]);
+    req->__set_timestamps(tim.str);
+    MyStringStream data("");
+    for (int j = 0; j < measurements.size(); j++)
+        for (int i = 0; i < rowCount; i++)
+        {
+            switch (types[j])
+            {
+                case TSDataType::BOOLEAN: {
+                    data.putBool(values[i][j].boolV);
+                    break;
+                }
+                case TSDataType::INT32: {
+                    data.putInt(values[i][j].intV);
+                    break;
+                }
+                case TSDataType::INT64: {
+                    data.putLong(values[i][j].longV);
+                    break;
+                }
+                case TSDataType::FLOAT: {
+                    data.putFloat(values[i][j].floatV);
+                    break;
+                }
+                case TSDataType::DOUBLE: {
+                    data.putDouble(values[i][j].doubleV);
+                    break;
+                }
+                case TSDataType::TEXT: {
+                    data.putString(values[i][j].stringV);
+                    break;
+                }
+            }
+        }
+    req->__set_values(data.str);
+    shared_ptr<TSExecuteBatchStatementResp> resp(new TSExecuteBatchStatementResp());
+    try
+    {
+        client->insertBatch(*resp,*req);
         verifySuccess(resp->status);
     }
     catch (IoTDBSessionException e)

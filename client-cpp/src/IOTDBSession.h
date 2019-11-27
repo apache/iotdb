@@ -21,6 +21,7 @@
 #include<vector>
 #include<exception> 
 #include<iostream>
+#include<algorithm>
 #include<thrift/protocol/TBinaryProtocol.h>
 #include<thrift/protocol/TCompactProtocol.h>
 #include<thrift/transport/TSocket.h>
@@ -47,29 +48,35 @@ class IoTDBSessionException : public exception
     private:
         string message;
 };
-enum CompressionType
-{
-    UNCOMPRESSED, SNAPPY, GZIP, LZO, SDT, PAA, PLA
-};
-enum TSDataType
-{
-    BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, NULLTYPE
-};
-enum TSEncoding
-{
-    PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, BITMAP, GORILLA, REGULAR
-};
+namespace CompressionType{
+
+    enum CompressionType
+    {
+        UNCOMPRESSED, SNAPPY, GZIP, LZO, SDT, PAA, PLA
+    };
+}
+namespace TSDataType{
+    enum TSDataType
+    {
+        BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, NULLTYPE
+    };
+}
+namespace TSEncoding {
+    enum TSEncoding {
+        PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, BITMAP, GORILLA, REGULAR
+    };
+}
 class Field
 {
 public:
-    TSDataType dataType;
+    TSDataType::TSDataType dataType;
     bool boolV;
     int intV;
     long long longV;
     float floatV;
     double doubleV;
     string stringV;
-    Field(TSDataType a)
+    Field(TSDataType::TSDataType a)
     {
         dataType = a;
     }
@@ -96,43 +103,43 @@ public:
         for (int i = 0; i < fields.size(); i++)
         {
             ret.append("\t");
-            TSDataType dataType = fields[i].dataType;
+            TSDataType::TSDataType dataType = fields[i].dataType;
             switch (dataType)
             {
-                case BOOLEAN:{
+                case TSDataType::BOOLEAN:{
                     if (fields[i].boolV) ret.append("true");
                     else ret.append("false");
                     break;
                 }
-                case INT32:{
+                case TSDataType::INT32:{
                     char buf[111];
                     sprintf(buf,"%d",fields[i].intV);
                     ret.append(buf);
                     break;
                 }
-                case INT64: {
+                case TSDataType::INT64: {
                     char buf[111];
                     sprintf(buf,"%lld",fields[i].longV);
                     ret.append(buf);
                     break;
                 }
-                case FLOAT:{
+                case TSDataType::FLOAT:{
                     char buf[111];
                     sprintf(buf,"%f",fields[i].floatV);
                     ret.append(buf);
                     break;
                 }
-                case DOUBLE:{
+                case TSDataType::DOUBLE:{
                     char buf[111];
                     sprintf(buf,"%lf",fields[i].doubleV);
                     ret.append(buf);
                     break;
                 }
-                case TEXT: {
+                case TSDataType::TEXT: {
                     ret.append(fields[i].stringV);
                     break;
                 }
-                case NULLTYPE:{
+                case TSDataType::NULLTYPE:{
                     ret.append("NULL");
                 }
             }
@@ -220,24 +227,32 @@ class Session
         TSStatus setStorageGroup(string storageGroupId);
         TSStatus deleteStorageGroup(string storageGroup);
         TSStatus deleteStorageGroups(vector<string> storageGroups);
-        TSStatus createTimeseries(string path, TSDataType dataType, TSEncoding encoding, CompressionType compressor);
+        TSStatus createTimeseries(string path, TSDataType::TSDataType dataType, TSEncoding::TSEncoding encoding, CompressionType::CompressionType compressor);
         TSStatus deleteTimeseries(string path);
         TSStatus deleteTimeseries(vector<string> paths);
         SessionDataSet* executeQueryStatement(string sql);
         void executeNonQueryStatement(string sql);
+        void insertBatch(string deviceId, int rowCount, vector<string> measurements, vector<TSDataType::TSDataType> types, vector<long long> timestamps, vector<vector<string> > values);
+        void insertBatch(string deviceId, int rowCount, vector<string> measurements, vector<TSDataType::TSDataType> types, vector<long long> timestamps, vector<vector<Field> > values);
         string getTimeZone();
         void setTimeZone(string zoneId);
 };
 
 class MyStringStream {
 private:
-    char * getchar(int len)
+    char *getchar(int len)
     {
-        char * ret = new char[len];
+        char *ret = new char[len];
         for (int i = pos; i < pos + len; i++)
             ret[pos + len - 1 - i] = str[i];
         pos += len;
         return ret;
+    }
+
+    void putchar(int len, char * ins)
+    {
+        for (int i = len - 1; i > -1; i--)
+            str += ins[i];
     }
 public:
     string str;
@@ -252,7 +267,7 @@ public:
     {
         char * data = getchar(4);
         int ret = *(int *)data;
-  //      delete []data;
+        delete []data;
         return ret;
     }
 
@@ -260,7 +275,7 @@ public:
     {
         char * data = getchar(8);
         long long ret = *(long long *)data;
-    //    delete []data;
+        delete []data;
         return ret;
     }
 
@@ -268,7 +283,7 @@ public:
     {
         char * data = getchar(4);
         float ret = *(float *)data;
-     //   delete []data;
+        delete []data;
         return ret;
     }
 
@@ -276,7 +291,7 @@ public:
     {
         char * data = getchar(8);
         double ret = *(double *)data;
-    //    delete []data;
+        delete []data;
         return ret;
     }
 
@@ -284,7 +299,7 @@ public:
     {
         char * data = getchar(1);
         char ret = *(char *)data;
-     //   delete []data;
+        delete []data;
         return ret;
     }
 
@@ -300,6 +315,50 @@ public:
         string ret;
         for (int i = 0; i < len ; i++) ret.append(1,getChar());
         return ret;
+    }
+
+    void putInt(int ins)
+    {
+        char * data = (char *)&ins;
+        putchar(4,data);
+    }
+
+    void putLong(long long ins)
+    {
+        char * data = (char *)&ins;
+        putchar(8,data);
+    }
+
+    void putFloat(float ins)
+    {
+        char * data = (char *)&ins;
+        putchar(4,data);
+    }
+
+    void putDouble(double ins)
+    {
+        char * data = (char *)&ins;
+        putchar(8,data);
+    }
+
+    void putChar(char ins)
+    {
+        char * data = (char *)&ins;
+        putchar(1,data);
+    }
+
+    void putBool(bool ins)
+    {
+        char tmp = 0;
+        if (ins) tmp = 1;
+        putChar(tmp);
+    }
+
+    void putString(string ins)
+    {
+        int len = ins.size();
+        putInt(len);
+        for (int i = 0; i < len ; i++) putChar(ins[i]);
     }
 };
 
