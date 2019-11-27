@@ -125,19 +125,14 @@ public class HeartBeatThread implements Runnable {
   }
 
   // start elections until this node becomes a leader or a follower
-  private void startElections() {
+  private void startElections() throws InterruptedException {
 
     // the election goes on until this node becomes a follower or a leader
     while (raftMember.getCharacter() == NodeCharacter.ELECTOR) {
       startElection();
       long electionWait = ELECTION_LEAST_TIME_OUT_MS + Math.abs(random.nextLong() % ELECTION_RANDOM_TIME_OUT_MS);
-      try {
-        logger.info("{}: Sleep {}ms until next election", memberName, electionWait);
-        Thread.sleep(electionWait);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.error("{}: Election is unexpectedly interrupted:", memberName, e);
-      }
+      logger.info("{}: Sleep {}ms until next election", memberName, electionWait);
+      Thread.sleep(electionWait);
     }
     raftMember.setLastHeartBeatReceivedTime(System.currentTimeMillis());
   }

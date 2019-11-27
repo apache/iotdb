@@ -153,7 +153,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         return;
       }
       long response = processElectionRequest(electionRequest);
-      logger.info("{} sending response to the elector", name);
+      logger.info("{} sending response {} to the elector", name, response);
       resultHandler.onComplete(response);
     }
   }
@@ -430,16 +430,20 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     long lastLogIndex = logManager.getLastLogIndex();
     long lastLogTerm = logManager.getLastLogTerm();
-    long thisTerm = term.get();
 
-    long resp = verifyElector(thisTerm, lastLogIndex, lastLogTerm, thatTerm, thatLastLogId, thatLastLogTerm);
-    if (resp == Response.RESPONSE_AGREE) {
-      term.set(thatTerm);
-      setCharacter(NodeCharacter.FOLLOWER);
-      lastHeartBeatReceivedTime = System.currentTimeMillis();
-      leader = null;
+    synchronized (term) {
+      long thisTerm = term.get();
+      long resp = verifyElector(thisTerm, lastLogIndex, lastLogTerm, thatTerm, thatLastLogId, thatLastLogTerm);
+      if (resp == Response.RESPONSE_AGREE) {
+        term.set(thatTerm);
+        setCharacter(NodeCharacter.FOLLOWER);
+        lastHeartBeatReceivedTime = System.currentTimeMillis();
+        leader = null;
+        // interrupt election
+        term.notifyAll();
+      }
+      return resp;
     }
-    return resp;
   }
 
   long verifyElector(long thisTerm, long thisLastLogIndex, long thisLastLogTerm,

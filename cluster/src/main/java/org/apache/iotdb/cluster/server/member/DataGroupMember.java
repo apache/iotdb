@@ -6,7 +6,6 @@ package org.apache.iotdb.cluster.server.member;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.security.acl.LastOwnerException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -15,7 +14,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iotdb.cluster.exception.LeaderUnknownException;
+import org.apache.iotdb.cluster.client.DataClient;
+import org.apache.iotdb.cluster.exception.NotManagedSocketException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.PartitionedSnapshot;
@@ -52,7 +52,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   private static final Logger logger = LoggerFactory.getLogger(DataGroupMember.class);
 
-  private TSDataService.AsyncClient.Factory clientFactory;
+  private DataClient.Factory clientFactory;
 
   // the data port of each node in this group
   private Map<Node, Integer> dataPortMap = new ConcurrentHashMap<>();
@@ -63,13 +63,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   private DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
       PartitionedSnapshotLogManager logManager, MetaGroupMember metaGroupMember) throws IOException {
-    super("Data(" + nodes.getHeader().nodeIdentifier + ")");
+    super("Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getPort() + ")");
     this.thisNode = thisNode;
     this.logManager = logManager;
     super.logManager = logManager;
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
-    clientFactory = new TSDataService.AsyncClient.Factory(new TAsyncClientManager(), factory);
+    clientFactory = new DataClient.Factory(new TAsyncClientManager(), factory);
     queryProcessor = new QueryProcessor(new QueryProcessExecutor());
   }
 
@@ -166,10 +166,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       }
       if (insertIndex > 0) {
         allNodes.add(insertIndex, node);
+        Node removedNode = allNodes.remove(allNodes.size() - 1);
         // if the local node is the last node and the insertion succeeds, this node should leave
         // the group
-        logger.debug("{}: Node {} is inserted into the data group {}", name, node, this);
-        return allNodes.indexOf(thisNode) == allNodes.size() - 1;
+        logger.debug("{}: Node {} is inserted into the data group {}", name, node, allNodes);
+        return removedNode.equals(thisNode);
       }
       return false;
     }
@@ -263,7 +264,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         }
       } else {
         PullSnapshotResp resp = new PullSnapshotResp();
-        resp.setSnapshotBytes((byte[]) null);
+        resp.setSnapshotBytes(new byte[0]);
         resultHandler.onComplete(resp);
       }
       return;
@@ -272,8 +273,15 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // this synchronized should work with the one in AppendEntry when a log is going to commit,
     // which may prevent the newly arrived data from being invisible to the new header.
     synchronized (logManager) {
-      logManager.takeSnapshot();
       int requiredSocket = request.getRequiredSocket();
+      // check whether this socket is held by the node
+      List<Integer> heldSockets = metaGroupMember.getPartitionTable().getNodeSockets(getHeader());
+      if (!heldSockets.contains(requiredSocket)) {
+        resultHandler.onError(new NotManagedSocketException(requiredSocket, heldSockets));
+        return;
+      }
+
+      logManager.takeSnapshot();
       PartitionedSnapshot allSnapshot = (PartitionedSnapshot) logManager.getSnapshot();
       Snapshot snapshot = allSnapshot.getSnapshot(requiredSocket);
       PullSnapshotResp resp = new PullSnapshotResp();
@@ -285,10 +293,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   public void pullSnapshots(List<Integer> sockets, Node newNode) {
     synchronized (logManager) {
-      logger.info("{} pulling sockets {} from remote", name, sockets);
+      logger.info("{} pulling {} sockets from remote", name, sockets.size());
       PartitionedSnapshot snapshot = (PartitionedSnapshot) logManager.getSnapshot();
       Map<Integer, Node> prevHolders = metaGroupMember.getPartitionTable().getPreviousNodeMap(newNode);
-      logger.debug("{}: Holders of each socket: {}", name, prevHolders);
+      // logger.debug("{}: Holders of each socket: {}", name, prevHolders);
 
       for (int socket : sockets) {
         Node node = prevHolders.get(socket);

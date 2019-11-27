@@ -23,7 +23,7 @@ public class PullSnapshotHandler implements AsyncMethodCallback<PullSnapshotResp
   @Override
   public void onComplete(PullSnapshotResp response) {
     synchronized (resultRef) {
-      if (response.getSnapshotBytes() != null) {
+      if (response.getSnapshotBytes().length > 0) {
         SimpleSnapshot snapshot = new SimpleSnapshot();
         snapshot.deserialize(response.snapshotBytes);
         resultRef.set(snapshot);

@@ -68,6 +68,10 @@ public abstract class RaftServer implements RaftService.AsyncIface {
     thisNode.setDataPort(config.getLocalDataPort());
   }
 
+  public RaftServer(Node thisNode) {
+    this.thisNode = thisNode;
+  }
+
   public void start() throws TTransportException {
     if (poolServer != null) {
       return;

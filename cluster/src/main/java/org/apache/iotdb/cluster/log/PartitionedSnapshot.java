@@ -8,6 +8,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,6 +73,6 @@ public class PartitionedSnapshot extends Snapshot {
   }
 
   public Snapshot getSnapshot(int socket) {
-    return socketSnapshots.get(socket);
+    return socketSnapshots.getOrDefault(socket, new SimpleSnapshot(Collections.emptyList()));
   }
 }

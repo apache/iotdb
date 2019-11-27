@@ -7,7 +7,6 @@ package org.apache.iotdb.cluster.server;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +14,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.exception.NoHeaderVNodeException;
 import org.apache.iotdb.cluster.exception.NotInSameGroupException;
+import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -39,15 +39,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   // key: the header of a data group, the member representing this node in this group
   private Map<Node, DataGroupMember> headerGroupMap = new ConcurrentHashMap<>();
-  private int port;
   private PartitionTable partitionTable;
   private DataGroupMember.Factory dataMemberFactory;
 
-
-
-  public DataClusterServer(int port, DataGroupMember.Factory dataMemberFactory) {
-    super();
-    this.port = port;
+  public DataClusterServer(Node thisNode, DataGroupMember.Factory dataMemberFactory) {
+    super(thisNode);
     this.dataMemberFactory = dataMemberFactory;
   }
 
@@ -61,7 +57,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       DataGroupMember member = headerGroupMap.get(header);
       if (member == null) {
         logger.info("Received a request from unregistered header {}", header);
-        if (thisNode != null && partitionTable != null) {
+        if (partitionTable != null) {
           synchronized (partitionTable) {
             // it may be that the header and this node are in the same group, but it is the first time
             // the header contacts this node
@@ -101,8 +97,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
             thisNode));
       } else {
-        resultHandler.onError(new NotInSameGroupException(Collections.singletonList(header),
-            thisNode));
+        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
       }
     } else {
       member.sendHeartBeat(request, resultHandler);
@@ -123,8 +118,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
             thisNode));
       } else {
-        resultHandler.onError(new NotInSameGroupException(Collections.singletonList(header),
-            thisNode));
+        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
       }
     }  else {
       member.startElection(electionRequest, resultHandler);
@@ -145,8 +139,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
             thisNode));
       } else {
-        resultHandler.onError(new NotInSameGroupException(Collections.singletonList(header),
-            thisNode));
+        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
       }
     }  else {
       member.appendEntries(request, resultHandler);
@@ -167,8 +160,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
             thisNode));
       } else {
-        resultHandler.onError(new NotInSameGroupException(Collections.singletonList(header),
-            thisNode));
+        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
       }
     }  else {
       member.appendEntry(request, resultHandler);
@@ -189,8 +181,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
             thisNode));
       } else {
-        resultHandler.onError(new NotInSameGroupException(Collections.singletonList(header),
-            thisNode));
+        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
       }
     }  else {
       member.sendSnapshot(request, resultHandler);
@@ -211,8 +202,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
             thisNode));
       } else {
-        resultHandler.onError(new NotInSameGroupException(Collections.singletonList(header),
-            thisNode));
+        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
       }
     }  else {
       member.pullSnapshot(request, resultHandler);
@@ -227,7 +217,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   TNonblockingServerSocket getServerSocket() throws TTransportException {
     return new TNonblockingServerSocket(new InetSocketAddress(config.getLocalIP(),
-        port), CONNECTION_TIME_OUT_MS);
+        thisNode.getDataPort()), CONNECTION_TIME_OUT_MS);
   }
 
   @Override
@@ -248,6 +238,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         DataGroupMember dataGroupMember = entry.getValue();
         boolean shouldLeave = dataGroupMember.addNode(node);
         if (shouldLeave) {
+          logger.info("This node does not belong to {} any more", dataGroupMember.getAllNodes());
           entryIterator.remove();
           dataGroupMember.stop();
         }

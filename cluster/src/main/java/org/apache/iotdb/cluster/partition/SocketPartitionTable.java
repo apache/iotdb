@@ -21,8 +21,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SocketPartitionTable implements PartitionTable {
+
+  private static final Logger logger = LoggerFactory.getLogger(SocketPartitionTable.class);
 
   private static final int REPLICATION_NUM =
       ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
@@ -51,6 +55,7 @@ public class SocketPartitionTable implements PartitionTable {
   }
 
   private void init(Collection<Node> nodes) {
+    logger.info("Initializing a new partition table");
     nodeRing.addAll(nodes);
     nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
     localGroups = getPartitionGroups(thisNode);
@@ -110,6 +115,8 @@ public class SocketPartitionTable implements PartitionTable {
       }
       ret.add(partitionGroup);
     }
+
+    logger.debug("The partition groups of {} are: {}", node, ret);
     return ret;
   }
 
@@ -230,6 +237,18 @@ public class SocketPartitionTable implements PartitionTable {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
         SerializeUtils.serialize(entry.getValue(), dataOutputStream);
       }
+
+      dataOutputStream.writeInt(previousNodeMap.size());
+      for (Entry<Node, Map<Integer, Node>> nodeMapEntry : previousNodeMap.entrySet()) {
+        dataOutputStream.writeInt(nodeMapEntry.getKey().getNodeIdentifier());
+
+        Map<Integer, Node> prevHolders = nodeMapEntry.getValue();
+        dataOutputStream.writeInt(prevHolders.size());
+        for (Entry<Integer, Node> integerNodeEntry : prevHolders.entrySet()) {
+          dataOutputStream.writeInt(integerNodeEntry.getKey());
+          dataOutputStream.writeInt(integerNodeEntry.getValue().getNodeIdentifier());
+        }
+      }
     } catch (IOException ignored) {
       // not reachable
     }
@@ -238,17 +257,37 @@ public class SocketPartitionTable implements PartitionTable {
 
   @Override
   public void deserialize(ByteBuffer buffer) {
+    logger.info("Initializing the partition table from remote");
     int size = buffer.getInt();
+    Map<Integer, Node> idNodeMap = new HashMap<>();
     for (int i = 0; i < size; i++) {
       Node node = new Node();
       List<Integer> sockets = new ArrayList<>();
       SerializeUtils.deserialize(node, buffer);
       SerializeUtils.deserialize(sockets, buffer);
       nodeSocketMap.put(node, sockets);
+      idNodeMap.put(node.getNodeIdentifier(), node);
       for (Integer socket : sockets) {
         socketNodeMap.put(socket, node);
       }
     }
+
+    int prevNodeMapSize = buffer.getInt();
+    previousNodeMap = new HashMap<>();
+    for (int i = 0; i < prevNodeMapSize; i++) {
+      int nodeId = buffer.getInt();
+      Node node = idNodeMap.get(nodeId);
+
+      Map<Integer, Node> prevHolders = new HashMap<>();
+      int holderNum = buffer.getInt();
+      for (int i1 = 0; i1 < holderNum; i1++) {
+        int socket = buffer.getInt();
+        Node holder = idNodeMap.get(buffer.getInt());
+        prevHolders.put(socket, holder);
+      }
+      previousNodeMap.put(node, prevHolders);
+    }
+
     nodeRing.addAll(nodeSocketMap.keySet());
     nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
 
@@ -265,11 +304,6 @@ public class SocketPartitionTable implements PartitionTable {
     return previousNodeMap.get(node);
   }
 
-  @Override
-  public void setPreviousNodeMap(
-      Node node, Map<Integer, Node> previousNodeMap) {
-    this.previousNodeMap.put(node, previousNodeMap);
-  }
 
   @Override
   public List<Integer> getNodeSockets(Node header) {

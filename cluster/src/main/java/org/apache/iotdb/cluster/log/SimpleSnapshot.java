@@ -24,8 +24,8 @@ public class SimpleSnapshot extends Snapshot {
 
   public SimpleSnapshot(List<Log> snapshot) {
     this.snapshot = snapshot;
-    this.lastLogId = snapshot.get(snapshot.size() - 1).getCurrLogIndex();
-    this.lastLogTerm = snapshot.get(snapshot.size() - 1).getCurrLogTerm();
+    this.lastLogId = snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogIndex();
+    this.lastLogTerm = snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogTerm();
   }
 
   @Override
@@ -54,8 +54,8 @@ public class SimpleSnapshot extends Snapshot {
         logger.error("Cannot recognize log", e);
       }
     }
-    this.lastLogId = snapshot.get(snapshot.size() - 1).getCurrLogIndex();
-    this.lastLogTerm = snapshot.get(snapshot.size() - 1).getCurrLogTerm();
+    this.lastLogId = snapshot.isEmpty()? -1 : snapshot.get(snapshot.size() - 1).getCurrLogIndex();
+    this.lastLogTerm = snapshot.isEmpty()? -1 : snapshot.get(snapshot.size() - 1).getCurrLogTerm();
   }
 
   public List<Log> getSnapshot() {

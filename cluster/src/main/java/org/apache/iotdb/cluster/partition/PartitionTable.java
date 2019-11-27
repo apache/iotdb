@@ -72,7 +72,5 @@ public interface PartitionTable {
    */
   Map<Integer, Node> getPreviousNodeMap(Node node);
 
-  void setPreviousNodeMap(Node node, Map<Integer, Node> previousNodeMap);
-
   List<Integer> getNodeSockets(Node header);
 }

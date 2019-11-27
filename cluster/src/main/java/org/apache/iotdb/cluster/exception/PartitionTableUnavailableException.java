@@ -4,13 +4,11 @@
 
 package org.apache.iotdb.cluster.exception;
 
-import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
-public class NotInSameGroupException extends Exception {
+public class PartitionTableUnavailableException extends Exception {
 
-  public NotInSameGroupException(List<Node> group, Node thisNode) {
-    super(String.format("This node %s is not in the data group %s", thisNode,
-        group));
+  public PartitionTableUnavailableException(Node node) {
+    super(String.format("Partition table of %s is not ready, cannot serve", node));
   }
 }

@@ -91,8 +91,6 @@ struct AddNodeResponse {
   // add new node
   1: required int respNum
   2: optional binary partitionTableBytes
-  // previous holders of the sockets assigned to the new node
-  3: optional map<int, Node> previousHolders
 }
 
 struct Node {
