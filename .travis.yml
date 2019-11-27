@@ -158,10 +158,10 @@ matrix:
       name: linux-openjdk8
       dist: xenial
       jdk: openjdk8
-    - os: linux
-      name: linux-oraclejdk8
-      dist: xenial
-      jdk: oraclejdk8
+#    - os: linux
+#      name: linux-oraclejdk8
+#      dist: xenial
+#      jdk: oraclejdk8
 #    - os: linux
 #      name: linux-oraclejdk11
 #      dist: trusty
