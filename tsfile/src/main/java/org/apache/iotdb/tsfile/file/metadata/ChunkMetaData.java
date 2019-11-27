@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,7 +67,7 @@ public class ChunkMetaData {
    */
   private long deletedAt = Long.MIN_VALUE;
 
-  private TsDigest valuesStatistics;
+  private Statistics valuesStatistics;
 
   private ChunkMetaData() {
   }
@@ -109,7 +110,7 @@ public class ChunkMetaData {
 
     chunkMetaData.tsDataType = ReadWriteIOUtils.readDataType(inputStream);
 
-    chunkMetaData.valuesStatistics = TsDigest.deserializeFrom(inputStream);
+    chunkMetaData.valuesStatistics = Statistics.deserializeFrom(inputStream, chunkMetaData.tsDataType);
 
     return chunkMetaData;
   }
@@ -130,7 +131,7 @@ public class ChunkMetaData {
     chunkMetaData.endTime = ReadWriteIOUtils.readLong(buffer);
     chunkMetaData.tsDataType = ReadWriteIOUtils.readDataType(buffer);
 
-    chunkMetaData.valuesStatistics = TsDigest.deserializeFrom(buffer);
+    chunkMetaData.valuesStatistics = Statistics.deserializeFrom(buffer, chunkMetaData.tsDataType);
 
     return chunkMetaData;
   }
@@ -144,8 +145,8 @@ public class ChunkMetaData {
     int serializedSize = (Integer.BYTES  +
             4 * Long.BYTES + // 4 long: offsetOfChunkHeader, numOfPoints, startTime, endTime
             TSDataType.getSerializedSize() + // TSDataType
-            (valuesStatistics == null ? TsDigest.getNullDigestSize()
-                    : valuesStatistics.getSerializedSize()));
+            (valuesStatistics == null ? Statistics.getNullDigestSize()
+                    : valuesStatistics.getDigestSerializedSize()));
     serializedSize += measurementUid.getBytes(TSFileConfig.STRING_CHARSET).length;  // measurementUid
     return serializedSize;
   }
@@ -176,11 +177,11 @@ public class ChunkMetaData {
     return measurementUid;
   }
 
-  public TsDigest getDigest() {
+  public Statistics getDigest() {
     return valuesStatistics;
   }
 
-  public void setDigest(TsDigest digest) {
+  public void setDigest(Statistics digest) {
     this.valuesStatistics = digest;
 
   }
@@ -227,7 +228,7 @@ public class ChunkMetaData {
     byteLen += ReadWriteIOUtils.write(tsDataType, outputStream);
 
     if (valuesStatistics == null) {
-      byteLen += TsDigest.serializeNullTo(outputStream);
+      byteLen += Statistics.serializeNullTo(outputStream);
     } else {
       byteLen += valuesStatistics.serializeTo(outputStream);
     }
@@ -251,7 +252,7 @@ public class ChunkMetaData {
     byteLen += ReadWriteIOUtils.write(tsDataType, buffer);
 
     if (valuesStatistics == null) {
-      byteLen += TsDigest.serializeNullTo(buffer);
+      byteLen += Statistics.serializeNullTo(buffer);
     } else {
       byteLen += valuesStatistics.serializeTo(buffer);
     }
