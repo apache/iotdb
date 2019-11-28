@@ -26,12 +26,15 @@
 #include<thrift/protocol/TCompactProtocol.h>
 #include<thrift/transport/TSocket.h>
 #include<thrift/transport/TTransportException.h>
+#include<thrift/transport/TBufferTransports.h>
 #include "TSIService.h"
 using namespace std;
 using ::apache::thrift::protocol::TBinaryProtocol;
 using ::apache::thrift::protocol::TCompactProtocol;
 using ::apache::thrift::transport::TSocket;
+using ::apache::thrift::transport::TTransport;
 using ::apache::thrift::transport::TTransportException;
+using ::apache::thrift::transport::TBufferedTransport;
 using ::apache::thrift::TException;
 
 class IoTDBSessionException : public exception
@@ -156,14 +159,14 @@ private:
     string sql;
     long long queryId;
     RowRecord record;
-    shared_ptr<TSIServiceIf> client;
+	boost::shared_ptr<TSIServiceIf> client;
     int batchSize = 512;
     vector<string> columnTypeDeduplicatedList;
     TSOperationHandle operationHandle;
     int recordItr = -1;
     vector<RowRecord> records;
 public:
-    SessionDataSet(string sql, vector<string> columnNameList, vector<string> columnTypeList, long long queryId, shared_ptr<TSIServiceIf> client, TSOperationHandle operationHandle)
+	SessionDataSet(string sql, vector<string> columnNameList, vector<string> columnTypeList, long long queryId, boost::shared_ptr<TSIServiceIf> client, TSOperationHandle operationHandle)
     {
         this->sql = sql;
         this->queryId = queryId;
@@ -199,7 +202,7 @@ class Session
         string username;
         string password;
         TSProtocolVersion::type protocolVersion = TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V1;
-        shared_ptr<TSIServiceIf> client;
+        boost::shared_ptr<TSIServiceIf> client;
         TS_SessionHandle sessionHandle;
         shared_ptr<apache::thrift::transport::TSocket> transport;
         bool isClosed = true;

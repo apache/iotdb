@@ -18,6 +18,7 @@
  */
  
 #include "IOTDBSession.h"
+#include "windows.h"
 
 Session * session;
 
@@ -45,12 +46,12 @@ void insertRowBatch()
     int rowCount = 3;
 
     vector<string> measurements;
-    measurements.push_back("s4");
-    measurements.push_back("s5");
-    measurements.push_back("s6");
+    measurements.push_back("s1");
+    measurements.push_back("s2");
+    measurements.push_back("s3");
 
     vector<TSDataType::TSDataType> types;
-    types.push_back(TSDataType::INT32);
+    types.push_back(TSDataType::INT64);
     types.push_back(TSDataType::DOUBLE);
     types.push_back(TSDataType::TEXT);
 
@@ -127,6 +128,7 @@ int main()
     deleteTimeseries();
     session->deleteStorageGroup("root.sg1");
     session->close();
+	system("pause");
 }
 
 
