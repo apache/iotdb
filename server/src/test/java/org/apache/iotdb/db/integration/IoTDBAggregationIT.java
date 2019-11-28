@@ -228,7 +228,7 @@ public class IoTDBAggregationIT {
         Assert.assertEquals(1, cnt);
       }
 
-      hasResultSet = statement.execute("select first(s0),first(s1),first(s2),first(s3) " +
+      hasResultSet = statement.execute("select first_value(s0),first_value(s1),first_value(s2),first_value(s3) " +
           "from root.vehicle.d0");
 
       Assert.assertTrue(hasResultSet);
