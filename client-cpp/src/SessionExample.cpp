@@ -23,6 +23,9 @@ Session * session;
 
 void insert()
 {
+    session->createTimeseries("root.sg1.d1.s1", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+    session->createTimeseries("root.sg1.d1.s2", TSDataType::DOUBLE, TSEncoding::RLE, CompressionType::SNAPPY);
+    session->createTimeseries("root.sg1.d1.s3", TSDataType::TEXT, TSEncoding::PLAIN, CompressionType::SNAPPY);
     string deviceId = "root.sg1.d1";
     vector<string> measurements;
     measurements.push_back("s1");
@@ -40,6 +43,9 @@ void insert()
 
 void insertRowBatch()
 {
+    session->createTimeseries("root.sg1.d1.s4", TSDataType::INT32, TSEncoding::RLE, CompressionType::SNAPPY);
+    session->createTimeseries("root.sg1.d1.s5", TSDataType::DOUBLE, TSEncoding::RLE, CompressionType::SNAPPY);
+    session->createTimeseries("root.sg1.d1.s6", TSDataType::TEXT, TSEncoding::PLAIN, CompressionType::SNAPPY);
     string deviceId = "root.sg1.d1";
 
     int rowCount = 3;
@@ -88,11 +94,13 @@ void query()
 {
     SessionDataSet* dataSet = session->executeQueryStatement("select * from root.sg1.d1");
     dataSet->setBatchSize(1024); // default is 512
+    printf("%s",dataSet->columntoString().c_str());
     while (dataSet->hasNext())
     {
         printf("%s",dataSet->next().toString().c_str());
     }
     dataSet->closeOperationHandle();
+    delete dataSet;
 }
 
 void deleteData()
@@ -116,9 +124,6 @@ int main()
     session = new Session("127.0.0.1", 6667, "root", "root");
     session->open();
     session->setStorageGroup("root.sg1");
-    session->createTimeseries("root.sg1.d1.s1", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
-    session->createTimeseries("root.sg1.d1.s2", TSDataType::DOUBLE, TSEncoding::RLE, CompressionType::SNAPPY);
-    session->createTimeseries("root.sg1.d1.s3", TSDataType::TEXT, TSEncoding::PLAIN, CompressionType::SNAPPY);
     insert();
     insertRowBatch();
     nonQuery();

@@ -186,6 +186,7 @@ public:
     RowRecord next();
     bool nextWithoutConstraints(string sql, long long queryId);
     void closeOperationHandle();
+    string columntoString();
 
 
 };

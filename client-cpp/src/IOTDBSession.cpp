@@ -187,7 +187,20 @@ void SessionDataSet::closeOperationHandle()
     }
 }
 
-
+string SessionDataSet::columntoString()
+{
+    string ret = "";
+    int len = columnTypeDeduplicatedList.size();
+    for (int i = 0; i < len; i++)
+    {
+        ret += columnTypeDeduplicatedList[i];
+        if (i == len - 1)
+            ret += "\n";
+        else
+            ret += "\t";
+    }
+    return ret;
+}
 
 void Session::open()
 {
