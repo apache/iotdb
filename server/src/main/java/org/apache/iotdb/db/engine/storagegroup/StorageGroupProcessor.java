@@ -129,13 +129,14 @@ public class StorageGroupProcessor {
    * avoid some tsfileResource is changed (e.g., from unsealed to sealed) when a query is executed.
    */
   private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
+  private final HashMap<Long, TsFileProcessor> workSequenceTsFileProcessor = new HashMap<>();
+  private final HashMap<Long, Long> tsfileProcessorLastUseTime = new HashMap<>();
   /**
    * the schema of time series that belong this storage group
    */
   private Schema schema;
   // includes sealed and unsealed sequence TsFiles
   private List<TsFileResource> sequenceFileList = new ArrayList<>();
-  private HashMap<Long, TsFileProcessor> workSequenceTsFileProcessor = null;
   private CopyOnReadLinkedList<TsFileProcessor> closingSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
   // includes sealed and unsealed unSequence TsFiles
   private List<TsFileResource> unSequenceFileList = new ArrayList<>();
@@ -442,7 +443,7 @@ public class StorageGroupProcessor {
           tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
 
       if (tsFileProcessor.shouldClose()) {
-        moveOneWorkProcessorToClosingList(sequence);
+        moveOneWorkProcessorToClosingList(sequence, tsFileProcessor);
       } else {
         tsFileProcessor.asyncFlush();
       }
@@ -476,7 +477,7 @@ public class StorageGroupProcessor {
           tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
 
       if (tsFileProcessor.shouldClose()) {
-        moveOneWorkProcessorToClosingList(sequence);
+        moveOneWorkProcessorToClosingList(sequence, tsFileProcessor);
       } else {
         tsFileProcessor.asyncFlush();
       }
@@ -488,7 +489,6 @@ public class StorageGroupProcessor {
     try {
       if (sequence) {
         tsFileProcessor = getOrCreateTsFileProcessorIntern(time);
-        sequenceFileList.add(tsFileProcessor.getTsFileResource());
       } else {
         if (workUnSequenceTsFileProcessor == null) {
           // create a new TsfileProcessor
@@ -512,22 +512,47 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * get processor from hashmap
+   * get processor from hashmap, flush oldest processor is necessary
    */
   private TsFileProcessor getOrCreateTsFileProcessorIntern(long time)
       throws IOException, DiskSpaceInsufficientException {
-    if (workSequenceTsFileProcessor == null) {
-      workSequenceTsFileProcessor = new HashMap<>();
-    }
-
+    // time partition range
     long timeRange = getTimeRange(time);
-    if (!workSequenceTsFileProcessor.containsKey(timeRange)) {
-      TsFileProcessor newProcessor = createTsFileProcessor(true, timeRange);
-      workSequenceTsFileProcessor.put(timeRange, newProcessor);
-      return newProcessor;
+    TsFileProcessor res = null;
+    // we have to ensure only one thread can change workSequenceTsFileProcessor
+    synchronized (workSequenceTsFileProcessor) {
+      if (!workSequenceTsFileProcessor.containsKey(timeRange)) {
+        // 2 is for unsequence file
+        if(workSequenceTsFileProcessor.size() >= IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP - 2){
+          // we have to remove oldest processor to control the num of the memtables
+          long oldestTimeRange = -1;
+          long oldestUseTime = Long.MAX_VALUE;
+          for(long curTimeRange : workSequenceTsFileProcessor.keySet()){
+            long curUseTime = tsfileProcessorLastUseTime.get(curTimeRange);
+            if(oldestUseTime > curUseTime){
+              oldestUseTime = curUseTime;
+              oldestTimeRange = curTimeRange;
+            }
+          }
+          if(oldestTimeRange == -1){
+            throw new IllegalStateException("MEMTABLE_NUM_IN_EACH_STORAGE_GROUP size is too small: " + IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP);
+          }
+
+          moveOneWorkProcessorToClosingList(true, workSequenceTsFileProcessor.get(oldestTimeRange));
+        }
+
+        TsFileProcessor newProcessor = createTsFileProcessor(true, timeRange);
+        workSequenceTsFileProcessor.put(timeRange, newProcessor);
+        sequenceFileList.add(newProcessor.getTsFileResource());
+        res = newProcessor;
+      } else {
+        res = workSequenceTsFileProcessor.get(timeRange);
+      }
+
+      tsfileProcessorLastUseTime.put(timeRange, System.currentTimeMillis());
     }
 
-    return workSequenceTsFileProcessor.get(timeRange);
+    return res;
   }
 
   private long getTimeRange(long time) {
@@ -551,9 +576,12 @@ public class StorageGroupProcessor {
               + System.currentTimeMillis() + IoTDBConstant.TSFILE_NAME_SEPARATOR + versionController
               .nextVersion() + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0" + TSFILE_SUFFIX;
       System.out.println(fsFactory.getFile(filePath));
-      return new TsFileProcessor(storageGroupName, fsFactory.getFile(filePath),
+      TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName,
+          fsFactory.getFile(filePath),
           schema, versionController, this::closeUnsealedTsFileProcessor,
           this::updateLatestFlushTimeCallback, sequence);
+      tsFileProcessor.setTimeRange(timeRange);
+      return tsFileProcessor;
     } else {
       String filePath =
           baseDir + File.separator + storageGroupName + File.separator
@@ -569,17 +597,17 @@ public class StorageGroupProcessor {
   /**
    * only called by insert(), thread-safety should be ensured by caller
    */
-  private void moveOneWorkProcessorToClosingList(boolean sequence) {
+  private void moveOneWorkProcessorToClosingList(boolean sequence, TsFileProcessor tsFileProcessor) {
     //for sequence tsfile, we update the endTimeMap only when the file is prepared to be closed.
     //for unsequence tsfile, we have maintained the endTimeMap when an insertion comes.
     if (sequence) {
-      for (TsFileProcessor tsFileProcessor : workSequenceTsFileProcessor.values()) {
-        closingSequenceTsFileProcessor.add(tsFileProcessor);
-        updateEndTimeMap(tsFileProcessor);
-        tsFileProcessor.asyncClose();
-      }
+      System.out.println("flushing: " + tsFileProcessor.getTimeRange());
+      closingSequenceTsFileProcessor.add(tsFileProcessor);
+      updateEndTimeMap(tsFileProcessor);
+      tsFileProcessor.asyncClose();
 
-      workSequenceTsFileProcessor = null;
+      workSequenceTsFileProcessor.remove(tsFileProcessor.getTimeRange());
+      tsfileProcessorLastUseTime.remove(tsFileProcessor.getTimeRange());
       logger.info("close a sequence tsfile processor {}", storageGroupName);
     } else {
       closingUnSequenceTsFileProcessor.add(workUnSequenceTsFileProcessor);
@@ -621,7 +649,7 @@ public class StorageGroupProcessor {
       folder.addAll(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
       deleteAllSGFolders(folder);
 
-      this.workSequenceTsFileProcessor = null;
+      this.workSequenceTsFileProcessor.clear();
       this.workUnSequenceTsFileProcessor = null;
       this.sequenceFileList.clear();
       this.unSequenceFileList.clear();
@@ -733,10 +761,13 @@ public class StorageGroupProcessor {
     try {
       logger.info("async force close all files in storage group: {}", storageGroupName);
       if (workSequenceTsFileProcessor != null) {
-        moveOneWorkProcessorToClosingList(true);
+        // to avoid concurrent modification problem, we need a new array list
+        for(TsFileProcessor tsFileProcessor : new ArrayList<>(workSequenceTsFileProcessor.values())){
+          moveOneWorkProcessorToClosingList(true, tsFileProcessor);
+        }
       }
       if (workUnSequenceTsFileProcessor != null) {
-        moveOneWorkProcessorToClosingList(false);
+        moveOneWorkProcessorToClosingList(false, workUnSequenceTsFileProcessor);
       }
     } finally {
       writeUnlock();

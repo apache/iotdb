@@ -48,7 +48,6 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseTsFile
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -77,6 +76,8 @@ public class TsFileProcessor {
   private final String storageGroupName;
 
   private TsFileResource tsFileResource;
+
+  private long timeRange;
 
   /**
    * Whether the processor is in the queue of the FlushManager or being flushed by a flush thread.
@@ -607,4 +608,11 @@ public class TsFileProcessor {
     }
   }
 
+  public long getTimeRange() {
+    return timeRange;
+  }
+
+  public void setTimeRange(long timeRange) {
+    this.timeRange = timeRange;
+  }
 }
