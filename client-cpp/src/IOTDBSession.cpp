@@ -189,16 +189,13 @@ void SessionDataSet::closeOperationHandle()
 
 string SessionDataSet::columntoString()
 {
-    string ret = "";
-    int len = columnTypeDeduplicatedList.size();
+    string ret = "time";
+    int len = columnNameList.size();
     for (int i = 0; i < len; i++)
     {
-        ret += columnTypeDeduplicatedList[i];
-        if (i == len - 1)
-            ret += "\n";
-        else
-            ret += "\t";
+        ret += "\t" + columnNameList[i];
     }
+    ret += "\n";
     return ret;
 }
 
@@ -509,6 +506,7 @@ void Session::executeNonQueryStatement(string sql)
         throw IoTDBSessionException(e.what());
     }
 }
+
 void Session::insertBatch(string deviceId, int rowCount, vector<string> measurements, vector<TSDataType::TSDataType> types, vector<long long> timestamps, vector<vector<string> > values)
 {
     vector<vector<Field> >Fieldvalues;

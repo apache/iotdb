@@ -18,7 +18,6 @@
  */
  
 #include "IOTDBSession.h"
-#include "windows.h"
 
 Session * session;
 
@@ -44,10 +43,10 @@ void insert()
 
 void insertRowBatch()
 {
-    session->createTimeseries("root.sg1.d1.s4", TSDataType::INT32, TSEncoding::RLE, CompressionType::SNAPPY);
-    session->createTimeseries("root.sg1.d1.s5", TSDataType::DOUBLE, TSEncoding::RLE, CompressionType::SNAPPY);
-    session->createTimeseries("root.sg1.d1.s6", TSDataType::TEXT, TSEncoding::PLAIN, CompressionType::SNAPPY);
-    string deviceId = "root.sg1.d1";
+    session->createTimeseries("root.sg1.d2.s1", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+    session->createTimeseries("root.sg1.d2.s2", TSDataType::DOUBLE, TSEncoding::RLE, CompressionType::SNAPPY);
+    session->createTimeseries("root.sg1.d2.s3", TSDataType::TEXT, TSEncoding::PLAIN, CompressionType::SNAPPY);
+    string deviceId = "root.sg1.d2";
 
     int rowCount = 3;
 
@@ -70,15 +69,15 @@ void insertRowBatch()
     vector<string> tmp1;
     tmp1.push_back("1");
     tmp1.push_back("2.0");
-    tmp1.push_back("\"three\"");
+    tmp1.push_back("three");
     vector<string> tmp2;
     tmp2.push_back("4");
     tmp2.push_back("5.0");
-    tmp2.push_back("\"six\"");
+    tmp2.push_back("six");
     vector<string> tmp3;
     tmp3.push_back("7");
     tmp3.push_back("8.0");
-    tmp3.push_back("\"nine\"");
+    tmp3.push_back("nine");
     values.push_back(tmp1);
     values.push_back(tmp2);
     values.push_back(tmp3);
@@ -93,7 +92,7 @@ void nonQuery()
 
 void query()
 {
-    SessionDataSet* dataSet = session->executeQueryStatement("select * from root.sg1.d1");
+    SessionDataSet* dataSet = session->executeQueryStatement("select * from root.sg1.*");
     dataSet->setBatchSize(1024); // default is 512
     printf("%s",dataSet->columntoString().c_str());
     while (dataSet->hasNext())
@@ -133,7 +132,7 @@ int main()
     deleteTimeseries();
     session->deleteStorageGroup("root.sg1");
     session->close();
-	system("pause");
+ //   getchar();
 }
 
 

@@ -165,6 +165,7 @@ private:
     TSOperationHandle operationHandle;
     int recordItr = -1;
     vector<RowRecord> records;
+    vector<string> columnNameList;
 public:
 	SessionDataSet(string sql, vector<string> columnNameList, vector<string> columnTypeList, long long queryId, boost::shared_ptr<TSIServiceIf> client, TSOperationHandle operationHandle)
     {
@@ -173,7 +174,7 @@ public:
         this->client = client;
         this->operationHandle = operationHandle;
         map<string,bool> columnSet;
-        for (int i = 0; i < columnNameList.size(); i++)
+        for (int i = 0; i < columnTypeList.size(); i++)
         {
             string name = columnNameList[i];
             if (!columnSet[name])
@@ -182,6 +183,7 @@ public:
                 columnTypeDeduplicatedList.push_back(columnTypeList[i]);
             }
         }
+        this->columnNameList = columnNameList;
     }
     int getBatchSize();
     void setBatchSize(int batchSize);
