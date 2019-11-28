@@ -126,6 +126,9 @@ struct TSExecuteStatementReq {
   3: required i64 statementId
 }
 
+struct TSExecuteInsertRowInBatchResp{
+	1: required list<TSStatus> statusList
+}
 
 struct TSExecuteBatchStatementResp{
 	1: required TSStatus status
@@ -306,7 +309,7 @@ service TSIService {
 
 	TSStatus insertRow(1:TSInsertReq req);
 
-	TSStatus insertRowInBatch(1:TSInsertInBatchReq req);
+	TSExecuteInsertRowInBatchResp insertRowInBatch(1:TSInsertInBatchReq req);
 
 	TSStatus deleteData(1:TSDeleteDataReq req);
 

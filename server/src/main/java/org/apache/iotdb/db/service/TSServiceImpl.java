@@ -88,6 +88,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteInsertRowInBatchResp;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
@@ -1175,31 +1176,30 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSStatus insertRowInBatch(TSInsertInBatchReq req) {
+  public TSExecuteInsertRowInBatchResp insertRowInBatch(TSInsertInBatchReq req) {
+    TSExecuteInsertRowInBatchResp resp = new TSExecuteInsertRowInBatchResp();
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
+      resp.addToStatusList(new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR)));
+      return resp;
     }
 
-    TSStatus status = null;
+    InsertPlan plan = new InsertPlan();
     for (int i = 0; i < req.deviceIds.size(); i++) {
-      InsertPlan plan = new InsertPlan();
       plan.setDeviceId(req.getDeviceIds().get(i));
       plan.setTime(req.getTimestamps().get(i));
       plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
       plan.setValues(req.getValuesList().get(i).toArray(new String[0]));
-      status = checkAuthority(plan);
+      TSStatus status = checkAuthority(plan);
       if (status != null) {
-        return new TSStatus(status);
+          resp.addToStatusList(new TSStatus(status));
       }
-
-      status = executePlan(plan);
-      if (status.getStatusType().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return status;
+      else{
+        resp.addToStatusList(executePlan(plan));
       }
     }
 
-    return status;
+    return resp;
   }
 
 

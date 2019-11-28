@@ -194,7 +194,7 @@ public class Session {
   /**
    * insert data in batch format, which can reduce the overhead of network
    */
-  public TSStatus insertInBatch(List<String> deviceIds, List<Long> times,
+  public List<TSStatus> insertInBatch(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList,
       List<List<String>> valuesList)
       throws IoTDBSessionException {
@@ -212,7 +212,11 @@ public class Session {
     request.setValuesList(valuesList);
 
     try {
-      return checkAndReturn(client.insertRowInBatch(request));
+      List<TSStatus> result = new ArrayList<>();
+      for (TSStatus cur : client.insertRowInBatch(request).getStatusList()) {
+        result.add(checkAndReturn(cur));
+      }
+      return result;
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }
