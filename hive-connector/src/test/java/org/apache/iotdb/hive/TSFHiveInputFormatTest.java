@@ -52,7 +52,7 @@ public class TSFHiveInputFormatTest {
   private String filePath = "test.tsfile";
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() {
     TsFileTestHelper.writeTsFile(filePath);
     inputFormat = new TSFHiveInputFormat();
     job = new JobConf();

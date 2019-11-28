@@ -344,9 +344,6 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
       schema = new Schema(tsFileMetaData.getMeasurementSchema());
     }
 
-    long startTimeOfChunk = 0;
-    long endTimeOfChunk = 0;
-    long numOfPoints = 0;
     ChunkMetaData currentChunkMetaData;
     List<ChunkMetaData> chunkMetaDataList = null;
     long startOffsetOfChunkGroup = 0;
@@ -379,32 +376,25 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
             if (header.getNumOfPages() > 0) {
               PageHeader pageHeader = this.readPageHeader(header.getDataType());
               pageHeaders.add(pageHeader);
-              numOfPoints += pageHeader.getNumOfValues();
-              startTimeOfChunk = pageHeader.getStartTime();
-              endTimeOfChunk = pageHeader.getEndTime();
               chunkStatistics.mergeStatistics(pageHeader.getStatistics());
               pages.add(readData(-1, pageHeader.getCompressedSize()));
             }
             for (int j = 1; j < header.getNumOfPages() - 1; j++) {
               PageHeader pageHeader = this.readPageHeader(header.getDataType());
               pageHeaders.add(pageHeader);
-              numOfPoints += pageHeader.getNumOfValues();
               chunkStatistics.mergeStatistics(pageHeader.getStatistics());
               pages.add(readData(-1, pageHeader.getCompressedSize()));
             }
             if (header.getNumOfPages() > 1) {
               PageHeader pageHeader = this.readPageHeader(header.getDataType());
               pageHeaders.add(pageHeader);
-              numOfPoints += pageHeader.getNumOfValues();
-              endTimeOfChunk = pageHeader.getEndTime();
               chunkStatistics.mergeStatistics(pageHeader.getStatistics());
               pages.add(readData(-1, pageHeader.getCompressedSize()));
             }
 
             currentChunkMetaData = new ChunkMetaData(header.getMeasurementID(), dataType,
-                fileOffsetOfChunk, startTimeOfChunk, endTimeOfChunk, chunkStatistics, numOfPoints);
+                fileOffsetOfChunk, chunkStatistics);
             chunkMetaDataList.add(currentChunkMetaData);
-            numOfPoints = 0;
             pageHeadersList.add(pageHeaders);
             pagesList.add(pages);
             break;

@@ -50,10 +50,6 @@ public class ChunkWriterImpl implements IChunkWriter {
    */
   private PublicBAOS pageBuffer;
 
-  private long chunkPointCount;
-  private long chunkMaxTime;
-  private long chunkMinTime = Long.MIN_VALUE;
-
   private int numOfPages;
 
   /**
@@ -209,11 +205,6 @@ public class ChunkWriterImpl implements IChunkWriter {
 
       // update statistics of this chunk
       numOfPages++;
-      chunkMaxTime = pageWriter.getPageMaxTime();
-      if (chunkMinTime == Long.MIN_VALUE) {
-        chunkMinTime = pageWriter.getPageMinTime();
-      }
-      chunkPointCount += pageWriter.getPointNumber();
       this.chunkStatistics.mergeStatistics(pageWriter.getStatistics());
     } catch (IOException e) {
       logger.error("meet error in pageWriter.writePageHeaderAndDataIntoBuff,ignore this page:", e);
@@ -230,8 +221,6 @@ public class ChunkWriterImpl implements IChunkWriter {
 
     // reinit this chunk writer
     pageBuffer.reset();
-    chunkPointCount = 0;
-    chunkMinTime = Long.MIN_VALUE;
     this.chunkStatistics = Statistics.getStatsByType(measurementSchema.getType());
   }
 
@@ -273,15 +262,6 @@ public class ChunkWriterImpl implements IChunkWriter {
       throws PageException {
     numOfPages++;
 
-    // 1. update time statistics
-    if (this.chunkMinTime == Long.MIN_VALUE) {
-      this.chunkMinTime = header.getStartTime();
-    }
-    if (this.chunkMinTime == Long.MIN_VALUE) {
-      throw new PageException("No valid data point in this page");
-    }
-    this.chunkMaxTime = header.getEndTime();
-
     // write the page header to pageBuffer
     try {
       logger.debug("start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
@@ -289,16 +269,12 @@ public class ChunkWriterImpl implements IChunkWriter {
       logger.debug("finish to flush a page header {} of {} into buffer, buffer position {} ", header,
           measurementSchema.getMeasurementId(), pageBuffer.size());
 
+      chunkStatistics.mergeStatistics(header.getStatistics());
+
     } catch (IOException e) {
-      if (chunkPointCount == 0) {
-        chunkMinTime = Long.MIN_VALUE;
-      }
       throw new PageException(
           "IO Exception in writeDataPageHeader,ignore this page", e);
     }
-
-    // update data point num
-    this.chunkPointCount += header.getNumOfValues();
 
     // write page content to temp PBAOS
     try (WritableByteChannel channel = Channels.newChannel(pageBuffer)) {
@@ -317,14 +293,13 @@ public class ChunkWriterImpl implements IChunkWriter {
    */
   public void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer, Statistics<?> statistics)
       throws IOException {
-    if (chunkPointCount == 0) {
+    if (statistics.getCount() == 0) {
       return;
     }
 
     // start to write this column chunk
     writer.startFlushChunk(measurementSchema, compressor.getType(), measurementSchema.getType(),
-            measurementSchema.getEncodingType(), statistics, chunkMaxTime,
-            chunkMinTime, pageBuffer.size(), numOfPages, chunkPointCount);
+            measurementSchema.getEncodingType(), statistics, pageBuffer.size(), numOfPages);
 
     long dataOffset = writer.getPos();
 

@@ -537,9 +537,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     String measurementID;
     TSDataType dataType;
     long fileOffsetOfChunk;
-    long startTimeOfChunk = 0;
-    long endTimeOfChunk = 0;
-    long numOfPoints = 0;
 
     ChunkGroupMetaData currentChunkGroup;
     List<ChunkMetaData> chunks = null;
@@ -599,30 +596,23 @@ public class TsFileSequenceReader implements AutoCloseable {
             Statistics<?> chunkStatistics = Statistics.getStatsByType(dataType);
             if (header.getNumOfPages() > 0) {
               PageHeader pageHeader = this.readPageHeader(header.getDataType());
-              numOfPoints += pageHeader.getNumOfValues();
-              startTimeOfChunk = pageHeader.getStartTime();
-              endTimeOfChunk = pageHeader.getEndTime();
               chunkStatistics.mergeStatistics(pageHeader.getStatistics());
               this.skipPageData(pageHeader);
             }
             for (int j = 1; j < header.getNumOfPages() - 1; j++) {
               //a new Page
               PageHeader pageHeader = this.readPageHeader(header.getDataType());
-              numOfPoints += pageHeader.getNumOfValues();
               chunkStatistics.mergeStatistics(pageHeader.getStatistics());
               this.skipPageData(pageHeader);
             }
             if (header.getNumOfPages() > 1) {
               PageHeader pageHeader = this.readPageHeader(header.getDataType());
-              numOfPoints += pageHeader.getNumOfValues();
-              endTimeOfChunk = pageHeader.getEndTime();
               chunkStatistics.mergeStatistics(pageHeader.getStatistics());
               this.skipPageData(pageHeader);
             }
             currentChunk = new ChunkMetaData(measurementID, dataType, fileOffsetOfChunk,
-                startTimeOfChunk, endTimeOfChunk, chunkStatistics, numOfPoints);
+                 chunkStatistics);
             chunks.add(currentChunk);
-            numOfPoints = 0;
             chunkCnt++;
             break;
           case MetaMarker.CHUNK_GROUP_FOOTER:

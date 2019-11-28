@@ -59,7 +59,7 @@ public class TsFileIOWriterTest {
     // chunk group 1
     writer.startChunkGroup(deviceId);
     writer.startFlushChunk(measurementSchema, measurementSchema.getCompressor(),
-        measurementSchema.getType(), measurementSchema.getEncodingType(), statistics, 0, 0, 0, 0, 0);
+        measurementSchema.getType(), measurementSchema.getEncodingType(), statistics, 0, 0);
     writer.endCurrentChunk();
     writer.endChunkGroup(0);
 

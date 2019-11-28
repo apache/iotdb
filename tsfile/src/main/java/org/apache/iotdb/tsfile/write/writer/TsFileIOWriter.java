@@ -160,17 +160,15 @@ public class TsFileIOWriter {
    * @param compressionCodecName - compression name of this time series
    * @param tsDataType - data type
    * @param statistics - Chunk statistics
-   * @param maxTime - maximum timestamp of the whole series in this stage
-   * @param minTime - minimum timestamp of the whole series in this stage
    * @param dataSize - the serialized size of all pages
    * @throws IOException if I/O error occurs
    */
   public void startFlushChunk(MeasurementSchema descriptor, CompressionType compressionCodecName,
-      TSDataType tsDataType, TSEncoding encodingType, Statistics<?> statistics, long maxTime,
-      long minTime, int dataSize, int numOfPages, long chunkPoints) throws IOException {
+      TSDataType tsDataType, TSEncoding encodingType, Statistics<?> statistics,
+      int dataSize, int numOfPages) throws IOException {
 
     currentChunkMetaData = new ChunkMetaData(descriptor.getMeasurementId(), tsDataType,
-        out.getPosition(), minTime, maxTime, statistics, chunkPoints);
+        out.getPosition(), statistics);
 
     // flush ChunkHeader to TsFileIOWriter
     if (logger.isDebugEnabled()) {
@@ -192,8 +190,7 @@ public class TsFileIOWriter {
   public void writeChunk(Chunk chunk, ChunkMetaData chunkMetadata) throws IOException {
     ChunkHeader chunkHeader = chunk.getHeader();
     currentChunkMetaData = new ChunkMetaData(chunkHeader.getMeasurementID(),
-        chunkHeader.getDataType(), out.getPosition(), chunkMetadata.getStartTime(),
-        chunkMetadata.getEndTime(), chunkMetadata.getStatistics(), chunkMetadata.getNumOfPoints());
+        chunkHeader.getDataType(), out.getPosition(), chunkMetadata.getStatistics());
     chunkHeader.serializeTo(out.wrapAsStream());
     out.write(chunk.getData());
     endCurrentChunk();
