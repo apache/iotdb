@@ -45,6 +45,14 @@ public abstract class Statistics<T> {
   protected boolean isEmpty = true;
 
   /**
+   * number of time-value points
+   */
+  private long count = 0;
+
+  private long startTime = Long.MAX_VALUE;
+  private long endTime = Long.MIN_VALUE;
+
+  /**
    * static method providing statistic instance for respective data type.
    *
    * @param type - data type
@@ -125,11 +133,17 @@ public abstract class Statistics<T> {
       LOG.warn("tsfile-file parameter stats is null");
       return;
     }
-    if (this.getClass() == stats.getClass()) {
-      if (!stats.isEmpty) {
-        mergeStatisticsValue(stats);
-        isEmpty = false;
+    if (this.getClass() == stats.getClass() && !stats.isEmpty) {
+      if (stats.startTime < this.startTime) {
+        this.startTime = stats.startTime;
       }
+      if (stats.endTime > this.endTime) {
+        this.endTime = stats.endTime;
+      }
+      // must be sure no overlap between two statistics
+      this.count += stats.count;
+      mergeStatisticsValue(stats);
+      isEmpty = false;
     } else {
       String thisClass = this.getClass().toString();
       String statsClass = stats.getClass().toString();
@@ -138,6 +152,136 @@ public abstract class Statistics<T> {
 
       throw new StatisticsClassException(this.getClass(), stats.getClass());
     }
+  }
+
+  public void update(long time, boolean value) {
+    if (time < this.startTime) {
+      startTime = time;
+    }
+    if (time > this.endTime) {
+      endTime = time;
+    }
+    count++;
+    updateStats(value);
+  }
+
+  public void update(long time, int value) {
+    if (time < this.startTime) {
+      startTime = time;
+    }
+    if (time > this.endTime) {
+      endTime = time;
+    }
+    count++;
+    updateStats(value);
+  }
+
+  public void update(long time, long value) {
+    if (time < this.startTime) {
+      startTime = time;
+    }
+    if (time > this.endTime) {
+      endTime = time;
+    }
+    count++;
+    updateStats(value);
+  }
+
+  public void update(long time, float value) {
+    if (time < this.startTime) {
+      startTime = time;
+    }
+    if (time > this.endTime) {
+      endTime = time;
+    }
+    count++;
+    updateStats(value);
+  }
+
+  public void update(long time, double value) {
+    if (time < this.startTime) {
+      startTime = time;
+    } else if (time > this.endTime) {
+      endTime = time;
+    }
+    count++;
+    updateStats(value);
+  }
+
+  public void update(long time, Binary value) {
+    if (time < startTime) {
+      startTime = time;
+    } else if (time > endTime) {
+      endTime = time;
+    }
+    count++;
+    updateStats(value);
+  }
+
+  public void update(long[] time, boolean[] values, int batchSize) {
+    if (time[0] < startTime) {
+      startTime = time[0];
+    }
+    if (time[batchSize-1] > this.endTime) {
+      endTime = time[batchSize-1];
+    }
+    count += batchSize;
+    updateStats(values, batchSize);
+  }
+
+  public void update(long[] time, int[] values, int batchSize) {
+    if (time[0] < startTime) {
+      startTime = time[0];
+    }
+    if (time[batchSize-1] > this.endTime) {
+      endTime = time[batchSize-1];
+    }
+    count += batchSize;
+    updateStats(values, batchSize);
+  }
+
+  public void update(long[] time, long[] values, int batchSize) {
+    if (time[0] < startTime) {
+      startTime = time[0];
+    }
+    if (time[batchSize-1] > this.endTime) {
+      endTime = time[batchSize-1];
+    }
+    count += batchSize;
+    updateStats(values, batchSize);
+  }
+
+  public void update(long[] time, float[] values, int batchSize) {
+    if (time[0] < startTime) {
+      startTime = time[0];
+    }
+    if (time[batchSize-1] > this.endTime) {
+      endTime = time[batchSize-1];
+    }
+    count += batchSize;
+    updateStats(values, batchSize);
+  }
+
+  public void update(long[] time, double[] values, int batchSize) {
+    if (time[0] < startTime) {
+      startTime = time[0];
+    }
+    if (time[batchSize-1] > this.endTime) {
+      endTime = time[batchSize-1];
+    }
+    count += batchSize;
+    updateStats(values, batchSize);
+  }
+
+  public void update(long[] time, Binary[] values, int batchSize) {
+    if (time[0] < startTime) {
+      startTime = time[0];
+    }
+    if (time[batchSize-1] > this.endTime) {
+      endTime = time[batchSize-1];
+    }
+    count += batchSize;
+    updateStats(values, batchSize);
   }
 
   protected abstract void mergeStatisticsValue(Statistics stats);
@@ -224,7 +368,28 @@ public abstract class Statistics<T> {
     return statistics;
   }
 
-  public void reset() {
+  public long getStartTime() {
+    return startTime;
+  }
+
+  public long getEndTime() {
+    return endTime;
+  }
+
+  public long getCount() {
+    return count;
+  }
+
+  public void setStartTime(long startTime) {
+    this.startTime = startTime;
+  }
+
+  public void setEndTime(long endTime) {
+    this.endTime = endTime;
+  }
+
+  public void setCount(long count) {
+    this.count = count;
   }
 
   @Override
