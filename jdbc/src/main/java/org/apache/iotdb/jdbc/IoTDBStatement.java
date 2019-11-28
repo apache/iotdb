@@ -295,7 +295,7 @@ public class IoTDBStatement implements Statement {
         return true;
       }
     } else if (sqlToLowerCase.startsWith(COUNT_NODES_COMMAND_LOWERCASE)) {
-      String[] cmdSplit = sql.split("\\s+", 4);
+      String[] cmdSplit = sqlToLowerCase.split("\\s+", 4);
       if (!(cmdSplit.length == 4 && cmdSplit[3].startsWith("level"))) {
         throw new SQLException("Error format of \'COUNT NODES <PATH> LEVEL=<INTEGER>\'");
       } else {
