@@ -41,6 +41,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -71,6 +72,7 @@ import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -187,8 +189,14 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     TsFileResource tsFileResource = new TsFileResource(file);
     try {
       FileLoaderUtils.checkTsFileResource(tsFileResource);
-      //TODO check version and metadata
-    } catch (IOException e) {
+      if (UpgradeUtils.isNeedUpgrade(tsFileResource)) {
+        throw new QueryProcessException(
+            String.format(
+                "Cannot load file %s because the file's version is old which needs to be upgraded.",
+                file.getAbsolutePath()));
+      }
+      StorageEngine.getInstance().loadNewTsFile(tsFileResource);
+    } catch (IOException | TsFileProcessorException | StorageEngineException e) {
       throw new QueryProcessException(
           String.format("Cannot load file %s because %s", file.getAbsolutePath(), e.getMessage()));
     }
@@ -198,7 +206,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       if (!StorageEngine.getInstance().deleteTsfile(plan.getFile())) {
         throw new QueryProcessException(
-            String.format("File %s doesn't exists.", plan.getFile().getName()));
+            String.format("File %s doesn't exist.", plan.getFile().getName()));
       }
     } catch (StorageEngineException e) {
       throw new QueryProcessException(
@@ -214,7 +222,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       if (!StorageEngine.getInstance().moveTsfile(plan.getFile(), plan.getTargetDir())) {
         throw new QueryProcessException(
-            String.format("File %s doesn't exists.", plan.getFile().getName()));
+            String.format("File %s doesn't exist.", plan.getFile().getName()));
       }
     } catch (StorageEngineException | IOException e) {
       throw new QueryProcessException(

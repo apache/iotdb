@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.tools.MemEst;
+package org.apache.iotdb.db.tools.memestimation;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;

@@ -428,6 +428,12 @@ public class StorageEngine implements IService {
     }
   }
 
+  public void loadNewTsFileForSync(TsFileResource newTsFileResource)
+      throws TsFileProcessorException, StorageEngineException {
+    getProcessor(newTsFileResource.getFile().getParentFile().getName())
+        .loadNewTsFileForSync(newTsFileResource);
+  }
+
   public void loadNewTsFile(TsFileResource newTsFileResource)
       throws TsFileProcessorException, StorageEngineException {
     getProcessor(newTsFileResource.getFile().getParentFile().getName())
@@ -435,13 +441,29 @@ public class StorageEngine implements IService {
   }
 
   public boolean deleteTsfile(File deletedTsfile) throws StorageEngineException {
-    return getProcessor(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
+    if (deletedTsfile.getParentFile() != null) {
+      return getProcessor(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
+    }
+    List<String> storageGroupNames = MManager.getInstance().getAllStorageGroupNames();
+    boolean hasDeleted = false;
+    for (String storageGroupName : storageGroupNames) {
+      hasDeleted |= getProcessor(storageGroupName).deleteTsfile(deletedTsfile);
+    }
+    return hasDeleted;
   }
 
-  public boolean moveTsfile(File deletedTsfile, File targetDir)
+  public boolean moveTsfile(File tsfileToBeMoved, File targetDir)
       throws StorageEngineException, IOException {
-    return getProcessor(deletedTsfile.getParentFile().getName())
-        .moveTsfile(deletedTsfile, targetDir);
+    if(tsfileToBeMoved.getParentFile() != null){
+      return getProcessor(tsfileToBeMoved.getParentFile().getName())
+          .moveTsfile(tsfileToBeMoved, targetDir);
+    }
+    List<String> storageGroupNames = MManager.getInstance().getAllStorageGroupNames();
+    boolean hasMoved = false;
+    for (String storageGroupName : storageGroupNames) {
+      hasMoved |= getProcessor(storageGroupName).moveTsfile(tsfileToBeMoved, targetDir);
+    }
+    return hasMoved;
   }
 
 }

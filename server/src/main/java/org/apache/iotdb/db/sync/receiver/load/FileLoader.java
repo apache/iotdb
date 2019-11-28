@@ -136,7 +136,7 @@ public class FileLoader implements IFileLoader {
     FileLoaderUtils.checkTsFileResource(tsFileResource);
     try {
       FileLoaderManager.getInstance().checkAndUpdateDeviceOwner(tsFileResource);
-      StorageEngine.getInstance().loadNewTsFile(tsFileResource);
+      StorageEngine.getInstance().loadNewTsFileForSync(tsFileResource);
     } catch (SyncDeviceOwnerConflictException e) {
       LOGGER.error("Device owner has conflicts, so skip the loading file", e);
     } catch (TsFileProcessorException | StorageEngineException e) {

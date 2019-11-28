@@ -1144,7 +1144,8 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * Load a new tsfile to storage group processor
+   * Load a new tsfile to storage group processor. The mechanism of the sync module will make sure that
+   * there has no file which is overlapping with the new file.
    *
    * Firstly, determine the loading type of the file, whether it needs to be loaded in sequence list
    * or unsequence list.
@@ -1156,7 +1157,7 @@ public class StorageGroupProcessor {
    * @param newTsFileResource tsfile resource
    * @UsedBy sync module.
    */
-  public void loadNewTsFile(TsFileResource newTsFileResource)
+  public void loadNewTsFileForSync(TsFileResource newTsFileResource)
       throws TsFileProcessorException {
     File tsfileToBeInserted = newTsFileResource.getFile();
     writeLock();
@@ -1173,6 +1174,155 @@ public class StorageGroupProcessor {
     } finally {
       mergeLock.writeLock().unlock();
       writeUnlock();
+    }
+  }
+
+  /**
+   * Load a new tsfile to storage group processor. Tne file may have overlap with other files.
+   *
+   * Firstly, determine the loading type of the file, whether it needs to be loaded in sequence list
+   * or unsequence list.
+   *
+   * Secondly, execute the loading process by the type.
+   *
+   * Finally, update the latestTimeForEachDevice and latestFlushedTimeForEachDevice.
+   *
+   * @param newTsFileResource tsfile resource
+   * @UsedBy load external tsfile module
+   */
+  public void loadNewTsFile(TsFileResource newTsFileResource)
+      throws TsFileProcessorException {
+    File tsfileToBeInserted = newTsFileResource.getFile();
+    writeLock();
+    mergeLock.writeLock().lock();
+    try {
+      boolean isOverlap = false;
+      int preIndex = -1, subsequentIndex = sequenceFileList.size();
+
+      // check new tsfile
+      outer:
+      for (int i = 0; i < sequenceFileList.size(); i++) {
+        if (sequenceFileList.get(i).getFile().getName().equals(tsfileToBeInserted.getName())) {
+          return;
+        }
+        if (i == sequenceFileList.size() - 1 && sequenceFileList.get(i).getEndTimeMap().isEmpty()) {
+          continue;
+        }
+        boolean hasPre = false, hasSubsequence = false;
+        for (String device : newTsFileResource.getStartTimeMap().keySet()) {
+          if (sequenceFileList.get(i).getStartTimeMap().containsKey(device)) {
+            long startTime1 = sequenceFileList.get(i).getStartTimeMap().get(device);
+            long endTime1 = sequenceFileList.get(i).getEndTimeMap().get(device);
+            long startTime2 = newTsFileResource.getStartTimeMap().get(device);
+            long endTime2 = newTsFileResource.getEndTimeMap().get(device);
+            if (startTime1 > endTime2) {
+              hasSubsequence = true;
+            } else if (startTime2 > endTime1) {
+              hasPre = true;
+            } else {
+              isOverlap = true;
+              break outer;
+            }
+          }
+        }
+        if (hasPre && hasSubsequence) {
+          isOverlap = true;
+          break;
+        }
+        if (!hasPre && hasSubsequence) {
+          subsequentIndex = i;
+          break;
+        }
+        if (hasPre) {
+          preIndex = i;
+        }
+      }
+
+      // loading tsfile by type
+      if (isOverlap) {
+        loadTsFileByType(LoadTsFileType.LOAD_UNSEQUENCE, tsfileToBeInserted, newTsFileResource,
+            unSequenceFileList.size());
+      } else {
+
+        // check whether the file name needs to be renamed.
+        if (subsequentIndex != sequenceFileList.size() || preIndex == -1) {
+          String newFileName = getFileNameForLoadingFile(tsfileToBeInserted.getName(), preIndex,
+              subsequentIndex);
+          if (!newFileName.equals(tsfileToBeInserted.getName())) {
+            logger.info("Tsfile {} must be renamed to {} for loading into the sequence list.",
+                tsfileToBeInserted.getName(), newFileName);
+            newTsFileResource.setFile(new File(tsfileToBeInserted.getParentFile(), newFileName));
+          }
+        }
+        loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource,
+            getBinarySearchIndex(newTsFileResource));
+      }
+
+      // update latest time map
+      updateLatestTimeMap(newTsFileResource);
+    } catch (TsFileProcessorException | DiskSpaceInsufficientException e) {
+      logger.error("Failed to append the tsfile {} to storage group processor {}.",
+          tsfileToBeInserted.getAbsolutePath(), tsfileToBeInserted.getParentFile().getName());
+      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+      throw new TsFileProcessorException(e);
+    } finally {
+      mergeLock.writeLock().unlock();
+      writeUnlock();
+    }
+  }
+
+  /**
+   * Get an appropriate filename to ensure the order between files. The tsfile is named after
+   * ({systemTime}-{versionNum}-{mergeNum}.tsfile).
+   *
+   * The sorting rules for tsfile names @see {@link this#compareFileName}, we can restore the list
+   * based on the file name and ensure the correctness of the order, so there are three cases.
+   *
+   * 1. The tsfile is to be inserted in the first place of the list. If the timestamp in the file
+   * name is less than the timestamp in the file name of the first tsfile  in the list, then the
+   * file name is legal and the file name is returned directly. Otherwise, its timestamp can be set
+   * to half of the timestamp value in the file name of the first tsfile in the list , and the
+   * version number is the version number in the file name of the first tsfile in the list.
+   *
+   * 2. The tsfile is to be inserted in the last place of the list. If the timestamp in the file
+   * name is lager than the timestamp in the file name of the last tsfile  in the list, then the
+   * file name is legal and the file name is returned directly. Otherwise, the file name is
+   * generated by the system according to the naming rules and returned.
+   *
+   * 3. This file is inserted between two files. If the timestamp in the name of the file satisfies
+   * the timestamp between the timestamps in the name of the two files, then it is a legal name and
+   * returns directly; otherwise, the time stamp is the mean of the timestamps of the two files, the
+   * version number is the version number in the tsfile with a larger timestamp.
+   *
+   * @param tsfileName origin tsfile name
+   * @return appropriate filename
+   */
+  private String getFileNameForLoadingFile(String tsfileName, int preIndex, int subsequentIndex) {
+    long currentTsFileTime = Long
+        .parseLong(tsfileName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0]);
+    long preTime;
+    if (preIndex == -1) {
+      preTime = 0L;
+    } else {
+      String preName = sequenceFileList.get(preIndex).getFile().getName();
+      preTime = Long.parseLong(preName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0]);
+    }
+    if (subsequentIndex == sequenceFileList.size()) {
+      return preTime < currentTsFileTime ? tsfileName
+          : System.currentTimeMillis() + IoTDBConstant.TSFILE_NAME_SEPARATOR + versionController
+              .nextVersion() + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0" + TSFILE_SUFFIX;
+    } else {
+      String subsequenceName = sequenceFileList.get(subsequentIndex).getFile().getName();
+      long subsequenceTime = Long
+          .parseLong(subsequenceName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0]);
+      long subsequenceVersion = Long
+          .parseLong(subsequenceName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[1]);
+      if (preTime < currentTsFileTime && currentTsFileTime < subsequenceTime) {
+        return tsfileName;
+      } else {
+        return (preTime + ((subsequenceTime - preTime) >> 1)) + IoTDBConstant.TSFILE_NAME_SEPARATOR
+            + subsequenceVersion + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0" + TSFILE_SUFFIX;
+      }
     }
   }
 
@@ -1205,7 +1355,7 @@ public class StorageGroupProcessor {
   /**
    * Update latest time in latestTimeForEachDevice and latestFlushedTimeForEachDevice.
    *
-   * @UsedBy sync module
+   * @UsedBy sync module, load external tsfile module.
    */
   private void updateLatestTimeMap(TsFileResource newTsFileResource) {
     for (Entry<String, Long> entry : newTsFileResource.getEndTimeMap().entrySet()) {
@@ -1228,7 +1378,7 @@ public class StorageGroupProcessor {
    * @param type load type
    * @param tsFileResource tsfile resource to be loaded
    * @param index the index in sequenceFileList/unSequenceFileList
-   * @UsedBy sync module
+   * @UsedBy sync module, load external tsfile module.
    */
   private void loadTsFileByType(LoadTsFileType type, File syncedTsFile,
       TsFileResource tsFileResource, int index)
