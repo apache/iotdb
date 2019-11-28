@@ -187,7 +187,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
+    statistics.updateStats(values, batchSize);
   }
 
   /**
@@ -203,7 +203,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
+    statistics.updateStats(values, batchSize);
   }
 
   /**
@@ -219,7 +219,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
+    statistics.updateStats(values, batchSize);
   }
 
   /**
@@ -235,7 +235,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
+    statistics.updateStats(values, batchSize);
   }
 
   /**
@@ -251,7 +251,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
+    statistics.updateStats(values, batchSize);
   }
 
   /**
@@ -267,7 +267,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
+    statistics.updateStats(values, batchSize);
   }
 
   /**

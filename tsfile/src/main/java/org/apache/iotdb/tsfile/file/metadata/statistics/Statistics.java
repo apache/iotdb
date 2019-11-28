@@ -133,7 +133,7 @@ public abstract class Statistics<T> {
     } else {
       String thisClass = this.getClass().toString();
       String statsClass = stats.getClass().toString();
-      LOG.warn("tsfile-file Statistics classes mismatched,no merge: {} v.s. {}",
+      LOG.warn("Statistics classes mismatched,no merge: {} v.s. {}",
           thisClass, statsClass);
 
       throw new StatisticsClassException(this.getClass(), stats.getClass());
@@ -174,27 +174,27 @@ public abstract class Statistics<T> {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(boolean[] values) {
+  public void updateStats(boolean[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(int[] values) {
+  public void updateStats(int[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(long[] values) {
+  public void updateStats(long[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(float[] values) {
+  public void updateStats(float[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(double[] values) {
+  public void updateStats(double[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(Binary[] values) {
+  public void updateStats(Binary[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 

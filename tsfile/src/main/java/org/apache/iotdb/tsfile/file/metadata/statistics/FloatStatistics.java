@@ -84,9 +84,9 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  public void updateStats(float[] values) {
-    for (float value : values) {
-      updateStats(value);
+  public void updateStats(float[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      updateStats(values[i]);
     }
   }
 

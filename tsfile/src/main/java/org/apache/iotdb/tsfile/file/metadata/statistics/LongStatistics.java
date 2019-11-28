@@ -106,14 +106,9 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  public void updateStats(long[] values) {
-    for (long value : values) {
-      if (isEmpty) {
-        initializeStats(value, value, value, value, value);
-        isEmpty = false;
-      } else {
-        updateStats(value, value, value, value, value);
-      }
+  public void updateStats(long[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      updateStats(values[i]);
     }
   }
 

@@ -111,9 +111,9 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public void updateStats(Binary[] values) {
-    for (Binary value : values) {
-      updateStats(value);
+  public void updateStats(Binary[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      updateStats(values[i]);
     }
   }
 
