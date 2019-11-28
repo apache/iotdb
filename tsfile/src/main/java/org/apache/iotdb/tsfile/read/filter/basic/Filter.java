@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.filter.basic;
 
-import org.apache.iotdb.tsfile.read.filter.StatisticsForFilter;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
 /**
  * Filter is a top level filter abstraction.
@@ -32,7 +32,7 @@ public interface Filter {
    * @param statistics
    *            statistics with min time, max time, min value, max value.
    */
-  boolean satisfy(StatisticsForFilter statistics);
+  boolean satisfy(Statistics statistics);
 
   /**
    * To examine whether the single point(with time and value) is satisfied with the filter.

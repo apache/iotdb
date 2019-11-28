@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import org.apache.iotdb.tsfile.read.filter.StatisticsForFilter;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.BinaryFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -34,7 +34,7 @@ public class AndFilter extends BinaryFilter {
   }
 
   @Override
-  public boolean satisfy(StatisticsForFilter statistics) {
+  public boolean satisfy(Statistics statistics) {
     return left.satisfy(statistics) && right.satisfy(statistics);
   }
 

@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import org.apache.iotdb.tsfile.read.filter.StatisticsForFilter;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
@@ -37,15 +38,15 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
   }
 
   @Override
-  public boolean satisfy(StatisticsForFilter statistics) {
+  public boolean satisfy(Statistics statistics) {
     if (filterType == FilterType.TIME_FILTER) {
-      return ((Long) value) >= statistics.getMinTime() && ((Long) value) <= statistics.getMaxTime();
+      return ((Long) value) >= statistics.getStartTime() && ((Long) value) <= statistics.getEndTime();
     } else {
-      if (statistics.isMinValueNull() || statistics.isMaxValueNull()) {
+      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return true;
       }
-      return value.compareTo(statistics.getMinValue()) >= 0
-          && value.compareTo(statistics.getMaxValue()) <= 0;
+      return value.compareTo((T) statistics.getMinValue()) >= 0
+          && value.compareTo((T) statistics.getMaxValue()) <= 0;
     }
   }
 

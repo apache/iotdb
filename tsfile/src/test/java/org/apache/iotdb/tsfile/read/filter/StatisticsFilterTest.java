@@ -18,36 +18,36 @@
  */
 package org.apache.iotdb.tsfile.read.filter;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
-public class DigestFilterTest {
+public class StatisticsFilterTest {
 
-  private StatisticsForFilter statistics1 = new StatisticsForFilter(1L, 100L,
-      ByteBuffer.wrap(BytesUtils.intToBytes(1)),
-      ByteBuffer.wrap(BytesUtils.intToBytes(100)), TSDataType.INT32);
-  private StatisticsForFilter statistics2 = new StatisticsForFilter(101L, 200L,
-      ByteBuffer.wrap(BytesUtils.intToBytes(101)),
-      ByteBuffer.wrap(BytesUtils.intToBytes(200)), TSDataType.INT32);
-  private StatisticsForFilter statistics3 = new StatisticsForFilter(101L, 200L, (ByteBuffer) null, null,
-      TSDataType.INT32);
+  private Statistics statistics1 = Statistics.getStatsByType(TSDataType.INT64);
+  private Statistics statistics2 = Statistics.getStatsByType(TSDataType.INT64);
+
+  @Before
+  public void before() {
+    statistics1.update(1L, 1L);
+    statistics1.update(100L, 100L);
+    statistics2.update(101L, 101L);
+    statistics2.update(200L, 200L);
+  }
 
   @Test
   public void testEq() {
     Filter timeEq = TimeFilter.eq(10L);
     Assert.assertTrue(timeEq.satisfy(statistics1));
     Assert.assertFalse(timeEq.satisfy(statistics2));
-    Assert.assertFalse(timeEq.satisfy(statistics3));
 
-    Filter valueEq = ValueFilter.eq(100);
-    Assert.assertTrue(valueEq.satisfy(statistics1));
-    Assert.assertFalse(valueEq.satisfy(statistics2));
-    Assert.assertTrue(valueEq.satisfy(statistics3));
+    Filter valueEq = ValueFilter.eq(101L);
+    Assert.assertFalse(valueEq.satisfy(statistics1));
+    Assert.assertTrue(valueEq.satisfy(statistics2));
   }
 
   @Test
@@ -55,12 +55,10 @@ public class DigestFilterTest {
     Filter timeGt = TimeFilter.gt(100L);
     Assert.assertFalse(timeGt.satisfy(statistics1));
     Assert.assertTrue(timeGt.satisfy(statistics2));
-    Assert.assertTrue(timeGt.satisfy(statistics3));
 
-    Filter valueGt = ValueFilter.gt(100);
+    Filter valueGt = ValueFilter.gt(100L);
     Assert.assertFalse(valueGt.satisfy(statistics1));
     Assert.assertTrue(valueGt.satisfy(statistics2));
-    Assert.assertTrue(valueGt.satisfy(statistics3));
   }
 
   @Test
@@ -68,12 +66,10 @@ public class DigestFilterTest {
     Filter timeGtEq = TimeFilter.gtEq(100L);
     Assert.assertTrue(timeGtEq.satisfy(statistics1));
     Assert.assertTrue(timeGtEq.satisfy(statistics2));
-    Assert.assertTrue(timeGtEq.satisfy(statistics3));
 
-    Filter valueGtEq = ValueFilter.gtEq(100);
+    Filter valueGtEq = ValueFilter.gtEq(100L);
     Assert.assertTrue(valueGtEq.satisfy(statistics1));
-    Assert.assertTrue(valueGtEq.satisfy(statistics3));
-    Assert.assertTrue(valueGtEq.satisfy(statistics3));
+    Assert.assertTrue(valueGtEq.satisfy(statistics2));
   }
 
   @Test
@@ -81,12 +77,10 @@ public class DigestFilterTest {
     Filter timeLt = TimeFilter.lt(101L);
     Assert.assertTrue(timeLt.satisfy(statistics1));
     Assert.assertFalse(timeLt.satisfy(statistics2));
-    Assert.assertFalse(timeLt.satisfy(statistics3));
 
-    Filter valueLt = ValueFilter.lt(101);
+    Filter valueLt = ValueFilter.lt(101L);
     Assert.assertTrue(valueLt.satisfy(statistics1));
     Assert.assertFalse(valueLt.satisfy(statistics2));
-    Assert.assertTrue(valueLt.satisfy(statistics3));
   }
 
   @Test
@@ -94,25 +88,21 @@ public class DigestFilterTest {
     Filter timeLtEq = TimeFilter.ltEq(101L);
     Assert.assertTrue(timeLtEq.satisfy(statistics1));
     Assert.assertTrue(timeLtEq.satisfy(statistics2));
-    Assert.assertTrue(timeLtEq.satisfy(statistics3));
 
-    Filter valueLtEq = ValueFilter.ltEq(101);
+    Filter valueLtEq = ValueFilter.ltEq(101L);
     Assert.assertTrue(valueLtEq.satisfy(statistics1));
     Assert.assertTrue(valueLtEq.satisfy(statistics2));
-    Assert.assertTrue(valueLtEq.satisfy(statistics3));
   }
 
   @Test
   public void testAndOr() {
-    Filter andFilter = FilterFactory.and(TimeFilter.gt(10L), ValueFilter.lt(50));
+    Filter andFilter = FilterFactory.and(TimeFilter.gt(10L), ValueFilter.lt(50L));
     Assert.assertTrue(andFilter.satisfy(statistics1));
     Assert.assertFalse(andFilter.satisfy(statistics2));
-    Assert.assertTrue(andFilter.satisfy(statistics3));
 
     Filter orFilter = FilterFactory.or(andFilter, TimeFilter.eq(200L));
     Assert.assertTrue(orFilter.satisfy(statistics1));
     Assert.assertTrue(orFilter.satisfy(statistics2));
-    Assert.assertTrue(orFilter.satisfy(statistics3));
   }
 
 }

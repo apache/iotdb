@@ -78,7 +78,7 @@ public abstract class Statistics<T> {
     }
   }
 
-  abstract TSDataType getType();
+  public abstract TSDataType getType();
 
   public int getSerializedSize() {
    return 24 // count, startTime, endTime

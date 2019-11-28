@@ -34,11 +34,9 @@ import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
-import org.apache.iotdb.tsfile.read.filter.StatisticsForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 /**
@@ -96,33 +94,8 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
 
       for (ChunkMetaData chunkMetaData : metaDataList) {
 
-        if (filter != null) {
-
-          if (chunkMetaData.getDataType() == TSDataType.TEXT || chunkMetaData.getDataType() == TSDataType.BOOLEAN) {
-            StatisticsForFilter statisticsForFilter = new StatisticsForFilter(
-                chunkMetaData.getStartTime(),
-                chunkMetaData.getEndTime(),
-                null, null,
-                chunkMetaData.getDataType()
-            );
-            if (!filter.satisfy(statisticsForFilter)) {
-              continue;
-            }
-
-          } else {
-
-            StatisticsForFilter statisticsForFilter = new StatisticsForFilter(
-                chunkMetaData.getStartTime(),
-                chunkMetaData.getEndTime(),
-                chunkMetaData.getStatistics().getMinValueBuffer(),
-                chunkMetaData.getStatistics().getMaxValueBuffer(),
-                chunkMetaData.getDataType()
-            );
-
-            if (!filter.satisfy(statisticsForFilter)) {
-              continue;
-            }
-          }
+        if (filter != null && !filter.satisfy(chunkMetaData.getStatistics())) {
+          continue;
         }
         // create and add DiskChunkReader
         readerWrapList.add(new ChunkReaderWrap(chunkMetaData, chunkLoader, filter));
