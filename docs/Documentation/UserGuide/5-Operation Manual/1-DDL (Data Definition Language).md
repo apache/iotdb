@@ -99,12 +99,27 @@ IoTDB > COUNT TIMESERIES root.ln.*.*.status
 IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
 ```
 
-Besides, `LEVEL` could be defined to show count the number of timeseries of each node at the given level. This could be used to query the number of sensors under each device. The grammar is: `COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>`. For example:
+Besides, `LEVEL` could be defined to show count the number of timeseries of each node at the given level in current Metadata Tree. This could be used to query the number of sensors under each device. The grammar is: `COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>`.
+
+For example, if there are several timeseires (use `show timeseries` to show all timeseries):
+<center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792072-cdc8a480-1200-11ea-8cec-321fef618a12.png"></center>
+
+Then the Metadata Tree will be as below:
+<center><img style="width:100%; max-width:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792176-1718f400-1201-11ea-861a-1a83c07ca144.jpg"></center>
+
+As can be seen, `root` is considered as `LEVEL=0`. So when you enter statements such as:
+
 ```
 IoTDB > COUNT TIMESERIES root GROUP BY LEVEL=1
 IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
-IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=3
+IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
 ```
+
+You will get following results:
+
+<center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792071-cb664a80-1200-11ea-8386-02dd12046c4b.png"></center>
+
+> Note: The path of timeseries is just a filter condition, which has no relationship with the definition of level.
 
 ### Count Nodes
 IoTDB is able to use `COUNT NODES <Path> LEVEL=<INTEGER>` to count the number of nodes at the given level in current Metadata Tree. This could be used to query the number of devices. The usage are as follows:
@@ -113,6 +128,12 @@ IoTDB > COUNT NODES root LEVEL=2
 IoTDB > COUNT NODES root.ln LEVEL=2
 IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
 ```
+
+As for the above mentioned example and Metadata tree, you can get following results:
+
+<center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792060-c73a2d00-1200-11ea-8ec4-be7145fd6c8c.png"></center>
+
+> Note: The path of timeseries is just a filter condition, which has no relationship with the definition of level.
 
 ### Delete Timeseries
 To delete the timeseries we created before, we are able to use `DELETE TimeSeries <PrefixPath>` statement.
