@@ -65,22 +65,22 @@ public class NoStatistics extends Statistics<Long> {
   }
 
   @Override
-  public void updateStats(boolean[] values) {
+  public void updateStats(boolean[] values, int batchSize) {
     // NoStatistics does not make any statistics
   }
 
   @Override
-  public void updateStats(int[] values) {
+  public void updateStats(int[] values, int batchSize) {
     // NoStatistics does not make any statistics
   }
 
   @Override
-  public void updateStats(long[] values) {
+  public void updateStats(long[] values, int batchSize) {
     // NoStatistics does not make any statistics
   }
 
   @Override
-  public void updateStats(Binary[] values) {
+  public void updateStats(Binary[] values, int batchSize) {
     // NoStatistics does not make any statistics
   }
 

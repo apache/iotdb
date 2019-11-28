@@ -52,13 +52,13 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  public void updateStats(float[] values) {
-    for (float value : values) {
-      if (this.isEmpty) {
-        initializeStats(value, value, value, value, value);
+  public void updateStats(float[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      if (isEmpty) {
+        initializeStats(values[i], values[i], values[i], values[i], values[i]);
         isEmpty = false;
       } else {
-        updateStats(value, value, value, value, value);
+        updateStats(values[i], values[i], values[i], values[i], values[i]);
       }
     }
   }
