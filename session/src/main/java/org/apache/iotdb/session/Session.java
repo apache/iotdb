@@ -200,8 +200,9 @@ public class Session {
       throws IoTDBSessionException {
     // check params size
     int len = deviceIds.size();
-    if(len != times.size() || len != measurementsList.size() || len != valuesList.size()){
-      throw new IllegalArgumentException("deviceIds, times, measurementsList and valuesList 's size should be equal");
+    if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException(
+          "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
 
     TSInsertInBatchReq request = new TSInsertInBatchReq();
@@ -220,6 +221,7 @@ public class Session {
   /**
    * insert data in one row, if you want improve your performance, please use insertInBatch method
    * or insertBatch method
+   *
    * @see Session#insertInBatch(List, List, List, List)
    * @see Session#insertBatch(RowBatch)
    */
