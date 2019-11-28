@@ -102,6 +102,21 @@ IoTDB > COUNT TIMESERIES root.ln.*.*.status
 IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
 ```
 
+除此之外，还可以通过定义`LEVEL`来统计指定层级下的时间序列个数。这条语句可以用来统计每一个设备下的传感器数量，语法为：`COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>`。例如：
+```
+IoTDB > COUNT TIMESERIES root GROUP BY LEVEL=1
+IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
+IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=3
+```
+
+### 统计节点数
+IoTDB支持使用`COUNT NODES <Path> LEVEL=<INTEGER>`来统计当前Metadata树下指定层级的节点个数，这条语句可以用来统计设备数。例如：
+```
+IoTDB > COUNT NODES root LEVEL=2
+IoTDB > COUNT NODES root.ln LEVEL=2
+IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
+```
+
 ### 删除时间序列
 我们可以使用`DELETE TimeSeries <PrefixPath>`语句来删除我们之前创建的时间序列。SQL语句如下所示：
 ```

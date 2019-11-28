@@ -91,12 +91,27 @@ The results are shown below respectly:
 It is worth noting that when the queried path does not exist, the system will return no timeseries.  
 
 ### Count Timeseries
-IoTDB are able to use `COUNT TIMESERIES<Path>` to count the amount of timeseries in the path. SQL statements are as follows:
+IoTDB is able to use `COUNT TIMESERIES<Path>` to count the number of timeseries in the path. SQL statements are as follows:
 ```
 IoTDB > COUNT TIMESERIES root
 IoTDB > COUNT TIMESERIES root.ln
 IoTDB > COUNT TIMESERIES root.ln.*.*.status
 IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
+```
+
+Besides, `LEVEL` could be defined to show count the number of timeseries of each node at the given level. This could be used to query the number of sensors under each device. The grammar is: `COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>`. For example:
+```
+IoTDB > COUNT TIMESERIES root GROUP BY LEVEL=1
+IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
+IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=3
+```
+
+### Count Nodes
+IoTDB is able to use `COUNT NODES <Path> LEVEL=<INTEGER>` to count the number of nodes at the given level in current Metadata Tree. This could be used to query the number of devices. The usage are as follows:
+```
+IoTDB > COUNT NODES root LEVEL=2
+IoTDB > COUNT NODES root.ln LEVEL=2
+IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
 ```
 
 ### Delete Timeseries
