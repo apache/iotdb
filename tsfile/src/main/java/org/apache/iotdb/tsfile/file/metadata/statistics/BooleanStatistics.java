@@ -38,7 +38,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  public int getSerializedSize() {
+  public int getStatsSize() {
     return 2;
   }
 
@@ -58,7 +58,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  public void updateStats(boolean value) {
+  void updateStats(boolean value) {
     if (isEmpty) {
       initializeStats(value, value);
       isEmpty = false;
@@ -68,7 +68,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  public void updateStats(boolean[] values, int batchSize) {
+  void updateStats(boolean[] values, int batchSize) {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
@@ -165,7 +165,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  public int serialize(OutputStream outputStream) throws IOException {
+  public int serializeStats(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(firstValue, outputStream);
     byteLen += ReadWriteIOUtils.write(lastValue, outputStream);

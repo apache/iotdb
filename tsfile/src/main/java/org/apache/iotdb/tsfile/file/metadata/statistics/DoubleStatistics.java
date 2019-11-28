@@ -40,7 +40,7 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  public int getSerializedSize() {
+  public int getStatsSize() {
     return 40;
   }
 
@@ -80,7 +80,7 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  public void updateStats(double value) {
+  void updateStats(double value) {
     if (this.isEmpty) {
       initializeStats(value, value, value, value, value);
       isEmpty = false;
@@ -90,7 +90,7 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  public void updateStats(double[] values, int batchSize) {
+  void updateStats(double[] values, int batchSize) {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
@@ -185,7 +185,7 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  public int serialize(OutputStream outputStream) throws IOException {
+  public int serializeStats(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(minValue, outputStream);
     byteLen += ReadWriteIOUtils.write(maxValue, outputStream);

@@ -40,7 +40,7 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public int getSerializedSize() {
+  public int getStatsSize() {
     return 4 + firstValue.getValues().length
         + 4 + lastValue.getValues().length;
   }
@@ -101,7 +101,7 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public void updateStats(Binary value) {
+  void updateStats(Binary value) {
     if (isEmpty) {
       initializeStats(value, value);
       isEmpty = false;
@@ -111,7 +111,7 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public void updateStats(Binary[] values, int batchSize) {
+  void updateStats(Binary[] values, int batchSize) {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
@@ -168,7 +168,7 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public int serialize(OutputStream outputStream) throws IOException {
+  public int serializeStats(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(firstValue, outputStream);
     byteLen += ReadWriteIOUtils.write(lastValue, outputStream);

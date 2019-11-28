@@ -40,7 +40,7 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  public int getSerializedSize() {
+  public int getStatsSize() {
     return 40;
   }
 
@@ -96,7 +96,7 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  public void updateStats(long value) {
+  void updateStats(long value) {
     if (isEmpty) {
       initializeStats(value, value, value, value, value);
       isEmpty = false;
@@ -106,7 +106,7 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  public void updateStats(long[] values, int batchSize) {
+  void updateStats(long[] values, int batchSize) {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
@@ -187,7 +187,7 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  public int serialize(OutputStream outputStream) throws IOException {
+  public int serializeStats(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(minValue, outputStream);
     byteLen += ReadWriteIOUtils.write(maxValue, outputStream);

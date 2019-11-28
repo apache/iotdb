@@ -43,7 +43,7 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
-  public int getSerializedSize() {
+  public int getStatsSize() {
     return 24;
   }
 
@@ -74,7 +74,7 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
-  public void updateStats(int value) {
+  void updateStats(int value) {
     if (isEmpty) {
       initializeStats(value, value, value, value, value);
       isEmpty = false;
@@ -85,7 +85,7 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
-  public void updateStats(int[] values, int batchSize) {
+  void updateStats(int[] values, int batchSize) {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
@@ -181,7 +181,7 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
-  public int serialize(OutputStream outputStream) throws IOException {
+  public int serializeStats(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(minValue, outputStream);
     byteLen += ReadWriteIOUtils.write(maxValue, outputStream);

@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,9 +80,24 @@ public abstract class Statistics<T> {
 
   abstract TSDataType getType();
 
-  public abstract int getSerializedSize();
+  public int getSerializedSize() {
+   return 24 // count, startTime, endTime
+       + getStatsSize();
+  }
 
-  public abstract int serialize(OutputStream outputStream) throws IOException;
+  public abstract int getStatsSize();
+
+  public int serialize(OutputStream outputStream) throws IOException{
+    int byteLen = 0;
+    byteLen += ReadWriteIOUtils.write(count, outputStream);
+    byteLen += ReadWriteIOUtils.write(startTime, outputStream);
+    byteLen += ReadWriteIOUtils.write(endTime, outputStream);
+    // value statistics of different data type
+    byteLen += serializeStats(outputStream);
+    return byteLen;
+  }
+
+  abstract int serializeStats(OutputStream outputStream) throws IOException;
 
   /**
    * read data from the inputStream.
@@ -294,51 +310,51 @@ public abstract class Statistics<T> {
     isEmpty = empty;
   }
 
-  public void updateStats(boolean value) {
+  void updateStats(boolean value) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(int value) {
+  void updateStats(int value) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(long value) {
+  void updateStats(long value) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(float value) {
+  void updateStats(float value) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(double value) {
+  void updateStats(double value) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(Binary value) {
+  void updateStats(Binary value) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(boolean[] values, int batchSize) {
+  void updateStats(boolean[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(int[] values, int batchSize) {
+  void updateStats(int[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(long[] values, int batchSize) {
+  void updateStats(long[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(float[] values, int batchSize) {
+  void updateStats(float[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(double[] values, int batchSize) {
+  void updateStats(double[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(Binary[] values, int batchSize) {
+  void updateStats(Binary[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
@@ -356,6 +372,9 @@ public abstract class Statistics<T> {
   public static Statistics deserialize(InputStream inputStream, TSDataType dataType)
       throws IOException {
     Statistics statistics = getStatsByType(dataType);
+    statistics.setCount(ReadWriteIOUtils.readLong(inputStream));
+    statistics.setStartTime(ReadWriteIOUtils.readLong(inputStream));
+    statistics.setEndTime(ReadWriteIOUtils.readLong(inputStream));
     statistics.deserialize(inputStream);
     statistics.isEmpty = false;
     return statistics;
@@ -363,6 +382,9 @@ public abstract class Statistics<T> {
 
   public static Statistics deserialize(ByteBuffer buffer, TSDataType dataType) {
     Statistics statistics = getStatsByType(dataType);
+    statistics.setCount(ReadWriteIOUtils.readLong(buffer));
+    statistics.setStartTime(ReadWriteIOUtils.readLong(buffer));
+    statistics.setEndTime(ReadWriteIOUtils.readLong(buffer));
     statistics.deserialize(buffer);
     statistics.isEmpty = false;
     return statistics;

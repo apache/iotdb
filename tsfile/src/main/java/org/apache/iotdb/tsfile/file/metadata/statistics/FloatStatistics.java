@@ -43,7 +43,7 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  public int getSerializedSize() {
+  public int getStatsSize() {
     return 24;
   }
 
@@ -74,7 +74,7 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  public void updateStats(float value) {
+  void updateStats(float value) {
     if (this.isEmpty) {
       initializeStats(value, value, value, value, value);
       isEmpty = false;
@@ -84,7 +84,7 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  public void updateStats(float[] values, int batchSize) {
+  void updateStats(float[] values, int batchSize) {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
@@ -179,7 +179,7 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  public int serialize(OutputStream outputStream) throws IOException {
+  public int serializeStats(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(minValue, outputStream);
     byteLen += ReadWriteIOUtils.write(maxValue, outputStream);
