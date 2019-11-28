@@ -24,6 +24,7 @@
 This is a bug-fix version of 0.8.1
 
 - [IOTDB-264] lack checking datatype before writing WAL
+- [IOTDB-317] Fix "flush + wrong aggregation" causes failed query in v0.8.x
 - NOTICE and LICENSE file update
 
 # Apache IoTDB (incubating) 0.8.1

@@ -308,9 +308,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
     } catch (PathErrorException | MetadataErrorException | OutOfMemoryError e) {
       logger
-          .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()),
+          .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath(), e),
               e);
-      Thread.currentThread().interrupt();
       status = getErrorStatus(
           String.format("Failed to fetch metadata because: %s", e));
       resp.setStatus(status);
