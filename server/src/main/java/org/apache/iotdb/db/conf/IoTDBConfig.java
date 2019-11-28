@@ -147,11 +147,6 @@ public class IoTDBConfig {
   private String walFolder = "data/wal";
 
   /**
-   * Data directory for index files (KV-match indexes).
-   */
-  private String indexFileDir = "data/index";
-
-  /**
    * Maximum MemTable number in MemTable pool.
    */
   private int maxMemtableNumber = 20;
@@ -651,14 +646,6 @@ public class IoTDBConfig {
 
   void setMultiDirStrategyClassName(String multiDirStrategyClassName) {
     this.multiDirStrategyClassName = multiDirStrategyClassName;
-  }
-
-  public String getIndexFileDir() {
-    return indexFileDir;
-  }
-
-  void setIndexFileDir(String indexFileDir) {
-    this.indexFileDir = indexFileDir;
   }
 
   public int getFetchSize() {

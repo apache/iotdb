@@ -149,8 +149,6 @@ public class IoTDBDescriptor {
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));
 
-      conf.setIndexFileDir(FilePathUtils.regularizePath(conf.getBaseDir()) + "index");
-
       conf.setWalFolder(properties.getProperty("wal_dir", conf.getWalFolder()));
 
       int walBufferSize = Integer.parseInt(properties.getProperty("wal_buffer_size",

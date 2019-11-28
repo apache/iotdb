@@ -117,8 +117,6 @@ public class EnvironmentUtils {
     cleanDir(config.getSystemDir());
     // delete wal
     cleanDir(config.getWalFolder());
-    // delete index
-    cleanDir(config.getIndexFileDir());
     // delete query
     cleanDir(config.getQueryDir());
     cleanDir(config.getBaseDir());
@@ -182,8 +180,6 @@ public class EnvironmentUtils {
     createDir(config.getSystemDir());
     // create wal
     createDir(config.getWalFolder());
-    // create index
-    createDir(config.getIndexFileDir());
     // create query
     createDir(config.getQueryDir());
     // create data
