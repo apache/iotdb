@@ -215,9 +215,9 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs)
     {
         return;
     }
-    shared_ptr<TSocket> tmp(new TSocket(host, port));
-    transport = tmp;       
-    transport->setConnTimeout(connectionTimeoutInMs);
+	boost::shared_ptr<TSocket> socket(new TSocket(host, port));
+	boost::shared_ptr<TTransport> transport(new TBufferedTransport(socket));
+	socket->setConnTimeout(connectionTimeoutInMs);
     if (!transport->isOpen()) 
     {
         try 
@@ -231,15 +231,15 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs)
     }
     if (enableRPCCompression) 
     {
-        shared_ptr<TCompactProtocol> tmp2(new TCompactProtocol(transport));
-        shared_ptr<TSIServiceIf> tmp3(new TSIServiceClient(tmp2));
-        client = tmp3;
+        boost::shared_ptr<TCompactProtocol> protocol(new TCompactProtocol(transport));
+		boost::shared_ptr<TSIServiceIf> client_instance(new TSIServiceClient(protocol));
+		client = client_instance;
     }
     else 
     {
-        shared_ptr<TBinaryProtocol> tmp2(new TBinaryProtocol(transport));
-        shared_ptr<TSIServiceIf> tmp3(new TSIServiceClient(tmp2));
-        client = tmp3;
+		boost::shared_ptr<TBinaryProtocol> protocol(new TBinaryProtocol(transport));
+		boost::shared_ptr<TSIServiceIf> client_instance(new TSIServiceClient(protocol));
+		client = client_instance;
     }
     shared_ptr<TSOpenSessionReq> req(new TSOpenSessionReq());
     req->__set_client_protocol(TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V1);
