@@ -182,8 +182,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         case StatisticConstant.MAX_TIME:
         case StatisticConstant.COUNT:
           return TSDataType.INT64;
-        case StatisticConstant.LAST:
-        case StatisticConstant.FIRST:
+        case StatisticConstant.LAST_VALUE:
+        case StatisticConstant.FIRST_VALUE:
         case StatisticConstant.MIN_VALUE:
         case StatisticConstant.MAX_VALUE:
           return getSeriesType(innerPath);
