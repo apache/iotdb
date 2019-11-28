@@ -80,7 +80,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
-    for (Path path : selectedSeries) {
+    for (Path path : paths) {
       QueryDataSource queryDataSource = QueryResourceManager.getInstance()
           .getQueryDataSource(path, context);
       timeFilter = queryDataSource.updateTimeFilter(timeFilter);

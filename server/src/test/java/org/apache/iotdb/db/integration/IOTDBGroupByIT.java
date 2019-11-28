@@ -415,14 +415,27 @@ public class IOTDBGroupByIT {
   @Test
   public void countSumAvgInnerIntervalTest() {
     String[] retArray1 = new String[]{
-            "5,3,35.8,11.933333333333332",
-            "25,2,70.7,35.35",
-            "45,1,50.5,50.5",
-            "65,0,0.0,null",
-            "85,1,100.1,100.1",
-            "105,0,0.0,null",
-            "125,0,0.0,null",
-            "145,1,200.2,200.2"
+            "0,2,7.7,3.85",
+            "30,1,30.3,30.3",
+            "60,0,0.0,null",
+            "90,0,0.0,null",
+            "120,0,0.0,null",
+            "150,1,200.2,200.2",
+            "180,0,0.0,null",
+            "210,0,0.0,null",
+            "240,0,0.0,null",
+            "270,0,0.0,null",
+            "300,1,500.5,500.5",
+            "330,0,0.0,null",
+            "360,0,0.0,null",
+            "390,0,0.0,null",
+            "420,0,0.0,null",
+            "450,0,0.0,null",
+            "480,0,0.0,null",
+            "510,1,200.2,200.2",
+            "540,1,500.5,500.5",
+            "570,0,0.0,null",
+            "600,1,300.3,300.3"
     };
 
     try (Connection connection = DriverManager.
@@ -442,12 +455,10 @@ public class IOTDBGroupByIT {
                   .getString(count("root.ln.wf01.wt01.temperature")) + "," +
                   resultSet.getString(sum("root.ln.wf01.wt01.temperature")) + "," + resultSet
                   .getString(avg("root.ln.wf01.wt01.temperature"));
-          System.out.println("\"" + ans + "\",");
-//          Assert.assertEquals(retArray1[cnt], ans);
+          Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
-        System.out.println();
-//        Assert.assertEquals(retArray1.length, cnt);
+        Assert.assertEquals(retArray1.length, cnt);
       }
 
     } catch (Exception e) {

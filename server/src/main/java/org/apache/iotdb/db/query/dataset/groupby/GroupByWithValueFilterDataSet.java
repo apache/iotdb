@@ -73,7 +73,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
     this.timestampGenerator = new EngineTimeGenerator(expression, context);
     this.allDataReaderList = new ArrayList<>();
-    for (Path path : selectedSeries) {
+    for (Path path : paths) {
       SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path, context);
       allDataReaderList.add(seriesReaderByTimestamp);
     }
@@ -108,7 +108,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       timeArrayLength = constructTimeArrayForOneCal(timestampArray, timeArrayLength);
 
       // cal result using timestamp array
-      for (int i = 0; i < selectedSeries.size(); i++) {
+      for (int i = 0; i < paths.size(); i++) {
         functions.get(i).calcAggregationUsingTimestamps(
             timestampArray, timeArrayLength, allDataReaderList.get(i));
       }
@@ -123,7 +123,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
     if (timeArrayLength > 0) {
       // cal result using timestamp array
-      for (int i = 0; i < selectedSeries.size(); i++) {
+      for (int i = 0; i < paths.size(); i++) {
         functions.get(i).calcAggregationUsingTimestamps(
             timestampArray, timeArrayLength, allDataReaderList.get(i));
       }

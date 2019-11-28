@@ -36,8 +36,6 @@ import java.util.List;
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
   protected long jobId;
-  // TODO What's the use of the field, the super class has the paths field
-  protected List<Path> selectedSeries;
   private long unit;
   private long slidingStep;
   private long intervalStartTime;
@@ -56,7 +54,6 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
                               long slidingStep, long startTime, long endTime) {
     super(paths);
     this.jobId = jobId;
-    this.selectedSeries = paths;
     this.unit = unit;
     this.slidingStep = slidingStep;
     this.intervalStartTime = startTime;
@@ -74,7 +71,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     // construct AggregateFunctions
     for (int i = 0; i < paths.size(); i++) {
       TSDataType tsDataType = MManager.getInstance()
-          .getSeriesType(selectedSeries.get(i).getFullPath());
+          .getSeriesType(paths.get(i).getFullPath());
       AggregateFunction function = AggreFuncFactory.getAggrFuncByName(aggres.get(i), tsDataType);
       function.init();
       functions.add(function);
