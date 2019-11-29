@@ -141,6 +141,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 显示设备语句
+
 ```
 SHOW DEVICES
 Eg: IoTDB > SHOW DEVICES
@@ -148,6 +149,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 显示ROOT节点的子节点名称语句
+
 ```
 SHOW CHILD PATHS
 Eg: IoTDB > SHOW CHILD PATHS
@@ -155,6 +157,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 显示子节点名称语句
+
 ```
 SHOW CHILD PATHS <Path>
 Eg: IoTDB > SHOW CHILD PATHS root
@@ -212,7 +215,9 @@ FromClause : <PrefixPath> (COMMA <PrefixPath>)?
 WhereClause : <Condition> [(AND | OR) <Condition>]*
 Condition  : <Expression> [(AND | OR) <Expression>]*
 Expression : [NOT | !]? <TimeExpr> | [NOT | !]? <SensorExpr>
-TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
+TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
+RelativeTimeDurationUnit = Integer ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS')
+RelativeTime : (now() | <TimeValue>) [(+|-) RelativeTimeDurationUnit]+
 SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
 Eg. IoTDB > SELECT * FROM root
@@ -238,7 +243,9 @@ FromClause : <PrefixPath>
 WhereClause : <Condition> [(AND | OR) <Condition>]*
 Condition  : <Expression> [(AND | OR) <Expression>]*
 Expression : [NOT | !]? <TimeExpr> | [NOT | !]? <SensorExpr>
-TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
+TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
+RelativeTimeDurationUnit = Integer ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS')
+RelativeTime : (now() | <TimeValue>) [(+|-) RelativeTimeDurationUnit]+
 SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
 GroupByClause : LPAREN <TimeUnit> (COMMA TimeValue)? COMMA <TimeInterval> (COMMA <TimeInterval>)* RPAREN
 TimeUnit : Integer <DurationUnit>
@@ -292,7 +299,9 @@ FromClause : <Path>
 WhereClause : <Condition> [(AND | OR) <Condition>]*
 Condition : <Expression> [(AND | OR) <Expression>]*
 Expression: [NOT|!]?<TimeExpr> | [NOT|!]?<SensorExpr>
-TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
+TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
+RelativeTimeDurationUnit = Integer ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS')
+RelativeTime : (now() | <TimeValue>) [(+|-) RelativeTimeDurationUnit]+
 SensorExpr : (<Timeseries>|<Path>) PrecedenceEqualOperator <PointValue>
 LIMITClause : <N> [OFFSETClause]?
 N : NonNegativeInteger
@@ -510,11 +519,11 @@ Eg. SELECT MAX_VALUE(status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHER
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
-* MEAN
-
+* AVG
+原有的 `MEAN` 方法在 `v0.9.0` 版本更名为 `AVG`。
 ```
-SELECT MEAN (Path) (COMMA MEAN (Path))* FROM <FromClause> [WHERE <WhereClause>]?
-Eg. SELECT MEAN (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+SELECT AVG (Path) (COMMA AVG (Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT AVG (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 

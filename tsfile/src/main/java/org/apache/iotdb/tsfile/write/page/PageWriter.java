@@ -25,7 +25,6 @@ import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -38,8 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This function is used to write time-value into a page. It consists of a time encoder, a value encoder and respective
- * OutputStream.
+ * This writer is used to write time-value into a page. It consists of a time encoder,
+ * a value encoder and respective OutputStream.
  */
 public class PageWriter {
 
@@ -49,7 +48,7 @@ public class PageWriter {
   private long pageMaxTime;
   private long pageMinTime = Long.MIN_VALUE;
 
-  ICompressor compressor;
+  private ICompressor compressor;
 
   // time
   private Encoder timeEncoder;
@@ -74,7 +73,7 @@ public class PageWriter {
     this.compressor = ICompressor.getCompressor(measurementSchema.getCompressor());
   }
 
-  public PageWriter(Encoder timeEncoder, Encoder valueEncoder) {
+  private PageWriter(Encoder timeEncoder, Encoder valueEncoder) {
     this.timeOut = new PublicBAOS();
     this.valueOut = new PublicBAOS();
     this.timeEncoder = timeEncoder;

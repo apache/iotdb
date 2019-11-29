@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.TsDigest;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -72,7 +71,7 @@ public class Utils {
     }
   }
 
-  public static void isTwoTsDigestEqual(TsDigest digestA, TsDigest digestB, String name) {
+  public static void isTwoTsDigestEqual(Statistics digestA, Statistics digestB, String name) {
     if ((digestA == null) ^ (digestB == null)) {
       System.out.println("error");
       fail(String.format("one of %s is null", name));

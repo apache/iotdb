@@ -88,6 +88,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteInsertRowInBatchResp;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
@@ -97,6 +98,7 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TSHandleIdentifier;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSInsertInBatchReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
@@ -156,6 +158,46 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     processor = new QueryProcessor(new QueryProcessExecutor());
   }
 
+  public static TSDataType getSeriesType(String path) throws QueryProcessException {
+    switch (path.toLowerCase()) {
+      // authorization queries
+      case ROLE:
+      case USER:
+      case PRIVILEGE:
+      case STORAGE_GROUP:
+        return TSDataType.TEXT;
+      case TTL:
+        return TSDataType.INT64;
+      default:
+        // do nothing
+    }
+
+    if (path.contains("(") && !path.startsWith("(") && path.endsWith(")")) {
+      // aggregation
+      int leftBracketIndex = path.indexOf('(');
+      String aggrType = path.substring(0, leftBracketIndex);
+      String innerPath = path.substring(leftBracketIndex + 1, path.length() - 1);
+      switch (aggrType.toLowerCase()) {
+        case StatisticConstant.MIN_TIME:
+        case StatisticConstant.MAX_TIME:
+        case StatisticConstant.COUNT:
+          return TSDataType.INT64;
+        case StatisticConstant.LAST:
+        case StatisticConstant.FIRST:
+        case StatisticConstant.MIN_VALUE:
+        case StatisticConstant.MAX_VALUE:
+          return getSeriesType(innerPath);
+        case StatisticConstant.AVG:
+        case StatisticConstant.SUM:
+          return TSDataType.DOUBLE;
+        default:
+          throw new QueryProcessException(
+              "aggregate does not support " + aggrType + " function.");
+      }
+    }
+    return MManager.getInstance().getSeriesType(path);
+  }
+
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
     logger.info("{}: receive open session request from username {}", IoTDBConstant.GLOBAL_DB_NAME,
@@ -171,7 +213,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       status = authorizer.login(req.getUsername(), req.getPassword());
     } catch (AuthException e) {
-      logger.error("meet error while logging in.", e);
+      logger.info("meet error while logging in.", e);
       status = false;
     }
     TSStatus tsStatus;
@@ -285,7 +327,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
   }
 
-
   /**
    * release single operation resource
    */
@@ -397,7 +438,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (QueryProcessException | MetadataException | OutOfMemoryError | SQLException e) {
       logger
           .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()), e);
-      Thread.currentThread().interrupt();
       status = getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
       resp.setStatus(status);
       return resp;
@@ -442,46 +482,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private String getMetadataInString() {
     return MManager.getInstance().getMetadataInString();
-  }
-
-  public static TSDataType getSeriesType(String path) throws QueryProcessException {
-    switch (path.toLowerCase()) {
-      // authorization queries
-      case ROLE:
-      case USER:
-      case PRIVILEGE:
-      case STORAGE_GROUP:
-        return TSDataType.TEXT;
-      case TTL:
-        return TSDataType.INT64;
-      default:
-        // do nothing
-    }
-
-    if (path.contains("(") && !path.startsWith("(") && path.endsWith(")")) {
-      // aggregation
-      int leftBracketIndex = path.indexOf('(');
-      String aggrType = path.substring(0, leftBracketIndex);
-      String innerPath = path.substring(leftBracketIndex + 1, path.length() - 1);
-      switch (aggrType.toLowerCase()) {
-        case StatisticConstant.MIN_TIME:
-        case StatisticConstant.MAX_TIME:
-        case StatisticConstant.COUNT:
-          return TSDataType.INT64;
-        case StatisticConstant.LAST:
-        case StatisticConstant.FIRST:
-        case StatisticConstant.MIN_VALUE:
-        case StatisticConstant.MAX_VALUE:
-          return getSeriesType(innerPath);
-        case StatisticConstant.AVG:
-        case StatisticConstant.SUM:
-          return TSDataType.DOUBLE;
-        default:
-          throw new QueryProcessException(
-              "aggregate does not support " + aggrType + " function.");
-      }
-    }
-    return MManager.getInstance().getSeriesType(path);
   }
 
   protected List<String> getPaths(String path) throws MetadataException {
@@ -574,14 +574,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       batchErrorMessage.append(TSStatusCode.METADATA_ERROR.getStatusCode()).append("\n");
       return false;
     } catch (QueryProcessException e) {
-      logger.error(
-          "Error occurred when executing {}, meet error while parsing SQL to physical plan: ",
-          statement, e);
+      logger.info(
+          "Error occurred when executing {}, meet error while parsing SQL to physical plan: {}",
+          statement, e.getMessage());
       result.add(Statement.EXECUTE_FAILED);
       batchErrorMessage.append(TSStatusCode.SQL_PARSE_ERROR.getStatusCode()).append("\n");
       return false;
     } catch (QueryInBatchStatementException e) {
-      logger.error("Error occurred when executing {}, query statement not allowed: ", statement, e);
+      logger.info("Error occurred when executing {}, query statement not allowed: ", statement, e);
       result.add(Statement.EXECUTE_FAILED);
       batchErrorMessage.append(TSStatusCode.QUERY_NOT_ALLOWED.getStatusCode()).append("\n");
       return false;
@@ -628,11 +628,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getTSExecuteStatementResp(getStatus(TSStatusCode.METADATA_ERROR,
           "Check metadata error: " + e.getMessage()));
     } catch (QueryProcessException e) {
-      logger.error("meet error while parsing SQL to physical plan: ", e);
+      logger.info("meet error while parsing SQL to physical plan: {}", e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR,
           "Statement format is not right: " + e.getMessage()));
     } catch (StorageEngineException e) {
-      logger.error("meet error while parsing SQL to physical plan: ", e);
+      logger.info("meet error while parsing SQL to physical plan: {}", e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR,
           e.getMessage()));
     }
@@ -689,7 +689,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
     } catch (QueryProcessException | MetadataException e) {
-      logger.error("meet error while parsing SQL to physical plan!", e);
+      logger.info("meet error while parsing SQL to physical plan: {}", e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     }
 
@@ -1033,7 +1033,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
     } catch (QueryProcessException | MetadataException e) {
-      logger.error("meet error while parsing SQL to physical plan!", e);
+      logger.info("meet error while parsing SQL to physical plan: {}", e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     }
 
@@ -1175,6 +1175,34 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
+  public TSExecuteInsertRowInBatchResp insertRowInBatch(TSInsertInBatchReq req) {
+    TSExecuteInsertRowInBatchResp resp = new TSExecuteInsertRowInBatchResp();
+    if (!checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      resp.addToStatusList(new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR)));
+      return resp;
+    }
+
+    InsertPlan plan = new InsertPlan();
+    for (int i = 0; i < req.deviceIds.size(); i++) {
+      plan.setDeviceId(req.getDeviceIds().get(i));
+      plan.setTime(req.getTimestamps().get(i));
+      plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
+      plan.setValues(req.getValuesList().get(i).toArray(new String[0]));
+      TSStatus status = checkAuthority(plan);
+      if (status != null) {
+          resp.addToStatusList(new TSStatus(status));
+      }
+      else{
+        resp.addToStatusList(executePlan(plan));
+      }
+    }
+
+    return resp;
+  }
+
+
+  @Override
   public TSStatus insertRow(TSInsertReq req) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
@@ -1258,7 +1286,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             Arrays.asList(results));
       }
     } catch (Exception e) {
-      logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.info("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSBatchExecuteStatementResp(
           getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()), null);
     } finally {

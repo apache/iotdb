@@ -38,19 +38,12 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @see IChunkWriter IChunkWriter
- */
 public class ChunkWriterImpl implements IChunkWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(ChunkWriterImpl.class);
 
   private MeasurementSchema measurementSchema;
 
-  /**
-   * help to encode data of this series.
-   */
-  //private final ChunkBuffer chunkBuffer;
   private ICompressor compressor;
 
   /**
@@ -63,8 +56,9 @@ public class ChunkWriterImpl implements IChunkWriter {
   private long chunkMinTime = Long.MIN_VALUE;
 
   private int numOfPages;
+
   /**
-   * value writer to encode data.
+   * write data into current page
    */
   private PageWriter pageWriter;
 
@@ -75,23 +69,18 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   private final int maxNumberOfPointsInPage;
 
-  // initial value for this.valueCountInOnePageForNextCheck
-  private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 1500;
-
   /**
-   * value count in a page. It will be reset after calling {@code writePageHeaderAndDataIntoBuff()}
+   * value count in current page.
    */
   private int valueCountInOnePageForNextCheck;
 
-  /**
-   * statistic on a stage. It will be reset after calling {@code writeAllPagesOfSeriesToTsFile()}
-   */
-  private Statistics<?> chunkStatistics;
+  // initial value for valueCountInOnePageForNextCheck
+  private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 1500;
 
   /**
-   * statistic on a page. It will be reset after calling {@code writePageHeaderAndDataIntoBuff()}
+   * statistic of this chunk.
    */
-  //private Statistics<?> pageStatistics;
+  private Statistics<?> chunkStatistics;
 
   /**
    * @param schema schema of this measurement
@@ -107,7 +96,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     // initial check of memory usage. So that we have enough data to make an initial prediction
     this.valueCountInOnePageForNextCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
 
-    // init statistics for this series and page
+    // init statistics for this chunk and page
     this.chunkStatistics = Statistics.getStatsByType(measurementSchema.getType());
 
     this.pageWriter = new PageWriter(measurementSchema);
@@ -251,8 +240,11 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException {
     sealCurrentPage();
     writeAllPagesOfChunkToTsFile(tsfileWriter, chunkStatistics);
-    this.reset();
-    // reset series_statistics
+
+    // reinit this chunk writer
+    pageBuffer.reset();
+    chunkPointCount = 0;
+    chunkMinTime = Long.MIN_VALUE;
     this.chunkStatistics = Statistics.getStatsByType(measurementSchema.getType());
   }
 
@@ -333,7 +325,7 @@ public class ChunkWriterImpl implements IChunkWriter {
    * write the page to specified IOWriter.
    *
    * @param writer     the specified IOWriter
-   * @param statistics the statistic information provided by series writer
+   * @param statistics the chunk statistics
    * @return the data size of this chunk
    * @throws IOException exception in IO
    */
@@ -364,15 +356,6 @@ public class ChunkWriterImpl implements IChunkWriter {
 
     writer.endChunk(chunkPointCount);
     return headerSize + dataSize;
-  }
-
-  /**
-   * reset exist data in page for next stage.
-   */
-  public void reset() {
-    chunkMinTime = Long.MIN_VALUE;
-    pageBuffer.reset();
-    chunkPointCount = 0;
   }
 
   /**
