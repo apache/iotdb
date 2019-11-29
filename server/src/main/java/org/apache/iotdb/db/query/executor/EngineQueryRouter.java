@@ -24,7 +24,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
@@ -146,6 +145,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
 
     IExpression optimizedExpression = ExpressionOptimizer.getInstance()
         .optimize(expression, selectedSeries);
+    System.out.println(optimizedExpression);
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
       GroupByWithoutValueFilterDataSet groupByEngine = new GroupByWithoutValueFilterDataSet(
           nextJobId, selectedSeries, unit, origin, mergedIntervalList);

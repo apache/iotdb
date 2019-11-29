@@ -66,7 +66,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.JobFileManager;
@@ -130,7 +129,9 @@ public class StorageGroupProcessor {
    */
   private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
   private final HashMap<Long, TsFileProcessor> workSequenceTsFileProcessor = new HashMap<>();
-  private final HashMap<Long, Long> tsfileProcessorLastUseTime = new HashMap<>();
+  private final HashMap<Long, Long> sequenceTsfileProcessorLastUseTime = new HashMap<>();
+  private final HashMap<Long, TsFileProcessor> workUnsequenceTsFileProcessor = new HashMap<>();
+  private final HashMap<Long, Long> unsequenceTsfileProcessorLastUseTime = new HashMap<>();
   /**
    * the schema of time series that belong this storage group
    */
@@ -140,7 +141,7 @@ public class StorageGroupProcessor {
   private CopyOnReadLinkedList<TsFileProcessor> closingSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
   // includes sealed and unsealed unSequence TsFiles
   private List<TsFileResource> unSequenceFileList = new ArrayList<>();
-  private TsFileProcessor workUnSequenceTsFileProcessor = null;
+
   private CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
   /**
    * device -> global latest timestamp of each device latestTimeForEachDevice caches non-flushed
@@ -488,14 +489,11 @@ public class StorageGroupProcessor {
     TsFileProcessor tsFileProcessor = null;
     try {
       if (sequence) {
-        tsFileProcessor = getOrCreateTsFileProcessorIntern(time);
+        tsFileProcessor = getOrCreateTsFileProcessorIntern(time, workSequenceTsFileProcessor,
+            sequenceTsfileProcessorLastUseTime, sequenceFileList, true);
       } else {
-        if (workUnSequenceTsFileProcessor == null) {
-          // create a new TsfileProcessor
-          workUnSequenceTsFileProcessor = createTsFileProcessor(false, 0);
-          unSequenceFileList.add(workUnSequenceTsFileProcessor.getTsFileResource());
-        }
-        tsFileProcessor = workUnSequenceTsFileProcessor;
+        tsFileProcessor = getOrCreateTsFileProcessorIntern(time, workUnsequenceTsFileProcessor,
+            unsequenceTsfileProcessorLastUseTime, unSequenceFileList, false);
       }
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
@@ -513,43 +511,59 @@ public class StorageGroupProcessor {
 
   /**
    * get processor from hashmap, flush oldest processor is necessary
+   *
+   * @param time insert time
+   * @param tsFileProcessorHashMap tsFileProcessorHashMap
+   * @param tsfileProcessorLastUseTime last use time of this processor map
+   * @param fileList file list to add new processor
+   * @param sequence whether is sequence or not
    */
-  private TsFileProcessor getOrCreateTsFileProcessorIntern(long time)
+  private TsFileProcessor getOrCreateTsFileProcessorIntern(long time,
+      HashMap<Long, TsFileProcessor> tsFileProcessorHashMap,
+      HashMap<Long, Long> tsfileProcessorLastUseTime,
+      List<TsFileResource> fileList,
+      boolean sequence)
       throws IOException, DiskSpaceInsufficientException {
     // time partition range
     long timeRange = getTimeRange(time);
     TsFileProcessor res = null;
     // we have to ensure only one thread can change workSequenceTsFileProcessor
-    synchronized (workSequenceTsFileProcessor) {
-      if (!workSequenceTsFileProcessor.containsKey(timeRange)) {
-        // 2 is for unsequence file
-        if(workSequenceTsFileProcessor.size() >= IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP - 2){
-          // we have to remove oldest processor to control the num of the memtables
+    writeLock();
+    try {
+      if (!tsFileProcessorHashMap.containsKey(timeRange)) {
+        // we have to remove oldest processor to control the num of the memtables
+        if (tsFileProcessorHashMap.size()
+            >= IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP / 2) {
           long oldestTimeRange = -1;
           long oldestUseTime = Long.MAX_VALUE;
-          for(long curTimeRange : workSequenceTsFileProcessor.keySet()){
+          for (long curTimeRange : tsFileProcessorHashMap.keySet()) {
             long curUseTime = tsfileProcessorLastUseTime.get(curTimeRange);
-            if(oldestUseTime > curUseTime){
+            if (oldestUseTime > curUseTime) {
               oldestUseTime = curUseTime;
               oldestTimeRange = curTimeRange;
             }
           }
-          if(oldestTimeRange == -1){
-            throw new IllegalStateException("MEMTABLE_NUM_IN_EACH_STORAGE_GROUP size is too small: " + IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP);
+          if (oldestTimeRange == -1) {
+            throw new IllegalStateException("MEMTABLE_NUM_IN_EACH_STORAGE_GROUP size is too small: "
+                + IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP);
           }
 
-          moveOneWorkProcessorToClosingList(true, workSequenceTsFileProcessor.get(oldestTimeRange));
+          moveOneWorkProcessorToClosingList(sequence, tsFileProcessorHashMap.get(oldestTimeRange));
         }
 
-        TsFileProcessor newProcessor = createTsFileProcessor(true, timeRange);
-        workSequenceTsFileProcessor.put(timeRange, newProcessor);
-        sequenceFileList.add(newProcessor.getTsFileResource());
+        // build new processor
+        TsFileProcessor newProcessor = createTsFileProcessor(sequence, timeRange);
+        tsFileProcessorHashMap.put(timeRange, newProcessor);
+        fileList.add(newProcessor.getTsFileResource());
         res = newProcessor;
       } else {
-        res = workSequenceTsFileProcessor.get(timeRange);
+        res = tsFileProcessorHashMap.get(timeRange);
       }
 
       tsfileProcessorLastUseTime.put(timeRange, System.currentTimeMillis());
+    } finally {
+      // unlock in finally
+      writeUnlock();
     }
 
     return res;
@@ -570,34 +584,25 @@ public class StorageGroupProcessor {
     }
     fsFactory.getFile(baseDir, storageGroupName).mkdirs();
 
-    if (sequence) {
-      String filePath =
-          baseDir + File.separator + storageGroupName + File.separator + timeRange + File.separator
-              + System.currentTimeMillis() + IoTDBConstant.TSFILE_NAME_SEPARATOR + versionController
-              .nextVersion() + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0" + TSFILE_SUFFIX;
-      System.out.println(fsFactory.getFile(filePath));
-      TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName,
-          fsFactory.getFile(filePath),
-          schema, versionController, this::closeUnsealedTsFileProcessor,
-          this::updateLatestFlushTimeCallback, sequence);
-      tsFileProcessor.setTimeRange(timeRange);
-      return tsFileProcessor;
-    } else {
-      String filePath =
-          baseDir + File.separator + storageGroupName + File.separator
-              + System.currentTimeMillis() + IoTDBConstant.TSFILE_NAME_SEPARATOR + versionController
-              .nextVersion() + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0" + TSFILE_SUFFIX;
-      return new TsFileProcessor(storageGroupName, fsFactory.getFile(filePath),
-          schema, versionController, this::closeUnsealedTsFileProcessor,
-          () -> true, sequence);
-    }
+    String filePath =
+        baseDir + File.separator + storageGroupName + File.separator + timeRange + File.separator
+            + System.currentTimeMillis() + IoTDBConstant.TSFILE_NAME_SEPARATOR + versionController
+            .nextVersion() + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0" + TSFILE_SUFFIX;
+
+    TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName,
+        fsFactory.getFile(filePath),
+        schema, versionController, this::closeUnsealedTsFileProcessor,
+        this::updateLatestFlushTimeCallback, sequence);
+    tsFileProcessor.setTimeRange(timeRange);
+    return tsFileProcessor;
   }
 
 
   /**
    * only called by insert(), thread-safety should be ensured by caller
    */
-  private void moveOneWorkProcessorToClosingList(boolean sequence, TsFileProcessor tsFileProcessor) {
+  private void moveOneWorkProcessorToClosingList(boolean sequence,
+      TsFileProcessor tsFileProcessor) {
     //for sequence tsfile, we update the endTimeMap only when the file is prepared to be closed.
     //for unsequence tsfile, we have maintained the endTimeMap when an insertion comes.
     if (sequence) {
@@ -607,12 +612,14 @@ public class StorageGroupProcessor {
       tsFileProcessor.asyncClose();
 
       workSequenceTsFileProcessor.remove(tsFileProcessor.getTimeRange());
-      tsfileProcessorLastUseTime.remove(tsFileProcessor.getTimeRange());
+      sequenceTsfileProcessorLastUseTime.remove(tsFileProcessor.getTimeRange());
       logger.info("close a sequence tsfile processor {}", storageGroupName);
     } else {
-      closingUnSequenceTsFileProcessor.add(workUnSequenceTsFileProcessor);
-      workUnSequenceTsFileProcessor.asyncClose();
-      workUnSequenceTsFileProcessor = null;
+      closingUnSequenceTsFileProcessor.add(tsFileProcessor);
+      tsFileProcessor.asyncClose();
+
+      workUnsequenceTsFileProcessor.remove(tsFileProcessor.getTimeRange());
+      unsequenceTsfileProcessorLastUseTime.remove(tsFileProcessor.getTimeRange());
       logger.info("close an unsequence tsfile processor {}", storageGroupName);
     }
   }
@@ -650,7 +657,7 @@ public class StorageGroupProcessor {
       deleteAllSGFolders(folder);
 
       this.workSequenceTsFileProcessor.clear();
-      this.workUnSequenceTsFileProcessor = null;
+      this.workUnsequenceTsFileProcessor.clear();
       this.sequenceFileList.clear();
       this.unSequenceFileList.clear();
       this.latestFlushedTimeForEachDevice.clear();
@@ -762,12 +769,17 @@ public class StorageGroupProcessor {
       logger.info("async force close all files in storage group: {}", storageGroupName);
       if (workSequenceTsFileProcessor != null) {
         // to avoid concurrent modification problem, we need a new array list
-        for(TsFileProcessor tsFileProcessor : new ArrayList<>(workSequenceTsFileProcessor.values())){
+        for (TsFileProcessor tsFileProcessor : new ArrayList<>(
+            workSequenceTsFileProcessor.values())) {
           moveOneWorkProcessorToClosingList(true, tsFileProcessor);
         }
       }
-      if (workUnSequenceTsFileProcessor != null) {
-        moveOneWorkProcessorToClosingList(false, workUnSequenceTsFileProcessor);
+      if (workUnsequenceTsFileProcessor != null) {
+        // to avoid concurrent modification problem, we need a new array list
+        for (TsFileProcessor tsFileProcessor : new ArrayList<>(
+            workUnsequenceTsFileProcessor.values())) {
+          moveOneWorkProcessorToClosingList(false, tsFileProcessor);
+        }
       }
     } finally {
       writeUnlock();
@@ -925,9 +937,9 @@ public class StorageGroupProcessor {
 //          workSequenceTsFileProcessor.getLogNode()
 //              .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
         }
-        if (workUnSequenceTsFileProcessor != null) {
-          workUnSequenceTsFileProcessor.getLogNode()
-              .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
+        if (workUnsequenceTsFileProcessor != null) {
+//          workUnSequenceTsFileProcessor.getLogNode()
+//              .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
         }
       }
 
