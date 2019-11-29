@@ -67,6 +67,7 @@ public class IOTDBGroupByIT {
           + "values(100, 100.1, false, 110)",
       "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
           + "values(150, 200.2, true, 220)",
+      "flush",
       "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
           + "values(200, 300.3, false, 330 )",
       "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "

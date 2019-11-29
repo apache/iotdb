@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -304,6 +305,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       AggregateFunction function)
       throws IOException, QueryProcessException {
     if (timeFilter != null && !timeFilter.containStartEndTime(minTime, maxTime)) {
+      return false;
+    }
+
+    TimeRange range = new TimeRange(startTime, endTime - 1);
+    if (!range.contains(new TimeRange(minTime, maxTime))) {
       return false;
     }
 
