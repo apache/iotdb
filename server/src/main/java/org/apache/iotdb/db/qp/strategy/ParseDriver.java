@@ -28,8 +28,6 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.sql.parse.SqlBaseLexer;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser;
 
 /**
  * ParseDriver.
@@ -51,8 +49,8 @@ public class ParseDriver {
   public Operator parse(String sql, ZoneId zoneId) {
     logicalGenerator.setZoneId(zoneId);
     CharStream charStream = CharStreams.fromString(sql);
-    SqlBaseLexer lexerSLL = new SqlBaseLexer(charStream);
-    CommonTokenStream tokensSLL = new CommonTokenStream(lexerSLL);
+    SqlBaseLexer lexer1 = new SqlBaseLexer(charStream);
+    CommonTokenStream tokensSLL = new CommonTokenStream(lexer1);
     SqlBaseParser parser = new SqlBaseParser(tokensSLL);
     parser.getInterpreter().setPredictionMode(PredictionMode.SLL);
     parser.setErrorHandler(new BailErrorStrategy());
@@ -61,8 +59,8 @@ public class ParseDriver {
       tree = parser.singleStatement();  // STAGE 1
     }
     catch (Exception ex) {
-      SqlBaseLexer lexerLL = new SqlBaseLexer(charStream);
-      CommonTokenStream tokensLL = new CommonTokenStream(lexerLL);
+      SqlBaseLexer lexer2 = new SqlBaseLexer(charStream);
+      CommonTokenStream tokensLL = new CommonTokenStream(lexer2);
       SqlBaseParser parserLL = new SqlBaseParser(tokensLL);
       parserLL.getInterpreter().setPredictionMode(PredictionMode.LL);
       tree = parser.singleStatement();  // STAGE 2

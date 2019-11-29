@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_AND;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.LESSTHAN;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.LESSTHANOREQUALTO;
-
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -43,84 +38,93 @@ import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.db.qp.logical.crud.UpdateOperator;
-import org.apache.iotdb.db.qp.logical.sys.*;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
+import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
+import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
+import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AddLabelContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AndExpressionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClausesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ConstantContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreatePropertyContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateTimeseriesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DateExpressionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteLabelContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteStorageGroupContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteTimeseriesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DropRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DropUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FillClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FromClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FunctionCallContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FunctionElementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleToUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantWatermarkEmbeddingContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByDeviceClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertColumnSpecContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertValuesSpecContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LimitClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LinkPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListAllRoleOfUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListAllUserOfRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListPrivilegesRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListPrivilegesUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListRolePrivilegesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListUserPrivilegesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LoadConfigurationStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LoadStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.NodeNameContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.NodeNameWithoutStarContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.OffsetClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.OrExpressionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PredicateContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PrefixPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PrivilegesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PropertyContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeRoleFromUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeWatermarkEmbeddingContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RootOrIdContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SelectElementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SelectStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetColContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetStorageGroupContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowAllTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SlimitClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SoffsetClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeIntervalContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeseriesPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TypeClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UnlinkPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UnsetTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UpdateStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.WhereClauseContext;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
-import org.apache.iotdb.db.sql.parse.SqlBaseBaseListener;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.AddLabelContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.AlterUserContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.AndExpressionContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.AttributeClausesContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.ConstantContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.CreatePropertyContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.CreateRoleContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.CreateTimeseriesContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.CreateUserContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.DateExpressionContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.DeleteLabelContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.DeleteStatementContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.DeleteStorageGroupContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.DeleteTimeseriesContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.DropRoleContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.DropUserContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.FillClauseContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.FromClauseContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.FunctionCallContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.FunctionElementContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.GrantRoleContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.GrantRoleToUserContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.GrantUserContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.GrantWatermarkEmbeddingContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.GroupByClauseContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.GroupByDeviceClauseContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.InsertColumnSpecContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.InsertStatementContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.InsertValuesSpecContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.LimitClauseContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.LinkPathContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.ListAllRoleOfUserContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.ListAllUserOfRoleContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.ListPrivilegesRoleContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.ListPrivilegesUserContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.ListRoleContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.ListRolePrivilegesContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.ListUserContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.ListUserPrivilegesContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.LoadConfigurationStatementContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.LoadStatementContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.NodeNameContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.NodeNameWithoutStarContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.OffsetClauseContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.OrExpressionContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.PredicateContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.PrefixPathContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.PrivilegesContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.PropertyContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.RevokeRoleContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.RevokeRoleFromUserContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.RevokeUserContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.RevokeWatermarkEmbeddingContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.RootOrIdContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.SelectElementContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.SelectStatementContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.SetColContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.SetStorageGroupContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.SetTTLStatementContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.ShowAllTTLStatementContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.ShowTTLStatementContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.SlimitClauseContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.SoffsetClauseContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.SuffixPathContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.TimeIntervalContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.TimeseriesPathContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.TypeClauseContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.UnlinkPathContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.UnsetTTLStatementContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.UpdateStatementContext;
-import org.apache.iotdb.db.sql.parse.SqlBaseParser.WhereClauseContext;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -137,7 +141,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
   private RootOperator initializedOperator = null;
   private ZoneId zoneId;
-  private int operatorNumber;
+  private int operatorType;
   private CreateTimeSeriesOperator createTimeSeriesOperator;
   private InsertOperator insertOp;
   private SelectOperator selectOp;
@@ -178,7 +182,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterCreateTimeseries(CreateTimeseriesContext ctx) {
     super.enterCreateTimeseries(ctx);
     createTimeSeriesOperator = new CreateTimeSeriesOperator(SQLConstant.TOK_METADATA_CREATE);
-    operatorNumber = SQLConstant.TOK_METADATA_CREATE;
+    operatorType = SQLConstant.TOK_METADATA_CREATE;
     createTimeSeriesOperator.setPath(parseTimeseriesPath(ctx.timeseriesPath()));
   }
 
@@ -189,7 +193,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         PropertyOperator.PropertyType.ADD_TREE);
     propertyOperator.setPropertyPath(new Path(ctx.ID().getText()));
     initializedOperator = propertyOperator;
-    operatorNumber = SQLConstant.TOK_PROPERTY_CREATE;
+    operatorType = SQLConstant.TOK_PROPERTY_CREATE;
   }
 
   @Override
@@ -199,7 +203,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         PropertyOperator.PropertyType.ADD_PROPERTY_LABEL);
     propertyOperator.setPropertyPath(new Path(new String[]{ctx.ID(1).getText(), ctx.ID(0).getText()}));
     initializedOperator = propertyOperator;
-    operatorNumber = SQLConstant.TOK_PROPERTY_ADD_LABEL;
+    operatorType = SQLConstant.TOK_PROPERTY_ADD_LABEL;
   }
 
   @Override
@@ -209,7 +213,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         PropertyOperator.PropertyType.DELETE_PROPERTY_LABEL);
     propertyOperator.setPropertyPath(new Path(new String[]{ctx.ID(1).getText(), ctx.ID(0).getText()}));
     initializedOperator = propertyOperator;
-    operatorNumber = SQLConstant.TOK_PROPERTY_DELETE_LABEL;
+    operatorType = SQLConstant.TOK_PROPERTY_DELETE_LABEL;
   }
 
   @Override
@@ -222,7 +226,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     propertyOperator.setPropertyPath(new Path(new String[]{ctx.propertyLabelPair().ID(0).getText()
         , ctx.propertyLabelPair().ID(1).getText()}));
     initializedOperator = propertyOperator;
-    operatorNumber = SQLConstant.TOK_PROPERTY_LINK;
+    operatorType = SQLConstant.TOK_PROPERTY_LINK;
   }
 
   @Override
@@ -235,7 +239,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     propertyOperator.setPropertyPath(new Path(new String[]{ctx.propertyLabelPair().ID(0).getText()
         , ctx.propertyLabelPair().ID(1).getText()}));
     initializedOperator = propertyOperator;
-    operatorNumber = SQLConstant.TOK_PROPERTY_UNLINK;
+    operatorType = SQLConstant.TOK_PROPERTY_UNLINK;
   }
 
   @Override
@@ -243,10 +247,10 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterCreateUser(ctx);
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_CREATE,
         AuthorOperator.AuthorType.CREATE_USER);
-    authorOperator.setUserName(ctx.userName.getText());
+    authorOperator.setUserName(ctx.ID().getText());
     authorOperator.setPassWord(removeStringQuote(ctx.password.getText()));
     initializedOperator = authorOperator;
-    operatorNumber = SQLConstant.TOK_AUTHOR_CREATE;
+    operatorType = SQLConstant.TOK_AUTHOR_CREATE;
   }
 
   @Override
@@ -256,7 +260,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         AuthorOperator.AuthorType.CREATE_ROLE);
     authorOperator.setRoleName(ctx.ID().getText());
     initializedOperator = authorOperator;
-    operatorNumber = SQLConstant.TOK_AUTHOR_CREATE;
+    operatorType = SQLConstant.TOK_AUTHOR_CREATE;
   }
 
   @Override
@@ -264,10 +268,10 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterAlterUser(ctx);
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_UPDATE_USER,
         AuthorOperator.AuthorType.UPDATE_USER);
-    authorOperator.setUserName(ctx.userName.getText());
+    authorOperator.setUserName(ctx.ID().getText());
     authorOperator.setNewPassword(removeStringQuote(ctx.password.getText()));
     initializedOperator = authorOperator;
-    operatorNumber = SQLConstant.TOK_AUTHOR_UPDATE_USER;
+    operatorType = SQLConstant.TOK_AUTHOR_UPDATE_USER;
   }
 
   @Override
@@ -277,7 +281,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         AuthorOperator.AuthorType.DROP_USER);
     authorOperator.setUserName(ctx.ID().getText());
     initializedOperator = authorOperator;
-    operatorNumber = SQLConstant.TOK_AUTHOR_DROP;
+    operatorType = SQLConstant.TOK_AUTHOR_DROP;
   }
 
   @Override
@@ -287,7 +291,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         AuthorOperator.AuthorType.DROP_ROLE);
     authorOperator.setRoleName(ctx.ID().getText());
     initializedOperator = authorOperator;
-    operatorNumber = SQLConstant.TOK_AUTHOR_DROP;
+    operatorType = SQLConstant.TOK_AUTHOR_DROP;
   }
 
   @Override
@@ -299,7 +303,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
     authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     initializedOperator = authorOperator;
-    operatorNumber = SQLConstant.TOK_AUTHOR_GRANT;
+    operatorType = SQLConstant.TOK_AUTHOR_GRANT;
   }
 
   @Override
@@ -311,7 +315,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
     authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     initializedOperator = authorOperator;
-    operatorNumber = SQLConstant.TOK_AUTHOR_GRANT;
+    operatorType = SQLConstant.TOK_AUTHOR_GRANT;
   }
 
   @Override
@@ -323,7 +327,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
     authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     initializedOperator = authorOperator;
-    operatorNumber = SQLConstant.TOK_AUTHOR_GRANT;
+    operatorType = SQLConstant.TOK_AUTHOR_GRANT;
   }
 
   @Override
@@ -335,7 +339,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
     authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     initializedOperator = authorOperator;
-    operatorNumber = SQLConstant.TOK_AUTHOR_GRANT;
+    operatorType = SQLConstant.TOK_AUTHOR_GRANT;
   }
 
   @Override
@@ -346,7 +350,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     authorOperator.setRoleName(ctx.roleName.getText());
     authorOperator.setUserName(ctx.userName.getText());
     initializedOperator = authorOperator;
-    operatorNumber = SQLConstant.TOK_AUTHOR_GRANT;
+    operatorType = SQLConstant.TOK_AUTHOR_GRANT;
   }
 
   @Override
@@ -357,7 +361,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     authorOperator.setRoleName(ctx.roleName.getText());
     authorOperator.setUserName(ctx.userName.getText());
     initializedOperator = authorOperator;
-    operatorNumber = SQLConstant.TOK_AUTHOR_GRANT;
+    operatorType = SQLConstant.TOK_AUTHOR_GRANT;
   }
 
   @Override
@@ -377,7 +381,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     initializedOperator = new LoadDataOperator(SQLConstant.TOK_DATALOAD,
         removeStringQuote(csvPath),
         sc.toString());
-    operatorNumber = SQLConstant.TOK_DATALOAD;
+    operatorType = SQLConstant.TOK_DATALOAD;
   }
 
   @Override
@@ -400,7 +404,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       users.add(rootOrId.getText());
     }
     initializedOperator = new DataAuthOperator(SQLConstant.TOK_REVOKE_WATERMARK_EMBEDDING, users);
-    operatorNumber = SQLConstant.TOK_REVOKE_WATERMARK_EMBEDDING;
+    operatorType = SQLConstant.TOK_REVOKE_WATERMARK_EMBEDDING;
   }
 
   @Override
@@ -408,7 +412,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterListUser(ctx);
     initializedOperator = new AuthorOperator(SQLConstant.TOK_LIST,
         AuthorOperator.AuthorType.LIST_USER);
-    operatorNumber = SQLConstant.TOK_LIST;
+    operatorType = SQLConstant.TOK_LIST;
   }
 
   @Override
@@ -416,7 +420,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterListRole(ctx);
     initializedOperator = new AuthorOperator(SQLConstant.TOK_LIST,
         AuthorOperator.AuthorType.LIST_ROLE);
-    operatorNumber = SQLConstant.TOK_LIST;
+    operatorType = SQLConstant.TOK_LIST;
   }
 
   @Override
@@ -427,7 +431,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     operator.setUserName(ctx.ID().getText());
     operator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     initializedOperator = operator;
-    operatorNumber = SQLConstant.TOK_LIST;
+    operatorType = SQLConstant.TOK_LIST;
   }
 
   @Override
@@ -438,7 +442,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     operator.setRoleName((ctx.ID().getText()));
     operator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     initializedOperator = operator;
-    operatorNumber = SQLConstant.TOK_LIST;
+    operatorType = SQLConstant.TOK_LIST;
   }
 
   @Override
@@ -448,7 +452,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
     operator.setUserName(ctx.ID().getText());
     initializedOperator = operator;
-    operatorNumber = SQLConstant.TOK_LIST;
+    operatorType = SQLConstant.TOK_LIST;
   }
 
   @Override
@@ -458,7 +462,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
     operator.setRoleName(ctx.ID().getText());
     initializedOperator = operator;
-    operatorNumber = SQLConstant.TOK_LIST;
+    operatorType = SQLConstant.TOK_LIST;
   }
 
   @Override
@@ -468,7 +472,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         AuthorOperator.AuthorType.LIST_USER_ROLES);
     initializedOperator = operator;
     operator.setUserName(ctx.ID().getText());
-    operatorNumber = SQLConstant.TOK_LIST;
+    operatorType = SQLConstant.TOK_LIST;
   }
 
   @Override
@@ -478,7 +482,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         AuthorOperator.AuthorType.LIST_ROLE_USERS);
     initializedOperator = operator;
     operator.setRoleName((ctx.ID().getText()));
-    operatorNumber = SQLConstant.TOK_LIST;
+    operatorType = SQLConstant.TOK_LIST;
   }
 
   @Override
@@ -488,7 +492,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     operator.setStorageGroup(parsePrefixPath(ctx.prefixPath()).getFullPath());
     operator.setDataTTL(Long.parseLong(ctx.INT().getText()));
     initializedOperator = operator;
-    operatorNumber = SQLConstant.TOK_SET;
+    operatorType = SQLConstant.TOK_SET;
   }
 
   @Override
@@ -497,7 +501,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     SetTTLOperator operator = new SetTTLOperator(SQLConstant.TOK_UNSET);
     operator.setStorageGroup(parsePrefixPath(ctx.prefixPath()).getFullPath());
     initializedOperator = operator;
-    operatorNumber = SQLConstant.TOK_UNSET;
+    operatorType = SQLConstant.TOK_UNSET;
   }
 
   @Override
@@ -549,7 +553,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         SQLConstant.TOK_METADATA_DELETE);
     deleteTimeSeriesOperator.setDeletePathList(deletePaths);
     initializedOperator = deleteTimeSeriesOperator;
-    operatorNumber = SQLConstant.TOK_METADATA_DELETE;
+    operatorType = SQLConstant.TOK_METADATA_DELETE;
   }
 
   @Override
@@ -560,7 +564,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     Path path = parsePrefixPath(ctx.prefixPath());
     setStorageGroupOperator.setPath(path);
     initializedOperator = setStorageGroupOperator;
-    operatorNumber = SQLConstant.TOK_METADATA_SET_FILE_LEVEL;
+    operatorType = SQLConstant.TOK_METADATA_SET_FILE_LEVEL;
   }
 
   @Override
@@ -575,13 +579,13 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         SQLConstant.TOK_METADATA_DELETE_FILE_LEVEL);
     deleteStorageGroupOperator.setDeletePathList(deletePaths);
     initializedOperator = deleteStorageGroupOperator;
-    operatorNumber = SQLConstant.TOK_METADATA_DELETE_FILE_LEVEL;
+    operatorType = SQLConstant.TOK_METADATA_DELETE_FILE_LEVEL;
   }
 
   @Override
   public void enterDeleteStatement(DeleteStatementContext ctx) {
     super.enterDeleteStatement(ctx);
-    operatorNumber = SQLConstant.TOK_DELETE;
+    operatorType = SQLConstant.TOK_DELETE;
     deleteDataOp = new DeleteDataOperator(SQLConstant.TOK_DELETE);
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
     List<PrefixPathContext> prefixPaths = ctx.prefixPath();
@@ -810,7 +814,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterInsertStatement(ctx);
     insertOp = new InsertOperator(SQLConstant.TOK_INSERT);
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
-    operatorNumber = SQLConstant.TOK_INSERT;
+    operatorType = SQLConstant.TOK_INSERT;
     selectOp.addSelectPath(parseTimeseriesPath(ctx.timeseriesPath()));
     insertOp.setSelectOperator(selectOp);
   }
@@ -822,14 +826,14 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
     fromOp.addPrefixTablePath(parsePrefixPath(ctx.prefixPath()));
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
-    operatorNumber = SQLConstant.TOK_UPDATE;
+    operatorType = SQLConstant.TOK_UPDATE;
     initializedOperator = updateOp;
   }
 
   @Override
   public void enterSelectStatement(SelectStatementContext ctx) {
     super.enterSelectStatement(ctx);
-    operatorNumber = SQLConstant.TOK_QUERY;
+    operatorType = SQLConstant.TOK_QUERY;
     queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
     initializedOperator = queryOp;
   }
@@ -927,7 +931,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterWhereClause(ctx);
     FilterOperator whereOp = new FilterOperator(SQLConstant.TOK_WHERE);
     whereOp.addChildOperator(parseOrExpression(ctx.orExpression()));
-    switch (operatorNumber) {
+    switch (operatorType) {
       case SQLConstant.TOK_DELETE :
         deleteDataOp.setFilterOperator(whereOp.getChildren().get(0));
         long deleteTime = parseDeleteTimeFilter(deleteDataOp);
@@ -939,6 +943,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       case SQLConstant.TOK_UPDATE:
         updateOp.setFilterOperator(whereOp.getChildren().get(0));
         break;
+      default:
+        throw new SQLParserException("Where only support select, delete, update.");
     }
   }
 
@@ -949,12 +955,12 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       return parseAndExpression(ctx.andExpression(0));
     }
     isOrWhereClause = true;
-    FilterOperator binaryOp = new FilterOperator(KW_OR);
+    FilterOperator binaryOp = new FilterOperator(SQLConstant.KW_OR);
     if(ctx.andExpression().size() > 2) {
       binaryOp.addChildOperator(parseAndExpression(ctx.andExpression(0)));
       binaryOp.addChildOperator(parseAndExpression(ctx.andExpression(1)));
       for (int i = 2; i < ctx.andExpression().size(); i++) {
-        FilterOperator op = new FilterOperator(KW_OR);
+        FilterOperator op = new FilterOperator(SQLConstant.KW_OR);
         op.addChildOperator(binaryOp);
         op.addChildOperator(parseAndExpression(ctx.andExpression(i)));
         binaryOp = op;
@@ -972,13 +978,13 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       return parsePredicate(ctx.predicate(0));
     }
     isAndWhereClause = true;
-    FilterOperator binaryOp = new FilterOperator(KW_AND);
+    FilterOperator binaryOp = new FilterOperator(SQLConstant.KW_AND);
     int size = ctx.predicate().size();
     if (size > 2) {
       binaryOp.addChildOperator(parsePredicate(ctx.predicate(0)));
       binaryOp.addChildOperator(parsePredicate(ctx.predicate(1)));
       for (int i = 2; i < size; i++) {
-        FilterOperator op = new FilterOperator(KW_AND);
+        FilterOperator op = new FilterOperator(SQLConstant.KW_AND);
         op.addChildOperator(binaryOp);
         op.addChildOperator(parsePredicate(ctx.predicate(i)));
         binaryOp = op;
@@ -1084,13 +1090,13 @@ public class LogicalGenerator extends SqlBaseBaseListener {
    */
   private long parseDeleteTimeFilter(DeleteDataOperator operator)  {
     FilterOperator filterOperator = operator.getFilterOperator();
-    if (filterOperator.getTokenIntType() != LESSTHAN
-        && filterOperator.getTokenIntType() != LESSTHANOREQUALTO) {
+    if (filterOperator.getTokenIntType() != SQLConstant.LESSTHAN
+        && filterOperator.getTokenIntType() != SQLConstant.LESSTHANOREQUALTO) {
       throw new SQLParserException(
           "For delete command, where clause must be like : time < XXX or time <= XXX");
     }
     long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());
-    if (filterOperator.getTokenIntType() == LESSTHAN) {
+    if (filterOperator.getTokenIntType() == SQLConstant.LESSTHAN) {
       time = time - 1;
     }
     return time;

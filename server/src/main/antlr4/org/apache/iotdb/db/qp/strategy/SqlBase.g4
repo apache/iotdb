@@ -27,7 +27,7 @@ statement
     : CREATE TIMESERIES timeseriesPath WITH attributeClauses #createTimeseries
     | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
     | INSERT INTO timeseriesPath insertColumnSpec VALUES insertValuesSpec #insertStatement
-    | UPDATE prefixPath setClause whereClause? #updateStatement // not suppert yet
+    | UPDATE prefixPath setClause whereClause? #updateStatement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
     | SET STORAGE GROUP TO prefixPath #setStorageGroup
     | DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
@@ -40,7 +40,7 @@ statement
     | DESCRIBE prefixPath #describePath // not suppert yet
     | CREATE INDEX ON timeseriesPath USING function=ID indexWithClause? whereClause? #createIndex //not suppert yet
     | DROP INDEX function=ID ON timeseriesPath #dropIndex //not suppert yet
-    | MERGE #mergeStatement //not suppert yet
+    | MERGE #merge //not suppert yet
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
     | ALTER USER userName=ID SET PASSWORD password=STRING_LITERAL #alterUser
     | DROP USER userName=ID #dropUser

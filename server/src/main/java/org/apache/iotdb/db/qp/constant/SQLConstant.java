@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.constant;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.iotdb.db.sql.parse.SqlBaseLexer;
+import org.apache.iotdb.db.qp.strategy.SqlBaseLexer;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
