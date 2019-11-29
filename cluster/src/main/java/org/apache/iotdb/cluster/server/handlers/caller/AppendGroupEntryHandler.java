@@ -27,17 +27,22 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
   private static final Logger logger = LoggerFactory.getLogger(AppendGroupEntryHandler.class);
 
   private Log log;
-  private int[] groupReceived;
-  private int headerNodeIndex;
-  private Node headerNode;
+  // the number of nodes that accept the log in each group
+  // to succeed, each number should reach zero
+  private int[] groupReceivedCounter;
+  // the index of the node which the request sends log to, if the node accepts the log, all
+  // groups' counters the node is in should decrease
+  private int receiverNodeIndex;
+  private Node receiverNode;
+  // store the flag of leadership lost and the new leader's term
   private AtomicBoolean leaderShipStale;
   private AtomicLong newLeaderTerm;
 
-  public AppendGroupEntryHandler(int[] groupReceived, int headerNodeIndex,
-      Node headerNode, AtomicBoolean leaderShipStale, Log log, AtomicLong newLeaderTerm) {
-    this.groupReceived = groupReceived;
-    this.headerNodeIndex = headerNodeIndex;
-    this.headerNode = headerNode;
+  public AppendGroupEntryHandler(int[] groupReceivedCounter, int receiverNodeIndex,
+      Node receiverNode, AtomicBoolean leaderShipStale, Log log, AtomicLong newLeaderTerm) {
+    this.groupReceivedCounter = groupReceivedCounter;
+    this.receiverNodeIndex = receiverNodeIndex;
+    this.receiverNode = receiverNode;
     this.leaderShipStale = leaderShipStale;
     this.log = log;
     this.newLeaderTerm = newLeaderTerm;
@@ -55,14 +60,14 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
     if (resp == RESPONSE_AGREE) {
       processAgreement();
     } else if (resp > 0) {
-      synchronized (groupReceived) {
-        // the leader ship is stale, wait for the new leader's heartbeat
+      synchronized (groupReceivedCounter) {
+        // the leader ship is stale, abort and wait for the new leader's heartbeat
         long previousNewTerm = newLeaderTerm.get();
         if (previousNewTerm < resp) {
           newLeaderTerm.set(resp);
         }
         leaderShipStale.set(true);
-        groupReceived.notifyAll();
+        groupReceivedCounter.notifyAll();
       }
     }
     // rejected because the follower's logs are stale or the follower has no cluster info, just
@@ -70,38 +75,38 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
   }
 
   private void processAgreement() {
-    synchronized (groupReceived) {
-      logger.debug("Node {} has accepted log {}", headerNode, log);
-      // this node is contained in REPLICATION_NUM groups, minus the counter for those nodes
-      int startIndex = headerNodeIndex;
+    synchronized (groupReceivedCounter) {
+      logger.debug("Node {} has accepted log {}", receiverNode, log);
+      // this node is contained in REPLICATION_NUM groups, decrease the counters of these groups
+      int startIndex = receiverNodeIndex;
       for (int i = 0; i < REPLICATION_NUM; i++) {
-        int nodeIndex = headerNodeIndex - i;
+        int nodeIndex = receiverNodeIndex - i;
         if (nodeIndex < 0) {
-          nodeIndex += groupReceived.length;
+          nodeIndex += groupReceivedCounter.length;
         }
-        groupReceived[nodeIndex] --;
+        groupReceivedCounter[nodeIndex] --;
       }
 
       // examine if all groups has agreed
       boolean allAgreed = true;
-      for (int remaining : groupReceived) {
+      for (int remaining : groupReceivedCounter) {
         if (remaining > 0) {
           allAgreed = false;
           break;
         }
       }
       if (allAgreed) {
-        // wake up the parent thread to receive welcome the new node
-        groupReceived.notifyAll();
+        // wake up the parent thread to welcome the new node
+        groupReceivedCounter.notifyAll();
       }
     }
   }
 
   @Override
   public void onError(Exception exception) {
-    synchronized (groupReceived) {
-      logger.error("Cannot send the add node request to node {}", headerNode, exception);
-      groupReceived.notifyAll();
+    synchronized (groupReceivedCounter) {
+      logger.error("Cannot send the add node request to node {}", receiverNode, exception);
+      groupReceivedCounter.notifyAll();
     }
   }
 }

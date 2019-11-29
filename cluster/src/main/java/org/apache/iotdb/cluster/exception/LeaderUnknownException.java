@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.cluster.exception;
 
+/**
+ * Raised when a request should be forwarded to the leader but the leader cannot be found.
+ */
 public class LeaderUnknownException extends Exception {
 
   public LeaderUnknownException() {

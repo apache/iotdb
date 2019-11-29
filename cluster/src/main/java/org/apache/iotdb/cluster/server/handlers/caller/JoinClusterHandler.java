@@ -49,7 +49,6 @@ public class JoinClusterHandler implements AsyncMethodCallback<AddNodeResponse> 
   public void onError(Exception exception) {
     logger.warn("Cannot join the cluster from {}, because", contact, exception);
     synchronized (response) {
-      response.set(null);
       response.notifyAll();
     }
   }

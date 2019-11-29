@@ -20,6 +20,9 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * SnapshotCatchUpTask first sends the snapshot to the stale node then sends the logs to the node.
+ */
 public class SnapshotCatchUpTask extends LogCatchUpTask implements Runnable {
 
   private static final Logger logger = LoggerFactory.getLogger(SnapshotCatchUpTask.class);
@@ -48,7 +51,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Runnable {
     synchronized (raftMember.getTerm()) {
       // make sure this node is still a leader
       if (raftMember.getCharacter() != NodeCharacter.LEADER) {
-        logger.debug("Leadership is lost when doing a catch-up, aborting");
+        logger.debug("Leadership is lost when doing a catch-up to {}, aborting", node);
         return false;
       }
     }
@@ -57,14 +60,12 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Runnable {
       try {
         client.sendSnapshot(request, handler);
         raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-        // if the follower responds fast enough, this response may come before wait() is called and
-        // the wait() will surely time out
         succeed.wait(RaftServer.CONNECTION_TIME_OUT_MS);
       } catch (TException e) {
         logger.error("Cannot send snapshot {} to {}", snapshot, node);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.error("Catch up is interrupted:", e);
+        logger.error("Catch up {} is interrupted:", node, e);
       }
     }
 
@@ -80,7 +81,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Runnable {
     } catch (Exception e) {
       logger.error("Catch up {} errored", node, e);
     }
-    logger.debug("Catch up finished");
+    logger.debug("Catch up {} finished", node);
     // the next catch up is enabled
     raftMember.getLastCatchUpResponseTime().remove(node);
   }

@@ -7,6 +7,9 @@ package org.apache.iotdb.cluster.log.applier;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 
+/**
+ * DataLogApplier applies logs like data insertion/deletion/update and timeseries creation to IoTDB.
+ */
 public class DataLogApplier implements LogApplier {
 
   @Override

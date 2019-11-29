@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.MetaClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
@@ -37,7 +38,7 @@ import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
 import org.apache.iotdb.cluster.log.logs.AddNodeLog;
-import org.apache.iotdb.cluster.log.logs.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logs.MetaPlanLog;
 import org.apache.iotdb.cluster.log.manage.MetaSingleSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -50,7 +51,6 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
@@ -78,7 +78,6 @@ import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TNonblockingTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,11 +94,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
 
   private TProtocolFactory protocolFactory;
-  private MetaClient.Factory clientFactory;
 
   // blind nodes are nodes that does not know the nodes in the cluster
   private Set<Node> blindNodes = new HashSet<>();
-  private Map<Node, Integer> idConflictNodes = new HashMap<>();
+  private Set<Node> idConflictNodes = new HashSet<>();
   private Map<Integer, Node> idNodeMap = null;
 
   private PartitionTable partitionTable;
@@ -115,10 +113,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   public MetaGroupMember(TProtocolFactory factory, Node thisNode)
       throws IOException {
-    super("Meta");
+    super("Meta", new ClientPool(new MetaClient.Factory(new TAsyncClientManager(), factory)));
     allNodes = new ArrayList<>();
     this.protocolFactory = factory;
-    clientFactory = new MetaClient.Factory(new TAsyncClientManager(), factory);
     dataMemberFactory = new Factory(protocolFactory, this, dataLogApplier);
 
     setThisNode(thisNode);
@@ -171,10 +168,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       try {
         int metaPort = Integer.parseInt(split[1]);
         int dataPort = Integer.parseInt(split[2]);
-        if (!ip.equals(thisNode.ip) || metaPort != thisNode.port) {
+        if (!ip.equals(thisNode.ip) || metaPort != thisNode.metaPort) {
           Node seedNode = new Node();
           seedNode.setIp(ip);
-          seedNode.setPort(metaPort);
+          seedNode.setMetaPort(metaPort);
           seedNode.setDataPort(dataPort);
           if (!allNodes.contains(seedNode)) {
             allNodes.add(seedNode);
@@ -184,11 +181,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         logger.warn("Bad seed url: {}", seedUrl);
       }
     }
-  }
-
-  @Override
-  RaftService.AsyncClient getAsyncClient(TNonblockingTransport transport) {
-    return clientFactory.getAsyncClient(transport);
   }
 
   private void loadNode(String url) {
@@ -205,7 +197,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       int dataPort = Integer.parseInt(split[3]);
       Node node = new Node();
       node.setIp(ip);
-      node.setPort(metaPort);
+      node.setMetaPort(metaPort);
       node.setNodeIdentifier(identifier);
       node.setDataPort(dataPort);
       allNodes.add(node);
@@ -221,6 +213,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         logger.debug("Adding a new node {} into {}", newNode, allNodes);
         registerNodeIdentifier(newNode, newNode.getNodeIdentifier());
         allNodes.add(newNode);
+        idNodeMap.put(newNode.getNodeIdentifier(), newNode);
 
         // update the partition table
         PartitionGroup newGroup = partitionTable.addNode(newNode);
@@ -414,7 +407,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   /**
    *
    * @param node
-   * @return whether a node wants the node list.
+   * @return whether a node wants the partition table.
    */
   public boolean isNodeBlind(Node node) {
     return blindNodes.contains(node);
@@ -436,6 +429,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private void registerNodeIdentifier(Node node, int identifier) {
     synchronized (idNodeMap) {
       if (idNodeMap.containsKey(identifier)) {
+        idConflictNodes.add(node);
         return;
       }
       node.setNodeIdentifier(identifier);
@@ -519,6 +513,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       return;
     }
 
+    Node idConflictNode = idNodeMap.get(node.getNodeIdentifier());
+    if (idConflictNode != null) {
+      logger.debug("{}'s id conflicts with {}", node, idConflictNode);
+      response.setRespNum((int) Response.RESPONSE_IDENTIFIER_CONFLICT);
+      resultHandler.onComplete(response);
+      return;
+    }
+
     logger.info("A node {} wants to join this cluster", node);
     if (node == thisNode) {
       resultHandler.onError(new AddSelfException());
@@ -544,10 +546,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         addNodeLog.setPreviousLogTerm(logManager.getLastLogTerm());
         addNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
-        addNodeLog.setIp(node.getIp());
-        addNodeLog.setPort(node.getPort());
-        addNodeLog.setNodeIdentifier(node.getNodeIdentifier());
-        addNodeLog.setDataPort(node.getDataPort());
+        addNodeLog.setNewNode(node);
 
         logManager.appendLog(addNodeLog);
 
@@ -673,7 +672,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     return false;
   }
 
-  public Map<Node, Integer> getIdConflictNodes() {
+  public Set<Node> getIdConflictNodes() {
     return idConflictNodes;
   }
 
@@ -754,7 +753,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   private int genNodeIdentifier() {
-    return Objects.hash(thisNode.getIp(), thisNode.getPort(),
+    return Objects.hash(thisNode.getIp(), thisNode.getMetaPort(),
         System.currentTimeMillis());
   }
 
@@ -846,7 +845,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
     if (character == NodeCharacter.LEADER) {
       synchronized (logManager) {
-        PhysicalPlanLog log = new PhysicalPlanLog();
+        MetaPlanLog log = new MetaPlanLog();
         log.setCurrLogTerm(getTerm().get());
         log.setPreviousLogIndex(logManager.getLastLogIndex());
         log.setPreviousLogTerm(logManager.getLastLogTerm());

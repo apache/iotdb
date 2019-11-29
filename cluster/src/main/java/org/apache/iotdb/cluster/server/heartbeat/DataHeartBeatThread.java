@@ -28,6 +28,8 @@ public class DataHeartBeatThread extends HeartBeatThread {
 
   @Override
   void startElection() {
+    // the leader of a data group should have the newest meta log to guarantee its partition
+    // table is not out dated
     electionRequest.setHeader(dataGroupMember.getHeader());
     electionRequest.setLastLogIndex(dataGroupMember.getMetaGroupMember().getLogManager().getLastLogIndex());
     electionRequest.setLastLogTerm(dataGroupMember.getMetaGroupMember().getLogManager().getLastLogTerm());

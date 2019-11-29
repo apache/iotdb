@@ -15,6 +15,9 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * MetaSingleSnapshotLogManager provides a MetaSimpleSnapshot as snapshot.
+ */
 public class MetaSingleSnapshotLogManager extends MemoryLogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(MetaSingleSnapshotLogManager.class);

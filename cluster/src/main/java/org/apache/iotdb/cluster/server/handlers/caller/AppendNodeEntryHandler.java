@@ -71,6 +71,8 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
         }
         leaderShipStale.set(true);
         quorum.notifyAll();
+      } else {
+        logger.debug("The log {} is rejected because: {}", log, resp);
       }
       // rejected because the receiver's logs are stale or the receiver has no cluster info, just
       // wait for the heartbeat to handle

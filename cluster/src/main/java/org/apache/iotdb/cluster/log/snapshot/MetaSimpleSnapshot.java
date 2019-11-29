@@ -12,6 +12,9 @@ import java.util.List;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 
+/**
+ * MetaSimpleSnapshot also records all storage groups.
+ */
 public class MetaSimpleSnapshot extends SimpleSnapshot{
 
   private List<String> storageGroups;

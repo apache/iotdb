@@ -4,14 +4,13 @@
 
 package org.apache.iotdb.cluster.exception;
 
-import org.apache.iotdb.cluster.log.Log;
-
 /**
- * Raised when a request times out before reaching an agreement in a group.
+ * Raised when a DataClusterServer receives a request without a header node indicating which
+ * group it belongs to.
  */
-public class RequestTimeOutException extends Exception {
+public class NoHeaderNodeException extends Exception {
 
-  public RequestTimeOutException(Log log) {
-    super("Request " + log + " timeout");
+  public NoHeaderNodeException() {
+    super("Header Node is required in data group communication!");
   }
 }

@@ -59,9 +59,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
 
   @Override
   public void onComplete(Long resp) {
-    logger.info("{}: Received an election response", memberName);
     long voterTerm = resp;
-
     logger.info("{}: Election response term {} from {}", memberName, voterTerm, voter);
     synchronized (raftMember.getTerm()) {
       if (terminated.get()) {

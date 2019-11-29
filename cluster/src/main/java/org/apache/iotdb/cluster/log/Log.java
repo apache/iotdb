@@ -21,7 +21,7 @@ package org.apache.iotdb.cluster.log;
 import java.nio.ByteBuffer;
 
 /**
- * Log records operations that are made on this cluster. Each log records 4 longs currLogIndex
+ * Log records operations that are made on this cluster. Each log records 4 longs: currLogIndex
  * (may be replaced by previousLogIndex + 1), currLogTerm, previousLogIndex, previousLogTerm, so
  * that the logs in a cluster will form a log chain and abnormal operations can thus be
  * distinguished and removed.

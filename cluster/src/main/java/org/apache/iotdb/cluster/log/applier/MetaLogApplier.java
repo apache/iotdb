@@ -7,7 +7,7 @@ package org.apache.iotdb.cluster.log.applier;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logs.AddNodeLog;
-import org.apache.iotdb.cluster.log.logs.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logs.MetaPlanLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -17,6 +17,9 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * MetaLogApplier applies logs like node addition and storage group creation to IoTDB.
+ */
 public class MetaLogApplier implements LogApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(MetaLogApplier.class);
@@ -32,14 +35,10 @@ public class MetaLogApplier implements LogApplier {
     logger.debug("Applying {}", log);
     if (log instanceof AddNodeLog) {
       AddNodeLog addNodeLog = (AddNodeLog) log;
-      Node newNode = new Node();
-      newNode.setIp(addNodeLog.getIp());
-      newNode.setPort(addNodeLog.getPort());
-      newNode.setNodeIdentifier(addNodeLog.getNodeIdentifier());
-      newNode.setDataPort(addNodeLog.getDataPort());
+      Node newNode = addNodeLog.getNewNode();
       member.applyAddNode(newNode);
-    } else  if (log instanceof PhysicalPlanLog) {
-      applyPhysicalPlan(((PhysicalPlanLog) log).getPlan());
+    } else if (log instanceof MetaPlanLog) {
+      applyPhysicalPlan(((MetaPlanLog) log).getPlan());
     } else {
       // TODO-Cluster support more types of logs
       logger.error("Unsupported log: {}", log);

@@ -19,8 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * LogCatchUpTask send a list of logs to a node to make the node keep up with the leader.
- * TODO-Cluster: implement a SnapshotCatchUpTask that use both logs and snapshot.
+ * LogCatchUpTask sends a list of logs to a node to make the node keep up with the leader.
  */
 public class LogCatchUpTask implements Runnable {
 
@@ -52,7 +51,7 @@ public class LogCatchUpTask implements Runnable {
       synchronized (raftMember.getTerm()) {
         // make sure this node is still a leader
         if (raftMember.getCharacter() != NodeCharacter.LEADER) {
-          logger.debug("Leadership is lost when doing a catch-up, aborting");
+          logger.debug("Leadership is lost when doing a catch-up to {}, aborting", node);
           break;
         }
         request.setTerm(raftMember.getTerm().get());
@@ -60,7 +59,7 @@ public class LogCatchUpTask implements Runnable {
 
       handler.setLog(log);
       request.setEntry(log.serialize());
-      logger.debug("Catching up with log {}", log);
+      logger.debug("Catching up {} with log {}", node, log);
 
       synchronized (appendSucceed) {
         try {
@@ -70,14 +69,12 @@ public class LogCatchUpTask implements Runnable {
           }
           client.appendEntry(request, handler);
           raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-          // if the follower responds fast enough, this response may come before wait() is called and
-          // the wait() will surely time out
           appendSucceed.wait(RaftServer.CONNECTION_TIME_OUT_MS);
         } catch (TException e) {
           logger.error("Cannot send log {} to {}", log, node);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
-          logger.error("Catch up is interrupted:", e);
+          logger.error("Catch up {} is interrupted:", node, e);
         }
       }
       abort = !appendSucceed.get();
@@ -90,7 +87,7 @@ public class LogCatchUpTask implements Runnable {
     } catch (Exception e) {
       logger.error("Catch up {} errored", node, e);
     }
-    logger.debug("Catch up finished");
+    logger.debug("Catch up {} finished", node);
     // the next catch up is enabled
     raftMember.getLastCatchUpResponseTime().remove(node);
   }

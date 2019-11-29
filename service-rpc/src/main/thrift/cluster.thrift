@@ -96,7 +96,7 @@ struct AddNodeResponse {
 
 struct Node {
   1: required string ip
-  2: required int port
+  2: required int metaPort
   3: required int nodeIdentifier
   4: required int dataPort
 }

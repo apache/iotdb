@@ -6,6 +6,10 @@ package org.apache.iotdb.cluster.exception;
 
 import java.util.List;
 
+/**
+ * Raised when a data group leader receives a PullSnapshotRequest but finds it does not manage
+ * the requested socket.
+ */
 public class NotManagedSocketException extends Exception {
 
   public NotManagedSocketException(int requiredSockets, List<Integer> sockets) {

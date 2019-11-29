@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -29,10 +30,6 @@ import org.slf4j.LoggerFactory;
 public class HeartBeatThread implements Runnable {
 
   private static final Logger logger = LoggerFactory.getLogger(HeartBeatThread.class);
-  private static final long HEART_BEAT_INTERVAL_MS = 3000L;
-  // a failed election will restart in 5s~10s
-  private static final long ELECTION_LEAST_TIME_OUT_MS = 5 * 1000L;
-  private static final long ELECTION_RANDOM_TIME_OUT_MS = 5 * 1000L;
 
   private RaftMember raftMember;
   private String memberName;
@@ -55,7 +52,7 @@ public class HeartBeatThread implements Runnable {
           case LEADER:
             // send heartbeats to the followers
             sendHeartBeats();
-            Thread.sleep(HEART_BEAT_INTERVAL_MS);
+            Thread.sleep(ClusterConstant.HEART_BEAT_INTERVAL_MS);
             break;
           case FOLLOWER:
             // check if heartbeat times out
@@ -85,7 +82,7 @@ public class HeartBeatThread implements Runnable {
       }
     }
 
-    logger.info("{}: Heart beat thread exits", memberName);
+    logger.info("{}: Heartbeat thread exits", memberName);
   }
 
   private void sendHeartBeats() {
@@ -130,7 +127,8 @@ public class HeartBeatThread implements Runnable {
     // the election goes on until this node becomes a follower or a leader
     while (raftMember.getCharacter() == NodeCharacter.ELECTOR) {
       startElection();
-      long electionWait = ELECTION_LEAST_TIME_OUT_MS + Math.abs(random.nextLong() % ELECTION_RANDOM_TIME_OUT_MS);
+      long electionWait = ClusterConstant.ELECTION_LEAST_TIME_OUT_MS
+          + Math.abs(random.nextLong() % ClusterConstant.ELECTION_RANDOM_TIME_OUT_MS);
       logger.info("{}: Sleep {}ms until next election", memberName, electionWait);
       Thread.sleep(electionWait);
     }

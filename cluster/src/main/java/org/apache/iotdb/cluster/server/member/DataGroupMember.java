@@ -14,15 +14,16 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.exception.NotManagedSocketException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.RemoteSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
-import org.apache.iotdb.cluster.log.Snapshot;
-import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
@@ -45,8 +46,6 @@ import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TNonblockingSocket;
-import org.apache.thrift.transport.TNonblockingTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,8 +53,6 @@ import org.slf4j.LoggerFactory;
 public class DataGroupMember extends RaftMember implements TSDataService.AsyncIface {
 
   private static final Logger logger = LoggerFactory.getLogger(DataGroupMember.class);
-
-  private DataClient.Factory clientFactory;
 
   // the data port of each node in this group
   private Map<Node, Integer> dataPortMap = new ConcurrentHashMap<>();
@@ -66,13 +63,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   private DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
       PartitionedSnapshotLogManager logManager, MetaGroupMember metaGroupMember) throws IOException {
-    super("Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getPort() + ")");
+    super("Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getMetaPort() + ")",
+        new ClientPool(new DataClient.Factory(new TAsyncClientManager(), factory)));
     this.thisNode = thisNode;
     this.logManager = logManager;
     super.logManager = logManager;
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
-    clientFactory = new DataClient.Factory(new TAsyncClientManager(), factory);
     queryProcessor = new QueryProcessor(new QueryProcessExecutor());
   }
 
@@ -88,27 +85,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     super.stop();
     pullSnapshotService.shutdownNow();
     pullSnapshotService = null;
-  }
-
-  @Override
-  AsyncClient getAsyncClient(TNonblockingTransport transport) {
-    return clientFactory.getAsyncClient(transport);
-  }
-
-  @Override
-  public AsyncClient connectNode(Node node) {
-    if (node.equals(thisNode)) {
-      return null;
-    }
-
-    AsyncClient client = null;
-    try {
-      client = getAsyncClient(new TNonblockingSocket(node.getIp(), node.getDataPort(),
-          CONNECTION_TIME_OUT_MS));
-    } catch (IOException e) {
-      logger.warn("{} cannot connect to node {}", name, node, e);
-    }
-    return client;
   }
 
   /**
@@ -339,14 +315,15 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
     private boolean pullSnapshot(AtomicReference<SimpleSnapshot> snapshotRef, int nodeIndex)
         throws InterruptedException, TException {
+      Node node = oldMembers.get(nodeIndex);
       TSDataService.AsyncClient client =
-          (TSDataService.AsyncClient) newMember.connectNode(oldMembers.get(nodeIndex));
+          (TSDataService.AsyncClient) newMember.connectNode(node);
       if (client == null) {
         // network is bad, wait and retry
         Thread.sleep(CONNECTION_TIME_OUT_MS);
       } else {
         synchronized (snapshotRef) {
-          client.pullSnapshot(request, new PullSnapshotHandler(snapshotRef));
+          client.pullSnapshot(request, new PullSnapshotHandler(snapshotRef, node, socket));
           snapshotRef.wait(CONNECTION_TIME_OUT_MS);
         }
         SimpleSnapshot result = snapshotRef.get();

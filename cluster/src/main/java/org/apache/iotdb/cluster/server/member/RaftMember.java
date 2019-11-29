@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
@@ -25,6 +26,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogManager;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.catchup.LogCatchUpTask;
 import org.apache.iotdb.cluster.log.catchup.SnapshotCatchUpTask;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -35,8 +37,6 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
-import org.apache.iotdb.cluster.log.catchup.LogCatchUpTask;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
@@ -48,8 +48,6 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.transport.TNonblockingSocket;
-import org.apache.thrift.transport.TNonblockingTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,7 +57,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
 
-  static final int CONNECTION_TIME_OUT_MS = 20 * 1000;
+  public static final int CONNECTION_TIME_OUT_MS = 20 * 1000;
   static final int PULL_SNAPSHOT_RETRY_INTERVAL = 5 * 1000;
 
   String name;
@@ -81,9 +79,11 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   private Map<Node, Long> lastCatchUpResponseTime = new ConcurrentHashMap<>();
 
   QueryProcessor queryProcessor;
+  private ClientPool clientPool;
 
-  RaftMember(String name) {
+  RaftMember(String name, ClientPool pool) {
     this.name = name;
+    this.clientPool = pool;
   }
 
   public void start() throws TTransportException {
@@ -326,8 +326,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     OK, TIME_OUT, LEADERSHIP_STALE
   }
 
-  abstract AsyncClient getAsyncClient(TNonblockingTransport transport);
-
   public AsyncClient connectNode(Node node) {
     if (node.equals(thisNode)) {
       return null;
@@ -335,8 +333,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     AsyncClient client = null;
     try {
-      client = getAsyncClient(new TNonblockingSocket(node.getIp(), node.getPort(),
-          CONNECTION_TIME_OUT_MS));
+      client = clientPool.getClient(node);
     } catch (IOException e) {
       logger.warn("{} cannot connect to node {}", name, node, e);
     }
@@ -414,7 +411,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   }
 
-  private void retireFromLeader(long newTerm) {
+  public void retireFromLeader(long newTerm) {
     synchronized (term) {
       long currTerm = term.get();
       // confirm that the heartbeat of the new leader hasn't come
@@ -422,6 +419,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         term.set(newTerm);
         setCharacter(NodeCharacter.FOLLOWER);
         setLeader(null);
+        setLastHeartBeatReceivedTime(System.currentTimeMillis());
       }
     }
   }

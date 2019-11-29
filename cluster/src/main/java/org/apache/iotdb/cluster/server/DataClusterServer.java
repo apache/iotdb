@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.cluster.exception.NoHeaderVNodeException;
+import org.apache.iotdb.cluster.exception.NoHeaderNodeException;
 import org.apache.iotdb.cluster.exception.NotInSameGroupException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -89,7 +89,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void sendHeartBeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
     if (!request.isSetHeader()) {
-      resultHandler.onError(new NoHeaderVNodeException());
+      resultHandler.onError(new NoHeaderNodeException());
       return;
     }
 
@@ -110,7 +110,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void startElection(ElectionRequest electionRequest, AsyncMethodCallback resultHandler) {
     if (!electionRequest.isSetHeader()) {
-      resultHandler.onError(new NoHeaderVNodeException());
+      resultHandler.onError(new NoHeaderNodeException());
       return;
     }
 
@@ -131,7 +131,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback resultHandler) {
     if (!request.isSetHeader()) {
-      resultHandler.onError(new NoHeaderVNodeException());
+      resultHandler.onError(new NoHeaderNodeException());
       return;
     }
 
@@ -152,7 +152,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
     if (!request.isSetHeader()) {
-      resultHandler.onError(new NoHeaderVNodeException());
+      resultHandler.onError(new NoHeaderNodeException());
       return;
     }
 
@@ -173,7 +173,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
     if (!request.isSetHeader()) {
-      resultHandler.onError(new NoHeaderVNodeException());
+      resultHandler.onError(new NoHeaderNodeException());
       return;
     }
 
@@ -194,7 +194,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
     if (!request.isSetHeader()) {
-      resultHandler.onError(new NoHeaderVNodeException());
+      resultHandler.onError(new NoHeaderNodeException());
       return;
     }
 
@@ -217,7 +217,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       AsyncMethodCallback<TSStatus> resultHandler)
       throws TException {
     if (!request.isSetHeader()) {
-      resultHandler.onError(new NoHeaderVNodeException());
+      resultHandler.onError(new NoHeaderNodeException());
       return;
     }
 

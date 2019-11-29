@@ -23,7 +23,7 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log.Types;
 import org.apache.iotdb.cluster.log.logs.AddNodeLog;
-import org.apache.iotdb.cluster.log.logs.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logs.MetaPlanLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,18 +54,24 @@ public class LogParser {
     } catch (ArrayIndexOutOfBoundsException e) {
       throw new UnknownLogTypeException(typeInt);
     }
+    logger.debug("The log type is {}", type);
+    Log log;
     switch (type) {
       // TODO-Cluster support more logs
       case ADD_NODE:
         AddNodeLog addNodeLog = new AddNodeLog();
         addNodeLog.deserialize(buffer);
-        return addNodeLog;
+        log = addNodeLog;
+        break;
       case PHYSICAL_PLAN:
-        PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog();
-        physicalPlanLog.deserialize(buffer);
-        return physicalPlanLog;
+        MetaPlanLog metaPlanLog = new MetaPlanLog();
+        metaPlanLog.deserialize(buffer);
+        log = metaPlanLog;
+        break;
       default:
         throw new IllegalArgumentException(type.toString());
     }
+    logger.debug("Parsed a log {}", log);
+    return log;
   }
 }

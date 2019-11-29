@@ -24,6 +24,9 @@ import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * SocketPartitionTable manages the sockets (data partition) of each node using a look-up table.
+ */
 public class SocketPartitionTable implements PartitionTable {
 
   private static final Logger logger = LoggerFactory.getLogger(SocketPartitionTable.class);
@@ -35,13 +38,15 @@ public class SocketPartitionTable implements PartitionTable {
   private static final int SOCKET_NUM = 10000;
 
   private List<Node> nodeRing = new ArrayList<>();
+  // the sockets held by each node
   private Map<Node, List<Integer>> nodeSocketMap = new ConcurrentHashMap<>();
+  // each socket is managed by whom
   private Map<Integer, Node> socketNodeMap = new ConcurrentHashMap<>();
   // the nodes that each socket belongs to before a new node is added, used for the new node to
   // find the data source
   private Map<Node, Map<Integer, Node>> previousNodeMap = new ConcurrentHashMap<>();
 
-  // the data groups which the VNode of this node belongs to
+  // the data groups which this node belongs to
   private List<PartitionGroup> localGroups;
   private Node thisNode;
 
@@ -63,6 +68,7 @@ public class SocketPartitionTable implements PartitionTable {
   }
 
   private void assignPartitions() {
+    // evenly assign the sockets to each node
     int nodeNum = nodeRing.size();
     int socketsPerNode = SOCKET_NUM / nodeNum;
     for (Node node : nodeRing) {
@@ -73,11 +79,13 @@ public class SocketPartitionTable implements PartitionTable {
     for (int i = 0; i < SOCKET_NUM; i++) {
       int nodeIdx = i / socketsPerNode;
       if (nodeIdx >= nodeNum) {
+        // the last node may receive a little more if total sockets cannot de divided by node number
         nodeIdx--;
       }
       nodeSocketMap.get(nodeRing.get(nodeIdx)).add(i);
     }
 
+    // build the index to find a node by socket
     for (Entry<Node, List<Integer>> entry : nodeSocketMap.entrySet()) {
       for (Integer socket : entry.getValue()) {
         socketNodeMap.put(socket, entry.getKey());
@@ -92,28 +100,13 @@ public class SocketPartitionTable implements PartitionTable {
 
     int nodeIndex = nodeRing.indexOf(node);
     for (int i = 0; i < REPLICATION_NUM; i++) {
+      // the previous REPLICATION_NUM nodes (including the node itself) are the headers of the
+      // groups the node is in
       int startIndex = nodeIndex - i;
-      PartitionGroup partitionGroup = new PartitionGroup();
-      boolean crossZero = false;
       if (startIndex < 0) {
-        crossZero = true;
         startIndex = startIndex + nodeRing.size();
       }
-
-      if (crossZero) {
-        int remaining = REPLICATION_NUM - (nodeRing.size() - startIndex);
-        partitionGroup.addAll(nodeRing.subList(startIndex, nodeRing.size()));
-        partitionGroup.addAll(nodeRing.subList(0, remaining));
-      } else {
-        int endIndex = startIndex + REPLICATION_NUM;
-        if (endIndex > nodeRing.size()) {
-          partitionGroup.addAll(nodeRing.subList(startIndex, nodeRing.size()));
-          partitionGroup.addAll(nodeRing.subList(0, endIndex - nodeRing.size()));
-        } else {
-          partitionGroup.addAll(nodeRing.subList(startIndex, endIndex));
-        }
-      }
-      ret.add(partitionGroup);
+      ret.add(getHeaderGroup(nodeRing.get(startIndex)));
     }
 
     logger.debug("The partition groups of {} are: {}", node, ret);
@@ -125,23 +118,18 @@ public class SocketPartitionTable implements PartitionTable {
     PartitionGroup ret = new PartitionGroup();
     ret.add(node);
 
+    // assuming the nodes are [1,2,3,4,5]
     int nodeIndex = nodeRing.indexOf(node);
-    // find the next REPLICATION_NUM - 1 physical nodes
-    int remaining = REPLICATION_NUM - 1;
-    int currIndex = nodeIndex;
-    while (remaining > 0) {
-      // move to the next node
-      currIndex = nextIndex(currIndex);
-      Node curr = nodeRing.get(currIndex);
-      ret.add(curr);
-      remaining--;
+    int endIndex = nodeIndex + REPLICATION_NUM;
+    if (endIndex > nodeRing.size()) {
+      // for startIndex = 4, we concat [4, 5] and [1] to generate the group
+      ret.addAll(nodeRing.subList(nodeIndex, nodeRing.size()));
+      ret.addAll(nodeRing.subList(0, endIndex - nodeRing.size()));
+    } else {
+      // for startIndex = 2, [2,3,4] is the group
+      ret.addAll(nodeRing.subList(nodeIndex, endIndex));
     }
     return ret;
-  }
-
-
-  private int prevIndex(int currIndex) {
-    return currIndex == 0 ? nodeRing.size() - 1 : currIndex - 1;
   }
 
   private int nextIndex(int currIndex) {
@@ -150,57 +138,64 @@ public class SocketPartitionTable implements PartitionTable {
 
   @Override
   public List<Node> route(String storageGroupName, long timestamp) {
-    long partitionInstance = timestamp / PARTITION_INTERVAL;
-    int hash = Objects.hash(storageGroupName, partitionInstance);
-    int socketNum = Math.abs(hash % SOCKET_NUM);
-    Node node = socketNodeMap.get(socketNum);
+    synchronized (nodeRing) {
+      long partitionInstance = timestamp / PARTITION_INTERVAL;
+      int hash = Objects.hash(storageGroupName, partitionInstance);
+      int socketNum = Math.abs(hash % SOCKET_NUM);
+      Node node = socketNodeMap.get(socketNum);
 
-    return getHeaderGroup(node);
+      return getHeaderGroup(node);
+    }
   }
 
 
   @Override
-  public synchronized PartitionGroup addNode(Node node) {
-    nodeRing.add(node);
-    nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
+  public PartitionGroup addNode(Node node) {
+    synchronized (nodeRing) {
+      nodeRing.add(node);
+      nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
 
-    List<PartitionGroup> retiredGroups = new ArrayList<>();
-    for(int i = 0; i < localGroups.size(); i++) {
-      PartitionGroup oldGroup = localGroups.get(i);
-      Node header = oldGroup.getHeader();
-      PartitionGroup newGrp = getHeaderGroup(header);
-      if (newGrp.contains(node) && newGrp.contains(thisNode)) {
-        // this group changes but still contains the local node
-        localGroups.set(i, newGrp);
-      } else if (newGrp.contains(node) && !newGrp.contains(thisNode)) {
-        // the local node retires from the group
-        retiredGroups.add(newGrp);
-      }
-    }
-
-    // remove retired groups
-    Iterator<PartitionGroup> groupIterator = localGroups.iterator();
-    while (groupIterator.hasNext()) {
-      PartitionGroup partitionGroup = groupIterator.next();
-      for (PartitionGroup retiredGroup : retiredGroups) {
-        if (retiredGroup.getHeader().equals(partitionGroup.getHeader())) {
-          groupIterator.remove();
+      List<PartitionGroup> retiredGroups = new ArrayList<>();
+      for(int i = 0; i < localGroups.size(); i++) {
+        PartitionGroup oldGroup = localGroups.get(i);
+        Node header = oldGroup.getHeader();
+        PartitionGroup newGrp = getHeaderGroup(header);
+        if (newGrp.contains(node) && newGrp.contains(thisNode)) {
+          // this group changes but still contains the local node
+          localGroups.set(i, newGrp);
+        } else if (newGrp.contains(node) && !newGrp.contains(thisNode)) {
+          // the local node retires from the group
+          retiredGroups.add(newGrp);
         }
       }
-    }
 
-    PartitionGroup newGroup = getHeaderGroup(node);
-    if (newGroup.contains(thisNode)) {
-      localGroups.add(newGroup);
-    }
+      // remove retired groups
+      Iterator<PartitionGroup> groupIterator = localGroups.iterator();
+      while (groupIterator.hasNext()) {
+        PartitionGroup partitionGroup = groupIterator.next();
+        for (PartitionGroup retiredGroup : retiredGroups) {
+          if (retiredGroup.getHeader().equals(partitionGroup.getHeader())) {
+            groupIterator.remove();
+            break;
+          }
+        }
+      }
 
-    // the sockets movement is only done logically, the new node itself will pull data from the
-    // old node
-    moveSocketsToNew(node);
-    return newGroup;
+      PartitionGroup newGroup = getHeaderGroup(node);
+      if (newGroup.contains(thisNode)) {
+        localGroups.add(newGroup);
+      }
+
+      // the sockets movement is only done logically, the new node itself will pull data from the
+      // old node
+      moveSocketsToNew(node);
+      return newGroup;
+    }
   }
 
   private void moveSocketsToNew(Node node) {
+    // as a node is added, the average sockets for each node decrease
+    // move the sockets to the new node if any previous node have more sockets than the new average
     List<Integer> newSockets = new ArrayList<>();
     Map<Integer, Node> previousHolders = new HashMap<>();
     int newAvg = SOCKET_NUM / nodeRing.size();
@@ -257,7 +252,7 @@ public class SocketPartitionTable implements PartitionTable {
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-    logger.info("Initializing the partition table from remote");
+    logger.info("Initializing the partition table from buffer");
     int size = buffer.getInt();
     Map<Integer, Node> idNodeMap = new HashMap<>();
     for (int i = 0; i < size; i++) {

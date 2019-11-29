@@ -15,6 +15,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.cluster.log.Snapshot;
 
+/**
+ * PartitionedSnapshot stores the snapshot of each socket in a map.
+ */
 public class PartitionedSnapshot extends Snapshot {
 
   private Map<Integer, Snapshot> socketSnapshots;

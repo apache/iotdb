@@ -20,8 +20,7 @@ public class ForwardPlanHandler implements AsyncMethodCallback<TSStatus> {
   private AtomicReference<TSStatus> result;
   private Node node;
 
-  public ForwardPlanHandler(
-      AtomicReference<TSStatus> result, PhysicalPlan plan, Node node) {
+  public ForwardPlanHandler(AtomicReference<TSStatus> result, PhysicalPlan plan, Node node) {
     this.result = result;
     this.plan = plan;
     this.node = node;

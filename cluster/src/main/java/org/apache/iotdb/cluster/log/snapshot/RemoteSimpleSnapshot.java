@@ -13,6 +13,10 @@ import org.apache.iotdb.cluster.log.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * RemoteSimpleSnapshot is a snapshot that is being pulled from a remote node. Any query or
+ * modification to this snapshot must wait until the pulling is finished.
+ */
 public class RemoteSimpleSnapshot extends SimpleSnapshot {
 
   private static final Logger logger = LoggerFactory.getLogger(RemoteSimpleSnapshot.class);

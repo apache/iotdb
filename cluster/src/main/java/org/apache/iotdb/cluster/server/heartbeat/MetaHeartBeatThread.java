@@ -26,13 +26,12 @@ public class MetaHeartBeatThread extends HeartBeatThread {
     request.setRequireIdentifier(!node.isSetNodeIdentifier());
     synchronized (raftMember.getIdConflictNodes()) {
       request.unsetRegenerateIdentifier();
-      Integer conflictId = raftMember.getIdConflictNodes().get(node);
-      if (conflictId != null) {
+      if (raftMember.getIdConflictNodes().contains(node)) {
         request.setRegenerateIdentifier(true);
       }
     }
 
-    // if the node requires the node list and it is ready (all nodes' ids are known), send it
+    // if the node requires the partition table and it is ready, send it
     if (raftMember.isNodeBlind(node)) {
       if (raftMember.getPartitionTable() != null) {
         logger.debug("Send partition table to {}", node);

@@ -32,8 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * LogCatchUpHandler check the result of appending a log in a catch-up task and decide to abort the
- * catch up or not.
+ * LogCatchUpHandler checks the result of appending a log in a catch-up task and decides to abort
+ * the catch up or not.
  */
 public class LogCatchUpHandler implements AsyncMethodCallback<Long> {
 
@@ -59,7 +59,6 @@ public class LogCatchUpHandler implements AsyncMethodCallback<Long> {
       // this is not probably possible
       logger.error("{}: Log mismatch occurred when sending log {}", memberName, log);
       synchronized (appendSucceed) {
-        appendSucceed.set(false);
         appendSucceed.notifyAll();
       }
     } else {
@@ -69,12 +68,10 @@ public class LogCatchUpHandler implements AsyncMethodCallback<Long> {
         if (currTerm < resp) {
           logger.debug("{}: Received a rejection because term is stale: {}/{}", memberName,
               currTerm, resp);
-          raftMember.setCharacter(NodeCharacter.FOLLOWER);
-          raftMember.getTerm().set(currTerm);
+          raftMember.retireFromLeader(resp);
         }
       }
       synchronized (appendSucceed) {
-        appendSucceed.set(false);
         appendSucceed.notifyAll();
       }
       logger.warn("{}: Catch-up aborted because leadership is lost", memberName);
@@ -84,7 +81,6 @@ public class LogCatchUpHandler implements AsyncMethodCallback<Long> {
   @Override
   public void onError(Exception exception) {
     synchronized (appendSucceed) {
-      appendSucceed.set(false);
       appendSucceed.notifyAll();
     }
     logger.warn("{}: Catch-up fails when sending log {}", memberName, log, exception);

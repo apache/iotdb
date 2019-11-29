@@ -56,7 +56,7 @@ public interface PartitionTable {
   /**
    *
    * @param header
-   * @return the partition group of header.
+   * @return the partition group starting from the header.
    */
   PartitionGroup getHeaderGroup(Node header);
 
@@ -68,9 +68,14 @@ public interface PartitionTable {
 
   /**
    *
-   * @return each socket's previous holder after a node addition.
+   * @return each socket's previous holder after the node's addition.
    */
   Map<Integer, Node> getPreviousNodeMap(Node node);
 
+  /**
+   *
+   * @param header
+   * @return the sockets held by the header.
+   */
   List<Integer> getNodeSockets(Node header);
 }

@@ -17,6 +17,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 // TODO-Cluster: implement a serializable LogManager
+/**
+ * MemoryLogManager stores all logs in a memory deque without providing snapshots.
+ */
 public abstract class MemoryLogManager implements LogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(MemoryLogManager.class);

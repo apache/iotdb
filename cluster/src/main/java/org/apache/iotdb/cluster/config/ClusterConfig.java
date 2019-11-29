@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster.config;
 
 import java.util.Arrays;
 import java.util.List;
+import org.apache.iotdb.cluster.utils.ClusterConsistent;
 
 // TODO-Cluster: add the configs into the config file
 public class ClusterConfig {
@@ -31,15 +32,18 @@ public class ClusterConfig {
   private int localDataPort = 40010;
   private int localClientPort = 55560;
 
-  // each one is {IP | domain name}:{meta port}
+  // each one is {IP | domain name}:{meta port}:{data port}
   private List<String> seedNodeUrls = Arrays.asList("127.0.0.1:9003:40010", "127.0.0.1"
       + ":9004:40011", "127.0.0.1:9005:40012");
 
+  @ClusterConsistent
   private boolean isRpcThriftCompressionEnabled = true;
   private int maxConcurrentClientNum = 1024;
 
+  @ClusterConsistent
   private int replicationNum = 3;
   // default daily partition
+  @ClusterConsistent
   private long partitionInterval = 24 * 3600 * 1000L;
 
 

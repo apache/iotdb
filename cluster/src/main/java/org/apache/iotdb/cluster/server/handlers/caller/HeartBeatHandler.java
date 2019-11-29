@@ -30,7 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * HeartBeatHandler check the response of a heartbeat and decide whether to start a catch-up or
+ * HeartBeatHandler checks the response of a heartbeat and decides whether to start a catch-up or
  * give up the leadership due to the term is stale.
  */
 public class HeartBeatHandler implements AsyncMethodCallback<HeartBeatResponse> {
@@ -75,10 +75,7 @@ public class HeartBeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
         if (currTerm < followerTerm) {
           logger.info("{}: Losing leadership because current term {} is smaller than {}",
               memberName, currTerm, followerTerm);
-          raftMember.getTerm().set(followerTerm);
-          raftMember.setCharacter(NodeCharacter.FOLLOWER);
-          raftMember.setLeader(null);
-          raftMember.setLastHeartBeatReceivedTime(System.currentTimeMillis());
+          raftMember.retireFromLeader(followerTerm);
         }
       }
     }

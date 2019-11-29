@@ -17,6 +17,9 @@ import org.apache.iotdb.cluster.log.Snapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * SimpleSnapshot keeps the committed logs in a memory list.
+ */
 public class SimpleSnapshot extends Snapshot {
 
   private static final Logger logger = LoggerFactory.getLogger(SimpleSnapshot.class);
@@ -25,7 +28,7 @@ public class SimpleSnapshot extends Snapshot {
   public SimpleSnapshot() {
   }
 
-  public SimpleSnapshot(List<Log> snapshot) {
+  SimpleSnapshot(List<Log> snapshot) {
     this.snapshot = snapshot;
     this.lastLogId = snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogIndex();
     this.lastLogTerm = snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogTerm();
@@ -70,7 +73,7 @@ public class SimpleSnapshot extends Snapshot {
   }
 
   void subDeserialize(ByteBuffer buffer) {
-    // provided for sub-classess to add more serialized fields
+    // provided for sub-classes to add more serialized fields
   }
 
   public List<Log> getSnapshot() {

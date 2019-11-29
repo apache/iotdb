@@ -4,34 +4,48 @@
 
 package org.apache.iotdb.cluster.client;
 
+import static org.apache.iotdb.cluster.server.member.RaftMember.CONNECTION_TIME_OUT_MS;
+
+import java.io.IOException;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TNonblockingTransport;
+import org.apache.thrift.transport.TNonblockingSocket;
 
 public class MetaClient extends AsyncClient {
 
+  private Node node;
+  private ClientPool pool;
+
   private MetaClient(TProtocolFactory protocolFactory,
-      TAsyncClientManager clientManager,
-      TNonblockingTransport transport) {
-    super(protocolFactory, clientManager, transport);
+      TAsyncClientManager clientManager, Node node, ClientPool pool) throws IOException {
+    // the difference of the two clients lies in the port
+    super(protocolFactory, clientManager, new TNonblockingSocket(node.getIp(), node.getPort(),
+        CONNECTION_TIME_OUT_MS));
+    this.node = node;
+    this.pool = pool;
   }
 
   @Override
   protected void onComplete() {
     super.onComplete();
-    ___transport.close();
+    // return itself to the pool if the job is done
+    pool.putClient(node, this);
   }
 
-  public static class Factory implements org.apache.thrift.async.TAsyncClientFactory<MetaClient> {
+  public static class Factory implements ClientFactory {
     private org.apache.thrift.async.TAsyncClientManager clientManager;
     private org.apache.thrift.protocol.TProtocolFactory protocolFactory;
     public Factory(org.apache.thrift.async.TAsyncClientManager clientManager, org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
       this.clientManager = clientManager;
       this.protocolFactory = protocolFactory;
     }
-    public MetaClient getAsyncClient(org.apache.thrift.transport.TNonblockingTransport transport) {
-      return new MetaClient(protocolFactory, clientManager, transport);
+    @Override
+    public RaftService.AsyncClient getAsyncClient(Node node, ClientPool pool)
+        throws IOException {
+      return new MetaClient(protocolFactory, clientManager, node, pool);
     }
   }
 }
