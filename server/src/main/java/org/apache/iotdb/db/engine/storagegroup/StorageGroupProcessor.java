@@ -66,6 +66,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.JobFileManager;
@@ -217,6 +218,7 @@ public class StorageGroupProcessor {
 
     try {
       // collect TsFiles from sequential and unsequential data directory
+      System.out.println(DirectoryManager.getInstance().getAllSequenceFileFolders());
       List<TsFileResource> seqTsFiles = getAllFiles(
           DirectoryManager.getInstance().getAllSequenceFileFolders());
       List<TsFileResource> unseqTsFiles =
@@ -257,16 +259,20 @@ public class StorageGroupProcessor {
       if (!fileFolder.exists()) {
         continue;
       }
-      // some TsFileResource may be being persisted when the system crashed, try recovering such
-      // resources
-      continueFailedRenames(fileFolder, TEMP_SUFFIX);
 
-      // some TsFiles were going to be replaced by the merged files when the system crashed and
-      // the process was interrupted before the merged files could be named
-      continueFailedRenames(fileFolder, MERGE_SUFFIX);
+      for(File timeRangeFileFolder : fileFolder.listFiles()){
+        // some TsFileResource may be being persisted when the system crashed, try recovering such
+        // resources
+        continueFailedRenames(timeRangeFileFolder, TEMP_SUFFIX);
 
-      Collections.addAll(tsFiles,
-          fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), TSFILE_SUFFIX));
+        // some TsFiles were going to be replaced by the merged files when the system crashed and
+        // the process was interrupted before the merged files could be named
+        continueFailedRenames(timeRangeFileFolder, MERGE_SUFFIX);
+
+        Collections.addAll(tsFiles,
+            fsFactory.listFilesBySuffix(timeRangeFileFolder.getAbsolutePath(), TSFILE_SUFFIX));
+      }
+
     }
     tsFiles.sort(this::compareFileName);
     List<TsFileResource> ret = new ArrayList<>();
@@ -933,13 +939,14 @@ public class StorageGroupProcessor {
 
       // write log
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        if (workSequenceTsFileProcessor != null) {
-//          workSequenceTsFileProcessor.getLogNode()
-//              .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
+        for (TsFileProcessor tsFileProcessor : workSequenceTsFileProcessor.values()) {
+          tsFileProcessor.getLogNode()
+              .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
         }
-        if (workUnsequenceTsFileProcessor != null) {
-//          workUnSequenceTsFileProcessor.getLogNode()
-//              .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
+
+        for (TsFileProcessor tsFileProcessor : workUnsequenceTsFileProcessor.values()) {
+          tsFileProcessor.getLogNode()
+              .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
         }
       }
 
