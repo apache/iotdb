@@ -37,10 +37,6 @@ public class LogCatchUpTask implements Runnable {
   }
 
   void doLogCatchUp() {
-    AsyncClient client = raftMember.connectNode(node);
-    if (client == null) {
-      return;
-    }
 
     AppendEntryRequest request = new AppendEntryRequest();
     AtomicBoolean appendSucceed = new AtomicBoolean(false);
@@ -66,9 +62,12 @@ public class LogCatchUpTask implements Runnable {
       request.setEntry(log.serialize());
       logger.debug("Catching up with log {}", log);
 
-
       synchronized (appendSucceed) {
         try {
+          AsyncClient client = raftMember.connectNode(node);
+          if (client == null) {
+            return;
+          }
           client.appendEntry(request, handler);
           raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
           // if the follower responds fast enough, this response may come before wait() is called and

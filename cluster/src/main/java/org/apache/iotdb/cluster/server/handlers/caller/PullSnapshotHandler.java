@@ -5,7 +5,7 @@
 package org.apache.iotdb.cluster.server.handlers.caller;
 
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iotdb.cluster.log.SimpleSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;

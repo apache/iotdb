@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-namespace java org.apache.iotdb.cluster.rpc.thrift
 
+include "rpc.thrift"
+namespace java org.apache.iotdb.cluster.rpc.thrift
 
 typedef i32 int 
 typedef i16 short
@@ -116,6 +117,11 @@ struct PullSnapshotResp {
   1: optional binary snapshotBytes
 }
 
+struct ExecutNonQueryReq {
+  1: required binary planBytes
+  2: optional Node header
+}
+
 service RaftService {
   /**
   * Leader will call this method to all followers to ensure its authority.
@@ -163,6 +169,11 @@ service RaftService {
   void sendSnapshot(1:SendSnapshotRequest request)
 
   PullSnapshotResp pullSnapshot(1:PullSnapshotRequest request)
+
+  /**
+  * execute a binarized non-query PhysicalPlan
+  **/
+  rpc.TSStatus executeNonQueryPlan(1:ExecutNonQueryReq request)
 }
 
 

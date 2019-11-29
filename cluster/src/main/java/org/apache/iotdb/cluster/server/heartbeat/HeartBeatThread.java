@@ -92,7 +92,7 @@ public class HeartBeatThread implements Runnable {
     synchronized (raftMember.getTerm()) {
       request.setTerm(raftMember.getTerm().get());
       request.setLeader(raftMember.getThisNode());
-      request.setCommitLogIndex(raftMember.getLogManager().getLastLogTerm());
+      request.setCommitLogIndex(raftMember.getLogManager().getCommitLogIndex());
 
       sendHeartBeats(raftMember.getAllNodes());
     }

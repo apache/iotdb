@@ -1055,7 +1055,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  void handleClientExit() {
+  protected void handleClientExit() {
     closeOperation(null);
     closeSession(null);
   }
@@ -1312,10 +1312,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return null;
   }
 
-  private TSStatus executePlan(PhysicalPlan plan) {
-    // TODO
-    // In current version, we only return OK/ERROR
-    // Do we need to add extra information of executive condition
+  protected TSStatus executePlan(PhysicalPlan plan) {
     boolean execRet;
     try {
       execRet = executeNonQuery(plan);

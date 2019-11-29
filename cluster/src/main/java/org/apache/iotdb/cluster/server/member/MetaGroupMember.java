@@ -34,16 +34,18 @@ import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.cluster.log.SimpleSnapshot;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
-import org.apache.iotdb.cluster.log.manage.SingleSnapshotLogManager;
-import org.apache.iotdb.cluster.log.meta.AddNodeLog;
+import org.apache.iotdb.cluster.log.logs.AddNodeLog;
+import org.apache.iotdb.cluster.log.logs.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.manage.MetaSingleSnapshotLogManager;
+import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SocketPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -52,6 +54,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
+import org.apache.iotdb.cluster.server.ClientServer;
 import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
@@ -60,8 +63,17 @@ import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardAddNodeHandler;
 import org.apache.iotdb.cluster.server.heartbeat.MetaHeartBeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
+import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.exception.MetadataErrorException;
+import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageGroupAlreadyExistException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.async.TAsyncClientManager;
@@ -92,13 +104,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   private PartitionTable partitionTable;
   private DataClusterServer dataClusterServer;
+  private ClientServer clientServer;
 
   // all data servers in this node shares the same partitioned data log manager
   private LogApplier metaLogApplier = new MetaLogApplier(this);
   private LogApplier dataLogApplier = new DataLogApplier();
   private DataGroupMember.Factory dataMemberFactory;
 
-  private SingleSnapshotLogManager logManager;
+  private MetaSingleSnapshotLogManager logManager;
 
   public MetaGroupMember(TProtocolFactory factory, Node thisNode)
       throws IOException {
@@ -114,7 +127,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   @Override
   void initLogManager() {
-    logManager = new SingleSnapshotLogManager(metaLogApplier);
+    logManager = new MetaSingleSnapshotLogManager(metaLogApplier);
     super.logManager = logManager;
   }
 
@@ -134,12 +147,15 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     super.stop();
     if (dataClusterServer != null) {
       dataClusterServer.stop();
+      clientServer.stop();
     }
   }
 
-  private void initDataServers() throws TTransportException {
-    this.dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory);
+  private void initSubServers() throws TTransportException {
+    dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory);
     dataClusterServer.start();
+    clientServer = new ClientServer(this);
+    clientServer.start();
   }
 
   private void addSeedNodes() {
@@ -294,6 +310,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         ByteBuffer partitionTableBuffer = ByteBuffer.wrap(resp.getPartitionTableBytes());
         partitionTable = new SocketPartitionTable(thisNode);
         partitionTable.deserialize(partitionTableBuffer);
+        savePartitionTable();
 
         allNodes = new ArrayList<>(partitionTable.getAllNodes());
         logger.info("Received cluster nodes from the leader: {}", allNodes);
@@ -302,7 +319,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           idNodeMap.put(n.getNodeIdentifier(), n);
         }
 
-        initDataServers();
+        initSubServers();
         buildDataGroups();
         dataClusterServer.pullSnapshots();
         return true;
@@ -341,9 +358,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           partitionTable = new SocketPartitionTable(thisNode);
           partitionTable.deserialize(byteBuffer);
           allNodes = new ArrayList<>(partitionTable.getAllNodes());
+          savePartitionTable();
 
           try {
-            initDataServers();
+            initSubServers();
             buildDataGroups();
           } catch (IOException | TTransportException e) {
             logger.error("Cannot build data groups", e);
@@ -449,9 +467,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   @Override
-  long appendEntry(Log log) {
+  long appendEntry(Log log) throws ProcessorException {
     long resp = super.appendEntry(log);
-
     if (resp == Response.RESPONSE_AGREE && log instanceof AddNodeLog) {
       metaLogApplier.apply(log);
     }
@@ -482,7 +499,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private synchronized void startDataServers() {
     synchronized (partitionTable) {
       try {
-        initDataServers();
+        initSubServers();
         buildDataGroups();
       } catch (IOException | TTransportException e) {
         logger.error("Build partition table failed: ", e);
@@ -522,10 +539,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       // node adding must be serialized
       synchronized (logManager) {
         AddNodeLog addNodeLog = new AddNodeLog();
+        addNodeLog.setCurrLogTerm(getTerm().get());
         addNodeLog.setPreviousLogIndex(logManager.getLastLogIndex());
         addNodeLog.setPreviousLogTerm(logManager.getLastLogTerm());
         addNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-        addNodeLog.setCurrLogTerm(getTerm().get());
 
         addNodeLog.setIp(node.getIp());
         addNodeLog.setPort(node.getPort());
@@ -541,7 +558,13 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           case OK:
             logger.info("Join request of {} is accepted", node);
             // add node is instantly applied to update the partition table
-            logManager.getApplier().apply(addNodeLog);
+            try {
+              logManager.getApplier().apply(addNodeLog);
+            } catch (ProcessorException e) {
+              logManager.removeLastLog();
+              resultHandler.onError(e);
+              return;
+            }
             synchronized (partitionTable) {
               response.setPartitionTableBytes(partitionTable.serialize());
             }
@@ -764,9 +787,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   @Override
   public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
-    SimpleSnapshot snapshot = new SimpleSnapshot();
+    MetaSimpleSnapshot snapshot = new MetaSimpleSnapshot();
     try {
-      snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
+      snapshot.deserialize(request.snapshotBytes);
       applySnapshot(snapshot);
       resultHandler.onComplete(null);
     } catch (Exception e) {
@@ -774,10 +797,23 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
   }
 
-  private void applySnapshot(SimpleSnapshot snapshot) {
+  private void applySnapshot(MetaSimpleSnapshot snapshot) {
     synchronized (logManager) {
       for (Log log : snapshot.getSnapshot()) {
-        logManager.getApplier().apply(log);
+        try {
+          logManager.getApplier().apply(log);
+        } catch (ProcessorException e) {
+          logger.error("{}: Cannot apply a log {} in snapshot, ignored", name, log, e);
+        }
+      }
+      for (String storageGroup : snapshot.getStorageGroups()) {
+        try {
+          MManager.getInstance().setStorageGroupToMTree(storageGroup);
+        } catch (StorageGroupAlreadyExistException ignored) {
+          // ignore duplicated storage group
+        } catch (MetadataErrorException e) {
+          logger.error("{}: Cannot add storage group {} in snapshot", name, storageGroup);
+        }
       }
       logManager.setSnapshot(snapshot);
     }
@@ -785,10 +821,88 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     logManager.setLastLogId(snapshot.getLastLogId());
   }
 
-
   @Override
   public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
     resultHandler.onError(new UnsupportedOperationException("Cannot pull snapshot from a meta "
         + "group newMember"));
   }
+
+  public TSStatus executeNonQuery(PhysicalPlan plan) {
+    if (plan instanceof SetStorageGroupPlan) {
+      return processSetStorageGroup((SetStorageGroupPlan) plan);
+    } else {
+      TSStatus status = StatusUtils.UNSUPPORTED_OPERATION.deepCopy();
+      status.getStatusType().setMessage(TSStatusCode.UNSUPPORTED_OPERATION.getStatusMessage() + plan.getOperatorType());
+      return status;
+    }
+  }
+
+  private TSStatus processSetStorageGroup(SetStorageGroupPlan plan) {
+    logger.debug("Received a set storage to {}", plan.getPath());
+    if (partitionTable == null) {
+      logger.debug("Partition table is not ready");
+      return StatusUtils.PARTITION_TABLE_NOT_READY;
+    }
+
+    if (character == NodeCharacter.LEADER) {
+      synchronized (logManager) {
+        PhysicalPlanLog log = new PhysicalPlanLog();
+        log.setCurrLogTerm(getTerm().get());
+        log.setPreviousLogIndex(logManager.getLastLogIndex());
+        log.setPreviousLogTerm(logManager.getLastLogTerm());
+        log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+
+        log.setPlan(plan);
+        logManager.appendLog(log);
+
+        logger.debug("Send set storage to {} to other nodes", plan.getPath());
+        AppendLogResult result = sendLogToFollowers(log, allNodes.size() - 1);
+
+        switch (result) {
+          case OK:
+            logger.debug("Storage group {} is set", plan.getPath());
+            try {
+              logManager.commitLog(log);
+            } catch (ProcessorException e) {
+              logger.info("The log {} is not successfully applied, reverting", log, e);
+              logManager.removeLastLog();
+              TSStatus status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
+              status.getStatusType().setMessage(e.getMessage());
+              return status;
+            }
+            return StatusUtils.OK;
+          case TIME_OUT:
+            logger.debug("Set storage group {} timed out", plan.getPath());
+            logManager.removeLastLog();
+            return StatusUtils.TIME_OUT;
+          case LEADERSHIP_STALE:
+          default:
+            logManager.removeLastLog();
+        }
+      }
+    }
+    if (character == NodeCharacter.FOLLOWER && leader != null) {
+      logger.info("Forward {} to leader {}", plan, leader);
+      TSStatus status = forwardPlan(plan, leader);
+      if (status != null) {
+        return status;
+      }
+    }
+    return StatusUtils.NO_LEADER;
+  }
+
+
+  @Override
+  public void executeNonQueryPlan(ExecutNonQueryReq req,
+      AsyncMethodCallback<TSStatus> resultHandler) {
+    try {
+      PhysicalPlan plan = PhysicalPlan.Factory.create(req.planBytes);
+      logger.debug("Received a plan {}", plan);
+      resultHandler.onComplete(executeNonQuery(plan));
+    } catch (Exception e) {
+      resultHandler.onError(e);
+    }
+  }
+
+
 }

@@ -582,13 +582,13 @@ public class MManager {
       }
     } catch (IOException | ConfigAdjusterException e) {
       throw new MetadataErrorException(e);
-    } catch (StorageGroupException e) {
+    } catch (MetadataErrorException e) {
       try {
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
       } catch (ConfigAdjusterException ex) {
         throw new MetadataErrorException(ex);
       }
-      throw new MetadataErrorException(e);
+      throw e;
     } finally {
       lock.writeLock().unlock();
     }

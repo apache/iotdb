@@ -20,9 +20,11 @@ package org.apache.iotdb.cluster.server;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
+import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
@@ -31,6 +33,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
@@ -136,4 +139,13 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     member.pullSnapshot(request, resultHandler);
   }
 
+  @Override
+  public void executeNonQueryPlan(ExecutNonQueryReq request,
+      AsyncMethodCallback<TSStatus> resultHandler) {
+    member.executeNonQueryPlan(request, resultHandler);
+  }
+
+  public MetaGroupMember getMember() {
+    return member;
+  }
 }

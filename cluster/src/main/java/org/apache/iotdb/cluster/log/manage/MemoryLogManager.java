@@ -12,9 +12,14 @@ import java.util.List;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.LogManager;
+import org.apache.iotdb.db.exception.ProcessorException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 // TODO-Cluster: implement a serializable LogManager
 public abstract class MemoryLogManager implements LogManager {
+
+  private static final Logger logger = LoggerFactory.getLogger(MemoryLogManager.class);
 
   long commitLogIndex = -1;
   private long lastLogId = -1;
@@ -68,13 +73,26 @@ public abstract class MemoryLogManager implements LogManager {
 
   @Override
   public void commitLog(long maxLogIndex) {
+    if (maxLogIndex <= commitLogIndex) {
+      return;
+    }
     for (Log log : logBuffer) {
       long i  = log.getCurrLogIndex();
       if (commitLogIndex < i && i <= maxLogIndex) {
-        logApplier.apply(log);
-        commitLogIndex++;
+        try {
+          logApplier.apply(log);
+        } catch (ProcessorException e) {
+          logger.error("Cannot apply a log {} in snapshot, ignored", log, e);
+        }
+        commitLogIndex = i;
       }
     }
+  }
+
+  @Override
+  public void commitLog(Log log) throws ProcessorException {
+    logApplier.apply(log);
+    commitLogIndex = log.getCurrLogIndex();
   }
 
   @Override

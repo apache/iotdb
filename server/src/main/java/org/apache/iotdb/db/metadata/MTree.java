@@ -32,7 +32,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.StorageGroupAlreadyExistException;
 import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -190,11 +192,11 @@ public class MTree implements Serializable {
   /**
    * make sure check seriesPath before setting storage group.
    */
-  public void setStorageGroup(String path) throws StorageGroupException {
+  public void setStorageGroup(String path) throws MetadataErrorException {
     String[] nodeNames = path.split(PATH_SEPARATOR);
     MNode cur = root;
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
-      throw new StorageGroupException(
+      throw new MetadataErrorException(
           String.format("The storage group can't be set to the %s node", path));
     }
     int i = 1;
@@ -206,7 +208,7 @@ public class MTree implements Serializable {
       } else if (temp.isStorageGroup()) {
         // before set storage group should check the seriesPath exist or not
         // throw exception
-        throw new StorageGroupException(
+        throw new MetadataErrorException(
             String.format("The prefix of %s has been set to the storage group.", path));
       }
       cur = cur.getChild(nodeNames[i]);
@@ -216,9 +218,7 @@ public class MTree implements Serializable {
     if (temp == null) {
       cur.addChild(nodeNames[i], new MNode(nodeNames[i], cur, false));
     } else {
-      throw new StorageGroupException(
-          String.format("The seriesPath of %s already exist, it can't be set to the storage group",
-              path));
+      throw new StorageGroupAlreadyExistException(path);
     }
     cur = cur.getChild(nodeNames[i]);
     cur.setDataTTL(IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());

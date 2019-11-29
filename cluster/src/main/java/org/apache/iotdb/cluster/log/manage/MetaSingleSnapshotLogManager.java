@@ -8,17 +8,20 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.cluster.log.SimpleSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.db.metadata.MManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SingleSnapshotLogManager extends MemoryLogManager {
+public class MetaSingleSnapshotLogManager extends MemoryLogManager {
 
-  private static final Logger logger = LoggerFactory.getLogger(SingleSnapshotLogManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(MetaSingleSnapshotLogManager.class);
   private List<Log> snapshot = new ArrayList<>();
+  private List<String> storageGroups;
 
-  public SingleSnapshotLogManager(LogApplier logApplier) {
+  public MetaSingleSnapshotLogManager(LogApplier logApplier) {
     super(logApplier);
   }
 
@@ -27,11 +30,12 @@ public class SingleSnapshotLogManager extends MemoryLogManager {
     while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
       snapshot.add(logBuffer.removeFirst());
     }
+    storageGroups = MManager.getInstance().getAllStorageGroupNames();
   }
 
   @Override
   public Snapshot getSnapshot() {
-    return new SimpleSnapshot(new ArrayList<>(this.snapshot));
+    return new MetaSimpleSnapshot(new ArrayList<>(this.snapshot), storageGroups);
   }
 
   public void setSnapshot(SimpleSnapshot snapshot) {

@@ -16,6 +16,23 @@ public class SerializeUtils {
     // util class
   }
 
+  public static void serialize(String str, DataOutputStream dataOutputStream) {
+    try {
+      byte[] strBytes = str.getBytes();
+      dataOutputStream.writeInt(strBytes.length);
+      dataOutputStream.write(strBytes);
+    } catch (IOException e) {
+      // unreachable
+    }
+  }
+
+  public static String deserializeString(ByteBuffer buffer) {
+    int length = buffer.getInt();
+    byte[] strBytes = new byte[length];
+    buffer.get(strBytes);
+    return new String(strBytes);
+  }
+
   public static void serialize(List<Integer> ints, DataOutputStream dataOutputStream) {
     try {
       dataOutputStream.writeInt(ints.size());

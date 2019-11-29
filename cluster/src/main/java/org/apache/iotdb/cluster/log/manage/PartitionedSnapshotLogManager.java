@@ -9,9 +9,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.cluster.log.PartitionedSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.Snapshot;
-import org.apache.iotdb.cluster.log.SimpleSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
 
 public class PartitionedSnapshotLogManager extends MemoryLogManager {
 

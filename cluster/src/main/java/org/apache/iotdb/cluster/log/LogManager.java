@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.log;
 
 import java.util.List;
+import org.apache.iotdb.db.exception.ProcessorException;
 
 /**
  * LogManager manages the logs that are still in memory and the last snapshot which can be used
@@ -55,6 +56,12 @@ public interface LogManager {
    * @param maxLogIndex
    */
   void commitLog(long maxLogIndex);
+
+  /**
+   * Commit a single log and set the commit index to its index.
+   * @param log
+   */
+  void commitLog(Log log) throws ProcessorException;
 
   /**
    * Get all logs whose index in [startIndex, endIndex].

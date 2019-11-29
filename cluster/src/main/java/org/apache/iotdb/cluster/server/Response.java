@@ -18,6 +18,7 @@ public class Response {
   public static final long RESPONSE_IDENTIFIER_CONFLICT = -5;
   public static final long RESPONSE_NO_CONNECTION = -6;
   public static final long RESPONSE_META_LOG_STALE = -7;
+  public static final long RESPONSE_LEADER_STILL_ONLINE = -8;
 
   private Response() {
     // enum class

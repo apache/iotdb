@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.cluster.log;
 
+import org.apache.iotdb.db.exception.ProcessorException;
+
 /**
  * LogApplier applies the log to the local node to make it take effect, or revert it if it should
  * be undone.
  */
 public interface LogApplier {
 
-  void apply(Log log);
+  void apply(Log log) throws ProcessorException;
 
   void revert(Log log);
 }

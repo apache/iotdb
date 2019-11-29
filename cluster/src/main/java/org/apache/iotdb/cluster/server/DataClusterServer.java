@@ -20,6 +20,7 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
+import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
@@ -27,6 +28,8 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncProcessor;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -206,6 +209,29 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       }
     }  else {
       member.pullSnapshot(request, resultHandler);
+    }
+  }
+
+  @Override
+  public void executeNonQueryPlan(ExecutNonQueryReq request,
+      AsyncMethodCallback<TSStatus> resultHandler)
+      throws TException {
+    if (!request.isSetHeader()) {
+      resultHandler.onError(new NoHeaderVNodeException());
+      return;
+    }
+
+    Node header = request.getHeader();
+    DataGroupMember member = getDataMember(header);
+    if (member == null) {
+      if (partitionTable != null) {
+        resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
+            thisNode));
+      } else {
+        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
+      }
+    }  else {
+      member.executeNonQueryPlan(request, resultHandler);
     }
   }
 

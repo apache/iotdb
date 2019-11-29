@@ -33,8 +33,8 @@ import java.nio.ByteBuffer;
 //TODO-CLuster: implement the Snapshot mechanism
 public abstract class Snapshot {
 
-  long lastLogId;
-  long lastLogTerm;
+  protected long lastLogId;
+  protected long lastLogTerm;
 
   public abstract ByteBuffer serialize();
 

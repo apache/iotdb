@@ -20,7 +20,10 @@ package org.apache.iotdb.cluster;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.cluster.server.ClientServer;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +37,7 @@ public class ClusterMain {
   // join an established cluster
   private static final String MODE_ADD = "-a";
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws InterruptedException {
     if (args.length < 1) {
       logger.error("Usage: <start mode>");
       return;
@@ -46,7 +49,7 @@ public class ClusterMain {
       metaServer = new MetaClusterServer();
       metaServer.start();
     } catch (TTransportException | IOException e) {
-      logger.error("Cannot set up meta service", e);
+      logger.error("Cannot set up service", e);
       return;
     }
 

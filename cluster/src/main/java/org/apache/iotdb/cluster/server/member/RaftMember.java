@@ -4,6 +4,8 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
@@ -15,6 +17,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
@@ -26,16 +29,24 @@ import org.apache.iotdb.cluster.log.catchup.SnapshotCatchUpTask;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
+import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.log.catchup.LogCatchUpTask;
+import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
+import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
+import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.QueryProcessor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingSocket;
 import org.apache.thrift.transport.TNonblockingTransport;
@@ -149,7 +160,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       long thisTerm = term.get();
       if (character != NodeCharacter.ELECTOR) {
         // only elector votes
-        resultHandler.onComplete(thisTerm);
+        resultHandler.onComplete(Response.RESPONSE_LEADER_STILL_ONLINE);
         return;
       }
       long response = processElectionRequest(electionRequest);
@@ -183,7 +194,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return true;
   }
 
-  long appendEntry(Log log) {
+  long appendEntry(Log log) throws ProcessorException {
     long resp;
     synchronized (logManager) {
       Log lastLog = logManager.getLastLog();
@@ -204,7 +215,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         // bigger than or equals to the local last log's, replace the local last log with it
         logManager.replaceLastLog(log);
         logger.debug("{} replaced the last log with {}, new term:{}, new index:{}", name, log,
-            previousLogTerm, previousLogIndex);
+            log.getCurrLogTerm(), log.getCurrLogIndex());
         resp = Response.RESPONSE_AGREE;
       } else {
         long lastPrevLogTerm = lastLog == null ? -1 : lastLog.getPreviousLogTerm();
@@ -234,7 +245,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     try {
       Log log = LogParser.getINSTANCE().parse(request.entry);
       resultHandler.onComplete(appendEntry(log));
-    } catch (UnknownLogTypeException e) {
+    } catch (UnknownLogTypeException | ProcessorException e) {
       resultHandler.onError(e);
     }
   }
@@ -455,7 +466,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       logger.debug("{} rejected an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
           name, thatTerm, thisTerm, thatLastLogId, thisLastLogIndex, thatLastLogTerm,
           thisLastLogTerm);
-      response = thisTerm;
+      response = Response.RESPONSE_LOG_MISMATCH;
     } else {
       logger.debug("{} accepted an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
           name, thatTerm, thisTerm, thatLastLogId, thisLastLogIndex, thatLastLogTerm,
@@ -490,7 +501,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       followerLastLogIndex = 0;
     }
 
-    RaftService.AsyncClient client = connectNode(follower);
+    AsyncClient client = connectNode(follower);
     if (client != null) {
       List<Log> logs;
       boolean allLogsValid;
@@ -520,5 +531,31 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   public String getName() {
     return name;
+  }
+
+  TSStatus forwardPlan(PhysicalPlan plan, Node node) {
+    AsyncClient client = connectNode(leader);
+    if (client != null) {
+      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+      DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+      try {
+        plan.serializeTo(dataOutputStream);
+        AtomicReference<TSStatus> status = new AtomicReference<>();
+        ExecutNonQueryReq req = new ExecutNonQueryReq();
+        req.setPlanBytes(byteArrayOutputStream.toByteArray());
+        synchronized (status) {
+          client.executeNonQueryPlan(req, new ForwardPlanHandler(status, plan, node));
+          status.wait(CONNECTION_TIME_OUT_MS);
+        }
+        return status.get() == null ? StatusUtils.TIME_OUT : status.get();
+      } catch (IOException | TException e) {
+        TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
+        status.getStatusType().setMessage(e.getMessage());
+        return status;
+      } catch (InterruptedException e) {
+        return StatusUtils.TIME_OUT;
+      }
+    }
+    return StatusUtils.TIME_OUT;
   }
 }

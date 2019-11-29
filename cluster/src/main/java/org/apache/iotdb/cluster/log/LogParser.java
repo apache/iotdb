@@ -22,7 +22,8 @@ package org.apache.iotdb.cluster.log;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log.Types;
-import org.apache.iotdb.cluster.log.meta.AddNodeLog;
+import org.apache.iotdb.cluster.log.logs.AddNodeLog;
+import org.apache.iotdb.cluster.log.logs.PhysicalPlanLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +60,10 @@ public class LogParser {
         AddNodeLog addNodeLog = new AddNodeLog();
         addNodeLog.deserialize(buffer);
         return addNodeLog;
+      case PHYSICAL_PLAN:
+        PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog();
+        physicalPlanLog.deserialize(buffer);
+        return physicalPlanLog;
       default:
         throw new IllegalArgumentException(type.toString());
     }

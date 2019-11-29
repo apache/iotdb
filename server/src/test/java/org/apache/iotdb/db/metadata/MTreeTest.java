@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -118,7 +119,7 @@ public class MTreeTest {
       root.addTimeseriesPath("root.a.b.d0.s0", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
           (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
 
-    } catch (PathErrorException | StorageGroupException e1) {
+    } catch (PathErrorException | MetadataErrorException e1) {
       e1.printStackTrace();
     }
 
@@ -184,7 +185,7 @@ public class MTreeTest {
       metadataStrs[1] = root2.toString();
       metadataStrs[2] = root3.toString();
       assertEquals(MTree.combineMetadataInStrings(metadataStrs), root.toString());
-    } catch (PathErrorException | StorageGroupException e) {
+    } catch (PathErrorException | MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -202,18 +203,18 @@ public class MTreeTest {
       assertFalse(root.isPathExist("root.laptop.d1.s1"));
       assertTrue(root.checkFileNameByPath("root.laptop.d1.s1"));
       assertEquals("root.laptop.d1", root.getStorageGroupNameByPath("root.laptop.d1.s1"));
-    } catch (StorageGroupException e) {
+    } catch (StorageGroupException | MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
       root.setStorageGroup("root.laptop.d2");
-    } catch (StorageGroupException e) {
+    } catch (MetadataErrorException e) {
       fail(e.getMessage());
     }
     try {
       root.setStorageGroup("root.laptop");
-    } catch (StorageGroupException e) {
+    } catch (MetadataErrorException e) {
       Assert.assertEquals(
           "The seriesPath of root.laptop already exist, it can't be set to the storage group",
           e.getMessage());
@@ -279,7 +280,7 @@ public class MTreeTest {
       assertTrue(root.checkStorageGroup("root.laptop.d1"));
       assertTrue(root.checkStorageGroup("root.laptop.d2"));
       assertFalse(root.checkStorageGroup("root.laptop.d3"));
-    } catch (StorageGroupException e) {
+    } catch (MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -304,7 +305,7 @@ public class MTreeTest {
       list.add("root.laptop.d2");
       assertEquals(list, root.getAllFileNamesByPath("root.laptop"));
       assertEquals(list, root.getAllFileNamesByPath("root"));
-    } catch (PathErrorException | StorageGroupException e) {
+    } catch (PathErrorException | MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -332,7 +333,7 @@ public class MTreeTest {
       assertTrue(root.getAllFileNamesByPath("root.vehicle1.device2").isEmpty());
       assertTrue(root.getAllFileNamesByPath("root.vehicle1.device3").isEmpty());
       assertFalse(root.getAllFileNamesByPath("root.vehicle1.device").isEmpty());
-    } catch (PathErrorException | StorageGroupException e) {
+    } catch (PathErrorException | MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

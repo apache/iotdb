@@ -6,9 +6,14 @@ package org.apache.iotdb.cluster.log.applier;
 
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.cluster.log.meta.AddNodeLog;
+import org.apache.iotdb.cluster.log.logs.AddNodeLog;
+import org.apache.iotdb.cluster.log.logs.PhysicalPlanLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,13 +21,15 @@ public class MetaLogApplier implements LogApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(MetaLogApplier.class);
   private MetaGroupMember member;
+  private QueryProcessExecutor queryExecutor;
 
   public MetaLogApplier(MetaGroupMember member) {
     this.member = member;
   }
 
   @Override
-  public void apply(Log log) {
+  public void apply(Log log) throws ProcessorException {
+    logger.debug("Applying {}", log);
     if (log instanceof AddNodeLog) {
       AddNodeLog addNodeLog = (AddNodeLog) log;
       Node newNode = new Node();
@@ -31,9 +38,20 @@ public class MetaLogApplier implements LogApplier {
       newNode.setNodeIdentifier(addNodeLog.getNodeIdentifier());
       newNode.setDataPort(addNodeLog.getDataPort());
       member.applyAddNode(newNode);
+    } else  if (log instanceof PhysicalPlanLog) {
+      applyPhysicalPlan(((PhysicalPlanLog) log).getPlan());
     } else {
       // TODO-Cluster support more types of logs
       logger.error("Unsupported log: {}", log);
+    }
+  }
+
+  private void applyPhysicalPlan(PhysicalPlan plan) throws ProcessorException {
+    if (plan instanceof SetStorageGroupPlan) {
+      getQueryExecutor().processNonQuery(plan);
+    } else {
+      // TODO-Cluster support more types of logs
+      logger.error("Unsupported physical plan: {}", plan);
     }
   }
 
@@ -45,5 +63,12 @@ public class MetaLogApplier implements LogApplier {
       // TODO-Cluster support more types of logs
       logger.error("Unsupported log: {}", log);
     }
+  }
+
+  private QueryProcessExecutor getQueryExecutor() {
+    if (queryExecutor == null) {
+      queryExecutor = new QueryProcessExecutor();
+    }
+    return queryExecutor;
   }
 }

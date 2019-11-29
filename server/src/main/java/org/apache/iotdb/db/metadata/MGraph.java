@@ -163,7 +163,7 @@ public class MGraph implements Serializable {
    *
    * @param path Format: root.node.(node)*
    */
-  void setStorageGroup(String path) throws StorageGroupException {
+  void setStorageGroup(String path) throws MetadataErrorException {
     mtree.setStorageGroup(path);
   }
 

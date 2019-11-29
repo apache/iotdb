@@ -18,13 +18,14 @@ import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.exception.NotManagedSocketException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.cluster.log.PartitionedSnapshot;
-import org.apache.iotdb.cluster.log.RemoteSimpleSnapshot;
-import org.apache.iotdb.cluster.log.SimpleSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.RemoteSimpleSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
+import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
@@ -36,8 +37,10 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPullSnapshotHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.async.TAsyncClientManager;
@@ -244,7 +247,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   private void applySnapshot(SimpleSnapshot snapshot, int socket) {
     synchronized (logManager) {
       for (Log log : snapshot.getSnapshot()) {
-        logManager.getApplier().apply(log);
+        try {
+          logManager.getApplier().apply(log);
+        } catch (ProcessorException e) {
+          logger.error("{}: Cannot apply a log {} in snapshot, ignored", name, log, e);
+        }
       }
       logManager.setSnapshot(snapshot, socket);
     }
@@ -320,6 +327,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // the header of the old members
     Node header;
 
+    PullSnapshotRequest request;
+
     PullSnapshotTask(Node header, int socket,
         DataGroupMember member, List<Node> oldMembers) {
       this.header = header;
@@ -328,9 +337,37 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       this.oldMembers = oldMembers;
     }
 
+    private boolean pullSnapshot(AtomicReference<SimpleSnapshot> snapshotRef, int nodeIndex)
+        throws InterruptedException, TException {
+      TSDataService.AsyncClient client =
+          (TSDataService.AsyncClient) newMember.connectNode(oldMembers.get(nodeIndex));
+      if (client == null) {
+        // network is bad, wait and retry
+        Thread.sleep(CONNECTION_TIME_OUT_MS);
+      } else {
+        synchronized (snapshotRef) {
+          client.pullSnapshot(request, new PullSnapshotHandler(snapshotRef));
+          snapshotRef.wait(CONNECTION_TIME_OUT_MS);
+        }
+        SimpleSnapshot result = snapshotRef.get();
+        if (result != null) {
+          if (logger.isInfoEnabled()) {
+            logger.info("{} received a snapshot {} of socket {} from {}", name,
+                snapshotRef.get(),
+                socket, oldMembers.get(nodeIndex));
+          }
+          newMember.applySnapshot(result, socket);
+          return true;
+        } else {
+          Thread.sleep(PULL_SNAPSHOT_RETRY_INTERVAL);
+        }
+      }
+      return false;
+    }
+
     @Override
     public SimpleSnapshot call() {
-      PullSnapshotRequest request = new PullSnapshotRequest();
+      request = new PullSnapshotRequest();
       request.setHeader(header);
       request.setRequiredSocket(socket);
       AtomicReference<SimpleSnapshot> snapshotRef = new AtomicReference<>();
@@ -340,29 +377,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         try {
           // sequentially pick up a node that may have this socket
           nodeIndex = (nodeIndex + 1) % oldMembers.size();
-          TSDataService.AsyncClient client =
-              (TSDataService.AsyncClient) newMember.connectNode(oldMembers.get(nodeIndex));
-          if (client == null) {
-            // network is bad, wait and retry
-            Thread.sleep(CONNECTION_TIME_OUT_MS);
-          } else {
-            synchronized (snapshotRef) {
-              client.pullSnapshot(request, new PullSnapshotHandler(snapshotRef));
-              snapshotRef.wait(CONNECTION_TIME_OUT_MS);
-            }
-            SimpleSnapshot result = snapshotRef.get();
-            if (result != null) {
-              if (logger.isInfoEnabled()) {
-                logger.info("{} received a snapshot {} of socket {} from {}", name,
-                    snapshotRef.get(),
-                    socket, oldMembers.get(nodeIndex));
-              }
-              newMember.applySnapshot(result, socket);
-              finished = true;
-            } else {
-              Thread.sleep(PULL_SNAPSHOT_RETRY_INTERVAL);
-            }
-          }
+          finished = pullSnapshot(snapshotRef, nodeIndex);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.error("{}: Unexpected interruption when pulling socket {}", name, socket, e);
@@ -377,5 +392,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   public MetaGroupMember getMetaGroupMember() {
     return metaGroupMember;
+  }
+
+  @Override
+  public void executeNonQueryPlan(ExecutNonQueryReq request,
+      AsyncMethodCallback<TSStatus> resultHandler) {
+    // TODO-Cluster: implement
   }
 }
