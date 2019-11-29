@@ -113,6 +113,7 @@ public class IoTDBLoadExternalTsfileTest {
         tmpDir.mkdirs();
       }
       for (TsFileResource resource : resources) {
+        System.out.println(String.format("move %s %s", resource.getFile().getPath(), tmpDir));
         statement.execute(String.format("move %s %s", resource.getFile().getPath(), tmpDir));
       }
       assertEquals(0, StorageEngine.getInstance().getProcessor("root.vehicle")

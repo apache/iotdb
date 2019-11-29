@@ -180,13 +180,16 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     for (File file : files) {
       if (file.isDirectory()) {
         recursionFileDir(file);
-      } else if (file.getName().endsWith(TSFILE_SUFFIX)) {
+      } else {
         loadFile(file);
       }
     }
   }
 
   private void loadFile(File file) throws QueryProcessException {
+    if (!file.getName().endsWith(TSFILE_SUFFIX)) {
+      return;
+    }
     TsFileResource tsFileResource = new TsFileResource(file);
     try {
       FileLoaderUtils.checkTsFileResource(tsFileResource);

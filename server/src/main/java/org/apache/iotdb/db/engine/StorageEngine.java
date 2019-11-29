@@ -446,29 +446,13 @@ public class StorageEngine implements IService {
   }
 
   public boolean deleteTsfile(File deletedTsfile) throws StorageEngineException {
-    if (deletedTsfile.getParentFile() != null) {
-      return getProcessor(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
-    }
-    List<String> storageGroupNames = MManager.getInstance().getAllStorageGroupNames();
-    boolean hasDeleted = false;
-    for (String storageGroupName : storageGroupNames) {
-      hasDeleted |= getProcessor(storageGroupName).deleteTsfile(deletedTsfile);
-    }
-    return hasDeleted;
+    return getProcessor(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
   }
 
   public boolean moveTsfile(File tsfileToBeMoved, File targetDir)
       throws StorageEngineException, IOException {
-    if(tsfileToBeMoved.getParentFile() != null){
-      return getProcessor(tsfileToBeMoved.getParentFile().getName())
-          .moveTsfile(tsfileToBeMoved, targetDir);
-    }
-    List<String> storageGroupNames = MManager.getInstance().getAllStorageGroupNames();
-    boolean hasMoved = false;
-    for (String storageGroupName : storageGroupNames) {
-      hasMoved |= getProcessor(storageGroupName).moveTsfile(tsfileToBeMoved, targetDir);
-    }
-    return hasMoved;
+    return getProcessor(tsfileToBeMoved.getParentFile().getName())
+        .moveTsfile(tsfileToBeMoved, targetDir);
   }
 
 }
