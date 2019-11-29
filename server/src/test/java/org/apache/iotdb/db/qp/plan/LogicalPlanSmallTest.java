@@ -50,7 +50,7 @@ public class LogicalPlanSmallTest {
   public void testSlimit1() {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10";
     RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    Assert.assertEquals(operator.getClass(), QueryOperator.class);
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
     Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
   }
 
@@ -72,7 +72,7 @@ public class LogicalPlanSmallTest {
   public void testSoffset() {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10 soffset 1";
     RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    Assert.assertEquals(operator.getClass(), QueryOperator.class);
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
     Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
     Assert.assertEquals(1, ((QueryOperator) operator).getSeriesOffset());
   }
