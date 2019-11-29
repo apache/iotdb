@@ -70,6 +70,21 @@ public class IoTDBSessionIT {
   }
 
   @Test
+  public void testBatchInsert()
+      throws IoTDBSessionException, SQLException, ClassNotFoundException, TException, IoTDBRPCException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    session.setStorageGroup("root.sg1");
+
+    createTimeseries();
+
+    insertRowBatchTest2("root.sg1.d1");
+
+    queryForBatch();
+  }
+
+  @Test
   public void test()
       throws ClassNotFoundException, SQLException, IoTDBSessionException, TException, IoTDBRPCException {
     session = new Session("127.0.0.1", 6667, "root", "root");
@@ -360,4 +375,61 @@ public class IoTDBSessionIT {
     }
     assertEquals(status, correctStatus);
   }
+
+  private void insertRowBatchTest2(String deviceId) throws IoTDBSessionException {
+    Schema schema = new Schema();
+    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+
+    RowBatch rowBatch = schema.createRowBatch(deviceId, 256);
+
+    long[] timestamps = rowBatch.timestamps;
+    Object[] values = rowBatch.values;
+
+    for (long time = 0; time < 1000; time++) {
+      int row = rowBatch.batchSize++;
+      timestamps[row] = time;
+      for (int i = 0; i < 3; i++) {
+        long[] sensor = (long[]) values[i];
+        sensor[row] = i;
+      }
+      if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
+        session.insertBatch(rowBatch);
+        rowBatch.reset();
+      }
+    }
+
+    if (rowBatch.batchSize != 0) {
+      session.insertBatch(rowBatch);
+      rowBatch.reset();
+    }
+  }
+
+  private void queryForBatch() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    String standard =
+        "Time\n" + "root.sg1.d1.s1\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n";
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery("select * from root");
+      final ResultSetMetaData metaData = resultSet.getMetaData();
+      final int colCount = metaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      for (int i = 0; i < colCount; i++) {
+        resultStr.append(metaData.getColumnLabel(i + 1) + "\n");
+      }
+
+      int count = 0;
+      while (resultSet.next()) {
+        for (int i = 1; i <= colCount; i++) {
+          count++;
+        }
+      }
+      Assert.assertEquals(resultStr.toString(), standard);
+      Assert.assertEquals(4000, count);
+    }
+  }
+
 }

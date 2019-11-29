@@ -385,10 +385,10 @@ public class StorageGroupProcessor {
       latestFlushedTimeForEachDevice.putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
 
       Integer[] results = new Integer[batchInsertPlan.getRowCount()];
-      List<Integer> sequenceIndexes = new ArrayList<>();
-      List<Integer> unsequenceIndexes = new ArrayList<>();
-
       long lastFlushTime = latestFlushedTimeForEachDevice.get(batchInsertPlan.getDeviceId());
+
+      HashMap<Long, List<Integer>> sequenceTimeRangeIndexes = new HashMap<>();
+      HashMap<Long, List<Integer>> unsequenceTimeRangeIndexes = new HashMap<>();
       for (int i = 0; i < batchInsertPlan.getRowCount(); i++) {
         long currTime = batchInsertPlan.getTimes()[i];
         // skip points that do not satisfy TTL
@@ -397,20 +397,38 @@ public class StorageGroupProcessor {
           continue;
         }
         results[i] = TSStatusCode.SUCCESS_STATUS.getStatusCode();
+        long timeRange = fromTimeToTimeRange(currTime);
         if (currTime > lastFlushTime) {
-          sequenceIndexes.add(i);
+          // sequence
+          List<Integer> curIndex = sequenceTimeRangeIndexes.get(timeRange);
+          if(curIndex == null){
+            // if map not contains this time range
+            curIndex = new ArrayList<>();
+            sequenceTimeRangeIndexes.put(timeRange, curIndex);
+          }
+
+          curIndex.add(i);
         } else {
-          unsequenceIndexes.add(i);
+          // unsequence
+          List<Integer> curIndex = unsequenceTimeRangeIndexes.get(timeRange);
+          if(curIndex == null){
+            // if map not contains this time range
+            curIndex = new ArrayList<>();
+            unsequenceTimeRangeIndexes.put(timeRange, curIndex);
+          }
+
+          curIndex.add(i);
         }
       }
 
-      if (!sequenceIndexes.isEmpty()) {
-        insertBatchToTsFileProcessor(batchInsertPlan, sequenceIndexes, true, results);
+      for(Map.Entry<Long, List<Integer>> entry : sequenceTimeRangeIndexes.entrySet()){
+        insertBatchToTsFileProcessor(batchInsertPlan, entry.getValue(), true, results, entry.getKey());
       }
 
-      if (!unsequenceIndexes.isEmpty()) {
-        insertBatchToTsFileProcessor(batchInsertPlan, unsequenceIndexes, false, results);
+      for(Map.Entry<Long, List<Integer>> entry : unsequenceTimeRangeIndexes.entrySet()){
+        insertBatchToTsFileProcessor(batchInsertPlan, entry.getValue(), false, results, entry.getKey());
       }
+
       return results;
     } finally {
       writeUnlock();
@@ -425,9 +443,9 @@ public class StorageGroupProcessor {
   }
 
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
-      List<Integer> indexes, boolean sequence, Integer[] results) throws QueryProcessException {
+      List<Integer> indexes, boolean sequence, Integer[] results, long timeRange) throws QueryProcessException {
 
-    TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(0, sequence);
+    TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(fromTimeRangeToTime(timeRange), sequence);
     if (tsFileProcessor == null) {
       for (int index : indexes) {
         results[index] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
@@ -531,7 +549,7 @@ public class StorageGroupProcessor {
       boolean sequence)
       throws IOException, DiskSpaceInsufficientException {
     // time partition range
-    long timeRange = getTimeRange(time);
+    long timeRange = fromTimeToTimeRange(time);
     TsFileProcessor res = null;
     // we have to ensure only one thread can change workSequenceTsFileProcessor
     writeLock();
@@ -575,7 +593,11 @@ public class StorageGroupProcessor {
     return res;
   }
 
-  private long getTimeRange(long time) {
+  private long fromTimeRangeToTime(long timeRange) {
+    return timeRange * 100;
+  }
+
+  private long fromTimeToTimeRange(long time) {
     return time / 100;
   }
 
