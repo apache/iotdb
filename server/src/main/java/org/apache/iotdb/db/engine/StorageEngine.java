@@ -435,9 +435,14 @@ public class StorageEngine implements IService {
   }
 
   public void loadNewTsFile(TsFileResource newTsFileResource)
-      throws TsFileProcessorException, StorageEngineException {
-    getProcessor(newTsFileResource.getFile().getParentFile().getName())
-        .loadNewTsFile(newTsFileResource);
+      throws TsFileProcessorException, StorageEngineException, StorageGroupException {
+    Map<String, Long> startTimeMap = newTsFileResource.getStartTimeMap();
+    if (startTimeMap == null || startTimeMap.isEmpty()) {
+      throw new StorageEngineException("Can not get the corresponding storage group.");
+    }
+    String device = startTimeMap.keySet().iterator().next();
+    String storageGroupName = MManager.getInstance().getStorageGroupNameByPath(device);
+    getProcessor(storageGroupName).loadNewTsFile(newTsFileResource);
   }
 
   public boolean deleteTsfile(File deletedTsfile) throws StorageEngineException {

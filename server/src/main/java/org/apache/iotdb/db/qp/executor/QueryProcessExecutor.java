@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.executor;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PRIVILEGE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ROLE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.USER;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
@@ -179,7 +180,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     for (File file : files) {
       if (file.isDirectory()) {
         recursionFileDir(file);
-      } else {
+      } else if (file.getName().endsWith(TSFILE_SUFFIX)) {
         loadFile(file);
       }
     }
@@ -196,7 +197,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
                 file.getAbsolutePath()));
       }
       StorageEngine.getInstance().loadNewTsFile(tsFileResource);
-    } catch (IOException | TsFileProcessorException | StorageEngineException e) {
+    } catch (IOException | TsFileProcessorException | StorageEngineException | StorageGroupException e) {
       throw new QueryProcessException(
           String.format("Cannot load file %s because %s", file.getAbsolutePath(), e.getMessage()));
     }
