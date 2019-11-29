@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.write.schemaV2;
 
+import java.util.LinkedHashMap;
 import org.apache.iotdb.tsfile.read.common.Path;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,13 @@ public class SchemaV2 {
    * By default, use the LinkedHashMap to store the order of insertion
    */
   private Map<Path, TimeseriesSchema> timeseriesSchemaMap;
+
+  /**
+   * template name -> (measuremnet -> TimeseriesSchema)
+   */
+  private Map<String, Map<String, TimeseriesSchema>> deviceTemplates;
+
+  private Map<String> devices;
 
   /**
    * register a measurement schema map.
@@ -57,10 +65,18 @@ public class SchemaV2 {
     return timeseriesSchemaMap.get(path);
   }
 
+  public boolean containsDevice(String device) {
+    return devices.containsKey(device);
+  }
+
+  public Map<Path, TimeseriesSchema> getTimeseriesSchemaMap() {
+    return timeseriesSchemaMap;
+  }
+
   /**
    * check if this schema contains a measurement named measurementId.
    */
-  public boolean hasTimeseries(Path path) {
+  public boolean containsTimeseries(Path path) {
     return timeseriesSchemaMap.containsKey(path);
   }
 

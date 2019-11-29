@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.write.record.datapoint;
 
 import java.io.IOException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImplV2;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +48,15 @@ public class DoubleDataPoint extends DataPoint {
 
   @Override
   public void writeTo(long time, IChunkWriter writer) throws IOException {
+    if (writer == null) {
+      LOG.warn("given IChunkWriter is null, do nothing and return");
+      return;
+    }
+    writer.write(time, value);
+  }
+
+  @Override
+  public void writeTo(long time, ChunkWriterImplV2 writer) throws IOException {
     if (writer == null) {
       LOG.warn("given IChunkWriter is null, do nothing and return");
       return;

@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.StringContainer;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImplV2;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 
 import java.io.IOException;
@@ -106,6 +107,8 @@ public abstract class DataPoint {
    * @throws IOException exception in IO
    */
   public abstract void writeTo(long time, IChunkWriter writer) throws IOException;
+
+  public abstract void writeTo(long time, ChunkWriterImplV2 writer) throws IOException;
 
   public String getMeasurementId() {
     return measurementId;

@@ -33,20 +33,13 @@ import java.util.Map;
 import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schemaV2.SchemaV2;
 
 /**
  * TSFileMetaData collects all metadata info and saves in its data structure.
  */
 public class TsFileMetadataV2 {
-
-  private SchemaV2 schemaV2;
 
   // fields below are IoTDB extensions and they does not affect TsFile's stand-alone functionality
   private int totalChunkNum;
@@ -57,11 +50,7 @@ public class TsFileMetadataV2 {
   // bloom filter
   private BloomFilter bloomFilter;
 
-  private List<ChunkMetaData> chunkMetaDataList;
-
-  private TreeMap<Path, List<ChunkMetaData>> timeseriesMetadata;
-
-  private List<Pair<Path, Long>> seriesMetadataIndex;
+  private long[] seriesMetadataIndex;
 
   /**
    * deserialize data from the buffer.
