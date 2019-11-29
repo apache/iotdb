@@ -74,7 +74,7 @@
         <spark.version>2.4.3</spark.version>
         <common.io.version>2.5</common.io.version>
         <commons.collections4>4.0</commons.collections4>
-        <thrift.version>0.9.3</thrift.version>
+        <thrift.version>0.12.0</thrift.version>
         <airline.version>0.8</airline.version>
         <jackson.version>2.10.0</jackson.version>
         <antlr3.version>3.5.2</antlr3.version>
@@ -518,86 +518,6 @@
         </pluginManagement>
         <plugins>
             <!--
-              Strange things usually happen if you run with a too low Java version.
-              This plugin not only checks the minimum java version of 1.8, but also
-              checks all dependencies (and transitive dependencies) for reported CVEs.
-            -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <version>3.0.0-M2</version>
-                <!--$NO-MVN-MAN-VER$-->
-                <executions>
-                    <!-- Ensure we're not mixing dependency versions -->
-                    <execution>
-                        <id>enforce-version-convergence</id>
-                        <configuration>
-                            <rules>
-                                <dependencyConvergence/>
-                            </rules>
-                        </configuration>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                    </execution>
-                    <!--
-                        Fails the build if classes are included from multiple
-                        artifacts and these are not identical.
-                    -->
-                    <!--execution>
-                        <id>enforce-ban-duplicate-classes</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <banDuplicateClasses>
-                                    <scopes>
-                                        <scope>compile</scope>
-                                        <scope>provided</scope>
-                                    </scopes>
-                                    <findAllDuplicates>true</findAllDuplicates>
-                                    <ignoreWhenIdentical>true</ignoreWhenIdentical>
-                                </banDuplicateClasses>
-                            </rules>
-                            <fail>true</fail>
-                        </configuration>
-                    </execution-->
-                    <!-- Make sure no dependencies are used for which known vulnerabilities exist. -->
-                    <execution>
-                        <id>vulnerability-checks</id>
-                        <phase>validate</phase>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <!-- Just generate warnings for now -->
-                            <fail>false</fail>
-                            <rules>
-                                <requireJavaVersion>
-                                    <version>1.8.0</version>
-                                </requireJavaVersion>
-                                <!-- Disabled for now as it breaks the ability to build single modules -->
-                                <!--reactorModuleConvergence/-->
-                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies"/>
-                            </rules>
-                        </configuration>
-                    </execution>
-                </executions>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.sonatype.ossindex.maven</groupId>
-                        <artifactId>ossindex-maven-enforcer-rules</artifactId>
-                        <version>1.0.0</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>extra-enforcer-rules</artifactId>
-                        <version>1.2</version>
-                    </dependency>
-                </dependencies>
-            </plugin>
-            <!--
               Even if Maven transitively pulls in dependencies, relying on these can
               quite often cause hard to find problems. So it's a good practice to make
               sure everything directly required is also directly added as a dependency.
@@ -814,8 +734,8 @@
                 </os>
             </activation>
             <properties>
-                <thrift.download-url>https://github.com/ccascone/mvn-thrift-compiler/raw/1.0_${thrift.version}/exe/thrift-linux-x86_64.exe</thrift.download-url>
-                <thrift.executable>thrift-${thrift.version}-unix-x86_64</thrift.executable>
+                <thrift.download-url>https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_linux.exe</thrift.download-url>
+                <thrift.executable>thrift_0.12.0_0.13.0_linux.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
                 <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
@@ -829,8 +749,8 @@
                 </os>
             </activation>
             <properties>
-                <thrift.download-url>https://github.com/ccascone/mvn-thrift-compiler/raw/1.0_${thrift.version}/exe/thrift-osx-x86_64.exe</thrift.download-url>
-                <thrift.executable>thrift-${thrift.version}-osx-x86_64</thrift.executable>
+                <thrift.download-url>https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_mac.exe</thrift.download-url>
+                <thrift.executable>thrift_0.12.0_0.13.0_mac.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
                 <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
@@ -1034,6 +954,86 @@
                                 </configuration>
                             </execution>
                         </executions>
+                    </plugin>
+                    <!--
+                      Strange things usually happen if you run with a too low Java version.
+                      This plugin not only checks the minimum java version of 1.8, but also
+                      checks all dependencies (and transitive dependencies) for reported CVEs.
+                    -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-enforcer-plugin</artifactId>
+                        <version>3.0.0-M2</version>
+                        <!--$NO-MVN-MAN-VER$-->
+                        <executions>
+                            <!-- Ensure we're not mixing dependency versions -->
+                            <execution>
+                                <id>enforce-version-convergence</id>
+                                <configuration>
+                                    <rules>
+                                        <dependencyConvergence/>
+                                    </rules>
+                                </configuration>
+                                <goals>
+                                    <goal>enforce</goal>
+                                </goals>
+                            </execution>
+                            <!--
+                                Fails the build if classes are included from multiple
+                                artifacts and these are not identical.
+                            -->
+                            <!--execution>
+                                <id>enforce-ban-duplicate-classes</id>
+                                <goals>
+                                    <goal>enforce</goal>
+                                </goals>
+                                <configuration>
+                                    <rules>
+                                        <banDuplicateClasses>
+                                            <scopes>
+                                                <scope>compile</scope>
+                                                <scope>provided</scope>
+                                            </scopes>
+                                            <findAllDuplicates>true</findAllDuplicates>
+                                            <ignoreWhenIdentical>true</ignoreWhenIdentical>
+                                        </banDuplicateClasses>
+                                    </rules>
+                                    <fail>true</fail>
+                                </configuration>
+                            </execution-->
+                            <!-- Make sure no dependencies are used for which known vulnerabilities exist. -->
+                            <execution>
+                                <id>vulnerability-checks</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>enforce</goal>
+                                </goals>
+                                <configuration>
+                                    <!-- Just generate warnings for now -->
+                                    <fail>false</fail>
+                                    <rules>
+                                        <requireJavaVersion>
+                                            <version>1.8.0</version>
+                                        </requireJavaVersion>
+                                        <!-- Disabled for now as it breaks the ability to build single modules -->
+                                        <!--reactorModuleConvergence/-->
+                                        <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies"/>
+                                    </rules>
+                                </configuration>
+                            </execution>
+                        </executions>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.sonatype.ossindex.maven</groupId>
+                                <artifactId>ossindex-maven-enforcer-rules</artifactId>
+                                <version>1.0.0</version>
+                            </dependency>
+                            <dependency>
+                                <groupId>org.codehaus.mojo</groupId>
+                                <artifactId>extra-enforcer-rules</artifactId>
+                                <version>1.2</version>
+                            </dependency>
+                        </dependencies>
                     </plugin>
                 </plugins>
             </build>

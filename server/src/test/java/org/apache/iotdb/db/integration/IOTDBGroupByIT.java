@@ -21,8 +21,8 @@ package org.apache.iotdb.db.integration;
 
 import static org.apache.iotdb.db.integration.Constant.avg;
 import static org.apache.iotdb.db.integration.Constant.count;
-import static org.apache.iotdb.db.integration.Constant.first;
-import static org.apache.iotdb.db.integration.Constant.last;
+import static org.apache.iotdb.db.integration.Constant.first_value;
+import static org.apache.iotdb.db.integration.Constant.last_value;
 import static org.apache.iotdb.db.integration.Constant.max_time;
 import static org.apache.iotdb.db.integration.Constant.max_value;
 import static org.apache.iotdb.db.integration.Constant.min_time;
@@ -306,7 +306,7 @@ public class IOTDBGroupByIT {
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select last(temperature), first(temperature) from root.ln.wf01.wt01 where time > 3 "
+          "select last_value(temperature), first_value(temperature) from root.ln.wf01.wt01 where time > 3 "
               + "GROUP BY (20ms, 5,[2,30], [35,37], [50, 160], [310, 314])");
 
       Assert.assertTrue(hasResultSet);
@@ -315,8 +315,8 @@ public class IOTDBGroupByIT {
         cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
-              .getString(last("root.ln.wf01.wt01.temperature"))
-              + "," + resultSet.getString(first("root.ln.wf01.wt01.temperature"));
+              .getString(last_value("root.ln.wf01.wt01.temperature"))
+              + "," + resultSet.getString(first_value("root.ln.wf01.wt01.temperature"));
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
@@ -324,7 +324,7 @@ public class IOTDBGroupByIT {
       }
 
       hasResultSet = statement.execute(
-          "select first(temperature), last(temperature) from root.ln.wf01.wt01 "
+          "select first_value(temperature), last_value(temperature) from root.ln.wf01.wt01 "
               + "where temperature > 3 "
               + "GROUP BY (20ms, 5,[2,30], [35,37], [50, 160], [310, 314])");
 
@@ -333,8 +333,8 @@ public class IOTDBGroupByIT {
         cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
-              .getString(last("root.ln.wf01.wt01.temperature"))
-              + "," + resultSet.getString(first("root.ln.wf01.wt01.temperature"));
+              .getString(last_value("root.ln.wf01.wt01.temperature"))
+              + "," + resultSet.getString(first_value("root.ln.wf01.wt01.temperature"));
           Assert.assertEquals(retArray2[cnt], ans);
           cnt++;
         }
@@ -427,7 +427,7 @@ public class IOTDBGroupByIT {
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute(
-          "select last(temperature), first(temperature), sum(temperature) from "
+          "select last_value(temperature), first_value(temperature), sum(temperature) from "
               + "root.ln.wf01.wt01 where time > 3 "
               + "GROUP BY (80ms, 30,[50,100], [615, 650])");
 
@@ -436,8 +436,8 @@ public class IOTDBGroupByIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
-              .getString(last("root.ln.wf01.wt01.temperature"))
-              + "," + resultSet.getString(first("root.ln.wf01.wt01.temperature")) + ","
+              .getString(last_value("root.ln.wf01.wt01.temperature"))
+              + "," + resultSet.getString(first_value("root.ln.wf01.wt01.temperature")) + ","
               + resultSet.getString(sum("root.ln.wf01.wt01.temperature"));
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
@@ -446,7 +446,7 @@ public class IOTDBGroupByIT {
       }
 
       hasResultSet = statement.execute(
-          "select first(temperature), last(temperature), sum(temperature) from "
+          "select first_value(temperature), last_value(temperature), sum(temperature) from "
               + "root.ln.wf01.wt01 where temperature > 3 "
               + "GROUP BY (80ms, 30,[50,100], [585,590], [615, 650])");
 
@@ -455,8 +455,8 @@ public class IOTDBGroupByIT {
         cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
-              .getString(last("root.ln.wf01.wt01.temperature"))
-              + "," + resultSet.getString(first("root.ln.wf01.wt01.temperature")) + ","
+              .getString(last_value("root.ln.wf01.wt01.temperature"))
+              + "," + resultSet.getString(first_value("root.ln.wf01.wt01.temperature")) + ","
               + resultSet.getString(sum("root.ln.wf01.wt01.temperature"));
           Assert.assertEquals(retArray2[cnt], ans);
           cnt++;
