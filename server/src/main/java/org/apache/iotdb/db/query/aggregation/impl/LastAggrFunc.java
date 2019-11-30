@@ -29,9 +29,9 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class LastValueAggrFunc extends AggregateFunction {
+public class LastAggrFunc extends AggregateFunction {
 
-  public LastValueAggrFunc(TSDataType dataType) {
+  public LastAggrFunc(TSDataType dataType) {
     super(dataType);
   }
 

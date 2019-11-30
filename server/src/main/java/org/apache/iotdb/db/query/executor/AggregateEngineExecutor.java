@@ -30,7 +30,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.aggregation.impl.LastValueAggrFunc;
+import org.apache.iotdb.db.query.aggregation.impl.LastAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrFunc;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -105,7 +105,7 @@ public class AggregateEngineExecutor {
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
       IAggregateReader seqResourceIterateReader;
-      if (function instanceof MaxTimeAggrFunc || function instanceof LastValueAggrFunc) {
+      if (function instanceof MaxTimeAggrFunc || function instanceof LastAggrFunc) {
         seqResourceIterateReader = new SeqResourceIterateReader(queryDataSource.getSeriesPath(),
             queryDataSource.getSeqResources(), timeFilter, context, true);
       } else {
@@ -143,7 +143,7 @@ public class AggregateEngineExecutor {
   private AggreResultData aggregateWithoutValueFilter(AggregateFunction function,
       IAggregateReader sequenceReader, IPointReader unSequenceReader, Filter filter)
       throws IOException, QueryProcessException {
-    if (function instanceof MaxTimeAggrFunc || function instanceof LastValueAggrFunc) {
+    if (function instanceof MaxTimeAggrFunc || function instanceof LastAggrFunc) {
       return handleLastMaxTimeWithOutTimeGenerator(function, sequenceReader, unSequenceReader,
           filter);
     }
