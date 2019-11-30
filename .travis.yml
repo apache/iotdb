@@ -93,7 +93,7 @@ matrix:
       language: c
       name: win-openjdk11
       before_install:
-        -  choco install openjdk11 --version=11.0.4.111 -y
+        - choco install openjdk11 --version=11.0.4.111 -y
         - wget --no-check-certificate https://www-eu.apache.org/dist/maven/maven-3/3.6.2/binaries/apache-maven-3.6.2-bin.zip
         - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.2-bin.zip -o/c/mvn362
         - mkdir C:\hadoop\bin
