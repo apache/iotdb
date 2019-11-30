@@ -29,9 +29,9 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class FirstValueAggrFunc extends AggregateFunction {
+public class FirstAggrFunc extends AggregateFunction {
 
-  public FirstValueAggrFunc(TSDataType dataType) {
+  public FirstAggrFunc(TSDataType dataType) {
     super(dataType);
   }
 
@@ -51,7 +51,7 @@ public class FirstValueAggrFunc extends AggregateFunction {
       return;
     }
 
-    Object firstVal = pageHeader.getStatistics().getFirst();
+    Object firstVal = pageHeader.getStatistics().getFirstValue();
     if (firstVal == null) {
       throw new QueryProcessException("PageHeader contains no FIRST value");
     }

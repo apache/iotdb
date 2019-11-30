@@ -29,13 +29,13 @@ public class StatisticConstant {
 
   public static final String COUNT = "count";
 
-  public static final String FIRST_VALUE = "first_value";
+  public static final String FIRST = "first";
 
   public static final String AVG = "avg";
 
   public static final String SUM = "sum";
 
-  public static final String LAST_VALUE = "last_value";
+  public static final String LAST = "last";
 
   private StatisticConstant(){}
 }

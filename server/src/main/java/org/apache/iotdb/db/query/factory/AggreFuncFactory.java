@@ -23,8 +23,8 @@ import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.impl.AvgAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.CountAggrFunc;
-import org.apache.iotdb.db.query.aggregation.impl.FirstValueAggrFunc;
-import org.apache.iotdb.db.query.aggregation.impl.LastValueAggrFunc;
+import org.apache.iotdb.db.query.aggregation.impl.FirstAggrFunc;
+import org.apache.iotdb.db.query.aggregation.impl.LastAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MaxValueAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MinTimeAggrFunc;
@@ -66,12 +66,12 @@ public class AggreFuncFactory {
         return new CountAggrFunc();
       case StatisticConstant.AVG:
         return new AvgAggrFunc(dataType);
-      case StatisticConstant.FIRST_VALUE:
-        return new FirstValueAggrFunc(dataType);
+      case StatisticConstant.FIRST:
+        return new FirstAggrFunc(dataType);
       case StatisticConstant.SUM:
         return new SumAggrFunc(dataType);
-      case StatisticConstant.LAST_VALUE:
-        return new LastValueAggrFunc(dataType);
+      case StatisticConstant.LAST:
+        return new LastAggrFunc(dataType);
       default:
         throw new PathException(
             "aggregate does not support " + aggrFuncName + " function.");

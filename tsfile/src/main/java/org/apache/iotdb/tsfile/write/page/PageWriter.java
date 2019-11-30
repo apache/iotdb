@@ -91,7 +91,7 @@ public class PageWriter {
     }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
-    statistics.updateStats(value);
+    statistics.update(time, value);
   }
 
   /**
@@ -101,7 +101,7 @@ public class PageWriter {
     ++pointNumber;
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
-    statistics.updateStats(value);
+    statistics.update(time, value);
   }
 
   /**
@@ -115,7 +115,7 @@ public class PageWriter {
     }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
-    statistics.updateStats(value);
+    statistics.update(time, value);
   }
 
   /**
@@ -129,7 +129,7 @@ public class PageWriter {
     }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
-    statistics.updateStats(value);
+    statistics.update(time, value);
   }
 
   /**
@@ -143,7 +143,7 @@ public class PageWriter {
     }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
-    statistics.updateStats(value);
+    statistics.update(time, value);
   }
 
   /**
@@ -157,21 +157,7 @@ public class PageWriter {
     }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
-    statistics.updateStats(value);
-  }
-
-  /**
-   * write a time value pair into encoder
-   */
-  public void write(long time, BigDecimal value) {
-    ++pointNumber;
-    this.pageMaxTime = time;
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = time;
-    }
-    timeEncoder.encode(time, timeOut);
-    valueEncoder.encode(value, valueOut);
-    statistics.updateStats(value);
+    statistics.update(time, value);
   }
 
   /**
@@ -185,7 +171,7 @@ public class PageWriter {
     }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
-    statistics.updateStats(value);
+    statistics.update(time, value);
   }
 
   /**
@@ -201,7 +187,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
@@ -217,7 +203,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
@@ -233,7 +219,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
@@ -249,7 +235,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
@@ -265,23 +251,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
-  }
-
-  /**
-   * write time series into encoder
-   */
-  public void write(long[] timestamps, BigDecimal[] values, int batchSize) {
-    pointNumber += batchSize;
-    this.pageMaxTime = timestamps[batchSize - 1];
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = timestamps[0];
-    }
-    for (int i = 0; i < batchSize; i++) {
-      timeEncoder.encode(timestamps[i], timeOut);
-      valueEncoder.encode(values[i], valueOut);
-    }
-    statistics.updateStats(values);
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
@@ -297,7 +267,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
@@ -334,12 +304,10 @@ public class PageWriter {
 
   /**
    * write the page header and data into the PageWriter's output stream.
-   *
-   * @return byte size of the page header and uncompressed data in the page body.
    */
-  public int writePageHeaderAndDataIntoBuff(PublicBAOS pageBuffer) throws IOException {
+  public void writePageHeaderAndDataIntoBuff(PublicBAOS pageBuffer) throws IOException {
     if (pointNumber == 0) {
-      return 0;
+      return;
     }
 
     ByteBuffer pageData = getUncompressedBytes();
@@ -361,7 +329,6 @@ public class PageWriter {
     // write the page header to IOWriter
     PageHeader header = new PageHeader(uncompressedSize, compressedSize, pointNumber, statistics,
         pageMaxTime, pageMinTime);
-    int headerSize = header.getSerializedSize();
     header.serializeTo(pageBuffer);
 
     // write page content to temp PBAOS
@@ -374,7 +341,6 @@ public class PageWriter {
       }
       logger.debug("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
     }
-    return headerSize + uncompressedSize;
   }
 
   /**

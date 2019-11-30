@@ -29,9 +29,9 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class LastValueAggrFunc extends AggregateFunction {
+public class LastAggrFunc extends AggregateFunction {
 
-  public LastValueAggrFunc(TSDataType dataType) {
+  public LastAggrFunc(TSDataType dataType) {
     super(dataType);
   }
 
@@ -50,8 +50,8 @@ public class LastValueAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    Object lastVal = pageHeader.getStatistics().getLast();
-    updateLastResult(pageHeader.getMaxTimestamp(), lastVal);
+    Object lastVal = pageHeader.getStatistics().getLastValue();
+    updateLastResult(pageHeader.getEndTime(), lastVal);
   }
 
   @Override

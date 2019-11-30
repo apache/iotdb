@@ -38,7 +38,7 @@ public class ChunkHeader {
 
   private static final Logger LOG = LoggerFactory.getLogger(ChunkHeader.class);
 
-  public static final byte MARKER = MetaMarker.CHUNK_HEADER;
+  private static final byte MARKER = MetaMarker.CHUNK_HEADER;
 
   private String measurementID;
   private int dataSize;
@@ -46,35 +46,18 @@ public class ChunkHeader {
   private CompressionType compressionType;
   private TSEncoding encodingType;
   private int numOfPages;
-  /**
-   * The maximum time of the tombstones that take effect on this chunk. Only data with larger
-   * timestamps than this should be exposed to user.
-   */
-  private long maxTombstoneTime;
 
   // this field does not need to be serialized.
   private int serializedSize;
 
   public ChunkHeader(String measurementID, int dataSize, TSDataType dataType,
-      CompressionType compressionType,
-      TSEncoding encoding, int numOfPages) {
-    this(measurementID, dataSize, getSerializedSize(measurementID), dataType, compressionType,
-        encoding, numOfPages, 0);
-  }
-
-  public ChunkHeader(String measurementID, int dataSize, int headerSize, TSDataType dataType,
       CompressionType compressionType, TSEncoding encoding, int numOfPages) {
-    this(measurementID, dataSize, headerSize, dataType, compressionType, encoding, numOfPages, 0);
-  }
-
-  private ChunkHeader(String measurementID, int dataSize, TSDataType dataType,
-      CompressionType compressionType, TSEncoding encoding, int numOfPages, long maxTombstoneTime) {
     this(measurementID, dataSize, getSerializedSize(measurementID), dataType, compressionType,
-        encoding, numOfPages, maxTombstoneTime);
+        encoding, numOfPages);
   }
 
   private ChunkHeader(String measurementID, int dataSize, int headerSize, TSDataType dataType,
-      CompressionType compressionType, TSEncoding encoding, int numOfPages, long maxTombstoneTime) {
+      CompressionType compressionType, TSEncoding encoding, int numOfPages) {
     this.measurementID = measurementID;
     this.dataSize = dataSize;
     this.dataType = dataType;
@@ -82,17 +65,22 @@ public class ChunkHeader {
     this.numOfPages = numOfPages;
     this.encodingType = encoding;
     this.serializedSize = headerSize;
-    this.maxTombstoneTime = maxTombstoneTime;
   }
 
   public static int getSerializedSize(String measurementID) {
-    return Byte.BYTES + Integer.BYTES + getSerializedSize(
-        measurementID.getBytes(TSFileConfig.STRING_CHARSET).length);
+    return Byte.BYTES   // marker
+        + Integer.BYTES   // measurementID length
+        + measurementID.getBytes(TSFileConfig.STRING_CHARSET).length // measurementID
+        + Integer.BYTES  // dataSize
+        + TSDataType.getSerializedSize() // dataType
+        + CompressionType.getSerializedSize() // compressionType
+        + TSEncoding.getSerializedSize() // encodingType
+        + Integer.BYTES;  // numOfPages
   }
 
   private static int getSerializedSize(int measurementIdLength) {
     return measurementIdLength + Integer.BYTES + TSDataType.getSerializedSize() + Integer.BYTES
-        + CompressionType.getSerializedSize() + TSEncoding.getSerializedSize() + Long.BYTES;
+        + CompressionType.getSerializedSize() + TSEncoding.getSerializedSize();
   }
 
   /**
@@ -115,9 +103,7 @@ public class ChunkHeader {
     int numOfPages = ReadWriteIOUtils.readInt(inputStream);
     CompressionType type = ReadWriteIOUtils.readCompressionType(inputStream);
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(inputStream);
-    long maxTombstoneTime = ReadWriteIOUtils.readLong(inputStream);
-    return new ChunkHeader(measurementID, dataSize, dataType, type, encoding, numOfPages,
-        maxTombstoneTime);
+    return new ChunkHeader(measurementID, dataSize, dataType, type, encoding, numOfPages);
   }
 
   /**
@@ -151,10 +137,8 @@ public class ChunkHeader {
     int numOfPages = ReadWriteIOUtils.readInt(buffer);
     CompressionType type = ReadWriteIOUtils.readCompressionType(buffer);
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(buffer);
-    long maxTombstoneTime = ReadWriteIOUtils.readLong(buffer);
     return new ChunkHeader(measurementID, dataSize, chunkHeaderSize, dataType, type, encoding,
-        numOfPages,
-        maxTombstoneTime);
+        numOfPages);
   }
 
   public int getSerializedSize() {
@@ -189,7 +173,6 @@ public class ChunkHeader {
     length += ReadWriteIOUtils.write(numOfPages, outputStream);
     length += ReadWriteIOUtils.write(compressionType, outputStream);
     length += ReadWriteIOUtils.write(encodingType, outputStream);
-    length += ReadWriteIOUtils.write(maxTombstoneTime, outputStream);
     return length;
   }
 
@@ -208,7 +191,6 @@ public class ChunkHeader {
     length += ReadWriteIOUtils.write(numOfPages, buffer);
     length += ReadWriteIOUtils.write(compressionType, buffer);
     length += ReadWriteIOUtils.write(encodingType, buffer);
-    length += ReadWriteIOUtils.write(maxTombstoneTime, buffer);
     return length;
   }
 
@@ -222,14 +204,6 @@ public class ChunkHeader {
 
   public TSEncoding getEncodingType() {
     return encodingType;
-  }
-
-  public long getMaxTombstoneTime() {
-    return maxTombstoneTime;
-  }
-
-  public void setMaxTombstoneTime(long maxTombstoneTime) {
-    this.maxTombstoneTime = maxTombstoneTime;
   }
 
   @Override
