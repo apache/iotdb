@@ -37,14 +37,17 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.AggreResultDataPointReader;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.factory.AggreFuncFactory;
+import org.apache.iotdb.db.query.reader.IAggregateChunkReader;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateChunkReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -52,6 +55,7 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 public class AggregateEngineExecutor {
 
@@ -87,7 +91,7 @@ public class AggregateEngineExecutor {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
 
-    List<IAggregateReader> readersOfSequenceData = new ArrayList<>();
+    List<IAggregateChunkReader> readersOfSequenceData = new ArrayList<>();
     List<IPointReader> readersOfUnSequenceData = new ArrayList<>();
     List<AggregateFunction> aggregateFunctions = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
@@ -104,12 +108,14 @@ public class AggregateEngineExecutor {
       timeFilter = queryDataSource.updateTimeFilter(timeFilter);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
-      IAggregateReader seqResourceIterateReader;
+      IAggregateChunkReader seqResourceIterateReader;
       if (function instanceof MaxTimeAggrFunc || function instanceof LastValueAggrFunc) {
-        seqResourceIterateReader = new SeqResourceIterateReader(queryDataSource.getSeriesPath(),
+        seqResourceIterateReader = new SeqResourceIterateChunkReader(
+            queryDataSource.getSeriesPath(),
             queryDataSource.getSeqResources(), timeFilter, context, true);
       } else {
-        seqResourceIterateReader = new SeqResourceIterateReader(queryDataSource.getSeriesPath(),
+        seqResourceIterateReader = new SeqResourceIterateChunkReader(
+            queryDataSource.getSeriesPath(),
             queryDataSource.getSeqResources(), timeFilter, context, false);
       }
 
@@ -134,34 +140,44 @@ public class AggregateEngineExecutor {
   /**
    * calculation aggregate result with only time filter or no filter for one series.
    *
-   * @param function aggregate function
-   * @param sequenceReader sequence data reader
+   * @param function         aggregate function
+   * @param sequenceReader   sequence data reader
    * @param unSequenceReader unsequence data reader
-   * @param filter time filter or null
+   * @param filter           time filter or null
    * @return one series aggregate result data
    */
   private AggreResultData aggregateWithoutValueFilter(AggregateFunction function,
-      IAggregateReader sequenceReader, IPointReader unSequenceReader, Filter filter)
+      IAggregateChunkReader sequenceReader, IPointReader unSequenceReader, Filter filter)
       throws IOException, QueryProcessException {
     if (function instanceof MaxTimeAggrFunc || function instanceof LastValueAggrFunc) {
       return handleLastMaxTimeWithOutTimeGenerator(function, sequenceReader, unSequenceReader,
           filter);
     }
 
-    while (sequenceReader.hasNext()) {
-      PageHeader pageHeader = sequenceReader.nextPageHeader();
-      // judge if overlap with unsequence data
-      if (canUseHeader(function, pageHeader, unSequenceReader, filter)) {
-        // cal by pageHeader
-        function.calculateValueFromPageHeader(pageHeader);
-        sequenceReader.skipPageData();
-      } else {
-        // cal by pageData
-        function.calculateValueFromPageData(sequenceReader.nextBatch(), unSequenceReader);
+    while (sequenceReader.hasNextChunk()) {
+      ChunkMetaData chunkMetaData = sequenceReader.nextChunkMeta();
+      function.calculateValueFromUnsequenceReader(unSequenceReader, chunkMetaData.getStartTime());
+      if (!(unSequenceReader.hasNext() && unSequenceReader.current().getTimestamp() <= chunkMetaData
+          .getEndTime())) {
+        function.calculateValueFromChunkData(chunkMetaData);
+        continue;
       }
+      ChunkReader chunkReader = sequenceReader.readChunk();
+      while (chunkReader.hasNextBatch()) {
+        PageHeader pageHeader = chunkReader.nextPageHeader();
+        // judge if overlap with unsequence data
+        if (canUseHeader(function, pageHeader, unSequenceReader, filter)) {
+          // cal by pageHeader
+          function.calculateValueFromPageHeader(pageHeader);
+          chunkReader.skipPageData();
+        } else {
+          // cal by pageData
+          function.calculateValueFromPageData(chunkReader.nextBatch(), unSequenceReader);
+        }
 
-      if (function.isCalculatedAggregationResult()) {
-        return function.getResult();
+        if (function.isCalculatedAggregationResult()) {
+          return function.getResult();
+        }
       }
     }
 
@@ -202,47 +218,57 @@ public class AggregateEngineExecutor {
   /**
    * handle last and max_time aggregate function with only time filter or no filter.
    *
-   * @param function aggregate function
-   * @param sequenceReader sequence data reader
+   * @param function         aggregate function
+   * @param sequenceReader   sequence data reader
    * @param unSequenceReader unsequence data reader
    * @return BatchData-aggregate result
    */
   private AggreResultData handleLastMaxTimeWithOutTimeGenerator(AggregateFunction function,
-      IAggregateReader sequenceReader, IPointReader unSequenceReader, Filter timeFilter)
+      IAggregateChunkReader sequenceReader, IPointReader unSequenceReader, Filter timeFilter)
       throws IOException, QueryProcessException {
     long lastBatchTimeStamp = Long.MIN_VALUE;
     boolean isChunkEnd = false;
-    while (sequenceReader.hasNext()) {
-      PageHeader pageHeader = sequenceReader.nextPageHeader();
-      // judge if overlap with unsequence data
-      if (canUseHeader(function, pageHeader, unSequenceReader, timeFilter)) {
-        // cal by pageHeader
-        function.calculateValueFromPageHeader(pageHeader);
-        sequenceReader.skipPageData();
+    while (sequenceReader.hasNextChunk()) {
+      ChunkMetaData chunkMetaData = sequenceReader.nextChunkMeta();
+      function.calculateValueFromUnsequenceReader(unSequenceReader, chunkMetaData.getStartTime());
+      if (!(unSequenceReader.hasNext() && unSequenceReader.current().getTimestamp() <= chunkMetaData
+          .getEndTime())) {
+        function.calculateValueFromChunkData(chunkMetaData);
+        continue;
+      }
+      ChunkReader chunkReader = sequenceReader.readChunk();
+      while (chunkReader.hasNextBatch()) {
+        PageHeader pageHeader = chunkReader.nextPageHeader();
+        // judge if overlap with unsequence data
+        if (canUseHeader(function, pageHeader, unSequenceReader, timeFilter)) {
+          // cal by pageHeader
+          function.calculateValueFromPageHeader(pageHeader);
+          chunkReader.skipPageData();
 
-        if (lastBatchTimeStamp > pageHeader.getMinTimestamp()) {
-          // the chunk is end.
-          isChunkEnd = true;
-        } else {
-          // current page and last page are in the same chunk.
-          lastBatchTimeStamp = pageHeader.getMinTimestamp();
-        }
-      } else {
-        // cal by pageData
-        BatchData batchData = sequenceReader.nextBatch();
-        if (batchData.length() > 0) {
-          if (lastBatchTimeStamp > batchData.currentTime()) {
+          if (lastBatchTimeStamp > pageHeader.getMinTimestamp()) {
             // the chunk is end.
             isChunkEnd = true;
           } else {
             // current page and last page are in the same chunk.
-            lastBatchTimeStamp = batchData.currentTime();
+            lastBatchTimeStamp = pageHeader.getMinTimestamp();
           }
-          function.calculateValueFromPageData(batchData, unSequenceReader);
+        } else {
+          // cal by pageData
+          BatchData batchData = chunkReader.nextBatch();
+          if (batchData.length() > 0) {
+            if (lastBatchTimeStamp > batchData.currentTime()) {
+              // the chunk is end.
+              isChunkEnd = true;
+            } else {
+              // current page and last page are in the same chunk.
+              lastBatchTimeStamp = batchData.currentTime();
+            }
+            function.calculateValueFromPageData(batchData, unSequenceReader);
+          }
         }
-      }
-      if (isChunkEnd) {
-        break;
+        if (isChunkEnd) {
+          break;
+        }
       }
     }
 

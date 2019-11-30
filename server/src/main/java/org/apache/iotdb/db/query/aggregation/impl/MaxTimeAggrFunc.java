@@ -26,6 +26,7 @@ import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
@@ -124,6 +125,11 @@ public class MaxTimeAggrFunc extends AggregateFunction {
   @Override
   public boolean isCalculatedAggregationResult() {
     return false;
+  }
+
+  @Override
+  public void calculateValueFromChunkData(ChunkMetaData chunkMetaData) {
+
   }
 
   private void updateMaxTimeResult(long time, long value) {
