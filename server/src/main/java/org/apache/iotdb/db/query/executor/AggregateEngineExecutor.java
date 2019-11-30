@@ -156,11 +156,15 @@ public class AggregateEngineExecutor {
 
     while (sequenceReader.hasNextChunk()) {
       ChunkMetaData chunkMetaData = sequenceReader.nextChunkMeta();
-      function.calculateValueFromUnsequenceReader(unSequenceReader, chunkMetaData.getStartTime());
-      if (!(unSequenceReader.hasNext() && unSequenceReader.current().getTimestamp() <= chunkMetaData
-          .getEndTime())) {
-        function.calculateValueFromChunkData(chunkMetaData);
-        continue;
+      if (chunkMetaData.getDeletedAt() < chunkMetaData.getDeletedAt() && filter != null && filter
+          .containStartEndTime(chunkMetaData.getStartTime(), chunkMetaData.getEndTime())) {
+        function.calculateValueFromUnsequenceReader(unSequenceReader, chunkMetaData.getStartTime());
+        if (!(unSequenceReader.hasNext()
+            && unSequenceReader.current().getTimestamp() <= chunkMetaData
+            .getEndTime())) {
+          function.calculateValueFromChunkData(chunkMetaData);
+          continue;
+        }
       }
       ChunkReader chunkReader = sequenceReader.readChunk();
       while (chunkReader.hasNextBatch()) {

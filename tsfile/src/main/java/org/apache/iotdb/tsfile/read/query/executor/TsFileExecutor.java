@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -178,7 +179,7 @@ public class TsFileExecutor implements QueryExecutor {
         dataTypes.add(metadataQuerier.getDataType(path.getMeasurement()));
       } else {
         seriesReader = new FileSeriesPageReader(chunkLoader, chunkMetaDataList,
-            timeFilter.getFilter());
+            timeFilter != null ? timeFilter.getFilter() : null);
         dataTypes.add(chunkMetaDataList.get(0).getTsDataType());
       }
       readersOfSelectedSeries.add(seriesReader);

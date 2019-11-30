@@ -44,7 +44,7 @@ public abstract class FileSeriesReader {
 
   protected void initChunkReader(ChunkMetaData chunkMetaData) throws IOException {
     Chunk chunk = chunkLoader.getChunk(chunkMetaData);
-    this.chunkReader = new ChunkReader(chunk);
+    this.chunkReader = new ChunkReader(chunk,filter);
   }
 
   public void close() throws IOException {

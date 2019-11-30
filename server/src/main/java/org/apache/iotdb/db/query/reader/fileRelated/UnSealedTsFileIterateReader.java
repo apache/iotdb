@@ -120,7 +120,7 @@ public class UnSealedTsFileIterateReader extends IterateReader {
           .get(unSealedTsFile, false);
       IChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
       // init fileSeriesReader
-      fileSeriesReader = new FileSeriesPageReader(null, metaDataList, filter);
+      fileSeriesReader = new FileSeriesPageReader(chunkLoader, metaDataList, filter);
     }
 
     return new FileSeriesReaderAdapter(fileSeriesReader);
