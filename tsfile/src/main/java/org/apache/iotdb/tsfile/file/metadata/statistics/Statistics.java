@@ -213,7 +213,8 @@ public abstract class Statistics<T> {
   public void update(long time, double value) {
     if (time < this.startTime) {
       startTime = time;
-    } else if (time > this.endTime) {
+    }
+    if (time > this.endTime) {
       endTime = time;
     }
     count++;
@@ -223,7 +224,8 @@ public abstract class Statistics<T> {
   public void update(long time, Binary value) {
     if (time < startTime) {
       startTime = time;
-    } else if (time > endTime) {
+    }
+    if (time > endTime) {
       endTime = time;
     }
     count++;
