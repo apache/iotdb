@@ -11,6 +11,7 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesChunkReader;
  * @Create: 2019年11月30日
  */
 public class FileSeriesChunkReaderAdapter implements IAggregateChunkReader {
+
   private FileSeriesChunkReader fileSeriesReader;
 
   public FileSeriesChunkReaderAdapter(FileSeriesChunkReader fileSeriesReader) {
@@ -19,16 +20,16 @@ public class FileSeriesChunkReaderAdapter implements IAggregateChunkReader {
 
   @Override
   public boolean hasNextChunk() throws IOException {
-    return fileSeriesReader.hasNextChunk();
+    return fileSeriesReader.hasNext();
   }
 
   @Override
-  public ChunkMetaData nextChunkMeta() {
-    return fileSeriesReader.nextChunk();
+  public ChunkMetaData nextChunkMeta() throws IOException {
+    return fileSeriesReader.nextHeader();
   }
 
   @Override
   public ChunkReader readChunk() throws IOException {
-    return fileSeriesReader.currentChunk();
+    return fileSeriesReader.nextData();
   }
 }

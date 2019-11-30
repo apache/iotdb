@@ -29,8 +29,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesPageReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 import org.junit.After;
 import org.junit.Assert;
@@ -64,7 +63,7 @@ public class ReaderByTimestampTest {
     ChunkLoaderImpl seriesChunkLoader = new ChunkLoaderImpl(fileReader);
     List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
         .getChunkMetaDataList(new Path("d1.s1"));
-    FileSeriesReader seriesReader = new FileSeriesReaderWithoutFilter(seriesChunkLoader,
+    FileSeriesPageReader seriesReader = new FileSeriesPageReader(seriesChunkLoader,
         chunkMetaDataList);
 
     List<Long> timeList = new ArrayList<>();
@@ -72,8 +71,8 @@ public class ReaderByTimestampTest {
     int count = 0;
     BatchData data = null;
 
-    while (seriesReader.hasNextBatch()) {
-      data = seriesReader.nextBatch();
+    while (seriesReader.hasNext()) {
+      data = seriesReader.nextData();
       while (data.hasNext()) {
         timeList.add(data.currentTime() - 1);
         valueList.add(null);

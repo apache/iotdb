@@ -27,13 +27,9 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.IAggregateChunkReader;
-import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.fileRelated.FileSeriesChunkReaderAdapter;
-import org.apache.iotdb.db.query.reader.fileRelated.FileSeriesReaderAdapter;
 import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileIterateChunkReader;
-import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileIterateReader;
 import org.apache.iotdb.db.query.reader.universal.IterateChunkReader;
-import org.apache.iotdb.db.query.reader.universal.IterateReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -42,11 +38,6 @@ import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesChunkReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesChunkReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesChunkReaderWithoutFilter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 
 
 public class SeqResourceIterateChunkReader extends IterateChunkReader {
@@ -76,6 +67,7 @@ public class SeqResourceIterateChunkReader extends IterateChunkReader {
       Filter timeFilter, QueryContext context) {
     this(seriesPath, seqResources, timeFilter, context, false);
   }
+
   @Override
   public boolean constructNextReader(int idx) throws IOException {
     TsFileResource tsFileResource = seqResources.get(idx);
@@ -142,11 +134,7 @@ public class SeqResourceIterateChunkReader extends IterateChunkReader {
 
     // init fileSeriesReader
     FileSeriesChunkReader fileSeriesReader;
-    if (filter == null) {
-      fileSeriesReader = new FileSeriesChunkReaderWithoutFilter(chunkLoader, metaDataList);
-    } else {
-      fileSeriesReader = new FileSeriesChunkReaderWithFilter(chunkLoader, metaDataList, filter);
-    }
+    fileSeriesReader = new FileSeriesChunkReader(chunkLoader, metaDataList, filter);
     return new FileSeriesChunkReaderAdapter(fileSeriesReader);
   }
 }

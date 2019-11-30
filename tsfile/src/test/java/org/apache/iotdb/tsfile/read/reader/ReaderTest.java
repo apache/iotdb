@@ -33,9 +33,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesPageReader;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.junit.After;
 import org.junit.Assert;
@@ -70,13 +68,13 @@ public class ReaderTest {
     List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
         .getChunkMetaDataList(new Path("d1.s1"));
 
-    FileSeriesReader seriesReader = new FileSeriesReaderWithoutFilter(seriesChunkLoader,
+    FileSeriesPageReader seriesReader = new FileSeriesPageReader(seriesChunkLoader,
         chunkMetaDataList);
     long startTime = TsFileGeneratorForTest.START_TIMESTAMP;
     BatchData data = null;
 
-    while (seriesReader.hasNextBatch()) {
-      data = seriesReader.nextBatch();
+    while (seriesReader.hasNext()) {
+      data = seriesReader.nextData();
       while (data.hasNext()) {
         Assert.assertEquals(startTime, data.currentTime());
         data.next();
@@ -87,11 +85,11 @@ public class ReaderTest {
     Assert.assertEquals(rowCount, count);
 
     chunkMetaDataList = metadataQuerierByFile.getChunkMetaDataList(new Path("d1.s4"));
-    seriesReader = new FileSeriesReaderWithoutFilter(seriesChunkLoader, chunkMetaDataList);
+    seriesReader = new FileSeriesPageReader(seriesChunkLoader, chunkMetaDataList, null);
     count = 0;
 
-    while (seriesReader.hasNextBatch()) {
-      data = seriesReader.nextBatch();
+    while (seriesReader.hasNext()) {
+      data = seriesReader.nextData();
       while (data.hasNext()) {
         data.next();
         startTime++;
@@ -110,7 +108,7 @@ public class ReaderTest {
         FilterFactory.and(TimeFilter.gt(1480563570029L), TimeFilter.lt(1480563570033L)),
         FilterFactory.and(ValueFilter.gtEq(9520331), ValueFilter.ltEq(9520361)));
     SingleSeriesExpression singleSeriesExp = new SingleSeriesExpression(new Path("d1.s1"), filter);
-    FileSeriesReader seriesReader = new FileSeriesReaderWithFilter(seriesChunkLoader,
+    FileSeriesPageReader seriesReader = new FileSeriesPageReader(seriesChunkLoader,
         chunkMetaDataList,
         singleSeriesExp.getFilter());
 
@@ -118,8 +116,8 @@ public class ReaderTest {
 
     long aimedTimestamp = 1480563570030L;
 
-    while (seriesReader.hasNextBatch()) {
-      data = seriesReader.nextBatch();
+    while (seriesReader.hasNext()) {
+      data = seriesReader.nextData();
       while (data.hasNext()) {
         Assert.assertEquals(aimedTimestamp++, data.currentTime());
         data.next();

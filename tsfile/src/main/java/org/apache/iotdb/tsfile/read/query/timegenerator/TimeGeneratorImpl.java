@@ -35,8 +35,7 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.AndNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.LeafNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesPageReader;
 
 public class TimeGeneratorImpl implements TimeGenerator {
 
@@ -49,8 +48,8 @@ public class TimeGeneratorImpl implements TimeGenerator {
   /**
    * construct function for TimeGeneratorImpl.
    *
-   * @param iexpression -construct param
-   * @param chunkLoader -construct param
+   * @param iexpression     -construct param
+   * @param chunkLoader     -construct param
    * @param metadataQuerier -construct param
    */
   public TimeGeneratorImpl(IExpression iexpression, IChunkLoader chunkLoader,
@@ -93,7 +92,7 @@ public class TimeGeneratorImpl implements TimeGenerator {
 
     if (expression.getType() == ExpressionType.SERIES) {
       SingleSeriesExpression singleSeriesExp = (SingleSeriesExpression) expression;
-      FileSeriesReader seriesReader = generateSeriesReader(singleSeriesExp);
+      FileSeriesPageReader seriesReader = generateSeriesReader(singleSeriesExp);
       Path path = singleSeriesExp.getSeriesPath();
 
       if (!leafCache.containsKey(path)) {
@@ -120,11 +119,11 @@ public class TimeGeneratorImpl implements TimeGenerator {
         "Unsupported ExpressionType when construct OperatorNode: " + expression.getType());
   }
 
-  private FileSeriesReader generateSeriesReader(SingleSeriesExpression singleSeriesExp)
+  private FileSeriesPageReader generateSeriesReader(SingleSeriesExpression singleSeriesExp)
       throws IOException {
     List<ChunkMetaData> chunkMetaDataList = metadataQuerier
         .getChunkMetaDataList(singleSeriesExp.getSeriesPath());
-    return new FileSeriesReaderWithFilter(chunkLoader, chunkMetaDataList,
+    return new FileSeriesPageReader(chunkLoader, chunkMetaDataList,
         singleSeriesExp.getFilter());
   }
 }

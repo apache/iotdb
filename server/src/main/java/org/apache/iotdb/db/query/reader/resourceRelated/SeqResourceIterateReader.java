@@ -34,12 +34,10 @@ import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesPageReader;
 
 /**
  * To read a chronologically ordered list of sequence TsFiles, this class extends {@link
@@ -175,12 +173,8 @@ public class SeqResourceIterateReader extends IterateReader {
     IChunkLoader chunkLoader = new ChunkLoaderImpl(tsFileReader);
 
     // init fileSeriesReader
-    FileSeriesReader fileSeriesReader;
-    if (filter == null) {
-      fileSeriesReader = new FileSeriesReaderWithoutFilter(chunkLoader, metaDataList);
-    } else {
-      fileSeriesReader = new FileSeriesReaderWithFilter(chunkLoader, metaDataList, filter);
-    }
+    FileSeriesPageReader fileSeriesReader;
+    fileSeriesReader = new FileSeriesPageReader(chunkLoader, metaDataList, filter);
     return new FileSeriesReaderAdapter(fileSeriesReader);
   }
 }

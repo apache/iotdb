@@ -5,42 +5,28 @@ import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 /**
  * @Author: LiuDaWei
  * @Create: 2019年11月30日
  */
-public abstract class FileSeriesChunkReader {
+public class FileSeriesChunkReader extends FileSeriesReader {
 
-  protected IChunkLoader chunkLoader;
-  protected List<ChunkMetaData> chunkMetaDataList;
-  protected ChunkReader chunkReader;
-  protected ChunkMetaData chunkMetaData;
-  private int chunkToRead;
+  public FileSeriesChunkReader(IChunkLoader chunkLoader,
+      List<ChunkMetaData> chunkMetaDataList,
+      Filter filter) {
+    super(chunkLoader, chunkMetaDataList, filter);
+  }
 
-  /**
-   * constructor of FileSeriesReader.
-   */
   public FileSeriesChunkReader(IChunkLoader chunkLoader, List<ChunkMetaData> chunkMetaDataList) {
-    this.chunkLoader = chunkLoader;
-    this.chunkMetaDataList = chunkMetaDataList;
+    super(chunkLoader, chunkMetaDataList);
     this.chunkToRead = 0;
   }
 
-  protected abstract void initChunkReader(ChunkMetaData chunkMetaData) throws IOException;
-
-  public void close() throws IOException {
-    chunkLoader.close();
-  }
-
-  private ChunkMetaData nextChunkMeta() {
-    return chunkMetaDataList.get(chunkToRead++);
-  }
-
-  protected abstract boolean chunkSatisfied(ChunkMetaData chunkMetaData);
-
-  public boolean hasNextChunk() throws IOException {
+  @Override
+  public boolean hasNext() throws IOException {
     while (chunkToRead < chunkMetaDataList.size()) {
       chunkMetaData = nextChunkMeta();
       if (chunkSatisfied(chunkMetaData)) {
@@ -51,11 +37,18 @@ public abstract class FileSeriesChunkReader {
     return false;
   }
 
-  public ChunkReader currentChunk() throws IOException {
-    return chunkReader;
+  @Override
+  public <T> T nextHeader() throws IOException {
+    return (T) chunkMetaData;
   }
 
-  public ChunkMetaData nextChunk() {
-    return chunkMetaData;
+  @Override
+  public <T> T nextData() throws IOException {
+    return (T) chunkReader;
+  }
+
+  @Override
+  public void skipData() throws IOException {
+    hasNext();
   }
 }

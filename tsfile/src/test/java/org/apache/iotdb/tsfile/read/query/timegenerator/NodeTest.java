@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.AndNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.LeafNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesPageReader;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -36,7 +36,7 @@ public class NodeTest {
   public void testLeafNode() throws IOException {
     int index = 0;
     long[] timestamps = new long[]{1, 2, 3, 4, 5, 6, 7};
-    FileSeriesReader seriesReader = new FakedFileSeriesReader(timestamps);
+    FileSeriesPageReader seriesReader = new FakedFileSeriesReader(timestamps);
     Node leafNode = new LeafNode(seriesReader);
     while (leafNode.hasNext()) {
       Assert.assertEquals(timestamps[index++], leafNode.next());
@@ -88,7 +88,7 @@ public class NodeTest {
     Assert.assertEquals(ret.length, index);
   }
 
-  private static class FakedFileSeriesReader extends FileSeriesReader {
+  private static class FakedFileSeriesReader extends FileSeriesPageReader {
 
     BatchData data;
     boolean hasCachedData;
@@ -103,12 +103,12 @@ public class NodeTest {
     }
 
     @Override
-    public boolean hasNextBatch() {
+    public boolean hasNext() {
       return hasCachedData;
     }
 
     @Override
-    public BatchData nextBatch() {
+    public BatchData nextData() {
       hasCachedData = false;
       return data;
     }

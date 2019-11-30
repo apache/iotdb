@@ -30,14 +30,14 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesPageReader;
 
 /**
  * multi-way merging data set, no need to use TimeGenerator.
  */
 public class DataSetWithoutTimeGenerator extends QueryDataSet {
 
-  private List<FileSeriesReader> readers;
+  private List<FileSeriesPageReader> readers;
 
   private List<BatchData> batchDataList;
 
@@ -59,7 +59,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
    * @throws IOException IOException
    */
   public DataSetWithoutTimeGenerator(List<Path> paths, List<TSDataType> dataTypes,
-      List<FileSeriesReader> readers)
+      List<FileSeriesPageReader> readers)
       throws IOException {
     super(paths, dataTypes);
     this.readers = readers;
@@ -73,12 +73,12 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
     timeSet = new HashSet<>();
 
     for (int i = 0; i < paths.size(); i++) {
-      FileSeriesReader reader = readers.get(i);
-      if (!reader.hasNextBatch()) {
+      FileSeriesPageReader reader = readers.get(i);
+      if (!reader.hasNext()) {
         batchDataList.add(new BatchData());
         hasDataRemaining.add(false);
       } else {
-        batchDataList.add(reader.nextBatch());
+        batchDataList.add(reader.nextData());
         hasDataRemaining.add(true);
       }
     }
@@ -117,9 +117,9 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
         data.next();
 
         if (!data.hasNext()) {
-          FileSeriesReader reader = readers.get(i);
-          if (reader.hasNextBatch()) {
-            data = reader.nextBatch();
+          FileSeriesPageReader reader = readers.get(i);
+          if (reader.hasNext()) {
+            data = reader.nextData();
             if (data.hasNext()) {
               batchDataList.set(i, data);
               timeHeapPut(data.currentTime());

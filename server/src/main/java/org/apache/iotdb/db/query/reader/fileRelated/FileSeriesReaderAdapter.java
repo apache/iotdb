@@ -22,11 +22,11 @@ import java.io.IOException;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesPageReader;
 
 /**
  * To read a sequence TsFile's on-disk data, this class implements an interface {@link
- * IAggregateReader} based on the data reader {@link FileSeriesReader}.
+ * IAggregateReader} based on the data reader {@link FileSeriesPageReader}.
  * <p>
  * Note that <code>FileSeriesReader</code> is an abstract class with two concrete classes:
  * <code>FileSeriesReaderWithoutFilter</code> and <code>FileSeriesReaderWithFilter</code>.
@@ -36,30 +36,30 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
  */
 public class FileSeriesReaderAdapter implements IAggregateReader {
 
-  private FileSeriesReader fileSeriesReader;
+  private FileSeriesPageReader fileSeriesReader;
 
-  public FileSeriesReaderAdapter(FileSeriesReader fileSeriesReader) {
+  public FileSeriesReaderAdapter(FileSeriesPageReader fileSeriesReader) {
     this.fileSeriesReader = fileSeriesReader;
   }
 
   @Override
   public PageHeader nextPageHeader() throws IOException {
-    return fileSeriesReader.nextPageHeader();
+    return fileSeriesReader.nextHeader();
   }
 
   @Override
   public void skipPageData() {
-    fileSeriesReader.skipPageData();
+    fileSeriesReader.skipData();
   }
 
   @Override
   public boolean hasNext() throws IOException {
-    return fileSeriesReader.hasNextBatch();
+    return fileSeriesReader.hasNext();
   }
 
   @Override
   public BatchData nextBatch() throws IOException {
-    return fileSeriesReader.nextBatch();
+    return fileSeriesReader.nextData();
   }
 
   @Override

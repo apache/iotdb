@@ -31,9 +31,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesPageReader;
 
 /**
  * To read an unsealed sequence TsFile, this class extends {@link IterateReader} to implement {@link
@@ -105,18 +103,13 @@ public class UnSealedTsFileIterateReader extends IterateReader {
   private IAggregateReader initUnSealedTsFileDiskReader(TsFileResource unSealedTsFile,
       Filter filter)
       throws IOException {
-    FileSeriesReader fileSeriesReader;
+    FileSeriesPageReader fileSeriesReader;
     List<ChunkMetaData> metaDataList = unSealedTsFile.getChunkMetaDataList();
 
     if (metaDataList == null || metaDataList.isEmpty()) {
       // init fileSeriesReader
       // no need to construct a IChunkLoader since it will never be used in this case
-      if (filter == null) {
-        fileSeriesReader = new FileSeriesReaderWithoutFilter(null, metaDataList);
-      } else {
-        fileSeriesReader = new FileSeriesReaderWithFilter(null, metaDataList, filter);
-      }
-
+      fileSeriesReader = new FileSeriesPageReader(null, metaDataList, filter);
     } else {
       // prepare metaDataList
       if (enableReverse) {
@@ -127,11 +120,7 @@ public class UnSealedTsFileIterateReader extends IterateReader {
           .get(unSealedTsFile, false);
       IChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
       // init fileSeriesReader
-      if (filter == null) {
-        fileSeriesReader = new FileSeriesReaderWithoutFilter(chunkLoader, metaDataList);
-      } else {
-        fileSeriesReader = new FileSeriesReaderWithFilter(chunkLoader, metaDataList, filter);
-      }
+      fileSeriesReader = new FileSeriesPageReader(null, metaDataList, filter);
     }
 
     return new FileSeriesReaderAdapter(fileSeriesReader);

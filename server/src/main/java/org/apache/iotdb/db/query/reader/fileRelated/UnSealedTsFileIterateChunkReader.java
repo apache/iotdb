@@ -34,11 +34,6 @@ import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesChunkReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesChunkReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesChunkReaderWithoutFilter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 
 /**
  * To read an unsealed sequence TsFile, this class extends {@link IterateReader} to implement {@link
@@ -72,9 +67,10 @@ public class UnSealedTsFileIterateChunkReader extends IterateChunkReader {
    * the two parts of data are created in order later in the method <code>constructNextReader</code>.
    *
    * @param unsealedTsFile the TsFileResource corresponding to the unsealed TsFile
-   * @param filter filter condition
-   * @param isReverse True to iterate over chunk data in reverse chronological order (from newest to
-   * oldest); False to iterate over chunk data in chronological order (from oldest to newest).
+   * @param filter         filter condition
+   * @param isReverse      True to iterate over chunk data in reverse chronological order (from
+   *                       newest to oldest); False to iterate over chunk data in chronological
+   *                       order (from oldest to newest).
    */
   public UnSealedTsFileIterateChunkReader(TsFileResource unsealedTsFile, Filter filter,
       boolean isReverse) {
@@ -116,12 +112,7 @@ public class UnSealedTsFileIterateChunkReader extends IterateChunkReader {
     if (metaDataList == null || metaDataList.isEmpty()) {
       // init fileSeriesReader
       // no need to construct a IChunkLoader since it will never be used in this case
-      if (filter == null) {
-        fileSeriesReader = new FileSeriesChunkReaderWithoutFilter(null, metaDataList);
-      } else {
-        fileSeriesReader = new FileSeriesChunkReaderWithFilter(null, metaDataList, filter);
-      }
-
+      fileSeriesReader = new FileSeriesChunkReader(null, metaDataList, filter);
     } else {
       // prepare metaDataList
       if (enableReverse) {
@@ -132,11 +123,7 @@ public class UnSealedTsFileIterateChunkReader extends IterateChunkReader {
           .get(unSealedTsFile, false);
       IChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
       // init fileSeriesReader
-      if (filter == null) {
-        fileSeriesReader = new FileSeriesChunkReaderWithoutFilter(chunkLoader, metaDataList);
-      } else {
-        fileSeriesReader = new FileSeriesChunkReaderWithFilter(chunkLoader, metaDataList, filter);
-      }
+      fileSeriesReader = new FileSeriesChunkReader(null, metaDataList, filter);
     }
 
     return new FileSeriesChunkReaderAdapter(fileSeriesReader);

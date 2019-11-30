@@ -12,7 +12,7 @@ public interface IAggregateChunkReader {
 
   boolean hasNextChunk() throws IOException;
 
-  ChunkMetaData nextChunkMeta();
+  ChunkMetaData nextChunkMeta() throws IOException;
 
   ChunkReader readChunk() throws IOException;
 }

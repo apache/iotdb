@@ -33,10 +33,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
-public abstract class ChunkReader {
+public class ChunkReader {
 
   ChunkHeader chunkHeader;
   private ByteBuffer chunkDataBuffer;
@@ -67,7 +68,7 @@ public abstract class ChunkReader {
   /**
    * constructor of ChunkReader.
    *
-   * @param chunk input Chunk object
+   * @param chunk  input Chunk object
    * @param filter filter
    */
   public ChunkReader(Chunk chunk, Filter filter) {
@@ -140,8 +141,6 @@ public abstract class ChunkReader {
     chunkDataBuffer.position(chunkDataBuffer.position() + (int) length);
   }
 
-  public abstract boolean pageSatisfied(PageHeader pageHeader);
-
   private PageReader constructPageReaderForNextPage(int compressedPageBodyLength)
       throws IOException {
     byte[] compressedPageBody = new byte[compressedPageBodyLength];
@@ -167,5 +166,20 @@ public abstract class ChunkReader {
 
   public ChunkHeader getChunkHeader() {
     return chunkHeader;
+  }
+
+  public boolean pageSatisfied(PageHeader pageHeader) {
+    if (pageHeader.getMaxTimestamp() < deletedAt) {
+      return false;
+    }
+    if (filter != null) {
+      DigestForFilter digest = new DigestForFilter(pageHeader.getMinTimestamp(),
+          pageHeader.getMaxTimestamp(),
+          pageHeader.getStatistics().getMinBytebuffer(),
+          pageHeader.getStatistics().getMaxBytebuffer(),
+          chunkHeader.getDataType());
+      return filter.satisfy(digest);
+    }
+    return true;
   }
 }

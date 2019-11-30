@@ -43,7 +43,7 @@ public abstract class IterateChunkReader implements IAggregateChunkReader {
   }
 
   @Override
-  public ChunkMetaData nextChunkMeta() {
+  public ChunkMetaData nextChunkMeta() throws IOException {
     return currentSeriesReader.nextChunkMeta();
   }
 

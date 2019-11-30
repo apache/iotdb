@@ -38,9 +38,7 @@ import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.query.dataset.DataSetWithoutTimeGenerator;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.series.EmptyFileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesPageReader;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,9 +98,9 @@ public class TsFileExecutor implements QueryExecutor {
   /**
    * Query with the space partition constraint.
    *
-   * @param queryExpression query expression
+   * @param queryExpression        query expression
    * @param spacePartitionStartPos the start position of the space partition
-   * @param spacePartitionEndPos the end position of the space partition
+   * @param spacePartitionEndPos   the end position of the space partition
    * @return QueryDataSet
    */
   public QueryDataSet execute(QueryExpression queryExpression, long spacePartitionStartPos,
@@ -153,7 +151,7 @@ public class TsFileExecutor implements QueryExecutor {
    * has a GlobalTimeExpression, can use multi-way merge.
    *
    * @param selectedPathList all selected paths
-   * @param timeFilter GlobalTimeExpression that takes effect to all selected paths
+   * @param timeFilter       GlobalTimeExpression that takes effect to all selected paths
    * @return DataSet without TimeGenerator
    */
   private QueryDataSet execute(List<Path> selectedPathList, GlobalTimeExpression timeFilter)
@@ -163,28 +161,24 @@ public class TsFileExecutor implements QueryExecutor {
 
   /**
    * @param selectedPathList completed path
-   * @param timeFilter a GlobalTimeExpression or null
+   * @param timeFilter       a GlobalTimeExpression or null
    * @return DataSetWithoutTimeGenerator
    */
   private QueryDataSet executeMayAttachTimeFiler(List<Path> selectedPathList,
       GlobalTimeExpression timeFilter)
       throws IOException, NoMeasurementException {
-    List<FileSeriesReader> readersOfSelectedSeries = new ArrayList<>();
+    List<FileSeriesPageReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
     for (Path path : selectedPathList) {
       List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(path);
-      FileSeriesReader seriesReader;
+      FileSeriesPageReader seriesReader;
       if (chunkMetaDataList.isEmpty()) {
         seriesReader = new EmptyFileSeriesReader();
         dataTypes.add(metadataQuerier.getDataType(path.getMeasurement()));
       } else {
-        if (timeFilter == null) {
-          seriesReader = new FileSeriesReaderWithoutFilter(chunkLoader, chunkMetaDataList);
-        } else {
-          seriesReader = new FileSeriesReaderWithFilter(chunkLoader, chunkMetaDataList,
-              timeFilter.getFilter());
-        }
+        seriesReader = new FileSeriesPageReader(chunkLoader, chunkMetaDataList,
+            timeFilter.getFilter());
         dataTypes.add(chunkMetaDataList.get(0).getTsDataType());
       }
       readersOfSelectedSeries.add(seriesReader);

@@ -20,17 +20,17 @@ package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 import java.io.IOException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesPageReader;
 
 public class LeafNode implements Node {
 
-  private FileSeriesReader reader;
+  private FileSeriesPageReader reader;
 
   private BatchData data = null;
 
   private boolean gotData = false;
 
-  public LeafNode(FileSeriesReader reader) {
+  public LeafNode(FileSeriesPageReader reader) {
     this.reader = reader;
   }
 
@@ -43,8 +43,8 @@ public class LeafNode implements Node {
     }
 
     if (data == null || !data.hasNext()) {
-      if (reader.hasNextBatch()) {
-        data = reader.nextBatch();
+      if (reader.hasNext()) {
+        data = reader.nextData();
       } else {
         return false;
       }
