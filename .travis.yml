@@ -123,7 +123,7 @@ matrix:
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -o C:\hadoop\bin
 
       before_script:
-        - export "JAVA_HOME=/c/java/openjdk-11.0.2_windows-x64_bin"
+        - export "JAVA_HOME=/c/java/jdk-11.0.2"
         - export "PATH=$JAVA_HOME/bin:$PATH"
         - export "PATH=$JAVA_HOME/jre/bin:$PATH"
         - export "MAVEN_HOME=/c/mvn362/apache-maven-3.6.2"
