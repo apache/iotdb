@@ -145,11 +145,7 @@ public abstract class Statistics<T> {
    * @throws StatisticsClassException cannot merge statistics
    */
   public void mergeStatistics(Statistics<?> stats) {
-    if (stats == null) {
-      LOG.warn("tsfile-file parameter stats is null");
-      return;
-    }
-    if (this.getClass() == stats.getClass() && !stats.isEmpty) {
+    if (this.getClass() == stats.getClass()) {
       if (stats.startTime < this.startTime) {
         this.startTime = stats.startTime;
       }

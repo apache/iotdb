@@ -78,11 +78,6 @@ public class ChunkHeader {
         + Integer.BYTES;  // numOfPages
   }
 
-  private static int getSerializedSize(int measurementIdLength) {
-    return measurementIdLength + Integer.BYTES + TSDataType.getSerializedSize() + Integer.BYTES
-        + CompressionType.getSerializedSize() + TSEncoding.getSerializedSize();
-  }
-
   /**
    * deserialize from inputStream.
    *
