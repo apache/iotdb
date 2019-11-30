@@ -125,7 +125,7 @@ public class ChunkGroupMetaData {
 
   @Override
   public String toString() {
-    return String.format("ChunkGroupMetaData{ time series chunk list: %s }", chunkMetaDataList);
+    return String.format("Device: %s, Start offset: %d  End offset : %d ChunkGroupMetaData{ time series chunk list: %s }", deviceID, startOffsetOfChunkGroup, endOffsetOfChunkGroup, chunkMetaDataList);
   }
 
   public String getDeviceID() {
