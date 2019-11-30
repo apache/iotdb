@@ -194,39 +194,31 @@ public abstract class Statistics<T> {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(BigDecimal value) {
-    throw new UnsupportedOperationException();
-  }
-
   public void updateStats(Binary value) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(boolean[] values) {
+  public void updateStats(boolean[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(int[] values) {
+  public void updateStats(int[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(long[] values) {
+  public void updateStats(long[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(float[] values) {
+  public void updateStats(float[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(double[] values) {
+  public void updateStats(double[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  public void updateStats(BigDecimal[] values) {
-    throw new UnsupportedOperationException();
-  }
-
-  public void updateStats(Binary[] values) {
+  public void updateStats(Binary[] values, int batchSize) {
     throw new UnsupportedOperationException();
   }
 

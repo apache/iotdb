@@ -167,18 +167,6 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void write(long time, BigDecimal value) {
-    this.maxTimestamp = time;
-    ++valueCountInOnePage;
-    pageWriter.write(time, value);
-    pageStatistics.updateStats(value);
-    if (minTimestamp == Long.MIN_VALUE) {
-      minTimestamp = time;
-    }
-    checkPageSizeAndMayOpenANewPage();
-  }
-
-  @Override
   public void write(long time, Binary value) {
     this.maxTimestamp = time;
     ++valueCountInOnePage;
@@ -198,7 +186,7 @@ public class ChunkWriterImpl implements IChunkWriter {
       minTimestamp = timestamps[0];
     }
     pageWriter.write(timestamps, values, batchSize);
-    pageStatistics.updateStats(values);
+    pageStatistics.updateStats(values, batchSize);
     checkPageSizeAndMayOpenANewPage();
   }
 
@@ -210,7 +198,7 @@ public class ChunkWriterImpl implements IChunkWriter {
       minTimestamp = timestamps[0];
     }
     pageWriter.write(timestamps, values, batchSize);
-    pageStatistics.updateStats(values);
+    pageStatistics.updateStats(values, batchSize);
     checkPageSizeAndMayOpenANewPage();
   }
 
@@ -222,7 +210,7 @@ public class ChunkWriterImpl implements IChunkWriter {
       minTimestamp = timestamps[0];
     }
     pageWriter.write(timestamps, values, batchSize);
-    pageStatistics.updateStats(values);
+    pageStatistics.updateStats(values, batchSize);
     checkPageSizeAndMayOpenANewPage();
   }
 
@@ -234,7 +222,7 @@ public class ChunkWriterImpl implements IChunkWriter {
       minTimestamp = timestamps[0];
     }
     pageWriter.write(timestamps, values, batchSize);
-    pageStatistics.updateStats(values);
+    pageStatistics.updateStats(values, batchSize);
     checkPageSizeAndMayOpenANewPage();
   }
 
@@ -246,19 +234,7 @@ public class ChunkWriterImpl implements IChunkWriter {
       minTimestamp = timestamps[0];
     }
     pageWriter.write(timestamps, values, batchSize);
-    pageStatistics.updateStats(values);
-    checkPageSizeAndMayOpenANewPage();
-  }
-
-  @Override
-  public void write(long[] timestamps, BigDecimal[] values, int batchSize) {
-    this.maxTimestamp = timestamps[batchSize - 1];
-    valueCountInOnePage += batchSize;
-    if (minTimestamp == Long.MIN_VALUE) {
-      minTimestamp = timestamps[0];
-    }
-    pageWriter.write(timestamps, values, batchSize);
-    pageStatistics.updateStats(values);
+    pageStatistics.updateStats(values, batchSize);
     checkPageSizeAndMayOpenANewPage();
   }
 
@@ -270,7 +246,7 @@ public class ChunkWriterImpl implements IChunkWriter {
       minTimestamp = timestamps[0];
     }
     pageWriter.write(timestamps, values, batchSize);
-    pageStatistics.updateStats(values);
+    pageStatistics.updateStats(values, batchSize);
     checkPageSizeAndMayOpenANewPage();
   }
 

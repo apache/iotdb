@@ -53,14 +53,13 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
-  public void updateStats(int[] values) {
-    for (int value : values) {
+  public void updateStats(int[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
       if (isEmpty) {
-        initializeStats(value, value, value, value, value);
+        initializeStats(values[i], values[i], values[i], values[i], values[i]);
         isEmpty = false;
       } else {
-        updateStats(value, value, value, value, value);
-        isEmpty = false;
+        updateStats(values[i], values[i], values[i], values[i], values[i]);
       }
     }
   }

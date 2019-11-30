@@ -52,13 +52,13 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  public void updateStats(double[] values) {
-    for (double value : values) {
-      if (this.isEmpty) {
-        initializeStats(value, value, value, value, value);
+  public void updateStats(double[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      if (isEmpty) {
+        initializeStats(values[i], values[i], values[i], values[i], values[i]);
         isEmpty = false;
       } else {
-        updateStats(value, value, value, value, value);
+        updateStats(values[i], values[i], values[i], values[i], values[i]);
       }
     }
   }

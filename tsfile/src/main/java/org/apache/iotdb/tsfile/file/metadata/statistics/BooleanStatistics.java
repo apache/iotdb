@@ -53,14 +53,13 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  public void updateStats(boolean[] values) {
-    for (boolean value : values) {
+  public void updateStats(boolean[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
       if (isEmpty) {
-        initializeStats(value, value, value, value, 0);
+        initializeStats(values[i], values[i], values[i], values[i], 0);
         isEmpty = false;
       } else {
-        updateStats(value, value, value, value, 0);
-        isEmpty = false;
+        updateStats(values[i], values[i], values[i], values[i], 0);
       }
     }
   }

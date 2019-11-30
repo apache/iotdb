@@ -77,13 +77,13 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  public void updateStats(long[] values) {
-    for (long value : values) {
+  public void updateStats(long[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
       if (isEmpty) {
-        initializeStats(value, value, value, value, value);
+        initializeStats(values[i], values[i], values[i], values[i], values[i]);
         isEmpty = false;
       } else {
-        updateStats(value, value, value, value, value);
+        updateStats(values[i], values[i], values[i], values[i], values[i]);
       }
     }
   }
