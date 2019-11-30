@@ -23,9 +23,9 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.query.factory.AggreFuncFactory;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
+import org.apache.iotdb.db.query.factory.AggreFuncFactory;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -103,6 +103,9 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       startTime = mergedIntervals.get(usedIndex).left;
       if (origin > startTime) {
         endTime = origin - (origin - startTime) / unit * unit;
+        if (endTime == startTime) { // origin - startTime is an integral multiple of unit
+          endTime += unit;
+        }
       } else {
         endTime = origin + (startTime - origin) / unit * unit + unit;
       }
