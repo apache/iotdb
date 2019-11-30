@@ -93,7 +93,6 @@ matrix:
       language: c
       name: win-openjdk11
       before_install:
-
         #-  choco install openjdk11 --version=11.0.2.01 -y
         # can get the download links from https://jdk.java.net/archive/
         - wget --no-check-certificate https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_windows-x64_bin.zip
