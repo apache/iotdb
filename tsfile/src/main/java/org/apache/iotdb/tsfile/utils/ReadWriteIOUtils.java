@@ -192,6 +192,18 @@ public class ReadWriteIOUtils {
     return bytes.length;
   }
 
+  public static int write(byte[] bytes, OutputStream outputStream) throws IOException {
+    outputStream.write(bytes);
+    return bytes.length;
+  }
+
+  public static int write(Binary binary, OutputStream outputStream) throws IOException {
+    byte[] bytes = BytesUtils.intToBytes(binary.getValues().length);
+    outputStream.write(bytes);
+    outputStream.write(binary.getValues());
+    return bytes.length + binary.getValues().length;
+  }
+
   /**
    * write a int n to byteBuffer.
    *
@@ -571,6 +583,8 @@ public class ReadWriteIOUtils {
   /**
    * read bytes from byteBuffer, this method makes sure that you can read length bytes or reach to
    * the end of the buffer.
+   *
+   * read a int + buffer
    */
   public static ByteBuffer readByteBufferWithSelfDescriptionLength(ByteBuffer buffer) {
     int byteLength = readInt(buffer);
