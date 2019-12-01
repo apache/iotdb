@@ -118,4 +118,4 @@ $IOTDB_HOME/
 
 ### 通过Docker安装 (Dockerfile)
 
-你可以通过[这份指南](/#/Documents/0.8.1/chap4/sec7)编译并运行一个IoTDB docker image。
+你可以通过[这份指南](/#/Documents/0.8.2/chap4/sec7)编译并运行一个IoTDB docker image。

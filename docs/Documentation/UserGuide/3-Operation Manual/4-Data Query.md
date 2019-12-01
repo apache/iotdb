@@ -24,7 +24,7 @@
 ## Data Query
 ### Time Slice Query
 
-This chapter mainly introduces the relevant examples of time slice query using IoTDB SELECT statements. Detailed SQL syntax and usage specifications can be found in [SQL Documentation](/#/Documents/0.8.1/chap5/sec1). You can also use the [Java JDBC](/#/Documents/0.8.1/chap6/sec1) standard interface to execute related queries.
+This chapter mainly introduces the relevant examples of time slice query using IoTDB SELECT statements. Detailed SQL syntax and usage specifications can be found in [SQL Documentation](/#/Documents/0.8.2/chap5/sec1). You can also use the [Java JDBC](/#/Documents/0.8.2/chap6/sec1) standard interface to execute related queries.
 
 #### Select a Column of Data Based on a Time Interval
 
@@ -83,7 +83,7 @@ The execution result of this SQL statement is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577450-dcfe0800-1ef4-11e9-9399-4ba2b2b7fb73.jpg"></center>
 
 ### Down-Frequency Aggregate Query
-This section mainly introduces the related examples of down-frequency aggregation query, using the [GROUP BY clause](/#/Documents/0.8.1/chap5/sec1), which is used to partition the result set according to the user's given partitioning conditions and aggregate the partitioned result set. IoTDB supports partitioning result sets according to time intervals, and by default results are sorted by time in ascending order. You can also use the [Java JDBC](/#/Documents/0.8.1/chap6/sec1) standard interface to execute related queries.
+This section mainly introduces the related examples of down-frequency aggregation query, using the [GROUP BY clause](/#/Documents/0.8.2/chap5/sec1), which is used to partition the result set according to the user's given partitioning conditions and aggregate the partitioned result set. IoTDB supports partitioning result sets according to time intervals, and by default results are sorted by time in ascending order. You can also use the [Java JDBC](/#/Documents/0.8.2/chap6/sec1) standard interface to execute related queries.
 
 The GROUP BY statement provides users with three types of specified parameters:
 
@@ -167,7 +167,7 @@ In the actual use of IoTDB, when doing the query operation of timeseries, situat
 
 Automated fill function refers to filling empty values according to the user's specified method and effective time range when performing timeseries queries for single or multiple columns. If the queried point's value is not null, the fill function will not work.
 
-> Note: In the current version 0.8.1, IoTDB provides users with two methods: Previous and Linear. The previous method fills blanks with previous value. The linear method fills blanks through linear fitting. And the fill function can only be used when performing point-in-time queries.
+> Note: In the current version 0.8.2, IoTDB provides users with two methods: Previous and Linear. The previous method fills blanks with previous value. The linear method fills blanks through linear fitting. And the fill function can only be used when performing point-in-time queries.
 
 #### Fill Function
 * Previous Function
@@ -199,7 +199,7 @@ which means:
 
 Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp of 2017-11-01T16:37:50.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) for fill and display.
 
-On the [sample data](/#/Documents/0.8.1/chap3/sec1), the execution result of this statement is shown below:
+On the [sample data](/#/Documents/0.8.2/chap3/sec1), the execution result of this statement is shown below:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577616-67df0280-1ef5-11e9-9dff-2eb8342074eb.jpg"></center>
 
 It is worth noting that if there is no value in the specified valid time range, the system will not fill the null value, as shown below:
@@ -233,7 +233,7 @@ which means:
 
 Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 21.927326, the next timestamp 2017-11-01T16:39:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 25.311783 to perform linear fitting calculation: 21.927326 + (25.311783-21.927326)/60s*50s = 24.747707
 
-On the [sample data](/#/Documents/0.8.1/chap3/sec1), the execution result of this statement is shown below:
+On the [sample data](/#/Documents/0.8.2/chap3/sec1), the execution result of this statement is shown below:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577727-d4f29800-1ef5-11e9-8ff3-3bb519da3993.jpg"></center>
 
 #### Correspondence between Data Type and Fill Method
@@ -269,13 +269,13 @@ When the fill method is not specified, each data type bears its own default fill
 |text|previous, 0|
 </center>
 
-> Note: In version 0.8.1, at least one fill method should be specified in the Fill statement.
+> Note: In version 0.8.2, at least one fill method should be specified in the Fill statement.
 
 ### Row and Column Control over Query Results
 
-IoTDB provides [LIMIT/SLIMIT](/#/Documents/0.8.1/chap5/sec1) clause and [OFFSET/SOFFSET](/#/Documents/0.8.1/chap5/sec1) clause in order to make users have more control over query results. The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
+IoTDB provides [LIMIT/SLIMIT](/#/Documents/0.8.2/chap5/sec1) clause and [OFFSET/SOFFSET](/#/Documents/0.8.2/chap5/sec1) clause in order to make users have more control over query results. The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
 
-This chapter mainly introduces related examples of row and column control of query results. You can also use the [Java JDBC](/#/Documents/0.8.1/chap6/sec1) standard interface to execute queries.
+This chapter mainly introduces related examples of row and column control of query results. You can also use the [Java JDBC](/#/Documents/0.8.2/chap6/sec1) standard interface to execute queries.
 
 #### Row Control over Query Results
 By using LIMIT and OFFSET clauses, users can control the query results in a row-related manner. We will demonstrate how to use LIMIT and OFFSET clauses through the following examples.
