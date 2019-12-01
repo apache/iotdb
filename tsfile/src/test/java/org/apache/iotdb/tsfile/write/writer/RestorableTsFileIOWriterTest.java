@@ -120,7 +120,7 @@ public class RestorableTsFileIOWriterTest {
     writer.getIOWriter()
         .startFlushChunk(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.PLAIN),
             CompressionType.SNAPPY, TSDataType.FLOAT,
-            TSEncoding.PLAIN, new FloatStatistics(), 100, 50, 100, 10);
+            TSEncoding.PLAIN, new FloatStatistics(), 100, 10);
     writer.getIOWriter().close();
 
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);

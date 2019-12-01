@@ -19,13 +19,10 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -41,11 +38,6 @@ public class ChunkGroupMetaData {
    * Name of device, this field is not serialized.
    */
   private String deviceID;
-
-  /**
-   * Byte size of this metadata. this field is not serialized.
-   */
-  private int serializedSize;
 
   /**
    * Byte offset of the corresponding data in the file Notice: include the chunk group marker.
@@ -87,39 +79,6 @@ public class ChunkGroupMetaData {
     this.deviceID = deviceID;
     this.chunkMetaDataList = chunkMetaDataList;
     this.startOffsetOfChunkGroup = startOffsetOfChunkGroup;
-    reCalculateSerializedSize();
-  }
-
-  /**
-   * deserialize from InputStream.
-   *
-   * @param inputStream inputStream
-   * @return ChunkGroupMetaData object
-   * @throws IOException IOException
-   */
-  public static ChunkGroupMetaData deserializeFrom(InputStream inputStream) throws IOException {
-    ChunkGroupMetaData chunkGroupMetaData = new ChunkGroupMetaData();
-
-    chunkGroupMetaData.deviceID = ReadWriteIOUtils.readString(inputStream);
-    chunkGroupMetaData.startOffsetOfChunkGroup = ReadWriteIOUtils.readLong(inputStream);
-    chunkGroupMetaData.endOffsetOfChunkGroup = ReadWriteIOUtils.readLong(inputStream);
-    chunkGroupMetaData.version = ReadWriteIOUtils.readLong(inputStream);
-
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    chunkGroupMetaData.serializedSize = Integer.BYTES
-            + chunkGroupMetaData.deviceID.getBytes(TSFileConfig.STRING_CHARSET).length
-            + Integer.BYTES + Long.BYTES + Long.BYTES + Long.BYTES;
-
-    List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
-
-    for (int i = 0; i < size; i++) {
-      ChunkMetaData metaData = ChunkMetaData.deserializeFrom(inputStream);
-      chunkMetaDataList.add(metaData);
-      chunkGroupMetaData.serializedSize += metaData.getSerializedSize();
-    }
-    chunkGroupMetaData.chunkMetaDataList = chunkMetaDataList;
-
-    return chunkGroupMetaData;
   }
 
   /**
@@ -128,7 +87,7 @@ public class ChunkGroupMetaData {
    * @param buffer ByteBuffer
    * @return ChunkGroupMetaData object
    */
-  public static ChunkGroupMetaData deserializeFrom(ByteBuffer buffer) throws IOException {
+  public static ChunkGroupMetaData deserializeFrom(ByteBuffer buffer) {
     ChunkGroupMetaData chunkGroupMetaData = new ChunkGroupMetaData();
 
     chunkGroupMetaData.deviceID = ReadWriteIOUtils.readString(buffer);
@@ -138,30 +97,14 @@ public class ChunkGroupMetaData {
 
     int size = ReadWriteIOUtils.readInt(buffer);
 
-    chunkGroupMetaData.serializedSize = Integer.BYTES + chunkGroupMetaData.deviceID.getBytes(TSFileConfig.STRING_CHARSET).length
-        + Integer.BYTES + Long.BYTES + Long.BYTES + Long.BYTES;
-
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
     for (int i = 0; i < size; i++) {
       ChunkMetaData metaData = ChunkMetaData.deserializeFrom(buffer);
       chunkMetaDataList.add(metaData);
-      chunkGroupMetaData.serializedSize += metaData.getSerializedSize();
     }
     chunkGroupMetaData.chunkMetaDataList = chunkMetaDataList;
 
     return chunkGroupMetaData;
-  }
-
-  public int getSerializedSize() {
-    return serializedSize;
-  }
-
-  void reCalculateSerializedSize() {
-    serializedSize = Integer.BYTES + deviceID.getBytes(TSFileConfig.STRING_CHARSET).length + Integer.BYTES
-          + Long.BYTES + Long.BYTES + Long.BYTES; // size of chunkMetaDataList
-    for (ChunkMetaData chunk : chunkMetaDataList) {
-      serializedSize += chunk.getSerializedSize();
-    }
   }
 
   /**
@@ -174,7 +117,6 @@ public class ChunkGroupMetaData {
       chunkMetaDataList = new ArrayList<>();
     }
     chunkMetaDataList.add(metadata);
-    serializedSize += metadata.getSerializedSize();
   }
 
   public List<ChunkMetaData> getChunkMetaDataList() {
@@ -183,7 +125,9 @@ public class ChunkGroupMetaData {
 
   @Override
   public String toString() {
-    return String.format("ChunkGroupMetaData{ time series chunk list: %s }", chunkMetaDataList);
+    return String.format("ChunkGroupMetaData: Device: %s, Start offset: %d  End offset : %d "
+        + "{ time series chunk list: %s }", deviceID, startOffsetOfChunkGroup,
+        endOffsetOfChunkGroup, chunkMetaDataList);
   }
 
   public String getDeviceID() {
@@ -231,25 +175,4 @@ public class ChunkGroupMetaData {
     return byteLen;
   }
 
-  /**
-   * serialize to ByteBuffer.
-   *
-   * @param buffer ByteBuffer
-   * @return byte length
-   * @throws IOException IOException
-   */
-  public int serializeTo(ByteBuffer buffer) throws IOException {
-    int byteLen = 0;
-
-    byteLen += ReadWriteIOUtils.write(deviceID, buffer);
-    byteLen += ReadWriteIOUtils.write(startOffsetOfChunkGroup, buffer);
-    byteLen += ReadWriteIOUtils.write(endOffsetOfChunkGroup, buffer);
-    byteLen += ReadWriteIOUtils.write(version, buffer);
-
-    byteLen += ReadWriteIOUtils.write(chunkMetaDataList.size(), buffer);
-    for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
-      byteLen += chunkMetaData.serializeTo(buffer);
-    }
-    return byteLen;
-  }
 }

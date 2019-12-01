@@ -52,7 +52,7 @@ public class FirstValueAggrFunc extends AggregateFunction {
       return;
     }
 
-    Object firstVal = pageHeader.getStatistics().getFirst();
+    Object firstVal = pageHeader.getStatistics().getFirstValue();
     if (firstVal == null) {
       throw new QueryProcessException("PageHeader contains no FIRST value");
     }

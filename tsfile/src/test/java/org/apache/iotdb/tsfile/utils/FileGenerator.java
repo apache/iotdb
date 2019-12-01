@@ -39,19 +39,18 @@ import org.slf4j.LoggerFactory;
 public class FileGenerator {
 
   private static final Logger LOG = LoggerFactory.getLogger(FileGenerator.class);
-  public static int ROW_COUNT = 1000;
-  public static TsFileWriter innerWriter;
-  public static String inputDataFile;
+  private static int ROW_COUNT = 1000;
+  private static TsFileWriter innerWriter;
+  private static String inputDataFile;
   public static String outputDataFile = "target/perTestOutputData.tsfile";
-  public static String errorOutputDataFile;
+  private static String errorOutputDataFile;
   public static Schema schema;
-  public static int oldMaxNumberOfPointsInPage;
 
   public static void generateFile(int rowCount, int maxNumberOfPointsInPage)
-      throws IOException, InterruptedException, WriteProcessException {
+      throws IOException {
     ROW_COUNT = rowCount;
     TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
-    oldMaxNumberOfPointsInPage = config.getMaxNumberOfPointsInPage();
+    int oldMaxNumberOfPointsInPage = config.getMaxNumberOfPointsInPage();
     config.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
 
     prepare();
@@ -60,14 +59,14 @@ public class FileGenerator {
   }
 
   public static void generateFile()
-      throws IOException, InterruptedException, WriteProcessException {
+      throws IOException {
     generateFile(1000, 10);
   }
 
   public static void prepare() throws IOException {
     inputDataFile = "target/perTestInputData";
     errorOutputDataFile = "target/perTestErrorOutputData.tsfile";
-    generateTestData();
+    generateTestSchema();
     generateSampleInputDataFile();
   }
 
@@ -158,14 +157,14 @@ public class FileGenerator {
 
     // write
     try {
-      writeToFile(schema);
+      writeToTsFile(schema);
     } catch (WriteProcessException e) {
       e.printStackTrace();
     }
     LOG.info("write to file successfully!!");
   }
 
-  private static void generateTestData() {
+  private static void generateTestSchema() {
     schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32,
@@ -180,7 +179,7 @@ public class FileGenerator {
     schema.registerMeasurement(new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
   }
 
-  static public void writeToFile(Schema schema)
+  private static void writeToTsFile(Schema schema)
       throws IOException, WriteProcessException {
     Scanner in = getDataFile(inputDataFile);
     long lineCount = 0;

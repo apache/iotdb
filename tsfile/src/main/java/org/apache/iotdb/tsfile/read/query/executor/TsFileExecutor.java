@@ -180,7 +180,7 @@ public class TsFileExecutor implements QueryExecutor {
       } else {
         seriesReader = new FileSeriesPageReader(chunkLoader, chunkMetaDataList,
             timeFilter != null ? timeFilter.getFilter() : null);
-        dataTypes.add(chunkMetaDataList.get(0).getTsDataType());
+        dataTypes.add(chunkMetaDataList.get(0).getDataType());
       }
       readersOfSelectedSeries.add(seriesReader);
     }

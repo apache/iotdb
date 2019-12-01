@@ -88,7 +88,7 @@ public class ChunkReader {
   /**
    * judge if has nextBatch.
    */
-  public boolean hasNextBatch() throws IOException {
+  public boolean hasNextBatch() {
     if (hasCachedPageHeader) {
       return true;
     }

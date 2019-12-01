@@ -51,8 +51,8 @@ public class LastValueAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    Object lastVal = pageHeader.getStatistics().getLast();
-    updateLastResult(pageHeader.getMaxTimestamp(), lastVal);
+    Object lastVal = pageHeader.getStatistics().getLastValue();
+    updateLastResult(pageHeader.getEndTime(), lastVal);
   }
 
   @Override

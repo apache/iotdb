@@ -76,7 +76,7 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
 
       List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(selectedPath);
       if (chunkMetaDataList.size() != 0) {
-        dataTypes.add(chunkMetaDataList.get(0).getTsDataType());
+        dataTypes.add(chunkMetaDataList.get(0).getDataType());
         if (cachedValue) {
           readersOfSelectedSeries.add(null);
           continue;

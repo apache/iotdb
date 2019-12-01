@@ -54,13 +54,13 @@ public class TsFileIOWriterTest {
 
     // chunk statistics
     Statistics statistics = Statistics.getStatsByType(measurementSchema.getType());
-    statistics.updateStats(0L);
+    statistics.updateStats(0L, 0L);
 
     // chunk group 1
     writer.startChunkGroup(deviceId);
     writer.startFlushChunk(measurementSchema, measurementSchema.getCompressor(),
-        measurementSchema.getType(), measurementSchema.getEncodingType(), statistics, 0, 0, 0, 0);
-    writer.endChunk(0);
+        measurementSchema.getType(), measurementSchema.getEncodingType(), statistics, 0, 0);
+    writer.endCurrentChunk();
     writer.endChunkGroup(0);
 
     // end file

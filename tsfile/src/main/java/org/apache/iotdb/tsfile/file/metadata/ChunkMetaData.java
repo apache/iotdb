@@ -19,17 +19,13 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -48,12 +44,6 @@ public class ChunkMetaData {
    */
   private long offsetOfChunkHeader;
 
-  private long numOfPoints;
-
-  private long startTime;
-
-  private long endTime;
-
   private TSDataType tsDataType;
 
   /**
@@ -67,7 +57,7 @@ public class ChunkMetaData {
    */
   private long deletedAt = Long.MIN_VALUE;
 
-  private Statistics valuesStatistics;
+  private Statistics statistics;
 
   private ChunkMetaData() {
   }
@@ -78,90 +68,24 @@ public class ChunkMetaData {
    * @param measurementUid measurement id
    * @param tsDataType time series data type
    * @param fileOffset file offset
-   * @param startTime chunk start time
-   * @param endTime chunk end time
+   * @param statistics value statistics
    */
   public ChunkMetaData(String measurementUid, TSDataType tsDataType, long fileOffset,
-      long startTime, long endTime) {
+    Statistics statistics) {
     this.measurementUid = measurementUid;
     this.tsDataType = tsDataType;
     this.offsetOfChunkHeader = fileOffset;
-    this.startTime = startTime;
-    this.endTime = endTime;
-  }
-
-  /**
-   * deserialize from InputStream.
-   *
-   * @param inputStream InputStream
-   * @return ChunkMetaData object
-   * @throws IOException IOException
-   */
-  public static ChunkMetaData deserializeFrom(InputStream inputStream) throws IOException {
-    ChunkMetaData chunkMetaData = new ChunkMetaData();
-
-    chunkMetaData.measurementUid = ReadWriteIOUtils.readString(inputStream);
-
-    chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(inputStream);
-
-    chunkMetaData.numOfPoints = ReadWriteIOUtils.readLong(inputStream);
-    chunkMetaData.startTime = ReadWriteIOUtils.readLong(inputStream);
-    chunkMetaData.endTime = ReadWriteIOUtils.readLong(inputStream);
-
-    chunkMetaData.tsDataType = ReadWriteIOUtils.readDataType(inputStream);
-
-    chunkMetaData.valuesStatistics = Statistics.deserializeFrom(inputStream, chunkMetaData.tsDataType);
-
-    return chunkMetaData;
-  }
-
-  /**
-   * deserialize from ByteBuffer.
-   *
-   * @param buffer ByteBuffer
-   * @return ChunkMetaData object
-   */
-  public static ChunkMetaData deserializeFrom(ByteBuffer buffer) {
-    ChunkMetaData chunkMetaData = new ChunkMetaData();
-
-    chunkMetaData.measurementUid = ReadWriteIOUtils.readString(buffer);
-    chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(buffer);
-    chunkMetaData.numOfPoints = ReadWriteIOUtils.readLong(buffer);
-    chunkMetaData.startTime = ReadWriteIOUtils.readLong(buffer);
-    chunkMetaData.endTime = ReadWriteIOUtils.readLong(buffer);
-    chunkMetaData.tsDataType = ReadWriteIOUtils.readDataType(buffer);
-
-    chunkMetaData.valuesStatistics = Statistics.deserializeFrom(buffer, chunkMetaData.tsDataType);
-
-    return chunkMetaData;
-  }
-
-  /**
-   * get serialized size.
-   *
-   * @return serialized size (int type)
-   */
-  public int getSerializedSize() {
-    int serializedSize = (Integer.BYTES  +
-            4 * Long.BYTES + // 4 long: offsetOfChunkHeader, numOfPoints, startTime, endTime
-            TSDataType.getSerializedSize() + // TSDataType
-            (valuesStatistics == null ? Statistics.getNullDigestSize()
-                    : valuesStatistics.getDigestSerializedSize()));
-    serializedSize += measurementUid.getBytes(TSFileConfig.STRING_CHARSET).length;  // measurementUid
-    return serializedSize;
+    this.statistics = statistics;
   }
 
   @Override
   public String toString() {
-    return String.format("numPoints %d", numOfPoints);
+    return String.format("measurementId: %s, datatype: %s, version: %d, deletedAt: %d, "
+        + "Statistics: %s", measurementUid, tsDataType, version, deletedAt, statistics);
   }
 
   public long getNumOfPoints() {
-    return numOfPoints;
-  }
-
-  public void setNumOfPoints(long numRows) {
-    this.numOfPoints = numRows;
+    return statistics.getCount();
   }
 
   /**
@@ -177,37 +101,20 @@ public class ChunkMetaData {
     return measurementUid;
   }
 
-  public Statistics getDigest() {
-    return valuesStatistics;
-  }
-
-  public void setDigest(Statistics digest) {
-    this.valuesStatistics = digest;
-
+  public Statistics getStatistics() {
+    return statistics;
   }
 
   public long getStartTime() {
-    return startTime;
-  }
-
-  public void setStartTime(long startTime) {
-    this.startTime = startTime;
+    return statistics.getStartTime();
   }
 
   public long getEndTime() {
-    return endTime;
+    return statistics.getEndTime();
   }
 
-  public void setEndTime(long endTime) {
-    this.endTime = endTime;
-  }
-
-  public TSDataType getTsDataType() {
+  public TSDataType getDataType() {
     return tsDataType;
-  }
-
-  public void setTsDataType(TSDataType tsDataType) {
-    this.tsDataType = tsDataType;
   }
 
   /**
@@ -222,41 +129,27 @@ public class ChunkMetaData {
 
     byteLen += ReadWriteIOUtils.write(measurementUid, outputStream);
     byteLen += ReadWriteIOUtils.write(offsetOfChunkHeader, outputStream);
-    byteLen += ReadWriteIOUtils.write(numOfPoints, outputStream);
-    byteLen += ReadWriteIOUtils.write(startTime, outputStream);
-    byteLen += ReadWriteIOUtils.write(endTime, outputStream);
     byteLen += ReadWriteIOUtils.write(tsDataType, outputStream);
-
-    if (valuesStatistics == null) {
-      byteLen += Statistics.serializeNullTo(outputStream);
-    } else {
-      byteLen += valuesStatistics.serializeTo(outputStream);
-    }
+    byteLen += statistics.serialize(outputStream);
     return byteLen;
   }
 
   /**
-   * serialize to ByteBuffer.
+   * deserialize from ByteBuffer.
    *
    * @param buffer ByteBuffer
-   * @return length
+   * @return ChunkMetaData object
    */
-  public int serializeTo(ByteBuffer buffer) {
-    int byteLen = 0;
+  public static ChunkMetaData deserializeFrom(ByteBuffer buffer) {
+    ChunkMetaData chunkMetaData = new ChunkMetaData();
 
-    byteLen += ReadWriteIOUtils.write(measurementUid, buffer);
-    byteLen += ReadWriteIOUtils.write(offsetOfChunkHeader, buffer);
-    byteLen += ReadWriteIOUtils.write(numOfPoints, buffer);
-    byteLen += ReadWriteIOUtils.write(startTime, buffer);
-    byteLen += ReadWriteIOUtils.write(endTime, buffer);
-    byteLen += ReadWriteIOUtils.write(tsDataType, buffer);
+    chunkMetaData.measurementUid = ReadWriteIOUtils.readString(buffer);
+    chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(buffer);
+    chunkMetaData.tsDataType = ReadWriteIOUtils.readDataType(buffer);
 
-    if (valuesStatistics == null) {
-      byteLen += Statistics.serializeNullTo(buffer);
-    } else {
-      byteLen += valuesStatistics.serializeTo(buffer);
-    }
-    return byteLen;
+    chunkMetaData.statistics = Statistics.deserialize(buffer, chunkMetaData.tsDataType);
+
+    return chunkMetaData;
   }
 
   public long getVersion() {
@@ -285,13 +178,10 @@ public class ChunkMetaData {
     }
     ChunkMetaData that = (ChunkMetaData) o;
     return offsetOfChunkHeader == that.offsetOfChunkHeader &&
-        numOfPoints == that.numOfPoints &&
-        startTime == that.startTime &&
-        endTime == that.endTime &&
         version == that.version &&
         deletedAt == that.deletedAt &&
         Objects.equals(measurementUid, that.measurementUid) &&
         tsDataType == that.tsDataType &&
-        Objects.equals(valuesStatistics, that.valuesStatistics);
+        Objects.equals(statistics, that.statistics);
   }
 }
