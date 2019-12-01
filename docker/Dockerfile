@@ -19,7 +19,7 @@
 
 FROM openjdk:11
 RUN apt-get update \
-  && apt-get install wget unzip lsof procps maven thrift-compiler=0.9.1-2.1+b1 -y \
+  && apt-get install wget unzip lsof procps maven thrift-compiler=0.12.0 -y \
   && wget https://github.com/apache/incubator-iotdb/archive/master.zip \
   && unzip master.zip \
   && rm master.zip
