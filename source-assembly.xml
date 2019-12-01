@@ -92,8 +92,8 @@ source-release.zip, just add it into <files> tag.
             <destName>tsfile/README.md</destName>
         </file>
         <file>
-            <source>${maven.multiModuleProjectDirectory}/tsfile/format-changelist.md</source>
-            <destName>tsfile/format-changelist.md</destName>
+            <source>${maven.multiModuleProjectDirectory}/tsfile/package.sh</source>
+            <destName>tsfile/package.sh</destName>
         </file>
         <!-- spark-tsfile -->
         <file>
@@ -109,18 +109,10 @@ source-release.zip, just add it into <files> tag.
             <source>${maven.multiModuleProjectDirectory}/service-rpc/pom.xml</source>
             <destName>service-rpc/pom.xml</destName>
         </file>
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/service-rpc/rpc-changelist.md</source>
-            <destName>service-rpc/rpc-changelist.md</destName>
-        </file>
         <!-- server -->
         <file>
             <source>${maven.multiModuleProjectDirectory}/server/pom.xml</source>
             <destName>server/pom.xml</destName>
-        </file>
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/server/server-changelist.md</source>
-            <destName>server/server-changelist.md</destName>
         </file>
         <!-- jdbc-->
         <file>
@@ -130,6 +122,10 @@ source-release.zip, just add it into <files> tag.
         <file>
             <source>${maven.multiModuleProjectDirectory}/jdbc/README.md</source>
             <destName>jdbc/README.md</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/jdbc/package.sh</source>
+            <destName>jdbc/package.sh</destName>
         </file>
         <!-- hadoop-->
         <file>
