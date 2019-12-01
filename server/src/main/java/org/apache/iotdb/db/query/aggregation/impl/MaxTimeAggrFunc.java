@@ -30,7 +30,8 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class MaxTimeAggrFunc extends AggregateFunction {
+public class
+MaxTimeAggrFunc extends AggregateFunction {
 
   public MaxTimeAggrFunc() {
     super(TSDataType.INT64);
@@ -129,7 +130,8 @@ public class MaxTimeAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromChunkData(ChunkMetaData chunkMetaData) {
-
+    long maxTimestamp = chunkMetaData.getEndTime();
+    updateMaxTimeResult(0, maxTimestamp);
   }
 
   private void updateMaxTimeResult(long time, long value) {

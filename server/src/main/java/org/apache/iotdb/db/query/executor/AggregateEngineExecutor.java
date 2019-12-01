@@ -158,23 +158,23 @@ public class AggregateEngineExecutor {
         function.calculateValueFromChunkData(chunkMetaData);
         continue;
       }
-    }
-    while (sequenceReader.hasNext()) {
-      PageHeader pageHeader = sequenceReader.nextPageHeader();
-      // judge if overlap with unsequence data
-      if (pageHeader != null && canUseHeader(function, pageHeader.getStartTime(),
-          pageHeader.getEndTime(),
-          unSequenceReader, filter)) {
-        // cal by pageHeader
-        function.calculateValueFromPageHeader(pageHeader);
-        sequenceReader.skipPageData();
-      } else {
-        // cal by pageData
-        function.calculateValueFromPageData(sequenceReader.nextBatch(), unSequenceReader);
-      }
+      while (sequenceReader.hasNext()) {
+        PageHeader pageHeader = sequenceReader.nextPageHeader();
+        // judge if overlap with unsequence data
+        if (pageHeader != null && canUseHeader(function, pageHeader.getStartTime(),
+            pageHeader.getEndTime(),
+            unSequenceReader, filter)) {
+          // cal by pageHeader
+          function.calculateValueFromPageHeader(pageHeader);
+          sequenceReader.skipPageData();
+        } else {
+          // cal by pageData
+          function.calculateValueFromPageData(sequenceReader.nextBatch(), unSequenceReader);
+        }
 
-      if (function.isCalculatedAggregationResult()) {
-        return function.getResult();
+        if (function.isCalculatedAggregationResult()) {
+          return function.getResult();
+        }
       }
     }
     // cal with unsequence data
@@ -220,13 +220,8 @@ public class AggregateEngineExecutor {
       ChunkMetaData chunkMetaData = sequenceReader.nextChunkMeta();
       if (chunkMetaData != null && canUseHeader(function, chunkMetaData.getStartTime(),
           chunkMetaData.getEndTime(), unSequenceReader, timeFilter)) {
-        function.calculateValueFromUnsequenceReader(unSequenceReader, chunkMetaData.getStartTime());
-        if (!(unSequenceReader.hasNext()
-            && unSequenceReader.current().getTimestamp() <= chunkMetaData
-            .getEndTime())) {
-          function.calculateValueFromChunkData(chunkMetaData);
-          continue;
-        }
+        function.calculateValueFromChunkData(chunkMetaData);
+        continue;
       }
       while (sequenceReader.hasNext()) {
         PageHeader pageHeader = sequenceReader.nextPageHeader();
@@ -264,7 +259,6 @@ public class AggregateEngineExecutor {
         }
       }
     }
-
     // cal with unsequence data
     if (unSequenceReader.hasNext()) {
       function.calculateValueFromUnsequenceReader(unSequenceReader);

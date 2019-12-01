@@ -141,7 +141,8 @@ public class LastValueAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromChunkData(ChunkMetaData chunkMetaData) {
-
+    Object lastVal = chunkMetaData.getStatistics().getLastValue();
+    updateLastResult(chunkMetaData.getEndTime(), lastVal);
   }
 
   private void updateLastResult(long time, Object value) {

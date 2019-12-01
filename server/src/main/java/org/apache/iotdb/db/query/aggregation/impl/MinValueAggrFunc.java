@@ -157,7 +157,8 @@ public class MinValueAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromChunkData(ChunkMetaData chunkMetaData) {
-
+    Comparable<Object> minVal = (Comparable<Object>) chunkMetaData.getStatistics().getMinValue();
+    updateResult(minVal);
   }
 
   private void updateResult(Comparable<Object> minVal) {

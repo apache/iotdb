@@ -162,7 +162,8 @@ public class MaxValueAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromChunkData(ChunkMetaData chunkMetaData) {
-
+    Comparable<Object> maxVal = (Comparable<Object>) chunkMetaData.getStatistics().getMaxValue();
+    updateResult(maxVal);
   }
 
   private void updateResult(Comparable<Object> maxVal) {
