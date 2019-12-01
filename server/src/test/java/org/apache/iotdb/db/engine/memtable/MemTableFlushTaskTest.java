@@ -79,7 +79,7 @@ public class MemTableFlushTaskTest {
     assertEquals(MemTableTestUtils.measurementId0, chunkMetaData.getMeasurementUid());
     assertEquals(startTime, chunkMetaData.getStartTime());
     assertEquals(endTime, chunkMetaData.getEndTime());
-    assertEquals(MemTableTestUtils.dataType0, chunkMetaData.getTsDataType());
+    assertEquals(MemTableTestUtils.dataType0, chunkMetaData.getDataType());
     assertEquals(endTime - startTime + 1, chunkMetaData.getNumOfPoints());
   }
 }

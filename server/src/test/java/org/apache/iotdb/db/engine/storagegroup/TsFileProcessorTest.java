@@ -118,7 +118,7 @@ public class TsFileProcessorTest {
     assertTrue(left.isEmpty());
     assertEquals(1, right.size());
     assertEquals(measurementId, right.get(0).getMeasurementUid());
-    assertEquals(dataType, right.get(0).getTsDataType());
+    assertEquals(dataType, right.get(0).getDataType());
     processor.syncClose();
   }
 
@@ -164,7 +164,7 @@ public class TsFileProcessorTest {
     assertTrue(left.isEmpty());
     assertEquals(1, right.size());
     assertEquals(measurementId, right.get(0).getMeasurementUid());
-    assertEquals(dataType, right.get(0).getTsDataType());
+    assertEquals(dataType, right.get(0).getDataType());
 
     RestorableTsFileIOWriter tsFileIOWriter = processor.getWriter();
     List<ChunkGroupMetaData> chunkGroupMetaDataList = tsFileIOWriter.getChunkGroupMetaDatas();
@@ -218,7 +218,7 @@ public class TsFileProcessorTest {
     assertTrue(left.isEmpty());
     assertEquals(10, right.size());
     assertEquals(measurementId, right.get(0).getMeasurementUid());
-    assertEquals(dataType, right.get(0).getTsDataType());
+    assertEquals(dataType, right.get(0).getDataType());
     processor.syncClose();
   }
 

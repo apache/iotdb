@@ -95,6 +95,10 @@ public class IoTDBSessionIT {
 
     query2();
 
+    insertInBatch();
+
+    query4();
+
     // Add another storage group to test the deletion of storage group
     session.setStorageGroup("root.sg2");
     session.createTimeseries("root.sg2.d1.s1", TSDataType.INT64, TSEncoding.RLE,
@@ -134,6 +138,45 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d2.s1", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d2.s2", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d2.s3", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+  }
+
+  private void insertInBatch() throws IoTDBSessionException {
+    String deviceId = "root.sg1.d2";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    List<String> deviceIds = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<List<String>> valuesList = new ArrayList<>();
+    List<Long> timestamps = new ArrayList<>();
+
+    for (long time = 0; time < 500; time++) {
+      List<String> values = new ArrayList<>();
+      values.add("1");
+      values.add("2");
+      values.add("3");
+
+      deviceIds.add(deviceId);
+      measurementsList.add(measurements);
+      valuesList.add(values);
+      timestamps.add(time);
+      if (time != 0 && time % 100 == 0) {
+        session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+        deviceIds.clear();
+        measurementsList.clear();
+        valuesList.clear();
+        timestamps.clear();
+      }
+    }
+
+    session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
   }
 
   private void insert() throws IoTDBSessionException {
@@ -201,7 +244,8 @@ public class IoTDBSessionIT {
   private void query() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     String standard =
-        "Time\n" + "root.sg1.d1.s1\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n";
+        "Time\n" + "root.sg1.d1.s1\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n"
+            + "root.sg1.d2.s1\n" + "root.sg1.d2.s2\n" + "root.sg1.d2.s3\n";
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -225,7 +269,8 @@ public class IoTDBSessionIT {
   private void query2() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     String standard =
-        "Time\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n";
+        "Time\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n"
+            + "root.sg1.d2.s1\n" + "root.sg1.d2.s2\n" + "root.sg1.d2.s3\n";
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -286,6 +331,23 @@ public class IoTDBSessionIT {
     }
   }
 
+  private void query4() throws TException, IoTDBRPCException, SQLException {
+    SessionDataSet sessionDataSet = session.executeQueryStatement("select * from root.sg1.d2");
+    sessionDataSet.setBatchSize(1024);
+    int count = 0;
+    while (sessionDataSet.hasNext()) {
+      long index = 1;
+      count++;
+      for (Field f : sessionDataSet.next().getFields()) {
+        Assert.assertEquals(f.getLongV(), index);
+        index++;
+      }
+    }
+    Assert.assertEquals(500, count);
+    sessionDataSet.closeOperationHandle();
+  }
+
+
   private void query3() throws TException, IoTDBRPCException, SQLException {
     SessionDataSet sessionDataSet = session.executeQueryStatement("select * from root.sg1.d1");
     sessionDataSet.setBatchSize(1024);
@@ -342,7 +404,7 @@ public class IoTDBSessionIT {
     session.close();
   }
 
-  private void checkSetSG(Session session, String sg, boolean correctStatus){
+  private void checkSetSG(Session session, String sg, boolean correctStatus) {
     boolean status = true;
     try {
       session.setStorageGroup(sg);
@@ -352,7 +414,7 @@ public class IoTDBSessionIT {
     assertEquals(status, correctStatus);
   }
 
-  private void checkCreateTimeseries(Session session, String timeseris, boolean correctStatus){
+  private void checkCreateTimeseries(Session session, String timeseris, boolean correctStatus) {
     boolean status = true;
     try {
       session.createTimeseries(timeseris, TSDataType.INT64, TSEncoding.RLE,
