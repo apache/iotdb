@@ -110,7 +110,6 @@ import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSStatusType;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
-import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -178,17 +177,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       String aggrType = path.substring(0, leftBracketIndex);
       String innerPath = path.substring(leftBracketIndex + 1, path.length() - 1);
       switch (aggrType.toLowerCase()) {
-        case StatisticConstant.MIN_TIME:
-        case StatisticConstant.MAX_TIME:
-        case StatisticConstant.COUNT:
+        case SQLConstant.MIN_TIME:
+        case SQLConstant.MAX_TIME:
+        case SQLConstant.COUNT:
           return TSDataType.INT64;
-        case StatisticConstant.LAST_VALUE:
-        case StatisticConstant.FIRST_VALUE:
-        case StatisticConstant.MIN_VALUE:
-        case StatisticConstant.MAX_VALUE:
+        case SQLConstant.LAST_VALUE:
+        case SQLConstant.FIRST_VALUE:
+        case SQLConstant.MIN_VALUE:
+        case SQLConstant.MAX_VALUE:
           return getSeriesType(innerPath);
-        case StatisticConstant.AVG:
-        case StatisticConstant.SUM:
+        case SQLConstant.AVG:
+        case SQLConstant.SUM:
           return TSDataType.DOUBLE;
         default:
           throw new QueryProcessException(
