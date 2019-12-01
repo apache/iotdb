@@ -94,17 +94,17 @@ pipeline {
             }
         }
 
-        stage('Code Quality') {
-            when {
-                branch 'master'
-            }
-            steps {
-                echo 'Checking Code Quality'
-                withSonarQubeEnv('ASF Sonar Analysis') {
-                    sh 'mvn sonar:sonar'
-                }
-            }
-        }
+//        stage('Code Quality') {
+//            when {
+//                branch 'master'
+//            }
+//            steps {
+//                echo 'Checking Code Quality'
+//                withSonarQubeEnv('ASF Sonar Analysis') {
+//                    sh 'mvn sonar:sonar'
+//                }
+//            }
+//        }
 
         stage('Deploy') {
             when {
