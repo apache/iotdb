@@ -50,7 +50,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
     if (resultData.isSetValue()) {
       return;
     }
-    long time = pageHeader.getMinTimestamp();
+    long time = pageHeader.getStartTime();
     resultData.putTimeAndValue(0, time);
   }
 

@@ -32,11 +32,11 @@ public class IntegerStatisticsTest {
     assertFalse(intStats.isEmpty());
     intStats.updateStats(2);
     assertFalse(intStats.isEmpty());
-    assertEquals(2, (int) intStats.getMax());
-    assertEquals(1, (int) intStats.getMin());
-    assertEquals(1, (int) intStats.getFirst());
-    assertEquals(3, (int) intStats.getSum());
-    assertEquals(2, (int) intStats.getLast());
+    assertEquals(2, (int) intStats.getMaxValue());
+    assertEquals(1, (int) intStats.getMinValue());
+    assertEquals(1, (int) intStats.getFirstValue());
+    assertEquals(3, (int) intStats.getSumValue());
+    assertEquals(2, (int) intStats.getLastValue());
   }
 
   @Test
@@ -52,17 +52,17 @@ public class IntegerStatisticsTest {
     Statistics<Integer> intStats3 = new IntegerStatistics();
     intStats3.mergeStatistics(intStats1);
     assertFalse(intStats3.isEmpty());
-    assertEquals(100, (int) intStats3.getMax());
-    assertEquals(1, (int) intStats3.getMin());
-    assertEquals(1, (int) intStats3.getFirst());
-    assertEquals(1 + 100, (int) intStats3.getSum());
-    assertEquals(100, (int) intStats3.getLast());
+    assertEquals(100, (int) intStats3.getMaxValue());
+    assertEquals(1, (int) intStats3.getMinValue());
+    assertEquals(1, (int) intStats3.getFirstValue());
+    assertEquals(1 + 100, (int) intStats3.getSumValue());
+    assertEquals(100, (int) intStats3.getLastValue());
 
     intStats3.mergeStatistics(intStats2);
-    assertEquals(200, (int) intStats3.getMax());
-    assertEquals(1, (int) intStats3.getMin());
-    assertEquals(1, (int) intStats3.getFirst());
-    assertEquals(101 + 200, (int) intStats3.getSum());
-    assertEquals(200, (int) intStats3.getLast());
+    assertEquals(200, (int) intStats3.getMaxValue());
+    assertEquals(1, (int) intStats3.getMinValue());
+    assertEquals(1, (int) intStats3.getFirstValue());
+    assertEquals(101 + 200, (int) intStats3.getSumValue());
+    assertEquals(200, (int) intStats3.getLastValue());
   }
 }

@@ -157,8 +157,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         finishCheckSequenceData = calGroupByInBatchData(idx, function, unsequenceReader);
       } else {
         // page data
-        long minTime = pageHeader.getMinTimestamp();
-        long maxTime = pageHeader.getMaxTimestamp();
+        long minTime = pageHeader.getStartTime();
+        long maxTime = pageHeader.getEndTime();
         // no point in sequence data with a timestamp less than endTime
         if (minTime >= endTime) {
           finishCheckSequenceData = true;
@@ -246,10 +246,10 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         // page data
 
         // timestamps of all points in the page are less than startTime
-        if (pageHeader.getMaxTimestamp() < startTime) {
+        if (pageHeader.getEndTime() < startTime) {
           sequenceReader.skipPageData();
           continue;
-        } else if (pageHeader.getMinTimestamp() >= startTime) {
+        } else if (pageHeader.getStartTime() >= startTime) {
           // timestamps of all points in the page are greater or equal to startTime, needn't to skip
           return;
         }

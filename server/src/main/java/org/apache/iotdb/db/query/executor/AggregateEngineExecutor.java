@@ -140,10 +140,10 @@ public class AggregateEngineExecutor {
   /**
    * calculation aggregate result with only time filter or no filter for one series.
    *
-   * @param function         aggregate function
-   * @param sequenceReader   sequence data reader
+   * @param function aggregate function
+   * @param sequenceReader sequence data reader
    * @param unSequenceReader unsequence data reader
-   * @param filter           time filter or null
+   * @param filter time filter or null
    * @return one series aggregate result data
    */
   private AggreResultData aggregateWithoutValueFilter(AggregateFunction function,
@@ -203,8 +203,8 @@ public class AggregateEngineExecutor {
       return false;
     }
 
-    long minTime = pageHeader.getMinTimestamp();
-    long maxTime = pageHeader.getMaxTimestamp();
+    long minTime = pageHeader.getStartTime();
+    long maxTime = pageHeader.getEndTime();
 
     // If there are points in the page that do not satisfy the time filter,
     // page header cannot be used to calculate.
@@ -222,8 +222,8 @@ public class AggregateEngineExecutor {
   /**
    * handle last and max_time aggregate function with only time filter or no filter.
    *
-   * @param function         aggregate function
-   * @param sequenceReader   sequence data reader
+   * @param function aggregate function
+   * @param sequenceReader sequence data reader
    * @param unSequenceReader unsequence data reader
    * @return BatchData-aggregate result
    */
@@ -249,12 +249,12 @@ public class AggregateEngineExecutor {
           function.calculateValueFromPageHeader(pageHeader);
           chunkReader.skipPageData();
 
-          if (lastBatchTimeStamp > pageHeader.getMinTimestamp()) {
+          if (lastBatchTimeStamp > pageHeader.getStartTime()) {
             // the chunk is end.
             isChunkEnd = true;
           } else {
             // current page and last page are in the same chunk.
-            lastBatchTimeStamp = pageHeader.getMinTimestamp();
+            lastBatchTimeStamp = pageHeader.getStartTime();
           }
         } else {
           // cal by pageData
