@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!-- How to maintain this file:
+1. if you add a new file into the root of the project and want to attach the file into
+source-release.zip, just add it into <files> tag.
+2. if you add a new folder into the root of the project, just add it into <fileSet> tag.
+-->
+<assembly>
+    <id>source-release</id>
+    <formats>
+        <format>zip</format>
+    </formats>
+    <includeBaseDirectory>false</includeBaseDirectory>
+    <files>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/README.md</source>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/LICENSE-binary</source>
+            <destName>LICENSE</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/NOTICE-binary</source>
+            <destName>NOTICE</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/DISCLAIMER</source>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/RELEASE_NOTES.md</source>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/pom.xml</source>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/source-assembly.xml</source>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/mvnw.sh</source>
+            <fileMode>755</fileMode>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/mvnw.cmd</source>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/Jenkinsfile</source>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/jenkins.pom</source>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/checkstyle.xml</source>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/codecov.yml</source>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/.travis.yml</source>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/.gitignore</source>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/.checkstyle</source>
+        </file>
+        <!-- tsfile -->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/tsfile/pom.xml</source>
+            <destName>tsfile/pom.xml</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/tsfile/README.md</source>
+            <destName>tsfile/README.md</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/tsfile/format-changelist.md</source>
+            <destName>tsfile/format-changelist.md</destName>
+        </file>
+        <!-- spark-tsfile -->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/spark-tsfile/pom.xml</source>
+            <destName>spark-tsfile/pom.xml</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/spark-tsfile/README.md</source>
+            <destName>spark-tsfile/README.md</destName>
+        </file>
+        <!-- spark-iotdb-connector -->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/spark-iotdb-connector/pom.xml</source>
+            <destName>spark-iotdb-connector/pom.xml</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/spark-iotdb-connector/Readme.md</source>
+            <destName>spark-iotdb-connector/Readme.md</destName>
+        </file>
+        <!-- session-->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/session/pom.xml</source>
+            <destName>session/pom.xml</destName>
+        </file>
+        <!-- service-rpc-->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/service-rpc/pom.xml</source>
+            <destName>service-rpc/pom.xml</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/service-rpc/rpc-changelist.md</source>
+            <destName>service-rpc/rpc-changelist.md</destName>
+        </file>
+        <!-- server -->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/server/pom.xml</source>
+            <destName>server/pom.xml</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/server/server-changelist.md</source>
+            <destName>server/server-changelist.md</destName>
+        </file>
+        <!-- jdbc-->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/jdbc/pom.xml</source>
+            <destName>jdbc/pom.xml</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/jdbc/README.md</source>
+            <destName>jdbc/README.md</destName>
+        </file>
+        <!-- hive-connector-->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/hive-connector/pom.xml</source>
+            <destName>hive-connector/pom.xml</destName>
+        </file>
+        <!-- hadoop-->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/hadoop/pom.xml</source>
+            <destName>hadoop/pom.xml</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/hadoop/README.md</source>
+            <destName>hadoop/README.md</destName>
+        </file>
+        <!-- grafana -->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/grafana/pom.xml</source>
+            <destName>grafana/pom.xml</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/grafana/readme.md</source>
+            <destName>grafana/readme.md</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/grafana/readme_zh.md</source>
+            <destName>grafana/readme_zh.md</destName>
+        </file>
+        <!-- example-->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/example/pom.xml</source>
+            <destName>example/pom.xml</destName>
+        </file>
+        <!-- hadoop -->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/example/hadoop/pom.xml</source>
+            <destName>example/hadoop/pom.xml</destName>
+        </file>
+        <!-- jdbc -->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/example/jdbc/pom.xml</source>
+            <destName>example/jdbc/pom.xml</destName>
+        </file>
+        <!-- kafka -->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/example/kafka/pom.xml</source>
+            <destName>example/kafka/pom.xml</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/example/kafka/readme.md</source>
+            <destName>example/kafka/readme.md</destName>
+        </file>
+        <!-- rocketmq -->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/example/rocketmq/pom.xml</source>
+            <destName>example/rocketmq/pom.xml</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/example/rocketmq/readme.md</source>
+            <destName>example/rocketmq/readme.md</destName>
+        </file>
+        <!-- session -->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/example/session/pom.xml</source>
+            <destName>example/session/pom.xml</destName>
+        </file>
+        <!-- tsfile -->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/example/tsfile/pom.xml</source>
+            <destName>example/tsfile/pom.xml</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/example/tsfile/readme.md</source>
+            <destName>example/tsfile/readme.md</destName>
+        </file>
+        <!-- distribution-->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/distribution/pom.xml</source>
+            <destName>distribution/pom.xml</destName>
+        </file>
+        <!-- client -->
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/client/pom.xml</source>
+            <destName>client/pom.xml</destName>
+        </file>
+        <!-- client-py -->
+    </files>
+    <fileSets>
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/licenses</directory>
+            <outputDirectory>licenses</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/docs</directory>
+            <outputDirectory>docs</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/.mvn</directory>
+            <excludes>
+                <exclude>**/*.jar</exclude>
+            </excludes>
+            <outputDirectory>.mvn</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/docker</directory>
+            <outputDirectory>docker</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/tools</directory>
+            <outputDirectory>tools</outputDirectory>
+        </fileSet>
+        <!-- modules -->
+        <!-- tsfie -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/tsfile/src</directory>
+            <outputDirectory>tsfile/src</outputDirectory>
+        </fileSet>
+        <!-- spark-tsfie -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/spark-tsfie/src</directory>
+            <outputDirectory>spark-tsfie/src</outputDirectory>
+        </fileSet>
+        <!-- spark-iotdb-connector -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/spark-iotdb-connector/src</directory>
+            <outputDirectory>spark-iotdb-connector/src</outputDirectory>
+        </fileSet>
+        <!-- session -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/session/src</directory>
+            <outputDirectory>session/src</outputDirectory>
+        </fileSet>
+        <!-- service-rpc -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/service-rpc/src</directory>
+            <outputDirectory>service-rpc/src</outputDirectory>
+        </fileSet>
+        <!-- server -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/server/src</directory>
+            <outputDirectory>server/src</outputDirectory>
+        </fileSet>
+        <!-- jdbc -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/jdbc/src</directory>
+            <outputDirectory>jdbc/src</outputDirectory>
+        </fileSet>
+        <!-- hive-connector -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/hive-connector/src</directory>
+            <outputDirectory>hive-connector/src</outputDirectory>
+        </fileSet>
+        <!-- hadoop -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/hadoop/src</directory>
+            <outputDirectory>hadoop/src</outputDirectory>
+        </fileSet>
+        <!-- grafana -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/grafana/src</directory>
+            <outputDirectory>grafana/src</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/grafana/src</directory>
+            <outputDirectory>grafana/src</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/grafana/img</directory>
+            <outputDirectory>grafana/img</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/grafana/conf</directory>
+            <outputDirectory>grafana/conf</outputDirectory>
+        </fileSet>
+        <!-- example -->
+        <!-- tsfie -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/example/tsfile/src</directory>
+            <outputDirectory>example/tsfile/src</outputDirectory>
+        </fileSet>
+        <!-- session -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/example/session/src</directory>
+            <outputDirectory>example/session/src</outputDirectory>
+        </fileSet>
+        <!-- rocketmq -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/example/rocketmq/src</directory>
+            <outputDirectory>example/rocketmq/src</outputDirectory>
+        </fileSet>
+        <!-- kafka -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/example/kafka/src</directory>
+            <outputDirectory>example/kafka/src</outputDirectory>
+        </fileSet>
+        <!-- jdbc -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/example/jdbc/src</directory>
+            <outputDirectory>example/jdbc/src</outputDirectory>
+        </fileSet>
+        <!-- hadoop -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/example/hadoop/src</directory>
+            <outputDirectory>example/hadoop/src</outputDirectory>
+        </fileSet>
+        <!-- distribution -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/distribution/src</directory>
+            <outputDirectory>distribution/src</outputDirectory>
+        </fileSet>
+        <!-- client-py -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/client-py</directory>
+            <outputDirectory>client-py</outputDirectory>
+        </fileSet>
+        <!-- client -->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/client/src</directory>
+            <outputDirectory>client/src</outputDirectory>
+        </fileSet>
+    </fileSets>
+</assembly>
