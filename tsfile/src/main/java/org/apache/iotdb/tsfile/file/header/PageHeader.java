@@ -31,48 +31,31 @@ public class PageHeader {
 
   private int uncompressedSize;
   private int compressedSize;
-  private int numOfValues;
-  private long endTime;
-  private long startTime;
   private Statistics statistics;
 
-  public PageHeader(int uncompressedSize, int compressedSize, int numOfValues,
-      Statistics statistics, long endTime, long startTime) {
+  public PageHeader(int uncompressedSize, int compressedSize, Statistics statistics) {
     this.uncompressedSize = uncompressedSize;
     this.compressedSize = compressedSize;
-    this.numOfValues = numOfValues;
     this.statistics = statistics;
-    this.endTime = endTime;
-    this.startTime = startTime;
   }
 
-
   public static int calculatePageHeaderSizeWithoutStatistics() {
-    return 3 * Integer.BYTES // uncompressedSize, compressedSize, numOfValues
-        + 2 * Long.BYTES;  // maxTimestamp, minTimestamp
+    return 2 * Integer.BYTES; // uncompressedSize, compressedSize
   }
 
   public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType)
       throws IOException {
     int uncompressedSize = ReadWriteIOUtils.readInt(inputStream);
     int compressedSize = ReadWriteIOUtils.readInt(inputStream);
-    int numOfValues = ReadWriteIOUtils.readInt(inputStream);
-    long maxTimestamp = ReadWriteIOUtils.readLong(inputStream);
-    long minTimestamp = ReadWriteIOUtils.readLong(inputStream);
     Statistics statistics = Statistics.deserialize(inputStream, dataType);
-    return new PageHeader(uncompressedSize, compressedSize, numOfValues, statistics, maxTimestamp,
-        minTimestamp);
+    return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
 
   public static PageHeader deserializeFrom(ByteBuffer buffer, TSDataType dataType) {
     int uncompressedSize = ReadWriteIOUtils.readInt(buffer);
     int compressedSize = ReadWriteIOUtils.readInt(buffer);
-    int numOfValues = ReadWriteIOUtils.readInt(buffer);
-    long maxTimestamp = ReadWriteIOUtils.readLong(buffer);
-    long minTimestamp = ReadWriteIOUtils.readLong(buffer);
     Statistics statistics = Statistics.deserialize(buffer, dataType);
-    return new PageHeader(uncompressedSize, compressedSize, numOfValues, statistics, maxTimestamp,
-        minTimestamp);
+    return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
 
   public int getUncompressedSize() {
@@ -91,8 +74,8 @@ public class PageHeader {
     this.compressedSize = compressedSize;
   }
 
-  public int getNumOfValues() {
-    return numOfValues;
+  public long getNumOfValues() {
+    return statistics.getCount();
   }
 
   public Statistics getStatistics() {
@@ -100,28 +83,22 @@ public class PageHeader {
   }
 
   public long getEndTime() {
-    return endTime;
+    return statistics.getEndTime();
   }
 
   public long getStartTime() {
-    return startTime;
+    return statistics.getStartTime();
   }
 
   public void serializeTo(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(uncompressedSize, outputStream);
     ReadWriteIOUtils.write(compressedSize, outputStream);
-    ReadWriteIOUtils.write(numOfValues, outputStream);
-    ReadWriteIOUtils.write(endTime, outputStream);
-    ReadWriteIOUtils.write(startTime, outputStream);
     statistics.serialize(outputStream);
   }
 
   @Override
   public String toString() {
     return "PageHeader{" + "uncompressedSize=" + uncompressedSize + ", compressedSize="
-        + compressedSize
-        + ", numOfValues=" + numOfValues + ", statistics=" + statistics + ", endTime="
-        + endTime
-        + ", startTime=" + startTime + '}';
+        + compressedSize + ", statistics=" + statistics + "}";
   }
 }

@@ -145,11 +145,7 @@ public abstract class Statistics<T> {
    * @throws StatisticsClassException cannot merge statistics
    */
   public void mergeStatistics(Statistics<?> stats) {
-    if (stats == null) {
-      LOG.warn("tsfile-file parameter stats is null");
-      return;
-    }
-    if (this.getClass() == stats.getClass() && !stats.isEmpty) {
+    if (this.getClass() == stats.getClass()) {
       if (stats.startTime < this.startTime) {
         this.startTime = stats.startTime;
       }
@@ -217,7 +213,8 @@ public abstract class Statistics<T> {
   public void update(long time, double value) {
     if (time < this.startTime) {
       startTime = time;
-    } else if (time > this.endTime) {
+    }
+    if (time > this.endTime) {
       endTime = time;
     }
     count++;
@@ -227,7 +224,8 @@ public abstract class Statistics<T> {
   public void update(long time, Binary value) {
     if (time < startTime) {
       startTime = time;
-    } else if (time > endTime) {
+    }
+    if (time > endTime) {
       endTime = time;
     }
     count++;

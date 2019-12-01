@@ -75,7 +75,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   /**
    * statistic of this chunk.
    */
-  private Statistics<?> chunkStatistics;
+  private Statistics<?> statistics;
 
   /**
    * @param schema schema of this measurement
@@ -92,7 +92,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     this.valueCountInOnePageForNextCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
 
     // init statistics for this chunk and page
-    this.chunkStatistics = Statistics.getStatsByType(measurementSchema.getType());
+    this.statistics = Statistics.getStatsByType(measurementSchema.getType());
 
     this.pageWriter = new PageWriter(measurementSchema);
     this.pageWriter.setTimeEncoder(measurementSchema.getTimeEncoder());
@@ -205,7 +205,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
       // update statistics of this chunk
       numOfPages++;
-      this.chunkStatistics.mergeStatistics(pageWriter.getStatistics());
+      this.statistics.mergeStatistics(pageWriter.getStatistics());
     } catch (IOException e) {
       logger.error("meet error in pageWriter.writePageHeaderAndDataIntoBuff,ignore this page:", e);
     } finally {
@@ -217,11 +217,11 @@ public class ChunkWriterImpl implements IChunkWriter {
   @Override
   public void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException {
     sealCurrentPage();
-    writeAllPagesOfChunkToTsFile(tsfileWriter, chunkStatistics);
+    writeAllPagesOfChunkToTsFile(tsfileWriter, statistics);
 
     // reinit this chunk writer
     pageBuffer.reset();
-    this.chunkStatistics = Statistics.getStatsByType(measurementSchema.getType());
+    this.statistics = Statistics.getStatsByType(measurementSchema.getType());
   }
 
   @Override
@@ -269,7 +269,7 @@ public class ChunkWriterImpl implements IChunkWriter {
       logger.debug("finish to flush a page header {} of {} into buffer, buffer position {} ", header,
           measurementSchema.getMeasurementId(), pageBuffer.size());
 
-      chunkStatistics.mergeStatistics(header.getStatistics());
+      statistics.mergeStatistics(header.getStatistics());
 
     } catch (IOException e) {
       throw new PageException(

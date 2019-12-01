@@ -192,16 +192,15 @@ public class ReadWriteIOUtils {
     return bytes.length;
   }
 
-  public static int write(byte[] bytes, OutputStream outputStream) throws IOException {
-    outputStream.write(bytes);
-    return bytes.length;
-  }
 
+  /**
+   * write the size (int) of the binary and then the bytes in binary
+   */
   public static int write(Binary binary, OutputStream outputStream) throws IOException {
-    byte[] bytes = BytesUtils.intToBytes(binary.getValues().length);
-    outputStream.write(bytes);
+    byte[] size = BytesUtils.intToBytes(binary.getValues().length);
+    outputStream.write(size);
     outputStream.write(binary.getValues());
-    return bytes.length + binary.getValues().length;
+    return size.length + binary.getValues().length;
   }
 
   /**
@@ -567,17 +566,16 @@ public class ReadWriteIOUtils {
     return readBytes(inputStream, length);
   }
 
-  /**
-   * read bytes from inputStream, this method makes sure that you can read length bytes or reach to
-   * the end of the stream.
-   */
-  public static ByteBuffer readByteBufferWithSelfDescriptionLength(InputStream inputStream)
-      throws IOException {
-    byte[] bytes = readBytesWithSelfDescriptionLength(inputStream);
-    ByteBuffer byteBuffer = ByteBuffer.allocate(bytes.length);
-    byteBuffer.put(bytes);
-    byteBuffer.flip();
-    return byteBuffer;
+  public static Binary readBinary(ByteBuffer buffer) {
+    int length = readInt(buffer);
+    byte[] bytes = readBytes(buffer, length);
+    return new Binary(bytes);
+  }
+
+  public static Binary readBinary(InputStream inputStream) throws IOException {
+    int length = readInt(inputStream);
+    byte[] bytes = readBytes(inputStream, length);
+    return new Binary(bytes);
   }
 
   /**

@@ -69,7 +69,6 @@ public class TestHelper {
     Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
     statistics.setEmpty(false);
     return new PageHeader(PageHeaderTest.UNCOMPRESSED_SIZE,
-        PageHeaderTest.COMPRESSED_SIZE, PageHeaderTest.NUM_OF_VALUES,
-        statistics, PageHeaderTest.MAX_TIMESTAMO, PageHeaderTest.MIN_TIMESTAMO);
+        PageHeaderTest.COMPRESSED_SIZE, statistics);
   }
 }

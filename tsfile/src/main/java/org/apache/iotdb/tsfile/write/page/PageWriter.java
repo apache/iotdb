@@ -44,10 +44,6 @@ public class PageWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(PageWriter.class);
 
-  // time of the latest written time value pair, we assume data is written in time order
-  private long pageMaxTime;
-  private long pageMinTime = Long.MIN_VALUE;
-
   private ICompressor compressor;
 
   // time
@@ -61,7 +57,6 @@ public class PageWriter {
    * statistic of current page. It will be reset after calling {@code writePageHeaderAndDataIntoBuff()}
    */
   private Statistics<?> statistics;
-  private int pointNumber;
 
   public PageWriter() {
     this(null, null);
@@ -84,11 +79,6 @@ public class PageWriter {
    * write a time value pair into encoder
    */
   public void write(long time, boolean value) {
-    ++pointNumber;
-    this.pageMaxTime = time;
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = time;
-    }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
@@ -98,7 +88,6 @@ public class PageWriter {
    * write a time value pair into encoder
    */
   public void write(long time, short value) {
-    ++pointNumber;
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
@@ -108,11 +97,6 @@ public class PageWriter {
    * write a time value pair into encoder
    */
   public void write(long time, int value) {
-    ++pointNumber;
-    this.pageMaxTime = time;
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = time;
-    }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
@@ -122,11 +106,6 @@ public class PageWriter {
    * write a time value pair into encoder
    */
   public void write(long time, long value) {
-    ++pointNumber;
-    this.pageMaxTime = time;
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = time;
-    }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
@@ -136,11 +115,6 @@ public class PageWriter {
    * write a time value pair into encoder
    */
   public void write(long time, float value) {
-    ++pointNumber;
-    this.pageMaxTime = time;
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = time;
-    }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
@@ -150,11 +124,6 @@ public class PageWriter {
    * write a time value pair into encoder
    */
   public void write(long time, double value) {
-    ++pointNumber;
-    this.pageMaxTime = time;
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = time;
-    }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
@@ -164,11 +133,6 @@ public class PageWriter {
    * write a time value pair into encoder
    */
   public void write(long time, Binary value) {
-    ++pointNumber;
-    this.pageMaxTime = time;
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = time;
-    }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
@@ -178,11 +142,6 @@ public class PageWriter {
    * write time series into encoder
    */
   public void write(long[] timestamps, boolean[] values, int batchSize) {
-    pointNumber += batchSize;
-    this.pageMaxTime = timestamps[batchSize - 1];
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = timestamps[0];
-    }
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
@@ -194,11 +153,6 @@ public class PageWriter {
    * write time series into encoder
    */
   public void write(long[] timestamps, int[] values, int batchSize) {
-    pointNumber += batchSize;
-    this.pageMaxTime = timestamps[batchSize - 1];
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = timestamps[0];
-    }
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
@@ -210,11 +164,6 @@ public class PageWriter {
    * write time series into encoder
    */
   public void write(long[] timestamps, long[] values, int batchSize) {
-    pointNumber += batchSize;
-    this.pageMaxTime = timestamps[batchSize - 1];
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = timestamps[0];
-    }
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
@@ -226,11 +175,6 @@ public class PageWriter {
    * write time series into encoder
    */
   public void write(long[] timestamps, float[] values, int batchSize) {
-    pointNumber += batchSize;
-    this.pageMaxTime = timestamps[batchSize - 1];
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = timestamps[0];
-    }
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
@@ -242,11 +186,6 @@ public class PageWriter {
    * write time series into encoder
    */
   public void write(long[] timestamps, double[] values, int batchSize) {
-    pointNumber += batchSize;
-    this.pageMaxTime = timestamps[batchSize - 1];
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = timestamps[0];
-    }
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
@@ -258,11 +197,6 @@ public class PageWriter {
    * write time series into encoder
    */
   public void write(long[] timestamps, Binary[] values, int batchSize) {
-    pointNumber += batchSize;
-    this.pageMaxTime = timestamps[batchSize - 1];
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = timestamps[0];
-    }
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
@@ -294,19 +228,12 @@ public class PageWriter {
     return buffer;
   }
 
-  public long getPageMaxTime() {
-    return pageMaxTime;
-  }
-
-  public long getPageMinTime() {
-    return pageMinTime;
-  }
 
   /**
    * write the page header and data into the PageWriter's output stream.
    */
   public void writePageHeaderAndDataIntoBuff(PublicBAOS pageBuffer) throws IOException {
-    if (pointNumber == 0) {
+    if (statistics.getCount() == 0) {
       return;
     }
 
@@ -327,8 +254,7 @@ public class PageWriter {
     }
 
     // write the page header to IOWriter
-    PageHeader header = new PageHeader(uncompressedSize, compressedSize, pointNumber, statistics,
-        pageMaxTime, pageMinTime);
+    PageHeader header = new PageHeader(uncompressedSize, compressedSize, statistics);
     header.serializeTo(pageBuffer);
 
     // write page content to temp PBAOS
@@ -360,9 +286,6 @@ public class PageWriter {
   public void reset(MeasurementSchema measurementSchema) {
     timeOut.reset();
     valueOut.reset();
-    pointNumber =0;
-    pageMinTime = Long.MIN_VALUE;
-    pageMaxTime = Long.MIN_VALUE;
     statistics = Statistics.getStatsByType(measurementSchema.getType());
   }
 
@@ -378,8 +301,8 @@ public class PageWriter {
     statistics = Statistics.getStatsByType(dataType);
   }
 
-  public int getPointNumber(){
-    return pointNumber;
+  public long getPointNumber(){
+    return statistics.getCount();
   }
 
   public Statistics<?> getStatistics(){
