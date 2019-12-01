@@ -85,7 +85,7 @@ public class IoTDBMultiSeriesIT {
     tsFileConfig.setGroupSizeInByte(groupSizeInByte);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
 
-    //EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.cleanEnv();
   }
 
   private static void insertData()
@@ -95,9 +95,9 @@ public class IoTDBMultiSeriesIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-//      for (String sql : Constant.create_sql) {
-//        statement.execute(sql);
-//      }
+      for (String sql : Constant.create_sql) {
+        statement.execute(sql);
+      }
 
       statement.execute("SET STORAGE GROUP TO root.fans");
       statement.execute("CREATE TIMESERIES root.fans.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE");
@@ -114,145 +114,145 @@ public class IoTDBMultiSeriesIT {
         statement.execute(sql);
       }
 
-//      // insert large amount of data time range : 13700 ~ 24000
-//      for (int time = 13700; time < 24000; time++) {
-//
-//        String sql = String
-//            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 70);
-//        statement.execute(sql);
-//        sql = String
-//            .format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time % 40);
-//        statement.execute(sql);
-//        sql = String
-//            .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 123);
-//        statement.execute(sql);
-//      }
-//
-//      // insert large amount of data time range : 3000 ~ 13600
-//      for (int time = 3000; time < 13600; time++) {
-//        // System.out.println("===" + time);
-//        String sql = String
-//            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 100);
-//        statement.execute(sql);
-//        sql = String
-//            .format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time % 17);
-//        statement.execute(sql);
-//        sql = String
-//            .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 22);
-//        statement.execute(sql);
-//        sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-//            Constant.stringValue[time % 5]);
-//        statement.execute(sql);
-//        sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
-//            Constant.booleanValue[time % 2]);
-//        statement.execute(sql);
-//        sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, time);
-//        statement.execute(sql);
-//      }
-//
-//      statement.execute("flush");
-//      statement.execute("merge");
-//
-//      // buffwrite data, unsealed file
-//      for (int time = 100000; time < 101000; time++) {
-//
-//        String sql = String
-//            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 20);
-//        statement.execute(sql);
-//        sql = String
-//            .format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time % 30);
-//        statement.execute(sql);
-//        sql = String
-//            .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 77);
-//        statement.execute(sql);
-//      }
+      // insert large amount of data time range : 13700 ~ 24000
+      for (int time = 13700; time < 24000; time++) {
 
-      //statement.execute("flush");
-
-//      // sequential data, memory data
-//      for (int time = 200000; time < 201000; time++) {
-//
-//        String sql = String
-//            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, -time % 20);
-//        statement.execute(sql);
-//        sql = String
-//            .format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, -time % 30);
-//        statement.execute(sql);
-//        sql = String
-//            .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, -time % 77);
-//        statement.execute(sql);
-//      }
-//
-//      // unseq insert, time < 3000
-//      for (int time = 2000; time < 2500; time++) {
-//
-//        String sql = String
-//            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time);
-//        statement.execute(sql);
-//        sql = String
-//            .format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time + 1);
-//        statement.execute(sql);
-//        sql = String
-//            .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time + 2);
-//        statement.execute(sql);
-//        sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-//            Constant.stringValue[time % 5]);
-//        statement.execute(sql);
-//      }
-//
-//      // seq insert, time > 200000
-//      for (int time = 200900; time < 201000; time++) {
-//
-//        String sql = String
-//            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, 6666);
-//        statement.execute(sql);
-//        sql = String.format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, 7777);
-//        statement.execute(sql);
-//        sql = String.format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, 8888);
-//        statement.execute(sql);
-//        sql = String
-//            .format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, "goodman");
-//        statement.execute(sql);
-//        sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
-//            Constant.booleanValue[time % 2]);
-//        statement.execute(sql);
-//        sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, 9999);
-//        statement.execute(sql);
-//      }
-
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void insertTest() throws ClassNotFoundException {
-    String selectSql = "select * from root";
-
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute(selectSql);
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet
-                  .getString("root.fans.d0.s0")
-                  + "," + resultSet.getString("root.fans.d0.s1");
-          System.out.println(ans);
-          cnt++;
-        }
-        assertEquals(100, cnt);
+        String sql = String
+            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 70);
+        statement.execute(sql);
+        sql = String
+            .format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time % 40);
+        statement.execute(sql);
+        sql = String
+            .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 123);
+        statement.execute(sql);
       }
+
+      // insert large amount of data time range : 3000 ~ 13600
+      for (int time = 3000; time < 13600; time++) {
+        // System.out.println("===" + time);
+        String sql = String
+            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 100);
+        statement.execute(sql);
+        sql = String
+            .format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time % 17);
+        statement.execute(sql);
+        sql = String
+            .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 22);
+        statement.execute(sql);
+        sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
+            Constant.stringValue[time % 5]);
+        statement.execute(sql);
+        sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
+            Constant.booleanValue[time % 2]);
+        statement.execute(sql);
+        sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, time);
+        statement.execute(sql);
+      }
+
+      statement.execute("flush");
+      statement.execute("merge");
+
+      // buffwrite data, unsealed file
+      for (int time = 100000; time < 101000; time++) {
+
+        String sql = String
+            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 20);
+        statement.execute(sql);
+        sql = String
+            .format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time % 30);
+        statement.execute(sql);
+        sql = String
+            .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 77);
+        statement.execute(sql);
+      }
+
+      statement.execute("flush");
+
+      // sequential data, memory data
+      for (int time = 200000; time < 201000; time++) {
+
+        String sql = String
+            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, -time % 20);
+        statement.execute(sql);
+        sql = String
+            .format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, -time % 30);
+        statement.execute(sql);
+        sql = String
+            .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, -time % 77);
+        statement.execute(sql);
+      }
+
+      // unseq insert, time < 3000
+      for (int time = 2000; time < 2500; time++) {
+
+        String sql = String
+            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time);
+        statement.execute(sql);
+        sql = String
+            .format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time + 1);
+        statement.execute(sql);
+        sql = String
+            .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time + 2);
+        statement.execute(sql);
+        sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
+            Constant.stringValue[time % 5]);
+        statement.execute(sql);
+      }
+
+      // seq insert, time > 200000
+      for (int time = 200900; time < 201000; time++) {
+
+        String sql = String
+            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, 6666);
+        statement.execute(sql);
+        sql = String.format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, 7777);
+        statement.execute(sql);
+        sql = String.format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, 8888);
+        statement.execute(sql);
+        sql = String
+            .format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, "goodman");
+        statement.execute(sql);
+        sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
+            Constant.booleanValue[time % 2]);
+        statement.execute(sql);
+        sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, 9999);
+        statement.execute(sql);
+      }
+
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
+
+//  @Test
+//  public void insertTest() throws ClassNotFoundException {
+//    String selectSql = "select * from root";
+//
+//    Class.forName(Config.JDBC_DRIVER_NAME);
+//    try (Connection connection = DriverManager
+//        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+//        Statement statement = connection.createStatement()) {
+//      boolean hasResultSet = statement.execute(selectSql);
+//      Assert.assertTrue(hasResultSet);
+//      try (ResultSet resultSet = statement.getResultSet()) {
+//        int cnt = 0;
+//        while (resultSet.next()) {
+//          String ans =
+//              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet
+//                  .getString("root.fans.d0.s0")
+//                  + "," + resultSet.getString("root.fans.d0.s1");
+//          System.out.println(ans);
+//          cnt++;
+//        }
+//        assertEquals(23499, cnt);
+//      }
+//    } catch (Exception e) {
+//      e.printStackTrace();
+//      fail(e.getMessage());
+//    }
+//  }
 
   // "select * from root.vehicle" : test select wild data
   @Test

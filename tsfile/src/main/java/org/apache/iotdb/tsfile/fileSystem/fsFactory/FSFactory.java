@@ -28,6 +28,8 @@ import java.net.URI;
 
 public interface FSFactory {
 
+  File getFileWithParent(String pathname);
+
   File getFile(String pathname);
 
   File getFile(String parent, String child);

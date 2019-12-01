@@ -457,6 +457,19 @@ public class IoTDBConfig {
    */
   private long defaultTTL = Long.MAX_VALUE;
 
+  public long getTimeRangeForStorageGroup() {
+    return timeRangeForStorageGroup;
+  }
+
+  public void setTimeRangeForStorageGroup(long timeRangeForStorageGroup) {
+    this.timeRangeForStorageGroup = timeRangeForStorageGroup;
+  }
+
+  /**
+   * Time range for divide storage group, unit is second
+   */
+  private long timeRangeForStorageGroup = 86400;
+
   public IoTDBConfig() {
     // empty constructor
   }

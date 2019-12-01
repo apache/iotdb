@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.reader.fileRelated;
 
 import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -89,15 +90,21 @@ public class UnSealedTsFileReaderTest extends ReaderTestHelper {
     for (int j = 1000; j <= 1009; j++) {
       insertOneRecord(j, j);
     }
-    storageGroupProcessor.getWorkSequenceTsFileProcessor().syncFlush();
+    for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessor()){
+      tsFileProcessor.syncFlush();
+    }
     for (int j = 1010; j <= 1019; j++) {
       insertOneRecord(j, j);
     }
-    storageGroupProcessor.getWorkSequenceTsFileProcessor().syncFlush();
+    for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessor()){
+      tsFileProcessor.syncFlush();
+    }
     for (int j = 1020; j <= 3019; j++) {
       insertOneRecord(j, j);
     }
-    storageGroupProcessor.getWorkSequenceTsFileProcessor().syncFlush();
+    for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessor()){
+      tsFileProcessor.syncFlush();
+    }
     for (int j = 3020; j <= 3029; j = j + 1) {
       insertOneRecord(j, j);
     }

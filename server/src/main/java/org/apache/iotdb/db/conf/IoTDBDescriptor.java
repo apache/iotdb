@@ -293,6 +293,9 @@ public class IoTDBDescriptor {
 
       conf.setDefaultTTL(Long.parseLong(properties.getProperty("default_ttl",
           String.valueOf(conf.getDefaultTTL()))));
+      // Time range for divide storage group
+      conf.setTimeRangeForStorageGroup(
+          Long.parseLong(properties.getProperty("storage_group_time_range", String.valueOf(conf.getTimeRangeForStorageGroup()))));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()

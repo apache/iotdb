@@ -23,6 +23,7 @@ import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -77,7 +78,7 @@ public class MergeResource {
     return res.isClosed() && !res.isDeleted() && res.stillLives(timeLowerBound);
   }
 
-  public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
+  public MergeResource(Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
       long timeLowerBound) {
     this.timeLowerBound = timeLowerBound;
     this.seqFiles =

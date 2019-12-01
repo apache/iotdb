@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -42,7 +43,9 @@ public class UnseqResourceReaderTest extends ReaderTestHelper {
     for (int j = 1; j <= 100; j++) {
       insertOneRecord(j, j);
     }
-    storageGroupProcessor.getWorkSequenceTsFileProcessor().syncFlush();
+    for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessor()){
+      tsFileProcessor.syncFlush();
+    }
 
     for (int j = 10; j >= 1; j--) {
       insertOneRecord(j, j);

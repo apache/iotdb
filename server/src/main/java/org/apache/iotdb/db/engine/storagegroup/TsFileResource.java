@@ -57,6 +57,14 @@ public class TsFileResource {
    */
   private Map<String, Long> endTimeMap;
 
+  public TsFileProcessor getProcessor() {
+    return processor;
+  }
+
+  public void setProcessor(TsFileProcessor processor) {
+    this.processor = processor;
+  }
+
   private TsFileProcessor processor;
 
   private ModificationFile modFile;

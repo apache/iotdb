@@ -38,12 +38,17 @@ public class LocalFSFactory implements FSFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalFSFactory.class);
 
-  public File getFile(String pathname) {
+  @Override
+  public File getFileWithParent(String pathname) {
     File res = new File(pathname);
     if (!res.exists()) {
       res.getParentFile().mkdirs();
     }
     return res;
+  }
+
+  public File getFile(String pathname) {
+    return new File(pathname);
   }
 
   public File getFile(String parent, String child) {

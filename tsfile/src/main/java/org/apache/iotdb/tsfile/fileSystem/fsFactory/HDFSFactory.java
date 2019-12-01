@@ -64,6 +64,11 @@ public class HDFSFactory implements FSFactory {
     }
   }
 
+  @Override
+  public File getFileWithParent(String pathname) {
+    return null;
+  }
+
   public File getFile(String pathname) {
     try {
       return (File) constructorWithPathname.newInstance(pathname);

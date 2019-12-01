@@ -108,7 +108,7 @@ abstract class MergeTest {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         MManager.getInstance().addPathToMTree(
             device + PATH_SEPARATOR + measurementSchema.getMeasurementId(), measurementSchema
-            .getType(), measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
+                .getType(), measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
             Collections.emptyMap());
       }
     }
@@ -136,7 +136,8 @@ abstract class MergeTest {
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
     File file = new File(unseqFileNum + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
-        + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0 + ".tsfile");
+        + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum + IoTDBConstant.TSFILE_NAME_SEPARATOR
+        + 0 + ".tsfile");
     TsFileResource tsFileResource = new TsFileResource(file);
     unseqResources.add(tsFileResource);
     prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
@@ -144,11 +145,18 @@ abstract class MergeTest {
 
   private void removeFiles() throws IOException {
     for (TsFileResource tsFileResource : seqResources) {
-      tsFileResource.remove();
-    }
+      try {
+          tsFileResource.remove();
+        }catch (NullPointerException e) {
+      }
+      }
     for (TsFileResource tsFileResource : unseqResources) {
-      tsFileResource.remove();
+      try {
+        tsFileResource.remove();
+      }catch (NullPointerException e) {
+      }
     }
+
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     FileReaderManager.getInstance().stop();
   }

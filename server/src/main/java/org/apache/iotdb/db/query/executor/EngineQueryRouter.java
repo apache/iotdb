@@ -145,7 +145,6 @@ public class EngineQueryRouter implements IEngineQueryRouter {
 
     IExpression optimizedExpression = ExpressionOptimizer.getInstance()
         .optimize(expression, selectedSeries);
-    System.out.println(optimizedExpression);
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
       GroupByWithoutValueFilterDataSet groupByEngine = new GroupByWithoutValueFilterDataSet(
           nextJobId, selectedSeries, unit, origin, mergedIntervalList);

@@ -236,6 +236,15 @@ The detail of each variables are as follows:
 |Default| true |
 |Effective|Trigger|
 
+* storage\_group\_time\_range
+
+|Name| storage\_group\_time\_range |
+|:---:|:---|
+|Description| Time range for divide storage group, time series data will divide into groups by this time range |
+|Type|Int64|
+|Default| 86400 |
+|Effective|After restart system|
+
 * multi\_dir\_strategy
 
 |Name| multi\_dir\_strategy |
