@@ -104,20 +104,6 @@ source-release.zip, just add it into <files> tag.
             <source>${maven.multiModuleProjectDirectory}/spark-tsfile/README.md</source>
             <destName>spark-tsfile/README.md</destName>
         </file>
-        <!-- spark-iotdb-connector -->
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/spark-iotdb-connector/pom.xml</source>
-            <destName>spark-iotdb-connector/pom.xml</destName>
-        </file>
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/spark-iotdb-connector/Readme.md</source>
-            <destName>spark-iotdb-connector/Readme.md</destName>
-        </file>
-        <!-- session-->
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/session/pom.xml</source>
-            <destName>session/pom.xml</destName>
-        </file>
         <!-- service-rpc-->
         <file>
             <source>${maven.multiModuleProjectDirectory}/service-rpc/pom.xml</source>
@@ -144,11 +130,6 @@ source-release.zip, just add it into <files> tag.
         <file>
             <source>${maven.multiModuleProjectDirectory}/jdbc/README.md</source>
             <destName>jdbc/README.md</destName>
-        </file>
-        <!-- hive-connector-->
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/hive-connector/pom.xml</source>
-            <destName>hive-connector/pom.xml</destName>
         </file>
         <!-- hadoop-->
         <file>
@@ -177,16 +158,6 @@ source-release.zip, just add it into <files> tag.
             <source>${maven.multiModuleProjectDirectory}/example/pom.xml</source>
             <destName>example/pom.xml</destName>
         </file>
-        <!-- hadoop -->
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/example/hadoop/pom.xml</source>
-            <destName>example/hadoop/pom.xml</destName>
-        </file>
-        <!-- jdbc -->
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/example/jdbc/pom.xml</source>
-            <destName>example/jdbc/pom.xml</destName>
-        </file>
         <!-- kafka -->
         <file>
             <source>${maven.multiModuleProjectDirectory}/example/kafka/pom.xml</source>
@@ -204,20 +175,6 @@ source-release.zip, just add it into <files> tag.
         <file>
             <source>${maven.multiModuleProjectDirectory}/example/rocketmq/readme.md</source>
             <destName>example/rocketmq/readme.md</destName>
-        </file>
-        <!-- session -->
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/example/session/pom.xml</source>
-            <destName>example/session/pom.xml</destName>
-        </file>
-        <!-- tsfile -->
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/example/tsfile/pom.xml</source>
-            <destName>example/tsfile/pom.xml</destName>
-        </file>
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/example/tsfile/readme.md</source>
-            <destName>example/tsfile/readme.md</destName>
         </file>
         <!-- distribution-->
         <file>
@@ -266,16 +223,6 @@ source-release.zip, just add it into <files> tag.
             <directory>${maven.multiModuleProjectDirectory}/spark-tsfie/src</directory>
             <outputDirectory>spark-tsfie/src</outputDirectory>
         </fileSet>
-        <!-- spark-iotdb-connector -->
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/spark-iotdb-connector/src</directory>
-            <outputDirectory>spark-iotdb-connector/src</outputDirectory>
-        </fileSet>
-        <!-- session -->
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/session/src</directory>
-            <outputDirectory>session/src</outputDirectory>
-        </fileSet>
         <!-- service-rpc -->
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/service-rpc/src</directory>
@@ -290,11 +237,6 @@ source-release.zip, just add it into <files> tag.
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/jdbc/src</directory>
             <outputDirectory>jdbc/src</outputDirectory>
-        </fileSet>
-        <!-- hive-connector -->
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/hive-connector/src</directory>
-            <outputDirectory>hive-connector/src</outputDirectory>
         </fileSet>
         <!-- hadoop -->
         <fileSet>
@@ -319,16 +261,6 @@ source-release.zip, just add it into <files> tag.
             <outputDirectory>grafana/conf</outputDirectory>
         </fileSet>
         <!-- example -->
-        <!-- tsfie -->
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/example/tsfile/src</directory>
-            <outputDirectory>example/tsfile/src</outputDirectory>
-        </fileSet>
-        <!-- session -->
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/example/session/src</directory>
-            <outputDirectory>example/session/src</outputDirectory>
-        </fileSet>
         <!-- rocketmq -->
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/example/rocketmq/src</directory>
@@ -339,25 +271,10 @@ source-release.zip, just add it into <files> tag.
             <directory>${maven.multiModuleProjectDirectory}/example/kafka/src</directory>
             <outputDirectory>example/kafka/src</outputDirectory>
         </fileSet>
-        <!-- jdbc -->
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/example/jdbc/src</directory>
-            <outputDirectory>example/jdbc/src</outputDirectory>
-        </fileSet>
-        <!-- hadoop -->
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/example/hadoop/src</directory>
-            <outputDirectory>example/hadoop/src</outputDirectory>
-        </fileSet>
         <!-- distribution -->
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/distribution/src</directory>
             <outputDirectory>distribution/src</outputDirectory>
-        </fileSet>
-        <!-- client-py -->
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/client-py</directory>
-            <outputDirectory>client-py</outputDirectory>
         </fileSet>
         <!-- client -->
         <fileSet>
