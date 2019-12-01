@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.reader.universal;
 import java.io.IOException;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 /**
@@ -42,19 +43,13 @@ public abstract class IterateReader implements IAggregateReader {
 
   @Override
   public boolean hasNext() throws IOException {
-
     if (curReaderInitialized && currentSeriesReader.hasNext()) {
       return true;
-    } else {
-      curReaderInitialized = false;
     }
-
-    while (nextSeriesReaderIndex < readerSize) {
-      boolean isConstructed = constructNextReader(nextSeriesReaderIndex++);
-      if (isConstructed && currentSeriesReader.hasNext()) {
-        curReaderInitialized = true;
-        return true;
-      }
+    curReaderInitialized = false;
+    if (hasNextChunk()) {
+      curReaderInitialized = true;
+      return currentSeriesReader.hasNext();
     }
     return false;
   }
@@ -81,6 +76,23 @@ public abstract class IterateReader implements IAggregateReader {
   @Override
   public void skipPageData() throws IOException {
     currentSeriesReader.skipPageData();
+  }
+
+  @Override
+  public boolean hasNextChunk() throws IOException {
+    while (nextSeriesReaderIndex < readerSize) {
+      boolean isConstructed = constructNextReader(nextSeriesReaderIndex++);
+      if (isConstructed && currentSeriesReader.hasNextChunk()) {
+        curReaderInitialized = true;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Override
+  public ChunkMetaData nextChunkMeta() {
+    return currentSeriesReader.nextChunkMeta();
   }
 
   @Override

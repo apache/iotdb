@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.reader.fileRelated;
 import java.io.IOException;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 
@@ -40,6 +41,16 @@ public class FileSeriesReaderAdapter implements IAggregateReader {
 
   public FileSeriesReaderAdapter(FileSeriesReader fileSeriesReader) {
     this.fileSeriesReader = fileSeriesReader;
+  }
+
+  @Override
+  public boolean hasNextChunk() throws IOException {
+    return fileSeriesReader.hasNextChunk();
+  }
+
+  @Override
+  public ChunkMetaData nextChunkMeta() {
+    return fileSeriesReader.currentChunkMeta();
   }
 
   @Override

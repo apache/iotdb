@@ -38,6 +38,7 @@ public abstract class FileSeriesReader {
   private int chunkToRead;
 
   private BatchData data;
+  private ChunkMetaData chunkMetaData;
 
   /**
    * constructor of FileSeriesReader.
@@ -54,23 +55,13 @@ public abstract class FileSeriesReader {
    * @return True if current chunk has next batch data
    */
   public boolean hasNextBatch() throws IOException {
-
-    // current chunk has additional batch
     if (chunkReader != null && chunkReader.hasNextBatch()) {
       return true;
     }
 
-    // current chunk does not have additional batch, init new chunk reader
-    while (chunkToRead < chunkMetaDataList.size()) {
-
-      ChunkMetaData chunkMetaData = nextChunkMeta();
-      if (chunkSatisfied(chunkMetaData)) {
-        // chunk metadata satisfy the condition
-        initChunkReader(chunkMetaData);
-
-        if (chunkReader.hasNextBatch()) {
-          return true;
-        }
+    if (hasNextChunk()) {
+      if (chunkReader.hasNextBatch()) {
+        return true;
       }
     }
     return false;
@@ -106,5 +97,23 @@ public abstract class FileSeriesReader {
 
   private ChunkMetaData nextChunkMeta() {
     return chunkMetaDataList.get(chunkToRead++);
+  }
+
+  public boolean hasNextChunk() throws IOException {
+    // current chunk does not have additional batch, init new chunk reader
+    while (chunkToRead < chunkMetaDataList.size()) {
+
+      chunkMetaData = nextChunkMeta();
+      if (chunkSatisfied(chunkMetaData)) {
+        // chunk metadata satisfy the condition
+        initChunkReader(chunkMetaData);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public ChunkMetaData currentChunkMeta() {
+    return chunkMetaData;
   }
 }

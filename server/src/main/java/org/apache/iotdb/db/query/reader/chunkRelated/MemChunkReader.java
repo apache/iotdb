@@ -21,7 +21,6 @@ package org.apache.iotdb.db.query.reader.chunkRelated;
 import java.io.IOException;
 import java.util.Iterator;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.query.reader.IAggregateChunkReader;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileIterateReader;
@@ -40,7 +39,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
  * This class is used in {@link UnSealedTsFileIterateReader} and {@link
  * org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader}.
  */
-public class MemChunkReader implements IPointReader, IAggregateReader, IAggregateChunkReader {
+public class MemChunkReader implements IPointReader, IAggregateReader {
 
   private Iterator<TimeValuePair> timeValuePairIterator;
   private Filter filter;
@@ -116,18 +115,8 @@ public class MemChunkReader implements IPointReader, IAggregateReader, IAggregat
   }
 
   @Override
-  public PageHeader nextPageHeader() {
-    return null;
-  }
-
-  @Override
-  public void skipPageData() {
-    nextBatch();
-  }
-
-  @Override
   public boolean hasNextChunk() throws IOException {
-    return false;
+    return hasNext();
   }
 
   @Override
@@ -136,7 +125,12 @@ public class MemChunkReader implements IPointReader, IAggregateReader, IAggregat
   }
 
   @Override
-  public ChunkReader readChunk() {
+  public PageHeader nextPageHeader() {
     return null;
+  }
+
+  @Override
+  public void skipPageData() {
+    nextBatch();
   }
 }
