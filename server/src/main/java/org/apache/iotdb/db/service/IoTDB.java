@@ -99,7 +99,7 @@ public class IoTDB implements IoTDBMBean {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
       StatMonitor.getInstance().recovery();
     }
-    
+
     logger.info("IoTDB is set up.");
   }
 
