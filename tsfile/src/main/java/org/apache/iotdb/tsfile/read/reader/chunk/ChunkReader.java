@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.read.reader.chunk;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Arrays;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
@@ -33,7 +32,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
@@ -169,16 +167,11 @@ public class ChunkReader {
   }
 
   public boolean pageSatisfied(PageHeader pageHeader) {
-    if (pageHeader.getMaxTimestamp() < deletedAt) {
+    if (pageHeader.getStatistics().getEndTime() < deletedAt) {
       return false;
     }
     if (filter != null) {
-      DigestForFilter digest = new DigestForFilter(pageHeader.getMinTimestamp(),
-          pageHeader.getMaxTimestamp(),
-          pageHeader.getStatistics().getMinBytebuffer(),
-          pageHeader.getStatistics().getMaxBytebuffer(),
-          chunkHeader.getDataType());
-      return filter.satisfy(digest);
+      return filter.satisfy(pageHeader.getStatistics());
     }
     return true;
   }
