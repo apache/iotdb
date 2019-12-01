@@ -153,34 +153,30 @@ public class AggregateEngineExecutor {
 
     while (sequenceReader.hasNextChunk()) {
       ChunkMetaData chunkMetaData = sequenceReader.nextChunkMeta();
-      if (chunkMetaData.getDeletedAt() < chunkMetaData.getDeletedAt() && filter != null && filter
-          .containStartEndTime(chunkMetaData.getStartTime(), chunkMetaData.getEndTime())) {
-        function.calculateValueFromUnsequenceReader(unSequenceReader, chunkMetaData.getStartTime());
-        if (!(unSequenceReader.hasNext()
-            && unSequenceReader.current().getTimestamp() <= chunkMetaData
-            .getEndTime())) {
-          function.calculateValueFromChunkData(chunkMetaData);
-          continue;
-        }
-      }
-      while (sequenceReader.hasNext()) {
-        PageHeader pageHeader = sequenceReader.nextPageHeader();
-        // judge if overlap with unsequence data
-        if (canUseHeader(function, pageHeader, unSequenceReader, filter)) {
-          // cal by pageHeader
-          function.calculateValueFromPageHeader(pageHeader);
-          sequenceReader.skipPageData();
-        } else {
-          // cal by pageData
-          function.calculateValueFromPageData(sequenceReader.nextBatch(), unSequenceReader);
-        }
-
-        if (function.isCalculatedAggregationResult()) {
-          return function.getResult();
-        }
+      if (chunkMetaData != null && canUseHeader(function, chunkMetaData.getStartTime(),
+          chunkMetaData.getEndTime(), unSequenceReader, filter)) {
+        function.calculateValueFromChunkData(chunkMetaData);
+        continue;
       }
     }
+    while (sequenceReader.hasNext()) {
+      PageHeader pageHeader = sequenceReader.nextPageHeader();
+      // judge if overlap with unsequence data
+      if (pageHeader != null && canUseHeader(function, pageHeader.getStartTime(),
+          pageHeader.getEndTime(),
+          unSequenceReader, filter)) {
+        // cal by pageHeader
+        function.calculateValueFromPageHeader(pageHeader);
+        sequenceReader.skipPageData();
+      } else {
+        // cal by pageData
+        function.calculateValueFromPageData(sequenceReader.nextBatch(), unSequenceReader);
+      }
 
+      if (function.isCalculatedAggregationResult()) {
+        return function.getResult();
+      }
+    }
     // cal with unsequence data
     if (unSequenceReader.hasNext()) {
       function.calculateValueFromUnsequenceReader(unSequenceReader);
@@ -191,17 +187,9 @@ public class AggregateEngineExecutor {
   /**
    * determine whether pageHeader can be used to compute aggregation results.
    */
-  private boolean canUseHeader(AggregateFunction function, PageHeader pageHeader,
+  private boolean canUseHeader(AggregateFunction function, long minTime, long maxTime,
       IPointReader unSequenceReader, Filter filter)
       throws IOException, QueryProcessException {
-    // if page data is memory data.
-    if (pageHeader == null) {
-      return false;
-    }
-
-    long minTime = pageHeader.getStartTime();
-    long maxTime = pageHeader.getEndTime();
-
     // If there are points in the page that do not satisfy the time filter,
     // page header cannot be used to calculate.
     if (filter != null && !filter.containStartEndTime(minTime, maxTime)) {
@@ -230,8 +218,8 @@ public class AggregateEngineExecutor {
     boolean isChunkEnd = false;
     while (sequenceReader.hasNextChunk()) {
       ChunkMetaData chunkMetaData = sequenceReader.nextChunkMeta();
-      if (chunkMetaData.getDeletedAt() < chunkMetaData.getDeletedAt() && timeFilter != null && timeFilter
-          .containStartEndTime(chunkMetaData.getStartTime(), chunkMetaData.getEndTime())) {
+      if (chunkMetaData != null && canUseHeader(function, chunkMetaData.getStartTime(),
+          chunkMetaData.getEndTime(), unSequenceReader, timeFilter)) {
         function.calculateValueFromUnsequenceReader(unSequenceReader, chunkMetaData.getStartTime());
         if (!(unSequenceReader.hasNext()
             && unSequenceReader.current().getTimestamp() <= chunkMetaData
@@ -243,7 +231,9 @@ public class AggregateEngineExecutor {
       while (sequenceReader.hasNext()) {
         PageHeader pageHeader = sequenceReader.nextPageHeader();
         // judge if overlap with unsequence data
-        if (canUseHeader(function, pageHeader, unSequenceReader, timeFilter)) {
+        if (pageHeader != null && canUseHeader(function, pageHeader.getStartTime(),
+            pageHeader.getEndTime(),
+            unSequenceReader, timeFilter)) {
           // cal by pageHeader
           function.calculateValueFromPageHeader(pageHeader);
           sequenceReader.skipPageData();
