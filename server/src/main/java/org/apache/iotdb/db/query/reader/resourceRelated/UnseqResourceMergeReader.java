@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
@@ -35,11 +34,9 @@ import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
-import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 /**
@@ -97,20 +94,8 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
 
       for (ChunkMetaData chunkMetaData : metaDataList) {
 
-        if (filter != null) {
-          ByteBuffer minValue = null;
-          ByteBuffer maxValue = null;
-          ByteBuffer[] statistics = chunkMetaData.getDigest().getStatistics();
-          if (statistics != null) {
-            minValue = statistics[Statistics.StatisticType.min_value.ordinal()]; // note still CAN be null
-            maxValue = statistics[Statistics.StatisticType.max_value.ordinal()]; // note still CAN be null
-          }
-
-          DigestForFilter digest = new DigestForFilter(chunkMetaData.getStartTime(),
-              chunkMetaData.getEndTime(), minValue, maxValue, chunkMetaData.getTsDataType());
-          if (!filter.satisfy(digest)) {
-            continue;
-          }
+        if (filter != null && !filter.satisfy(chunkMetaData.getStatistics())) {
+          continue;
         }
         // create and add DiskChunkReader
         readerWrapList.add(new ChunkReaderWrap(chunkMetaData, chunkLoader, filter));
