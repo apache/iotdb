@@ -30,8 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class
-MaxTimeAggrFunc extends AggregateFunction {
+public class MaxTimeAggrFunc extends AggregateFunction {
 
   public MaxTimeAggrFunc() {
     super(TSDataType.INT64);
