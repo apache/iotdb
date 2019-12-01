@@ -133,7 +133,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         // filter: if a device'sensor is defined as float type, and data has been persistent.
         // Then someone deletes the timeseries and recreate it with Int type. We have to ignore
         // all the stale data.
-        if (dataType == null || dataType.equals(chunkMetaData.getTsDataType())) {
+        if (dataType == null || dataType.equals(chunkMetaData.getDataType())) {
           chunkMetaDataList.add(chunkMetaData);
         }
       }

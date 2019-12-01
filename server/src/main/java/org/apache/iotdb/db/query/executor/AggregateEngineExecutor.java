@@ -183,8 +183,8 @@ public class AggregateEngineExecutor {
       return false;
     }
 
-    long minTime = pageHeader.getMinTimestamp();
-    long maxTime = pageHeader.getMaxTimestamp();
+    long minTime = pageHeader.getStartTime();
+    long maxTime = pageHeader.getEndTime();
 
     // If there are points in the page that do not satisfy the time filter,
     // page header cannot be used to calculate.
@@ -220,12 +220,12 @@ public class AggregateEngineExecutor {
         function.calculateValueFromPageHeader(pageHeader);
         sequenceReader.skipPageData();
 
-        if (lastBatchTimeStamp > pageHeader.getMinTimestamp()) {
+        if (lastBatchTimeStamp > pageHeader.getStartTime()) {
           // the chunk is end.
           isChunkEnd = true;
         } else {
           // current page and last page are in the same chunk.
-          lastBatchTimeStamp = pageHeader.getMinTimestamp();
+          lastBatchTimeStamp = pageHeader.getStartTime();
         }
       } else {
         // cal by pageData

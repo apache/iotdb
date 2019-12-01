@@ -215,7 +215,9 @@ FromClause : <PrefixPath> (COMMA <PrefixPath>)?
 WhereClause : <Condition> [(AND | OR) <Condition>]*
 Condition  : <Expression> [(AND | OR) <Expression>]*
 Expression : [NOT | !]? <TimeExpr> | [NOT | !]? <SensorExpr>
-TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
+TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
+RelativeTimeDurationUnit = Integer ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS')
+RelativeTime : (now() | <TimeValue>) [(+|-) RelativeTimeDurationUnit]+
 SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
 Eg. IoTDB > SELECT * FROM root
@@ -241,7 +243,9 @@ FromClause : <PrefixPath>
 WhereClause : <Condition> [(AND | OR) <Condition>]*
 Condition  : <Expression> [(AND | OR) <Expression>]*
 Expression : [NOT | !]? <TimeExpr> | [NOT | !]? <SensorExpr>
-TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
+TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
+RelativeTimeDurationUnit = Integer ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS')
+RelativeTime : (now() | <TimeValue>) [(+|-) RelativeTimeDurationUnit]+
 SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
 GroupByClause : LPAREN <TimeUnit> (COMMA TimeValue)? COMMA <TimeInterval> (COMMA <TimeInterval>)* RPAREN
 TimeUnit : Integer <DurationUnit>
@@ -295,7 +299,9 @@ FromClause : <Path>
 WhereClause : <Condition> [(AND | OR) <Condition>]*
 Condition : <Expression> [(AND | OR) <Expression>]*
 Expression: [NOT|!]?<TimeExpr> | [NOT|!]?<SensorExpr>
-TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
+TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
+RelativeTimeDurationUnit = Integer ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS')
+RelativeTime : (now() | <TimeValue>) [(+|-) RelativeTimeDurationUnit]+
 SensorExpr : (<Timeseries>|<Path>) PrecedenceEqualOperator <PointValue>
 LIMITClause : <N> [OFFSETClause]?
 N : NonNegativeInteger
