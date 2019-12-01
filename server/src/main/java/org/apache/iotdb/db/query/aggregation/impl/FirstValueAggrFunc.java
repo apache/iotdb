@@ -154,7 +154,16 @@ public class FirstValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromChunkData(ChunkMetaData chunkMetaData) {
+  public void calculateValueFromChunkData(ChunkMetaData chunkMetaData)
+      throws QueryProcessException {
+    if (resultData.isSetTime()) {
+      return;
+    }
 
+    Object firstVal = chunkMetaData.getStatistics().getFirstValue();
+    if (firstVal == null) {
+      throw new QueryProcessException("chunkMetaData contains no FIRST value");
+    }
+    resultData.putTimeAndValue(0, firstVal);
   }
 }

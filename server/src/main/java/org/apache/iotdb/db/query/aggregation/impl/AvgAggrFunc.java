@@ -64,18 +64,6 @@ public class AvgAggrFunc extends AggregateFunction {
     cnt += pageHeader.getNumOfValues();
   }
 
-  public static void main(String[] args) {
-    int sum = 0;
-    int cnt = 0;
-    for (int i = 6000; i <= 9000; i++) {
-      sum += i;
-      cnt++;
-    }
-    double avg = sum / cnt;
-    System.out.println(sum);
-    System.out.println(avg);
-  }
-
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
       throws IOException {
@@ -179,7 +167,8 @@ public class AvgAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromChunkData(ChunkMetaData chunkMetaData) {
-
+    sum += chunkMetaData.getStatistics().getSumValue();
+    cnt += chunkMetaData.getNumOfPoints();
   }
 
   /**
