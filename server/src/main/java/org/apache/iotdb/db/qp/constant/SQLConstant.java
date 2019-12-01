@@ -49,6 +49,20 @@ public class SQLConstant {
   public static final String BOOLEAN_TRUE_NUM = "1";
   public static final String BOOLEAN_FALSE_NUM = "0";
 
+  // names of aggregations
+  public static final String MIN_TIME = "min_time";
+  public static final String MAX_TIME = "max_time";
+
+  public static final String MAX_VALUE = "max_value";
+  public static final String MIN_VALUE = "min_value";
+
+  public static final String FIRST_VALUE = "first_value";
+  public static final String LAST_VALUE = "last_value";
+
+  public static final String COUNT = "count";
+  public static final String AVG = "avg";
+  public static final String SUM = "sum";
+
   public static final int KW_AND = 1;
   public static final int KW_OR = 2;
   public static final int KW_NOT = 3;

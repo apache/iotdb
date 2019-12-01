@@ -20,18 +20,18 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class FirstAggrFunc extends AggregateFunction {
+public class LastValueAggrFunc extends AggregateFunction {
 
-  public FirstAggrFunc(TSDataType dataType) {
+  public LastValueAggrFunc(TSDataType dataType) {
     super(dataType);
   }
 
@@ -42,113 +42,110 @@ public class FirstAggrFunc extends AggregateFunction {
 
   @Override
   public AggreResultData getResult() {
+    if (resultData.isSetTime()) {
+      resultData.setTimestamp(0);
+    }
     return resultData;
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) throws QueryProcessException {
-    if (resultData.isSetTime()) {
-      return;
-    }
-
-    Object firstVal = pageHeader.getStatistics().getFirstValue();
-    if (firstVal == null) {
-      throw new QueryProcessException("PageHeader contains no FIRST value");
-    }
-    resultData.putTimeAndValue(0, firstVal);
+  public void calculateValueFromPageHeader(PageHeader pageHeader) {
+    Object lastVal = pageHeader.getStatistics().getLastValue();
+    updateLastResult(pageHeader.getEndTime(), lastVal);
   }
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
       throws IOException {
-    if (resultData.isSetTime()) {
-      return;
-    }
-    if (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
-      if (dataInThisPage.currentTime() >= unsequenceReader.current().getTimestamp()) {
-        resultData.putTimeAndValue(0, unsequenceReader.current().getValue().getValue());
-        unsequenceReader.next();
-        return;
-      } else {
-        resultData.putTimeAndValue(0, dataInThisPage.currentValue());
-        dataInThisPage.next();
-        return;
-      }
-    }
-
-    if (dataInThisPage.hasNext()) {
-      resultData.putTimeAndValue(0, dataInThisPage.currentValue());
-    }
+    calculateValueFromPageData(dataInThisPage, unsequenceReader, Long.MAX_VALUE);
   }
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
       long bound) throws IOException {
-    if (resultData.isSetTime()) {
-      return;
+    long time = -1;
+    Object lastVal = null;
+    while (dataInThisPage.hasNext() && dataInThisPage.currentTime() < bound) {
+      time = dataInThisPage.currentTime();
+      lastVal = dataInThisPage.currentValue();
+      dataInThisPage.next();
     }
-    if (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
-      if (dataInThisPage.currentTime() >= unsequenceReader.current().getTimestamp()) {
-        if (unsequenceReader.current().getTimestamp() < bound) {
-          resultData.putTimeAndValue(0, unsequenceReader.current().getValue().getValue());
-          unsequenceReader.next();
-          return;
-        }
+
+    while (unsequenceReader.hasNext()) {
+      if (unsequenceReader.current().getTimestamp() < time) {
+        unsequenceReader.next();
+      } else if (unsequenceReader.current().getTimestamp() == time) {
+        lastVal = unsequenceReader.current().getValue().getValue();
+        unsequenceReader.next();
       } else {
-        if (dataInThisPage.currentTime() < bound) {
-          resultData.putTimeAndValue(0, dataInThisPage.currentValue());
-          dataInThisPage.next();
-          return;
-        }
+        break;
       }
     }
 
-    if (dataInThisPage.hasNext() && dataInThisPage.currentTime() < bound) {
-      resultData.putTimeAndValue(0, dataInThisPage.currentValue());
-      dataInThisPage.next();
+    // has inited lastVal and time in the batch(dataInThisPage).
+    if (time != -1) {
+      updateLastResult(time, lastVal);
     }
   }
 
   @Override
   public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
       throws IOException {
-    if (resultData.isSetTime()) {
-      return;
+    TimeValuePair pair = null;
+    while (unsequenceReader.hasNext()) {
+      pair = unsequenceReader.next();
     }
-    if (unsequenceReader.hasNext()) {
-      resultData.putTimeAndValue(0, unsequenceReader.current().getValue().getValue());
+
+    if (pair != null) {
+      updateLastResult(pair.getTimestamp(), pair.getValue().getValue());
     }
+
   }
 
   @Override
   public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
       throws IOException {
-    if (resultData.isSetTime()) {
-      return;
+    TimeValuePair pair = null;
+    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
+      pair = unsequenceReader.next();
     }
-    if (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
-      resultData.putTimeAndValue(0, unsequenceReader.current().getValue().getValue());
+
+    if (pair != null) {
+      updateLastResult(pair.getTimestamp(), pair.getValue().getValue());
     }
   }
 
   @Override
   public void calcAggregationUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-    if (resultData.isSetTime()) {
-      return;
-    }
 
+    long time = -1;
+    Object lastVal = null;
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
-        resultData.putTimeAndValue(0, value);
-        break;
+        time = timestamps[i];
+        lastVal = value;
       }
+    }
+    if (time != -1) {
+      updateLastResult(time, lastVal);
     }
   }
 
   @Override
   public boolean isCalculatedAggregationResult() {
-    return resultData.isSetTime();
+    return false;
   }
+
+  private void updateLastResult(long time, Object value) {
+    if (!resultData.isSetTime()) {
+      resultData.putTimeAndValue(time, value);
+    } else {
+      if (time >= resultData.getTimestamp()) {
+        resultData.putTimeAndValue(time, value);
+      }
+    }
+  }
+
 }
