@@ -920,6 +920,9 @@
                                     See  https://issues.apache.org/jira/browse/MNG-5454  sigh.
                                  -->
                                 <configuration combine.self="append">
+                                    <descriptors>
+                                        <descriptor>source-assembly.xml</descriptor>
+                                    </descriptors>
                                     <finalName>apache-iotdb-${project.version}-incubating</finalName>
                                 </configuration>
                             </execution>
