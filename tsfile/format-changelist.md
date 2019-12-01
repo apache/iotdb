@@ -26,6 +26,7 @@ Last Updated on 2019-11-28 by Jialin Qiao.
 | PR#   | Name                                                         | Author          | Changes                                                      |
 | ---- | ------------------------------------------------------------ | --------------- | ------------------------------------------------------------ |
 | 587  | [IOTDB-325] Refactor Statistics                              | qiaojialin       | Move start time, end time, count in PageHeader and ChunkMetadata into Statistics; Remove maxTombstoneTime in ChunkHeader |
+| 607  | Remove first, last, isEmpty in Statistics                 | qiaojialin       | Remove first, last, isEmpty in Statistics, unify serialized method of Statistics |
 
 
 # 0.8.0 (version-0) -> version-1

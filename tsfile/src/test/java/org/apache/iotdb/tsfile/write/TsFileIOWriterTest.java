@@ -54,7 +54,7 @@ public class TsFileIOWriterTest {
 
     // chunk statistics
     Statistics statistics = Statistics.getStatsByType(measurementSchema.getType());
-    statistics.updateStats(0L, 0L);
+    statistics.update(0L, 0L);
 
     // chunk group 1
     writer.startChunkGroup(deviceId);

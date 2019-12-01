@@ -30,8 +30,6 @@ public class DoubleStatistics extends Statistics<Double> {
 
   private double minValue;
   private double maxValue;
-  private double firstValue;
-  private double lastValue;
   private double sumValue;
 
   @Override
@@ -49,20 +47,15 @@ public class DoubleStatistics extends Statistics<Double> {
    *
    * @param min min value
    * @param max max value
-   * @param first the first value
-   * @param last the last value
    * @param sum sum value
    */
-  private void initializeStats(double min, double max, double first, double last, double sum) {
+  private void initializeStats(double min, double max, double sum) {
     this.minValue = min;
     this.maxValue = max;
-    this.firstValue = first;
-    this.lastValue = last;
     this.sumValue = sum;
   }
 
-  private void updateStats(double minValue, double maxValue, double firstValue, double lastValue,
-      double sumValue) {
+  private void updateStats(double minValue, double maxValue, double sumValue) {
     if (minValue < this.minValue) {
       this.minValue = minValue;
     }
@@ -70,7 +63,6 @@ public class DoubleStatistics extends Statistics<Double> {
       this.maxValue = maxValue;
     }
     this.sumValue += sumValue;
-    this.lastValue = lastValue;
   }
 
   @Override
@@ -81,12 +73,12 @@ public class DoubleStatistics extends Statistics<Double> {
 
   @Override
   void updateStats(double value) {
-    if (this.isEmpty) {
-      initializeStats(value, value, value, value, value);
-      isEmpty = false;
+    if (count == 0) {
+      initializeStats(value, value, value);
     } else {
-      updateStats(value, value, value, value, value);
+      updateStats(value, value, value);
     }
+    count++;
   }
 
   @Override
@@ -94,6 +86,7 @@ public class DoubleStatistics extends Statistics<Double> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
+    count += batchSize;
   }
 
   @Override
@@ -107,16 +100,6 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  public Double getFirstValue() {
-    return firstValue;
-  }
-
-  @Override
-  public Double getLastValue() {
-    return lastValue;
-  }
-
-  @Override
   public double getSumValue() {
     return sumValue;
   }
@@ -124,14 +107,12 @@ public class DoubleStatistics extends Statistics<Double> {
   @Override
   protected void mergeStatisticsValue(Statistics stats) {
     DoubleStatistics doubleStats = (DoubleStatistics) stats;
-    if (this.isEmpty) {
-      initializeStats(doubleStats.getMinValue(), doubleStats.getMaxValue(), doubleStats.getFirstValue(),
-          doubleStats.getLastValue(), doubleStats.getSumValue());
-      isEmpty = false;
+    if (count == 0) {
+      initializeStats(doubleStats.getMinValue(), doubleStats.getMaxValue(), doubleStats.getSumValue());
     } else {
-      updateStats(doubleStats.getMinValue(), doubleStats.getMaxValue(), doubleStats.getFirstValue(),
-          doubleStats.getLastValue(), doubleStats.getSumValue());
+      updateStats(doubleStats.getMinValue(), doubleStats.getMaxValue(), doubleStats.getSumValue());
     }
+    count += stats.count;
   }
 
   @Override
@@ -142,16 +123,6 @@ public class DoubleStatistics extends Statistics<Double> {
   @Override
   public byte[] getMaxValueBytes() {
     return BytesUtils.doubleToBytes(maxValue);
-  }
-
-  @Override
-  public byte[] getFirstValueBytes() {
-    return BytesUtils.doubleToBytes(firstValue);
-  }
-
-  @Override
-  public byte[] getLastValueBytes() {
-    return BytesUtils.doubleToBytes(lastValue);
   }
 
   @Override
@@ -170,16 +141,6 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  public ByteBuffer getFirstValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(firstValue);
-  }
-
-  @Override
-  public ByteBuffer getLastValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(lastValue);
-  }
-
-  @Override
   public ByteBuffer getSumValueBuffer() {
     return ReadWriteIOUtils.getByteBuffer(sumValue);
   }
@@ -189,8 +150,6 @@ public class DoubleStatistics extends Statistics<Double> {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(minValue, outputStream);
     byteLen += ReadWriteIOUtils.write(maxValue, outputStream);
-    byteLen += ReadWriteIOUtils.write(firstValue, outputStream);
-    byteLen += ReadWriteIOUtils.write(lastValue, outputStream);
     byteLen += ReadWriteIOUtils.write(sumValue, outputStream);
     return byteLen;
   }
@@ -199,8 +158,6 @@ public class DoubleStatistics extends Statistics<Double> {
   void deserialize(InputStream inputStream) throws IOException {
     this.minValue = ReadWriteIOUtils.readDouble(inputStream);
     this.maxValue = ReadWriteIOUtils.readDouble(inputStream);
-    this.firstValue = ReadWriteIOUtils.readDouble(inputStream);
-    this.lastValue = ReadWriteIOUtils.readDouble(inputStream);
     this.sumValue = ReadWriteIOUtils.readDouble(inputStream);
   }
 
@@ -208,14 +165,11 @@ public class DoubleStatistics extends Statistics<Double> {
   void deserialize(ByteBuffer byteBuffer) {
     this.minValue = ReadWriteIOUtils.readDouble(byteBuffer);
     this.maxValue = ReadWriteIOUtils.readDouble(byteBuffer);
-    this.firstValue = ReadWriteIOUtils.readDouble(byteBuffer);
-    this.lastValue = ReadWriteIOUtils.readDouble(byteBuffer);
     this.sumValue = ReadWriteIOUtils.readDouble(byteBuffer);
   }
 
   @Override
-  public String toString() {
-    return "[minValue:" + minValue + ",maxValue:" + maxValue + ",firstValue:" + firstValue +
-        ",lastValue:" + lastValue + ",sumValue:" + sumValue + "]";
+  public String getString() {
+    return "[minValue:" + minValue + ",maxValue:" + maxValue + ",sumValue:" + sumValue + "]";
   }
 }

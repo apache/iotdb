@@ -18,22 +18,17 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Statistics for string type.
  */
 public class BinaryStatistics extends Statistics<Binary> {
-
-  private Binary firstValue = new Binary("");
-  private Binary lastValue = new Binary("");
 
   @Override
   public TSDataType getType() {
@@ -42,23 +37,7 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public int getStatsSize() {
-    return 4 + firstValue.getValues().length
-        + 4 + lastValue.getValues().length;
-  }
-
-  /**
-   * initialize Statistics.
-   *
-   * @param first the first value
-   * @param last the last value
-   */
-  private void initializeStats(Binary first, Binary last) {
-    this.firstValue = first;
-    this.lastValue = last;
-  }
-
-  private void updateStats(Binary firstValue, Binary lastValue) {
-    this.lastValue = lastValue;
+    return 0;
   }
 
   @Override
@@ -76,39 +55,18 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public Binary getFirstValue() {
-    return firstValue;
-  }
-
-  @Override
-  public Binary getLastValue() {
-    return lastValue;
-  }
-
-  @Override
   public double getSumValue() {
     throw new StatisticsClassException("Binary statistics does not support: sum");
   }
 
   @Override
   protected void mergeStatisticsValue(Statistics stats) {
-    BinaryStatistics stringStats = (BinaryStatistics) stats;
-    if (isEmpty) {
-      initializeStats(stringStats.getFirstValue(), stringStats.getLastValue());
-      isEmpty = false;
-    } else {
-      updateStats(stringStats.getFirstValue(), stringStats.getLastValue());
-    }
+    count += stats.count;
   }
 
   @Override
   void updateStats(Binary value) {
-    if (isEmpty) {
-      initializeStats(value, value);
-      isEmpty = false;
-    } else {
-      updateStats(value, value);
-    }
+    count++;
   }
 
   @Override
@@ -116,6 +74,7 @@ public class BinaryStatistics extends Statistics<Binary> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
+    count += batchSize;
   }
 
   @Override
@@ -126,16 +85,6 @@ public class BinaryStatistics extends Statistics<Binary> {
   @Override
   public byte[] getMaxValueBytes() {
     throw new StatisticsClassException("Binary statistics does not support: max");
-  }
-
-  @Override
-  public byte[] getFirstValueBytes() {
-    return firstValue.getValues();
-  }
-
-  @Override
-  public byte[] getLastValueBytes() {
-    return lastValue.getValues();
   }
 
   @Override
@@ -154,43 +103,26 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public ByteBuffer getFirstValueBuffer() {
-    return ByteBuffer.wrap(firstValue.getValues());
-  }
-
-  @Override
-  public ByteBuffer getLastValueBuffer() {
-    return ByteBuffer.wrap(lastValue.getValues());
-  }
-
-  @Override
   public ByteBuffer getSumValueBuffer() {
     throw new StatisticsClassException("Binary statistics does not support: sum");
   }
 
   @Override
-  public int serializeStats(OutputStream outputStream) throws IOException {
-    int byteLen = 0;
-    byteLen += ReadWriteIOUtils.write(firstValue, outputStream);
-    byteLen += ReadWriteIOUtils.write(lastValue, outputStream);
-    return byteLen;
+  public int serializeStats(OutputStream outputStream) {
+    return 0;
   }
 
   @Override
-  void deserialize(InputStream inputStream) throws IOException {
-    this.firstValue = ReadWriteIOUtils.readBinary(inputStream);
-    this.lastValue = ReadWriteIOUtils.readBinary(inputStream);
+  void deserialize(InputStream inputStream) {
   }
 
   @Override
   void deserialize(ByteBuffer byteBuffer) {
-    this.firstValue = ReadWriteIOUtils.readBinary(byteBuffer);
-    this.lastValue = ReadWriteIOUtils.readBinary(byteBuffer);
   }
 
   @Override
-  public String toString() {
-    return "[fistValue:" + firstValue + ",lastValue:" + lastValue + "]";
+  public String getString() {
+    return "";
   }
 
 }

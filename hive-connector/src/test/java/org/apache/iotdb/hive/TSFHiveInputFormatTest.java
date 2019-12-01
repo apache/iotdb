@@ -66,7 +66,7 @@ public class TSFHiveInputFormatTest {
       measurementIds[i] = "sensor_" + (i + 1);
     }
     startOffset = 12L;
-    endOffset = 3727688L;
+    endOffset = 3726248L;
     length = endOffset - startOffset;
     TSFInputSplit.ChunkGroupInfo chunkGroupInfo = new TSFInputSplit.ChunkGroupInfo(deviceId, measurementIds, startOffset, endOffset);
     chunkGroupInfoList.add(chunkGroupInfo);

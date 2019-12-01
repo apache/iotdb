@@ -40,9 +40,7 @@ public class LongStatisticsTest {
     assertFalse(longStats.isEmpty());
     assertEquals(secondValue, (long) longStats.getMaxValue());
     assertEquals(firstValue, (long) longStats.getMinValue());
-    assertEquals(firstValue, (long) longStats.getFirstValue());
     assertEquals(firstValue + secondValue, (long) longStats.getSumValue());
-    assertEquals(secondValue, (long) longStats.getLastValue());
   }
 
   @Test
@@ -63,15 +61,11 @@ public class LongStatisticsTest {
     assertEquals(max1, (long) longStats3.getMaxValue());
     assertEquals(1, (long) longStats3.getMinValue());
     assertEquals(max1 + 1, (long) longStats3.getSumValue());
-    assertEquals(1, (long) longStats3.getFirstValue());
-    assertEquals(max1, (long) longStats3.getLastValue());
 
     longStats3.mergeStatistics(longStats2);
     assertEquals(max2, (long) longStats3.getMaxValue());
     assertEquals(1, (long) longStats3.getMinValue());
     assertEquals(max2 + max1 + 1, (long) longStats3.getSumValue());
-    assertEquals(1, (long) longStats3.getFirstValue());
-    assertEquals(max2, (long) longStats3.getLastValue());
 
     // Test mismatch
     IntegerStatistics intStats5 = new IntegerStatistics();
@@ -89,8 +83,6 @@ public class LongStatisticsTest {
     // intStats5
     assertEquals(1, (long) longStats3.getMinValue());
     assertEquals(max2 + max1 + 1, (long) longStats3.getSumValue());
-    assertEquals(1, (long) longStats3.getFirstValue());
-    assertEquals(max2, (long) longStats3.getLastValue());
   }
 
 }

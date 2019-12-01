@@ -34,9 +34,6 @@ import org.junit.Test;
 public class PageHeaderTest {
   public static final int UNCOMPRESSED_SIZE = 123456;
   public static final int COMPRESSED_SIZE = 100000;
-  public static final int NUM_OF_VALUES = 10000;
-  public static final long MAX_TIMESTAMO = 523372036854775806L;
-  public static final long MIN_TIMESTAMO = 423372036854775806L;
   public static final TSDataType DATA_TYPE = TSDataType.INT64;
   private final String PATH = "target/outputPageHeader.tsfile";
 

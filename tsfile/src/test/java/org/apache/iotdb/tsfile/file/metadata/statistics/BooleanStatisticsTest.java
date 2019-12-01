@@ -35,8 +35,6 @@ public class BooleanStatisticsTest {
     assertFalse(booleanStatistics.isEmpty());
     booleanStatistics.updateStats(false);
     assertFalse(booleanStatistics.isEmpty());
-    assertTrue(booleanStatistics.getFirstValue());
-    assertFalse(booleanStatistics.getLastValue());
   }
 
   @Test
@@ -52,11 +50,7 @@ public class BooleanStatisticsTest {
     Statistics<Boolean> booleanStats3 = new BooleanStatistics();
     booleanStats3.mergeStatistics(booleanStats1);
     assertFalse(booleanStats3.isEmpty());
-    assertFalse(booleanStats3.getFirstValue());
-    assertFalse(booleanStats3.getLastValue());
 
     booleanStats3.mergeStatistics(booleanStats2);
-    assertFalse(booleanStats3.getFirstValue());
-    assertTrue(booleanStats3.getLastValue());
   }
 }

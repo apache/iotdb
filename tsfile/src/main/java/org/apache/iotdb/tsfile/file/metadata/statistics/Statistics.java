@@ -41,15 +41,11 @@ import org.slf4j.LoggerFactory;
 public abstract class Statistics<T> {
 
   private static final Logger LOG = LoggerFactory.getLogger(Statistics.class);
-  /**
-   * isEmpty being false means this statistic has been initialized and the max and min is not null;
-   */
-  protected boolean isEmpty = true;
 
   /**
    * number of time-value points
    */
-  private long count = 0;
+  protected long count = 0;
 
   private long startTime = Long.MAX_VALUE;
   private long endTime = Long.MIN_VALUE;
@@ -113,29 +109,17 @@ public abstract class Statistics<T> {
 
   public abstract T getMaxValue();
 
-  public abstract T getFirstValue();
-
-  public abstract T getLastValue();
-
   public abstract double getSumValue();
 
   public abstract byte[] getMinValueBytes();
 
   public abstract byte[] getMaxValueBytes();
 
-  public abstract byte[] getFirstValueBytes();
-
-  public abstract byte[] getLastValueBytes();
-
   public abstract byte[] getSumValueBytes();
 
   public abstract ByteBuffer getMinValueBuffer();
 
   public abstract ByteBuffer getMaxValueBuffer();
-
-  public abstract ByteBuffer getFirstValueBuffer();
-
-  public abstract ByteBuffer getLastValueBuffer();
 
   public abstract ByteBuffer getSumValueBuffer();
 
@@ -154,9 +138,7 @@ public abstract class Statistics<T> {
         this.endTime = stats.endTime;
       }
       // must be sure no overlap between two statistics
-      this.count += stats.count;
       mergeStatisticsValue(stats);
-      isEmpty = false;
     } else {
       String thisClass = this.getClass().toString();
       String statsClass = stats.getClass().toString();
@@ -174,7 +156,6 @@ public abstract class Statistics<T> {
     if (time > this.endTime) {
       endTime = time;
     }
-    count++;
     updateStats(value);
   }
 
@@ -185,7 +166,6 @@ public abstract class Statistics<T> {
     if (time > this.endTime) {
       endTime = time;
     }
-    count++;
     updateStats(value);
   }
 
@@ -196,7 +176,6 @@ public abstract class Statistics<T> {
     if (time > this.endTime) {
       endTime = time;
     }
-    count++;
     updateStats(value);
   }
 
@@ -207,7 +186,6 @@ public abstract class Statistics<T> {
     if (time > this.endTime) {
       endTime = time;
     }
-    count++;
     updateStats(value);
   }
 
@@ -218,7 +196,6 @@ public abstract class Statistics<T> {
     if (time > this.endTime) {
       endTime = time;
     }
-    count++;
     updateStats(value);
   }
 
@@ -229,7 +206,6 @@ public abstract class Statistics<T> {
     if (time > endTime) {
       endTime = time;
     }
-    count++;
     updateStats(value);
   }
 
@@ -240,7 +216,6 @@ public abstract class Statistics<T> {
     if (time[batchSize-1] > this.endTime) {
       endTime = time[batchSize-1];
     }
-    count += batchSize;
     updateStats(values, batchSize);
   }
 
@@ -251,7 +226,6 @@ public abstract class Statistics<T> {
     if (time[batchSize-1] > this.endTime) {
       endTime = time[batchSize-1];
     }
-    count += batchSize;
     updateStats(values, batchSize);
   }
 
@@ -262,7 +236,6 @@ public abstract class Statistics<T> {
     if (time[batchSize-1] > this.endTime) {
       endTime = time[batchSize-1];
     }
-    count += batchSize;
     updateStats(values, batchSize);
   }
 
@@ -273,7 +246,6 @@ public abstract class Statistics<T> {
     if (time[batchSize-1] > this.endTime) {
       endTime = time[batchSize-1];
     }
-    count += batchSize;
     updateStats(values, batchSize);
   }
 
@@ -284,7 +256,6 @@ public abstract class Statistics<T> {
     if (time[batchSize-1] > this.endTime) {
       endTime = time[batchSize-1];
     }
-    count += batchSize;
     updateStats(values, batchSize);
   }
 
@@ -295,19 +266,10 @@ public abstract class Statistics<T> {
     if (time[batchSize-1] > this.endTime) {
       endTime = time[batchSize-1];
     }
-    count += batchSize;
     updateStats(values, batchSize);
   }
 
   protected abstract void mergeStatisticsValue(Statistics stats);
-
-  public boolean isEmpty() {
-    return isEmpty;
-  }
-
-  public void setEmpty(boolean empty) {
-    isEmpty = empty;
-  }
 
   void updateStats(boolean value) {
     throw new UnsupportedOperationException();
@@ -357,17 +319,6 @@ public abstract class Statistics<T> {
     throw new UnsupportedOperationException();
   }
 
-  /**
-   * This method with two parameters is only used by {@code unsequence} which
-   * updates/inserts/deletes timestamp.
-   *
-   * @param min min timestamp
-   * @param max max timestamp
-   */
-  public void updateStats(long min, long max) {
-    throw new UnsupportedOperationException();
-  }
-
   public static Statistics deserialize(InputStream inputStream, TSDataType dataType)
       throws IOException {
     Statistics statistics = getStatsByType(dataType);
@@ -375,7 +326,6 @@ public abstract class Statistics<T> {
     statistics.setStartTime(ReadWriteIOUtils.readLong(inputStream));
     statistics.setEndTime(ReadWriteIOUtils.readLong(inputStream));
     statistics.deserialize(inputStream);
-    statistics.isEmpty = false;
     return statistics;
   }
 
@@ -385,8 +335,11 @@ public abstract class Statistics<T> {
     statistics.setStartTime(ReadWriteIOUtils.readLong(buffer));
     statistics.setEndTime(ReadWriteIOUtils.readLong(buffer));
     statistics.deserialize(buffer);
-    statistics.isEmpty = false;
     return statistics;
+  }
+
+  public boolean isEmpty() {
+    return count == 0;
   }
 
   public long getStartTime() {
@@ -419,6 +372,16 @@ public abstract class Statistics<T> {
       return true;
     }
     return o != null && getClass() == o.getClass();
+  }
+
+  @Override
+  public String toString() {
+    return "[count:" + count + "[start time:" + startTime + "[end time:" + endTime +
+        getString();
+  }
+
+  String getString() {
+    return "";
   }
 
 }

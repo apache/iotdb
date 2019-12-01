@@ -227,9 +227,7 @@ public class Utils {
       if (!statistics1.isEmpty() && !statistics2.isEmpty()) {
         assertEquals(statistics1.getMinValue(), statistics2.getMinValue());
         assertEquals(statistics1.getMaxValue(), statistics2.getMaxValue());
-        assertEquals(statistics1.getFirstValue(), statistics2.getFirstValue());
         assertEquals(statistics1.getSumValue(), statistics2.getSumValue(), maxError);
-        assertEquals(statistics1.getLastValue(), statistics2.getLastValue());
       }
     }
   }

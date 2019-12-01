@@ -33,8 +33,6 @@ public class FloatStatistics extends Statistics<Float> {
 
   private float minValue;
   private float maxValue;
-  private float firstValue;
-  private float lastValue;
   private double sumValue;
 
   @Override
@@ -47,16 +45,13 @@ public class FloatStatistics extends Statistics<Float> {
     return 24;
   }
 
-  private void initializeStats(float min, float max, float first, float last, double sum) {
+  private void initializeStats(float min, float max, double sum) {
     this.minValue = min;
     this.maxValue = max;
-    this.firstValue = first;
-    this.lastValue = last;
     this.sumValue = sum;
   }
 
-  private void updateStats(float minValue, float maxValue, float firstValue, float last,
-      double sumValue) {
+  private void updateStats(float minValue, float maxValue, double sumValue) {
     if (minValue < this.minValue) {
       this.minValue = minValue;
     }
@@ -64,7 +59,6 @@ public class FloatStatistics extends Statistics<Float> {
       this.maxValue = maxValue;
     }
     this.sumValue += sumValue;
-    this.lastValue = last;
   }
 
   @Override
@@ -75,12 +69,12 @@ public class FloatStatistics extends Statistics<Float> {
 
   @Override
   void updateStats(float value) {
-    if (this.isEmpty) {
-      initializeStats(value, value, value, value, value);
-      isEmpty = false;
+    if (count == 0) {
+      initializeStats(value, value, value);
     } else {
-      updateStats(value, value, value, value, value);
+      updateStats(value, value, value);
     }
+    count++;
   }
 
   @Override
@@ -88,6 +82,7 @@ public class FloatStatistics extends Statistics<Float> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
+    count += batchSize;
   }
 
   @Override
@@ -101,16 +96,6 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  public Float getFirstValue() {
-    return firstValue;
-  }
-
-  @Override
-  public Float getLastValue() {
-    return lastValue;
-  }
-
-  @Override
   public double getSumValue() {
     return sumValue;
   }
@@ -118,14 +103,12 @@ public class FloatStatistics extends Statistics<Float> {
   @Override
   protected void mergeStatisticsValue(Statistics stats) {
     FloatStatistics floatStats = (FloatStatistics) stats;
-    if (isEmpty) {
-      initializeStats(floatStats.getMinValue(), floatStats.getMaxValue(), floatStats.getFirstValue(),
-          floatStats.getLastValue(), floatStats.getSumValue());
-      isEmpty = false;
+    if (count == 0) {
+      initializeStats(floatStats.getMinValue(), floatStats.getMaxValue(), floatStats.getSumValue());
     } else {
-      updateStats(floatStats.getMinValue(), floatStats.getMaxValue(), floatStats.getFirstValue(),
-          floatStats.getLastValue(), floatStats.getSumValue());
+      updateStats(floatStats.getMinValue(), floatStats.getMaxValue(), floatStats.getSumValue());
     }
+    count += stats.count;
   }
 
   @Override
@@ -136,16 +119,6 @@ public class FloatStatistics extends Statistics<Float> {
   @Override
   public byte[] getMaxValueBytes() {
     return BytesUtils.floatToBytes(maxValue);
-  }
-
-  @Override
-  public byte[] getFirstValueBytes() {
-    return BytesUtils.floatToBytes(firstValue);
-  }
-
-  @Override
-  public byte[] getLastValueBytes() {
-    return BytesUtils.floatToBytes(lastValue);
   }
 
   @Override
@@ -164,16 +137,6 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  public ByteBuffer getFirstValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(firstValue);
-  }
-
-  @Override
-  public ByteBuffer getLastValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(lastValue);
-  }
-
-  @Override
   public ByteBuffer getSumValueBuffer() {
     return ReadWriteIOUtils.getByteBuffer(sumValue);
   }
@@ -183,8 +146,6 @@ public class FloatStatistics extends Statistics<Float> {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(minValue, outputStream);
     byteLen += ReadWriteIOUtils.write(maxValue, outputStream);
-    byteLen += ReadWriteIOUtils.write(firstValue, outputStream);
-    byteLen += ReadWriteIOUtils.write(lastValue, outputStream);
     byteLen += ReadWriteIOUtils.write(sumValue, outputStream);
     return byteLen;
   }
@@ -193,8 +154,6 @@ public class FloatStatistics extends Statistics<Float> {
   void deserialize(InputStream inputStream) throws IOException {
     this.minValue = ReadWriteIOUtils.readFloat(inputStream);
     this.maxValue = ReadWriteIOUtils.readFloat(inputStream);
-    this.firstValue = ReadWriteIOUtils.readFloat(inputStream);
-    this.lastValue = ReadWriteIOUtils.readFloat(inputStream);
     this.sumValue = ReadWriteIOUtils.readDouble(inputStream);
   }
 
@@ -202,14 +161,11 @@ public class FloatStatistics extends Statistics<Float> {
   void deserialize(ByteBuffer byteBuffer) {
     this.minValue = ReadWriteIOUtils.readFloat(byteBuffer);
     this.maxValue = ReadWriteIOUtils.readFloat(byteBuffer);
-    this.firstValue = ReadWriteIOUtils.readFloat(byteBuffer);
-    this.lastValue = ReadWriteIOUtils.readFloat(byteBuffer);
     this.sumValue = ReadWriteIOUtils.readDouble(byteBuffer);
   }
 
   @Override
   public String toString() {
-    return "[minValue:" + minValue + ",maxValue:" + maxValue + ",firstValue:" + firstValue +
-        ",lastValue:" + lastValue + ",sumValue:" + sumValue + "]";
+    return "[minValue:" + minValue + ",maxValue:" + maxValue + ",sumValue:" + sumValue + "]";
   }
 }

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -33,8 +32,6 @@ public class StringStatisticsTest {
     assertFalse(binaryStats.isEmpty());
     binaryStats.updateStats(new Binary("bbb"));
     assertFalse(binaryStats.isEmpty());
-    assertEquals("aaa", binaryStats.getFirstValue().getStringValue());
-    assertEquals("bbb", binaryStats.getLastValue().getStringValue());
   }
 
   @Test
@@ -50,11 +47,7 @@ public class StringStatisticsTest {
     Statistics<Binary> stringStats3 = new BinaryStatistics();
     stringStats3.mergeStatistics(stringStats1);
     assertFalse(stringStats3.isEmpty());
-    assertEquals("aaa", stringStats3.getFirstValue().getStringValue());
-    assertEquals("ccc", stringStats3.getLastValue().getStringValue());
 
     stringStats3.mergeStatistics(stringStats2);
-    assertEquals("aaa", (String) stringStats3.getFirstValue().getStringValue());
-    assertEquals("ddd", stringStats3.getLastValue().getStringValue());
   }
 }

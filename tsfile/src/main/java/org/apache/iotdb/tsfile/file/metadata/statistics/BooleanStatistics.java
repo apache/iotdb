@@ -18,19 +18,13 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class BooleanStatistics extends Statistics<Boolean> {
-
-  private boolean firstValue;
-  private boolean lastValue;
 
   @Override
   public TSDataType getType() {
@@ -39,32 +33,13 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   @Override
   public int getStatsSize() {
-    return 2;
+    return 0;
   }
 
-  /**
-   * initialize boolean Statistics.
-   *
-   * @param firstValue first boolean value
-   * @param lastValue last boolean value
-   */
-  private void initializeStats(boolean firstValue, boolean lastValue) {
-    this.firstValue = firstValue;
-    this.lastValue = lastValue;
-  }
-
-  private void updateStats(boolean firstValue, boolean lastValue) {
-    this.lastValue = lastValue;
-  }
 
   @Override
   void updateStats(boolean value) {
-    if (isEmpty) {
-      initializeStats(value, value);
-      isEmpty = false;
-    } else {
-      updateStats(value, value);
-    }
+    count++;
   }
 
   @Override
@@ -72,6 +47,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
+    count += batchSize;
   }
 
   @Override
@@ -86,16 +62,6 @@ public class BooleanStatistics extends Statistics<Boolean> {
   @Override
   public Boolean getMaxValue() {
     throw new StatisticsClassException("Boolean statistics does not support: max");
-  }
-
-  @Override
-  public Boolean getFirstValue() {
-    return firstValue;
-  }
-
-  @Override
-  public Boolean getLastValue() {
-    return lastValue;
   }
 
   @Override
@@ -114,29 +80,13 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  public ByteBuffer getFirstValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(firstValue);
-  }
-
-  @Override
-  public ByteBuffer getLastValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(lastValue);
-  }
-
-  @Override
   public ByteBuffer getSumValueBuffer() {
     throw new StatisticsClassException("Boolean statistics do not support: sum");
   }
 
   @Override
   protected void mergeStatisticsValue(Statistics stats) {
-    BooleanStatistics boolStats = (BooleanStatistics) stats;
-    if (isEmpty) {
-      initializeStats(boolStats.getFirstValue(), boolStats.getLastValue());
-      isEmpty = false;
-    } else {
-      updateStats(boolStats.getFirstValue(), boolStats.getLastValue());
-    }
+    count += stats.count;
   }
 
   @Override
@@ -150,42 +100,25 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  public byte[] getFirstValueBytes() {
-    return BytesUtils.boolToBytes(firstValue);
-  }
-
-  @Override
-  public byte[] getLastValueBytes() {
-    return BytesUtils.boolToBytes(lastValue);
-  }
-
-  @Override
   public byte[] getSumValueBytes() {
     throw new StatisticsClassException("Boolean statistics does not support: sum");
   }
 
   @Override
-  public int serializeStats(OutputStream outputStream) throws IOException {
-    int byteLen = 0;
-    byteLen += ReadWriteIOUtils.write(firstValue, outputStream);
-    byteLen += ReadWriteIOUtils.write(lastValue, outputStream);
-    return byteLen;
+  public int serializeStats(OutputStream outputStream) {
+    return 0;
   }
 
   @Override
-  void deserialize(InputStream inputStream) throws IOException {
-    this.firstValue = ReadWriteIOUtils.readBool(inputStream);
-    this.lastValue = ReadWriteIOUtils.readBool(inputStream);
+  void deserialize(InputStream inputStream) {
   }
 
   @Override
   void deserialize(ByteBuffer byteBuffer) {
-    this.firstValue = ReadWriteIOUtils.readBool(byteBuffer);
-    this.lastValue = ReadWriteIOUtils.readBool(byteBuffer);
   }
 
   @Override
-  public String toString() {
-    return "[firstValue:" + firstValue + ",lastValue:" + lastValue + "]";
+  public String getString() {
+    return "";
   }
 }

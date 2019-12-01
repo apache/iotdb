@@ -30,8 +30,6 @@ public class LongStatistics extends Statistics<Long> {
 
   private long minValue;
   private long maxValue;
-  private long firstValue;
-  private long lastValue;
   private double sumValue;
 
   @Override
@@ -44,16 +42,13 @@ public class LongStatistics extends Statistics<Long> {
     return 40;
   }
 
-  private void initializeStats(long min, long max, long firstValue, long last, double sum) {
+  private void initializeStats(long min, long max, double sum) {
     this.minValue = min;
     this.maxValue = max;
-    this.firstValue = firstValue;
-    this.lastValue = last;
     this.sumValue += sum;
   }
 
-  private void updateStats(long minValue, long maxValue, long firstValue, long lastValue,
-      double sumValue) {
+  private void updateStats(long minValue, long maxValue, double sumValue) {
     if (minValue < this.minValue) {
       this.minValue = minValue;
     }
@@ -61,7 +56,6 @@ public class LongStatistics extends Statistics<Long> {
       this.maxValue = maxValue;
     }
     this.sumValue += sumValue;
-    this.lastValue = lastValue;
   }
 
   @Override
@@ -81,28 +75,18 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  public Long getFirstValue() {
-    return firstValue;
-  }
-
-  @Override
-  public Long getLastValue() {
-    return lastValue;
-  }
-
-  @Override
   public double getSumValue() {
     return sumValue;
   }
 
   @Override
   void updateStats(long value) {
-    if (isEmpty) {
-      initializeStats(value, value, value, value, value);
-      isEmpty = false;
+    if (count == 0) {
+      initializeStats(value, value, value);
     } else {
-      updateStats(value, value, value, value, value);
+      updateStats(value, value, value);
     }
+    count++;
   }
 
   @Override
@@ -110,30 +94,18 @@ public class LongStatistics extends Statistics<Long> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
-  }
-
-  @Override
-  public void updateStats(long minValue, long maxValue) {
-    if (minValue < this.minValue) {
-      this.minValue = minValue;
-    }
-    if (maxValue > this.maxValue) {
-      this.maxValue = maxValue;
-    }
+    count += batchSize;
   }
 
   @Override
   protected void mergeStatisticsValue(Statistics stats) {
     LongStatistics longStats = (LongStatistics) stats;
-    if (isEmpty) {
-      initializeStats(longStats.getMinValue(), longStats.getMaxValue(), longStats.getFirstValue(),
-          longStats.getLastValue(), longStats.getSumValue());
-      isEmpty = false;
+    if (count == 0) {
+      initializeStats(longStats.getMinValue(), longStats.getMaxValue(), longStats.getSumValue());
     } else {
-      updateStats(longStats.getMinValue(), longStats.getMaxValue(), longStats.getFirstValue(), longStats.getLastValue(),
-          longStats.getSumValue());
+      updateStats(longStats.getMinValue(), longStats.getMaxValue(), longStats.getSumValue());
     }
-
+    count += stats.count;
   }
 
   @Override
@@ -144,16 +116,6 @@ public class LongStatistics extends Statistics<Long> {
   @Override
   public byte[] getMaxValueBytes() {
     return BytesUtils.longToBytes(maxValue);
-  }
-
-  @Override
-  public byte[] getFirstValueBytes() {
-    return BytesUtils.longToBytes(firstValue);
-  }
-
-  @Override
-  public byte[] getLastValueBytes() {
-    return BytesUtils.longToBytes(lastValue);
   }
 
   @Override
@@ -172,16 +134,6 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  public ByteBuffer getFirstValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(firstValue);
-  }
-
-  @Override
-  public ByteBuffer getLastValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(lastValue);
-  }
-
-  @Override
   public ByteBuffer getSumValueBuffer() {
     return ReadWriteIOUtils.getByteBuffer(sumValue);
   }
@@ -191,8 +143,6 @@ public class LongStatistics extends Statistics<Long> {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(minValue, outputStream);
     byteLen += ReadWriteIOUtils.write(maxValue, outputStream);
-    byteLen += ReadWriteIOUtils.write(firstValue, outputStream);
-    byteLen += ReadWriteIOUtils.write(lastValue, outputStream);
     byteLen += ReadWriteIOUtils.write(sumValue, outputStream);
     return byteLen;
   }
@@ -201,8 +151,6 @@ public class LongStatistics extends Statistics<Long> {
   void deserialize(InputStream inputStream) throws IOException {
     this.minValue = ReadWriteIOUtils.readLong(inputStream);
     this.maxValue = ReadWriteIOUtils.readLong(inputStream);
-    this.firstValue = ReadWriteIOUtils.readLong(inputStream);
-    this.lastValue = ReadWriteIOUtils.readLong(inputStream);
     this.sumValue = ReadWriteIOUtils.readDouble(inputStream);
   }
 
@@ -210,14 +158,11 @@ public class LongStatistics extends Statistics<Long> {
   void deserialize(ByteBuffer byteBuffer) {
     this.minValue = ReadWriteIOUtils.readLong(byteBuffer);
     this.maxValue = ReadWriteIOUtils.readLong(byteBuffer);
-    this.firstValue = ReadWriteIOUtils.readLong(byteBuffer);
-    this.lastValue = ReadWriteIOUtils.readLong(byteBuffer);
     this.sumValue = ReadWriteIOUtils.readDouble(byteBuffer);
   }
 
   @Override
   public String toString() {
-    return "[minValue:" + minValue + ",maxValue:" + maxValue + ",firstValue:" + firstValue +
-        ",lastValue:" + lastValue + ",sumValue:" + sumValue + "]";
+    return "[minValue:" + minValue + ",maxValue:" + maxValue + ",sumValue:" + sumValue + "]";
   }
 }
