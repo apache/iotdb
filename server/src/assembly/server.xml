@@ -34,7 +34,7 @@
     <fileSets>
         <fileSet>
             <directory>src/assembly/resources</directory>
-            <outputDirectory>/</outputDirectory>
+            <outputDirectory>${file.separator}</outputDirectory>
         </fileSet>
     </fileSets>
 </assembly>

@@ -22,26 +22,20 @@ package org.apache.iotdb.db.tools;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.exception.filter.UnSupportFilterDataTypeException;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.TsDigest;
-import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 public class TsFileSketchTool {
 
@@ -108,10 +102,8 @@ public class TsFileSketchTool {
             String.format("%20d", chunkMetaData.getOffsetOfChunkHeader()) + "|\t[Chunk] of "
                 + chunkMetaData.getMeasurementUid() + ", numOfPoints:" + chunkMetaData
                 .getNumOfPoints() + ", time range:[" + chunkMetaData.getStartTime() + ","
-                + chunkMetaData.getEndTime() + "], tsDataType:" + chunkMetaData.getTsDataType()
-                + ", \n" + String.format("%20s", "") + " \t" + statisticByteBufferToString(
-                chunkMetaData.getTsDataType(),
-                chunkMetaData.getDigest()));
+                + chunkMetaData.getEndTime() + "], tsDataType:" + chunkMetaData.getDataType()
+                + ", \n" + String.format("%20s", "") + " \t" + chunkMetaData.getStatistics());
         printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 1");
         printlnBoth(pw, String.format("%20s", "") + "|\t\t[ChunkHeader]");
         Chunk chunk = reader.readMemChunk(chunkMetaData);
@@ -218,60 +210,6 @@ public class TsFileSketchTool {
   private static void printlnBoth(PrintWriter pw, String str) {
     System.out.println(str);
     pw.println(str);
-  }
-
-  private static String statisticByteBufferToString(TSDataType tsDataType, TsDigest tsDigest) {
-    ByteBuffer[] statistics = tsDigest.getStatistics();
-    if (statistics == null) {
-      return "TsDigest:[]";
-    }
-    StringBuilder str = new StringBuilder();
-    str.append("TsDigest:[");
-    for (int i = 0; i < statistics.length - 1; i++) {
-      ByteBuffer value = statistics[i];
-      str.append(StatisticType.values()[i]);
-      str.append(":");
-      if (value == null) {
-        str.append("null");
-      } else {
-        switch (tsDataType) {
-          case INT32:
-            str.append(BytesUtils.bytesToInt(value.array()));
-            break;
-          case INT64:
-            str.append(BytesUtils.bytesToLong(value.array()));
-            break;
-          case FLOAT:
-            str.append(BytesUtils.bytesToFloat(value.array()));
-            break;
-          case DOUBLE:
-            str.append(BytesUtils.bytesToDouble(value.array()));
-            break;
-          case TEXT:
-            str.append(BytesUtils.bytesToString(value.array()));
-            break;
-          case BOOLEAN:
-            str.append(BytesUtils.bytesToBool(value.array()));
-            break;
-          default:
-            throw new UnSupportFilterDataTypeException(
-                "DigestForFilter unsupported datatype : " + tsDataType.toString());
-        }
-      }
-      str.append(",");
-    }
-    // Note that the last statistic of StatisticType is sum_value, which is double.
-    str.append(StatisticType.values()[statistics.length - 1]);
-    str.append(":");
-    ByteBuffer value = statistics[statistics.length - 1];
-    if (value == null) {
-      str.append("null");
-    } else {
-      str.append(BytesUtils.bytesToDouble(value.array()));
-    }
-    str.append("]");
-
-    return str.toString();
   }
 
 }

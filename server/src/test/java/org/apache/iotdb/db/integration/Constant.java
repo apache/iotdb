@@ -51,12 +51,12 @@ public class Constant {
 
   public static String insertTemplate = "insert into %s(timestamp%s) values(%d%s)";
 
-  public static String first(String path) {
-    return String.format("first(%s)", path);
+  public static String first_value(String path) {
+    return String.format("first_value(%s)", path);
   }
 
-  public static String last(String path) {
-    return String.format("last(%s)", path);
+  public static String last_value(String path) {
+    return String.format("last_value(%s)", path);
   }
 
   public static String sum(String path) {

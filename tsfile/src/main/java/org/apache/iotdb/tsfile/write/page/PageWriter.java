@@ -25,7 +25,6 @@ import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -38,18 +37,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This function is used to write time-value into a page. It consists of a time encoder, a value encoder and respective
- * OutputStream.
+ * This writer is used to write time-value into a page. It consists of a time encoder,
+ * a value encoder and respective OutputStream.
  */
 public class PageWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(PageWriter.class);
 
-  // time of the latest written time value pair, we assume data is written in time order
-  private long pageMaxTime;
-  private long pageMinTime = Long.MIN_VALUE;
-
-  ICompressor compressor;
+  private ICompressor compressor;
 
   // time
   private Encoder timeEncoder;
@@ -62,7 +57,6 @@ public class PageWriter {
    * statistic of current page. It will be reset after calling {@code writePageHeaderAndDataIntoBuff()}
    */
   private Statistics<?> statistics;
-  private int pointNumber;
 
   public PageWriter() {
     this(null, null);
@@ -74,7 +68,7 @@ public class PageWriter {
     this.compressor = ICompressor.getCompressor(measurementSchema.getCompressor());
   }
 
-  public PageWriter(Encoder timeEncoder, Encoder valueEncoder) {
+  private PageWriter(Encoder timeEncoder, Encoder valueEncoder) {
     this.timeOut = new PublicBAOS();
     this.valueOut = new PublicBAOS();
     this.timeEncoder = timeEncoder;
@@ -85,220 +79,129 @@ public class PageWriter {
    * write a time value pair into encoder
    */
   public void write(long time, boolean value) {
-    ++pointNumber;
-    this.pageMaxTime = time;
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = time;
-    }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
-    statistics.updateStats(value);
+    statistics.update(time, value);
   }
 
   /**
    * write a time value pair into encoder
    */
   public void write(long time, short value) {
-    ++pointNumber;
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
-    statistics.updateStats(value);
+    statistics.update(time, value);
   }
 
   /**
    * write a time value pair into encoder
    */
   public void write(long time, int value) {
-    ++pointNumber;
-    this.pageMaxTime = time;
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = time;
-    }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
-    statistics.updateStats(value);
+    statistics.update(time, value);
   }
 
   /**
    * write a time value pair into encoder
    */
   public void write(long time, long value) {
-    ++pointNumber;
-    this.pageMaxTime = time;
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = time;
-    }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
-    statistics.updateStats(value);
+    statistics.update(time, value);
   }
 
   /**
    * write a time value pair into encoder
    */
   public void write(long time, float value) {
-    ++pointNumber;
-    this.pageMaxTime = time;
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = time;
-    }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
-    statistics.updateStats(value);
+    statistics.update(time, value);
   }
 
   /**
    * write a time value pair into encoder
    */
   public void write(long time, double value) {
-    ++pointNumber;
-    this.pageMaxTime = time;
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = time;
-    }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
-    statistics.updateStats(value);
-  }
-
-  /**
-   * write a time value pair into encoder
-   */
-  public void write(long time, BigDecimal value) {
-    ++pointNumber;
-    this.pageMaxTime = time;
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = time;
-    }
-    timeEncoder.encode(time, timeOut);
-    valueEncoder.encode(value, valueOut);
-    statistics.updateStats(value);
+    statistics.update(time, value);
   }
 
   /**
    * write a time value pair into encoder
    */
   public void write(long time, Binary value) {
-    ++pointNumber;
-    this.pageMaxTime = time;
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = time;
-    }
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
-    statistics.updateStats(value);
+    statistics.update(time, value);
   }
 
   /**
    * write time series into encoder
    */
   public void write(long[] timestamps, boolean[] values, int batchSize) {
-    pointNumber += batchSize;
-    this.pageMaxTime = timestamps[batchSize - 1];
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = timestamps[0];
-    }
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
    * write time series into encoder
    */
   public void write(long[] timestamps, int[] values, int batchSize) {
-    pointNumber += batchSize;
-    this.pageMaxTime = timestamps[batchSize - 1];
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = timestamps[0];
-    }
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
    * write time series into encoder
    */
   public void write(long[] timestamps, long[] values, int batchSize) {
-    pointNumber += batchSize;
-    this.pageMaxTime = timestamps[batchSize - 1];
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = timestamps[0];
-    }
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
    * write time series into encoder
    */
   public void write(long[] timestamps, float[] values, int batchSize) {
-    pointNumber += batchSize;
-    this.pageMaxTime = timestamps[batchSize - 1];
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = timestamps[0];
-    }
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
    * write time series into encoder
    */
   public void write(long[] timestamps, double[] values, int batchSize) {
-    pointNumber += batchSize;
-    this.pageMaxTime = timestamps[batchSize - 1];
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = timestamps[0];
-    }
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
-  }
-
-  /**
-   * write time series into encoder
-   */
-  public void write(long[] timestamps, BigDecimal[] values, int batchSize) {
-    pointNumber += batchSize;
-    this.pageMaxTime = timestamps[batchSize - 1];
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = timestamps[0];
-    }
-    for (int i = 0; i < batchSize; i++) {
-      timeEncoder.encode(timestamps[i], timeOut);
-      valueEncoder.encode(values[i], valueOut);
-    }
-    statistics.updateStats(values);
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
    * write time series into encoder
    */
   public void write(long[] timestamps, Binary[] values, int batchSize) {
-    pointNumber += batchSize;
-    this.pageMaxTime = timestamps[batchSize - 1];
-    if (pageMinTime == Long.MIN_VALUE) {
-      pageMinTime = timestamps[0];
-    }
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    statistics.updateStats(values);
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
@@ -325,22 +228,13 @@ public class PageWriter {
     return buffer;
   }
 
-  public long getPageMaxTime() {
-    return pageMaxTime;
-  }
-
-  public long getPageMinTime() {
-    return pageMinTime;
-  }
 
   /**
    * write the page header and data into the PageWriter's output stream.
-   *
-   * @return byte size of the page header and uncompressed data in the page body.
    */
-  public int writePageHeaderAndDataIntoBuff(PublicBAOS pageBuffer) throws IOException {
-    if (pointNumber == 0) {
-      return 0;
+  public void writePageHeaderAndDataIntoBuff(PublicBAOS pageBuffer) throws IOException {
+    if (statistics.getCount() == 0) {
+      return;
     }
 
     ByteBuffer pageData = getUncompressedBytes();
@@ -360,9 +254,7 @@ public class PageWriter {
     }
 
     // write the page header to IOWriter
-    PageHeader header = new PageHeader(uncompressedSize, compressedSize, pointNumber, statistics,
-        pageMaxTime, pageMinTime);
-    int headerSize = header.getSerializedSize();
+    PageHeader header = new PageHeader(uncompressedSize, compressedSize, statistics);
     header.serializeTo(pageBuffer);
 
     // write page content to temp PBAOS
@@ -375,7 +267,6 @@ public class PageWriter {
       }
       logger.debug("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
     }
-    return headerSize + uncompressedSize;
   }
 
   /**
@@ -395,9 +286,6 @@ public class PageWriter {
   public void reset(MeasurementSchema measurementSchema) {
     timeOut.reset();
     valueOut.reset();
-    pointNumber =0;
-    pageMinTime = Long.MIN_VALUE;
-    pageMaxTime = Long.MIN_VALUE;
     statistics = Statistics.getStatsByType(measurementSchema.getType());
   }
 
@@ -413,8 +301,8 @@ public class PageWriter {
     statistics = Statistics.getStatsByType(dataType);
   }
 
-  public int getPointNumber(){
-    return pointNumber;
+  public long getPointNumber(){
+    return statistics.getCount();
   }
 
   public Statistics<?> getStatistics(){

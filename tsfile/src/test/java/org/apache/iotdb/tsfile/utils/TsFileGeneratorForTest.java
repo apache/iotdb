@@ -52,22 +52,21 @@ public class TsFileGeneratorForTest {
 
   public static final long START_TIMESTAMP = 1480562618000L;
   private static final Logger LOG = LoggerFactory.getLogger(TsFileGeneratorForTest.class);
-  public static TsFileWriter innerWriter;
-  public static String inputDataFile;
+  private static String inputDataFile;
   public static String outputDataFile = "target/testTsFile.tsfile";
-  public static String errorOutputDataFile;
+  private static String errorOutputDataFile;
   private static int rowCount;
   private static int chunkGroupSize;
   private static int pageSize;
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   public static void generateFile(int rowCount, int chunkGroupSize, int pageSize)
-      throws IOException, InterruptedException, WriteProcessException {
+      throws IOException {
     generateFile(rowCount, rowCount, chunkGroupSize, pageSize);
   }
 
   public static void generateFile(int minRowCount, int maxRowCount,int chunkGroupSize, int pageSize)
-      throws IOException, InterruptedException, WriteProcessException {
+      throws IOException {
     TsFileGeneratorForTest.rowCount = maxRowCount;
     TsFileGeneratorForTest.chunkGroupSize = chunkGroupSize;
     TsFileGeneratorForTest.pageSize = pageSize;
@@ -163,7 +162,8 @@ public class TsFileGeneratorForTest {
 
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
-    innerWriter = new TsFileWriter(file, schema, TSFileDescriptor.getInstance().getConfig());
+    TsFileWriter innerWriter = new TsFileWriter(file, schema,
+        TSFileDescriptor.getInstance().getConfig());
 
     // write
     try (Scanner in = new Scanner(fsFactory.getFile(inputDataFile))) {
