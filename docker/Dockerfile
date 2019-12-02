@@ -19,7 +19,7 @@
 
 FROM openjdk:11
 RUN apt-get update \
-  && apt-get install wget unzip -y \
+  && apt-get install wget unzip maven -y \
   && wget https://github.com/apache/incubator-iotdb/archive/master.zip \
   && unzip master.zip \
   && rm master.zip
