@@ -19,12 +19,12 @@
 
 FROM openjdk:11
 RUN apt-get update \
-  && apt-get install wget unzip lsof procps maven thrift-compiler=0.12.0 -y \
+  && apt-get install wget unzip -y \
   && wget https://github.com/apache/incubator-iotdb/archive/master.zip \
   && unzip master.zip \
   && rm master.zip
 WORKDIR incubator-iotdb-master
-RUN mvn package -Papache-release -DskipTests -Dthrift.download-url="http://www.apache.org/licenses/LICENSE-2.0.txt" -Dthrift.exec.absolute.path="/usr/bin/thrift"
+RUN mvn package -Papache-release -DskipTests
 RUN mkdir /iotdb \
   && mv /incubator-iotdb-master/distribution/target/apache-iotdb-0.9.0-SNAPSHOT-incubating-bin/apache-iotdb-0.9.0-SNAPSHOT-incubating/* /iotdb/
 WORKDIR /
@@ -32,7 +32,7 @@ RUN ls -lh ~/.m2 \
   && rm -rf ~/.m2 \
   && rm -rf /incubator-iotdb-master \
   && sed -i '119d' /iotdb/conf/logback.xml \
-  && apt-get remove wget maven unzip thrift-compiler -y \
+  && apt-get remove wget maven unzip -y \
   && apt-get autoremove -y \
   && apt-get purge --auto-remove -y \
   && apt-get clean -y
