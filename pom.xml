@@ -42,12 +42,13 @@
         <connection>scm:git:ssh://git@github.com/apache/incubator-iotdb.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/apache/incubator-iotdb.git</developerConnection>
         <url>ssh://git@github.com:apache/incubator-iotdb.git</url>
-        <tag>release/0.8.1</tag>
+        <tag>release/0.8.2</tag>
     </scm>
     <!-- Properties Management -->
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.release>8</maven.compiler.release>
         <maven.assembly.version>2.5.5</maven.assembly.version>
         <scala.version>2.11.12</scala.version>
         <hadoop.version>2.7.3</hadoop.version>
@@ -486,7 +487,7 @@
                         <id>enforce-version-convergence</id>
                         <configuration>
                             <rules>
-                                <dependencyConvergence />
+                                <dependencyConvergence/>
                             </rules>
                         </configuration>
                         <goals>
@@ -532,7 +533,7 @@
                                 </requireJavaVersion>
                                 <!-- Disabled for now as it breaks the ability to build single modules -->
                                 <!--reactorModuleConvergence/-->
-                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies" />
+                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies"/>
                             </rules>
                         </configuration>
                     </execution>

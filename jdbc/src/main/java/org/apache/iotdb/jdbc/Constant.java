@@ -24,7 +24,7 @@ public class Constant {
 
   public static final String GLOBAL_DB_NAME = "IoTDB";
 
-  public static final String GLOBAL_DB_VERSION = "0.8.1";
+  public static final String GLOBAL_DB_VERSION = "0.8.2";
 
   public static final String GLOBAL_COLUMN_REQ = "COLUMN";
 

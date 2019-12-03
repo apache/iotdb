@@ -24,12 +24,12 @@ FROM openjdk:11-jre-slim
 RUN apt update \
   ## procps is for `free` command
   && apt install wget unzip lsof procps -y \
-  && wget http://mirrors.tuna.tsinghua.edu.cn/apache/incubator/iotdb/0.8.1-incubating/apache-iotdb-0.8.1-incubating-bin.zip \
+  && wget http://mirrors.tuna.tsinghua.edu.cn/apache/incubator/iotdb/0.8.2-incubating/apache-iotdb-0.8.2-incubating-bin.zip \
   ##if you are not in China, please use the following url
-  #&& wget https://www-us.apache.org/dist/incubator/iotdb/0.8.1-incubating/apache-iotdb-0.8.1-incubating-bin.zip \
-  && unzip apache-iotdb-0.8.1-incubating-bin.zip \
-  && mv apache-iotdb-0.8.1-incubating/* /iotdb/ \
-  && rm apache-iotdb-0.8.1-incubating-bin.zip \
+  #&& wget https://www-us.apache.org/dist/incubator/iotdb/0.8.2-incubating/apache-iotdb-0.8.2-incubating-bin.zip \
+  && unzip apache-iotdb-0.8.2-incubating-bin.zip \
+  && mv apache-iotdb-0.8.2-incubating/* /iotdb/ \
+  && rm apache-iotdb-0.8.2-incubating-bin.zip \
   && apt remove wget unzip -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \
@@ -38,4 +38,4 @@ EXPOSE 6667
 EXPOSE 31999
 VOLUME /iotdb/data
 VOLUME /iotdb/logs
-#ENTRYPOINT ["/iotdb/sbin/start-server.sh"]
+ENTRYPOINT ["/iotdb/sbin/start-server.sh"]
