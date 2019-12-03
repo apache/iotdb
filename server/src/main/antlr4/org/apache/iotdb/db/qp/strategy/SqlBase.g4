@@ -36,11 +36,11 @@ statement
     | DELETE LABEL label=ID FROM PROPERTY propertyName=ID #deleteLabel
     | LINK prefixPath TO propertyLabelPair #linkPath
     | UNLINK prefixPath FROM propertyLabelPair #unlinkPath
-    | SHOW METADATA #showMetadata // not suppert yet
-    | DESCRIBE prefixPath #describePath // not suppert yet
-    | CREATE INDEX ON timeseriesPath USING function=ID indexWithClause? whereClause? #createIndex //not suppert yet
-    | DROP INDEX function=ID ON timeseriesPath #dropIndex //not suppert yet
-    | MERGE #merge //not suppert yet
+    | SHOW METADATA #showMetadata // not support yet
+    | DESCRIBE prefixPath #describePath // not support yet
+    | CREATE INDEX ON timeseriesPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
+    | DROP INDEX function=ID ON timeseriesPath #dropIndex //not support yet
+    | MERGE #merge //not support yet
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
     | ALTER USER userName=ID SET PASSWORD password=STRING_LITERAL #alterUser
     | DROP USER userName=ID #dropUser
@@ -70,7 +70,7 @@ statement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | LOAD CONFIGURATION #loadConfigurationStatement
-    | SELECT INDEX func=ID //not suppert yet
+    | SELECT INDEX func=ID //not support yet
     LR_BRACKET
     p1=timeseriesPath COMMA p2=timeseriesPath COMMA n1=timeValue COMMA n2=timeValue COMMA
     epsilon=constant (COMMA alpha=constant COMMA beta=constant)?

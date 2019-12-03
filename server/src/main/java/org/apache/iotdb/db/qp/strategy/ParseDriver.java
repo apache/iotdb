@@ -50,8 +50,8 @@ public class ParseDriver {
     logicalGenerator.setZoneId(zoneId);
     CharStream charStream = CharStreams.fromString(sql);
     SqlBaseLexer lexer1 = new SqlBaseLexer(charStream);
-    CommonTokenStream tokensSLL = new CommonTokenStream(lexer1);
-    SqlBaseParser parser = new SqlBaseParser(tokensSLL);
+    CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
+    SqlBaseParser parser = new SqlBaseParser(tokens1);
     parser.getInterpreter().setPredictionMode(PredictionMode.SLL);
     parser.setErrorHandler(new BailErrorStrategy());
     ParseTree tree;
@@ -60,8 +60,8 @@ public class ParseDriver {
     }
     catch (Exception ex) {
       SqlBaseLexer lexer2 = new SqlBaseLexer(charStream);
-      CommonTokenStream tokensLL = new CommonTokenStream(lexer2);
-      SqlBaseParser parserLL = new SqlBaseParser(tokensLL);
+      CommonTokenStream tokens2 = new CommonTokenStream(lexer2);
+      SqlBaseParser parserLL = new SqlBaseParser(tokens2);
       parserLL.getInterpreter().setPredictionMode(PredictionMode.LL);
       tree = parser.singleStatement();  // STAGE 2
       // if we parse ok, it's LL not SLL
