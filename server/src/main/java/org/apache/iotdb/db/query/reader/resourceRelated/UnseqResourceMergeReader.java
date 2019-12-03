@@ -124,6 +124,8 @@ public class UnseqResourceMergeReader implements IBatchReader {
     List<IPointReader> readerList = externalSortJobEngine
         .executeForIPointReader(queryId, readerWrapList);
     int priorityValue = 1;
+
+    // TODO check: is priorityValue the sort of start time?
     for (IPointReader chunkReader : readerList) {
       addReaderWithPriority(chunkReader, priorityValue++);
     }
@@ -154,15 +156,13 @@ public class UnseqResourceMergeReader implements IBatchReader {
 
 
   /**
-   * Returns true if the start and end time of the series data in this unsequence TsFile do not
-   * satisfy the filter condition. Returns false if satisfy.
-   * <p>
-   * This method is used to in the constructor function to check whether this TsFile can be
-   * skipped.
+   * Returns true if the start and end time of the series data in this unsequence TsFile satisfy the
+   * filter condition. Returns false if not satisfy. <p> This method is used to in the constructor
+   * function to check whether this TsFile can be skipped.
    *
    * @param tsFile the TsFileResource corresponding to this TsFile
    * @param filter filter condition. Null if no filter.
-   * @return True if the TsFile's start and end time do not satisfy the filter condition; False if
+   * @return True if the TsFile's start and end time satisfy the filter condition; False if not
    * satisfy.
    */
   // TODO future work: deduplicate code. See SeqResourceIterateReader.

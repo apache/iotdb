@@ -60,7 +60,6 @@ public class IoTDBSeriesReaderIT {
   private static IoTDB daemon;
 
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
-  private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
   private static int groupSizeInByte;
 
@@ -72,7 +71,6 @@ public class IoTDBSeriesReaderIT {
 
     // use small page setting
     // origin value
-    maxNumberOfPointsInPage = tsFileConfig.getMaxNumberOfPointsInPage();
     pageSizeInByte = tsFileConfig.getPageSizeInByte();
     groupSizeInByte = tsFileConfig.getGroupSizeInByte();
 
@@ -80,7 +78,7 @@ public class IoTDBSeriesReaderIT {
     tsFileConfig.setMaxNumberOfPointsInPage(1000);
     tsFileConfig.setPageSizeInByte(1024 * 1024 * 150);
     tsFileConfig.setGroupSizeInByte(1024 * 1024 * 150);
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1024 * 1000);
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 16);
 
     daemon = IoTDB.getInstance();
     daemon.active();
@@ -170,8 +168,6 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
-      statement.execute("flush");
-
       // sequential data, memory data
       for (int time = 200000; time < 201000; time++) {
 
@@ -186,6 +182,7 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
+      statement.execute("flush");
       // unsequence insert, time < 3000
       for (int time = 2000; time < 2500; time++) {
 
@@ -203,6 +200,19 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
+      for (int time = 100000; time < 100500; time++) {
+        String sql = String
+            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, 666);
+        statement.execute(sql);
+        sql = String
+            .format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, 777);
+        statement.execute(sql);
+        sql = String
+            .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, 888);
+        statement.execute(sql);
+      }
+
+      statement.execute("flush");
       // unsequence insert, time > 200000
       for (int time = 200900; time < 201000; time++) {
 
@@ -263,7 +273,7 @@ public class IoTDBSeriesReaderIT {
   @Test
   public void selectOneSeriesWithValueFilterTest() throws IOException, StorageEngineException {
 
-    String selectSql = "select s0 from root.vehicle.d0 where s0 >= 20";
+    String selectSql = "select s0, s1 from root.vehicle.d0";
     //System.out.println("Test >>> " + selectSql);
 
     EngineQueryRouter engineExecutor = new EngineQueryRouter();
@@ -285,7 +295,7 @@ public class IoTDBSeriesReaderIT {
       // System.out.println(result);
       cnt++;
     }
-    assertEquals(16440, cnt);
+    assertEquals(16940, cnt);
 
     QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
   }
