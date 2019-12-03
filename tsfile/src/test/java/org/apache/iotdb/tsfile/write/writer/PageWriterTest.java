@@ -23,7 +23,7 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.constant.TimeseriesTestConstant;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.encoding.decoder.PlainDecoder;
 import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
@@ -121,7 +121,7 @@ public class PageWriterTest {
       for (int i = 0; i < timeCount; i++) {
         assertEquals(i, decoder.readLong(buffer2));
       }
-      Assert.assertEquals(value, decoder.readFloat(buffer), TimeseriesTestConstant.float_min_delta);
+      Assert.assertEquals(value, decoder.readFloat(buffer), TestConstant.float_min_delta);
 
     } catch (IOException e) {
       fail();

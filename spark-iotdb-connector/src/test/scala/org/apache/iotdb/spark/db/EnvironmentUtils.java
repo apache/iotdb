@@ -30,6 +30,7 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -147,8 +148,6 @@ public class EnvironmentUtils {
     cleanDir(config.getSystemDir());
     // delete wal
     cleanDir(config.getWalFolder());
-    // delete index
-    cleanDir(config.getIndexFileDir());
     cleanDir(config.getBaseDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
@@ -211,8 +210,6 @@ public class EnvironmentUtils {
     createDir(config.getSystemDir());
     // create wal
     createDir(config.getWalFolder());
-    // create index
-    createDir(config.getIndexFileDir());
     // create data
     for (String dataDir: config.getDataDirs()) {
       createDir(dataDir);

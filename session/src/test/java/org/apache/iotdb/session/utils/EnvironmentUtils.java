@@ -113,8 +113,6 @@ public class EnvironmentUtils {
     cleanDir(config.getSystemDir());
     // deleteData wal
     cleanDir(config.getWalFolder());
-    // deleteData index
-    cleanDir(config.getIndexFileDir());
     cleanDir(config.getBaseDir());
     // deleteData data files
     for (String dataDir : config.getDataDirs()) {
@@ -177,8 +175,6 @@ public class EnvironmentUtils {
     createDir(config.getSystemDir());
     // create wal
     createDir(config.getWalFolder());
-    // create index
-    createDir(config.getIndexFileDir());
     // create data
     for (String dataDir: config.getDataDirs()) {
       createDir(dataDir);

@@ -16,16 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.utils;
 
+package org.apache.iotdb.db.constant;
+
+import java.io.File;
 import java.util.Random;
 
-/**
- * This class is used for Junit test to get some unified constant.
- */
-public class CommonTestConstant {
-
-  public static final float float_min_delta = 0.00001f;
-  public static final double double_min_delta = 0.00001d;
-  public static final Random random = new Random(System.currentTimeMillis());
+public class TestConstant {
+    public static final String BASE_OUTPUT_PATH = "target".concat(File.separator);
+    public static final String OUTPUT_DATA_DIR = BASE_OUTPUT_PATH.concat("data").concat(File.separator);
 }
