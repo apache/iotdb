@@ -1103,11 +1103,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   private void checkMetadataArgs(String dataType, String encoding, String compressor) {
-//    final String rle = "RLE";
-//    final String plain = "PLAIN";
-//    final String ts2Diff = "TS_2DIFF";
-//    final String bitmap = "BITMAP";
-//    final String gorilla = "GORILLA";
     TSDataType tsDataType;
     TSEncoding tsEncoding;
     if (dataType == null) {
