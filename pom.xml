@@ -48,7 +48,6 @@
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <maven.compiler.release>8</maven.compiler.release>
         <maven.assembly.version>2.5.5</maven.assembly.version>
         <scala.version>2.11.12</scala.version>
         <hadoop.version>2.7.3</hadoop.version>
@@ -796,6 +795,9 @@
                 <!-- This needs to be updated as soon as Java 20 is shipped -->
                 <jdk>[11,20)</jdk>
             </activation>
+            <properties>
+                <maven.compiler.release>8</maven.compiler.release>
+            </properties>
             <dependencies>
                 <!-- for jdk-11 -->
                 <dependency>
@@ -943,9 +945,6 @@
                                     See  https://issues.apache.org/jira/browse/MNG-5454  sigh.
                                  -->
                                 <configuration combine.self="append">
-                                    <descriptors>
-                                        <descriptor>source-assembly.xml</descriptor>
-                                    </descriptors>
                                     <finalName>apache-iotdb-${project.version}-incubating</finalName>
                                 </configuration>
                             </execution>
