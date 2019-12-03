@@ -40,6 +40,7 @@ import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.service.MetricsService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.junit.Assert;
 import org.slf4j.Logger;
@@ -91,6 +92,7 @@ public class EnvironmentUtils {
     }
     // close metadata
     MManager.getInstance().clear();
+    MetricsService.getInstance().stop();
     // deleteData all directory
     cleanAllDir();
 
