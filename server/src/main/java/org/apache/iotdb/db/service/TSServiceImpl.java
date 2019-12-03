@@ -899,17 +899,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return getTSFetchResultsResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
       }
 
-      long queryId = req.queryId;
-      if (!operationStatus.get().containsKey(queryId)) {
+      if (!operationStatus.get().containsKey(req.queryId)) {
         return getTSFetchResultsResp(
             getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Has not executed statement"));
       }
 
       QueryDataSet queryDataSet;
-      if (!queryDataSets.get().containsKey(queryId)) {
-        queryDataSet = createNewDataSet(queryId, req);
+      if (!queryDataSets.get().containsKey(req.queryId)) {
+        queryDataSet = createNewDataSet(req);
       } else {
-        queryDataSet = queryDataSets.get().get(queryId);
+        queryDataSet = queryDataSets.get().get(req.queryId);
       }
 
       int fetchSize = req.getFetch_size();
@@ -935,7 +934,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       boolean hasResultSet = (result.getRowCount() != 0);
       if (!hasResultSet && queryDataSets.get() != null) {
-        queryDataSets.get().remove(queryId);
+        queryDataSets.get().remove(req.queryId);
       }
 
       TSFetchResultsResp resp = getTSFetchResultsResp(getStatus(TSStatusCode.SUCCESS_STATUS,
@@ -949,9 +948,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private QueryDataSet createNewDataSet(long queryId, TSFetchResultsReq req)
+  private QueryDataSet createNewDataSet(TSFetchResultsReq req)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException {
-    PhysicalPlan physicalPlan = operationStatus.get().get(queryId);
+    PhysicalPlan physicalPlan = operationStatus.get().get(req.queryId);
 
     QueryDataSet queryDataSet;
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignJobId());
