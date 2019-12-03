@@ -311,7 +311,18 @@ public class PhysicalPlanTest {
     IExpression expect = new GlobalTimeExpression(
         FilterFactory.or(TimeFilter.gt(1571090340000L), TimeFilter.lt(10L)));
     assertEquals(expect.toString(), queryFilter.toString());
+  }
 
+  @Test
+  public void testLimitOffset()
+      throws QueryProcessException, MetadataException {
+    String sqlStr = "SELECT s1 FROM root.vehicle.d1,root.vehicle.d2 WHERE time < 10 "
+        + "limit 100 offset 10 slimit 1 soffset 1";
+    QueryPlan plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    assertEquals(100, plan.getRowLimit());
+    assertEquals(10, plan.getRowOffset());
+    // NOTE that the parameters of the SLIMIT clause is not stored in the physicalPlan,
+    // because the SLIMIT clause takes effect before the physicalPlan is finally generated.
   }
 
   @Test

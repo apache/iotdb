@@ -51,7 +51,7 @@ public class EngineDataSetWithValueFilter extends QueryDataSet {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  protected boolean hasNextWithoutConstraint() throws IOException {
     if (hasCachedRowRecord) {
       return true;
     }
@@ -59,7 +59,7 @@ public class EngineDataSetWithValueFilter extends QueryDataSet {
   }
 
   @Override
-  public RowRecord next() throws IOException {
+  protected RowRecord nextWithoutConstraint() throws IOException {
     if (!hasCachedRowRecord && !cacheRowRecord()) {
       return null;
     }
