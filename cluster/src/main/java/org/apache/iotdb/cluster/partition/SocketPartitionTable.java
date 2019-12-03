@@ -4,6 +4,8 @@
 
 package org.apache.iotdb.cluster.partition;
 
+import static org.apache.iotdb.cluster.config.ClusterConstant.HASH_SALT;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -18,6 +20,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
@@ -35,7 +38,6 @@ public class SocketPartitionTable implements PartitionTable {
       ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
   private static final long PARTITION_INTERVAL =
       ClusterDescriptor.getINSTANCE().getConfig().getPartitionInterval();
-  private static final int SOCKET_NUM = 10000;
 
   private List<Node> nodeRing = new ArrayList<>();
   // the sockets held by each node
@@ -70,13 +72,13 @@ public class SocketPartitionTable implements PartitionTable {
   private void assignPartitions() {
     // evenly assign the sockets to each node
     int nodeNum = nodeRing.size();
-    int socketsPerNode = SOCKET_NUM / nodeNum;
+    int socketsPerNode = ClusterConstant.SOCKET_NUM / nodeNum;
     for (Node node : nodeRing) {
       List<Integer> nodeSockets = new ArrayList<>();
       nodeSocketMap.put(node, nodeSockets);
     }
 
-    for (int i = 0; i < SOCKET_NUM; i++) {
+    for (int i = 0; i < ClusterConstant.SOCKET_NUM; i++) {
       int nodeIdx = i / socketsPerNode;
       if (nodeIdx >= nodeNum) {
         // the last node may receive a little more if total sockets cannot de divided by node number
@@ -139,8 +141,8 @@ public class SocketPartitionTable implements PartitionTable {
   public PartitionGroup route(String storageGroupName, long timestamp) {
     synchronized (nodeRing) {
       long partitionInstance = timestamp / PARTITION_INTERVAL;
-      int hash = Objects.hash(storageGroupName, partitionInstance);
-      int socketNum = Math.abs(hash % SOCKET_NUM);
+      int hash = Objects.hash(storageGroupName, partitionInstance * HASH_SALT);
+      int socketNum = Math.abs(hash % ClusterConstant.SOCKET_NUM);
       Node node = socketNodeMap.get(socketNum);
       logger.debug("The socket of {}@{} is {}, held by {}", storageGroupName, timestamp,
           socketNum, node);
@@ -199,7 +201,7 @@ public class SocketPartitionTable implements PartitionTable {
     // move the sockets to the new node if any previous node have more sockets than the new average
     List<Integer> newSockets = new ArrayList<>();
     Map<Integer, Node> previousHolders = new HashMap<>();
-    int newAvg = SOCKET_NUM / nodeRing.size();
+    int newAvg = ClusterConstant.SOCKET_NUM / nodeRing.size();
     for (Entry<Node, List<Integer>> entry : nodeSocketMap.entrySet()) {
       List<Integer> sockets = entry.getValue();
       int transferNum = sockets.size() - newAvg;
