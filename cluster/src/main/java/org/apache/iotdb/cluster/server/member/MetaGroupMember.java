@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
+import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
@@ -70,8 +71,6 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -513,6 +512,22 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       return;
     }
 
+    // try to process the request locally, if it cannot be processed locally, forward it
+    if (processAddNodeLocally(node, response, resultHandler)) {
+      return;
+    }
+
+    if (character == NodeCharacter.FOLLOWER && leader != null) {
+      logger.info("Forward the join request of {} to leader {}", node, leader);
+      if (forwardAddNode(node, resultHandler)) {
+        return;
+      }
+    }
+    resultHandler.onError(new LeaderUnknownException());
+  }
+
+  private boolean processAddNodeLocally(Node node, AddNodeResponse response,
+      AsyncMethodCallback resultHandler) {
     if (character == NodeCharacter.LEADER) {
       if (allNodes.contains(node)) {
         logger.debug("Node {} is already in the cluster", node);
@@ -521,7 +536,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           response.setPartitionTableBytes(partitionTable.serialize());
         }
         resultHandler.onComplete(response);
-        return;
+        return true;
       }
 
       Node idConflictNode = idNodeMap.get(node.getNodeIdentifier());
@@ -529,7 +544,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         logger.debug("{}'s id conflicts with {}", node, idConflictNode);
         response.setRespNum((int) Response.RESPONSE_IDENTIFIER_CONFLICT);
         resultHandler.onComplete(response);
-        return;
+        return true;
       }
 
       // node adding must be serialized
@@ -556,7 +571,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             } catch (ProcessorException e) {
               logManager.removeLastLog();
               resultHandler.onError(e);
-              return;
+              return true;
             }
             synchronized (partitionTable) {
               response.setPartitionTableBytes(partitionTable.serialize());
@@ -564,12 +579,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             response.setRespNum((int) Response.RESPONSE_AGREE);
             resultHandler.onComplete(response);
             logManager.commitLog(logManager.getLastLogIndex());
-            return;
+            return true;
           case TIME_OUT:
             logger.info("Join request of {} timed out", node);
             resultHandler.onError(new RequestTimeOutException(addNodeLog));
             logManager.removeLastLog();
-            return;
+            return true;
           case LEADERSHIP_STALE:
           default:
             logManager.removeLastLog();
@@ -577,13 +592,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         }
       }
     }
-    if (character == NodeCharacter.FOLLOWER && leader != null) {
-      logger.info("Forward the join request of {} to leader {}", node, leader);
-      if (forwardAddNode(node, resultHandler)) {
-        return;
-      }
-    }
-    resultHandler.onError(new LeaderUnknownException());
+    return false;
   }
 
   /**
@@ -820,28 +829,34 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   public TSStatus executeNonQuery(PhysicalPlan plan) {
-
-    if (plan instanceof SetStorageGroupPlan) {
-      if (character == NodeCharacter.LEADER) {
-        TSStatus status = processPlanLocally(plan);
-        if (status != null) {
-          return status;
-        }
-      }
-      return forwardPlan(plan, leader);
-    } else if (plan instanceof CreateTimeSeriesPlan) {
-      return processPartitionedPlan(plan);
+    if (!PartitionUtils.isPlanPartitioned(plan)) {
+      return processNonPartitionedPlan(plan);
     } else {
-      TSStatus status = StatusUtils.UNSUPPORTED_OPERATION.deepCopy();
-      status.getStatusType().setMessage(plan.getOperatorType().name());
-      return status;
+      try {
+        return processPartitionedPlan(plan);
+      } catch (UnsupportedPlanException e) {
+        TSStatus status = StatusUtils.UNSUPPORTED_OPERATION.deepCopy();
+        status.getStatusType().setMessage(e.getMessage());
+        return status;
+      }
     }
   }
 
-  private TSStatus processPartitionedPlan(PhysicalPlan plan) {
-    logger.debug("Received a partitioned plan {}", plan);
+  private TSStatus processNonPartitionedPlan(PhysicalPlan plan) {
+    if (character == NodeCharacter.LEADER) {
+      TSStatus status = processPlanLocally(plan);
+      if (status != null) {
+        return status;
+      }
+    }
+    return forwardPlan(plan, leader);
+  }
+
+
+  private TSStatus processPartitionedPlan(PhysicalPlan plan) throws UnsupportedPlanException {
+    logger.debug("{}: Received a partitioned plan {}", name, plan);
     if (partitionTable == null) {
-      logger.debug("Partition table is not ready");
+      logger.debug("{}: Partition table is not ready", name);
       return StatusUtils.PARTITION_TABLE_NOT_READY;
     }
 

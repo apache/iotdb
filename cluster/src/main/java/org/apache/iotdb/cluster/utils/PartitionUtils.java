@@ -5,6 +5,7 @@
 package org.apache.iotdb.cluster.utils;
 
 import java.util.Objects;
+import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logs.PhysicalPlanLog;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -12,8 +13,10 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +26,14 @@ public class PartitionUtils {
 
   private PartitionUtils() {
     // util class
+  }
+
+  public static boolean isPlanPartitioned(PhysicalPlan plan) {
+    // TODO-Cluster: support more plans
+    return plan instanceof CreateTimeSeriesPlan ||
+        plan instanceof InsertPlan ||
+        plan instanceof BatchInsertPlan ||
+        plan instanceof DeletePlan;
   }
 
   public static int calculateLogSocket(Log log, PartitionTable partitionTable) {
@@ -44,15 +55,21 @@ public class PartitionUtils {
     return 0;
   }
 
-  public static PartitionGroup partitionPlan(PhysicalPlan plan, PartitionTable partitionTable) {
+  public static PartitionGroup partitionPlan(PhysicalPlan plan, PartitionTable partitionTable)
+      throws UnsupportedPlanException {
+    // TODO-Cluster: support more plans
     if (plan instanceof CreateTimeSeriesPlan) {
-      return partitionByPath(((CreateTimeSeriesPlan) plan).getPath().getFullPath(), partitionTable);
+      CreateTimeSeriesPlan createTimeSeriesPlan = ((CreateTimeSeriesPlan) plan);
+      return partitionByPathTime(createTimeSeriesPlan.getPath().getFullPath(), 0, partitionTable);
+    } else if (plan instanceof InsertPlan) {
+      InsertPlan insertPlan = ((InsertPlan) plan);
+      return partitionByPathTime(insertPlan.getDeviceId(), insertPlan.getTime(), partitionTable);
     }
     logger.error("Unable to partition plan {}", plan);
-    return null;
+    throw new UnsupportedPlanException(plan);
   }
 
-  private static PartitionGroup partitionByPath(String path, PartitionTable partitionTable) {
+  private static PartitionGroup partitionByPathTime(String path, long timestamp, PartitionTable partitionTable) {
     String storageGroup;
     try {
       storageGroup = MManager.getInstance()
@@ -61,6 +78,6 @@ public class PartitionUtils {
       return null;
     }
 
-    return partitionTable.route(storageGroup, 0);
+    return partitionTable.route(storageGroup, timestamp);
   }
 }

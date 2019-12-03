@@ -125,6 +125,7 @@ public abstract class PhysicalPlan {
       }
       PhysicalPlanType type = PhysicalPlanType.values()[typeNum];
       PhysicalPlan plan;
+      // TODO-Cluster: support more plans
       switch (type) {
         case INSERT:
           plan = new InsertPlan();

@@ -564,7 +564,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return null;
   }
 
-
   TSStatus forwardPlan(PhysicalPlan plan, Node node) {
     if (character != NodeCharacter.FOLLOWER || leader == null) {
       return StatusUtils.NO_LEADER;
