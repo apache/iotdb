@@ -80,14 +80,26 @@ public abstract class IterateReader implements IAggregateReader {
 
   @Override
   public boolean hasNextChunk() throws IOException {
+
+    if (curReaderInitialized && currentSeriesReader.hasNext()) {
+      return true;
+    } else {
+      curReaderInitialized = false;
+    }
+
     while (nextSeriesReaderIndex < readerSize) {
       boolean isConstructed = constructNextReader(nextSeriesReaderIndex++);
-      if (isConstructed && currentSeriesReader.hasNextChunk()) {
+      if (isConstructed && currentSeriesReader.hasNext()) {
         curReaderInitialized = true;
         return true;
       }
     }
     return false;
+  }
+
+  @Override
+  public boolean hasNextPageInCurrentChunk() throws IOException {
+    return currentSeriesReader.hasNextPageInCurrentChunk();
   }
 
   @Override

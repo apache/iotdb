@@ -27,6 +27,8 @@ public interface IAggregateReader extends IBatchReader {
   boolean hasNextChunk() throws IOException;
 
   ChunkMetaData nextChunkMeta();
+
+  boolean hasNextPageInCurrentChunk() throws IOException;
   /**
    * Returns meta-information of batch data.
    * <p>

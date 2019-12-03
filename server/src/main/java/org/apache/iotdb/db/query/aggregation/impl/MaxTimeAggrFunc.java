@@ -128,7 +128,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromChunkData(ChunkMetaData chunkMetaData) {
+  public void calculateValueFromChunkMetaData(ChunkMetaData chunkMetaData) {
     long maxTimestamp = chunkMetaData.getEndTime();
     updateMaxTimeResult(0, maxTimestamp);
   }

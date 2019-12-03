@@ -54,6 +54,11 @@ public class FileSeriesReaderAdapter implements IAggregateReader {
   }
 
   @Override
+  public boolean hasNextPageInCurrentChunk() throws IOException {
+    return fileSeriesReader.hasNextPageInCurrentChunk();
+  }
+
+  @Override
   public PageHeader nextPageHeader() throws IOException {
     return fileSeriesReader.nextPageHeader();
   }

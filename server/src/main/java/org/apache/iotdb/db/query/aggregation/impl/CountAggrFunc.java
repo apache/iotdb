@@ -155,7 +155,7 @@ public class CountAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromChunkData(ChunkMetaData chunkMetaData) {
+  public void calculateValueFromChunkMetaData(ChunkMetaData chunkMetaData) {
     long preValue = resultData.getLongRet();
     preValue += chunkMetaData.getNumOfPoints();
     resultData.setLongRet(preValue);

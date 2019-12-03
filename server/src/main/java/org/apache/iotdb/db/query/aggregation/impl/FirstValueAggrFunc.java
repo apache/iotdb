@@ -154,7 +154,7 @@ public class FirstValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromChunkData(ChunkMetaData chunkMetaData)
+  public void calculateValueFromChunkMetaData(ChunkMetaData chunkMetaData)
       throws QueryProcessException {
     if (resultData.isSetTime()) {
       return;

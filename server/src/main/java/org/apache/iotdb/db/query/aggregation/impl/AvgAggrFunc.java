@@ -166,7 +166,7 @@ public class AvgAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromChunkData(ChunkMetaData chunkMetaData) {
+  public void calculateValueFromChunkMetaData(ChunkMetaData chunkMetaData) {
     sum += chunkMetaData.getStatistics().getSumValue();
     cnt += chunkMetaData.getNumOfPoints();
   }

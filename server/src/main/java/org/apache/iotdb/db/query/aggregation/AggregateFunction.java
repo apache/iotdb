@@ -121,6 +121,6 @@ public abstract class AggregateFunction {
     return resultDataType;
   }
 
-  public abstract void calculateValueFromChunkData(
+  public abstract void calculateValueFromChunkMetaData(
       ChunkMetaData chunkMetaData) throws QueryProcessException;
 }

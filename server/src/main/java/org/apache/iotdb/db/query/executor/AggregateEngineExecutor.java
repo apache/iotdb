@@ -155,10 +155,10 @@ public class AggregateEngineExecutor {
       ChunkMetaData chunkMetaData = sequenceReader.nextChunkMeta();
       if (chunkMetaData != null && canUseHeader(function, chunkMetaData.getStartTime(),
           chunkMetaData.getEndTime(), unSequenceReader, filter)) {
-        function.calculateValueFromChunkData(chunkMetaData);
+        function.calculateValueFromChunkMetaData(chunkMetaData);
         continue;
       }
-      while (sequenceReader.hasNext()) {
+      while (sequenceReader.hasNextPageInCurrentChunk()) {
         PageHeader pageHeader = sequenceReader.nextPageHeader();
         // judge if overlap with unsequence data
         if (pageHeader != null && canUseHeader(function, pageHeader.getStartTime(),
@@ -220,7 +220,7 @@ public class AggregateEngineExecutor {
       ChunkMetaData chunkMetaData = sequenceReader.nextChunkMeta();
       if (chunkMetaData != null && canUseHeader(function, chunkMetaData.getStartTime(),
           chunkMetaData.getEndTime(), unSequenceReader, timeFilter)) {
-        function.calculateValueFromChunkData(chunkMetaData);
+        function.calculateValueFromChunkMetaData(chunkMetaData);
         continue;
       }
       while (sequenceReader.hasNext()) {

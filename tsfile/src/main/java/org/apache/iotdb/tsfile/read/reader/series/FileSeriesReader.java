@@ -50,18 +50,28 @@ public abstract class FileSeriesReader {
   }
 
   /**
-   * check if current chunk has next batch data.
+   * check if all chunks has next batch data.
    *
-   * @return True if current chunk has next batch data
+   * @return True if all chunks has next batch data
    */
   public boolean hasNextBatch() throws IOException {
+
+    // current chunk has additional batch
     if (chunkReader != null && chunkReader.hasNextBatch()) {
       return true;
     }
 
-    if (hasNextChunk()) {
-      if (chunkReader.hasNextBatch()) {
-        return true;
+    // current chunk does not have additional batch, init new chunk reader
+    while (chunkToRead < chunkMetaDataList.size()) {
+
+      ChunkMetaData chunkMetaData = nextChunkMeta();
+      if (chunkSatisfied(chunkMetaData)) {
+        // chunk metadata satisfy the condition
+        initChunkReader(chunkMetaData);
+
+        if (chunkReader.hasNextBatch()) {
+          return true;
+        }
       }
     }
     return false;
@@ -99,8 +109,30 @@ public abstract class FileSeriesReader {
     return chunkMetaDataList.get(chunkToRead++);
   }
 
+  /**
+   * check current file has next chunk.
+   *
+   * @return True if current file has next chunk data
+   */
+  public boolean hasNextPageInCurrentChunk() throws IOException {
+    if (chunkReader != null && chunkReader.hasNextBatch()) {
+      return true;
+    }
+
+    if (hasNextChunk()) {
+      if (chunkReader.hasNextBatch()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * check current chunk has next batch data.
+   * @return
+   */
   public boolean hasNextChunk() throws IOException {
-    // current chunk does not have additional batch, init new chunk reader
+    // current file still have chunks, init new chunk reader
     while (chunkToRead < chunkMetaDataList.size()) {
 
       chunkMetaData = nextChunkMeta();

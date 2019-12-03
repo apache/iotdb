@@ -125,6 +125,11 @@ public class MemChunkReader implements IPointReader, IAggregateReader {
   }
 
   @Override
+  public boolean hasNextPageInCurrentChunk() throws IOException {
+    return hasNext();
+  }
+
+  @Override
   public PageHeader nextPageHeader() {
     return null;
   }
