@@ -26,7 +26,7 @@ The versions required for Spark and Java are as follow:
 
 | Spark Version | Scala Version | Java Version | TsFile |
 | ------------- | ------------- | ------------ |------------ |
-| `2.4.3`        | `2.11`        | `1.8`        | `0.9.0-SNAPSHOT`|
+| `2.4.3`        | `2.11`        | `1.8`        | `0.10.0`|
 
 
 ## install
@@ -39,7 +39,7 @@ mvn clean scala:compile compile install
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>spark-iotdb-connector</artifactId>
-      <version>0.9.0-SNAPSHOT</version>
+      <version>0.10.0</version>
     </dependency>
 ```
 
@@ -47,7 +47,7 @@ mvn clean scala:compile compile install
 # 2. spark-shell user guide
 
 ```
-spark-shell --jars spark-iotdb-connector-0.9.0-SNAPSHOT.jar,iotdb-jdbc-0.9.0-SNAPSHOT-jar-with-dependencies.jar
+spark-shell --jars spark-iotdb-connector-0.10.0.jar,iotdb-jdbc-0.10.0-jar-with-dependencies.jar
 
 import org.apache.iotdb.spark.db._
 
@@ -60,7 +60,7 @@ df.show()
 
 ### if you want to partition your rdd, you can do as following
 ```
-spark-shell --jars spark-iotdb-connector-0.9.0-SNAPSHOT.jar,iotdb-jdbc-0.9.0-SNAPSHOT-jar-with-dependencies.jar
+spark-shell --jars spark-iotdb-connector-0.10.0.jar,iotdb-jdbc-0.10.0-jar-with-dependencies.jar
 
 import org.apache.iotdb.spark.db._
 
