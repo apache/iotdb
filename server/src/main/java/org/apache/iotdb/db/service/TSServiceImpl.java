@@ -911,7 +911,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         queryDataSet = queryDataSets.get().get(req.queryId);
       }
 
-      int fetchSize = req.getFetch_size();
       IAuthorizer authorizer;
       try {
         authorizer = LocalFileAuthorizer.getInstance();
@@ -928,9 +927,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
         }
         result = QueryDataSetUtils
-            .convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
+            .convertQueryDataSetByFetchSize(queryDataSet, req.fetchSize, encoder);
       } else {
-        result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
+        result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, req.fetchSize);
       }
       boolean hasResultSet = (result.getRowCount() != 0);
       if (!hasResultSet && queryDataSets.get() != null) {
