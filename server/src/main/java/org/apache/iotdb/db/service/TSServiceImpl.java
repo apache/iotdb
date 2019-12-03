@@ -146,9 +146,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // (statement -> Set(queryId))
   private ThreadLocal<Map<Long, Set<Long>>> statementId2QueryId = new ThreadLocal<>();
   // (queryId -> PhysicalPlan)
-  private ThreadLocal<Map<Long, PhysicalPlan>> operationStatus = new ThreadLocal<>();
+  private ThreadLocal<Map<Long, PhysicalPlan>> queryId2Plan = new ThreadLocal<>();
   // (queryId -> QueryDataSet)
-  private ThreadLocal<Map<Long, QueryDataSet>> queryDataSets = new ThreadLocal<>();
+  private ThreadLocal<Map<Long, QueryDataSet>> queryId2DataSet = new ThreadLocal<>();
   private ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private ThreadLocal<Map<Long, QueryContext>> contextMapLocal = new ThreadLocal<>();
@@ -236,8 +236,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private void initForOneSession() {
-    operationStatus.set(new HashMap<>());
-    queryDataSets.set(new HashMap<>());
+    queryId2Plan.set(new HashMap<>());
+    queryId2DataSet.set(new HashMap<>());
     operationIdGenerator.set(0L);
     statementIdGenerator.set(0L);
     contextMapLocal.set(new HashMap<>());
@@ -266,12 +266,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       operationIdGenerator.remove();
     }
     // clear all cached physical plans of the connection
-    if (operationStatus.get() != null) {
-      operationStatus.remove();
+    if (queryId2Plan.get() != null) {
+      queryId2Plan.remove();
     }
     // clear all cached ResultSets of the connection
-    if (queryDataSets.get() != null) {
-      queryDataSets.remove();
+    if (queryId2DataSet.get() != null) {
+      queryId2DataSet.remove();
     }
     // clear all cached query context of the connection
     if (contextMapLocal.get() != null) {
@@ -332,12 +332,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private void releaseQueryResource(long queryId) throws StorageEngineException {
 
     // remove the corresponding Physical Plan
-    if (operationStatus.get() != null) {
-      operationStatus.get().remove(queryId);
+    if (queryId2Plan.get() != null) {
+      queryId2Plan.get().remove(queryId);
     }
     // remove the corresponding Dataset
-    if (queryDataSets.get() != null) {
-      queryDataSets.get().remove(queryId);
+    if (queryId2DataSet.get() != null) {
+      queryId2DataSet.get().remove(queryId);
     }
     // remove the corresponding query context and query resource
     if (contextMapLocal.get() != null && contextMapLocal.get().containsKey(queryId)) {
@@ -666,7 +666,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       TSOperationHandle operationHandle = new TSOperationHandle(operationId, true);
       resp.setOperationHandle(operationHandle);
 
-      recordANewQuery(operationId.queryId, plan);
+      queryId2Plan.get().put(queryId, plan);
       return resp;
     } catch (Exception e) {
       logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
@@ -899,16 +899,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return getTSFetchResultsResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
       }
 
-      if (!operationStatus.get().containsKey(req.queryId)) {
+      if (!queryId2Plan.get().containsKey(req.queryId)) {
         return getTSFetchResultsResp(
             getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Has not executed statement"));
       }
 
       QueryDataSet queryDataSet;
-      if (!queryDataSets.get().containsKey(req.queryId)) {
+      if (!queryId2DataSet.get().containsKey(req.queryId)) {
         queryDataSet = createNewDataSet(req);
       } else {
-        queryDataSet = queryDataSets.get().get(req.queryId);
+        queryDataSet = queryId2DataSet.get().get(req.queryId);
       }
 
       IAuthorizer authorizer;
@@ -932,8 +932,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, req.fetchSize);
       }
       boolean hasResultSet = (result.getRowCount() != 0);
-      if (!hasResultSet && queryDataSets.get() != null) {
-        queryDataSets.get().remove(req.queryId);
+      if (!hasResultSet && queryId2DataSet.get() != null) {
+        queryId2DataSet.get().remove(req.queryId);
       }
 
       TSFetchResultsResp resp = getTSFetchResultsResp(getStatus(TSStatusCode.SUCCESS_STATUS,
@@ -949,7 +949,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private QueryDataSet createNewDataSet(TSFetchResultsReq req)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException {
-    PhysicalPlan physicalPlan = operationStatus.get().get(req.queryId);
+    PhysicalPlan physicalPlan = queryId2Plan.get().get(req.queryId);
 
     QueryDataSet queryDataSet;
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignJobId());
@@ -959,7 +959,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     queryDataSet = processor.getExecutor().processQuery(physicalPlan, context);
 
-    queryDataSets.get().put(req.queryId, queryDataSet);
+    queryId2DataSet.get().put(req.queryId, queryDataSet);
     return queryDataSet;
   }
 
@@ -1029,10 +1029,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     return executeUpdateStatement(physicalPlan);
-  }
-
-  private void recordANewQuery(long queryId, PhysicalPlan physicalPlan) {
-    operationStatus.get().put(queryId, physicalPlan);
   }
 
   /**
@@ -1134,7 +1130,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     long stmtId = req.getStmtId();
-    InsertPlan plan = (InsertPlan) operationStatus.get()
+    InsertPlan plan = (InsertPlan) queryId2Plan.get()
         .computeIfAbsent(stmtId, k -> new InsertPlan());
 
     // the old parameter will be used if new parameter is not set
