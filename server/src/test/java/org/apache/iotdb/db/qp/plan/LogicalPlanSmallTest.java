@@ -18,25 +18,18 @@
  */
 package org.apache.iotdb.db.qp.plan;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.IllegalASTFormatException;
-import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
+import org.apache.iotdb.db.qp.strategy.ParseDriver;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
-import org.apache.iotdb.db.sql.ParseGenerator;
-import org.apache.iotdb.db.sql.parse.AstNode;
-import org.apache.iotdb.db.sql.parse.ParseException;
-import org.apache.iotdb.db.sql.parse.ParseUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.StringContainer;
@@ -46,93 +39,49 @@ import org.junit.Test;
 
 public class LogicalPlanSmallTest {
 
-  private LogicalGenerator generator;
+  private ParseDriver parseDriver;
 
   @Before
   public void before() {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    generator = new LogicalGenerator(config.getZoneID());
+    parseDriver = new ParseDriver();
   }
 
   @Test
-  public void testSlimit1()
-      throws QueryProcessException, MetadataException {
+  public void testSlimit1() {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10";
-    AstNode astTree;
-    try {
-      astTree = ParseGenerator.generateAST(sqlStr); // parse string to ASTTree
-    } catch (ParseException e) {
-      // e.printStackTrace();
-      throw new IllegalASTFormatException(sqlStr, e.getMessage());
-    }
-    AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
-    RootOperator operator = generator.getLogicalPlan(astNode);
-    Assert.assertEquals(operator.getClass(), QueryOperator.class);
+    RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
     Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
   }
 
-  @Test(expected = LogicalOperatorException.class)
-  public void testSlimit2()
-      throws QueryProcessException, MetadataException {
+  @Test(expected = NumberFormatException.class)
+  public void testSlimit2() {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 1111111111111111111111";
-    AstNode astTree;
-    try {
-      astTree = ParseGenerator.generateAST(sqlStr); // parse string to ASTTree
-    } catch (ParseException e) {
-      // e.printStackTrace();
-      throw new IllegalASTFormatException(sqlStr, e.getMessage());
-    }
-    AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
-    RootOperator operator = generator.getLogicalPlan(astNode);
+    RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     // expected to throw LogicalOperatorException: SLIMIT <SN>: SN should be Int32.
   }
 
-  @Test(expected = LogicalOperatorException.class)
-  public void testSlimit3()
-      throws QueryProcessException, MetadataException {
+  @Test(expected = SQLParserException.class)
+  public void testSlimit3() {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 0";
-    AstNode astTree;
-    try {
-      astTree = ParseGenerator.generateAST(sqlStr); // parse string to ASTTree
-    } catch (ParseException e) {
-      // e.printStackTrace();
-      throw new IllegalASTFormatException(sqlStr, e.getMessage());
-    }
-    AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
-    RootOperator operator = generator.getLogicalPlan(astNode);
+    RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     // expected to throw LogicalOperatorException: SLIMIT <SN>: SN must be a positive integer and can not be zero.
   }
 
   @Test
-  public void testSoffset()
-      throws QueryProcessException, MetadataException {
+  public void testSoffset() {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10 soffset 1";
-    AstNode astTree;
-    try {
-      astTree = ParseGenerator.generateAST(sqlStr); // parse string to ASTTree
-    } catch (ParseException e) {
-      // e.printStackTrace();
-      throw new IllegalASTFormatException(sqlStr, e.getMessage());
-    }
-    AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
-    RootOperator operator = generator.getLogicalPlan(astNode);
-    Assert.assertEquals(operator.getClass(), QueryOperator.class);
+    RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
     Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
     Assert.assertEquals(1, ((QueryOperator) operator).getSeriesOffset());
   }
 
   @Test(expected = LogicalOptimizeException.class)
   public void testSlimitLogicalOptimize()
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10 soffset 1";
-    AstNode astTree;
-    try {
-      astTree = ParseGenerator.generateAST(sqlStr); // parse string to ASTTree
-    } catch (ParseException e) {
-      throw new IllegalASTFormatException(sqlStr, e.getMessage());
-    }
-    AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
-    RootOperator operator = generator.getLogicalPlan(astNode);
+    RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
 
     MemIntQpExecutor executor = new MemIntQpExecutor();
     Path path1 = new Path(
@@ -157,51 +106,24 @@ public class LogicalPlanSmallTest {
     // complete paths.
   }
 
-  @Test(expected = LogicalOperatorException.class)
-  public void testLimit1()
-      throws QueryProcessException, MetadataException {
+  @Test(expected = NumberFormatException.class)
+  public void testLimit1() {
     String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() limit 111111111111111111111111";
-    AstNode astTree;
-    try {
-      astTree = ParseGenerator.generateAST(sqlStr); // parse string to ASTTree
-    } catch (ParseException e) {
-      // e.printStackTrace();
-      throw new IllegalASTFormatException(sqlStr, e.getMessage());
-    }
-    AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
-    RootOperator operator = generator.getLogicalPlan(astNode);
+    RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     // expected to throw LogicalOperatorException: LIMIT <N>: N should be Int32.
   }
 
-  @Test(expected = LogicalOperatorException.class)
-  public void testLimit2()
-      throws QueryProcessException, MetadataException {
+  @Test(expected = SQLParserException.class)
+  public void testLimit2() {
     String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() limit 0";
-    AstNode astTree;
-    try {
-      astTree = ParseGenerator.generateAST(sqlStr); // parse string to ASTTree
-    } catch (ParseException e) {
-      // e.printStackTrace();
-      throw new IllegalASTFormatException(sqlStr, e.getMessage());
-    }
-    AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
-    RootOperator operator = generator.getLogicalPlan(astNode);
+    RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     // expected to throw LogicalOperatorException: LIMIT <N>: N must be a positive integer and can not be zero.
   }
 
   @Test
-  public void testDeleteStorageGroup()
-      throws QueryProcessException, MetadataException {
+  public void testDeleteStorageGroup() {
     String sqlStr = "delete storage group root.vehicle.d1";
-    AstNode astTree;
-    try {
-      astTree = ParseGenerator.generateAST(sqlStr);
-    } catch (ParseException e) {
-      throw new IllegalASTFormatException(sqlStr, e.getMessage());
-    }
-    AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
-    RootOperator operator = generator.getLogicalPlan(astNode);
-
+    RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(DeleteStorageGroupOperator.class, operator.getClass());
     Path path = new Path("root.vehicle.d1");
     Assert.assertEquals(path, ((DeleteStorageGroupOperator) operator).getDeletePathList().get(0));

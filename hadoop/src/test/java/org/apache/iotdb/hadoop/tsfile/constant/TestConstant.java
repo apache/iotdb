@@ -16,27 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sql.parse;
 
-import java.util.List;
+package org.apache.iotdb.hadoop.tsfile.constant;
 
-/**
- * This interface defines the functions needed by the walkers and dispatchers. These are implemented by the node of the
- * graph that needs to be walked.
- */
-public interface Node {
+import java.io.File;
 
-  /**
-   * Gets the vector of children nodes. This is used in the graph walker algorithms.
-   *
-   * @return List<?   extends   Node>
-   */
-  List<Node> getChildren();
-
-  /**
-   * Gets the name of the node. This is used in the rule dispatchers.
-   *
-   * @return String
-   */
-  String getName();
+public class TestConstant {
+    public static final String BASE_OUTPUT_PATH = "target".concat(File.separator);
+    public static final String OUTPUT_DATA_DIR = BASE_OUTPUT_PATH.concat("data").concat(File.separator);
 }

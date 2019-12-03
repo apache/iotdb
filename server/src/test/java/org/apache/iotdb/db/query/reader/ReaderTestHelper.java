@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.reader;
 
 import java.io.IOException;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -39,7 +40,7 @@ public abstract class ReaderTestHelper {
   protected String deviceId = "root.vehicle.d0";
   protected String measurementId = "s0";
   protected StorageGroupProcessor storageGroupProcessor;
-  private String systemDir = "data/info";
+  private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
 
   static {
     MManager.getInstance().init();

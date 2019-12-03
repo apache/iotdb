@@ -25,6 +25,7 @@ import java.io.IOException;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.junit.After;
@@ -53,7 +54,7 @@ public class FileReaderManagerTest {
   @Test
   public void test() throws IOException, InterruptedException {
 
-    String filePath = "target/test.file";
+    String filePath = TestConstant.BASE_OUTPUT_PATH.concat("test.file");
 
     FileReaderManager manager = FileReaderManager.getInstance();
     JobFileManager testManager = new JobFileManager();

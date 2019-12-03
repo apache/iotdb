@@ -28,6 +28,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -37,7 +39,7 @@ public class LocalTextModificationAccessorTest {
 
   @Test
   public void readMyWrite() {
-    String tempFileName = "mod.temp";
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.temp");
     Modification[] modifications = new Modification[]{
         new Deletion(new Path("d1", "s1"), 1, 1),
         new Deletion(new Path("d1", "s2"), 2, 2),
@@ -71,7 +73,7 @@ public class LocalTextModificationAccessorTest {
 
   @Test
   public void readNull() throws IOException {
-    String tempFileName = "mod.temp";
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.temp");
     LocalTextModificationAccessor accessor;
     accessor = new LocalTextModificationAccessor(tempFileName);
     new File(tempFileName).delete();

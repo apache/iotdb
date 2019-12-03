@@ -16,28 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sql.parse;
 
-/**
- * Library of utility functions used in the parse code.
- */
-public final class ParseUtils {
+package org.apache.iotdb.spark.constant;
 
-  private ParseUtils() {
-    // prevent instantiation
-  }
+import java.io.File;
+import java.util.Random;
 
-  /**
-   * Performs a descent of the leftmost branch of a tree, stopping when either a node with a
-   * non-null token is found or the leaf level is encountered.
-   *
-   * @param tree candidate node from which to start searching
-   * @return node at which descent stopped
-   */
-  public static AstNode findRootNonNullToken(AstNode tree) {
-    while ((tree.getToken() == null) && (tree.getChildCount() > 0)) {
-      tree = tree.getChild(0);
-    }
-    return tree;
-  }
+public class TestConstant {
+    public static final String BASE_OUTPUT_PATH = "target".concat(File.separator);
+
 }

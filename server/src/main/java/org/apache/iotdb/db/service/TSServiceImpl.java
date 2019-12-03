@@ -55,6 +55,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.QueryProcessor;
@@ -566,7 +567,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         batchErrorMessage.append(resp.getStatus().getStatusType().getCode()).append("\n");
         return false;
       }
-    } catch (MetadataException e) {
+    } catch (SQLParserException e) {
       logger.error("Error occurred when executing {}, check metadata error: ", statement, e);
       result.add(Statement.EXECUTE_FAILED);
       batchErrorMessage.append(TSStatusCode.METADATA_ERROR.getStatusCode()).append("\n");
@@ -619,7 +620,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       } else {
         return executeUpdateStatement(physicalPlan);
       }
-    } catch (MetadataException e) {
+    } catch (SQLParserException e) {
       logger.error("check metadata error: ", e);
       return getTSExecuteStatementResp(getStatus(TSStatusCode.METADATA_ERROR,
           "Check metadata error: " + e.getMessage()));
@@ -687,7 +688,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     PhysicalPlan physicalPlan;
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-    } catch (QueryProcessException | MetadataException e) {
+    } catch (QueryProcessException | SQLParserException e) {
       logger.info("meet error while parsing SQL to physical plan: {}", e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     }
@@ -1019,7 +1020,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     PhysicalPlan physicalPlan;
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-    } catch (QueryProcessException | MetadataException e) {
+    } catch (QueryProcessException | SQLParserException e) {
       logger.info("meet error while parsing SQL to physical plan: {}", e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     }

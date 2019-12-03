@@ -24,6 +24,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -51,7 +53,7 @@ import static org.junit.Assert.*;
 @SuppressWarnings("squid:S4042") // Suppress use java.nio.Files#delete warning
 public class RestorableTsFileIOWriterTest {
 
-  private static final String FILE_NAME = "test.ts";
+  private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test.ts");
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   @Test(expected = IOException.class)
