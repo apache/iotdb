@@ -32,7 +32,8 @@ public enum TSStatusCode {
   SQL_PARSE_ERROR(401, "Meet error while parsing SQL"),
   GENERATE_TIME_ZONE_ERROR(402, "Meet error while generating time zone"),
   SET_TIME_ZONE_ERROR(403, "Meet error while setting time zone"),
-  NOT_A_STORAGE_GROUP_ERROR(404, "Given path is not a storage group"),
+  NOT_A_STORAGE_GROUP_ERROR(404, "Given path is not a storage group or does not belong to any "
+      + "storage group"),
   INTERNAL_SERVER_ERROR(500, "Internal server error"),
   UNSUPPORTED_OPERATION(501, "Operation is not supported"),
   PARTITION_NOT_READY(502, "Partition table is not ready, cannot serve"),

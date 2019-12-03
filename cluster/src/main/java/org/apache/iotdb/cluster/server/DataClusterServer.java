@@ -29,7 +29,6 @@ import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -54,7 +53,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     headerGroupMap.put(dataGroupMember.getHeader(), dataGroupMember);
   }
 
-  private DataGroupMember getDataMember(Node header) {
+  public DataGroupMember getDataMember(Node header) {
     // avoid creating two members for a header
     synchronized (headerGroupMap) {
       DataGroupMember member = headerGroupMap.get(header);
@@ -214,8 +213,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   @Override
   public void executeNonQueryPlan(ExecutNonQueryReq request,
-      AsyncMethodCallback<TSStatus> resultHandler)
-      throws TException {
+      AsyncMethodCallback<TSStatus> resultHandler) {
     if (!request.isSetHeader()) {
       resultHandler.onError(new NoHeaderNodeException());
       return;

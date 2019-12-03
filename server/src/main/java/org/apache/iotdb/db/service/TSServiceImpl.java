@@ -350,7 +350,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = getStatus(TSStatusCode.FETCH_METADATA_ERROR, req.getType());
           break;
       }
-    } catch (PathErrorException | MetadataErrorException | OutOfMemoryError | SQLException e) {
+    } catch (MetadataErrorException | OutOfMemoryError | SQLException e) {
       logger
           .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()),
               e);
@@ -774,7 +774,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     // check file level set
     try {
       checkFileLevelSet(paths);
-    } catch (StorageGroupException e) {
+    } catch (PathErrorException e) {
       logger.error("meet error while checking file level.", e);
       return getTSExecuteStatementResp(
           getStatus(TSStatusCode.CHECK_FILE_LEVEL_ERROR, e.getMessage()));
@@ -858,7 +858,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  private void checkFileLevelSet(List<Path> paths) throws StorageGroupException {
+  private void checkFileLevelSet(List<Path> paths) throws PathErrorException {
     MManager.getInstance().checkFileLevel(paths);
   }
 

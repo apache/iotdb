@@ -320,7 +320,7 @@ public class MGraph implements Serializable {
    * Get the file name for given seriesPath Notice: This method could be called if and only if the
    * seriesPath includes one node whose {@code isStorageGroup} is true.
    */
-  String getStorageGroupNameByPath(String path) throws StorageGroupException {
+  String getStorageGroupNameByPath(String path) throws PathErrorException {
     return mtree.getStorageGroupNameByPath(path);
   }
 

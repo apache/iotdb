@@ -5,12 +5,16 @@
 package org.apache.iotdb.cluster;
 
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Client;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Client.Factory;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TFramedTransport;
@@ -19,7 +23,7 @@ import org.apache.thrift.transport.TTransport;
 
 public class ClientMain {
 
-  public static void main(String[] args) throws TException {
+  public static void main(String[] args) throws TException, InterruptedException {
     String ip = "127.0.0.1";
     int port = 55560;
     TSIService.Client.Factory factory = new Factory();
@@ -38,6 +42,22 @@ public class ClientMain {
     System.out.println(client.setStorageGroup("root.group2"));
     System.out.println(client.setStorageGroup("root.group3"));
     System.out.println(client.setStorageGroup("root.group4"));
+
+    // wait until the storage group creations are committed
+    Thread.sleep(3000);
+
+    TSCreateTimeseriesReq req = new TSCreateTimeseriesReq();
+    req.setDataType(TSDataType.DOUBLE.ordinal());
+    req.setEncoding(TSEncoding.GORILLA.ordinal());
+    req.setCompressor(CompressionType.SNAPPY.ordinal());
+    req.setPath("root.group1.d1.s1");
+    System.out.println(client.createTimeseries(req));
+    req.setPath("root.group2.d1.s1");
+    System.out.println(client.createTimeseries(req));
+    req.setPath("root.group3.d1.s1");
+    System.out.println(client.createTimeseries(req));
+    req.setPath("root.group4.d1.s1");
+    System.out.println(client.createTimeseries(req));
 
     client.closeSession(new TSCloseSessionReq(openResp.getSessionHandle()));
   }

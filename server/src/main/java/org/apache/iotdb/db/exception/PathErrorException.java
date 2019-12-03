@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.db.exception;
 
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
-
-public class PathErrorException extends QueryProcessorException {
+public class PathErrorException extends MetadataErrorException {
 
   private static final long serialVersionUID = 2141197032898163234L;
 

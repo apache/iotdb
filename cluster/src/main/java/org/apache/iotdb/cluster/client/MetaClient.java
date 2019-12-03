@@ -22,7 +22,7 @@ public class MetaClient extends AsyncClient {
   private MetaClient(TProtocolFactory protocolFactory,
       TAsyncClientManager clientManager, Node node, ClientPool pool) throws IOException {
     // the difference of the two clients lies in the port
-    super(protocolFactory, clientManager, new TNonblockingSocket(node.getIp(), node.getPort(),
+    super(protocolFactory, clientManager, new TNonblockingSocket(node.getIp(), node.getMetaPort(),
         CONNECTION_TIME_OUT_MS));
     this.node = node;
     this.pool = pool;

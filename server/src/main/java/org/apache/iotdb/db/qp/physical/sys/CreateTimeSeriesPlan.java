@@ -18,11 +18,15 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -36,8 +40,12 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   private TSEncoding encoding;
   private CompressionType compressor;
   private Map<String, String> props;
-	  
-  public CreateTimeSeriesPlan(Path path, TSDataType dataType, TSEncoding encoding, 
+
+  public CreateTimeSeriesPlan() {
+    super(false, Operator.OperatorType.CREATE_TIMESERIES);
+  }
+
+  public CreateTimeSeriesPlan(Path path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) {
     super(false, Operator.OperatorType.CREATE_TIMESERIES);
     this.path = path;
@@ -89,14 +97,8 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   
   @Override
   public String toString() {
-    String ret = String.format("seriesPath: %s%nresultDataType: %s%nencoding: %s%nnamespace type:"
-        + " ADD_PATH%nargs: ", path, dataType, encoding);
-    StringBuilder stringBuilder = new StringBuilder(ret.length()+50);
-    stringBuilder.append(ret);
-    for (Map.Entry<String, String> prop : props.entrySet()) {
-      stringBuilder.append(prop.getKey()).append("=").append(prop.getValue()).append(",");
-    }
-    return stringBuilder.toString();
+    return String.format("seriesPath: %s, resultDataType: %s, encoding: %s, compression: %s", path,
+        dataType, encoding, compressor);
   }
   
   @Override
@@ -104,4 +106,25 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     return Collections.singletonList(path);
   }
 
+  @Override
+  public void serializeTo(DataOutputStream stream) throws IOException {
+    stream.write(PhysicalPlanType.CREATE_TIMESERIES.ordinal());
+    byte[] pathBytes = path.getFullPath().getBytes();
+    stream.writeInt(pathBytes.length);
+    stream.write(pathBytes);
+    stream.write(dataType.ordinal());
+    stream.write(encoding.ordinal());
+    stream.write(compressor.ordinal());
+  }
+
+  @Override
+  public void deserializeFrom(ByteBuffer buffer) {
+    int length = buffer.getInt();
+    byte[] pathBytes = new byte[length];
+    buffer.get(pathBytes);
+    path = new Path(new String(pathBytes));
+    dataType = TSDataType.values()[buffer.get()];
+    encoding = TSEncoding.values()[buffer.get()];
+    compressor = CompressionType.values()[buffer.get()];
+  }
 }

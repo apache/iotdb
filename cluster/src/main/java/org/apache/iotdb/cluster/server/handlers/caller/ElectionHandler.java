@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.server.handlers.caller;
 
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_LEADER_STILL_ONLINE;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -59,8 +60,8 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
 
   @Override
   public void onComplete(Long resp) {
-    long voterTerm = resp;
-    logger.info("{}: Election response term {} from {}", memberName, voterTerm, voter);
+    long voterResp = resp;
+    logger.info("{}: Election response term {} from {}", memberName, voterResp, voter);
     synchronized (raftMember.getTerm()) {
       if (terminated.get()) {
         // a voter has rejected this election, which means the term or the log id falls behind
@@ -68,7 +69,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
         return;
       }
 
-      if (voterTerm == RESPONSE_AGREE) {
+      if (voterResp == RESPONSE_AGREE) {
         long remaining = quorum.decrementAndGet();
         logger.info("{}: Received a for vote from {}, reaming votes to succeed: {}",
             memberName, voter, remaining);
@@ -81,17 +82,17 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
           logger.info("{}: Election {} is wined", memberName, currTerm);
         }
         // still need more votes
-      } else {
+      } else if (voterResp != RESPONSE_LEADER_STILL_ONLINE) {
         // the election is rejected
         terminated.set(true);
-        if (voterTerm < currTerm) {
+        if (voterResp < currTerm) {
           // the rejection from a node with a smaller term means the log of this node falls behind
-          logger.info("{}: Election {} rejected: code {}", memberName, currTerm, voterTerm);
+          logger.info("{}: Election {} rejected: code {}", memberName, currTerm, voterResp);
         } else {
           // the election is rejected by a node with a bigger term, update current term to it
-          raftMember.getTerm().set(voterTerm);
+          raftMember.getTerm().set(voterResp);
           logger.info("{}: Election {} rejected: The term of this node is no bigger than {}",
-              memberName, currTerm, voterTerm);
+              memberName, currTerm, voterResp);
         }
         raftMember.getTerm().notifyAll();
       }

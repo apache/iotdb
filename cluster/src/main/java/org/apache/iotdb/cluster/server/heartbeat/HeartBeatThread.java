@@ -123,6 +123,12 @@ public class HeartBeatThread implements Runnable {
 
   // start elections until this node becomes a leader or a follower
   private void startElections() throws InterruptedException {
+    if (raftMember.getAllNodes().size() == 1) {
+      // single node cluster, this node is always the leader
+      raftMember.setCharacter(NodeCharacter.LEADER);
+      raftMember.setLeader(raftMember.getThisNode());
+      logger.info("{}: Winning the election because the node is the only node.", memberName);
+    }
 
     // the election goes on until this node becomes a follower or a leader
     while (raftMember.getCharacter() == NodeCharacter.ELECTOR) {
@@ -146,6 +152,7 @@ public class HeartBeatThread implements Runnable {
       AtomicInteger quorum = new AtomicInteger(quorumNum);
 
       electionRequest.setTerm(nextTerm);
+      electionRequest.setElector(raftMember.getThisNode());
 
       requestVote(raftMember.getAllNodes(), electionRequest, nextTerm, quorum,
           electionTerminated, electionValid);

@@ -24,6 +24,7 @@ public class StatusUtils {
       getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
   public static final TSStatus EXECUTE_STATEMENT_ERROR =
       getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
+  public static final TSStatus NO_STORAGE_GROUP = getStatus(TSStatusCode.NOT_A_STORAGE_GROUP_ERROR);
 
   private static TSStatus getStatus(TSStatusCode statusCode) {
     TSStatusType tsStatusType = new TSStatusType();

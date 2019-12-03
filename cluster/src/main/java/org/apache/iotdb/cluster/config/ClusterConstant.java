@@ -21,9 +21,9 @@ package org.apache.iotdb.cluster.config;
 public class ClusterConstant {
 
   public static final long HEART_BEAT_INTERVAL_MS = 3000L;
-  // a failed election will restart in 5s~10s
-  public static final long ELECTION_LEAST_TIME_OUT_MS = 5 * 1000L;
-  public static final long ELECTION_RANDOM_TIME_OUT_MS = 5 * 1000L;
+  // a failed election will restart in 2s~10s
+  public static final long ELECTION_LEAST_TIME_OUT_MS = 2 * 1000L;
+  public static final long ELECTION_RANDOM_TIME_OUT_MS = 8 * 1000L;
 
   private ClusterConstant() {
     // constant class

@@ -23,6 +23,7 @@ package org.apache.iotdb.db.exception;
 public class NotStorageGroupException extends PathErrorException {
 
   public NotStorageGroupException(String path) {
-    super(String.format("%s is not a storage group", path));
+    super(String.format("%s is not a storage group or does not belong to any storage group",
+        path));
   }
 }

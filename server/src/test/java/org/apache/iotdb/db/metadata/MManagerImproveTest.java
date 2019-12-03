@@ -75,7 +75,7 @@ public class MManagerImproveTest {
   }
 
   @Test
-  public void analyseTimeCost() throws PathErrorException, StorageGroupException {
+  public void analyseTimeCost() throws PathErrorException {
     mManager = MManager.getInstance();
 
     long startTime, endTime;
@@ -164,7 +164,7 @@ public class MManagerImproveTest {
     tempList.add(new Path(deviceId));
     try {
       isFileLevelChecked = mManager.checkFileLevel(tempList);
-    } catch (StorageGroupException e) {
+    } catch (PathErrorException e) {
       isFileLevelChecked = false;
     }
     MNode node = mManager.getNodeByPath(deviceId);
@@ -183,7 +183,7 @@ public class MManagerImproveTest {
   }
 
   private void doRemoveListTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, StorageGroupException {
+      throws PathErrorException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       assertTrue(mManager.pathExist(path));
@@ -198,7 +198,7 @@ public class MManagerImproveTest {
     boolean isFileLevelChecked;
     try {
       isFileLevelChecked = mManager.checkFileLevel(deviceId);
-    } catch (StorageGroupException e) {
+    } catch (PathErrorException e) {
       isFileLevelChecked = false;
     }
     MNode node = mManager.getNodeByPathWithCheck(deviceId);

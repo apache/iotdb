@@ -64,11 +64,11 @@ public abstract class RaftServer implements RaftService.AsyncIface {
   RaftServer() {
     thisNode = new Node();
     thisNode.setIp(config.getLocalIP());
-    thisNode.setPort(config.getLocalMetaPort());
+    thisNode.setMetaPort(config.getLocalMetaPort());
     thisNode.setDataPort(config.getLocalDataPort());
   }
 
-  public RaftServer(Node thisNode) {
+  RaftServer(Node thisNode) {
     this.thisNode = thisNode;
   }
 

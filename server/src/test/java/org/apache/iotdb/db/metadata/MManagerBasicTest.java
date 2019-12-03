@@ -29,7 +29,6 @@ import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -84,7 +83,7 @@ public class MManagerBasicTest {
       manager.addPathToMTree(new Path("root.laptop.d1.s0"), TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections
               .emptyMap());
-    } catch (MetadataErrorException | PathErrorException e) {
+    } catch (MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -95,7 +94,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree(new Path("root.laptop.d1.s1"), TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (MetadataErrorException | PathErrorException e1) {
+    } catch (MetadataErrorException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -123,7 +122,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree(new Path("root.laptop.d1.s1"), TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (MetadataErrorException | PathErrorException e1) {
+    } catch (MetadataErrorException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -131,7 +130,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree(new Path("root.laptop.d1.s0"), TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (MetadataErrorException | PathErrorException e1) {
+    } catch (MetadataErrorException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -168,7 +167,7 @@ public class MManagerBasicTest {
     paths.add(new Path("root.laptop.d2.s1"));
     try {
       manager.checkFileLevel(paths);
-    } catch (StorageGroupException e) {
+    } catch (PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -176,7 +175,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree(new Path("root.laptop.d2.s1"), TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (MetadataErrorException | PathErrorException e1) {
+    } catch (MetadataErrorException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -184,7 +183,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree(new Path("root.laptop.d2.s0"), TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (MetadataErrorException | PathErrorException e1) {
+    } catch (MetadataErrorException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -205,7 +204,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree(new Path("root.laptop.d1.s0"), TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (MetadataErrorException | PathErrorException e1) {
+    } catch (MetadataErrorException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -213,7 +212,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree(new Path("root.laptop.d1.s1"), TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (MetadataErrorException | PathErrorException e1) {
+    } catch (MetadataErrorException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -222,7 +221,7 @@ public class MManagerBasicTest {
     paths.add(new Path("root.laptop.d1.s0"));
     try {
       manager.checkFileLevel(paths);
-    } catch (StorageGroupException e) {
+    } catch (PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -230,7 +229,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree(new Path("root.laptop.d1.s2"), TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (MetadataErrorException | PathErrorException e1) {
+    } catch (MetadataErrorException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -238,7 +237,7 @@ public class MManagerBasicTest {
     paths.add(new Path("root.laptop.d1.s2"));
     try {
       manager.checkFileLevel(paths);
-    } catch (StorageGroupException e) {
+    } catch (PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -246,7 +245,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree(new Path("root.laptop.d1.s3"), TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (MetadataErrorException | PathErrorException e1) {
+    } catch (MetadataErrorException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -254,7 +253,7 @@ public class MManagerBasicTest {
     paths.add(new Path("root.laptop.d1.s3"));
     try {
       manager.checkFileLevel(paths);
-    } catch (StorageGroupException e) {
+    } catch (PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -307,7 +306,7 @@ public class MManagerBasicTest {
       list.add("root.laptop.d2");
       assertEquals(list, manager.getAllStorageGroupNamesByPath("root.laptop"));
       assertEquals(list, manager.getAllStorageGroupNamesByPath("root"));
-    } catch (MetadataErrorException | PathErrorException e) {
+    } catch (MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -342,7 +341,7 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testMaximalSeriesNumberAmongStorageGroup() throws MetadataErrorException, PathErrorException {
+  public void testMaximalSeriesNumberAmongStorageGroup() throws MetadataErrorException {
     MManager manager = MManager.getInstance();
     assertEquals(0, manager.getMaximalSeriesNumberAmongStorageGroups());
     manager.setStorageGroupToMTree("root.laptop");

@@ -14,7 +14,6 @@ import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.SnapshotCatchUpHandler;
-import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -41,8 +40,8 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Runnable {
     }
 
     SendSnapshotRequest request = new SendSnapshotRequest();
-    if (raftMember instanceof DataGroupMember) {
-      request.setHeader(((DataGroupMember) raftMember).getHeader());
+    if (raftMember.getHeader() != null) {
+      request.setHeader(raftMember.getHeader());
     }
     request.setSnapshotBytes(snapshot.serialize());
 

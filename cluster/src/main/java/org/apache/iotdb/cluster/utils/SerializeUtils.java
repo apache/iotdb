@@ -56,7 +56,7 @@ public class SerializeUtils {
       byte[] ipBytes = node.ip.getBytes();
       dataOutputStream.writeInt(ipBytes.length);
       dataOutputStream.write(ipBytes);
-      dataOutputStream.writeInt(node.port);
+      dataOutputStream.writeInt(node.metaPort);
       dataOutputStream.writeInt(node.nodeIdentifier);
       dataOutputStream.writeInt(node.dataPort);
     } catch (IOException e) {
@@ -69,7 +69,7 @@ public class SerializeUtils {
     byte[] ipBytes = new byte[ipLength];
     buffer.get(ipBytes);
     node.setIp(new String(ipBytes));
-    node.setPort(buffer.getInt());
+    node.setMetaPort(buffer.getInt());
     node.setNodeIdentifier(buffer.getInt());
     node.setDataPort(buffer.getInt());
   }

@@ -37,7 +37,7 @@ public interface PartitionTable {
    * @param timestamp
    * @return
    */
-  List<Node> route(String storageGroupName, long timestamp);
+  PartitionGroup route(String storageGroupName, long timestamp);
 
   /**
    * Add a new node to update the partition table.

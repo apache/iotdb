@@ -116,7 +116,6 @@ public class SocketPartitionTable implements PartitionTable {
   @Override
   public PartitionGroup getHeaderGroup(Node node) {
     PartitionGroup ret = new PartitionGroup();
-    ret.add(node);
 
     // assuming the nodes are [1,2,3,4,5]
     int nodeIndex = nodeRing.indexOf(node);
@@ -137,7 +136,7 @@ public class SocketPartitionTable implements PartitionTable {
   }
 
   @Override
-  public List<Node> route(String storageGroupName, long timestamp) {
+  public PartitionGroup route(String storageGroupName, long timestamp) {
     synchronized (nodeRing) {
       long partitionInstance = timestamp / PARTITION_INTERVAL;
       int hash = Objects.hash(storageGroupName, partitionInstance);

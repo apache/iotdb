@@ -23,6 +23,7 @@ import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -114,7 +115,12 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
   public IExpression transformToExpression(IQueryProcessExecutor executor)
       throws QueryProcessorException {
     if (isSingle) {
-      Pair<IUnaryExpression, String> ret = transformToSingleQueryFilter(executor);
+      Pair<IUnaryExpression, String> ret;
+      try {
+        ret = transformToSingleQueryFilter(executor);
+      } catch (PathErrorException e) {
+        throw new QueryProcessorException(e);
+      }
       return ret.left;
     } else {
       if (childOperators.isEmpty()) {
@@ -150,7 +156,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
    */
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
       IQueryProcessExecutor executor)
-      throws QueryProcessorException {
+      throws QueryProcessorException, PathErrorException {
     if (childOperators.isEmpty()) {
       throw new LogicalOperatorException(
           ("transformToSingleFilter: this filter is not a leaf, but it's empty:{}"

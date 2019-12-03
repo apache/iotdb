@@ -45,6 +45,9 @@ public class LogCatchUpTask implements Runnable {
     handler.setAppendSucceed(appendSucceed);
     handler.setRaftMember(raftMember);
     handler.setFollower(node);
+    if (raftMember.getHeader() != null) {
+      request.setHeader(raftMember.getHeader());
+    }
 
     for (int i = 0; i < logs.size() && !abort; i++) {
       Log log = logs.get(i);

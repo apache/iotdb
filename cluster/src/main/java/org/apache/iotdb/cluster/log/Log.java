@@ -73,6 +73,4 @@ public abstract class Log {
   public void setCurrLogTerm(long currLogTerm) {
     this.currLogTerm = currLogTerm;
   }
-
-  public abstract int calculateSocket();
 }

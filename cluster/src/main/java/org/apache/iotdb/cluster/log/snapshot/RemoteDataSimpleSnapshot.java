@@ -10,20 +10,22 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * RemoteSimpleSnapshot is a snapshot that is being pulled from a remote node. Any query or
+ * RemoteDataSimpleSnapshot is a snapshot that is being pulled from a remote node. Any query or
  * modification to this snapshot must wait until the pulling is finished.
  */
-public class RemoteSimpleSnapshot extends SimpleSnapshot {
+public class RemoteDataSimpleSnapshot extends DataSimpleSnapshot {
 
-  private static final Logger logger = LoggerFactory.getLogger(RemoteSimpleSnapshot.class);
-  private Future<SimpleSnapshot> remoteSnapshot;
+  private static final Logger logger = LoggerFactory.getLogger(RemoteDataSimpleSnapshot.class);
+  private Future<DataSimpleSnapshot> remoteSnapshotFuture;
+  private List<Log> tempList = new ArrayList<>();
 
-  public RemoteSimpleSnapshot(Future<SimpleSnapshot> remoteSnapshot) {
-    this.remoteSnapshot = remoteSnapshot;
+  public RemoteDataSimpleSnapshot(Future<DataSimpleSnapshot> remoteSnapshotFuture) {
+    this.remoteSnapshotFuture = remoteSnapshotFuture;
   }
 
   @Override
@@ -46,23 +48,41 @@ public class RemoteSimpleSnapshot extends SimpleSnapshot {
 
   @Override
   public void add(Log log) {
+    synchronized (this) {
+      if (snapshot != null) {
+        snapshot.add(log);
+      } else {
+        tempList.add(log);
+      }
+    }
+  }
+
+  @Override
+  public List<MeasurementSchema> getTimeseriesSchemas() {
     getRemoteSnapshot();
-    super.add(log);
+    return super.getTimeseriesSchemas();
+  }
+
+  public boolean isPulled() {
+    return snapshot != null;
   }
 
   private void getRemoteSnapshot() {
     if (snapshot == null) {
       try {
         logger.info("Waiting for the remote snapshot");
-        snapshot = remoteSnapshot.get().snapshot;
-        if (snapshot == null) {
-          snapshot = new ArrayList<>();
+        DataSimpleSnapshot remoteSnapshot = remoteSnapshotFuture.get();
+        synchronized (this) {
+          logger.info("The remote snapshot is ready");
+          snapshot = remoteSnapshot.snapshot;
+          timeseriesSchemas = remoteSnapshot.timeseriesSchemas;
+          snapshot.addAll(tempList);
+          tempList = null;
         }
-        logger.info("The remote snapshot is ready");
       } catch (InterruptedException | ExecutionException e) {
         Thread.currentThread().interrupt();
         logger.error("Cannot get remote snapshot", e);
-        snapshot = new ArrayList<>();
+        snapshot = tempList;
       }
     }
   }

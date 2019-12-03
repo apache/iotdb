@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.Stack;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MetadataErrorException;
+import org.apache.iotdb.db.exception.NotStorageGroupException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.StorageGroupAlreadyExistException;
 import org.apache.iotdb.db.exception.StorageGroupException;
@@ -478,13 +479,13 @@ public class MTree implements Serializable {
    *
    * @return String storage group seriesPath
    */
-  String getStorageGroupNameByPath(String path) throws StorageGroupException {
+  String getStorageGroupNameByPath(String path) throws PathErrorException {
 
     String[] nodes = path.split(PATH_SEPARATOR);
     MNode cur = getRoot();
     for (int i = 1; i < nodes.length; i++) {
       if (cur == null) {
-        throw new StorageGroupException(String.format(NOT_SERIES_PATH, path));
+        throw new NotStorageGroupException(path);
       } else if (cur.isStorageGroup()) {
         return cur.getDataFileName();
       } else {
@@ -494,7 +495,7 @@ public class MTree implements Serializable {
     if (cur.isStorageGroup()) {
       return cur.getDataFileName();
     }
-    throw new StorageGroupException(String.format(NOT_SERIES_PATH, path));
+    throw new NotStorageGroupException(path);
   }
 
   /**

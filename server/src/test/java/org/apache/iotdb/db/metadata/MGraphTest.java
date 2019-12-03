@@ -74,7 +74,7 @@ public class MGraphTest {
       metadatas[1] = root2.toString();
       metadatas[2] = root3.toString();
       assertEquals(MGraph.combineMetadataInStrings(metadatas), root.toString());
-    } catch (PathErrorException | MetadataErrorException e) {
+    } catch (MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

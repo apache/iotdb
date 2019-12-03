@@ -171,7 +171,7 @@ public class StatMonitor implements IService {
               Collections.emptyMap());
         }
       }
-    } catch (MetadataErrorException | PathErrorException e) {
+    } catch (MetadataErrorException e) {
       logger.error("Initialize the metadata error.", e);
     }
   }

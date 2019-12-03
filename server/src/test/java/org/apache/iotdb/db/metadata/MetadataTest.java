@@ -80,7 +80,7 @@ public class MetadataTest {
 
       Metadata combineMetadata = Metadata.combineMetadatas(new Metadata[]{metadata1, metadata2});
       assertTrue(metadata.equals(combineMetadata));
-    } catch (PathErrorException | IOException | MetadataErrorException | StorageGroupException e) {
+    } catch (IOException | MetadataErrorException | StorageGroupException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

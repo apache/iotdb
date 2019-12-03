@@ -23,7 +23,7 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log.Types;
 import org.apache.iotdb.cluster.log.logs.AddNodeLog;
-import org.apache.iotdb.cluster.log.logs.MetaPlanLog;
+import org.apache.iotdb.cluster.log.logs.PhysicalPlanLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,9 +64,9 @@ public class LogParser {
         log = addNodeLog;
         break;
       case PHYSICAL_PLAN:
-        MetaPlanLog metaPlanLog = new MetaPlanLog();
-        metaPlanLog.deserialize(buffer);
-        log = metaPlanLog;
+        PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog();
+        physicalPlanLog.deserialize(buffer);
+        log = physicalPlanLog;
         break;
       default:
         throw new IllegalArgumentException(type.toString());

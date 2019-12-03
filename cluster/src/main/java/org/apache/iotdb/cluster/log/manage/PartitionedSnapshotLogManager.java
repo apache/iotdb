@@ -4,27 +4,40 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.Snapshot;
-import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.DataSimpleSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
+import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.utils.PartitionUtils;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.MNode;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * PartitionedSnapshotLogManager provides a PartitionedSnapshot as snapshot, dividing each log to
- * a sub-snapshot according to its socket.
+ * a sub-snapshot according to its socket and stores timeseries schemas of each socket.
  */
 public class PartitionedSnapshotLogManager extends MemoryLogManager {
 
-  private Map<Integer, SimpleSnapshot> socketSnapshots = new HashMap<>();
+  private Map<Integer, DataSimpleSnapshot> socketSnapshots = new HashMap<>();
+  private Map<Integer, List<MeasurementSchema>> socketTimeseries = new HashMap<>();
   private long snapshotLastLogId;
   private long snapshotLastLogTerm;
+  private PartitionTable partitionTable;
 
-  public PartitionedSnapshotLogManager(LogApplier logApplier) {
+  public PartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable) {
     super(logApplier);
+    this.partitionTable = partitionTable;
   }
 
   @Override
@@ -32,7 +45,7 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
     // copy snapshots
     synchronized (socketSnapshots) {
       PartitionedSnapshot partitionedSnapshot = new PartitionedSnapshot();
-      for (Entry<Integer, SimpleSnapshot> entry : socketSnapshots.entrySet()) {
+      for (Entry<Integer, DataSimpleSnapshot> entry : socketSnapshots.entrySet()) {
         partitionedSnapshot.putSnapshot(entry.getKey(), entry.getValue());
       }
       partitionedSnapshot.setLastLogId(snapshotLastLogId);
@@ -44,16 +57,40 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
   @Override
   public void takeSnapshot() {
     synchronized (socketSnapshots) {
+      List<MNode> allSgNodes = MManager.getInstance().getAllStorageGroups();
+      for (MNode sgNode : allSgNodes) {
+        String storageGroupName = sgNode.getFullPath();
+        int socket = Objects.hash(storageGroupName, 0);
+        List<MeasurementSchema> schemas = socketTimeseries.computeIfAbsent(socket, s -> new ArrayList<>());
+        collectSeries(sgNode, schemas);
+      }
+
       while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
         Log log = logBuffer.removeFirst();
-        socketSnapshots.computeIfAbsent(log.calculateSocket(), s -> new SimpleSnapshot()).add(log);
+        socketSnapshots.computeIfAbsent(PartitionUtils.calculateLogSocket(log, partitionTable),
+            socket -> new DataSimpleSnapshot(socketTimeseries.get(socket))).add(log);
         snapshotLastLogId = log.getCurrLogIndex();
         snapshotLastLogTerm = log.getCurrLogTerm();
       }
     }
   }
 
-  public void setSnapshot(SimpleSnapshot snapshot, int socket) {
+  private void collectSeries(MNode storageGroupNode, List<MeasurementSchema> timeseriesSchemas) {
+    Deque<MNode> nodeDeque = new ArrayDeque<>();
+    nodeDeque.addLast(storageGroupNode);
+    while (!nodeDeque.isEmpty()) {
+      MNode node = nodeDeque.removeFirst();
+      if (node.isLeaf()) {
+        MeasurementSchema nodeSchema = node.getSchema();
+        timeseriesSchemas.add(new MeasurementSchema(node.getFullPath(),
+            nodeSchema.getType(), nodeSchema.getEncodingType(), nodeSchema.getCompressor()));
+      } else if (node.hasChildren()) {
+        nodeDeque.addAll(node.getChildren().values());
+      }
+    }
+  }
+
+  public void setSnapshot(DataSimpleSnapshot snapshot, int socket) {
     synchronized (socketSnapshots) {
       socketSnapshots.put(socket, snapshot);
     }

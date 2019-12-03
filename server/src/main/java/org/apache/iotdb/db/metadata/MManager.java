@@ -42,6 +42,7 @@ import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.NotStorageGroupException;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.SeriesAlreadyExistsException;
 import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
@@ -153,7 +154,7 @@ public class MManager {
             .max(Integer::compareTo).get();
       }
       writeToLog = true;
-    } catch (PathErrorException | IOException | MetadataErrorException e) {
+    } catch (IOException | MetadataErrorException e) {
       mgraph = new MGraph(ROOT_NAME);
       logger.error("Cannot read MGraph from file, using an empty new one", e);
     } finally {
@@ -164,7 +165,7 @@ public class MManager {
 
 
   private void initFromLog(File logFile)
-      throws IOException, PathErrorException, MetadataErrorException {
+      throws IOException, MetadataErrorException {
     // init the metadata from the operation log
     mgraph = new MGraph(ROOT_NAME);
     if (logFile.exists()) {
@@ -277,7 +278,7 @@ public class MManager {
 
   public boolean addPathToMTree(String path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props)
-      throws MetadataErrorException, PathErrorException {
+      throws MetadataErrorException {
     return addPathToMTree(new Path(path), dataType, encoding, compressor, props);
   }
 
@@ -294,15 +295,14 @@ public class MManager {
   @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
   public boolean addPathToMTree(Path path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props)
-      throws MetadataErrorException, PathErrorException {
+      throws MetadataErrorException {
     if (pathExist(path.getFullPath())) {
-      throw new MetadataErrorException(
-          String.format("Timeseries %s already exist", path.getFullPath()));
+      throw new SeriesAlreadyExistsException(path.getFullPath());
     }
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
     if (!checkStorageGroupByPath(path.getFullPath())) {
       if (!conf.isAutoCreateSchemaEnabled()) {
-        throw new MetadataErrorException("Storage group should be created first");
+        throw new NotStorageGroupException(path.getFullPath());
       }
       String storageGroupName = getStorageGroupNameByAutoLevel(
           path.getFullPath(), conf.getDefaultStorageGroupLevel());
@@ -312,7 +312,7 @@ public class MManager {
     String fileNodePath;
     try {
       fileNodePath = getStorageGroupNameByPath(path.getFullPath());
-    } catch (StorageGroupException e) {
+    } catch (PathErrorException e) {
       throw new MetadataErrorException(e);
     }
     try {
@@ -329,8 +329,7 @@ public class MManager {
     synchronized (schemaMap) {
       // Need to check the path again to avoid duplicated inserting by multi concurrent threads
       if (pathExist(path.getFullPath())) {
-        throw new MetadataErrorException(
-            String.format("Timeseries %s already exist", path.getFullPath()));
+        throw new SeriesAlreadyExistsException(path.getFullPath());
       }
       if (schemaMap.containsKey(lastNode)) {
         isNewMeasurement = false;
@@ -343,14 +342,14 @@ public class MManager {
         }
         try {
           addPathToMTreeInternal(path.getFullPath(), dataType, encoding, compressor, props);
-        } catch (IOException | PathErrorException | StorageGroupException e) {
+        } catch (IOException | PathErrorException e) {
           throw new MetadataErrorException(e);
         }
         numSchemaMap.put(lastNode, numSchemaMap.get(lastNode) + 1);
       } else {
         try {
           addPathToMTreeInternal(path.getFullPath(), dataType, encoding, compressor, props);
-        } catch (PathErrorException | IOException | StorageGroupException e) {
+        } catch (PathErrorException | IOException e) {
           throw new MetadataErrorException(e);
         }
         MeasurementSchema columnSchema;
@@ -368,7 +367,7 @@ public class MManager {
 
   private void addPathToMTreeInternal(String path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props)
-      throws PathErrorException, IOException, StorageGroupException {
+      throws PathErrorException, IOException {
 
     lock.writeLock().lock();
     try {
@@ -446,7 +445,7 @@ public class MManager {
         String storageGroupName;
         try {
           storageGroupName = getStorageGroupNameByPath(eachSubPath);
-        } catch (StorageGroupException e) {
+        } catch (PathErrorException e) {
           throw new MetadataErrorException(e);
         }
 
@@ -499,7 +498,7 @@ public class MManager {
     String storageGroupName;
     try {
       storageGroupName = getStorageGroupNameByPath(pathStr);
-    } catch (StorageGroupException e) {
+    } catch (PathErrorException e) {
       throw new MetadataErrorException(e);
     }
     String emptiedStorageGroup;
@@ -519,7 +518,7 @@ public class MManager {
       }
       try {
         emptiedStorageGroup = deletePathFromMTree(pathStr);
-      } catch (PathErrorException | IOException | StorageGroupException e) {
+      } catch (PathErrorException | IOException e) {
         throw new MetadataErrorException(e);
       }
     }
@@ -533,7 +532,7 @@ public class MManager {
    * otherwise null
    */
   private String deletePathFromMTree(String path)
-      throws PathErrorException, IOException, StorageGroupException {
+      throws PathErrorException, IOException {
     lock.writeLock().lock();
     try {
       checkAndGetDataTypeCache.clear();
@@ -941,13 +940,11 @@ public class MManager {
    *
    * @return A String represented the file name
    */
-  public String getStorageGroupNameByPath(String path) throws StorageGroupException {
+  public String getStorageGroupNameByPath(String path) throws PathErrorException {
 
     lock.readLock().lock();
     try {
       return mgraph.getStorageGroupNameByPath(path);
-    } catch (StorageGroupException e) {
-      throw new StorageGroupException(e);
     } finally {
       lock.readLock().unlock();
     }
@@ -1147,7 +1144,7 @@ public class MManager {
             String storageGroupName = getStorageGroupNameByAutoLevel(
                 deviceId, conf.getDefaultStorageGroupLevel());
             setStorageGroupToMTree(storageGroupName);
-          } catch (MetadataErrorException | PathErrorException e1) {
+          } catch (MetadataErrorException e1) {
             throw new CacheException(e1);
           }
         }
@@ -1226,7 +1223,7 @@ public class MManager {
   /**
    * Check whether given seriesPath contains a MNode whose {@code MNode.isStorageGroup} is true.
    */
-  public boolean checkFileLevel(List<Path> path) throws StorageGroupException {
+  public boolean checkFileLevel(List<Path> path) throws PathErrorException {
 
     lock.readLock().lock();
     try {
@@ -1258,7 +1255,7 @@ public class MManager {
   /**
    * function for checking file level.
    */
-  boolean checkFileLevel(String path) throws StorageGroupException {
+  boolean checkFileLevel(String path) throws PathErrorException {
 
     lock.readLock().lock();
     try {
@@ -1339,7 +1336,7 @@ public class MManager {
         return new PathCheckRet(false, null);
       }
       return new PathCheckRet(true, getSeriesType(path));
-    } catch (PathErrorException | StorageGroupException e) {
+    } catch (PathErrorException e) {
       throw new CacheException(e);
     }
   }

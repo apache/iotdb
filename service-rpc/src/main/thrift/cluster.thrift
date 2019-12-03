@@ -59,12 +59,13 @@ struct ElectionRequest {
   1: required long term
   2: required long lastLogTerm
   3: required long lastLogIndex
+  4: required Node elector
 
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
-  4: optional Node header
-  5: optional long dataLogLastIndex
-  6: optional long dataLogLastTerm
+  5: optional Node header
+  6: optional long dataLogLastIndex
+  7: optional long dataLogLastTerm
 }
 
 // leader -> follower
@@ -174,6 +175,7 @@ service RaftService {
   * execute a binarized non-query PhysicalPlan
   **/
   rpc.TSStatus executeNonQueryPlan(1:ExecutNonQueryReq request)
+
 }
 
 
@@ -193,4 +195,5 @@ service TSMetaService extends RaftService {
   * @param node a new node that needs to be added
   **/
   AddNodeResponse addNode(1: Node node)
+
 }

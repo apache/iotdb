@@ -42,7 +42,6 @@ import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -54,14 +53,14 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -207,7 +206,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       value = checkValue(dataType, value);
       storageEngine.update(deviceId, measurementId, startTime, endTime, dataType, value);
       return true;
-    } catch (PathErrorException | StorageGroupException e) {
+    } catch (PathErrorException e) {
       throw new ProcessorException(e);
     }
   }
@@ -224,7 +223,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       mManager.getStorageGroupNameByPath(path.getFullPath());
       storageEngine.delete(deviceId, measurementId, timestamp);
       return true;
-    } catch (StorageGroupException | StorageEngineException e) {
+    } catch (PathErrorException | StorageEngineException e) {
       throw new ProcessorException(e);
     }
   }
@@ -262,7 +261,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       insertPlan.setDataTypes(dataTypes);
       return storageEngine.insert(insertPlan);
 
-    } catch (PathErrorException | StorageEngineException | MetadataErrorException | CacheException e) {
+    } catch (StorageEngineException | MetadataErrorException | CacheException e) {
       throw new ProcessorException(e);
     }
   }
@@ -295,7 +294,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       }
       return storageEngine.insertBatch(batchInsertPlan);
 
-    } catch (PathErrorException | StorageEngineException | MetadataErrorException | CacheException e) {
+    } catch (StorageEngineException | MetadataErrorException | CacheException e) {
       throw new ProcessorException(e);
     }
   }
@@ -420,7 +419,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       if (result) {
         storageEngine.addTimeSeries(path, dataType, encoding, compressor, props);
       }
-    } catch (StorageEngineException | MetadataErrorException | PathErrorException e) {
+    } catch (StorageEngineException | MetadataErrorException e) {
       throw new ProcessorException(e);
     }
     return true;
@@ -501,7 +500,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         default:
           throw new ProcessorException("unknown namespace type:" + propertyType);
       }
-    } catch (PathErrorException | IOException | MetadataErrorException e) {
+    } catch (IOException | MetadataErrorException e) {
       throw new ProcessorException("meet error in " + propertyType + " . ", e);
     }
     return true;

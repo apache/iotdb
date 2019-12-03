@@ -91,7 +91,7 @@ public class MManagerAdvancedTest {
       assertEquals(6, paths.size());
       paths = mmanager.getPaths("root.vehicle.d2");
       assertEquals(0, paths.size());
-    } catch (MetadataErrorException | StorageGroupException e) {
+    } catch (MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

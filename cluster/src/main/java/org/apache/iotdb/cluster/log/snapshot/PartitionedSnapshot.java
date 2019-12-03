@@ -62,10 +62,14 @@ public class PartitionedSnapshot extends Snapshot {
    int size = buffer.getInt();
     for (int i = 0; i < size; i++) {
       int socket = buffer.getInt();
-      SimpleSnapshot snapshot = new SimpleSnapshot();
+      Snapshot snapshot = newEmptySnapshot();
       snapshot.deserialize(buffer);
       socketSnapshots.put(socket, snapshot);
     }
+  }
+
+  private Snapshot newEmptySnapshot() {
+    return new DataSimpleSnapshot();
   }
 
   public PartitionedSnapshot getSubSnapshots(List<Integer> sockets) {

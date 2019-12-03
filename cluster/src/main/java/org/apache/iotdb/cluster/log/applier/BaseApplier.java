@@ -4,31 +4,36 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
-import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.log.logs.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * DataLogApplier applies logs like data insertion/deletion/update and timeseries creation to IoTDB.
+ * BaseApplier use QueryProcessExecutor to execute PhysicalPlans.
  */
-public class DataLogApplier extends BaseApplier {
+abstract class BaseApplier implements LogApplier {
 
-  private static final Logger logger = LoggerFactory.getLogger(DataLogApplier.class);
+  private static final Logger logger = LoggerFactory.getLogger(BaseApplier.class);
 
-  @Override
-  public void apply(Log log) throws ProcessorException {
-    if (log instanceof PhysicalPlanLog) {
-      applyPhysicalPlan(((PhysicalPlanLog) log).getPlan());
+  private QueryProcessExecutor queryExecutor;
+
+  void applyPhysicalPlan(PhysicalPlan plan) throws ProcessorException {
+    if (!plan.isQuery()) {
+      getQueryExecutor().processNonQuery(plan);
     } else {
       // TODO-Cluster support more types of logs
-      logger.error("Unsupported log: {}", log);
+      logger.error("Unsupported physical plan: {}", plan);
     }
   }
 
-  @Override
-  public void revert(Log log) {
-    //TODO-Cluster: implement
+  private QueryProcessExecutor getQueryExecutor() {
+    if (queryExecutor == null) {
+      queryExecutor = new QueryProcessExecutor();
+    }
+    return queryExecutor;
   }
 }

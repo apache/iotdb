@@ -7,7 +7,7 @@ package org.apache.iotdb.cluster.log.applier;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logs.AddNodeLog;
-import org.apache.iotdb.cluster.log.logs.MetaPlanLog;
+import org.apache.iotdb.cluster.log.logs.PhysicalPlanLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 /**
  * MetaLogApplier applies logs like node addition and storage group creation to IoTDB.
  */
-public class MetaLogApplier implements LogApplier {
+public class MetaLogApplier extends BaseApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(MetaLogApplier.class);
   private MetaGroupMember member;
@@ -37,20 +37,11 @@ public class MetaLogApplier implements LogApplier {
       AddNodeLog addNodeLog = (AddNodeLog) log;
       Node newNode = addNodeLog.getNewNode();
       member.applyAddNode(newNode);
-    } else if (log instanceof MetaPlanLog) {
-      applyPhysicalPlan(((MetaPlanLog) log).getPlan());
+    } else if (log instanceof PhysicalPlanLog) {
+      applyPhysicalPlan(((PhysicalPlanLog) log).getPlan());
     } else {
       // TODO-Cluster support more types of logs
       logger.error("Unsupported log: {}", log);
-    }
-  }
-
-  private void applyPhysicalPlan(PhysicalPlan plan) throws ProcessorException {
-    if (plan instanceof SetStorageGroupPlan) {
-      getQueryExecutor().processNonQuery(plan);
-    } else {
-      // TODO-Cluster support more types of logs
-      logger.error("Unsupported physical plan: {}", plan);
     }
   }
 
@@ -62,12 +53,5 @@ public class MetaLogApplier implements LogApplier {
       // TODO-Cluster support more types of logs
       logger.error("Unsupported log: {}", log);
     }
-  }
-
-  private QueryProcessExecutor getQueryExecutor() {
-    if (queryExecutor == null) {
-      queryExecutor = new QueryProcessExecutor();
-    }
-    return queryExecutor;
   }
 }

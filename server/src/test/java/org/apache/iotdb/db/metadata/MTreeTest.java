@@ -119,7 +119,7 @@ public class MTreeTest {
       root.addTimeseriesPath("root.a.b.d0.s0", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
           (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
 
-    } catch (PathErrorException | MetadataErrorException e1) {
+    } catch (MetadataErrorException e1) {
       e1.printStackTrace();
     }
 
@@ -185,7 +185,7 @@ public class MTreeTest {
       metadataStrs[1] = root2.toString();
       metadataStrs[2] = root3.toString();
       assertEquals(MTree.combineMetadataInStrings(metadataStrs), root.toString());
-    } catch (PathErrorException | MetadataErrorException e) {
+    } catch (MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -203,7 +203,7 @@ public class MTreeTest {
       assertFalse(root.isPathExist("root.laptop.d1.s1"));
       assertTrue(root.checkFileNameByPath("root.laptop.d1.s1"));
       assertEquals("root.laptop.d1", root.getStorageGroupNameByPath("root.laptop.d1.s1"));
-    } catch (StorageGroupException | MetadataErrorException e) {
+    } catch (MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -238,7 +238,7 @@ public class MTreeTest {
       assertEquals("root.laptop.d2", root.getStorageGroupNameByPath("root.laptop.d2.s1"));
       root.addTimeseriesPath("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
           (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
-    } catch (PathErrorException | StorageGroupException e) {
+    } catch (PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -305,7 +305,7 @@ public class MTreeTest {
       list.add("root.laptop.d2");
       assertEquals(list, root.getAllFileNamesByPath("root.laptop"));
       assertEquals(list, root.getAllFileNamesByPath("root"));
-    } catch (PathErrorException | MetadataErrorException e) {
+    } catch (MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -333,7 +333,7 @@ public class MTreeTest {
       assertTrue(root.getAllFileNamesByPath("root.vehicle1.device2").isEmpty());
       assertTrue(root.getAllFileNamesByPath("root.vehicle1.device3").isEmpty());
       assertFalse(root.getAllFileNamesByPath("root.vehicle1.device").isEmpty());
-    } catch (PathErrorException | MetadataErrorException e) {
+    } catch (MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
