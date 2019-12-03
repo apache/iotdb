@@ -29,6 +29,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.integration.Constant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.tools.watermark.WatermarkDetector;
@@ -46,8 +48,8 @@ import org.junit.Test;
 public class IoTDBWatermarkTest {
 
   private static IoTDB daemon;
-  private static String filePath1 = "watermarked_query_result.csv";
-  private static String filePath2 = "notWatermarked_query_result.csv";
+  private static String filePath1 = TestConstant.BASE_OUTPUT_PATH.concat("watermarked_query_result.csv");
+  private static String filePath2 = TestConstant.BASE_OUTPUT_PATH.concat("notWatermarked_query_result.csv");
   private static PrintWriter writer1;
   private static PrintWriter writer2;
   private static String secretKey = "ASDFGHJKL";
@@ -138,7 +140,8 @@ public class IoTDBWatermarkTest {
   }
 
   @Test
-  public void EncodeAndDecodeTest1() throws IOException, ClassNotFoundException, SQLException {
+  public void EncodeAndDecodeTest1()
+      throws IOException, ClassNotFoundException, SQLException, LogicalOperatorException {
     // Watermark Embedding
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
@@ -146,8 +149,8 @@ public class IoTDBWatermarkTest {
       connection = DriverManager
           .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
-      statement.execute("GRANT WATERMARK_EMBEDDING to root");
-      boolean hasResultSet = statement.execute("select s0,s1,s2 from root.vehicle.d0");
+      statement.execute("GRANT WATERMARK_EMBEDDING TO root");
+      boolean hasResultSet = statement.execute("SELECT s0,s1,s2 FROM root.vehicle.d0");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       while (resultSet.next()) {
@@ -179,7 +182,8 @@ public class IoTDBWatermarkTest {
   }
 
   @Test
-  public void EncodeAndDecodeTest2() throws IOException, ClassNotFoundException, SQLException {
+  public void EncodeAndDecodeTest2()
+      throws IOException, ClassNotFoundException, SQLException, LogicalOperatorException {
     // No Watermark Embedding
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
@@ -187,8 +191,8 @@ public class IoTDBWatermarkTest {
       connection = DriverManager
           .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
-      statement.execute("REVOKE WATERMARK_EMBEDDING from root");
-      boolean hasResultSet = statement.execute("select s0,s1,s2 from root.vehicle.d0");
+      statement.execute("REVOKE WATERMARK_EMBEDDING FROM root");
+      boolean hasResultSet = statement.execute("SELECT s0,s1,s2 FROM root.vehicle.d0");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       while (resultSet.next()) {

@@ -21,17 +21,30 @@ package org.apache.iotdb.tsfile.write.page;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
+import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * This function is used to write time-value into a page. It consists of a time encoder, a value encoder and respective
- * OutputStream.
+ * This writer is used to write time-value into a page. It consists of a time encoder,
+ * a value encoder and respective OutputStream.
  */
 public class PageWriter {
+
+  private static final Logger logger = LoggerFactory.getLogger(PageWriter.class);
+
+  private ICompressor compressor;
 
   // time
   private Encoder timeEncoder;
@@ -40,15 +53,22 @@ public class PageWriter {
   private Encoder valueEncoder;
   private PublicBAOS valueOut;
 
+  /**
+   * statistic of current page. It will be reset after calling {@code writePageHeaderAndDataIntoBuff()}
+   */
+  private Statistics<?> statistics;
+
   public PageWriter() {
     this(null, null);
   }
 
   public PageWriter(MeasurementSchema measurementSchema) {
     this(measurementSchema.getTimeEncoder(), measurementSchema.getValueEncoder());
+    this.statistics = Statistics.getStatsByType(measurementSchema.getType());
+    this.compressor = ICompressor.getCompressor(measurementSchema.getCompressor());
   }
 
-  public PageWriter(Encoder timeEncoder, Encoder valueEncoder) {
+  private PageWriter(Encoder timeEncoder, Encoder valueEncoder) {
     this.timeOut = new PublicBAOS();
     this.valueOut = new PublicBAOS();
     this.timeEncoder = timeEncoder;
@@ -61,6 +81,7 @@ public class PageWriter {
   public void write(long time, boolean value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
+    statistics.update(time, value);
   }
 
   /**
@@ -69,6 +90,7 @@ public class PageWriter {
   public void write(long time, short value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
+    statistics.update(time, value);
   }
 
   /**
@@ -77,6 +99,7 @@ public class PageWriter {
   public void write(long time, int value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
+    statistics.update(time, value);
   }
 
   /**
@@ -85,6 +108,7 @@ public class PageWriter {
   public void write(long time, long value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
+    statistics.update(time, value);
   }
 
   /**
@@ -93,6 +117,7 @@ public class PageWriter {
   public void write(long time, float value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
+    statistics.update(time, value);
   }
 
   /**
@@ -101,14 +126,7 @@ public class PageWriter {
   public void write(long time, double value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
-  }
-
-  /**
-   * write a time value pair into encoder
-   */
-  public void write(long time, BigDecimal value) {
-    timeEncoder.encode(time, timeOut);
-    valueEncoder.encode(value, valueOut);
+    statistics.update(time, value);
   }
 
   /**
@@ -117,6 +135,7 @@ public class PageWriter {
   public void write(long time, Binary value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
+    statistics.update(time, value);
   }
 
   /**
@@ -127,6 +146,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
@@ -137,6 +157,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
@@ -147,6 +168,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
@@ -157,6 +179,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
@@ -167,16 +190,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-  }
-
-  /**
-   * write time series into encoder
-   */
-  public void write(long[] timestamps, BigDecimal[] values, int batchSize) {
-    for (int i = 0; i < batchSize; i++) {
-      timeEncoder.encode(timestamps[i], timeOut);
-      valueEncoder.encode(values[i], valueOut);
-    }
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
@@ -187,6 +201,7 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
+    statistics.update(timestamps, values, batchSize);
   }
 
   /**
@@ -213,6 +228,47 @@ public class PageWriter {
     return buffer;
   }
 
+
+  /**
+   * write the page header and data into the PageWriter's output stream.
+   */
+  public void writePageHeaderAndDataIntoBuff(PublicBAOS pageBuffer) throws IOException {
+    if (statistics.getCount() == 0) {
+      return;
+    }
+
+    ByteBuffer pageData = getUncompressedBytes();
+    int uncompressedSize = pageData.remaining();
+    int compressedSize;
+    int compressedPosition = 0;
+    byte[] compressedBytes = null;
+
+    if (compressor.getType().equals(CompressionType.UNCOMPRESSED)) {
+      compressedSize = pageData.remaining();
+    } else {
+      compressedBytes = new byte[compressor.getMaxBytesForCompression(uncompressedSize)];
+      compressedPosition = 0;
+      // data is never a directByteBuffer now, so we can use data.array()
+      compressedSize = compressor
+          .compress(pageData.array(), pageData.position(), uncompressedSize, compressedBytes);
+    }
+
+    // write the page header to IOWriter
+    PageHeader header = new PageHeader(uncompressedSize, compressedSize, statistics);
+    header.serializeTo(pageBuffer);
+
+    // write page content to temp PBAOS
+    try (WritableByteChannel channel = Channels.newChannel(pageBuffer)) {
+      logger.debug("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
+      if (compressor.getType().equals(CompressionType.UNCOMPRESSED)) {
+        channel.write(pageData);
+      } else {
+        pageBuffer.write(compressedBytes, compressedPosition, compressedSize);
+      }
+      logger.debug("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
+    }
+  }
+
   /**
    * calculate max possible memory size it occupies, including time outputStream and value outputStream, because size
    * outputStream is never used until flushing.
@@ -225,11 +281,12 @@ public class PageWriter {
   }
 
   /**
-   * reset data in ByteArrayOutputStream
+   * reset this page
    */
-  public void reset() {
+  public void reset(MeasurementSchema measurementSchema) {
     timeOut.reset();
     valueOut.reset();
+    statistics = Statistics.getStatsByType(measurementSchema.getType());
   }
 
   public void setTimeEncoder(Encoder encoder) {
@@ -238,6 +295,18 @@ public class PageWriter {
 
   public void setValueEncoder(Encoder encoder) {
     this.valueEncoder = encoder;
+  }
+
+  public void initStatistics(TSDataType dataType) {
+    statistics = Statistics.getStatsByType(dataType);
+  }
+
+  public long getPointNumber(){
+    return statistics.getCount();
+  }
+
+  public Statistics<?> getStatistics(){
+    return statistics;
   }
 
 }

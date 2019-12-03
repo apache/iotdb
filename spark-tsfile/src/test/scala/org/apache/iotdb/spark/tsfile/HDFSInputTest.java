@@ -21,6 +21,8 @@ package org.apache.iotdb.spark.tsfile;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+
+import org.apache.iotdb.spark.constant.TestConstant;
 import org.apache.iotdb.spark.tool.TsFileWriteTool;
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
 import org.junit.After;
@@ -30,7 +32,7 @@ import org.junit.Test;
 
 public class HDFSInputTest {
 
-  private String folder = "target/test-output/HDFSInputTest";
+  private String folder = TestConstant.BASE_OUTPUT_PATH.concat("test-output/HDFSInputTest");
   private String path = folder + "/test.tsfile";
   private HDFSInput in;
 

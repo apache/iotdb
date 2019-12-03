@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.externalsort;
 import java.io.File;
 import java.io.IOException;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileSerializer;
 import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthIExternalSortFileDeserializer;
@@ -43,7 +44,7 @@ public class IExternalSortFileSerializerDeserializerTest {
 
   @Test
   public void testFIX_LENGTH() throws IOException {
-    String rootPath = "tmpFile2";
+    String rootPath = TestConstant.BASE_OUTPUT_PATH.concat("tmpFile2");
     String filePath = rootPath;
     int count = 10000;
     testReadWrite(genTimeValuePairs(count, TSDataType.BOOLEAN), count, rootPath, filePath,

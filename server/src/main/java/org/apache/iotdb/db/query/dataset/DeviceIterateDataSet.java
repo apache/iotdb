@@ -24,9 +24,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
@@ -180,8 +179,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
           default:
             throw new IOException("unsupported DataSetType");
         }
-      } catch (ProcessorException | QueryFilterOptimizationException | StorageEngineException |
-          PathErrorException | IOException e) {
+      } catch (QueryProcessException | QueryFilterOptimizationException | StorageEngineException e) {
         throw new IOException(e);
       }
 

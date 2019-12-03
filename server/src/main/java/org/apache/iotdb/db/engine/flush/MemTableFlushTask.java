@@ -1,15 +1,19 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
- * agreements.  See the NOTICE file distributed with this work for additional information regarding
- * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with the License.  You may obtain
- * a copy of the License at
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied.  See the License for the specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.db.engine.flush;
@@ -18,17 +22,14 @@ import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
-import org.apache.iotdb.db.engine.memtable.ChunkBufferPool;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
-import org.apache.iotdb.db.exception.FlushRunTimeException;
+import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -40,7 +41,6 @@ import org.slf4j.LoggerFactory;
 public class MemTableFlushTask {
 
   private static final Logger logger = LoggerFactory.getLogger(MemTableFlushTask.class);
-  private static final int PAGE_SIZE_THRESHOLD = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
   private static final FlushSubTaskPoolManager subTaskPoolManager = FlushSubTaskPoolManager
       .getInstance();
   private Future ioTaskFuture;
@@ -83,9 +83,12 @@ public class MemTableFlushTask {
         TVList tvList = series.getSortedTVList();
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.add(new Pair<>(tvList, desc));
+        // register active time series to the ActiveTimeSeriesCounter
+        ActiveTimeSeriesCounter.getInstance().offer(storageGroup, deviceId, measurementId);
       }
       encodingTaskQueue.add(new EndChunkGroupIoTask(memTable.getVersion()));
     }
+    ActiveTimeSeriesCounter.getInstance().updateActiveRatio(storageGroup);
     noMoreEncodingTask = true;
     logger.debug(
         "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
@@ -167,9 +170,7 @@ public class MemTableFlushTask {
           } else {
             long starTime = System.currentTimeMillis();
             Pair<TVList, MeasurementSchema> encodingMessage = (Pair<TVList, MeasurementSchema>) task;
-            ChunkBuffer chunkBuffer = ChunkBufferPool.getInstance()
-                .getEmptyChunkBuffer(this, encodingMessage.right);
-            IChunkWriter seriesWriter = new ChunkWriterImpl(chunkBuffer, PAGE_SIZE_THRESHOLD);
+            IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right);
             writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
             ioTaskQueue.add(seriesWriter);
             memSerializeTime += System.currentTimeMillis() - starTime;
@@ -211,7 +212,6 @@ public class MemTableFlushTask {
             } else if (ioMessage instanceof IChunkWriter) {
               ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
               chunkWriter.writeToFileWriter(MemTableFlushTask.this.writer);
-              ChunkBufferPool.getInstance().putBack(chunkWriter.getChunkBuffer());
             } else {
               EndChunkGroupIoTask endGroupTask = (EndChunkGroupIoTask) ioMessage;
               writer.endChunkGroup(endGroupTask.version);

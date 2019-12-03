@@ -17,44 +17,96 @@
 #
 
 import sys, struct
+
 sys.path.append("../target")
 
 from thrift.protocol import TBinaryProtocol
 from thrift.transport import TSocket, TTransport
 
-from rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertionReq, TSBatchInsertionReq, TSExecuteStatementReq,\
-    TS_SessionHandle, TSHandleIdentifier, TSOpenSessionReq, TSQueryDataSet, TSFetchResultsReq, TSCloseOperationReq,\
+from rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertionReq, \
+    TSBatchInsertionReq, TSExecuteStatementReq, \
+    TS_SessionHandle, TSHandleIdentifier, TSOpenSessionReq, TSQueryDataSet, \
+    TSFetchResultsReq, TSCloseOperationReq, \
     TSCloseSessionReq
+from rpc.ttypes import TSProtocolVersion
 
 TSDataType = {
-    'BOOLEAN' : 0,
-    'INT32' : 1,
-    'INT64' : 2,
-    'FLOAT' : 3,
-    'DOUBLE' : 4,
-    'TEXT' : 5
+    'BOOLEAN': 0,
+    'INT32': 1,
+    'INT64': 2,
+    'FLOAT': 3,
+    'DOUBLE': 4,
+    'TEXT': 5
 }
 
 TSEncoding = {
-    'PLAIN' : 0,
-    'PLAIN_DICTIONARY' : 1,
-    'RLE' : 2,
-    'DIFF' : 3,
-    'TS_2DIFF' : 4,
-    'BITMAP' : 5,
-    'GORILLA' : 6,
-    'REGULAR' : 7
+    'PLAIN': 0,
+    'PLAIN_DICTIONARY': 1,
+    'RLE': 2,
+    'DIFF': 3,
+    'TS_2DIFF': 4,
+    'BITMAP': 5,
+    'GORILLA': 6,
+    'REGULAR': 7
 }
 
 Compressor = {
-    'UNCOMPRESSED' : 0,
-    'SNAPPY' : 1,
-    'GZIP' : 2,
-    'LZO' : 3,
-    'SDT' : 4,
-    'PAA' : 5,
-    'PLA' : 6
+    'UNCOMPRESSED': 0,
+    'SNAPPY': 1,
+    'GZIP': 2,
+    'LZO': 3,
+    'SDT': 4,
+    'PAA': 5,
+    'PLA': 6
 }
+
+
+def convertQueryDataSet(queryDataSet, dataTypeList):
+    bytes = queryDataSet.values
+    row_count = queryDataSet.rowCount
+    time_bytes = bytes[:8 * row_count]
+    value_bytes = bytes[8 * row_count:]
+    time_unpack_str = '>' + str(row_count) + 'q'
+    records = []
+    times = struct.unpack(time_unpack_str, time_bytes)
+    for i in range(row_count):
+        records.append([times[i]])
+
+    for i in range(len(dataTypeList)):
+        type = dataTypeList[i]
+        for j in range(row_count):
+            is_null = value_bytes[0]
+            value_bytes = value_bytes[1:]
+            if is_null == 1:
+                records[j].append('null')
+            else:
+                if type == 'BOOLEAN':
+                    value = value_bytes[:1]
+                    value_bytes = value_bytes[1:]
+                    records[j].append(struct.unpack('>?', value)[0])
+                elif type == 'INT32':
+                    value = value_bytes[:4]
+                    value_bytes = value_bytes[4:]
+                    records[j].append(struct.unpack('>i', value)[0])
+                elif type == 'INT64':
+                    value = value_bytes[:8]
+                    value_bytes = value_bytes[8:]
+                    records[j].append(struct.unpack('>q', value)[0])
+                elif type == 'FLOAT':
+                    value = value_bytes[:4]
+                    value_bytes = value_bytes[4:]
+                    records[j].append(struct.unpack('>f', value)[0])
+                elif type == 'DOUBLE':
+                    value = value_bytes[:8]
+                    value_bytes = value_bytes[8:]
+                    records[j].append(struct.unpack('>d', value)[0])
+                elif type == 'TEXT':
+                    size = value_bytes[:4]
+                    value_bytes = value_bytes[4:]
+                    size = struct.unpack('>i', size)[0]
+                    records[j].append(value_bytes[:size])
+                    value_bytes = value_bytes[size:]
+    return records
 
 
 if __name__ == '__main__':
@@ -78,50 +130,96 @@ if __name__ == '__main__':
     transport.open()
 
     # Authentication
-    client.openSession(TSOpenSessionReq(username=username, password=password))
+    clientProtocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1
+    resp = client.openSession(TSOpenSessionReq(client_protocol=clientProtocol,
+                                               username=username,
+                                               password=password))
+    if resp.serverProtocolVersion != clientProtocol:
+        print('Inconsistent protocol, server version: %d, client version: %d'
+              % (resp.serverProtocolVersion, clientProtocol))
+        exit()
+    handle = resp.sessionHandle
 
     # This is necessary for resource control
     stmtId = client.requestStatementId()
-
-    # These two fields do not matter
-    handle = TS_SessionHandle(TSHandleIdentifier(b'uuid', b'secret'))
 
     # create a storage group
     status = client.setStorageGroup("root.group1")
     print(status.statusType)
 
     # create timeseries
-    status = client.createTimeseries(TSCreateTimeseriesReq("root.group1.s1", TSDataType['INT64'], TSEncoding['PLAIN'],
+    status = client.createTimeseries(TSCreateTimeseriesReq("root.group1.s1",
+                                                           TSDataType['INT64'],
+                                                           TSEncoding['PLAIN'],
                                                            Compressor['UNCOMPRESSED']))
     print(status.statusType)
-    status = client.createTimeseries(TSCreateTimeseriesReq("root.group1.s2", TSDataType['INT64'], TSEncoding['PLAIN'],
+    status = client.createTimeseries(TSCreateTimeseriesReq("root.group1.s2",
+                                                           TSDataType['INT32'],
+                                                           TSEncoding['PLAIN'],
                                                            Compressor['UNCOMPRESSED']))
     print(status.statusType)
-    status = client.createTimeseries(TSCreateTimeseriesReq("root.group1.s3", TSDataType['INT64'], TSEncoding['PLAIN'],
+    status = client.createTimeseries(TSCreateTimeseriesReq("root.group1.s3",
+                                                           TSDataType['DOUBLE'],
+                                                           TSEncoding['PLAIN'],
+                                                           Compressor['UNCOMPRESSED']))
+    print(status.statusType)
+    status = client.createTimeseries(TSCreateTimeseriesReq("root.group1.s4",
+                                                           TSDataType['FLOAT'],
+                                                           TSEncoding['PLAIN'],
+                                                           Compressor['UNCOMPRESSED']))
+    print(status.statusType)
+    status = client.createTimeseries(TSCreateTimeseriesReq("root.group1.s5",
+                                                           TSDataType['BOOLEAN'],
+                                                           TSEncoding['PLAIN'],
+                                                           Compressor['UNCOMPRESSED']))
+    print(status.statusType)
+    status = client.createTimeseries(TSCreateTimeseriesReq("root.group1.s6",
+                                                           TSDataType['TEXT'],
+                                                           TSEncoding['PLAIN'],
                                                            Compressor['UNCOMPRESSED']))
     print(status.statusType)
 
+    deviceId = "root.group1"
+    measurements = ["s1", "s2", "s3", "s4", "s5", "s6"]
+
     # insert a single row
-    status = client.insertRow(TSInsertionReq("root.group1", ["s1", "s2", "s3"], ["1", "11", "111"], 1, 1))
-    print(status.statusType)
+    values = ["1", "11", "1.1", "11.1", "TRUE", "\'text0\'"]
+    timestamp = 1
+    status = client.insert(TSInsertionReq(deviceId, measurements,
+                                          values, timestamp, stmtId))
+    print(status.status)
 
     # insert multiple rows, this interface is more efficient
     values = bytearray()
     times = bytearray()
-    deviceId = "root.group1"
-    measurements = ["s1", "s2", "s3"]
-    dataSize = 3
-    dataTypes = [TSDataType['INT64'], TSDataType['INT64'], TSDataType['INT64']]
-    # the first 3 belong to 's1', the mid 3 belong to 's2', the last 3 belong to 's3'
-    values.extend(struct.pack('>qqqqqqqqq', 2, 3, 4, 22, 33, 44, 222, 333, 444))
-    times.extend(struct.pack('>qqq', 2, 3, 4))
-    resp = client.insertBatch(TSBatchInsertionReq(deviceId, measurements, values, times,
-                                                  dataTypes, dataSize))
+
+    rowCnt = 3
+    dataTypes = [TSDataType['INT64'], TSDataType['INT32'], TSDataType['DOUBLE'],
+                 TSDataType['FLOAT'], TSDataType['BOOLEAN'], TSDataType['TEXT']]
+    # the first 3 belong to 's1', the second 3 belong to 's2'... the last 3
+    # belong to 's6'
+    # to transfer a string, you must first send its length and then its bytes
+    # (like the last 3 'i7s'). Text values should start and end with ' or ".
+    # IoTDB use big endian in rpc
+    value_pack_str = '>3q3i3d3f3bi7si7si7s'
+    time_pack_str = '>3q'
+    encoding = 'utf-8'
+    values.extend(struct.pack(value_pack_str, 2, 3, 4, 22, 33, 44, 2.2, 3.3,
+                              4.4, 22.2, 33.3, 44.4, True, True, False,
+                              len(bytes('\'text1\'', encoding)),
+                              bytes('\'text1\'', encoding),
+                              len(bytes('\'text2\'', encoding)),
+                              bytes('\'text2\'', encoding),
+                              len(bytes('\'text3\'', encoding)),
+                              bytes('\'text3\'', encoding)))
+    times.extend(struct.pack(time_pack_str, 2, 3, 4))
+    resp = client.insertBatch(TSBatchInsertionReq(deviceId, measurements, values,
+                                                  times, dataTypes, rowCnt))
     status = resp.status
     print(status.statusType)
 
     # execute deletion (or other statements)
-    resp = client.executeStatement(TSExecuteStatementReq(handle, "DELETE FROM root.group1 where time < 2"))
+    resp = client.executeStatement(TSExecuteStatementReq(handle, "DELETE FROM root.group1 where time < 2", stmtId))
     status = resp.status
     print(status.statusType)
 
@@ -129,14 +227,20 @@ if __name__ == '__main__':
     stmt = "SELECT * FROM root.group1"
     fetchSize = 2
     # this is also for resource control, make sure different queries will not use the same id at the same time
-    queryId = 1
-    resp = client.executeQueryStatement(TSExecuteStatementReq(handle, stmt))
+    resp = client.executeQueryStatement(TSExecuteStatementReq(handle, stmt, stmtId))
+    # headers
+    dataTypeList = resp.dataTypeList
+    print(resp.columns)
+    print(dataTypeList)
+
     stmtHandle = resp.operationHandle
     status = resp.status
     print(status.statusType)
+
+    queryId = resp.operationHandle.operationId.queryId
     while True:
         rst = client.fetchResults(TSFetchResultsReq(stmt, fetchSize, queryId)).queryDataSet
-        records = rst.records
+        records = convertQueryDataSet(rst, dataTypeList)
         if len(records) == 0:
             break
         for record in records:
@@ -147,5 +251,3 @@ if __name__ == '__main__':
 
     # and do not forget to close the session before exiting
     client.closeSession(TSCloseSessionReq(handle))
-
-

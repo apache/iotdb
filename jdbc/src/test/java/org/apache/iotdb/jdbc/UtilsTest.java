@@ -57,7 +57,52 @@ public class UtilsTest {
   public void testParseURL() throws IoTDBURLException {
     String userName = "test";
     String userPwd = "test";
-    String host = "localhost";
+    String host1 = "localhost";
+    int port = 6667;
+    Properties properties = new Properties();
+    properties.setProperty(Config.AUTH_USER, userName);
+    properties.setProperty(Config.AUTH_PASSWORD, userPwd);
+    IoTDBConnectionParams params = Utils
+        .parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host1, port),
+            properties);
+    assertEquals(params.getHost(), host1);
+    assertEquals(params.getPort(), port);
+    assertEquals(params.getUsername(), userName);
+    assertEquals(params.getPassword(), userPwd);
+
+    //don't contain / in the end of url
+    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host1, port),
+            properties);
+    assertEquals(params.getHost(), host1);
+    assertEquals(params.getPort(), port);
+
+    //use a domain
+    String host2 = "google.com";
+    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host2, port),
+        properties);
+    assertEquals(params.getHost(), host2);
+    assertEquals(params.getPort(), port);
+
+    //use a different domain
+    String host3 = "www.google.com";
+    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host3, port),
+        properties);
+    assertEquals(params.getHost(), host3);
+    assertEquals(params.getPort(), port);
+
+    //use a ip
+    String host4 = "1.2.3.4";
+    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host4, port),
+        properties);
+    assertEquals(params.getHost(), host4);
+    assertEquals(params.getPort(), port);
+  }
+
+  @Test(expected = NumberFormatException.class)
+  public void testParseWrongDomain() throws IoTDBURLException {
+    String userName = "test";
+    String userPwd = "test";
+    String host = "www.::google.com";
     int port = 6667;
     Properties properties = new Properties();
     properties.setProperty(Config.AUTH_USER, userName);
@@ -65,10 +110,34 @@ public class UtilsTest {
     IoTDBConnectionParams params = Utils
         .parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host, port),
             properties);
-    assertEquals(params.getHost(), host);
-    assertEquals(params.getPort(), port);
-    assertEquals(params.getUsername(), userName);
-    assertEquals(params.getPassword(), userPwd);
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseWrongIP() throws IoTDBURLException {
+    String userName = "test";
+    String userPwd = "test";
+    String host = "1.2.3.";
+    int port = 6667;
+    Properties properties = new Properties();
+    properties.setProperty(Config.AUTH_USER, userName);
+    properties.setProperty(Config.AUTH_PASSWORD, userPwd);
+    IoTDBConnectionParams params = Utils
+        .parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host, port),
+            properties);
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseWrongPort() throws IoTDBURLException {
+    String userName = "test";
+    String userPwd = "test";
+    String host = "localhost";
+    int port = 66699999;
+    Properties properties = new Properties();
+    properties.setProperty(Config.AUTH_USER, userName);
+    properties.setProperty(Config.AUTH_PASSWORD, userPwd);
+    IoTDBConnectionParams params = Utils
+        .parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host, port),
+            properties);
   }
 
   @Test
@@ -192,46 +261,47 @@ public class UtilsTest {
     columnTypeList.add(TSDataType.FLOAT.toString());
     columnTypeList.add(TSDataType.DOUBLE.toString());
     columnTypeList.add(TSDataType.TEXT.toString());
-    List<RowRecord> convertlist = Utils.convertRowRecords(tsQueryDataSet, columnTypeList);
+    ByteBuffer resultBuffer = Utils.convertResultBuffer(tsQueryDataSet, columnTypeList);
+    RowRecord r = Utils.getRowRecord(resultBuffer, columnTypeList);
     int index = 0;
-    for (RowRecord r : convertlist) {
+    while (r != null) {
       assertEquals(input[index][0], r.getTimestamp());
       List<Field> fields = r.getFields();
       int j = 0;
       for (Field f : fields) {
         if (j == 0) {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getBoolV());
           }
         } else if (j == 1) {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getIntV());
           }
         } else if (j == 2) {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getLongV());
           }
         } else if (j == 3) {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getFloatV());
           }
         } else if (j == 4) {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getDoubleV());
           }
         } else {
           if (input[index][3 * j + 3] == null) {
-            assertTrue(f.isNull());
+            assertTrue(f.getDataType() == null);
           } else {
             assertEquals(input[index][3 * j + 3], f.getStringValue());
           }
@@ -239,6 +309,7 @@ public class UtilsTest {
         j++;
       }
       index++;
+      r = Utils.getRowRecord(resultBuffer, columnTypeList);
     }
   }
 

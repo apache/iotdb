@@ -23,8 +23,8 @@ import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_NOT;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
 
 import java.util.List;
-import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
-import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
@@ -63,8 +63,7 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
       case KW_NOT:
         return reverseFilter(filter.getChildren().get(0));
       default:
-        throw new LogicalOptimizeException(
-            "Unknown token in removeNot: " + tokenInt + "," + SQLConstant.tokenNames.get(tokenInt));
+        throw new LogicalOptimizeException("removeNot", tokenInt);
     }
   }
 
@@ -83,8 +82,8 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
       } catch (LogicalOperatorException e) {
         logger.error("meet error while converting BasicFunction.", e);
         throw new LogicalOperatorException(
-            "convert BasicFuntion to reserved meet failed: previous token:"
-                + tokenInt + "tokenName:" + SQLConstant.tokenNames.get(tokenInt));
+            "Convert BasicFuntion to reserved meet failed: previous token: "
+                + tokenInt + "tokenName: " + SQLConstant.tokenNames.get(tokenInt));
       }
       return filter;
     }
@@ -99,9 +98,7 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
       case KW_NOT:
         return removeNot(filter.getChildren().get(0));
       default:
-        throw new LogicalOptimizeException(
-            "Unknown token in reverseFilter: " + tokenInt + "," + SQLConstant.tokenNames
-                .get(tokenInt));
+        throw new LogicalOptimizeException("reverseFilter", tokenInt);
     }
   }
 

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.fill;
 
 import java.io.IOException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.UnSupportedFillTypeException;
+import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -77,7 +77,7 @@ public class LinearFill extends IFill {
   }
 
   @Override
-  public IPointReader getFillResult() throws IOException {
+  public IPointReader getFillResult() throws IOException, UnSupportedFillTypeException {
     TimeValuePair beforePair = null;
     TimeValuePair afterPair = null;
     while (allDataReader.hasNext()) {
@@ -105,7 +105,8 @@ public class LinearFill extends IFill {
   }
 
   // returns the average of two points
-  private TimeValuePair average(TimeValuePair beforePair, TimeValuePair afterPair) {
+  private TimeValuePair average(TimeValuePair beforePair, TimeValuePair afterPair)
+      throws UnSupportedFillTypeException {
     double totalTimeLength = (double) afterPair.getTimestamp() - beforePair.getTimestamp();
     double beforeTimeLength = (double) (queryTime - beforePair.getTimestamp());
     switch (dataType) {
@@ -142,7 +143,7 @@ public class LinearFill extends IFill {
         beforePair.setValue(TsPrimitiveType.getByType(TSDataType.DOUBLE, fillDoubleValue));
         break;
       default:
-        throw new UnSupportedFillTypeException("Unsupported linear fill data type : " + dataType);
+        throw new UnSupportedFillTypeException(dataType);
 
     }
     beforePair.setTimestamp(queryTime);

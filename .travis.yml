@@ -35,7 +35,11 @@ matrix:
         - java -version
         - mvn -version
         - mvn -B apache-rat:check
+        # Output something every 10 minutes or Travis kills the job
+        - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
         - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
+        # Killing background sleep loop
+        - kill %1
     - os: osx
       osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
       name: osx-oraclejdk8
@@ -53,7 +57,11 @@ matrix:
         - java -version
         - mvn -version
         - mvn -B apache-rat:check
+        # Output something every 10 minutes or Travis kills the job
+        - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
         - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
+        # Killing background sleep loop
+        - kill %1
     - os: osx
       osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
       name: osx-openjdk8
@@ -83,11 +91,14 @@ matrix:
 
     - os: windows
       language: c
-      name: win-oraclejdk8
+      name: win-openjdk11
       before_install:
-        - choco install jdk8 -params 'installdir=c:\\jdk8'
+        # - choco install openjdk11 --version=11.0.2.01 -y
+        # can get the download links from https://jdk.java.net/archive/
+        - wget --no-check-certificate https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_windows-x64_bin.zip
         - wget --no-check-certificate https://www-eu.apache.org/dist/maven/maven-3/3.6.2/binaries/apache-maven-3.6.2-bin.zip
         - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.2-bin.zip -o/c/mvn362
+        - /C/Progra~1/7-Zip/7z.exe x openjdk-11.0.2_windows-x64_bin.zip -o/c/java
         - mkdir C:\hadoop\bin
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.exe -o C:\hadoop\bin
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.dll -o C:\windows\system32
@@ -112,9 +123,9 @@ matrix:
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -o C:\hadoop\bin
 
       before_script:
-        - export "JAVA_HOME=/c/jdk8"
-        - export "PATH=/c/jdk8/bin:$PATH"
-        - export "PATH=/c/jdk8/jre/bin:$PATH"
+        - export "JAVA_HOME=/c/java/jdk-11.0.2"
+        - export "PATH=$JAVA_HOME/bin:$PATH"
+        - export "PATH=$JAVA_HOME/jre/bin:$PATH"
         - export "MAVEN_HOME=/c/mvn362/apache-maven-3.6.2"
         - export "M2_HOME=/c/mvn362/apache-maven-3.6.2"
         - export "PATH=/c/mvn362/apache-maven-3.6.2/bin:$PATH"
@@ -123,11 +134,15 @@ matrix:
       script:
         - java -version
         - mvn -version
-        - mvn -B clean integration-test
+        # Output something every 10 minutes or Travis kills the job
+        - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
+        - travis_wait 40 mvn -B clean integration-test
+        # Killing background sleep loop
+        - kill %1
 
     - os: linux
       name: linux-openjdk11
-      dist: trusty
+      dist: xenial
       sudo: required
       before_install:
         - wget https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_linux-x64_bin.tar.gz -O jdk11.tar.gz
@@ -137,15 +152,19 @@ matrix:
         - export PATH=$JAVA_HOME/bin:$PATH
       script:
         - java -version
+        # Output something every 10 minutes or Travis kills the job
+        - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
         - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
+        # Killing background sleep loop
+        - kill %1
     - os: linux
       name: linux-openjdk8
-      dist: trusty
+      dist: xenial
       jdk: openjdk8
-    - os: linux
-      name: linux-oraclejdk8
-      dist: trusty
-      jdk: oraclejdk8
+#    - os: linux
+#      name: linux-oraclejdk8
+#      dist: xenial
+#      jdk: oraclejdk8
 #    - os: linux
 #      name: linux-oraclejdk11
 #      dist: trusty
@@ -173,5 +192,6 @@ script:
   - java -version
   - ./mvnw.sh -B -ntp apache-rat:check
   - ./mvnw.sh -B -ntp clean integration-test
+
 
 after_success:

@@ -22,6 +22,9 @@ echo ````````````````````````
 echo Starting IoTDB Client
 echo ````````````````````````
 
+@REM You can put your env variable here
+@REM set JAVA_HOME=%JAVA_HOME%
+
 if "%OS%" == "Windows_NT" setlocal
 
 pushd %~dp0..

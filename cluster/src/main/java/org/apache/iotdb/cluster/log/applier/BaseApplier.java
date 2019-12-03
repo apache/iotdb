@@ -5,10 +5,9 @@
 package org.apache.iotdb.cluster.log.applier;
 
 import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +20,7 @@ abstract class BaseApplier implements LogApplier {
 
   private QueryProcessExecutor queryExecutor;
 
-  void applyPhysicalPlan(PhysicalPlan plan) throws ProcessorException {
+  void applyPhysicalPlan(PhysicalPlan plan) throws QueryProcessException {
     if (!plan.isQuery()) {
       getQueryExecutor().processNonQuery(plan);
     } else {

@@ -31,6 +31,7 @@ import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -172,9 +173,9 @@ public class PerfTest {
     ch.qos.logback.classic.Logger logger = loggerContext.getLogger("root");
     logger.setLevel(Level.toLevel("info"));
 
-    inputDataFile = "target/perTestInputData";
-    outputDataFile = "target/perTestOutputData.tsfile";
-    errorOutputDataFile = "target/perTestErrorOutputData.tsfile";
+    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestInputData");
+    outputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestOutputData.tsfile");
+    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestErrorOutputData.tsfile");
     schema = generateTestData();
     generateSampleInputDataFile();
   }

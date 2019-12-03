@@ -26,8 +26,6 @@ import org.junit.Test;
 
 public class StringStatisticsTest {
 
-  private static final double maxError = 0.0001d;
-
   @Test
   public void testUpdate() {
     Statistics<Binary> binaryStats = new BinaryStatistics();
@@ -35,11 +33,8 @@ public class StringStatisticsTest {
     assertFalse(binaryStats.isEmpty());
     binaryStats.updateStats(new Binary("bbb"));
     assertFalse(binaryStats.isEmpty());
-    assertEquals("bbb", binaryStats.getMax().getStringValue());
-    assertEquals("aaa", binaryStats.getMin().getStringValue());
-    assertEquals(0, binaryStats.getSum(), maxError);
-    assertEquals("aaa", binaryStats.getFirst().getStringValue());
-    assertEquals("bbb", binaryStats.getLast().getStringValue());
+    assertEquals("aaa", binaryStats.getFirstValue().getStringValue());
+    assertEquals("bbb", binaryStats.getLastValue().getStringValue());
   }
 
   @Test
@@ -55,17 +50,11 @@ public class StringStatisticsTest {
     Statistics<Binary> stringStats3 = new BinaryStatistics();
     stringStats3.mergeStatistics(stringStats1);
     assertFalse(stringStats3.isEmpty());
-    assertEquals("ccc", stringStats3.getMax().getStringValue());
-    assertEquals("aaa", stringStats3.getMin().getStringValue());
-    assertEquals(0, stringStats3.getSum(), maxError);
-    assertEquals("aaa", stringStats3.getFirst().getStringValue());
-    assertEquals("ccc", stringStats3.getLast().getStringValue());
+    assertEquals("aaa", stringStats3.getFirstValue().getStringValue());
+    assertEquals("ccc", stringStats3.getLastValue().getStringValue());
 
     stringStats3.mergeStatistics(stringStats2);
-    assertEquals("ddd", (String) stringStats3.getMax().getStringValue());
-    assertEquals("aaa", (String) stringStats3.getMin().getStringValue());
-    assertEquals(0, stringStats3.getSum(), maxError);
-    assertEquals("aaa", (String) stringStats3.getFirst().getStringValue());
-    assertEquals("ddd", stringStats3.getLast().getStringValue());
+    assertEquals("aaa", (String) stringStats3.getFirstValue().getStringValue());
+    assertEquals("ddd", stringStats3.getLastValue().getStringValue());
   }
 }

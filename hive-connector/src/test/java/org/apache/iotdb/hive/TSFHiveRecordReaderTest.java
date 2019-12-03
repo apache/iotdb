@@ -25,6 +25,7 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.iotdb.hadoop.tsfile.TSFInputSplit;
+import org.apache.iotdb.hive.constant.TestConstant;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,7 +40,7 @@ public class TSFHiveRecordReaderTest {
 
   private TSFHiveRecordReader tsfHiveRecordReader;
   private String deviceId;
-  private String filePath = "test.tsfile";
+  private String filePath = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
 
 
   @Before

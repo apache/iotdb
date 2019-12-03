@@ -20,10 +20,12 @@ package org.apache.iotdb.spark.tsfile
 
 import java.io.{ByteArrayOutputStream, File}
 import java.net.URI
+import java.util
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput
+import org.apache.iotdb.spark.constant.TestConstant
 import org.apache.iotdb.spark.tool.TsFileWriteTool
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader
@@ -35,7 +37,7 @@ import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 class TSFileSuit extends FunSuite with BeforeAndAfterAll {
 
-  private val baseFolder = "suitTestBaseDir"
+  private val baseFolder = TestConstant.BASE_OUTPUT_PATH.concat("suitTestBaseDir")
   private val tsfileFolder1 = baseFolder + "/tsfileFolder1"
   private val tsfile1 = tsfileFolder1 + "/test1.tsfile"
   private val tsfile2 = tsfileFolder1 + "/test2.tsfile"
@@ -376,8 +378,9 @@ device_2: 400000 rows, time range [0,799998], interval 2
         "|131047|device_1   |null    |131047  |null    |\n" +
         "|131048|device_1   |null    |131048  |null    |\n" +
         "|131049|device_1   |null    |131049  |null    |\n" +
-        "+------+-----------+--------+--------+--------+\n"
+        "+------+-----------+--------+--------+--------+"
 
+    println("???" + util.Arrays.toString(actual))
     Assert.assertArrayEquals(expect.toCharArray, actual.dropRight(2))
 
     reader.close() // DO NOT FORGET THIS

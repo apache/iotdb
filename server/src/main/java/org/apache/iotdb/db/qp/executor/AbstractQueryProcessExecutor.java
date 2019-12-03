@@ -18,18 +18,24 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.ITEM;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.STORAGE_GROUP;
 import static org.apache.iotdb.db.conf.IoTDBConstant.TTL;
+import static org.apache.iotdb.db.conf.IoTDBConstant.VALUE;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.adapter.CompressionRatio;
+import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
+import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -39,10 +45,11 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.dataset.DeviceIterateDataSet;
+import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.executor.IEngineQueryRouter;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -60,17 +67,28 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
 
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
-      throws IOException, StorageEngineException, PathErrorException,
-      QueryFilterOptimizationException, ProcessorException {
-
+      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException {
     if (queryPlan instanceof QueryPlan) {
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof AuthorPlan) {
       return processAuthorQuery((AuthorPlan) queryPlan, context);
-    } else if(queryPlan instanceof ShowTTLPlan) {
-      return processShowTTLQuery((ShowTTLPlan) queryPlan);
+    } else if (queryPlan instanceof ShowPlan) {
+      return processShowQuery((ShowPlan) queryPlan);
     } else {
-      throw new ProcessorException(String.format("Unrecognized query plan %s", queryPlan));
+      throw new QueryProcessException(String.format("Unrecognized query plan %s", queryPlan));
+    }
+  }
+
+  private QueryDataSet processShowQuery(ShowPlan showPlan) throws QueryProcessException {
+    switch (showPlan.getShowContentType()) {
+      case TTL:
+        return processShowTTLQuery((ShowTTLPlan) showPlan);
+      case DYNAMIC_PARAMETER:
+        return processShowDynamicParameterQuery();
+      case FLUSH_TASK_INFO:
+        return processShowFlushTaskInfo();
+      default:
+        throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
   }
 
@@ -86,13 +104,13 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     List<String> selectedSgs = showTTLPlan.getStorageGroups();
 
     List<MNode> storageGroups = MManager.getInstance().getAllStorageGroups();
-    int i = 0;
+    int timestamp = 0;
     for (MNode mNode : storageGroups) {
       String sgName = mNode.getFullPath();
       if (!selectedSgs.isEmpty() && !selectedSgs.contains(sgName)) {
         continue;
       }
-      RowRecord rowRecord = new RowRecord(i++);
+      RowRecord rowRecord = new RowRecord(timestamp++);
       Field sg = new Field(TSDataType.TEXT);
       Field ttl;
       sg.setBinaryV(new Binary(sgName));
@@ -101,7 +119,6 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
         ttl.setLongV(mNode.getDataTTL());
       } else {
         ttl = new Field(null);
-        ttl.setNull();
       }
       rowRecord.addField(sg);
       rowRecord.addField(ttl);
@@ -111,12 +128,71 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     return listDataSet;
   }
 
+  private QueryDataSet processShowDynamicParameterQuery() {
+    List<Path> paths = new ArrayList<>();
+    paths.add(new Path(PARAMETER));
+    paths.add(new Path(VALUE));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.TEXT);
+    dataTypes.add(TSDataType.TEXT);
+    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+
+    int timestamp = 0;
+    addRowRecordForShowQuery(listDataSet, timestamp++, "memtable size threshold",
+        IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold() + "B");
+    addRowRecordForShowQuery(listDataSet, timestamp++, "memtable number",
+        IoTDBDescriptor.getInstance().getConfig().getMaxMemtableNumber() + "B");
+    addRowRecordForShowQuery(listDataSet, timestamp++, "tsfile size threshold",
+        IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold() + "B");
+    addRowRecordForShowQuery(listDataSet, timestamp++, "compression ratio",
+        Double.toString(CompressionRatio.getInstance().getRatio()));
+    addRowRecordForShowQuery(listDataSet, timestamp++, "storage group number",
+        Integer.toString( MManager.getInstance().getAllStorageGroupNames().size()));
+    addRowRecordForShowQuery(listDataSet, timestamp++, "timeseries number",
+        Integer.toString(IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries()));
+    addRowRecordForShowQuery(listDataSet, timestamp++,
+        "maximal timeseries number among storage groups",
+        Long.toString(MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups()));
+    return listDataSet;
+  }
+
+  private QueryDataSet processShowFlushTaskInfo() {
+    List<Path> paths = new ArrayList<>();
+    paths.add(new Path(ITEM));
+    paths.add(new Path(VALUE));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.TEXT);
+    dataTypes.add(TSDataType.TEXT);
+    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+
+    int timestamp = 0;
+    addRowRecordForShowQuery(listDataSet, timestamp++, "total number of flush tasks",
+        Integer.toString(FlushTaskPoolManager.getInstance().getTotalTasks()));
+    addRowRecordForShowQuery(listDataSet, timestamp++, "number of working flush tasks",
+        Integer.toString(FlushTaskPoolManager.getInstance().getWorkingTasksNumber()));
+    addRowRecordForShowQuery(listDataSet, timestamp++, "number of waiting flush tasks",
+        Integer.toString(FlushTaskPoolManager.getInstance().getWaitingTasksNumber()));
+    return listDataSet;
+  }
+
+  private void addRowRecordForShowQuery(ListDataSet listDataSet, int timestamp, String item,
+      String value) {
+    RowRecord rowRecord = new RowRecord(timestamp);
+    Field itemField = new Field(TSDataType.TEXT);
+    itemField.setBinaryV(new Binary(item));
+    Field valueField = new Field(TSDataType.TEXT);
+    valueField.setBinaryV(new Binary(value));
+    rowRecord.addField(itemField);
+    rowRecord.addField(valueField);
+    listDataSet.putRecord(rowRecord);
+  }
+
   protected abstract QueryDataSet processAuthorQuery(AuthorPlan plan, QueryContext context)
-      throws ProcessorException;
+      throws QueryProcessException;
 
   private QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
-      throws StorageEngineException, QueryFilterOptimizationException, PathErrorException,
-      ProcessorException, IOException {
+      throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
+      IOException {
     if (queryPlan.isGroupByDevice()) {
       return new DeviceIterateDataSet(queryPlan, context, queryRouter);
     }
@@ -160,13 +236,13 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
    */
   private void deduplicate(List<Path> paths, List<String> aggregations,
       List<Path> deduplicatedPaths,
-      List<String> deduplicatedAggregations) throws ProcessorException {
+      List<String> deduplicatedAggregations) throws QueryProcessException {
     if (paths == null || aggregations == null || deduplicatedPaths == null
         || deduplicatedAggregations == null) {
-      throw new ProcessorException("Parameters should not be null.");
+      throw new QueryProcessException("Parameters should not be null.");
     }
     if (paths.size() != aggregations.size()) {
-      throw new ProcessorException(
+      throw new QueryProcessException(
           "The size of the path list does not equal that of the aggregation list.");
     }
     Set<String> columnSet = new HashSet<>();
@@ -184,9 +260,9 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
    * Note that the deduplication strategy must be consistent with that of IoTDBQueryResultSet.
    */
   private void deduplicate(List<Path> paths, List<Path> deduplicatedPaths)
-      throws ProcessorException {
+      throws QueryProcessException {
     if (paths == null || deduplicatedPaths == null) {
-      throw new ProcessorException("Parameters should not be null.");
+      throw new QueryProcessException("Parameters should not be null.");
     }
     Set<String> columnSet = new HashSet<>();
     for (Path path : paths) {
@@ -199,31 +275,28 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   }
 
   @Override
-  public boolean delete(DeletePlan deletePlan) throws ProcessorException {
+  public void delete(DeletePlan deletePlan) throws QueryProcessException {
     try {
-      boolean result = true;
       MManager mManager = MManager.getInstance();
       Set<String> existingPaths = new HashSet<>();
       for (Path p : deletePlan.getPaths()) {
         existingPaths.addAll(mManager.getPaths(p.getFullPath()));
       }
       if (existingPaths.isEmpty()) {
-        throw new ProcessorException("TimeSeries does not exist and its data cannot be deleted");
+        throw new QueryProcessException(
+            "TimeSeries does not exist and its data cannot be deleted");
       }
       for (String onePath : existingPaths) {
         if (!mManager.pathExist(onePath)) {
-          throw new ProcessorException(
-              String
-                  .format("TimeSeries %s does not exist and its data cannot be deleted", onePath));
+          throw new QueryProcessException(String
+              .format("TimeSeries %s does not exist and its data cannot be deleted", onePath));
         }
       }
       for (String path : existingPaths) {
-        result &= delete(new Path(path), deletePlan.getDeleteTime());
+        delete(new Path(path), deletePlan.getDeleteTime());
       }
-      return result;
-    } catch (MetadataErrorException e) {
-      throw new ProcessorException(e);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
     }
   }
-
 }

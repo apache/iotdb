@@ -45,8 +45,8 @@ public class MNode implements Serializable {
   // Map for the schema in this storage group
   private Map<String, MeasurementSchema> schemaMap;
   private Map<String, Integer> numSchemaMap;
-  // Corresponding data file name for current node
-  private String dataFileName;
+  // Corresponding storage group name for current node
+  private String storageGroupName;
   // Column's Schema for one timeseries represented by current node if current
   // node is one leaf
   private MeasurementSchema schema;
@@ -173,12 +173,12 @@ public class MNode implements Serializable {
     }
   }
 
-  public String getDataFileName() {
-    return dataFileName;
+  public String getStorageGroupName() {
+    return storageGroupName;
   }
 
-  public void setDataFileName(String dataFileName) {
-    this.dataFileName = dataFileName;
+  public void setStorageGroupName(String storageGroupName) {
+    this.storageGroupName = storageGroupName;
   }
 
   @Override

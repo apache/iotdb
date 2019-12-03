@@ -24,13 +24,13 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.aggregation.impl.LastAggrFunc;
+import org.apache.iotdb.db.query.aggregation.impl.LastValueAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrFunc;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -50,9 +50,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public class AggregateEngineExecutor {
@@ -83,7 +81,7 @@ public class AggregateEngineExecutor {
    * @param context query context
    */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
-      throws StorageEngineException, IOException, PathErrorException, ProcessorException {
+      throws StorageEngineException, IOException, QueryProcessException {
     Filter timeFilter = null;
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
@@ -94,9 +92,14 @@ public class AggregateEngineExecutor {
     List<AggregateFunction> aggregateFunctions = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       // construct AggregateFunction
-      TSDataType tsDataType = MManager.getInstance()
-          .getSeriesType(selectedSeries.get(i).getFullPath());
-      AggregateFunction function = AggreFuncFactory.getAggrFuncByName(aggres.get(i), tsDataType);
+      AggregateFunction function;
+      try {
+        TSDataType tsDataType = MManager.getInstance()
+            .getSeriesType(selectedSeries.get(i).getFullPath());
+        function = AggreFuncFactory.getAggrFuncByName(aggres.get(i), tsDataType);
+      } catch (MetadataException e) {
+        throw new QueryProcessException(e);
+      }
       function.init();
       aggregateFunctions.add(function);
 
@@ -107,7 +110,7 @@ public class AggregateEngineExecutor {
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
       IAggregateReader seqResourceIterateReader;
-      if (function instanceof MaxTimeAggrFunc || function instanceof LastAggrFunc) {
+      if (function instanceof MaxTimeAggrFunc || function instanceof LastValueAggrFunc) {
         seqResourceIterateReader = new SeqResourceIterateReader(queryDataSource.getSeriesPath(),
             queryDataSource.getSeqResources(), timeFilter, context, true);
       } else {
@@ -116,7 +119,8 @@ public class AggregateEngineExecutor {
       }
 
       // unseq reader for all chunk groups in unSeqFile, memory
-      IPointReader unseqResourceMergeReader= new UnseqResourceMergeReader(queryDataSource.getSeriesPath(),
+      IPointReader unseqResourceMergeReader = new UnseqResourceMergeReader(
+          queryDataSource.getSeriesPath(),
           queryDataSource.getUnseqResources(), context, timeFilter);
 
       readersOfSequenceData.add(seqResourceIterateReader);
@@ -143,8 +147,8 @@ public class AggregateEngineExecutor {
    */
   private AggreResultData aggregateWithoutValueFilter(AggregateFunction function,
       IAggregateReader sequenceReader, IPointReader unSequenceReader, Filter filter)
-      throws IOException, ProcessorException {
-    if (function instanceof MaxTimeAggrFunc || function instanceof LastAggrFunc) {
+      throws IOException, QueryProcessException {
+    if (function instanceof MaxTimeAggrFunc || function instanceof LastValueAggrFunc) {
       return handleLastMaxTimeWithOutTimeGenerator(function, sequenceReader, unSequenceReader,
           filter);
     }
@@ -178,14 +182,14 @@ public class AggregateEngineExecutor {
    */
   private boolean canUseHeader(AggregateFunction function, PageHeader pageHeader,
       IPointReader unSequenceReader, Filter filter)
-      throws IOException, ProcessorException {
+      throws IOException, QueryProcessException {
     // if page data is memory data.
     if (pageHeader == null) {
       return false;
     }
 
-    long minTime = pageHeader.getMinTimestamp();
-    long maxTime = pageHeader.getMaxTimestamp();
+    long minTime = pageHeader.getStartTime();
+    long maxTime = pageHeader.getEndTime();
 
     // If there are points in the page that do not satisfy the time filter,
     // page header cannot be used to calculate.
@@ -210,7 +214,7 @@ public class AggregateEngineExecutor {
    */
   private AggreResultData handleLastMaxTimeWithOutTimeGenerator(AggregateFunction function,
       IAggregateReader sequenceReader, IPointReader unSequenceReader, Filter timeFilter)
-      throws IOException, ProcessorException {
+      throws IOException, QueryProcessException {
     long lastBatchTimeStamp = Long.MIN_VALUE;
     boolean isChunkEnd = false;
     while (sequenceReader.hasNext()) {
@@ -221,12 +225,12 @@ public class AggregateEngineExecutor {
         function.calculateValueFromPageHeader(pageHeader);
         sequenceReader.skipPageData();
 
-        if (lastBatchTimeStamp > pageHeader.getMinTimestamp()) {
+        if (lastBatchTimeStamp > pageHeader.getStartTime()) {
           // the chunk is end.
           isChunkEnd = true;
         } else {
           // current page and last page are in the same chunk.
-          lastBatchTimeStamp = pageHeader.getMinTimestamp();
+          lastBatchTimeStamp = pageHeader.getStartTime();
         }
       } else {
         // cal by pageData
@@ -261,7 +265,7 @@ public class AggregateEngineExecutor {
    * @param context query context.
    */
   public QueryDataSet executeWithValueFilter(QueryContext context)
-      throws StorageEngineException, PathErrorException, IOException, ProcessorException {
+      throws StorageEngineException, MetadataException, IOException {
 
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(expression, context);
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();

@@ -106,7 +106,7 @@ public class TSFileDescriptor {
       properties.load(inputStream);
       conf.setGroupSizeInByte(Integer
           .parseInt(properties.getProperty("group_size_in_byte",
-                  Integer.toString(conf.getGroupSizeInByte()))));
+              Integer.toString(conf.getGroupSizeInByte()))));
       conf.setPageSizeInByte(Integer
           .parseInt(properties.getProperty("page_size_in_byte",
               Integer.toString(conf.getPageSizeInByte()))));
@@ -116,7 +116,7 @@ public class TSFileDescriptor {
       }
       conf.setMaxNumberOfPointsInPage(Integer
           .parseInt(properties.getProperty("max_number_of_points_in_page",
-                  Integer.toString(conf.getMaxNumberOfPointsInPage()))));
+              Integer.toString(conf.getMaxNumberOfPointsInPage()))));
       conf.setTimeSeriesDataType(properties
           .getProperty("time_series_data_type", conf.getTimeSeriesDataType()));
       conf.setMaxStringLength(Integer

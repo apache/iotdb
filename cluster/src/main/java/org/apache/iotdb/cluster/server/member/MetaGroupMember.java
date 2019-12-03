@@ -64,9 +64,9 @@ import org.apache.iotdb.cluster.server.heartbeat.MetaHeartBeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.exception.StorageGroupAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
@@ -454,7 +454,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   @Override
-  long appendEntry(Log log) throws ProcessorException {
+  long appendEntry(Log log) throws QueryProcessException {
     long resp = super.appendEntry(log);
     if (resp == Response.RESPONSE_AGREE && log instanceof AddNodeLog) {
       metaLogApplier.apply(log);
@@ -568,7 +568,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             // add node is instantly applied to update the partition table
             try {
               logManager.getApplier().apply(addNodeLog);
-            } catch (ProcessorException e) {
+            } catch (QueryProcessException e) {
               logManager.removeLastLog();
               resultHandler.onError(e);
               return true;
@@ -803,16 +803,16 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       for (Log log : snapshot.getSnapshot()) {
         try {
           logManager.getApplier().apply(log);
-        } catch (ProcessorException e) {
+        } catch (QueryProcessException e) {
           logger.error("{}: Cannot apply a log {} in snapshot, ignored", name, log, e);
         }
       }
       for (String storageGroup : snapshot.getStorageGroups()) {
         try {
           MManager.getInstance().setStorageGroupToMTree(storageGroup);
-        } catch (StorageGroupAlreadyExistException ignored) {
+        } catch (StorageGroupAlreadySetException ignored) {
           // ignore duplicated storage group
-        } catch (MetadataErrorException e) {
+        } catch (MetadataException e) {
           logger.error("{}: Cannot add storage group {} in snapshot", name, storageGroup);
         }
       }

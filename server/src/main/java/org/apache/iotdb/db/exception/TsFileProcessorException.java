@@ -18,27 +18,15 @@
  */
 package org.apache.iotdb.db.exception;
 
-public class TsFileProcessorException extends ProcessorException {
+public class TsFileProcessorException extends ProcessException {
 
   private static final long serialVersionUID = 3749107630243950925L;
 
-  public TsFileProcessorException() {
-    super();
+  public TsFileProcessorException(String message) {
+    super(message);
   }
 
-  public TsFileProcessorException(Exception pathExcp) {
-    super(pathExcp.getMessage());
-  }
-
-  public TsFileProcessorException(String msg) {
-    super(msg);
-  }
-
-  public TsFileProcessorException(Throwable throwable) {
-    super(throwable);
-  }
-
-  public TsFileProcessorException(String msg, Throwable e) {
-    super(msg, e);
+  public TsFileProcessorException(Exception exception) {
+    super(exception.getMessage());
   }
 }

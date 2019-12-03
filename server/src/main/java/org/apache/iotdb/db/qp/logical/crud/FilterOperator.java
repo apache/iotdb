@@ -23,9 +23,9 @@ import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -38,9 +38,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
- * This class is for filter operator and implements {@link Operator} .<br>
- * It may consist of more than two child FilterOperators, but if it's not a leaf operator,
- * the relation is the same among all of its children.(AND or OR), which is identified by tokenType.
+ * This class is for filter operator and implements {@link Operator} . It may consist of more than
+ * two child FilterOperators, but if it's not a leaf operator, the relation is the same among all of
+ * its children (AND or OR), which is identified by tokenType.
  */
 public class FilterOperator extends Operator implements Comparable<FilterOperator> {
 
@@ -107,25 +107,25 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
   }
 
   /**
-   * For a filter operator, if isSingle, call transformToSingleQueryFilter.<br>
-   * FilterOperator cannot be leaf.
+   * For a filter operator, if isSingle, call transformToSingleQueryFilter.<br> FilterOperator
+   * cannot be leaf.
    *
    * @return QueryFilter in TsFile
    */
   public IExpression transformToExpression(IQueryProcessExecutor executor)
-      throws QueryProcessorException {
+      throws QueryProcessException {
     if (isSingle) {
       Pair<IUnaryExpression, String> ret;
       try {
         ret = transformToSingleQueryFilter(executor);
-      } catch (PathErrorException e) {
-        throw new QueryProcessorException(e);
+      } catch (MetadataException e) {
+        throw new QueryProcessException(e);
       }
       return ret.left;
     } else {
       if (childOperators.isEmpty()) {
-        throw new LogicalOperatorException("this filter is not leaf, but it's empty:"
-            + tokenIntType);
+        throw new LogicalOperatorException(String.valueOf(tokenIntType),
+            "this filter is not leaf, but it's empty");
       }
       IExpression retFilter = childOperators.get(0).transformToExpression(executor);
       IExpression currentFilter;
@@ -139,8 +139,8 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
             retFilter = BinaryExpression.or(retFilter, currentFilter);
             break;
           default:
-            throw new LogicalOperatorException("unknown binary tokenIntType:" + tokenIntType
-                + ",maybe it means " + SQLConstant.tokenNames.get(tokenIntType));
+            throw new LogicalOperatorException(String.valueOf(tokenIntType),
+                "Maybe it means " + SQLConstant.tokenNames.get(tokenIntType));
         }
       }
       return retFilter;
@@ -150,17 +150,16 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
   /**
    * it will be used in BasicFunction Operator.
    *
-   * @return - pair.left: UnaryQueryFilter constructed by its one child;
-   *      pair.right: Path represented by this child.
-   * @throws QueryProcessorException exception in filter transforming
+   * @return - pair.left: UnaryQueryFilter constructed by its one child; pair.right: Path
+   * represented by this child.
+   * @throws QueryProcessException exception in filter transforming
    */
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
       IQueryProcessExecutor executor)
-      throws QueryProcessorException, PathErrorException {
+      throws LogicalOperatorException, MetadataException {
     if (childOperators.isEmpty()) {
-      throw new LogicalOperatorException(
-          ("transformToSingleFilter: this filter is not a leaf, but it's empty:{}"
-              + tokenIntType));
+      throw new LogicalOperatorException(String.valueOf(tokenIntType),
+          "TransformToSingleFilter: this filter is not a leaf, but it's empty.");
     }
     Pair<IUnaryExpression, String> currentPair = childOperators.get(0)
         .transformToSingleQueryFilter(executor);
@@ -172,8 +171,8 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
       currentPair = childOperators.get(i).transformToSingleQueryFilter(executor);
       if (!path.equals(currentPair.right)) {
         throw new LogicalOperatorException(
-            ("transformToSingleFilter: paths among children are not inconsistent: one is:"
-                + path + ",another is:" + currentPair.right));
+            "TransformToSingleFilter: paths among children are not inconsistent: one is: "
+                + path + ", another is: " + currentPair.right);
       }
       switch (tokenIntType) {
         case KW_AND:
@@ -185,9 +184,8 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
               currentPair.left.getFilter()));
           break;
         default:
-          throw new LogicalOperatorException("unknown binary tokenIntType:"
-              + tokenIntType + ",maybe it means "
-              + SQLConstant.tokenNames.get(tokenIntType));
+          throw new LogicalOperatorException(String.valueOf(tokenIntType),
+              "Maybe it means " + SQLConstant.tokenNames.get(tokenIntType));
       }
     }
     return new Pair<>(retFilter, path);

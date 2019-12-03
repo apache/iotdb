@@ -5,15 +5,12 @@
 package org.apache.iotdb.cluster.log.applier;
 
 import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logs.AddNodeLog;
 import org.apache.iotdb.cluster.log.logs.PhysicalPlanLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +28,7 @@ public class MetaLogApplier extends BaseApplier {
   }
 
   @Override
-  public void apply(Log log) throws ProcessorException {
+  public void apply(Log log) throws QueryProcessException {
     logger.debug("Applying {}", log);
     if (log instanceof AddNodeLog) {
       AddNodeLog addNodeLog = (AddNodeLog) log;

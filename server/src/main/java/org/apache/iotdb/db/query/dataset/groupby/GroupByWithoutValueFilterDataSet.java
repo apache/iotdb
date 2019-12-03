@@ -23,9 +23,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -56,7 +57,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * constructor.
    */
   public GroupByWithoutValueFilterDataSet(long jobId, List<Path> paths, long unit,
-                                          long origin, List<Pair<Long, Long>> mergedIntervals) {
+      long origin, List<Pair<Long, Long>> mergedIntervals) {
     super(jobId, paths, unit, origin, mergedIntervals);
     this.unSequenceReaderList = new ArrayList<>();
     this.sequenceReaderList = new ArrayList<>();
@@ -73,7 +74,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * init reader and aggregate function.
    */
   public void initGroupBy(QueryContext context, List<String> aggres, IExpression expression)
-      throws StorageEngineException, PathErrorException, ProcessorException, IOException {
+      throws StorageEngineException, MetadataException, IOException {
     initAggreFuction(aggres);
     // init reader
     if (expression != null) {
@@ -112,7 +113,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       AggreResultData res;
       try {
         res = nextSeries(i);
-      } catch (ProcessorException e) {
+      } catch (QueryProcessException e) {
         throw new IOException(e);
       }
       if (res == null) {
@@ -129,7 +130,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    *
    * @param idx series id
    */
-  private AggreResultData nextSeries(int idx) throws IOException, ProcessorException {
+  private AggreResultData nextSeries(int idx) throws IOException, QueryProcessException {
     IPointReader unsequenceReader = unSequenceReaderList.get(idx);
     IAggregateReader sequenceReader = sequenceReaderList.get(idx);
     AggregateFunction function = functions.get(idx);
@@ -157,8 +158,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         finishCheckSequenceData = calGroupByInBatchData(idx, function, unsequenceReader);
       } else {
         // page data
-        long minTime = pageHeader.getMinTimestamp();
-        long maxTime = pageHeader.getMaxTimestamp();
+        long minTime = pageHeader.getStartTime();
+        long maxTime = pageHeader.getEndTime();
         // no point in sequence data with a timestamp less than endTime
         if (minTime >= endTime) {
           finishCheckSequenceData = true;
@@ -193,7 +194,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    */
   private boolean calGroupByInBatchData(int idx, AggregateFunction function,
       IPointReader unsequenceReader)
-      throws IOException, ProcessorException {
+      throws IOException, QueryProcessException {
     BatchData batchData = batchDataList.get(idx);
     boolean hasCachedSequenceData = hasCachedSequenceDataList.get(idx);
     boolean finishCheckSequenceData = false;
@@ -246,10 +247,10 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         // page data
 
         // timestamps of all points in the page are less than startTime
-        if (pageHeader.getMaxTimestamp() < startTime) {
+        if (pageHeader.getEndTime() < startTime) {
           sequenceReader.skipPageData();
           continue;
-        } else if (pageHeader.getMinTimestamp() >= startTime) {
+        } else if (pageHeader.getStartTime() >= startTime) {
           // timestamps of all points in the page are greater or equal to startTime, needn't to skip
           return;
         }
@@ -302,8 +303,13 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   private boolean canUseHeader(long minTime, long maxTime, IPointReader unSequenceReader,
       AggregateFunction function)
-      throws IOException, ProcessorException {
+      throws IOException, QueryProcessException {
     if (timeFilter != null && !timeFilter.containStartEndTime(minTime, maxTime)) {
+      return false;
+    }
+
+    TimeRange range = new TimeRange(startTime, endTime - 1);
+    if (!range.contains(new TimeRange(minTime, maxTime))) {
       return false;
     }
 

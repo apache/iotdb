@@ -19,8 +19,9 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import java.util.Objects;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -52,7 +53,7 @@ public class BasicFunctionOperator extends FunctionOperator {
    * @throws LogicalOperatorException Logical Operator Exception
    */
   public BasicFunctionOperator(int tokenIntType, Path path, String value)
-      throws LogicalOperatorException {
+      throws SQLParserException {
     super(tokenIntType);
     operatorType = Operator.OperatorType.BASIC_FUNC;
     funcToken = BasicOperatorType.getBasicOpBySymbol(tokenIntType);
@@ -98,11 +99,10 @@ public class BasicFunctionOperator extends FunctionOperator {
 
   @Override
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
-      IQueryProcessExecutor executor)
-      throws LogicalOperatorException, PathErrorException {
+      IQueryProcessExecutor executor) throws LogicalOperatorException, MetadataException {
     TSDataType type = executor.getSeriesType(path);
     if (type == null) {
-      throw new PathErrorException(
+      throw new MetadataException(
           "given seriesPath:{" + path.getFullPath() + "} don't exist in metadata");
     }
     IUnaryExpression ret;
@@ -130,7 +130,7 @@ public class BasicFunctionOperator extends FunctionOperator {
                 ? new Binary(value.substring(1, value.length() - 1)) : new Binary(value));
         break;
       default:
-        throw new LogicalOperatorException("unsupported data type:" + type);
+        throw new LogicalOperatorException(type.toString(), "");
     }
 
     return new Pair<>(ret, path.getFullPath());
@@ -151,7 +151,7 @@ public class BasicFunctionOperator extends FunctionOperator {
     BasicFunctionOperator ret;
     try {
       ret = new BasicFunctionOperator(this.tokenIntType, path.clone(), value);
-    } catch (LogicalOperatorException e) {
+    } catch (SQLParserException e) {
       logger.error("error clone:", e);
       return null;
     }

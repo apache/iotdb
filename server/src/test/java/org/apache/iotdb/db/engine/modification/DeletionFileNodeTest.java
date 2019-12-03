@@ -33,12 +33,12 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -71,8 +71,8 @@ public class DeletionFileNodeTest {
   }
 
   @Before
-  public void setup() throws MetadataErrorException,
-      PathErrorException, IOException, StorageEngineException, StartupException, StorageGroupException {
+  public void setup() throws MetadataException,
+      MetadataException, IOException, StorageEngineException, StartupException, StorageGroupException {
     EnvironmentUtils.envSetUp();
 
     MManager.getInstance().setStorageGroupToMTree(processorName);
@@ -93,7 +93,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInBufferWriteCache() throws
-      StorageEngineException, ProcessorException {
+      StorageEngineException, QueryProcessException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -126,7 +126,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInBufferWriteFile()
-      throws StorageEngineException, IOException, ProcessorException {
+      throws StorageEngineException, IOException, QueryProcessException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
@@ -166,7 +166,7 @@ public class DeletionFileNodeTest {
   }
 
   @Test
-  public void testDeleteInOverflowCache() throws StorageEngineException, ProcessorException {
+  public void testDeleteInOverflowCache() throws StorageEngineException, QueryProcessException {
     // insert sequence data
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -211,7 +211,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInOverflowFile()
-      throws StorageEngineException, ProcessorException {
+      throws StorageEngineException, QueryProcessException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);

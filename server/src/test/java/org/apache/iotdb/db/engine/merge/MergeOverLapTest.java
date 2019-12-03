@@ -27,12 +27,12 @@ import java.io.IOException;
 import java.util.Collections;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
@@ -53,10 +53,10 @@ public class MergeOverLapTest extends MergeTest {
 
   @Before
   public void setUp()
-      throws IOException, WriteProcessException, MetadataErrorException, PathErrorException {
+      throws IOException, WriteProcessException, MetadataException, MetadataException {
     ptNum = 1000;
     super.setUp();
-    tempSGDir = new File("tempSG");
+    tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
   }
 
@@ -69,27 +69,27 @@ public class MergeOverLapTest extends MergeTest {
   @Override
   void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
-      File file = new File(
+      File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
           i + "seq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
               + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
-              + ".tsfile");
+              + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
     }
     for (int i = 0; i < unseqFileNum; i++) {
-      File file = new File(
-          i + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
+      File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
+              i + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
               + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
-              + ".tsfile");
+              + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       unseqResources.add(tsFileResource);
       prepareUnseqFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
-    File file = new File(
-        unseqFileNum + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
+    File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
+            unseqFileNum + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
             + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
-            + ".tsfile");
+            + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
     unseqResources.add(tsFileResource);
     prepareUnseqFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);

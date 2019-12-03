@@ -1,16 +1,20 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
- * agreements. See the NOTICE file distributed with this work for additional information regarding
- * copyright ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License. You may obtain a
- * copy of the License at
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied. See the License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.iotdb.db.service;
 
@@ -60,7 +64,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
       startService();
     } catch (Exception e) {
       logger.error("Failed to start {} because: ", this.getID().getName(), e);
-      throw new StartupException(e);
+      throw new StartupException(this.getID().getName(), e.getMessage());
     }
   }
 
@@ -101,9 +105,11 @@ public class MetricsService implements MetricsServiceMBean, IService {
       if (server != null) {
         server.stop();
       }
-      executorService.shutdown();
-      if (!executorService.awaitTermination(60, TimeUnit.MILLISECONDS)) {
-        executorService.shutdownNow();
+      if(executorService != null){
+        executorService.shutdown();
+        if (!executorService.awaitTermination(60, TimeUnit.MILLISECONDS)) {
+          executorService.shutdownNow();
+        }
       }
     } catch (Exception e) {
       logger.error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);

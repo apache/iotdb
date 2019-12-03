@@ -10,7 +10,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logs.PhysicalPlanLog;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
-import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
@@ -46,7 +46,7 @@ public class PartitionUtils {
           storageGroup = MManager.getInstance()
               .getStorageGroupNameByPath(((CreateTimeSeriesPlan) plan).getPath().getFullPath());
           return Math.abs(Objects.hash(storageGroup, 0));
-        } catch (PathErrorException e) {
+        } catch (MetadataException e) {
           logger.error("Cannot find the storage group of {}", ((CreateTimeSeriesPlan) plan).getPath());
           return 0;
         }
@@ -74,7 +74,7 @@ public class PartitionUtils {
     try {
       storageGroup = MManager.getInstance()
           .getStorageGroupNameByPath(path);
-    } catch (PathErrorException e) {
+    } catch (MetadataException e) {
       return null;
     }
 

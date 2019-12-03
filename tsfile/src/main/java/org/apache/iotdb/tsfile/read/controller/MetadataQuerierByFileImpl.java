@@ -32,7 +32,7 @@ import java.util.*;
 
 public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
-  private static final int CHUNK_METADATA_CACHE_SIZE = 100000;
+  private static final int CHUNK_METADATA_CACHE_SIZE = 10000;
 
   private TsFileMetaData fileMetaData;
 
@@ -108,6 +108,10 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       // get the index information of TsDeviceMetadata
       TsDeviceMetadataIndex index = fileMetaData.getDeviceMetadataIndex(selectedDevice);
       TsDeviceMetadata tsDeviceMetadata = tsFileReader.readTsDeviceMetaData(index);
+
+      if (tsDeviceMetadata == null) {
+        continue;
+      }
 
       // d1
       for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata

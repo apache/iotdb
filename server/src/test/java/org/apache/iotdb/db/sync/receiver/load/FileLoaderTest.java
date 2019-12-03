@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -38,7 +38,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -61,7 +61,7 @@ public class FileLoaderTest {
 
   @Before
   public void setUp()
-      throws IOException, InterruptedException, StartupException, DiskSpaceInsufficientException, MetadataErrorException {
+      throws IOException, InterruptedException, StartupException, DiskSpaceInsufficientException, MetadataException {
     EnvironmentUtils.closeStatMonitor();
     daemon = IoTDB.getInstance();
     daemon.active();
@@ -71,7 +71,7 @@ public class FileLoaderTest {
     initMetadata();
   }
 
-  private void initMetadata() throws MetadataErrorException {
+  private void initMetadata() throws MetadataException {
     MManager mmanager = MManager.getInstance();
     mmanager.init();
     mmanager.clear();

@@ -50,14 +50,151 @@ public class TSFileConfig {
   public static final int BYTE_SIZE_PER_CHAR = 4;
   public static final String STRING_ENCODING = "UTF-8";
   public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
-  public static final String CONFIG_FILE_NAME = "tsfile-format.properties";
+  public static final String CONFIG_FILE_NAME = "iotdb-engine.properties";
   public static final String MAGIC_STRING = "TsFile";
   public static final String VERSION_NUMBER = "000001";
+  public static final String OLD_MAGIC_STRING = "TsFilev0.8.0";
+  public static final String OLD_VERSION = "v0.8.0";
+
+  /**
+   * Bloom filter constrain
+   */
+  public static final double MIN_BLOOM_FILTER_ERROR_RATE = 0.01;
+  public static final double MAX_BLOOM_FILTER_ERROR_RATE = 0.1;
 
   /**
    * The default grow size of class BatchData.
    */
   public static final int DYNAMIC_DATA_SIZE = 1000;
+  /**
+   * Memory size threshold for flushing to disk, default value is 128MB.
+   */
+  private int groupSizeInByte = 128 * 1024 * 1024;
+  /**
+   * The memory size for each series writer to pack page, default value is 64KB.
+   */
+  private int pageSizeInByte = 64 * 1024;
+  /**
+   * The maximum number of data points in a page, default value is 1024 * 1024.
+   */
+  private int maxNumberOfPointsInPage = 1024 * 1024;
+  /**
+   * Data type for input timestamp, TsFile supports INT32 or INT64.
+   */
+  private String timeSeriesDataType = "INT64";
+  /**
+   * Max length limitation of input string.
+   */
+  private int maxStringLength = 128;
+  /**
+   * Floating-point precision.
+   */
+  private int floatPrecision = 2;
+  /**
+   * Encoder of time column, TsFile supports TS_2DIFF, PLAIN and RLE(run-length encoding) Default
+   * value is TS_2DIFF.
+   */
+  private String timeEncoder = "TS_2DIFF";
+  /**
+   * Encoder of value series. default value is PLAIN. For int, long data type, TsFile also supports
+   * TS_2DIFF and RLE(run-length encoding). For float, double data type, TsFile also supports
+   * TS_2DIFF, RLE(run-length encoding) and GORILLA. For text data type, TsFile only supports
+   * PLAIN.
+   */
+  private String valueEncoder = "PLAIN";
+  /**
+   * Default bit width of RLE encoding is 8.
+   */
+  private int rleBitWidth = 8;
+  /**
+   * Default block size of two-diff. delta encoding is 128
+   */
+  private int deltaBlockSize = 128;
+  /**
+   * Default frequency type is SINGLE_FREQ.
+   */
+  private String freqType = "SINGLE_FREQ";
+  /**
+   * Default PLA max error is 100.
+   */
+  private double plaMaxError = 100;
+  /**
+   * Default SDT max error is 100.
+   */
+  private double sdtMaxError = 100;
+  /**
+   * Default DFT satisfy rate is 0.1
+   */
+  private double dftSatisfyRate = 0.1;
+  /**
+   * Data compression method, TsFile supports UNCOMPRESSED or SNAPPY. Default value is UNCOMPRESSED
+   * which means no compression
+   */
+  private String compressor = "UNCOMPRESSED";
+  /**
+   * Line count threshold for checking page memory occupied size.
+   */
+  private int pageCheckSizeThreshold = 100;
+  /**
+   * Default endian value is BIG_ENDIAN.
+   */
+  private String endian = "BIG_ENDIAN";
+  /**
+   * Default storage is in local file system
+   */
+  private FSType TSFileStorageFs = FSType.LOCAL;
+  /**
+   * Default core-site.xml file path is /etc/hadoop/conf/core-site.xml
+   */
+  private String coreSitePath = "/etc/hadoop/conf/core-site.xml";
+  /**
+   * Default hdfs-site.xml file path is /etc/hadoop/conf/hdfs-site.xml
+   */
+  private String hdfsSitePath = "/etc/hadoop/conf/hdfs-site.xml";
+  /**
+   * Default hdfs ip is localhost
+   */
+  private String hdfsIp = "localhost";
+  /**
+   * Default hdfs port is 9000
+   */
+  private String hdfsPort = "9000";
+  /**
+   * Default DFS NameServices is hdfsnamespace
+   */
+  private String dfsNameServices = "hdfsnamespace";
+  /**
+   * Default DFS HA name nodes are nn1 and nn2
+   */
+  private String dfsHaNamenodes = "nn1,nn2";
+  /**
+   * Default DFS HA automatic failover is enabled
+   */
+  private boolean dfsHaAutomaticFailoverEnabled = true;
+  /**
+   * Default DFS client failover proxy provider is "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider"
+   */
+  private String dfsClientFailoverProxyProvider = "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider";
+  /**
+   * whether use kerberos to authenticate hdfs
+   */
+  private boolean useKerberos = false;
+  /**
+   * full path of kerberos keytab file
+   */
+  private String kerberosKeytabFilePath = "/path";
+  /**
+   * kerberos pricipal
+   */
+  private String kerberosPrincipal = "principal";
+  /**
+   * The acceptable error rate of bloom filter
+   */
+  private double bloomFilterErrorRate = 0.05;
+
+  public TSFileConfig() {
+
+  }
 
   public int getGroupSizeInByte() {
     return groupSizeInByte;
@@ -87,6 +224,8 @@ public class TSFileConfig {
     return timeSeriesDataType;
   }
 
+  // TS_2DIFF configuration
+
   public void setTimeSeriesDataType(String timeSeriesDataType) {
     this.timeSeriesDataType = timeSeriesDataType;
   }
@@ -94,6 +233,8 @@ public class TSFileConfig {
   public int getMaxStringLength() {
     return maxStringLength;
   }
+
+  // Freq encoder configuration
 
   public void setMaxStringLength(int maxStringLength) {
     this.maxStringLength = maxStringLength;
@@ -111,9 +252,13 @@ public class TSFileConfig {
     return timeEncoder;
   }
 
+  // Compression configuration
+
   public void setTimeEncoder(String timeEncoder) {
     this.timeEncoder = timeEncoder;
   }
+
+  // Don't change the following configuration
 
   public String getValueEncoder() {
     return valueEncoder;
@@ -195,105 +340,36 @@ public class TSFileConfig {
     this.endian = endian;
   }
 
-  /**
-   * Memory size threshold for flushing to disk, default value is 128MB.
-   */
-  private int groupSizeInByte = 128 * 1024 * 1024;
-  /**
-   * The memory size for each series writer to pack page, default value is 64KB.
-   */
-  private int pageSizeInByte = 64 * 1024;
+  public boolean isUseKerberos() {
+    return useKerberos;
+  }
 
-  // TS_2DIFF configuration
-  /**
-   * The maximum number of data points in a page, default value is 1024 * 1024.
-   */
-  private int maxNumberOfPointsInPage = 1024 * 1024;
-  /**
-   * Data type for input timestamp, TsFile supports INT32 or INT64.
-   */
-  private String timeSeriesDataType = "INT64";
+  public void setUseKerberos(boolean useKerberos) {
+    this.useKerberos = useKerberos;
+  }
 
-  // Freq encoder configuration
-  /**
-   * Max length limitation of input string.
-   */
-  private int maxStringLength = 128;
-  /**
-   * Floating-point precision.
-   */
-  private int floatPrecision = 2;
-  /**
-   * Encoder of time column, TsFile supports TS_2DIFF, PLAIN and RLE(run-length encoding) Default
-   * value is TS_2DIFF.
-   */
-  private String timeEncoder = "TS_2DIFF";
-  /**
-   * Encoder of value series. default value is PLAIN. For int, long data type, TsFile also supports
-   * TS_2DIFF and RLE(run-length encoding). For float, double data type, TsFile also supports
-   * TS_2DIFF, RLE(run-length encoding) and GORILLA. For text data type, TsFile only supports
-   * PLAIN.
-   */
-  private String valueEncoder = "PLAIN";
+  public String getKerberosKeytabFilePath() {
+    return kerberosKeytabFilePath;
+  }
 
-  // Compression configuration
-  /**
-   * Default bit width of RLE encoding is 8.
-   */
-  private int rleBitWidth = 8;
+  public void setKerberosKeytabFilePath(String kerberosKeytabFilePath) {
+    this.kerberosKeytabFilePath = kerberosKeytabFilePath;
+  }
 
-  // Don't change the following configuration
-  /**
-   * Default block size of two-diff. delta encoding is 128
-   */
-  private int deltaBlockSize = 128;
-  /**
-   * Default frequency type is SINGLE_FREQ.
-   */
-  private String freqType = "SINGLE_FREQ";
-  /**
-   * Default PLA max error is 100.
-   */
-  private double plaMaxError = 100;
-  /**
-   * Default SDT max error is 100.
-   */
-  private double sdtMaxError = 100;
-  /**
-   * Default DFT satisfy rate is 0.1
-   */
-  private double dftSatisfyRate = 0.1;
-  /**
-   * Data compression method, TsFile supports UNCOMPRESSED or SNAPPY. Default value is UNCOMPRESSED
-   * which means no compression
-   */
-  private String compressor = "UNCOMPRESSED";
-  /**
-   * Line count threshold for checking page memory occupied size.
-   */
-  private int pageCheckSizeThreshold = 100;
-  /**
-   * Default endian value is BIG_ENDIAN.
-   */
-  private String endian = "BIG_ENDIAN";
+  public String getKerberosPrincipal() {
+    return kerberosPrincipal;
+  }
 
-  /**
-   * Default storage is in local file system
-   */
-  private FSType TSFileStorageFs = FSType.LOCAL;
+  public void setKerberosPrincipal(String kerberosPrincipal) {
+    this.kerberosPrincipal = kerberosPrincipal;
+  }
 
-  /**
-   * Default hdfs ip is localhost
-   */
-  private String hdfsIp = "localhost";
+  public double getBloomFilterErrorRate() {
+    return bloomFilterErrorRate;
+  }
 
-  /**
-   * Default hdfs port is 9000
-   */
-  private String hdfsPort = "9000";
-
-  public TSFileConfig() {
-
+  public void setBloomFilterErrorRate(double bloomFilterErrorRate) {
+    this.bloomFilterErrorRate = bloomFilterErrorRate;
   }
 
 
@@ -305,12 +381,28 @@ public class TSFileConfig {
     this.TSFileStorageFs = FSType.valueOf(TSFileStorageFs);
   }
 
-  public String getHdfsIp() {
-    return this.hdfsIp;
+  public String getCoreSitePath() {
+    return coreSitePath;
   }
 
-  public void setHdfsIp(String hdfsIp) {
-    this.hdfsIp = hdfsIp;
+  public void setCoreSitePath(String coreSitePath) {
+    this.coreSitePath = coreSitePath;
+  }
+
+  public String getHdfsSitePath() {
+    return hdfsSitePath;
+  }
+
+  public void setHdfsSitePath(String hdfsSitePath) {
+    this.hdfsSitePath = hdfsSitePath;
+  }
+
+  public String[] getHdfsIp() {
+    return hdfsIp.split(",");
+  }
+
+  public void setHdfsIp(String[] hdfsIp) {
+    this.hdfsIp = String.join(",", hdfsIp);
   }
 
   public String getHdfsPort() {
@@ -320,4 +412,37 @@ public class TSFileConfig {
   public void setHdfsPort(String hdfsPort) {
     this.hdfsPort = hdfsPort;
   }
+
+  public String getDfsNameServices() {
+    return dfsNameServices;
+  }
+
+  public void setDfsNameServices(String dfsNameServices) {
+    this.dfsNameServices = dfsNameServices;
+  }
+
+  public String[] getDfsHaNamenodes() {
+    return dfsHaNamenodes.split(",");
+  }
+
+  public void setDfsHaNamenodes(String[] dfsHaNamenodes) {
+    this.dfsHaNamenodes = String.join(",", dfsHaNamenodes);
+  }
+
+  public boolean isDfsHaAutomaticFailoverEnabled() {
+    return dfsHaAutomaticFailoverEnabled;
+  }
+
+  public void setDfsHaAutomaticFailoverEnabled(boolean dfsHaAutomaticFailoverEnabled) {
+    this.dfsHaAutomaticFailoverEnabled = dfsHaAutomaticFailoverEnabled;
+  }
+
+  public String getDfsClientFailoverProxyProvider() {
+    return dfsClientFailoverProxyProvider;
+  }
+
+  public void setDfsClientFailoverProxyProvider(String dfsClientFailoverProxyProvider) {
+    this.dfsClientFailoverProxyProvider = dfsClientFailoverProxyProvider;
+  }
+
 }

@@ -21,11 +21,10 @@ package org.apache.iotdb.db.query.executor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -68,7 +67,7 @@ public class EngineExecutor {
       try {
         // add data type
         dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
-      } catch (PathErrorException e) {
+      } catch (MetadataException e) {
         throw new StorageEngineException(e);
       }
 
@@ -80,7 +79,7 @@ public class EngineExecutor {
       return new EngineDataSetWithoutValueFilter(queryExpression.getSelectedSeries(), dataTypes,
           readersOfSelectedSeries);
     } catch (IOException e) {
-      throw new StorageEngineException(e);
+      throw new StorageEngineException(e.getMessage());
     }
   }
 
@@ -101,7 +100,7 @@ public class EngineExecutor {
       try {
         // add data type
         dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
-      } catch (PathErrorException e) {
+      } catch (MetadataException e) {
         throw new StorageEngineException(e);
       }
 

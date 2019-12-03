@@ -44,7 +44,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -201,7 +201,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return true;
   }
 
-  long appendEntry(Log log) throws ProcessorException {
+  long appendEntry(Log log) throws QueryProcessException {
     long resp;
     synchronized (logManager) {
       Log lastLog = logManager.getLastLog();
@@ -252,7 +252,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     try {
       Log log = LogParser.getINSTANCE().parse(request.entry);
       resultHandler.onComplete(appendEntry(log));
-    } catch (UnknownLogTypeException | ProcessorException e) {
+    } catch (UnknownLogTypeException | QueryProcessException e) {
       resultHandler.onError(e);
     }
   }
@@ -618,7 +618,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           logger.debug("{}: Plan {} is accepted", name, plan);
           try {
             logManager.commitLog(log);
-          } catch (ProcessorException e) {
+          } catch (QueryProcessException e) {
             logger.info("{}: The log {} is not successfully applied, reverting", name, log, e);
             logManager.removeLastLog();
             TSStatus status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 
 /**
  * PNode is the shorthand for "Property Node", which make up The {@code PTree}
@@ -50,18 +50,18 @@ public class PNode implements Serializable {
     }
   }
 
-  public void linkMPath(String mTreePath) throws PathErrorException {
+  public void linkMPath(String mTreePath) throws MetadataException {
     if (!isLeaf) {
-      throw new PathErrorException("Current PNode is NOT leaf node");
+      throw new MetadataException("Current PNode is NOT leaf node");
     }
     if (!linkedMTreePathMap.containsKey(mTreePath)) {
       linkedMTreePathMap.put(mTreePath, 1);
     }
   }
 
-  public void unlinkMPath(String mTreePath) throws PathErrorException {
+  public void unlinkMPath(String mTreePath) throws MetadataException {
     if (!isLeaf) {
-      throw new PathErrorException("Current PNode is NOT leaf node");
+      throw new MetadataException("Current PNode is NOT leaf node");
     }
     if (!linkedMTreePathMap.containsKey(mTreePath)) {
       return;

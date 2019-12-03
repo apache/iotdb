@@ -51,7 +51,8 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add method TSStatus deleteData(1:TSDeleteDataReq req)        | Jack Tsai, Jialin Qiao, qiaojialin |
 | Add method TSStatus deleteTimeseries(1:list\<string> path)   | qiaojialin                         |
 | Add method TSStatus deleteStorageGroups(1:list\<string> storageGroup) | Yi Tao                             |
-
+| Add Struct TSExecuteInsertRowInBatchResp                     | Kaifeng Xue |
+| Add method insertRowInBatch(1:TSInsertInBatchReq req);       | Kaifeng Xue |
 
 
 ## 3. Update
@@ -72,6 +73,10 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Rename some fields in TSFetchMetadataResp: ~~ColumnsList~~ to columnsList, ~~showTimeseriesList~~ to timeseriesList, ~~showStorageGroups~~ to storageGroups | Zesong Sun             |
 | Change struct TSQueryDataSet to eliminate row-wise rpc writing | Lei Rui                |
 | Add optional i32 timeseriesNum in TSFetchMetadataResp        | Jack Tsai              |
+| Add required i64 queryId in TSHandleIdentifier               | Yuan Tian    |
+| Add optional set\<string> childPaths in TSFetchMetadataResp     | Haonan Hou             |
+| Add optional string version in TSFetchMetadataResp           | Genius_pig             |
+| Add required i64 statementId in TSExecuteStatementReq        | Yuan Tian |
 
 
 

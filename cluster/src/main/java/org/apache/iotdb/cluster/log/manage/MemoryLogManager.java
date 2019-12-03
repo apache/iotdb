@@ -12,7 +12,7 @@ import java.util.List;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.LogManager;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,7 +84,7 @@ public abstract class MemoryLogManager implements LogManager {
       if (commitLogIndex < i && i <= maxLogIndex) {
         try {
           logApplier.apply(log);
-        } catch (ProcessorException e) {
+        } catch (QueryProcessException e) {
           logger.error("Cannot apply a log {} in snapshot, ignored", log, e);
         }
         commitLogIndex = i;
@@ -93,7 +93,7 @@ public abstract class MemoryLogManager implements LogManager {
   }
 
   @Override
-  public void commitLog(Log log) throws ProcessorException {
+  public void commitLog(Log log) throws QueryProcessException {
     logApplier.apply(log);
     commitLogIndex = log.getCurrLogIndex();
   }

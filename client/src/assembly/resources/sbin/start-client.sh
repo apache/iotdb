@@ -18,6 +18,8 @@
 # under the License.
 #
 
+# You can put your env variable here
+# export JAVA_HOME=$JAVA_HOME
 
 if [ -z "${IOTDB_CLI_HOME}" ]; then
   export IOTDB_CLI_HOME="$(cd "`dirname "$0"`"/..; pwd)"

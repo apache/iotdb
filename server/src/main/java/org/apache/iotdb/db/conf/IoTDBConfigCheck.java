@@ -54,7 +54,7 @@ public class IoTDBConfigCheck {
     logger.info("System configuration is ok.");
   }
 
-  public void createDir(String filepath) {
+  private void createDir(String filepath) {
     File dir = SystemFileFactory.INSTANCE.getFile(filepath);
     if (!dir.exists()) {
       dir.mkdirs();
@@ -62,7 +62,7 @@ public class IoTDBConfigCheck {
     }
   }
 
-  public void checkFile(String filepath) {
+  private void checkFile(String filepath) {
     // create file : read timestamp precision from engine.properties, create system_properties.txt
     // use output stream to write timestamp precision to file.
     File file = SystemFileFactory.INSTANCE.getFile(filepath + File.separator + PROPERTIES_FILE_NAME);

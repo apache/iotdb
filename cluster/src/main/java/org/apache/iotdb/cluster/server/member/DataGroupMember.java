@@ -38,9 +38,9 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPullSnapshotHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.exception.SeriesAlreadyExistsException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.TimeseriesAlreadyExistException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
@@ -228,7 +228,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       for (Log log : snapshot.getSnapshot()) {
         try {
           logManager.getApplier().apply(log);
-        } catch (ProcessorException e) {
+        } catch (QueryProcessException e) {
           logger.error("{}: Cannot apply a log {} in snapshot, ignored", name, log, e);
         }
       }
@@ -238,9 +238,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         try {
           MManager.getInstance().addPathToMTree(schema.getMeasurementId(), schema.getType(),
               schema.getEncodingType(), schema.getCompressor(), Collections.emptyMap());
-        } catch (SeriesAlreadyExistsException ignored) {
+        } catch (TimeseriesAlreadyExistException ignored) {
           // ignore added timeseries
-        } catch (MetadataErrorException e) {
+        } catch (MetadataException e) {
           logger.error("{}: Cannot create timeseries in snapshot, ignored", name, schema.getMeasurementId(), e);
         }
       }

@@ -1,6 +1,4 @@
- /**
- * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
- *
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -11,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
  package org.apache.iotdb.db.query.externalsort;
 
@@ -25,7 +24,7 @@
  import java.util.List;
  import org.apache.commons.io.FileUtils;
  import org.apache.iotdb.db.conf.IoTDBDescriptor;
- import org.apache.iotdb.db.exception.StorageEngineFailureException;
+ import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
  import org.apache.iotdb.db.query.externalsort.adapter.ByTimestampReaderAdapter;
  import org.apache.iotdb.db.query.reader.IPointReader;
  import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
@@ -55,7 +54,7 @@
        FileUtils.deleteDirectory(new File(queryDir));
        FileUtils.forceMkdir(new File(queryDir));
      } catch (IOException e) {
-       throw new StorageEngineFailureException("create system directory failed! " + e.toString());
+       throw new StorageEngineFailureException(e);
      }
    }
 

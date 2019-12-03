@@ -152,9 +152,7 @@ public interface IUnCompressor {
         return Snappy.uncompress(bytes);
       } catch (IOException e) {
         logger.error(
-            "tsfile-compression SnappyUnCompressor: errors occurs when uncompress input byte, "
-                + "bytes is {}",
-            bytes, e);
+            "tsfile-compression SnappyUnCompressor: errors occurs when uncompress input byte", e);
       }
       return new byte[0];
     }
@@ -176,9 +174,7 @@ public interface IUnCompressor {
         return Snappy.uncompress(compressed, uncompressed);
       } catch (IOException e) {
         logger.error(
-            "tsfile-compression SnappyUnCompressor: errors occurs when uncompress input byte, "
-                + "bytes is {}",
-            compressed.array(), e);
+            "tsfile-compression SnappyUnCompressor: errors occurs when uncompress input byte", e);
       }
       return 0;
     }

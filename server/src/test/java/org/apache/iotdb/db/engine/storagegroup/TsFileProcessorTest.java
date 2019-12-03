@@ -28,17 +28,18 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -55,7 +56,7 @@ public class TsFileProcessorTest {
 
   private TsFileProcessor processor;
   private String storageGroup = "storage_group1";
-  private String filePath = "data/testUnsealedTsFileProcessor.tsfile";
+  private String filePath = TestConstant.OUTPUT_DATA_DIR.concat("testUnsealedTsFileProcessor.tsfile");
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
   private TSDataType dataType = TSDataType.INT32;
@@ -72,11 +73,11 @@ public class TsFileProcessorTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    EnvironmentUtils.cleanDir("data");
+    EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
   }
 
   @Test
-  public void testWriteAndFlush() throws IOException, QueryProcessorException {
+  public void testWriteAndFlush() throws IOException, QueryProcessException {
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
     },
@@ -117,12 +118,12 @@ public class TsFileProcessorTest {
     assertTrue(left.isEmpty());
     assertEquals(1, right.size());
     assertEquals(measurementId, right.get(0).getMeasurementUid());
-    assertEquals(dataType, right.get(0).getTsDataType());
+    assertEquals(dataType, right.get(0).getDataType());
     processor.syncClose();
   }
 
   @Test
-  public void testWriteAndRestoreMetadata() throws IOException, QueryProcessorException {
+  public void testWriteAndRestoreMetadata() throws IOException, QueryProcessException {
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
     },
@@ -163,7 +164,7 @@ public class TsFileProcessorTest {
     assertTrue(left.isEmpty());
     assertEquals(1, right.size());
     assertEquals(measurementId, right.get(0).getMeasurementUid());
-    assertEquals(dataType, right.get(0).getTsDataType());
+    assertEquals(dataType, right.get(0).getDataType());
 
     RestorableTsFileIOWriter tsFileIOWriter = processor.getWriter();
     List<ChunkGroupMetaData> chunkGroupMetaDataList = tsFileIOWriter.getChunkGroupMetaDatas();
@@ -188,7 +189,7 @@ public class TsFileProcessorTest {
 
 
   @Test
-  public void testMultiFlush() throws IOException, QueryProcessorException {
+  public void testMultiFlush() throws IOException, QueryProcessException {
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {
     },
@@ -217,13 +218,13 @@ public class TsFileProcessorTest {
     assertTrue(left.isEmpty());
     assertEquals(10, right.size());
     assertEquals(measurementId, right.get(0).getMeasurementUid());
-    assertEquals(dataType, right.get(0).getTsDataType());
+    assertEquals(dataType, right.get(0).getDataType());
     processor.syncClose();
   }
 
 
   @Test
-  public void testWriteAndClose() throws IOException, QueryProcessorException {
+  public void testWriteAndClose() throws IOException, QueryProcessException {
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE,
         unsealedTsFileProcessor -> {

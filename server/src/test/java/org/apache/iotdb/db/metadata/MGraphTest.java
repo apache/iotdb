@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.StorageGroupException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -74,7 +73,7 @@ public class MGraphTest {
       metadatas[1] = root2.toString();
       metadatas[2] = root3.toString();
       assertEquals(MGraph.combineMetadataInStrings(metadatas), root.toString());
-    } catch (MetadataErrorException e) {
+    } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

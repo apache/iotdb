@@ -39,30 +39,28 @@ public class Path implements Serializable {
     if (pathSc == null) {
       throw new IllegalArgumentException("input pathSc is null!");
     }
-    String[] splits = pathSc.toString().split(TsFileConstant.PATH_SEPARATER_NO_REGEX);
-    init(splits);
+
+    init(pathSc.toString());
   }
 
   public Path(String pathSc) {
     if (pathSc == null) {
       throw new IllegalArgumentException(illegalPathArgument);
     }
-    String[] splits = pathSc.split(TsFileConstant.PATH_SEPARATER_NO_REGEX);
-    init(splits);
+    init(pathSc);
   }
 
   public Path(String[] pathSc) {
     if (pathSc == null) {
       throw new IllegalArgumentException(illegalPathArgument);
     }
-    String[] splits = new StringContainer(pathSc, TsFileConstant.PATH_SEPARATOR).toString()
-        .split(TsFileConstant.PATH_SEPARATER_NO_REGEX);
-    init(splits);
+    init(new StringContainer(pathSc, TsFileConstant.PATH_SEPARATOR).toString());
   }
 
   /**
    * construct a Path directly using device and measurement, no need to reformat the path
-   * @param device root.deviceType.d1
+   *
+   * @param device      root.deviceType.d1
    * @param measurement s1 , does not contain TsFileConstant.PATH_SEPARATOR
    */
   public Path(String device, String measurement) {
@@ -71,10 +69,65 @@ public class Path implements Serializable {
     }
     this.device = device;
     this.measurement = measurement;
-    this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
+    this.fullPath = device + TsFileConstant.PATH_SEPARATOR + (measurement.contains(TsFileConstant.PATH_SEPARATOR) ? "\"" + measurement + "\"" : measurement);
+  }
+
+  /**
+   * extract device and measurement info from complete path string
+   *
+   * @param pathSc complete path string
+   * @return str[0] is the device string, and str[1] is the measurement string
+   */
+  private void init(String pathSc) {
+    pathSc = pathSc.trim();
+    int i = 0;
+    int j = 0;
+    for (char c : pathSc.toCharArray()) {
+      if (c == '\"') {
+        i++;
+      } else if (c == '\'') {
+        j++;
+      }
+    }
+    if ((i != 2 && i != 0) || (j != 2 && j != 0)) {
+      throw new IllegalArgumentException("input pathSc single/double quotes error, not in pair or more than one pair!");
+    }
+    if ((i == 2 && pathSc.length() - 1 != pathSc.lastIndexOf("\""))
+            || (j == 2 && pathSc.length() - 1 != pathSc.lastIndexOf("\'"))) {
+      throw new IllegalArgumentException("input pathSc contains quoted string in the middle!");
+    }
+    String[] subStrs;
+    if (i != 0 || j != 0) {
+      if (i == 2) {
+        subStrs = pathSc.split("\"");
+      } else {
+        subStrs = pathSc.split("\'");
+      }
+      device = subStrs[0];
+      if (!device.trim().equals("")) {
+        device = device.substring(0, subStrs[0].length() - 1);
+      }
+      measurement = subStrs[1];
+      fullPath = pathSc;
+    } else {
+      StringContainer sc = new StringContainer(pathSc.split(TsFileConstant.PATH_SEPARATER_NO_REGEX), TsFileConstant.PATH_SEPARATOR);
+      if (sc.size() <= 1) {
+        device = "";
+        fullPath = measurement = sc.toString();
+      } else {
+        device = sc.getSubStringContainer(0, -2).toString();
+        measurement = sc.getSubString(-1);
+        fullPath = sc.toString();
+      }
+    }
   }
 
   public static Path mergePath(Path prefix, Path suffix) {
+    if (suffix.fullPath.equals("")) {
+      return prefix;
+    } else if (prefix.fullPath.equals("")) {
+      return suffix;
+    }
     StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
     sc.addTail(prefix);
     sc.addTail(suffix);
@@ -84,13 +137,14 @@ public class Path implements Serializable {
   /**
    * add {@code prefix} as the prefix of {@code src}.
    *
-   * @param src
-   *            to be added.
-   * @param prefix
-   *            the newly prefix
+   * @param src    to be added.
+   * @param prefix the newly prefix
    * @return if this path start with prefix
    */
   public static Path addPrefixPath(Path src, String prefix) {
+    if (prefix.equals("")) {
+      return src;
+    }
     StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
     sc.addTail(prefix);
     sc.addTail(src);
@@ -100,69 +154,12 @@ public class Path implements Serializable {
   /**
    * add {@code prefix} as the prefix of {@code src}.
    *
-   * @param src
-   *            to be added.
-   * @param prefix
-   *            the newly prefix
+   * @param src    to be added.
+   * @param prefix the newly prefix
    * @return <code>Path</code>
    */
   public static Path addPrefixPath(Path src, Path prefix) {
     return addPrefixPath(src, prefix.fullPath);
-  }
-
-  /**
-   * replace prefix of descPrefix with given parameter {@code srcPrefix}. If the level of the path constructed by
-   * {@code srcPrefix} is larger than {@code descPrefix}, return {@code
-   * srcPrefix} directly.
-   *
-   * @param srcPrefix
-   *            the prefix to replace descPrefix
-   * @param descPrefix
-   *            to be replaced
-   * @return If the level of the path constructed by {@code srcPrefix} is larger than {@code descPrefix}, return
-   *         {@code srcPrefix} directly.
-   */
-  public static Path replace(String srcPrefix, Path descPrefix) {
-    if ("".equals(srcPrefix) || descPrefix.startWith(srcPrefix)) {
-      return descPrefix;
-    }
-    int prefixSize = srcPrefix.split(TsFileConstant.PATH_SEPARATER_NO_REGEX).length;
-    String[] descArray = descPrefix.fullPath.split(TsFileConstant.PATH_SEPARATER_NO_REGEX);
-    if (descArray.length <= prefixSize) {
-      return new Path(srcPrefix);
-    }
-    StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
-    sc.addTail(srcPrefix);
-    for (int i = prefixSize; i < descArray.length; i++) {
-      sc.addTail(descArray[i]);
-    }
-    return new Path(sc);
-  }
-
-  /**
-   * replace prefix of {@code descPrefix} with given parameter {@code srcPrefix}. If the level of {@code srcPrefix} is
-   * larger than {@code descPrefix}, return {@code srcPrefix} directly.
-   *
-   * @param srcPrefix
-   *            the prefix to replace descPrefix
-   * @param descPrefix
-   *            to be replaced
-   * @return If the level of {@code srcPrefix} is larger than {@code descPrefix}, return {@code srcPrefix} directly.
-   */
-  public static Path replace(Path srcPrefix, Path descPrefix) {
-    return replace(srcPrefix.fullPath, descPrefix);
-  }
-
-  private void init(String[] splitedPathArray) {
-    StringContainer sc = new StringContainer(splitedPathArray, TsFileConstant.PATH_SEPARATOR);
-    if (sc.size() <= 1) {
-      device = "";
-      fullPath = measurement = sc.toString();
-    } else {
-      device = sc.getSubStringContainer(0, -2).toString();
-      measurement = sc.getSubString(-1);
-      fullPath = sc.toString();
-    }
   }
 
   public String getFullPath() {
@@ -204,8 +201,7 @@ public class Path implements Serializable {
   /**
    * if prefix is null, return false, else judge whether this.fullPath starts with prefix
    *
-   * @param prefix
-   *            the prefix string to be tested.
+   * @param prefix the prefix string to be tested.
    * @return True if fullPath starts with prefix
    */
   public boolean startWith(String prefix) {
@@ -215,8 +211,7 @@ public class Path implements Serializable {
   /**
    * if prefix is null, return false, else judge whether this.fullPath starts with prefix.fullPath
    *
-   * @param prefix
-   *            the prefix path to be tested.
+   * @param prefix the prefix path to be tested.
    * @return True if fullPath starts with prefix.fullPath
    */
   public boolean startWith(Path prefix) {

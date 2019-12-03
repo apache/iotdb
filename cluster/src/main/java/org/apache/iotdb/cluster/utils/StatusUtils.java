@@ -14,7 +14,6 @@ public class StatusUtils {
     // util class
   }
 
-
   public static final TSStatus PARTITION_TABLE_NOT_READY = getStatus(TSStatusCode.PARTITION_NOT_READY);
   public static final TSStatus OK = getStatus(TSStatusCode.SUCCESS_STATUS);
   public static final TSStatus TIME_OUT = getStatus(TSStatusCode.TIME_OUT);
@@ -24,12 +23,11 @@ public class StatusUtils {
       getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
   public static final TSStatus EXECUTE_STATEMENT_ERROR =
       getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
-  public static final TSStatus NO_STORAGE_GROUP = getStatus(TSStatusCode.NOT_A_STORAGE_GROUP_ERROR);
+  public static final TSStatus NO_STORAGE_GROUP = getStatus(TSStatusCode.STORAGE_GROUP_ERROR);
 
   private static TSStatus getStatus(TSStatusCode statusCode) {
     TSStatusType tsStatusType = new TSStatusType();
     tsStatusType.setCode(statusCode.getStatusCode());
-    tsStatusType.setMessage(statusCode.getStatusMessage());
     TSStatus status = new TSStatus();
     status.setStatusType(tsStatusType);
     return status;

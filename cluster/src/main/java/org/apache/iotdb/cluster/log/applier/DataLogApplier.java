@@ -6,7 +6,7 @@ package org.apache.iotdb.cluster.log.applier;
 
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logs.PhysicalPlanLog;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +18,7 @@ public class DataLogApplier extends BaseApplier {
   private static final Logger logger = LoggerFactory.getLogger(DataLogApplier.class);
 
   @Override
-  public void apply(Log log) throws ProcessorException {
+  public void apply(Log log) throws QueryProcessException {
     if (log instanceof PhysicalPlanLog) {
       applyPhysicalPlan(((PhysicalPlanLog) log).getPlan());
     } else {

@@ -43,7 +43,7 @@ public class MemTableTestUtils {
       throw new RuntimeException(String.format("start time %d > end time %d", startTime, endTime));
     }
     for (long l = startTime; l <= endTime; l++) {
-      iMemTable.write(deviceId, measurementId, dataType, l, String.valueOf(l));
+      iMemTable.write(deviceId, measurementId, dataType, l, (int)l);
     }
   }
 

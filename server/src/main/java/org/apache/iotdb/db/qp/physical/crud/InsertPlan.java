@@ -28,6 +28,7 @@ import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -44,6 +45,7 @@ public class InsertPlan extends PhysicalPlan {
     super(false, OperatorType.INSERT);
   }
 
+  @TestOnly
   public InsertPlan(String deviceId, long insertTime, String measurement, String insertValue) {
     super(false, OperatorType.INSERT);
     this.time = insertTime;

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -111,9 +111,7 @@ public class FileLoaderManager {
       throws SyncDeviceOwnerConflictException {
     for (String device : deviceSet) {
       if (deviceOwnerMap.containsKey(device) && !deviceOwnerMap.get(device).equals(curOwner)) {
-        throw new SyncDeviceOwnerConflictException(String
-            .format("Device: %s, correct owner: %s, conflict owner: %s", device,
-                deviceOwnerMap.get(device), curOwner));
+        throw new SyncDeviceOwnerConflictException(device, deviceOwnerMap.get(device), curOwner);
       }
     }
   }

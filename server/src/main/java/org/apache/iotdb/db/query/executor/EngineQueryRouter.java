@@ -24,11 +24,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -67,7 +67,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
         }
 
       } catch (QueryFilterOptimizationException | IOException e) {
-        throw new StorageEngineException(e);
+        throw new StorageEngineException(e.getMessage());
       }
     } else {
       EngineExecutor engineExecutor = new EngineExecutor(
@@ -75,7 +75,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
       try {
         return engineExecutor.executeWithoutValueFilter(context);
       } catch (IOException e) {
-        throw new StorageEngineException(e);
+        throw new StorageEngineException(e.getMessage());
       }
     }
   }
@@ -83,8 +83,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
   @Override
   public QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, QueryContext context) throws QueryFilterOptimizationException,
-      StorageEngineException, IOException, PathErrorException, ProcessorException {
-
+      StorageEngineException, QueryProcessException, IOException {
     if (expression != null) {
       IExpression optimizedExpression = ExpressionOptimizer.getInstance()
           .optimize(expression, selectedSeries);
@@ -93,7 +92,11 @@ public class EngineQueryRouter implements IEngineQueryRouter {
       if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
         return engineExecutor.executeWithoutValueFilter(context);
       } else {
-        return engineExecutor.executeWithValueFilter(context);
+        try {
+          return engineExecutor.executeWithValueFilter(context);
+        } catch (MetadataException e) {
+          throw new QueryProcessException(e);
+        }
       }
     } else {
       AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
@@ -105,9 +108,8 @@ public class EngineQueryRouter implements IEngineQueryRouter {
   @Override
   public QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals,
-      QueryContext context)
-      throws ProcessorException, QueryFilterOptimizationException, StorageEngineException,
-      PathErrorException, IOException {
+      QueryContext context) throws QueryFilterOptimizationException, StorageEngineException,
+      QueryProcessException, IOException {
 
     long nextJobId = context.getJobId();
 
@@ -118,7 +120,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
 //            String.format("Time interval<%d, %d> must be greater than 0.", pair.left, pair.right));
 //      }
       if (pair.right < pair.left) {
-        throw new ProcessorException(String.format(
+        throw new QueryProcessException(String.format(
             "Interval starting time must be greater than the interval ending time, "
                 + "found error interval<%d, %d>", pair.left, pair.right));
       }
@@ -151,7 +153,11 @@ public class EngineQueryRouter implements IEngineQueryRouter {
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
       GroupByWithoutValueFilterDataSet groupByEngine = new GroupByWithoutValueFilterDataSet(
           nextJobId, selectedSeries, unit, origin, mergedIntervalList);
-      groupByEngine.initGroupBy(context, aggres, optimizedExpression);
+      try {
+        groupByEngine.initGroupBy(context, aggres, optimizedExpression);
+      } catch (MetadataException e) {
+        throw new QueryProcessException(e);
+      }
       return groupByEngine;
     } else {
       GroupByWithValueFilterDataSet groupByEngine = new GroupByWithValueFilterDataSet(
@@ -165,7 +171,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
   @Override
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
       QueryContext context)
-      throws StorageEngineException, PathErrorException, IOException {
+      throws StorageEngineException, QueryProcessException, IOException {
 
     long nextJobId = context.getJobId();
 

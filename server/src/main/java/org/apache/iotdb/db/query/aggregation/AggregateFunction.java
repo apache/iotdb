@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.aggregation;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -47,57 +47,46 @@ public abstract class AggregateFunction {
   public abstract AggreResultData getResult();
 
   /**
-   * <p>
-   * Calculate the aggregation using <code>PageHeader</code>.
-   * </p>
+   * <p> Calculate the aggregation using <code>PageHeader</code>. </p>
    *
    * @param pageHeader <code>PageHeader</code>
    */
   public abstract void calculateValueFromPageHeader(PageHeader pageHeader)
-      throws ProcessorException;
+      throws QueryProcessException;
 
   /**
-   * <p>
-   * Could not calculate using <method>calculateValueFromPageHeader</method> directly. Calculate the
-   * aggregation according to all decompressed data in this page.
-   * </p>
+   * <p> Could not calculate using <method>calculateValueFromPageHeader</method> directly. Calculate
+   * the aggregation according to all decompressed data in this page. </p>
    *
    * @param dataInThisPage the data in the DataPage
    * @param unsequenceReader unsequence data reader
    * @throws IOException TsFile data read exception
-   * @throws ProcessorException wrong aggregation method parameter
    */
   public abstract void calculateValueFromPageData(BatchData dataInThisPage,
-      IPointReader unsequenceReader) throws IOException, ProcessorException;
+      IPointReader unsequenceReader) throws IOException;
 
   /**
-   * <p>
-   * Could not calculate using <method>calculateValueFromPageHeader</method> directly. Calculate the
-   * aggregation according to all decompressed data in this page.
-   * </p>
+   * <p> Could not calculate using <method>calculateValueFromPageHeader</method> directly. Calculate
+   * the aggregation according to all decompressed data in this page. </p>
    *
    * @param dataInThisPage the data in the DataPage
    * @param unsequenceReader unsequence data reader
    * @param bound the time upper bounder of data in unsequence data reader
    * @throws IOException TsFile data read exception
-   * @throws ProcessorException wrong aggregation method parameter
    */
   public abstract void calculateValueFromPageData(BatchData dataInThisPage,
-      IPointReader unsequenceReader, long bound) throws IOException, ProcessorException;
+      IPointReader unsequenceReader, long bound) throws IOException, QueryProcessException;
 
   /**
-   * <p>
-   * Calculate the aggregation with data in unsequenceReader.
-   * </p>
+   * <p> Calculate the aggregation with data in unsequenceReader. </p>
    *
    * @param unsequenceReader unsequence data reader
    */
   public abstract void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException, ProcessorException;
+      throws IOException, QueryProcessException;
 
   /**
-   * <p>
-   * Calculate the aggregation with data whose timestamp is less than bound in unsequenceReader.
+   * <p> Calculate the aggregation with data whose timestamp is less than bound in unsequenceReader.
    * </p>
    *
    * @param unsequenceReader unsequence data reader
@@ -105,12 +94,11 @@ public abstract class AggregateFunction {
    * @throws IOException TsFile data read exception
    */
   public abstract void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
-      throws IOException, ProcessorException;
+      throws IOException, QueryProcessException;
 
   /**
-   * <p>
-   * This method is calculate the aggregation using the common timestamps of cross series filter.
-   * </p>
+   * <p> This method is calculate the aggregation using the common timestamps of cross series
+   * filter. </p>
    *
    * @throws IOException TsFile data read error
    */
