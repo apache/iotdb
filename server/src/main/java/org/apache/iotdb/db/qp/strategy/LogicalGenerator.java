@@ -536,10 +536,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       return src.substring(1, src.length() - 1);
     } else if(src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
       return src.substring(1, src.length() - 1);
-    } else if(src.charAt(0) != '\'' && src.charAt(0) != '\"'
-        && src.charAt(src.length() - 1) != '\'' && src.charAt(src.length() - 1) != '\"')
-      return src;
-    else {
+    } else {
       throw new SQLParserException("error format for string with quote:" + src);
     }
   }
