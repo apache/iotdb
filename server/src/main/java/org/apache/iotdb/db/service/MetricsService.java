@@ -101,9 +101,11 @@ public class MetricsService implements MetricsServiceMBean, IService {
       if (server != null) {
         server.stop();
       }
-      executorService.shutdown();
-      if (!executorService.awaitTermination(60, TimeUnit.MILLISECONDS)) {
-        executorService.shutdownNow();
+      if(executorService != null){
+        executorService.shutdown();
+        if (!executorService.awaitTermination(60, TimeUnit.MILLISECONDS)) {
+          executorService.shutdownNow();
+        }
       }
     } catch (Exception e) {
       logger.error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
