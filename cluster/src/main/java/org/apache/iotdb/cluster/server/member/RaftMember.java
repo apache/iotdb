@@ -171,7 +171,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         return;
       }
       long response = processElectionRequest(electionRequest);
-      logger.info("{} sending response {} to the elector", name, response);
+      logger.info("{} sending response {} to the elector {}", name, response, electionRequest.getElector());
       resultHandler.onComplete(response);
     }
   }

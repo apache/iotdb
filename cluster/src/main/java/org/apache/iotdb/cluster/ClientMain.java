@@ -4,11 +4,13 @@
 
 package org.apache.iotdb.cluster;
 
+import java.util.Collections;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Client;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Client.Factory;
+import org.apache.iotdb.service.rpc.thrift.TSInsertReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -38,10 +40,10 @@ public class ClientMain {
     openReq.setPassword("root");
     TSOpenSessionResp openResp = client.openSession(openReq);
 
-    System.out.println(client.setStorageGroup("root.group1"));
-    System.out.println(client.setStorageGroup("root.group2"));
-    System.out.println(client.setStorageGroup("root.group3"));
-    System.out.println(client.setStorageGroup("root.group4"));
+    System.out.println(client.setStorageGroup("root.beijing"));
+    System.out.println(client.setStorageGroup("root.shanghai"));
+    System.out.println(client.setStorageGroup("root.guangzhou"));
+    System.out.println(client.setStorageGroup("root.shenzhen"));
 
     // wait until the storage group creations are committed
     Thread.sleep(3000);
@@ -50,14 +52,32 @@ public class ClientMain {
     req.setDataType(TSDataType.DOUBLE.ordinal());
     req.setEncoding(TSEncoding.GORILLA.ordinal());
     req.setCompressor(CompressionType.SNAPPY.ordinal());
-    req.setPath("root.group1.d1.s1");
+    req.setPath("root.beijing.d1.s1");
     System.out.println(client.createTimeseries(req));
-    req.setPath("root.group2.d1.s1");
+    req.setPath("root.shanghai.d1.s1");
     System.out.println(client.createTimeseries(req));
-    req.setPath("root.group3.d1.s1");
+    req.setPath("root.guangzhou.d1.s1");
     System.out.println(client.createTimeseries(req));
-    req.setPath("root.group4.d1.s1");
+    req.setPath("root.shenzhen.d1.s1");
     System.out.println(client.createTimeseries(req));
+
+    // wait until the timeseries creations are committed
+    Thread.sleep(3000);
+
+    TSInsertReq insertReq = new TSInsertReq();
+    insertReq.setMeasurements(Collections.singletonList("s1"));
+    for (int i = 0; i < 10; i ++) {
+      insertReq.setTimestamp(i * 24 * 3600 * 1000L);
+      insertReq.setValues(Collections.singletonList(Double.toString(i * 0.1)));
+      insertReq.setDeviceId("root.beijing.d1");
+      System.out.println(client.insertRow(insertReq));
+      insertReq.setDeviceId("root.shanghai.d1");
+      System.out.println(client.insertRow(insertReq));
+      insertReq.setDeviceId("root.guangzhou.d1");
+      System.out.println(client.insertRow(insertReq));
+      insertReq.setDeviceId("root.shenzhen.d1");
+      System.out.println(client.insertRow(insertReq));
+    }
 
     client.closeSession(new TSCloseSessionReq(openResp.getSessionHandle()));
   }

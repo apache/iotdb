@@ -142,6 +142,8 @@ public class SocketPartitionTable implements PartitionTable {
       int hash = Objects.hash(storageGroupName, partitionInstance);
       int socketNum = Math.abs(hash % SOCKET_NUM);
       Node node = socketNodeMap.get(socketNum);
+      logger.debug("The socket of {}@{} is {}, held by {}", storageGroupName, timestamp,
+          socketNum, node);
 
       return getHeaderGroup(node);
     }
