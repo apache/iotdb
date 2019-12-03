@@ -763,6 +763,9 @@
                 <!-- This needs to be updated as soon as Java 20 is shipped -->
                 <jdk>[11,20)</jdk>
             </activation>
+            <properties>
+                <maven.compiler.release>8</maven.compiler.release>
+            </properties>
             <dependencies>
                 <!-- for jdk-11 -->
                 <dependency>
