@@ -135,10 +135,10 @@ public class AggregateEngineExecutor {
   /**
    * calculation aggregate result with only time filter or no filter for one series.
    *
-   * @param function aggregate function
-   * @param sequenceReader sequence data reader
+   * @param function         aggregate function
+   * @param sequenceReader   sequence data reader
    * @param unSequenceReader unsequence data reader
-   * @param filter time filter or null
+   * @param filter           time filter or null
    * @return one series aggregate result data
    */
   private AggreResultData aggregateWithoutValueFilter(AggregateFunction function,
@@ -204,8 +204,8 @@ public class AggregateEngineExecutor {
   /**
    * handle last and max_time aggregate function with only time filter or no filter.
    *
-   * @param function aggregate function
-   * @param sequenceReader sequence data reader
+   * @param function         aggregate function
+   * @param sequenceReader   sequence data reader
    * @param unSequenceReader unsequence data reader
    * @return BatchData-aggregate result
    */
@@ -213,47 +213,43 @@ public class AggregateEngineExecutor {
       IAggregateReader sequenceReader, IPointReader unSequenceReader, Filter timeFilter)
       throws IOException, QueryProcessException {
     long lastBatchTimeStamp = Long.MIN_VALUE;
-    boolean isChunkEnd = false;
+
     while (sequenceReader.hasNextChunk()) {
       ChunkMetaData chunkMetaData = sequenceReader.nextChunkMeta();
+      // if can use chunkMetaData ,skip this chunk
       if (chunkMetaData != null && canUseHeader(function, chunkMetaData.getStartTime(),
           chunkMetaData.getEndTime(), unSequenceReader, timeFilter)) {
         function.calculateValueFromChunkMetaData(chunkMetaData);
+        //if this chunk is last chunk, broken out of the loop
+        if (lastBatchTimeStamp > chunkMetaData.getStartTime()) {
+          break;
+        }
+        lastBatchTimeStamp = chunkMetaData.getStartTime();
         continue;
       }
+      //if can't use chunkMetaData, try to use pageHeader
       while (sequenceReader.hasNextPageInCurrentChunk()) {
         PageHeader pageHeader = sequenceReader.nextPageHeader();
-        // judge if overlap with unsequence data
         if (pageHeader != null && canUseHeader(function, pageHeader.getStartTime(),
             pageHeader.getEndTime(),
             unSequenceReader, timeFilter)) {
           // cal by pageHeader
           function.calculateValueFromPageHeader(pageHeader);
           sequenceReader.skipPageData();
-
+          //if this page is last chunk, broken out of the loop
           if (lastBatchTimeStamp > pageHeader.getStartTime()) {
-            // the chunk is end.
-            isChunkEnd = true;
-          } else {
-            // current page and last page are in the same chunk.
-            lastBatchTimeStamp = pageHeader.getStartTime();
+            break;
           }
-        } else {
-          // cal by pageData
-          BatchData batchData = sequenceReader.nextBatch();
-          if (batchData.length() > 0) {
-            if (lastBatchTimeStamp > batchData.currentTime()) {
-              // the chunk is end.
-              isChunkEnd = true;
-            } else {
-              // current page and last page are in the same chunk.
-              lastBatchTimeStamp = batchData.currentTime();
-            }
-            function.calculateValueFromPageData(batchData, unSequenceReader);
-          }
+          lastBatchTimeStamp = pageHeader.getStartTime();
+          continue;
         }
-        if (isChunkEnd) {
-          break;
+        BatchData batchData = sequenceReader.nextBatch();
+        if (batchData.length() > 0) {
+          if (lastBatchTimeStamp > batchData.currentTime()) {
+            break;
+          }
+          lastBatchTimeStamp = batchData.currentTime();
+          function.calculateValueFromPageData(batchData, unSequenceReader);
         }
       }
     }
