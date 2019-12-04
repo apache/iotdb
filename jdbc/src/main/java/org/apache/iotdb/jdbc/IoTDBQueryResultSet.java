@@ -27,7 +27,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.thrift.TException;
-import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -697,7 +696,6 @@ public class IoTDBQueryResultSet implements ResultSet {
   private void constructOneRow() {
     record[0] = new byte[Long.BYTES];
     tsQueryDataSet.time.get(record[0]);
-    System.out.print("time: " + Utils.bytesToLong(record[0]) + ", ");
     for (int i = 0; i < tsQueryDataSet.bitmapList.size(); i++) {
       ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(i);
       // another new 8 row, should move the bitmap buffer position to next byte
@@ -714,42 +712,34 @@ public class IoTDBQueryResultSet implements ResultSet {
           case BOOLEAN:
             record[i+1] = new byte[1];
             valueBuffer.get(record[i+1]);
-            System.out.print(BytesUtils.bytesToBool(record[i+1]) + ", ");
             break;
           case INT32:
             record[i+1] = new byte[Integer.BYTES];
             valueBuffer.get(record[i+1]);
-            System.out.print(BytesUtils.bytesToInt(record[i+1]) + ", ");
             break;
           case INT64:
             record[i+1] = new byte[Long.BYTES];
             valueBuffer.get(record[i+1]);
-            System.out.print(BytesUtils.bytesToLong(record[i+1]) + ", ");
             break;
           case FLOAT:
             record[i+1] = new byte[Float.BYTES];
             valueBuffer.get(record[i+1]);
-            System.out.print(BytesUtils.bytesToFloat(record[i+1]) + ", ");
             break;
           case DOUBLE:
             record[i+1] = new byte[Double.BYTES];
             valueBuffer.get(record[i+1]);
-            System.out.print(BytesUtils.bytesToDouble(record[i+1]) + ", ");
             break;
           case TEXT:
             int length = valueBuffer.getInt();
             record[i+1] = ReadWriteIOUtils.readBytes(valueBuffer, length);
-            System.out.print(new String(record[i+1]) + ", ");
             break;
           default:
             throw new UnSupportedDataTypeException(
                     String.format("Data type %s is not supported.", columnTypeList.get(i)));
         }
       } else {
-        System.out.print("null, ");
       }
     }
-    System.out.println();
     rowsIndex++;
   }
 

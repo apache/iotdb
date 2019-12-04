@@ -147,7 +147,7 @@ public class IoTDBQueryResultSetTest {
   public void testQuery() throws Exception {
 
     String testSql = "select *,s1,s0,s2 from root.vehicle.d0 where s1 > 190 or s2 < 10.0 "
-        + "limit 20 offset 2 slimit 4 soffset 2";
+        + "limit 20 offset 1 slimit 4 soffset 2";
 
     /*
      * step 1: execute statement
@@ -244,7 +244,6 @@ public class IoTDBQueryResultSetTest {
     tsDataTypeList.add(TSDataType.INT32); // root.vehicle.d0.s0
 
     Object[][] input = {
-            {1L, null, 1101L, null,},
         {2L, 2.22F, 40000L, null,},
         {3L, 3.33F, null, null,},
         {4L, 4.44F, null, null,},
@@ -306,7 +305,7 @@ public class IoTDBQueryResultSetTest {
     // feed the remaining bitmap
     for (int j = 0; j < bitmap.length; j++) {
       DataOutputStream dataBitmapOutputStream = dataOutputStreams[2*(j+1)];
-      dataBitmapOutputStream.writeByte(bitmap[j] << 6);
+      dataBitmapOutputStream.writeByte(bitmap[j] << (8 - rowCount % 8));
     }
 
     // calculate the time buffer size

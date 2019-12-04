@@ -883,7 +883,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       } else {
         result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, req.fetchSize);
       }
-      boolean hasResultSet = (result.getRowCount() != 0);
+      boolean hasResultSet = (result.bufferForTime().limit() != 0);
       if (!hasResultSet && queryId2DataSet.get() != null) {
         queryId2DataSet.get().remove(req.queryId);
       }
