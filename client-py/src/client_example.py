@@ -23,12 +23,12 @@ sys.path.append("../target")
 from thrift.protocol import TBinaryProtocol
 from thrift.transport import TSocket, TTransport
 
-from rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertionReq, \
+from iotdb.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertionReq, \
     TSBatchInsertionReq, TSExecuteStatementReq, \
     TS_SessionHandle, TSHandleIdentifier, TSOpenSessionReq, TSQueryDataSet, \
     TSFetchResultsReq, TSCloseOperationReq, \
     TSCloseSessionReq
-from rpc.ttypes import TSProtocolVersion
+from iotdb.rpc.ttypes import TSProtocolVersion
 
 TSDataType = {
     'BOOLEAN': 0,
