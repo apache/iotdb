@@ -18,14 +18,6 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
@@ -73,6 +65,8 @@ import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+
+import java.util.*;
 
 /**
  * Used to convert logical operator to physical plan
@@ -180,8 +174,9 @@ public class PhysicalGenerator {
     if (queryOperator.isGroupBy()) {
       queryPlan = new GroupByPlan();
       ((GroupByPlan) queryPlan).setUnit(queryOperator.getUnit());
-      ((GroupByPlan) queryPlan).setOrigin(queryOperator.getOrigin());
-      ((GroupByPlan) queryPlan).setIntervals(queryOperator.getIntervals());
+      ((GroupByPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
+      ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime());
+      ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime());
       ((GroupByPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
     } else if (queryOperator.isFill()) {

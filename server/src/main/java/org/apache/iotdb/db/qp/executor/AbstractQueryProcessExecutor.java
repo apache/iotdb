@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
+
 import static org.apache.iotdb.db.conf.IoTDBConstant.ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.STORAGE_GROUP;
@@ -39,11 +40,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
@@ -60,6 +57,15 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.TTL;
 
 public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecutor {
 
@@ -200,14 +206,13 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       // deduplicate executed paths and aggregations if exist
       List<Path> deduplicatedPaths = new ArrayList<>();
       if (queryPlan instanceof GroupByPlan) {
-        List<String> deduplicatedAggregations = new ArrayList<>();
         GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
+        List<String> deduplicatedAggregations = new ArrayList<>();
         deduplicate(groupByPlan.getPaths(), groupByPlan.getAggregations(), deduplicatedPaths,
-            deduplicatedAggregations);
-        queryDataSet = groupBy(deduplicatedPaths, deduplicatedAggregations,
-            groupByPlan.getExpression(),
-            groupByPlan.getUnit(),
-            groupByPlan.getOrigin(), groupByPlan.getIntervals(), context);
+                deduplicatedAggregations);
+        return groupBy(deduplicatedPaths, deduplicatedAggregations, groupByPlan.getExpression(),
+                groupByPlan.getUnit(),
+                groupByPlan.getSlidingStep(), groupByPlan.getStartTime(), groupByPlan.getEndTime(), context);
       } else if (queryPlan instanceof AggregationPlan) {
         List<String> deduplicatedAggregations = new ArrayList<>();
         deduplicate(queryPlan.getPaths(), queryPlan.getAggregations(), deduplicatedPaths,
