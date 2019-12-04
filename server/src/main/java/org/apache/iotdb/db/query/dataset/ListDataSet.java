@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -38,12 +37,12 @@ public class ListDataSet extends QueryDataSet {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  protected boolean hasNextWithoutConstraint() {
     return index < records.size();
   }
 
   @Override
-  public RowRecord next() {
+  protected RowRecord nextWithoutConstraint() {
     return records.get(index++);
   }
 

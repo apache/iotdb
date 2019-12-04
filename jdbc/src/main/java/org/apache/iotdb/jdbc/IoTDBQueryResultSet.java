@@ -42,7 +42,6 @@ import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
@@ -67,8 +66,6 @@ public class IoTDBQueryResultSet implements ResultSet {
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(IoTDBQueryResultSet.class);
   private static final String TIMESTAMP_STR = "Time";
   private static final int START_INDEX = 2;
-  private static final String LIMIT_STR = "LIMIT";
-  private static final String OFFSET_STR = "OFFSET";
   private Statement statement = null;
   private String sql;
   private SQLWarning warningChain = null;
@@ -80,35 +77,14 @@ public class IoTDBQueryResultSet implements ResultSet {
   private Map<String, Integer> columnInfoMap; // used because the server returns deduplicated columns
   private List<String> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   private RowRecord record;
-  private int rowsFetched = 0;
-  private int maxRows; // defined in IoTDBStatement
   private int fetchSize;
   private boolean emptyResultSet = false;
-  
+
   private TSQueryDataSet tsQueryDataSet = null;
   private ByteBuffer byteBuffer = null;
 
-  // 0 means it is not constrained in sql
-  private int rowsLimit = 0;
-
-  // 0 means it is not constrained in sql, or the offset position has been reached
-  private int rowsOffset = 0;
-
   private long queryId;
   private boolean ignoreTimeStamp = false;
-
-  /*
-   * Combine maxRows and the LIMIT constraints. maxRowsOrRowsLimit = 0 means that neither maxRows
-   * nor LIMIT is constrained. maxRowsOrRowsLimit > 0 means that maxRows and/or
-   * LIMIT are constrained.
-   * 1) When neither maxRows nor LIMIT is constrained, i.e., maxRows=0 and rowsLimit=0,
-   * maxRowsOrRowsLimit = 0 2). When both maxRows and LIMIT are constrained, i.e., maxRows>0 and
-   * rowsLimit>0, maxRowsOrRowsLimit = min(maxRows, rowsLimit) 3) When maxRows is constrained and
-   * LIMIT is NOT constrained, i.e., maxRows>0 and rowsLimit=0, maxRowsOrRowsLimit = maxRows
-   * 4) When maxRows is NOT constrained and LIMIT is constrained, i.e., maxRows=0 and
-   * rowsLimit>0, maxRowsOrRowsLimit = rowsLimit
-   */
-  private int maxRowsOrRowsLimit;
 
   public IoTDBQueryResultSet() {
     // do nothing
@@ -119,7 +95,6 @@ public class IoTDBQueryResultSet implements ResultSet {
       TSOperationHandle operationHandle, String sql, long queryId)
       throws SQLException {
     this.statement = statement;
-    this.maxRows = statement.getMaxRows();
     this.fetchSize = statement.getFetchSize();
     this.columnTypeList = columnTypeList;
 
@@ -144,36 +119,6 @@ public class IoTDBQueryResultSet implements ResultSet {
     this.operationHandle = operationHandle;
     this.sql = sql;
     this.queryId = queryId;
-
-    maxRowsOrRowsLimit = maxRows;
-    // parse the LIMIT&OFFSET parameters from sql
-    String[] splited = sql.toUpperCase().split("\\s+");
-    List<String> arraySplited = Arrays.asList(splited);
-    try {
-      int posLimit = arraySplited.indexOf(LIMIT_STR);
-      if (posLimit != -1) {
-        rowsLimit = Integer.parseInt(splited[posLimit + 1]);
-
-        // NOTE that maxRows=0 in IoTDBStatement means it is not constrained
-        // NOTE that LIMIT <N>: N is ensured to be a positive integer by the server side
-        if (maxRows == 0) {
-          maxRowsOrRowsLimit = rowsLimit;
-        } else {
-          maxRowsOrRowsLimit = (rowsLimit < maxRows) ? rowsLimit : maxRows;
-        }
-
-        // check if OFFSET is constrained after LIMIT has been constrained
-        int posOffset = arraySplited.indexOf(OFFSET_STR);
-        if (posOffset != -1) {
-          // NOTE that OFFSET <OFFSETValue>: OFFSETValue is ensured to be a non-negative
-          // integer by the server side
-          rowsOffset = Integer.parseInt(splited[posOffset + 1]);
-        }
-      }
-
-    } catch (NumberFormatException e) {
-      throw new IoTDBSQLException("Out of range: LIMIT&SLIMIT parameter should be Int32.");
-    }
   }
 
   @Override
@@ -325,8 +270,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     Field field = record.getFields().get(index);
     if (field.getDataType() != null && field.getDataType() == TSDataType.BOOLEAN) {
       return field.getBoolV();
-    }
-    else {
+    } else {
       throw new SQLException(
           String.format("The value got by %s (column name) is NULL.", columnName));
     }
@@ -414,8 +358,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     Field field = record.getFields().get(index);
     if (field.getDataType() != null && field.getDataType() == TSDataType.DOUBLE) {
       return field.getDoubleV();
-    }
-    else {
+    } else {
       throw new SQLException(
           String.format("The value got by %s (column name) is NULL.", columnName));
     }
@@ -453,8 +396,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     Field field = record.getFields().get(index);
     if (field.getDataType() != null && field.getDataType() == TSDataType.FLOAT) {
       return field.getFloatV();
-    }
-    else {
+    } else {
       throw new SQLException(
           String.format("The value got by %s (column name) is NULL.", columnName));
     }
@@ -477,8 +419,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     Field field = record.getFields().get(index);
     if (field.getDataType() != null && field.getDataType() == TSDataType.INT32) {
       return field.getIntV();
-    }
-    else {
+    } else {
       throw new SQLException(
           String.format("The value got by %s (column name) is NULL.", columnName));
     }
@@ -499,8 +440,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     Field field = record.getFields().get(index);
     if (field.getDataType() != null && field.getDataType() == TSDataType.INT64) {
       return field.getLongV();
-    }
-    else {
+    } else {
       throw new SQLException(
           String.format("The value got by %s (column name) is NULL.", columnName));
     }
@@ -746,12 +686,10 @@ public class IoTDBQueryResultSet implements ResultSet {
     throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
-  // the next record rule without constraints
-  private boolean nextWithoutConstraints(int limitFetchSize) throws SQLException {
+  @Override
+  public boolean next() throws SQLException {
     if ((tsQueryDataSet == null || !byteBuffer.hasRemaining()) && !emptyResultSet) {
-      int adaFetchSize = (limitFetchSize < fetchSize) ? limitFetchSize : fetchSize;
-      TSFetchResultsReq req = new TSFetchResultsReq(sql, adaFetchSize, queryId);
-
+      TSFetchResultsReq req = new TSFetchResultsReq(sql, fetchSize, queryId);
       try {
         TSFetchResultsResp resp = client.fetchResults(req);
         try {
@@ -764,8 +702,7 @@ public class IoTDBQueryResultSet implements ResultSet {
         } else {
           tsQueryDataSet = resp.getQueryDataSet();
           try {
-            byteBuffer = Utils
-                .convertResultBuffer(tsQueryDataSet, columnTypeDeduplicatedList);
+            byteBuffer = Utils.convertResultBuffer(tsQueryDataSet, columnTypeDeduplicatedList);
           } catch (IOException e) {
             throw new IoTDBSQLException(e.getMessage());
           }
@@ -781,41 +718,6 @@ public class IoTDBQueryResultSet implements ResultSet {
     }
     record = Utils.getRowRecord(byteBuffer, columnTypeDeduplicatedList);
     return true;
-  }
-
-  @Override
-  // the next record rule considering both the maxRows constraint and the LIMIT&OFFSET constraint
-  public boolean next() throws SQLException {
-    if (maxRowsOrRowsLimit > 0 && rowsFetched >= maxRowsOrRowsLimit) {
-      return false;
-    }
-
-    // When rowsOffset is constrained and the offset position has NOT been reached
-    if (rowsOffset != 0) {
-      for (int i = 0; i < rowsOffset; i++) { // Try to move to the offset position
-        if (!nextWithoutConstraints(rowsOffset + maxRowsOrRowsLimit - i)) {
-          return false; // No next record, i.e, fail to move to the offset position
-        }
-      }
-      rowsOffset = 0; // The offset position has been reached
-    }
-
-    boolean isNext;
-    if (maxRowsOrRowsLimit > 0) {
-      isNext = nextWithoutConstraints(maxRowsOrRowsLimit - rowsFetched);
-    } else { // maxRowsOrRowsLimit=0 means neither maxRows nor LIMIT is constrained.
-      isNext = nextWithoutConstraints(fetchSize);
-    }
-
-    if (isNext) {
-      /*
-       * Note that 'rowsFetched' is not increased in the nextWithoutConstraints(),
-       * because 'rowsFetched' should not count the rows fetched before the OFFSET position.
-       */
-      rowsFetched++;
-    }
-
-    return isNext;
   }
 
   @Override

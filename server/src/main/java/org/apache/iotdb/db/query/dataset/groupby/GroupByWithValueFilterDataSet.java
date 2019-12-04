@@ -61,7 +61,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
                                        long slidingStep, long startTime, long endTime) {
     super(jobId, paths, unit, slidingStep, startTime, endTime);
     this.allDataReaderList = new ArrayList<>();
-    this.timeStampFetchSize = 10 * IoTDBDescriptor.getInstance().getConfig().getFetchSize();
+    this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getAggregateFetchSize();
   }
 
   /**
@@ -80,7 +80,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   @Override
-  public RowRecord next() throws IOException {
+  protected RowRecord nextWithoutConstraint() throws IOException {
     if (!hasCachedTimeInterval) {
       throw new IOException("need to call hasNext() before calling next()"
           + " in GroupByWithoutValueFilterDataSet.");

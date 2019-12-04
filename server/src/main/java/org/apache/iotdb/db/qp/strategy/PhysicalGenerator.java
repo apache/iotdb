@@ -152,7 +152,7 @@ public class PhysicalGenerator {
       case LOAD_CONFIGURATION:
         return new LoadConfigurationPlan();
       case SHOW:
-        switch (operator.getTokenIntType()){
+        switch (operator.getTokenIntType()) {
           case SQLConstant.TOK_DYNAMIC_PARAMETER:
             return new ShowPlan(ShowContentType.DYNAMIC_PARAMETER);
           case SQLConstant.TOK_FLUSH_TASK_INFO:
@@ -196,12 +196,8 @@ public class PhysicalGenerator {
       queryPlan = new QueryPlan();
     }
 
-    if (!queryOperator.isGroupByDevice()) {
-      List<Path> paths = queryOperator.getSelectedPaths();
-      queryPlan.setPaths(paths);
-
-    } else {
-      // below is the core realization of GROUP_BY_DEVICE sql
+    if (queryOperator.isGroupByDevice()) {
+      // below is the core realization of GROUP_BY_DEVICE sql logic
       List<Path> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
       List<Path> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();
       List<String> originAggregations = queryOperator.getSelectOperator().getAggregations();
@@ -307,6 +303,9 @@ public class PhysicalGenerator {
       queryPlan.setMeasurementColumnsGroupByDevice(measurementColumnsGroupByDevice);
       queryPlan.setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
       queryPlan.setPaths(new ArrayList<>(allSelectPaths));
+    } else {
+      List<Path> paths = queryOperator.getSelectedPaths();
+      queryPlan.setPaths(paths);
     }
 
     queryPlan.checkPaths(executor);
@@ -318,6 +317,9 @@ public class PhysicalGenerator {
       IExpression expression = filterOperator.transformToExpression(executor);
       queryPlan.setExpression(expression);
     }
+
+    queryPlan.setRowLimit(queryOperator.getRowLimit());
+    queryPlan.setRowOffset(queryOperator.getRowOffset());
 
     return queryPlan;
   }

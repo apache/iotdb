@@ -103,7 +103,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   @Override
-  public RowRecord next() throws IOException {
+  protected RowRecord nextWithoutConstraint() throws IOException {
     if (!hasCachedTimeInterval) {
       throw new IOException("need to call hasNext() before calling next() "
           + "in GroupByWithoutValueFilterDataSet.");

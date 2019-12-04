@@ -24,10 +24,12 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+
 public class GroupByEngineDataSetTest {
 
   @Test
-  public void test1() {
+  public void test1() throws IOException {
     long jobId = 1000L;
     long unit = 3;
     long slidingStep = 5;
@@ -38,7 +40,7 @@ public class GroupByEngineDataSetTest {
     long[] endTimeArray = {11, 16, 21, 26, 31};
     GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(jobId, null, unit, slidingStep, startTime, endTime);
     int cnt = 0;
-    while (groupByEngine.hasNext()){
+    while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
       Assert.assertTrue(cnt < startTimeArray.length);
       Assert.assertEquals(startTimeArray[cnt], pair.left);
@@ -49,7 +51,7 @@ public class GroupByEngineDataSetTest {
   }
 
   @Test
-  public void test2() {
+  public void test2() throws IOException {
     long jobId = 1000L;
     long unit = 3;
     long slidingStep = 5;
@@ -60,7 +62,7 @@ public class GroupByEngineDataSetTest {
     long[] endTimeArray = {11, 16, 21, 26, 31};
     GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(jobId, null, unit, slidingStep, startTime, endTime);
     int cnt = 0;
-    while (groupByEngine.hasNext()){
+    while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
       Assert.assertTrue(cnt < startTimeArray.length);
       Assert.assertEquals(startTimeArray[cnt], pair.left);
@@ -71,7 +73,7 @@ public class GroupByEngineDataSetTest {
   }
 
   @Test
-  public void test3() {
+  public void test3() throws IOException {
     long jobId = 1000L;
     long unit = 3;
     long slidingStep = 3;
@@ -82,7 +84,7 @@ public class GroupByEngineDataSetTest {
     long[] endTimeArray = {11, 14, 17, 20, 23, 24};
     GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(jobId, null, unit, slidingStep, startTime, endTime);
     int cnt = 0;
-    while (groupByEngine.hasNext()){
+    while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
       Assert.assertTrue(cnt < startTimeArray.length);
       Assert.assertEquals(startTimeArray[cnt], pair.left);
@@ -93,7 +95,7 @@ public class GroupByEngineDataSetTest {
   }
 
   @Test
-  public void test4() {
+  public void test4() throws IOException {
     long jobId = 1000L;
     long unit = 3;
     long slidingStep = 3;
@@ -104,7 +106,7 @@ public class GroupByEngineDataSetTest {
     long[] endTimeArray = {11, 14, 17, 20, 23};
     GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(jobId, null, unit, slidingStep, startTime, endTime);
     int cnt = 0;
-    while (groupByEngine.hasNext()){
+    while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
       Assert.assertTrue(cnt < startTimeArray.length);
       Assert.assertEquals(startTimeArray[cnt], pair.left);
@@ -115,7 +117,7 @@ public class GroupByEngineDataSetTest {
   }
 
   @Test
-  public void test5() {
+  public void test5() throws IOException {
     long jobId = 1000L;
     long unit = 3;
     long slidingStep = 3;
@@ -126,7 +128,7 @@ public class GroupByEngineDataSetTest {
     long[] endTimeArray = {11, 14, 17, 20, 23, 25};
     GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(jobId, null, unit, slidingStep, startTime, endTime);
     int cnt = 0;
-    while (groupByEngine.hasNext()){
+    while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
       Assert.assertTrue(cnt < startTimeArray.length);
       Assert.assertEquals(startTimeArray[cnt], pair.left);

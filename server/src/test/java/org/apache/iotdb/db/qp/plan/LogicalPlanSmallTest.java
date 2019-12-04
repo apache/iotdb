@@ -47,41 +47,124 @@ public class LogicalPlanSmallTest {
   }
 
   @Test
-  public void testSlimit1() {
-    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10";
-    RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+  public void testLimit() {
+    String sqlStr = "select * from root.vehicle.d1 limit 10";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
-    Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
-  }
-
-  @Test(expected = NumberFormatException.class)
-  public void testSlimit2() {
-    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 1111111111111111111111";
-    RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    // expected to throw LogicalOperatorException: SLIMIT <SN>: SN should be Int32.
-  }
-
-  @Test(expected = SQLParserException.class)
-  public void testSlimit3() {
-    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 0";
-    RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    // expected to throw LogicalOperatorException: SLIMIT <SN>: SN must be a positive integer and can not be zero.
+    Assert.assertEquals(10, ((QueryOperator) operator).getRowLimit());
+    Assert.assertEquals(0, ((QueryOperator) operator).getRowOffset());
+    Assert.assertEquals(0, ((QueryOperator) operator).getSeriesLimit());
+    Assert.assertEquals(0, ((QueryOperator) operator).getSeriesOffset());
   }
 
   @Test
-  public void testSoffset() {
-    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10 soffset 1";
-    RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+  public void testOffset() {
+    String sqlStr = "select * from root.vehicle.d1 limit 10 offset 20";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
+    Assert.assertEquals(10, ((QueryOperator) operator).getRowLimit());
+    Assert.assertEquals(20, ((QueryOperator) operator).getRowOffset());
+    Assert.assertEquals(0, ((QueryOperator) operator).getSeriesLimit());
+    Assert.assertEquals(0, ((QueryOperator) operator).getSeriesOffset());
+  }
+
+  @Test
+  public void testSlimit() {
+    String sqlStr = "select * from root.vehicle.d1 limit 10 slimit 1";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    Assert.assertEquals(10, ((QueryOperator) operator).getRowLimit());
+    Assert.assertEquals(0, ((QueryOperator) operator).getRowOffset());
+    Assert.assertEquals(1, ((QueryOperator) operator).getSeriesLimit());
+    Assert.assertEquals(0, ((QueryOperator) operator).getSeriesOffset());
+  }
+
+  @Test
+  public void testSOffset() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() limit 50 slimit 10 soffset 100";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    Assert.assertEquals(50, ((QueryOperator) operator).getRowLimit());
+    Assert.assertEquals(0, ((QueryOperator) operator).getRowOffset());
     Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
-    Assert.assertEquals(1, ((QueryOperator) operator).getSeriesOffset());
+    Assert.assertEquals(100, ((QueryOperator) operator).getSeriesOffset());
+  }
+
+  @Test(expected = SQLParserException.class)
+  public void testLimitOutOfRange() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() limit 1111111111111111111111";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    // expected to throw SQLParserException: Out of range. LIMIT <N>: N should be Int32.
+  }
+
+  @Test(expected = SQLParserException.class)
+  public void testLimitNotPositive() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() limit 0";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    // expected to throw SQLParserException: LIMIT <N>: N should be greater than 0.
+  }
+
+  @Test(expected = SQLParserException.class)
+  public void testOffsetOutOfRange() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() "
+        + "limit 1 offset 1111111111111111111111";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    // expected to throw SQLParserException: Out of range. OFFSET <OFFSETValue>: OFFSETValue should be Int32.
+  }
+
+  @Test(expected = SQLParserException.class)
+  public void testOffsetNotPositive() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() limit 1 offset 0";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    // expected to throw SQLParserException: OFFSET <OFFSETValue>: OFFSETValue should be greater than 0.
+  }
+
+  @Test(expected = SQLParserException.class)
+  public void testSlimitOutOfRange() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 1111111111111111111111";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    // expected to throw SQLParserException: Out of range. SLIMIT <SN>: SN should be Int32.
+  }
+
+  @Test(expected = SQLParserException.class)
+  public void testSlimitNotPositive() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 0";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    // expected to throw SQLParserException: SLIMIT <SN>: SN should be greater than 0.
+  }
+
+  @Test(expected = SQLParserException.class)
+  public void testSoffsetOutOfRange() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() "
+        + "slimit 1 soffset 1111111111111111111111";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    // expected to throw SQLParserException: Out of range. SOFFSET <SOFFSETValue>: SOFFSETValue should be Int32.
+  }
+
+  @Test(expected = SQLParserException.class)
+  public void testSoffsetNotPositive() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 1 soffset 0";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    // expected to throw SQLParserException: SOFFSET <SOFFSETValue>: SOFFSETValue should be greater than 0.
   }
 
   @Test(expected = LogicalOptimizeException.class)
-  public void testSlimitLogicalOptimize()
-      throws QueryProcessException {
-    String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10 soffset 1";
-    RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+  public void testSoffsetExceedColumnNum() throws QueryProcessException {
+    String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() slimit 2 soffset 1";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
 
     MemIntQpExecutor executor = new MemIntQpExecutor();
     Path path1 = new Path(
@@ -102,28 +185,14 @@ public class LogicalPlanSmallTest {
     executor.insert(new InsertPlan(path4.getDevice(), 10, path4.getMeasurement(), "10"));
     ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer(executor);
     operator = (SFWOperator) concatPathOptimizer.transform(operator);
-    // expected to throw LogicalOptimizeException: Wrong use of SLIMIT: SLIMIT is not allowed to be used with
-    // complete paths.
-  }
-
-  @Test(expected = NumberFormatException.class)
-  public void testLimit1() {
-    String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() limit 111111111111111111111111";
-    RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    // expected to throw LogicalOperatorException: LIMIT <N>: N should be Int32.
-  }
-
-  @Test(expected = SQLParserException.class)
-  public void testLimit2() {
-    String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() limit 0";
-    RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    // expected to throw LogicalOperatorException: LIMIT <N>: N must be a positive integer and can not be zero.
+    // expected to throw LogicalOptimizeException: SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.
   }
 
   @Test
   public void testDeleteStorageGroup() {
     String sqlStr = "delete storage group root.vehicle.d1";
-    RootOperator operator = (RootOperator) parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(DeleteStorageGroupOperator.class, operator.getClass());
     Path path = new Path("root.vehicle.d1");
     Assert.assertEquals(path, ((DeleteStorageGroupOperator) operator).getDeletePathList().get(0));

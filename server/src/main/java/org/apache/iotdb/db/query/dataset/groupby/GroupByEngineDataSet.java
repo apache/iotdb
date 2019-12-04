@@ -81,7 +81,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   }
 
   @Override
-  public boolean hasNext() {
+  protected boolean hasNextWithoutConstraint() {
     // has cached
     if (hasCachedTimeInterval) {
       return true;
