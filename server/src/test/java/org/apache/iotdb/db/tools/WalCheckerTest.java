@@ -28,6 +28,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.SystemCheckException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.writelog.io.LogWriter;
@@ -49,7 +50,7 @@ public class WalCheckerTest {
 
   @Test
   public void testEmpty() throws IOException, SystemCheckException {
-    File tempRoot = new File("root");
+    File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("root"));
     tempRoot.mkdir();
 
     try {
@@ -62,7 +63,7 @@ public class WalCheckerTest {
 
   @Test
   public void testNormalCheck() throws IOException, SystemCheckException {
-    File tempRoot = new File("root");
+    File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("root"));
     tempRoot.mkdir();
 
     try {
@@ -95,7 +96,7 @@ public class WalCheckerTest {
 
   @Test
   public void testAbnormalCheck() throws IOException, SystemCheckException {
-    File tempRoot = new File("root");
+    File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("root"));
     tempRoot.mkdir();
 
     try {
@@ -131,7 +132,7 @@ public class WalCheckerTest {
 
   @Test
   public void testOneDamagedCheck() throws IOException, SystemCheckException {
-    File tempRoot = new File("root");
+    File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("root"));
     tempRoot.mkdir();
 
     try {

@@ -42,7 +42,7 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.Pair;
+
 
 /**
  * This QueryDataSet is used for GROUP_BY_DEVICE query result.
@@ -59,8 +59,9 @@ public class DeviceIterateDataSet extends QueryDataSet {
 
   // group-by-time parameters
   private long unit;
-  private long origin;
-  private List<Pair<Long, Long>> intervals;
+  private long slidingStep;
+  private long startTime;
+  private long endTime;
 
   // fill parameters
   private long queryTime;
@@ -88,8 +89,9 @@ public class DeviceIterateDataSet extends QueryDataSet {
       // assign parameters
       this.expression = queryPlan.getExpression();
       this.unit = ((GroupByPlan) queryPlan).getUnit();
-      this.origin = ((GroupByPlan) queryPlan).getOrigin();
-      this.intervals = ((GroupByPlan) queryPlan).getIntervals();
+      this.slidingStep = ((GroupByPlan) queryPlan).getSlidingStep();
+      this.startTime = ((GroupByPlan) queryPlan).getStartTime();
+      this.endTime = ((GroupByPlan) queryPlan).getEndTime();
 
     } else if (queryPlan instanceof AggregationPlan) {
       this.dataSetType = DataSetType.AGGREGATE;
@@ -112,7 +114,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
     this.currentColumnMapRelation = new int[deduplicatedMeasurementColumns.size()];
   }
 
-  public boolean hasNext() throws IOException {
+  protected boolean hasNextWithoutConstraint() throws IOException {
     if (curDataSetInitialized && currentDataSet.hasNext()) {
       return true;
     } else {
@@ -161,8 +163,8 @@ public class DeviceIterateDataSet extends QueryDataSet {
         switch (dataSetType) {
           case GROUPBY:
             currentDataSet = queryRouter
-                .groupBy(executePaths, executeAggregations, expression, unit, origin, intervals,
-                    context);
+                .groupBy(executePaths, executeAggregations, expression, unit, slidingStep,
+                        startTime, endTime, context);
             break;
           case AGGREGATE:
             currentDataSet = queryRouter
@@ -191,7 +193,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
     return false;
   }
 
-  public RowRecord next() throws IOException {
+  protected RowRecord nextWithoutConstraint() throws IOException {
     RowRecord originRowRecord = currentDataSet.next();
 
     RowRecord rowRecord = new RowRecord(originRowRecord.getTimestamp());
@@ -200,12 +202,12 @@ public class DeviceIterateDataSet extends QueryDataSet {
     deviceField.setBinaryV(new Binary(currentDevice));
     rowRecord.addField(deviceField);
 
-    List<Field> measurementfields = originRowRecord.getFields();
+    List<Field> measurementFields = originRowRecord.getFields();
     for (int mapPos : currentColumnMapRelation) {
       if (mapPos == -1) {
         rowRecord.addField(new Field(null));
       } else {
-        rowRecord.addField(measurementfields.get(mapPos));
+        rowRecord.addField(measurementFields.get(mapPos));
       }
     }
     return rowRecord;

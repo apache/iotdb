@@ -54,7 +54,7 @@ public class CountAggrFunc extends AggregateFunction {
   public void calculateValueFromPageHeader(PageHeader pageHeader) {
     if (logger.isDebugEnabled()) {
       logger.debug("PageHeader>>>>>>>>>>>>num of rows:{}, minTimeStamp:{}, maxTimeStamp{}",
-          pageHeader.getNumOfValues(), pageHeader.getMinTimestamp(), pageHeader.getMaxTimestamp());
+          pageHeader.getNumOfValues(), pageHeader.getStartTime(), pageHeader.getEndTime());
     }
     long preValue = resultData.getLongRet();
     preValue += pageHeader.getNumOfValues();

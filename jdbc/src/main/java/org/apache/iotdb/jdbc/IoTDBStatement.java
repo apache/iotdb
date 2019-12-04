@@ -32,7 +32,16 @@ import java.util.List;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.thrift.TException;
 
 public class IoTDBStatement implements Statement {
@@ -96,7 +105,7 @@ public class IoTDBStatement implements Statement {
 
   // only for test
   IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
-                 TS_SessionHandle sessionHandle, ZoneId zoneId, long statementId) throws SQLException {
+      TS_SessionHandle sessionHandle, ZoneId zoneId, long statementId) throws SQLException {
     this.connection = connection;
     this.client = client;
     this.sessionHandle = sessionHandle;
@@ -277,9 +286,10 @@ public class IoTDBStatement implements Statement {
       return true;
     } else if (sqlToLowerCase.startsWith(COUNT_TIMESERIES_COMMAND_LOWERCASE)) {
       String[] cmdSplit = sqlToLowerCase.split("\\s+", 4);
-      if (cmdSplit.length != 3 && !(cmdSplit.length == 4 && cmdSplit[3].startsWith("group by level"))) {
+      if (cmdSplit.length != 3 && !(cmdSplit.length == 4 && cmdSplit[3]
+          .startsWith("group by level"))) {
         throw new SQLException(
-                "Error format of \'COUNT TIMESERIES <PATH>\' or \'COUNT TIMESERIES <PATH> GROUP BY LEVEL=<INTEGER>\'");
+            "Error format of \'COUNT TIMESERIES <PATH>\' or \'COUNT TIMESERIES <PATH> GROUP BY LEVEL=<INTEGER>\'");
       }
       if (cmdSplit.length == 3) {
         String path = cmdSplit[2];
@@ -291,11 +301,12 @@ public class IoTDBStatement implements Statement {
         String path = cmdSplit[2];
         int level = Integer.parseInt(cmdSplit[3].replaceAll(" ", "").substring(13));
         IoTDBDatabaseMetadata databaseMetadata = (IoTDBDatabaseMetadata) connection.getMetaData();
-        resultSet = databaseMetadata.getNodes(Constant.COUNT_NODE_TIMESERIES, path, null, null, level);
+        resultSet = databaseMetadata
+            .getNodes(Constant.COUNT_NODE_TIMESERIES, path, null, null, level);
         return true;
       }
     } else if (sqlToLowerCase.startsWith(COUNT_NODES_COMMAND_LOWERCASE)) {
-      String[] cmdSplit = sql.split("\\s+", 4);
+      String[] cmdSplit = sqlToLowerCase.split("\\s+", 4);
       if (!(cmdSplit.length == 4 && cmdSplit[3].startsWith("level"))) {
         throw new SQLException("Error format of \'COUNT NODES <PATH> LEVEL=<INTEGER>\'");
       } else {
@@ -305,7 +316,7 @@ public class IoTDBStatement implements Statement {
         resultSet = databaseMetaData.getNodes(Constant.COUNT_NODES, path, null, null, level);
         return true;
       }
-    } else if(sqlToLowerCase.equals(SHOW_VERSION_COMMAND_LOWERCASE)) {
+    } else if (sqlToLowerCase.equals(SHOW_VERSION_COMMAND_LOWERCASE)) {
       IoTDBDatabaseMetadata databaseMetadata = (IoTDBDatabaseMetadata) connection.getMetaData();
       resultSet = databaseMetadata.getColumns(Constant.CATALOG_VERSION, null, null, null);
       return true;
@@ -320,8 +331,9 @@ public class IoTDBStatement implements Statement {
       }
       if (execResp.getOperationHandle().hasResultSet) {
         this.resultSet = new IoTDBQueryResultSet(this,
-                execResp.getColumns(), execResp.getDataTypeList(),
-                execResp.ignoreTimeStamp, client, operationHandle, sql, operationHandle.getOperationId().getQueryId());
+            execResp.getColumns(), execResp.getDataTypeList(),
+            execResp.ignoreTimeStamp, client, operationHandle, sql,
+            operationHandle.getOperationId().getQueryId());
         return true;
       }
       return false;
@@ -354,7 +366,8 @@ public class IoTDBStatement implements Statement {
     TSExecuteBatchStatementReq execReq = new TSExecuteBatchStatementReq(sessionHandle,
         batchSQLList);
     TSExecuteBatchStatementResp execResp = client.executeBatchStatement(execReq);
-    if (execResp.getStatus().getStatusType().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (execResp.getStatus().getStatusType().getCode() == TSStatusCode.SUCCESS_STATUS
+        .getStatusCode()) {
       if (execResp.getResult() == null) {
         return new int[0];
       } else {
@@ -369,7 +382,8 @@ public class IoTDBStatement implements Statement {
     } else {
       BatchUpdateException exception;
       if (execResp.getResult() == null) {
-        exception = new BatchUpdateException(execResp.getStatus().getStatusType().getMessage(), new int[0]);
+        exception = new BatchUpdateException(execResp.getStatus().getStatusType().getMessage(),
+            new int[0]);
       } else {
         List<Integer> result = execResp.getResult();
         int len = result.size();
@@ -377,7 +391,8 @@ public class IoTDBStatement implements Statement {
         for (int i = 0; i < len; i++) {
           updateArray[i] = result.get(i);
         }
-        exception = new BatchUpdateException(execResp.getStatus().getStatusType().getMessage(), updateArray);
+        exception = new BatchUpdateException(execResp.getStatus().getStatusType().getMessage(),
+            updateArray);
       }
       throw exception;
     }
@@ -522,17 +537,13 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int getMaxRows() throws SQLException {
-    checkConnection("getMaxRows");
-    return maxRows;
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public void setMaxRows(int num) throws SQLException {
-    checkConnection("setMaxRows");
-    if (num < 0) {
-      throw new SQLException(String.format("maxRows %d must be >= 0!", num));
-    }
-    this.maxRows = num;
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING +
+        ". Please use the LIMIT clause in a query instead.");
   }
 
   @Override
@@ -641,18 +652,18 @@ public class IoTDBStatement implements Statement {
           this.stmtId = client.requestStatementId();
         } catch (TException e2) {
           throw new SQLException(
-                  "Cannot get id for statement after reconnecting. please check server status",
-                  e2);
+              "Cannot get id for statement after reconnecting. please check server status",
+              e2);
         }
       } else {
         throw new SQLException(
-                "Cannot get id for statement after reconnecting. please check server status", e);
+            "Cannot get id for statement after reconnecting. please check server status", e);
       }
     }
   }
 
 
-  private boolean reConnect(){
+  private boolean reConnect() {
     boolean flag = connection.reconnect();
     reInit();
     return flag;

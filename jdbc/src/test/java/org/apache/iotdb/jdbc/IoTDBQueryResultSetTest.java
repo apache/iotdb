@@ -18,14 +18,11 @@
  */
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.*;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -38,9 +35,27 @@ import java.sql.Types;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.*;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSHandleIdentifier;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TSStatusType;
+import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /*
     This class is designed to test the function of TsfileQueryResultSet.
@@ -229,8 +244,11 @@ public class IoTDBQueryResultSetTest {
               + "103,null,199,null,null,\n"
               + "105,11.11,199,33333,11.11,\n"
               + "1000,1000.11,55555,22222,1000.11,\n"; // Note the LIMIT&OFFSET clause takes effect
-      Assert.assertEquals(resultStr.toString(), standard);
+      Assert.assertEquals(standard, resultStr.toString());
     }
+
+    // The client issues 2 fetchResultReq in total. The last fetchResultReq get empty resultSet.
+    verify(fetchResultsResp, times(2)).getStatus();
   }
 
   // fake the first-time fetched result of 'testSql' from an IoTDB server
@@ -241,7 +259,6 @@ public class IoTDBQueryResultSetTest {
     tsDataTypeList.add(TSDataType.INT32); // root.vehicle.d0.s0
 
     Object[][] input = {
-        {1L, null, 1101L, null,},
         {2L, 2.22F, 40000L, null,},
         {3L, 3.33F, null, null,},
         {4L, 4.44F, null, null,},

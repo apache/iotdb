@@ -19,7 +19,7 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import java.io.Serializable;
-import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.BinaryFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -45,8 +45,8 @@ public class OrFilter extends BinaryFilter implements Serializable {
   }
 
   @Override
-  public boolean satisfy(DigestForFilter digest) {
-    return left.satisfy(digest) || right.satisfy(digest);
+  public boolean satisfy(Statistics statistics) {
+    return left.satisfy(statistics) || right.satisfy(statistics);
   }
 
   @Override

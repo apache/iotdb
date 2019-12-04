@@ -30,7 +30,7 @@ show version
 
 ```
 +---------------------------------------------------------------------------+
-|                                                             0.9.0-SNAPSHOT|
+|                                                             0.10.0|
 +---------------------------------------------------------------------------+
 It costs 0.001s
 ```
@@ -141,6 +141,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 显示设备语句
+
 ```
 SHOW DEVICES
 Eg: IoTDB > SHOW DEVICES
@@ -148,6 +149,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 显示ROOT节点的子节点名称语句
+
 ```
 SHOW CHILD PATHS
 Eg: IoTDB > SHOW CHILD PATHS
@@ -155,6 +157,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 显示子节点名称语句
+
 ```
 SHOW CHILD PATHS <Path>
 Eg: IoTDB > SHOW CHILD PATHS root
@@ -212,7 +215,9 @@ FromClause : <PrefixPath> (COMMA <PrefixPath>)?
 WhereClause : <Condition> [(AND | OR) <Condition>]*
 Condition  : <Expression> [(AND | OR) <Expression>]*
 Expression : [NOT | !]? <TimeExpr> | [NOT | !]? <SensorExpr>
-TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
+TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
+RelativeTimeDurationUnit = Integer ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS')
+RelativeTime : (now() | <TimeValue>) [(+|-) RelativeTimeDurationUnit]+
 SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
 Eg. IoTDB > SELECT * FROM root
@@ -238,19 +243,23 @@ FromClause : <PrefixPath>
 WhereClause : <Condition> [(AND | OR) <Condition>]*
 Condition  : <Expression> [(AND | OR) <Expression>]*
 Expression : [NOT | !]? <TimeExpr> | [NOT | !]? <SensorExpr>
-TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
+TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
+RelativeTimeDurationUnit = Integer ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS')
+RelativeTime : (now() | <TimeValue>) [(+|-) RelativeTimeDurationUnit]+
 SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
-GroupByClause : LPAREN <TimeUnit> (COMMA TimeValue)? COMMA <TimeInterval> (COMMA <TimeInterval>)* RPAREN
+GroupByClause : LPAREN <TimeInterval> COMMA <TimeUnit> (COMMA <TimeUnit>)? RPAREN
+TimeInterval: LBRACKET <TimeValue> COMMA <TimeValue> RBRACKET
 TimeUnit : Integer <DurationUnit>
 DurationUnit : "ms" | "s" | "m" | "h" | "d" | "w"
-TimeInterval: LBRACKET <TimeValue> COMMA <TimeValue> RBRACKET
-Eg: SELECT COUNT(status), COUNT(temperature) FROM root.ln.wf01.wt01 where temperature < 24 GROUP BY(5m, [1509465720000, 1509466380000])
-Eg. SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY(5m, 1509465660000, [1509465720000, 1509466380000])
-Eg. SELECT MIN_TIME(status), MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE temperature < 25 and time < 1509466800000 GROUP BY (3m, 1509465600000, [1509466140000, 1509466380000], [1509466440000, 1509466620000])
+Eg: SELECT COUNT(status), COUNT(temperature) FROM root.ln.wf01.wt01 where temperature < 24 GROUP BY([1509465720000, 1509466380000], 5m)
+Eg. SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY([1509465720000, 1509466380000], 5m, 10m)
+Eg. SELECT MIN_TIME(status), MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE temperature < 25 GROUP BY ([1509466140000, 1509466380000], 3m, 5ms)
 Note: the statement needs to satisfy this constraint: <Path>(SelectClause) + <PrefixPath>(FromClause) = <Timeseries>
 Note: If the <SensorExpr>(WhereClause) is started with <Path> and not with ROOT, the statement needs to satisfy this constraint: <PrefixPath>(FromClause) + <Path>(SensorExpr) = <Timeseries>
 Note: <TimeValue>(TimeInterval) needs to be greater than 0
 Note: First <TimeValue>(TimeInterval) in needs to be smaller than second <TimeValue>(TimeInterval)
+Note: <TimeUnit> needs to be greater than 0
+Note: Third <TimeUnit> if set shouldn't be smaller than second <TimeUnit>
 ```
 
 * Fill语句
@@ -285,28 +294,29 @@ Note: Integer in <TimeUnit> needs to be greater than 0
 * Limit语句
 
 ```
-SELECT <SelectClause> FROM <FromClause> [WHERE <WhereClause>] [LIMIT <LIMITClause>] [SLIMIT <SLIMITClause>]
+SELECT <SelectClause> FROM <FromClause> [WHERE <WhereClause>] [<LIMITClause>] [<SLIMITClause>]
 SelectClause : [<Path> | Function]+
 Function : <AggregationFunction> LPAREN <Path> RPAREN
 FromClause : <Path>
 WhereClause : <Condition> [(AND | OR) <Condition>]*
 Condition : <Expression> [(AND | OR) <Expression>]*
 Expression: [NOT|!]?<TimeExpr> | [NOT|!]?<SensorExpr>
-TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
+TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
+RelativeTimeDurationUnit = Integer ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS')
+RelativeTime : (now() | <TimeValue>) [(+|-) RelativeTimeDurationUnit]+
 SensorExpr : (<Timeseries>|<Path>) PrecedenceEqualOperator <PointValue>
-LIMITClause : <N> [OFFSETClause]?
-N : NonNegativeInteger
+LIMITClause : LIMIT <N> [OFFSETClause]?
+N : Integer
 OFFSETClause : OFFSET <OFFSETValue>
-OFFSETValue : NonNegativeInteger
-SLIMITClause : <SN> [SOFFSETClause]?
-SN : NonNegativeInteger
+OFFSETValue : Integer
+SLIMITClause : SLIMIT <SN> [SOFFSETClause]?
+SN : Integer
 SOFFSETClause : SOFFSET <SOFFSETValue>
-SOFFSETValue : NonNegativeInteger
-NonNegativeInteger:= ('+')? Digit+
+SOFFSETValue : Integer
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00 LIMIT 3 OFFSET 2
-Eg. IoTDB > SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY(5m, 1509465660000, [1509465720000, 1509466380000]) LIMIT 3
+Eg. IoTDB > SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY([1509465720000, 1509466380000], 5m) LIMIT 3
+Note: N, OFFSETValue, SN and SOFFSETValue must be greater than 0.
 Note: The order of <LIMITClause> and <SLIMITClause> does not affect the grammatical correctness.
-Note: <SLIMITClause> can only effect in Prefixpath and StarPath.
 Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
 ```
 
@@ -486,11 +496,19 @@ Eg. SELECT COUNT(status), COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.l
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
-* FIRST
-
+* FIRST_VALUE
+原有的 `FIRST` 方法在 `v0.10.0` 版本更名为 `FIRST_VALUE`。
 ```
-SELECT FIRST (Path) (COMMA FIRST (Path))* FROM <FromClause> [WHERE <WhereClause>]?
-Eg. SELECT FIRST (status), FIRST (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+SELECT FIRST_VALUE (Path) (COMMA FIRST_VALUE (Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT FIRST_VALUE (status), FIRST_VALUE (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
+```
+
+* LAST_VALUE
+原有的 `LAST` 方法在 `v0.10.0` 版本更名为 `LAST_VALUE`。
+```
+SELECT LAST_VALUE (Path) (COMMA LAST_VALUE (Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT LAST_VALUE (status), LAST_VALUE (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
@@ -510,11 +528,11 @@ Eg. SELECT MAX_VALUE(status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHER
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
-* MEAN
-
+* AVG
+原有的 `MEAN` 方法在 `v0.9.0` 版本更名为 `AVG`。
 ```
-SELECT MEAN (Path) (COMMA MEAN (Path))* FROM <FromClause> [WHERE <WhereClause>]?
-Eg. SELECT MEAN (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+SELECT AVG (Path) (COMMA AVG (Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT AVG (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
