@@ -25,6 +25,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.junit.After;
 import org.junit.Before;
@@ -65,12 +66,12 @@ public class LogicalGeneratorTest {
 
   }
 
-  @Test(expected = LogicalOperatorException.class)
+  @Test(expected = SQLParserException.class)
   public void testParseTimeFormatFail1() throws LogicalOperatorException {
     generator.parseTimeFormat(null);
   }
 
-  @Test(expected = LogicalOperatorException.class)
+  @Test(expected = SQLParserException.class)
   public void testParseTimeFormatFail2() throws LogicalOperatorException {
     generator.parseTimeFormat("");
   }

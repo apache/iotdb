@@ -25,6 +25,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -52,7 +53,7 @@ import org.junit.Test;
 public class TsFileReadWriteTest {
 
   private final double delta = 0.0000001;
-  private String path = "read_write_rle.tsfile";
+  private String path = TestConstant.BASE_OUTPUT_PATH.concat("read_write_rle.tsfile");
   private File f;
 
   @Before

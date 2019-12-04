@@ -39,7 +39,9 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
+import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -101,60 +103,34 @@ public class EngineQueryRouter implements IEngineQueryRouter {
     }
   }
 
+
   @Override
   public QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
-      IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals,
-      QueryContext context) throws QueryFilterOptimizationException, StorageEngineException,
-      QueryProcessException, IOException {
+      IExpression expression, long unit, long slidingStep, long startTime, long endTime,
+      QueryContext context)
+          throws QueryFilterOptimizationException, StorageEngineException,
+          QueryProcessException, IOException {
 
     long nextJobId = context.getJobId();
 
-    // check the legitimacy of intervals
-    for (Pair<Long, Long> pair : intervals) {
-//      if (!(pair.left > 0 && pair.right > 0)) {
-//        throw new ProcessorException(
-//            String.format("Time interval<%d, %d> must be greater than 0.", pair.left, pair.right));
-//      }
-      if (pair.right < pair.left) {
-        throw new QueryProcessException(String.format(
-            "Interval starting time must be greater than the interval ending time, "
-                + "found error interval<%d, %d>", pair.left, pair.right));
-      }
-    }
-    // merge intervals
-    List<Pair<Long, Long>> mergedIntervalList = mergeInterval(intervals);
+    GlobalTimeExpression timeExpression = new GlobalTimeExpression(new GroupByFilter(unit, slidingStep, startTime, endTime, FilterType.GROUP_BY_FILTER));
 
-    // construct groupBy intervals filter
-    BinaryExpression intervalFilter = null;
-    for (Pair<Long, Long> pair : mergedIntervalList) {
-      BinaryExpression pairFilter = BinaryExpression
-          .and(new GlobalTimeExpression(TimeFilter.gtEq(pair.left)),
-              new GlobalTimeExpression(TimeFilter.ltEq(pair.right)));
-      if (intervalFilter != null) {
-        intervalFilter = BinaryExpression.or(intervalFilter, pairFilter);
-      } else {
-        intervalFilter = pairFilter;
-      }
-    }
-
-    // merge interval filter and filtering conditions after where statements
     if (expression == null) {
-      expression = intervalFilter;
+      expression = timeExpression;
     } else {
-      expression = BinaryExpression.and(expression, intervalFilter);
+      expression = BinaryExpression.and(expression, timeExpression);
     }
 
     IExpression optimizedExpression = ExpressionOptimizer.getInstance()
         .optimize(expression, selectedSeries);
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
       GroupByWithoutValueFilterDataSet groupByEngine = new GroupByWithoutValueFilterDataSet(
-          nextJobId, selectedSeries, unit, origin, mergedIntervalList);
+          nextJobId, selectedSeries, unit, slidingStep, startTime, endTime);
       groupByEngine.initGroupBy(context, aggres, optimizedExpression);
       return groupByEngine;
     } else {
       GroupByWithValueFilterDataSet groupByEngine = new GroupByWithValueFilterDataSet(
-          nextJobId,
-          selectedSeries, unit, origin, mergedIntervalList);
+          nextJobId, selectedSeries, unit, slidingStep, startTime, endTime);
       groupByEngine.initGroupBy(context, aggres, optimizedExpression);
       return groupByEngine;
     }

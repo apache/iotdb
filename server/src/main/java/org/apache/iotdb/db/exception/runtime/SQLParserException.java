@@ -16,28 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sql;
+package org.apache.iotdb.db.exception.runtime;
 
-import org.apache.iotdb.db.sql.parse.AstNode;
-import org.apache.iotdb.db.sql.parse.ParseDriver;
-import org.apache.iotdb.db.sql.parse.ParseException;
-
-/**
- * ParseContextGenerator is a class that offers methods to generate AstNode Tree
- *
- */
-public final class ParseGenerator {
-
-  private ParseGenerator() {
-
+public class SQLParserException extends RuntimeException{
+  private static final long serialVersionUID = 3249707655860110299L;
+  public SQLParserException() {
+    super("Error format in SQL statement, please check whether SQL statement is correct.");
+  }
+  public SQLParserException(String message) {
+    super(message);
   }
 
-  /**
-   * Parse the input {@link String} command and generate an AstNode Tree.
-   */
-  public static AstNode generateAST(String command) throws ParseException {
-    ParseDriver pd = new ParseDriver();
-    return pd.parse(command);
+  public SQLParserException(String type, String message) {
+    super(String.format("Unsupported type: [%s]. " + message, type));
   }
-
 }

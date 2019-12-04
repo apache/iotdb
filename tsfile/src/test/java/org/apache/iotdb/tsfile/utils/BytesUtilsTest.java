@@ -27,6 +27,8 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.junit.Test;
 
 public class BytesUtilsTest {
@@ -61,7 +63,7 @@ public class BytesUtilsTest {
     float b = 25.0f;
     byte[] bb = BytesUtils.floatToBytes(b);
     float bf = BytesUtils.bytesToFloat(bb);
-    assertEquals("testBytesToFloat", b, bf, CommonTestConstant.float_min_delta);
+    assertEquals("testBytesToFloat", b, bf, TestConstant.float_min_delta);
   }
 
   @Test
@@ -73,8 +75,8 @@ public class BytesUtilsTest {
     BytesUtils.floatToBytes(b2, ret, 4);
     float rb1 = BytesUtils.bytesToFloat(ret, 0);
     float rb2 = BytesUtils.bytesToFloat(ret, 4);
-    assertEquals(b1, rb1, CommonTestConstant.float_min_delta);
-    assertEquals(b2, rb2, CommonTestConstant.float_min_delta);
+    assertEquals(b1, rb1, TestConstant.float_min_delta);
+    assertEquals(b2, rb2, TestConstant.float_min_delta);
   }
 
   @Test
@@ -152,7 +154,7 @@ public class BytesUtilsTest {
     double b1 = 2745687.1253123d;
     byte[] ret = BytesUtils.doubleToBytes(b1);
     double rb1 = BytesUtils.bytesToDouble(ret);
-    assertEquals(b1, rb1, CommonTestConstant.float_min_delta);
+    assertEquals(b1, rb1, TestConstant.float_min_delta);
   }
 
   @Test
@@ -164,8 +166,8 @@ public class BytesUtilsTest {
     BytesUtils.doubleToBytes(b2, ret, 8);
     double rb1 = BytesUtils.bytesToDouble(ret, 0);
     double rb2 = BytesUtils.bytesToDouble(ret, 8);
-    assertEquals(b1, rb1, CommonTestConstant.double_min_delta);
-    assertEquals(b2, rb2, CommonTestConstant.double_min_delta);
+    assertEquals(b1, rb1, TestConstant.double_min_delta);
+    assertEquals(b2, rb2, TestConstant.double_min_delta);
   }
 
   @Test
@@ -186,7 +188,7 @@ public class BytesUtilsTest {
     byte[] ret = BytesUtils.concatByteArray(list.get(0), list.get(1));
     float rf1 = BytesUtils.bytesToFloat(ret, 0);
     boolean rb1 = BytesUtils.bytesToBool(ret, 4);
-    assertEquals(f1, rf1, CommonTestConstant.float_min_delta);
+    assertEquals(f1, rf1, TestConstant.float_min_delta);
     assertEquals(b1, rb1);
   }
 
@@ -203,7 +205,7 @@ public class BytesUtilsTest {
     float rf1 = BytesUtils.bytesToFloat(ret, 0);
     boolean rb1 = BytesUtils.bytesToBool(ret, 4);
     int ri1 = BytesUtils.bytesToInt(ret, 5);
-    assertEquals(f1, rf1, CommonTestConstant.float_min_delta);
+    assertEquals(f1, rf1, TestConstant.float_min_delta);
     assertEquals(b1, rb1);
     assertEquals(i1, ri1);
   }
@@ -368,7 +370,7 @@ public class BytesUtilsTest {
     float l = r.nextFloat();
     byte[] bs = BytesUtils.floatToBytes(l);
     InputStream in = new ByteArrayInputStream(bs);
-    assertEquals(l, BytesUtils.readFloat(in), CommonTestConstant.float_min_delta);
+    assertEquals(l, BytesUtils.readFloat(in), TestConstant.float_min_delta);
   }
 
   @Test
@@ -376,7 +378,7 @@ public class BytesUtilsTest {
     double l = r.nextDouble();
     byte[] bs = BytesUtils.doubleToBytes(l);
     InputStream in = new ByteArrayInputStream(bs);
-    assertEquals(l, BytesUtils.readDouble(in), CommonTestConstant.double_min_delta);
+    assertEquals(l, BytesUtils.readDouble(in), TestConstant.double_min_delta);
   }
 
   @Test

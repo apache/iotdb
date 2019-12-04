@@ -19,10 +19,11 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
+
+import java.util.List;
 
 public class LoadConfigurationPlan extends PhysicalPlan {
 

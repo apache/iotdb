@@ -36,7 +36,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 public interface IQueryProcessExecutor {
 
@@ -69,7 +68,7 @@ public interface IQueryProcessExecutor {
    * process group by plan of qp layer, construct queryDataSet.
    */
   QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
-      long unit, long origin, List<Pair<Long, Long>> intervals, QueryContext context)
+      long unit, long slidingStep, long startTime, long endTime, QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException, QueryFilterOptimizationException;
 
   /**

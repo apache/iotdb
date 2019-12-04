@@ -23,6 +23,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.file.Paths;
+
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.file.metadata.utils.Utils;
@@ -38,7 +42,7 @@ public class PageHeaderTest {
   public static final long MAX_TIMESTAMO = 523372036854775806L;
   public static final long MIN_TIMESTAMO = 423372036854775806L;
   public static final TSDataType DATA_TYPE = TSDataType.INT64;
-  private final String PATH = "target/outputPageHeader.tsfile";
+  private final String PATH = TestConstant.BASE_OUTPUT_PATH.concat("outputPageHeader.tsfile");
 
   @Before
   public void setUp() {

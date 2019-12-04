@@ -25,6 +25,7 @@ import java.util
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput
+import org.apache.iotdb.spark.constant.TestConstant
 import org.apache.iotdb.spark.tool.TsFileWriteTool
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader
@@ -36,7 +37,7 @@ import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 class TSFileSuit extends FunSuite with BeforeAndAfterAll {
 
-  private val baseFolder = "suitTestBaseDir"
+  private val baseFolder = TestConstant.BASE_OUTPUT_PATH.concat("suitTestBaseDir")
   private val tsfileFolder1 = baseFolder + "/tsfileFolder1"
   private val tsfile1 = tsfileFolder1 + "/test1.tsfile"
   private val tsfile2 = tsfileFolder1 + "/test2.tsfile"
