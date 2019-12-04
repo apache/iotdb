@@ -215,10 +215,9 @@ The following classes are modified from Apache Hive, which is under Apache Licen
 ./server/src/main/java/org/apache/iotdb/db/sql/parse/ParseException.java
 ./server/src/main/java/org/apache/iotdb/db/sql/parse/ParseUtils.java
 
-
 ------------
 
-The following class is modified from maven-wrapper (https://github.com/takari/maven-wrapper),
+The following class is copied from maven-wrapper (https://github.com/takari/maven-wrapper),
 which is under Apache License 2.0:
 
 ./.mvn/wrapper/MavenWrapperDownloader.java

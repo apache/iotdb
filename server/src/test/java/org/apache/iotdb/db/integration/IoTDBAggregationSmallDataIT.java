@@ -21,8 +21,8 @@ package org.apache.iotdb.db.integration;
 
 import static org.apache.iotdb.db.integration.Constant.avg;
 import static org.apache.iotdb.db.integration.Constant.count;
-import static org.apache.iotdb.db.integration.Constant.first;
-import static org.apache.iotdb.db.integration.Constant.last;
+import static org.apache.iotdb.db.integration.Constant.first_value;
+import static org.apache.iotdb.db.integration.Constant.last_value;
 import static org.apache.iotdb.db.integration.Constant.max_time;
 import static org.apache.iotdb.db.integration.Constant.max_value;
 import static org.apache.iotdb.db.integration.Constant.min_time;
@@ -218,28 +218,28 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertEquals(2, cnt);
       }
 
-      //select first(d0.s0),first(d1.s1),first(d0.s3) from root.vehicle
+      //select first_value(d0.s0),first_value(d1.s1),first_value(d0.s3) from root.vehicle
       hasResultSet = statement.execute(
-          "select first(d0.s0),first(d1.s1),first(d0.s3) from root.vehicle");
+          "select first_value(d0.s0),first_value(d1.s1),first_value(d0.s3) from root.vehicle");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first(d0s0))
-              + "," + resultSet.getString(first(d1s1)) + "," + resultSet.getString(first(d0s3));
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first_value(d0s0))
+              + "," + resultSet.getString(first_value(d1s1)) + "," + resultSet.getString(first_value(d0s3));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(3, cnt);
       }
 
-      //select last(d0.s0),last(d1.s1),last(d0.s3) from root.vehicle
+      //select last_value(d0.s0),last_value(d1.s1),last_value(d0.s3) from root.vehicle
       hasResultSet = statement.execute(
-          "select last(d0.s0),last(d1.s1),last(d0.s3) from root.vehicle");
+          "select last_value(d0.s0),last_value(d1.s1),last_value(d0.s3) from root.vehicle");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last(d0s0))
-              + "," + resultSet.getString(last(d1s1)) + "," + resultSet.getString(last(d0s3));
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last_value(d0s0))
+              + "," + resultSet.getString(last_value(d1s1)) + "," + resultSet.getString(last_value(d0s3));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -276,14 +276,14 @@ public class IoTDBAggregationSmallDataIT {
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute(
-          "select last(s0),last(s1) from root.vehicle.d0 where s2 >= 3.33");
+          "select last_value(s0),last_value(s1) from root.vehicle.d0 where s2 >= 3.33");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last(d0s0)) + ","
-                  + resultSet.getString(last(d0s1));
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last_value(d0s0)) + ","
+                  + resultSet.getString(last_value(d0s1));
           //System.out.println("!!!!!============ " + ans);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
@@ -307,14 +307,14 @@ public class IoTDBAggregationSmallDataIT {
         Statement statement = connection.createStatement();) {
 
       boolean hasResultSet = statement.execute(
-          "select first(s0),first(s1) from root.vehicle.d0 where s2 >= 3.33");
+          "select first_value(s0),first_value(s1) from root.vehicle.d0 where s2 >= 3.33");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first(d0s0)) + ","
-                  + resultSet.getString(first(d0s1));
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first_value(d0s0)) + ","
+                  + resultSet.getString(first_value(d0s1));
           //System.out.println("!!!!!============ " + ans);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;

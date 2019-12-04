@@ -45,7 +45,7 @@ In root directory:
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.9.0-SNAPSHOT</version>
+      <version>0.10.0</version>
     </dependency>
 </dependencies>
 ```
@@ -100,6 +100,10 @@ Here we show the commonly used interfaces and their parameters in the Session:
   ​	TSStatus deleteData(String path, long time)
   
   	TSStatus deleteData(List<String> paths, long time)
+ 
+* Insert data into existing timeseries in batch
+ 
+   ​	TSStatus insertInBatch(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, List<List<String>> valuesList)
 
 * Insert data into existing timeseries
 

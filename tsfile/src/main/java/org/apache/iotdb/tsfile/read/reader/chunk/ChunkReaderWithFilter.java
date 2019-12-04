@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.read.reader.chunk;
 
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public class ChunkReaderWithFilter extends ChunkReader {
@@ -34,15 +33,10 @@ public class ChunkReaderWithFilter extends ChunkReader {
 
   @Override
   public boolean pageSatisfied(PageHeader pageHeader) {
-    if (pageHeader.getMaxTimestamp() < deletedAt) {
+    if (pageHeader.getEndTime() < deletedAt) {
       return false;
     }
-    DigestForFilter digest = new DigestForFilter(pageHeader.getMinTimestamp(),
-        pageHeader.getMaxTimestamp(),
-        pageHeader.getStatistics().getMinBytebuffer(),
-        pageHeader.getStatistics().getMaxBytebuffer(),
-        chunkHeader.getDataType());
-    return filter.satisfy(digest);
+    return filter.satisfy(pageHeader.getStatistics());
   }
 
 }

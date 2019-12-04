@@ -52,9 +52,9 @@ public class TSFileConfig {
   public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
   public static final String CONFIG_FILE_NAME = "iotdb-engine.properties";
   public static final String MAGIC_STRING = "TsFile";
-  public static final String VERSION_NUMBER = "000001";
-  public static final String OLD_MAGIC_STRING = "TsFilev0.8.0";
-  public static final String OLD_VERSION = "v0.8.0";
+  public static final String VERSION_NUMBER = "000002";
+  public static final String OLD_MAGIC_STRING = "TsFile";
+  public static final String OLD_VERSION = "000001";
 
   /**
    * Bloom filter constrain

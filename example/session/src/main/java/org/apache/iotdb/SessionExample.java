@@ -48,6 +48,7 @@ public class SessionExample {
     session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
 
     insert();
+    insertInBatch();
     insertRowBatch();
     nonQuery();
     query();
@@ -69,6 +70,39 @@ public class SessionExample {
       values.add("3");
       session.insert(deviceId, time, measurements, values);
     }
+  }
+
+  private static void insertInBatch() throws IoTDBSessionException {
+    String deviceId = "root.sg1.d2";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    List<String> deviceIds = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<List<String>> valuesList = new ArrayList<>();
+    List<Long> timestamps = new ArrayList<>();
+
+    for (long time = 0; time < 500; time++) {
+      List<String> values = new ArrayList<>();
+      values.add("1");
+      values.add("2");
+      values.add("3");
+
+      deviceIds.add(deviceId);
+      measurementsList.add(measurements);
+      valuesList.add(values);
+      timestamps.add(time);
+      if (time != 0 && time % 100 == 0) {
+        session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+        deviceIds.clear();
+        measurementsList.clear();
+        valuesList.clear();
+        timestamps.clear();
+      }
+    }
+
+    session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
   }
 
   private static void insertRowBatch() throws IoTDBSessionException {

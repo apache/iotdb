@@ -22,6 +22,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.concurrent.ExecutionException;
+import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -36,7 +38,7 @@ public class MemTableFlushTaskTest {
 
   private RestorableTsFileIOWriter writer;
   private String storageGroup = "storage_group1";
-  private String filePath = "data/testUnsealedTsFileProcessor.tsfile";
+  private String filePath = TestConstant.OUTPUT_DATA_DIR.concat("testUnsealedTsFileProcessor.tsfile");
   private IMemTable memTable;
   private long startTime = 1;
   private long endTime = 100;
@@ -44,6 +46,7 @@ public class MemTableFlushTaskTest {
   @Before
   public void setUp() throws Exception {
     MetadataManagerHelper.initMetadata();
+    ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     EnvironmentUtils.envSetUp();
     writer = new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(filePath));
     memTable = new PrimitiveMemTable();
@@ -53,7 +56,7 @@ public class MemTableFlushTaskTest {
   public void tearDown() throws Exception {
     writer.close();
     EnvironmentUtils.cleanEnv();
-    EnvironmentUtils.cleanDir("data");
+    EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
   }
 
   @Test
@@ -76,7 +79,7 @@ public class MemTableFlushTaskTest {
     assertEquals(MemTableTestUtils.measurementId0, chunkMetaData.getMeasurementUid());
     assertEquals(startTime, chunkMetaData.getStartTime());
     assertEquals(endTime, chunkMetaData.getEndTime());
-    assertEquals(MemTableTestUtils.dataType0, chunkMetaData.getTsDataType());
+    assertEquals(MemTableTestUtils.dataType0, chunkMetaData.getDataType());
     assertEquals(endTime - startTime + 1, chunkMetaData.getNumOfPoints());
   }
 }

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.filter.basic;
 
-import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
 /**
  * Filter is a top level filter abstraction.
@@ -27,12 +27,12 @@ import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 public interface Filter {
 
   /**
-   * To examine whether the digest is satisfied with the filter.
+   * To examine whether the statistics is satisfied with the filter.
    *
-   * @param digest
-   *            digest with min time, max time, min value, max value.
+   * @param statistics
+   *            statistics with min time, max time, min value, max value.
    */
-  boolean satisfy(DigestForFilter digest);
+  boolean satisfy(Statistics statistics);
 
   /**
    * To examine whether the single point(with time and value) is satisfied with the filter.

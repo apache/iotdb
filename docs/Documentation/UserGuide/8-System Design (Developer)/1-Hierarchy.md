@@ -34,7 +34,7 @@
   - The format is `int size` plus `String literal`. Size can be zero.
   - Size equals the number of bytes this string will take, and it may not equal to the length of the string. 
   - For example "sensor_1" will be stored as `00 00 00 08` plus the encoding(ASCII) of "sensor_1".
-  - Note that for the "Magic String"(file signature) "TsFilev0.8.0", the size(12) and encoding(ASCII)
+  - Note that for the file signature "TsFile000001" (`MAGIC STRING` + `Version Number`), the size(12) and encoding(ASCII)
     is fixed so there is no need to put the size before this string literal.
 - **Data Type Hardcode**
   - 0: BOOLEAN
@@ -55,11 +55,6 @@
 - **Compressing Type Hardcode**
   - 0: UNCOMPRESSED
   - 1: SNAPPY
-  - 2: GZIP
-  - 3: LZO
-  - 4: SDT
-  - 5: PAA
-  - 6: PLA
 - **TsDigest Statistics Type Hardcode**
   - 0: min_value
   - 1: max_value
@@ -103,7 +98,7 @@ A `Chunk` represents a *sensor*. There is a byte `0x01` as the marker, following
 |Number of pages|int|
 |Compression Type|short|
 |Encoding Type|short|
-|Max Tombstone Time|long|
+|Max Tombstone Time(unused)|long|
 
 ##### Page
 
@@ -276,7 +271,7 @@ Congratulations! You have finished the journey of discovering TsFile.
 
 #### 1.3.1 TsFileResource Print Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.9.0-SNAPSHOT\tools` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.10.0\tools` directory.
 
 Command:
 
@@ -295,7 +290,7 @@ For Linux or MacOs:
 An example on Windows:
 
 ```
-D:\incubator-iotdb\server\target\iotdb-server-0.9.0-SNAPSHOT\tools>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
+D:\incubator-iotdb\server\target\iotdb-server-0.10.0\tools>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
 ​````````````````````````
 Starting Printing the TsFileResources
 ​````````````````````````
@@ -307,7 +302,7 @@ analyzing the resource file finished.
 
 #### 1.3.2 TsFile Sketch Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.9.0-SNAPSHOT\tools` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.10.0\tools` directory.
 
 Command:
 
@@ -330,7 +325,7 @@ For Linux or MacOs:
 An example on Windows:
 
 ```$xslt
-D:\incubator-iotdb\server\target\iotdb-server-0.9.0-SNAPSHOT\tools>.\print-tsfile-sketch.bat D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
+D:\incubator-iotdb\server\target\iotdb-server-0.10.0\tools>.\print-tsfile-sketch.bat D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
 ​````````````````````````
 Starting Printing the TsFile Sketch
 ​````````````````````````
@@ -415,4 +410,4 @@ You can also use `example/tsfile/org/apache/iotdb/tsfile/TsFileSequenceRead` to 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/65209576-2bd36000-dacb-11e9-9e43-49e0dd01274e.png">
 
 #### v0.9.0
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/68128717-35b60300-ff53-11e9-919e-48d80536df88.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/69341240-26012300-0ca4-11ea-91a1-d516810cad44.png">

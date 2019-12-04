@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
@@ -117,26 +118,26 @@ abstract class MergeTest {
   void prepareFiles(int seqFileNum, int unseqFileNum)
       throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
-      File file = new File(
+      File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
           i + "seq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
               + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
-              + ".tsfile");
+              + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
     }
     for (int i = 0; i < unseqFileNum; i++) {
-      File file = new File(
+      File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
           i + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR
               + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
               + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
-              + ".tsfile");
+              + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
-    File file = new File(unseqFileNum + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
-        + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0 + ".tsfile");
+    File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(unseqFileNum + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
+        + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0 + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
     unseqResources.add(tsFileResource);
     prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);

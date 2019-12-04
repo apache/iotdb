@@ -79,6 +79,7 @@ public abstract class ChunkReader {
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
     valueDecoder = Decoder
         .getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
+    valueDecoder.setEndianType(endianType);
     data = new BatchData(chunkHeader.getDataType());
     hasCachedPageHeader = false;
   }
@@ -86,7 +87,7 @@ public abstract class ChunkReader {
   /**
    * judge if has nextBatch.
    */
-  public boolean hasNextBatch() throws IOException {
+  public boolean hasNextBatch() {
     if (hasCachedPageHeader) {
       return true;
     }
@@ -155,9 +156,6 @@ public abstract class ChunkReader {
     chunkDataBuffer.get(compressedPageBody, 0, compressedPageBodyLength);
     valueDecoder.reset();
     ByteBuffer pageData = ByteBuffer.wrap(unCompressor.uncompress(compressedPageBody));
-    if (endianType == EndianType.LITTLE_ENDIAN) {
-      pageData.order(ByteOrder.LITTLE_ENDIAN);
-    }
     PageReader reader = new PageReader(pageData, chunkHeader.getDataType(),
         valueDecoder, timeDecoder, filter);
     reader.setDeletedAt(deletedAt);
