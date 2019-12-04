@@ -142,8 +142,9 @@ public class BasicDaoImpl implements BasicDao {
           tv.setValue(0);
         } else {
           try {
-            tv.setValue(resultSet.getFloat(columnName));
+            tv.setValue(Float.parseFloat(resultSet.getString(columnName)));
           } catch (Exception e) {
+            logger.error("Can not parse the value {}", resultSet.getString(columnName));
             tv.setValue(0);
           }
         }
