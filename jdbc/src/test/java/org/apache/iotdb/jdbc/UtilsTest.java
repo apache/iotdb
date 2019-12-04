@@ -78,9 +78,15 @@ public class UtilsTest {
   }
 
   @Test(expected = IoTDBURLException.class)
-  public void testParseWrongUrl() throws IoTDBURLException {
+  public void testParseWrongUrl1() throws IoTDBURLException {
     Properties properties = new Properties();
     Utils.parseUrl("jdbc:iotdb//test6667", properties);
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseWrongUrl2() throws IoTDBURLException {
+    Properties properties = new Properties();
+    Utils.parseUrl("jdbc:iotdb//test:test:test:6667:6667", properties);
   }
 
   @Test(expected = IoTDBURLException.class)
