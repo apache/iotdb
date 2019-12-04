@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.tsfile.read.filter;
 
+import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.nio.ByteBuffer;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -38,51 +38,52 @@ public class GroupByFilterTest {
   }
 
   @Test
-  public void TestDigestSatisfy() {
+  public void TestStatisticsSatisfy() {
 
-    DigestForFilter digestForFilter = new DigestForFilter(0, 7,
-            ByteBuffer.allocate(0), ByteBuffer.allocate(0), null);
-    assertFalse(groupByFilter.satisfy(digestForFilter));
+    Statistics statistics = new LongStatistics();
+    statistics.setStartTime(0);
+    statistics.setEndTime(7);
+    assertFalse(groupByFilter.satisfy(statistics));
 
-    digestForFilter = new DigestForFilter(8 + 30 * 24 + 3 + 6 + 1, 8 + 30 * 24 + 3 + 6 + 2,
-            ByteBuffer.allocate(0), ByteBuffer.allocate(0), null);
-    assertFalse(groupByFilter.satisfy(digestForFilter));
+    statistics.setStartTime(8 + 30 * 24 + 3 + 6 + 1);
+    statistics.setEndTime(8 + 30 * 24 + 3 + 6 + 2);
+    assertFalse(groupByFilter.satisfy(statistics));
 
-    digestForFilter = new DigestForFilter(0, 9,
-            ByteBuffer.allocate(0), ByteBuffer.allocate(0), null);
-    assertTrue(groupByFilter.satisfy(digestForFilter));
+    statistics.setStartTime(0);
+    statistics.setEndTime(9);
+    assertTrue(groupByFilter.satisfy(statistics));
 
-    digestForFilter = new DigestForFilter(32, 34,
-            ByteBuffer.allocate(0), ByteBuffer.allocate(0), null);
-    assertTrue(groupByFilter.satisfy(digestForFilter));
+    statistics.setStartTime(32);
+    statistics.setEndTime(34);
+    assertTrue(groupByFilter.satisfy(statistics));
 
-    digestForFilter = new DigestForFilter(32, 36,
-            ByteBuffer.allocate(0), ByteBuffer.allocate(0), null);
-    assertTrue(groupByFilter.satisfy(digestForFilter));
+    statistics.setStartTime(32);
+    statistics.setEndTime(36);
+    assertTrue(groupByFilter.satisfy(statistics));
 
-    digestForFilter = new DigestForFilter(36, 37,
-            ByteBuffer.allocate(0), ByteBuffer.allocate(0), null);
-    assertFalse(groupByFilter.satisfy(digestForFilter));
+    statistics.setStartTime(36);
+    statistics.setEndTime(37);
+    assertFalse(groupByFilter.satisfy(statistics));
 
-    digestForFilter = new DigestForFilter(36, 55,
-            ByteBuffer.allocate(0), ByteBuffer.allocate(0), null);
-    assertFalse(groupByFilter.satisfy(digestForFilter));
+    statistics.setStartTime(36);
+    statistics.setEndTime(55);
+    assertFalse(groupByFilter.satisfy(statistics));
 
-    digestForFilter = new DigestForFilter(35, 56,
-            ByteBuffer.allocate(0), ByteBuffer.allocate(0), null);
-    assertTrue(groupByFilter.satisfy(digestForFilter));
+    statistics.setStartTime(35);
+    statistics.setEndTime(56);
+    assertTrue(groupByFilter.satisfy(statistics));
 
-    digestForFilter = new DigestForFilter(35, 58,
-            ByteBuffer.allocate(0), ByteBuffer.allocate(0), null);
-    assertTrue(groupByFilter.satisfy(digestForFilter));
+    statistics.setStartTime(35);
+    statistics.setEndTime(58);
+    assertTrue(groupByFilter.satisfy(statistics));
 
-    digestForFilter = new DigestForFilter(8 + 30 * 24 + 3 + 1, 8 + 30 * 24 + 5,
-            ByteBuffer.allocate(0), ByteBuffer.allocate(0), null);
-    assertFalse(groupByFilter.satisfy(digestForFilter));
+    statistics.setStartTime(8 + 30 * 24 + 3 + 1);
+    statistics.setEndTime(8 + 30 * 24 + 5);
+    assertFalse(groupByFilter.satisfy(statistics));
 
-    digestForFilter = new DigestForFilter(8 + 30 * 24 + 3 + 1, 8 + 30 * 24 + 8,
-            ByteBuffer.allocate(0), ByteBuffer.allocate(0), null);
-    assertFalse(groupByFilter.satisfy(digestForFilter));
+    statistics.setStartTime(8 + 30 * 24 + 3 + 1);
+    statistics.setEndTime(8 + 30 * 24 + 8);
+    assertFalse(groupByFilter.satisfy(statistics));
   }
 
   @Test

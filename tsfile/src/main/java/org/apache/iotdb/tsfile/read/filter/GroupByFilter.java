@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.filter;
 
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 
@@ -41,8 +42,8 @@ public class GroupByFilter implements Filter, Serializable {
   }
 
   @Override
-  public boolean satisfy(DigestForFilter digest) {
-    return satisfyStartEndTime(digest.getMinTime(), digest.getMaxTime());
+  public boolean satisfy(Statistics statistics) {
+    return satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
   }
 
   @Override
