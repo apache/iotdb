@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.web.grafana.dao.impl;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -25,6 +29,7 @@ import java.sql.SQLException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.web.grafana.bean.TimeValues;
@@ -45,11 +50,34 @@ public class BasicDaoImpl implements BasicDao {
 
   private static final Logger logger = LoggerFactory.getLogger(BasicDaoImpl.class);
 
+  private static final String CONFIG_PROPERTY_FILE = "application.properties";
+
   private final JdbcTemplate jdbcTemplate;
+
+  private static long TIMESTAMP_RADIX = 1L;
 
   @Autowired
   public BasicDaoImpl(JdbcTemplate jdbcTemplate) {
     this.jdbcTemplate = jdbcTemplate;
+    try (InputStream inputStream = new FileInputStream(new File(CONFIG_PROPERTY_FILE))) {
+      Properties properties = new Properties();
+      properties.load(inputStream);
+      String tsPrecision = properties.getProperty("timestamp_precision", "ms");
+      switch (tsPrecision) {
+        case "us":
+          TIMESTAMP_RADIX = 1000;
+          break;
+        case "ns":
+          TIMESTAMP_RADIX = 1000_000;
+          break;
+        default:
+          TIMESTAMP_RADIX = 1;
+      }
+      logger.info("Use timestamp precision {}", tsPrecision);
+    } catch (IOException e) {
+      logger.error("Can not find properties [timestamp_precision], use default value [ms]");
+      TIMESTAMP_RADIX = 1;
+    }
   }
 
   @Override
@@ -57,7 +85,8 @@ public class BasicDaoImpl implements BasicDao {
     ConnectionCallback<Object> connectionCallback = new ConnectionCallback<Object>() {
       public Object doInConnection(Connection connection) throws SQLException {
         DatabaseMetaData databaseMetaData = connection.getMetaData();
-        ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, "root.*", "root.*", null);
+        ResultSet resultSet = databaseMetaData
+            .getColumns(Constant.CATALOG_TIMESERIES, "root.*", "root.*", null);
         logger.info("Start to get timeseries");
         List<String> columnsName = new ArrayList<>();
         while (resultSet.next()) {
@@ -75,7 +104,8 @@ public class BasicDaoImpl implements BasicDao {
     Long from = zonedCovertToLong(timeRange.left);
     Long to = zonedCovertToLong(timeRange.right);
     String sql = "SELECT " + s.substring(s.lastIndexOf('.') + 1) + " FROM root."
-        + s.substring(0, s.lastIndexOf('.')) + " WHERE time > " + from + " and time < " + to;
+        + s.substring(0, s.lastIndexOf('.')) + " WHERE time > " + from * TIMESTAMP_RADIX
+        + " and time < " + to * TIMESTAMP_RADIX;
     logger.info(sql);
     List<TimeValues> rows = null;
     try {
@@ -103,7 +133,7 @@ public class BasicDaoImpl implements BasicDao {
     @Override
     public TimeValues mapRow(ResultSet resultSet, int i) throws SQLException {
       TimeValues tv = new TimeValues();
-      tv.setTime(resultSet.getLong("Time"));
+      tv.setTime(resultSet.getLong("Time") / TIMESTAMP_RADIX);
       String valueString = resultSet.getString(columnName);
       if (valueString != null) {
         if (TRUE_STR.equalsIgnoreCase(valueString)) {
@@ -112,8 +142,9 @@ public class BasicDaoImpl implements BasicDao {
           tv.setValue(0);
         } else {
           try {
-            tv.setValue(resultSet.getFloat(columnName));
+            tv.setValue(Float.parseFloat(resultSet.getString(columnName)));
           } catch (Exception e) {
+            logger.error("Can not parse the value {}", resultSet.getString(columnName));
             tv.setValue(0);
           }
         }

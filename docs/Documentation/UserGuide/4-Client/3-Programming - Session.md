@@ -45,7 +45,7 @@ In root directory:
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.9.0-SNAPSHOT</version>
+      <version>0.10.0</version>
     </dependency>
 </dependencies>
 ```

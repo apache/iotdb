@@ -38,7 +38,7 @@ show version
 
 ```
 +---------------------------------------------------------------------------+
-|                                                             0.9.0-SNAPSHOT|
+|                                                             0.10.0|
 +---------------------------------------------------------------------------+
 It costs 0.001s
 ```
@@ -298,7 +298,7 @@ Note: Integer in <TimeUnit> needs to be greater than 0
 * Limit Statement
 
 ```
-SELECT <SelectClause> FROM <FromClause> [WHERE <WhereClause>] [LIMIT <LIMITClause>] [SLIMIT <SLIMITClause>]
+SELECT <SelectClause> FROM <FromClause> [WHERE <WhereClause>] [<LIMITClause>] [<SLIMITClause>]
 SelectClause : [<Path> | Function]+
 Function : <AggregationFunction> LPAREN <Path> RPAREN
 FromClause : <Path>
@@ -309,17 +309,17 @@ TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
 RelativeTimeDurationUnit = Integer ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS')
 RelativeTime : (now() | <TimeValue>) [(+|-) RelativeTimeDurationUnit]+
 SensorExpr : (<Timeseries>|<Path>) PrecedenceEqualOperator <PointValue>
-LIMITClause : <N> [OFFSETClause]?
-N : PositiveInteger
+LIMITClause : LIMIT <N> [OFFSETClause]?
+N : Integer
 OFFSETClause : OFFSET <OFFSETValue>
-OFFSETValue : NonNegativeInteger
-SLIMITClause : <SN> [SOFFSETClause]?
-SN : PositiveInteger
+OFFSETValue : Integer
+SLIMITClause : SLIMIT <SN> [SOFFSETClause]?
+SN : Integer
 SOFFSETClause : SOFFSET <SOFFSETValue>
-SOFFSETValue : NonNegativeInteger
-NonNegativeInteger:= ('+')? Digit+
+SOFFSETValue : Integer
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00 LIMIT 3 OFFSET 2
 Eg. IoTDB > SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY(5m, 1509465660000, [1509465720000, 1509466380000]) LIMIT 3
+Note: N, OFFSETValue, SN and SOFFSETValue must be greater than 0.
 Note: The order of <LIMITClause> and <SLIMITClause> does not affect the grammatical correctness.
 Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
 ```

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
@@ -161,7 +162,7 @@ public enum BasicOperatorType {
    * @throws LogicalOperatorException Logical Operator Exception
    */
   public static BasicOperatorType getBasicOpBySymbol(int tokenIntType)
-      throws LogicalOperatorException {
+      throws SQLParserException {
     switch (tokenIntType) {
       case SQLConstant.EQUAL:
         return EQ;
@@ -176,7 +177,7 @@ public enum BasicOperatorType {
       case SQLConstant.NOTEQUAL:
         return NOTEQUAL;
       default:
-        throw new LogicalOperatorException(
+        throw new SQLParserException(
             "unsupported type:{}" + SQLConstant.tokenNames.get(tokenIntType));
     }
   }

@@ -176,7 +176,7 @@ struct TSQueryDataSet{
 
 struct TSFetchResultsReq{
 	1: required string statement
-	2: required i32 fetch_size
+	2: required i32 fetchSize
 	3: required i64 queryId
 }
 
@@ -223,12 +223,21 @@ struct TSSetTimeZoneReq {
     1: required string timeZone
 }
 
+// for prepared statement
 struct TSInsertionReq {
     1: optional string deviceId
     2: optional list<string> measurements
     3: optional list<string> values
     4: optional i64 timestamp
     5: required i64 stmtId
+}
+
+// for session
+struct TSInsertReq {
+    1: required string deviceId
+    2: required list<string> measurements
+    3: required list<string> values
+    4: required i64 timestamp
 }
 
 struct TSBatchInsertionReq {
@@ -238,13 +247,6 @@ struct TSBatchInsertionReq {
     4: required binary timestamps
     5: required list<i32> types
     6: required i32 size
-}
-
-struct TSInsertReq {
-    1: required string deviceId
-    2: required list<string> measurements
-    3: required list<string> values
-    4: required i64 timestamp
 }
 
 struct TSInsertInBatchReq {

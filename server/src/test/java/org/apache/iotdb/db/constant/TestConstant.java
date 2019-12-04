@@ -16,33 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sql.parse;
 
-import java.util.List;
+package org.apache.iotdb.db.constant;
 
-public class ParseException extends Exception {
+import java.io.File;
+import java.util.Random;
 
-  private static final long serialVersionUID = 1L;
-  private final transient List<ParseError> errors;
-
-  public ParseException(List<ParseError> errors) {
-    super();
-    this.errors = errors;
-  }
-
-  @Override
-  public String getMessage() {
-
-    StringBuilder sb = new StringBuilder();
-
-    for (ParseError err : errors) {
-      if (sb.length() > 0) {
-        sb.append('\n');
-      }
-      sb.append(err.getMessage());
-    }
-
-    return sb.toString();
-  }
-
+public class TestConstant {
+    public static final String BASE_OUTPUT_PATH = "target".concat(File.separator);
+    public static final String OUTPUT_DATA_DIR = BASE_OUTPUT_PATH.concat("data").concat(File.separator);
 }

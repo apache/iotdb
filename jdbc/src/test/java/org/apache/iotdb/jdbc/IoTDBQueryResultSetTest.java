@@ -147,7 +147,7 @@ public class IoTDBQueryResultSetTest {
   public void testQuery() throws Exception {
 
     String testSql = "select *,s1,s0,s2 from root.vehicle.d0 where s1 > 190 or s2 < 10.0 "
-        + "limit 20 offset 1 slimit 4 soffset 2";
+        + "limit 20 offset 2 slimit 4 soffset 2";
 
     /*
      * step 1: execute statement
@@ -231,6 +231,9 @@ public class IoTDBQueryResultSetTest {
               + "1000,1000.11,55555,22222,1000.11,\n"; // Note the LIMIT&OFFSET clause takes effect
       Assert.assertEquals(standard, resultStr.toString());
     }
+
+    // The client issues 2 fetchResultReq in total. The last fetchResultReq get empty resultSet.
+    verify(fetchResultsResp, times(2)).getStatus();
   }
 
   // fake the first-time fetched result of 'testSql' from an IoTDB server
@@ -241,7 +244,7 @@ public class IoTDBQueryResultSetTest {
     tsDataTypeList.add(TSDataType.INT32); // root.vehicle.d0.s0
 
     Object[][] input = {
-        {1L, null, 1101L, null,},
+            {1L, null, 1101L, null,},
         {2L, 2.22F, 40000L, null,},
         {3L, 3.33F, null, null,},
         {4L, 4.44F, null, null,},

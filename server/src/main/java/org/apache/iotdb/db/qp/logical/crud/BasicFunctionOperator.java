@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.logical.crud;
 import java.util.Objects;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -52,7 +53,7 @@ public class BasicFunctionOperator extends FunctionOperator {
    * @throws LogicalOperatorException Logical Operator Exception
    */
   public BasicFunctionOperator(int tokenIntType, Path path, String value)
-      throws LogicalOperatorException {
+      throws SQLParserException {
     super(tokenIntType);
     operatorType = Operator.OperatorType.BASIC_FUNC;
     funcToken = BasicOperatorType.getBasicOpBySymbol(tokenIntType);
@@ -150,7 +151,7 @@ public class BasicFunctionOperator extends FunctionOperator {
     BasicFunctionOperator ret;
     try {
       ret = new BasicFunctionOperator(this.tokenIntType, path.clone(), value);
-    } catch (LogicalOperatorException e) {
+    } catch (SQLParserException e) {
       logger.error("error clone:", e);
       return null;
     }

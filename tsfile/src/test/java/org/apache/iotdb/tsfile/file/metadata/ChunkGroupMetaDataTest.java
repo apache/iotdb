@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -42,7 +43,7 @@ import org.junit.Test;
 public class ChunkGroupMetaDataTest {
 
   public static final String DELTA_OBJECT_UID = "delta-3312";
-  private final static String PATH = "target/outputChunkGroup.tsfile";
+  private final static String PATH = TestConstant.BASE_OUTPUT_PATH.concat("outputChunkGroup.tsfile");
   private static String testDataFile;
 
   @BeforeClass

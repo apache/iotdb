@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.9.0-SNAPSHOT</version>
+        <version>0.10.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-server</artifactId>
@@ -61,10 +61,10 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-collections4</artifactId>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.antlr/antlr-runtime -->
+        <!-- https://mvnrepository.com/artifact/org.antlr/antlr-runtime4 -->
         <dependency>
             <groupId>org.antlr</groupId>
-            <artifactId>antlr-runtime</artifactId>
+            <artifactId>antlr4-runtime</artifactId>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
         <dependency>
@@ -126,12 +126,12 @@
         <plugins>
             <plugin>
                 <groupId>org.antlr</groupId>
-                <artifactId>antlr3-maven-plugin</artifactId>
-                <version>${antlr3.version}</version>
+                <artifactId>antlr4-maven-plugin</artifactId>
+                <version>${antlr4.version}</version>
                 <executions>
                     <execution>
                         <goals>
-                            <goal>antlr</goal>
+                            <goal>antlr4</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -143,6 +143,9 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <skipTests>${iotdb.ut.skip}</skipTests>
+                    <systemProperties>
+                        <IOTDB_CONF>src/test/resources</IOTDB_CONF>
+                    </systemProperties>
                 </configuration>
             </plugin>
             <plugin>
