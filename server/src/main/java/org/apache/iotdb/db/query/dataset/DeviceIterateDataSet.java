@@ -112,7 +112,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
     this.currentColumnMapRelation = new int[deduplicatedMeasurementColumns.size()];
   }
 
-  public boolean hasNext() throws IOException {
+  protected boolean hasNextWithoutConstraint() throws IOException {
     if (curDataSetInitialized && currentDataSet.hasNext()) {
       return true;
     } else {
@@ -191,7 +191,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
     return false;
   }
 
-  public RowRecord next() throws IOException {
+  protected RowRecord nextWithoutConstraint() throws IOException {
     RowRecord originRowRecord = currentDataSet.next();
 
     RowRecord rowRecord = new RowRecord(originRowRecord.getTimestamp());
