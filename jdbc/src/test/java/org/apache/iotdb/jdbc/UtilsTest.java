@@ -70,60 +70,11 @@ public class UtilsTest {
     assertEquals(params.getUsername(), userName);
     assertEquals(params.getPassword(), userPwd);
 
-    //don't contain / in the end of url
-    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host1, port),
-            properties);
+    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host1, port), properties);
     assertEquals(params.getHost(), host1);
     assertEquals(params.getPort(), port);
-
-    //use a domain
-    String host2 = "google.com";
-    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host2, port),
-        properties);
-    assertEquals(params.getHost(), host2);
-    assertEquals(params.getPort(), port);
-
-    //use a different domain
-    String host3 = "www.google.com";
-    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host3, port),
-        properties);
-    assertEquals(params.getHost(), host3);
-    assertEquals(params.getPort(), port);
-
-    //use a ip
-    String host4 = "1.2.3.4";
-    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host4, port),
-        properties);
-    assertEquals(params.getHost(), host4);
-    assertEquals(params.getPort(), port);
-  }
-
-  @Test(expected = NumberFormatException.class)
-  public void testParseWrongDomain() throws IoTDBURLException {
-    String userName = "test";
-    String userPwd = "test";
-    String host = "www.::google.com";
-    int port = 6667;
-    Properties properties = new Properties();
-    properties.setProperty(Config.AUTH_USER, userName);
-    properties.setProperty(Config.AUTH_PASSWORD, userPwd);
-    IoTDBConnectionParams params = Utils
-        .parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host, port),
-            properties);
-  }
-
-  @Test(expected = IoTDBURLException.class)
-  public void testParseWrongIP() throws IoTDBURLException {
-    String userName = "test";
-    String userPwd = "test";
-    String host = "1.2.3.";
-    int port = 6667;
-    Properties properties = new Properties();
-    properties.setProperty(Config.AUTH_USER, userName);
-    properties.setProperty(Config.AUTH_PASSWORD, userPwd);
-    IoTDBConnectionParams params = Utils
-        .parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host, port),
-            properties);
+    assertEquals(params.getUsername(), userName);
+    assertEquals(params.getPassword(), userPwd);
   }
 
   @Test(expected = IoTDBURLException.class)
