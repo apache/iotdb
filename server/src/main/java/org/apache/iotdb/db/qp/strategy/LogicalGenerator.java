@@ -18,110 +18,16 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
-import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
-import org.apache.iotdb.db.qp.logical.crud.FromOperator;
-import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
-import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
-import org.apache.iotdb.db.qp.logical.crud.UpdateOperator;
-import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.db.qp.logical.crud.*;
+import org.apache.iotdb.db.qp.logical.sys.*;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
-import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
-import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
-import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AddLabelContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AndExpressionContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClausesContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ConstantContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreatePropertyContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateRoleContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateTimeseriesContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateUserContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DateExpressionContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteLabelContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteStatementContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteStorageGroupContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteTimeseriesContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DropRoleContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DropUserContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FillClauseContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FromClauseContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FunctionCallContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FunctionElementContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleToUserContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantUserContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantWatermarkEmbeddingContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByClauseContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByDeviceClauseContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertColumnSpecContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertStatementContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertValuesSpecContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LimitClauseContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LinkPathContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListAllRoleOfUserContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListAllUserOfRoleContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListPrivilegesRoleContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListPrivilegesUserContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListRoleContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListRolePrivilegesContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListUserContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListUserPrivilegesContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LoadConfigurationStatementContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LoadStatementContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.NodeNameContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.NodeNameWithoutStarContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.OffsetClauseContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.OrExpressionContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PredicateContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PrefixPathContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PrivilegesContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PropertyContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeRoleContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeRoleFromUserContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeUserContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeWatermarkEmbeddingContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RootOrIdContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SelectElementContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SelectStatementContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetColContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetStorageGroupContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetTTLStatementContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowAllTTLStatementContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowTTLStatementContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SlimitClauseContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SoffsetClauseContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeIntervalContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeseriesPathContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TypeClauseContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UnlinkPathContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UnsetTTLStatementContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UpdateStatementContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.WhereClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.*;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
@@ -131,8 +37,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
+
+import java.time.ZoneId;
+import java.util.*;
 
 /**
  * This class is a listener and you can get an operator which is a logical plan.
@@ -605,38 +513,31 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     queryOp.setGroupBy(true);
 
     // parse timeUnit
-    queryOp.setUnit(parseDuration(ctx.DURATION().getText()));
+    queryOp.setUnit(parseDuration(ctx.DURATION(0).getText()));
+    queryOp.setSlidingStep(queryOp.getUnit());
+    // parse sliding step
+    if (ctx.DURATION().size() == 2) {
+      queryOp.setSlidingStep(parseDuration(ctx.DURATION(1).getText()));
+      if (queryOp.getSlidingStep() < queryOp.getUnit())
+        throw new SQLParserException("The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
+    }
 
-    // parse show intervals
-    List<Pair<Long, Long>> intervals = new ArrayList<>();
     long startTime;
     long endTime;
-    List<TimeIntervalContext> timeIntervals = ctx.timeInterval();
-    for (TimeIntervalContext timeInterval : timeIntervals) {
-      if (timeInterval.timeValue(0).INT() != null) {
-        startTime = Long.parseLong(timeInterval.timeValue(0).INT().getText());
-      } else {
-        startTime = parseTimeFormat(timeInterval.timeValue(0).dateFormat().getText());
-      }
-      if (timeInterval.timeValue(1).INT() != null) {
-        endTime = Long.parseLong(timeInterval.timeValue(1).INT().getText());
-      } else {
-        endTime = parseTimeFormat(timeInterval.timeValue(1).dateFormat().getText());
-      }
-      intervals.add(new Pair<>(startTime, endTime));
-    }
-    queryOp.setIntervals(intervals);
-
-    //
-    if (ctx.timeValue() != null) {
-      if (ctx.timeValue().INT() != null) {
-        queryOp.setOrigin(Long.parseLong(ctx.timeValue().INT().getText()));
-      } else {
-        queryOp.setOrigin(parseTimeFormat(ctx.timeValue().dateFormat().getText()));
-      }
+    TimeIntervalContext timeInterval = ctx.timeInterval();
+    if(timeInterval.timeValue(0).INT() != null) {
+      startTime = Long.parseLong(timeInterval.timeValue(0).INT().getText());
     } else {
-      queryOp.setOrigin(parseTimeFormat(SQLConstant.START_TIME_STR));
+      startTime = parseTimeFormat(timeInterval.timeValue(0).dateFormat().getText());
     }
+    if(timeInterval.timeValue(1).INT() != null) {
+      endTime = Long.parseLong(timeInterval.timeValue(1).INT().getText());
+    } else {
+      endTime = parseTimeFormat(timeInterval.timeValue(1).dateFormat().getText());
+    }
+
+    queryOp.setStartTime(startTime);
+    queryOp.setEndTime(endTime);
   }
 
   @Override

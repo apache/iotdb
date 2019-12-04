@@ -18,16 +18,6 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PRIVILEGE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.ROLE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.USER;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
@@ -81,6 +71,11 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.IOException;
+import java.util.*;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 
 public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
@@ -192,14 +187,15 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
   @Override
   public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
-      long unit, long origin, List<Pair<Long, Long>> intervals, QueryContext context)
-      throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
-    return queryRouter.groupBy(paths, aggres, expression, unit, origin, intervals, context);
+                              long unit, long slidingStep, long startTime, long endTime,
+                              QueryContext context)
+          throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
+    return queryRouter.groupBy(paths, aggres, expression, unit, slidingStep, startTime, endTime, context);
+
   }
 
   @Override
-  public void update(Path path, long startTime, long endTime, String value)
-      throws QueryProcessException {
+  public void update(Path path, long startTime, long endTime, String value) {
   }
 
   @Override

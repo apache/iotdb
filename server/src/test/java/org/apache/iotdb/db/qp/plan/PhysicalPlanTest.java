@@ -148,14 +148,16 @@ public class PhysicalPlanTest {
       throws QueryProcessException, MetadataException {
     String sqlStr =
         "select count(s1) " + "from root.vehicle.d1 " + "where s1 < 20 and time <= now() "
-            + "group by(10m, 44, [1,3], [4,5])";
+            + "group by([8,737], 3ms)";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     if (!plan.isQuery()) {
       fail();
     }
     GroupByPlan mergePlan = (GroupByPlan) plan;
-    assertEquals(10 * 60 * 1000L, mergePlan.getUnit());
-    assertEquals(44, mergePlan.getOrigin());
+    assertEquals(3L, mergePlan.getUnit());
+    assertEquals(3L, mergePlan.getSlidingStep());
+    assertEquals(8L, mergePlan.getStartTime());
+    assertEquals(737L, mergePlan.getEndTime());
   }
 
   @Test
@@ -163,13 +165,30 @@ public class PhysicalPlanTest {
       throws QueryProcessException, MetadataException {
     String sqlStr =
         "select count(s1) " + "from root.vehicle.d1 " + "where s1 < 20 and time <= now() "
-            + "group by(111ms, [123,2017-6-2T12:00:12+07:00], [55555, now()])";
+            + "group by([123,2017-6-2T12:00:12+07:00], 111ms)";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     if (!plan.isQuery()) {
       fail();
     }
     GroupByPlan mergePlan = (GroupByPlan) plan;
     assertEquals(111, mergePlan.getUnit());
+  }
+
+  @Test
+  public void testGroupBy3()
+          throws QueryProcessException, MetadataException {
+    String sqlStr =
+            "select count(s1) " + "from root.vehicle.d1 " + "where s1 < 20 and time <= now() "
+                    + "group by([2017-6-2T12:00:12+07:00,2017-6-12T12:00:12+07:00], 3h, 24h)";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    if (!plan.isQuery()) {
+      fail();
+    }
+    GroupByPlan mergePlan = (GroupByPlan) plan;
+    assertEquals(3 * 60 * 60 * 1000, mergePlan.getUnit());
+    assertEquals(24 * 60 * 60 * 1000, mergePlan.getSlidingStep());
+    assertEquals(1496379612000L, mergePlan.getStartTime());
+    assertEquals(1497243612000L, mergePlan.getEndTime());
   }
 
   @Test
