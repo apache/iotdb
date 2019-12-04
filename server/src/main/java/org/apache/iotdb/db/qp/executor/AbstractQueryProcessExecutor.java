@@ -147,7 +147,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     addRowRecordForShowQuery(listDataSet, timestamp++, "compression ratio",
         Double.toString(CompressionRatio.getInstance().getRatio()));
     addRowRecordForShowQuery(listDataSet, timestamp++, "storage group number",
-        Integer.toString( MManager.getInstance().getAllStorageGroupNames().size()));
+        Integer.toString(MManager.getInstance().getAllStorageGroupNames().size()));
     addRowRecordForShowQuery(listDataSet, timestamp++, "timeseries number",
         Integer.toString(IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries()));
     addRowRecordForShowQuery(listDataSet, timestamp++,
@@ -193,42 +193,45 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   private QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
       throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
       IOException {
+    QueryDataSet queryDataSet;
     if (queryPlan.isGroupByDevice()) {
-      return new DeviceIterateDataSet(queryPlan, context, queryRouter);
+      queryDataSet = new DeviceIterateDataSet(queryPlan, context, queryRouter);
+    } else {
+      // deduplicate executed paths and aggregations if exist
+      List<Path> deduplicatedPaths = new ArrayList<>();
+      if (queryPlan instanceof GroupByPlan) {
+        List<String> deduplicatedAggregations = new ArrayList<>();
+        GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
+        deduplicate(groupByPlan.getPaths(), groupByPlan.getAggregations(), deduplicatedPaths,
+            deduplicatedAggregations);
+        queryDataSet = groupBy(deduplicatedPaths, deduplicatedAggregations,
+            groupByPlan.getExpression(),
+            groupByPlan.getUnit(),
+            groupByPlan.getOrigin(), groupByPlan.getIntervals(), context);
+      } else if (queryPlan instanceof AggregationPlan) {
+        List<String> deduplicatedAggregations = new ArrayList<>();
+        deduplicate(queryPlan.getPaths(), queryPlan.getAggregations(), deduplicatedPaths,
+            deduplicatedAggregations);
+        queryDataSet = aggregate(deduplicatedPaths, deduplicatedAggregations,
+            queryPlan.getExpression(),
+            context);
+      } else if (queryPlan instanceof FillQueryPlan) {
+        FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
+        deduplicate(queryPlan.getPaths(), deduplicatedPaths);
+        queryDataSet = fill(deduplicatedPaths, fillQueryPlan.getQueryTime(),
+            fillQueryPlan.getFillType(),
+            context);
+      } else {
+        deduplicate(queryPlan.getPaths(), deduplicatedPaths);
+        QueryExpression queryExpression = QueryExpression.create()
+            .setSelectSeries(deduplicatedPaths)
+            .setExpression(queryPlan.getExpression());
+        queryDataSet = queryRouter.query(queryExpression, context);
+      }
     }
-
-    // deduplicate executed paths and aggregations if exist
-    List<Path> deduplicatedPaths = new ArrayList<>();
-
-    if (queryPlan instanceof GroupByPlan) {
-      GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
-      List<String> deduplicatedAggregations = new ArrayList<>();
-      deduplicate(groupByPlan.getPaths(), groupByPlan.getAggregations(), deduplicatedPaths,
-          deduplicatedAggregations);
-      return groupBy(deduplicatedPaths, deduplicatedAggregations, groupByPlan.getExpression(),
-          groupByPlan.getUnit(),
-          groupByPlan.getOrigin(), groupByPlan.getIntervals(), context);
-    }
-
-    if (queryPlan instanceof AggregationPlan) {
-      List<String> deduplicatedAggregations = new ArrayList<>();
-      deduplicate(queryPlan.getPaths(), queryPlan.getAggregations(), deduplicatedPaths,
-          deduplicatedAggregations);
-      return aggregate(deduplicatedPaths, deduplicatedAggregations, queryPlan.getExpression(),
-          context);
-    }
-
-    if (queryPlan instanceof FillQueryPlan) {
-      FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
-      deduplicate(queryPlan.getPaths(), deduplicatedPaths);
-      return fill(deduplicatedPaths, fillQueryPlan.getQueryTime(), fillQueryPlan.getFillType(),
-          context);
-    }
-
-    deduplicate(queryPlan.getPaths(), deduplicatedPaths);
-    QueryExpression queryExpression = QueryExpression.create().setSelectSeries(deduplicatedPaths)
-        .setExpression(queryPlan.getExpression());
-    return queryRouter.query(queryExpression, context);
+    queryDataSet.setRowLimit(queryPlan.getRowLimit());
+    queryDataSet.setRowOffset(queryPlan.getRowOffset());
+    return queryDataSet;
   }
 
   /**

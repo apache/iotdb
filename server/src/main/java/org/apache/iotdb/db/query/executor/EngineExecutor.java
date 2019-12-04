@@ -71,7 +71,7 @@ public class EngineExecutor {
         throw new StorageEngineException(e);
       }
 
-      IPointReader reader = new SeriesReaderWithoutValueFilter(path, timeFilter, context);
+      IPointReader reader = new SeriesReaderWithoutValueFilter(path, timeFilter, context, true);
       readersOfSelectedSeries.add(reader);
     }
 
