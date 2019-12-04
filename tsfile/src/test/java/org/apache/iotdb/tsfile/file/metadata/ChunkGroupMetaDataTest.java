@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -42,7 +43,7 @@ import org.junit.Test;
 public class ChunkGroupMetaDataTest {
 
   public static final String DELTA_OBJECT_UID = "delta-3312";
-  private final static String PATH = "target/outputChunkGroup.tsfile";
+  private final static String PATH = TestConstant.BASE_OUTPUT_PATH.concat("outputChunkGroup.tsfile");
   private static String testDataFile;
 
   @BeforeClass
@@ -102,58 +103,6 @@ public class ChunkGroupMetaDataTest {
       }
     }
     reader.close();
-  }
-
-  @Test
-  public void testWriteIntoFile() {
-    // serialize metadata to a file
-    ChunkGroupMetaData metaData = TestHelper.createSimpleChunkGroupMetaData();
-    serialized(metaData);
-    ChunkGroupMetaData readMetaData = deSerialized();
-    serialized(readMetaData);
-  }
-
-  private ChunkGroupMetaData deSerialized() {
-    FileInputStream fis = null;
-    ChunkGroupMetaData metaData = null;
-    try {
-      fis = new FileInputStream(new File(PATH));
-      metaData = ChunkGroupMetaData.deserializeFrom(fis);
-      return metaData;
-    } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      if (fis != null) {
-        try {
-          fis.close();
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-      }
-    }
-    return metaData;
-  }
-
-  private void serialized(ChunkGroupMetaData metaData) {
-    File file = new File(PATH);
-    if (file.exists()) {
-      file.delete();
-    }
-    FileOutputStream fos = null;
-    try {
-      fos = new FileOutputStream(file);
-      metaData.serializeTo(fos);
-    } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      if (fos != null) {
-        try {
-          fos.close();
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-      }
-    }
   }
 
 }

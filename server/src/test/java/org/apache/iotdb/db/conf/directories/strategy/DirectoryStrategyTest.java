@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.conf.directories.strategy;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -26,6 +28,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.junit.After;
@@ -46,10 +50,10 @@ public class DirectoryStrategyTest {
   Set<Integer> fullDirIndexSet;
 
   @Before
-  public void setUp() throws DiskSpaceInsufficientException, IOException {
+  public void setUp() throws IOException {
     dataDirList = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      dataDirList.add("data" + i);
+      dataDirList.add(TestConstant.OUTPUT_DATA_DIR + i);
     }
 
     fullDirIndexSet = new HashSet<>();
@@ -145,6 +149,25 @@ public class DirectoryStrategyTest {
       }
     }
     return index;
+  }
+
+  @Test
+  public void testRandomOnDiskUsableSpaceStrategy()
+      throws DiskSpaceInsufficientException {
+    RandomOnDiskUsableSpaceStrategy randomOnDiskUsableSpaceStrategy = new RandomOnDiskUsableSpaceStrategy();
+    randomOnDiskUsableSpaceStrategy.setFolders(dataDirList);
+
+    for (int i = 0; i < dataDirList.size(); i++) {
+      assertFalse(fullDirIndexSet.contains(randomOnDiskUsableSpaceStrategy.nextFolderIndex()));
+    }
+
+    int newFullIndex = randomOnDiskUsableSpaceStrategy.nextFolderIndex();
+    PowerMockito.when(CommonUtils.getUsableSpace(dataDirList.get(newFullIndex))).thenReturn(0L);
+    for (int i = 0; i < dataDirList.size(); i++) {
+      int index = randomOnDiskUsableSpaceStrategy.nextFolderIndex();
+      assertFalse(fullDirIndexSet.contains(index));
+      assertTrue(newFullIndex != index);
+    }
   }
 
   @Test

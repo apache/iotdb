@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -157,8 +158,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         finishCheckSequenceData = calGroupByInBatchData(idx, function, unsequenceReader);
       } else {
         // page data
-        long minTime = pageHeader.getMinTimestamp();
-        long maxTime = pageHeader.getMaxTimestamp();
+        long minTime = pageHeader.getStartTime();
+        long maxTime = pageHeader.getEndTime();
         // no point in sequence data with a timestamp less than endTime
         if (minTime >= endTime) {
           finishCheckSequenceData = true;
@@ -246,10 +247,10 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         // page data
 
         // timestamps of all points in the page are less than startTime
-        if (pageHeader.getMaxTimestamp() < startTime) {
+        if (pageHeader.getEndTime() < startTime) {
           sequenceReader.skipPageData();
           continue;
-        } else if (pageHeader.getMinTimestamp() >= startTime) {
+        } else if (pageHeader.getStartTime() >= startTime) {
           // timestamps of all points in the page are greater or equal to startTime, needn't to skip
           return;
         }
@@ -304,6 +305,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       AggregateFunction function)
       throws IOException, QueryProcessException {
     if (timeFilter != null && !timeFilter.containStartEndTime(minTime, maxTime)) {
+      return false;
+    }
+
+    TimeRange range = new TimeRange(startTime, endTime - 1);
+    if (!range.contains(new TimeRange(minTime, maxTime))) {
       return false;
     }
 

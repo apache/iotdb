@@ -32,6 +32,7 @@ import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -237,29 +238,15 @@ public class TsFileProcessor {
    * <p>In the dynamic parameter adjustment module{@link IoTDBConfigDynamicAdapter}, it calculated
    * the average size of each metatable{@link IoTDBConfigDynamicAdapter#tryToAdaptParameters()}.
    * However, considering that the number of timeseries between storage groups may vary greatly,
-   * it's appropriate to judge whether to flush the memtable according to the average memtable size.
-   * We need to adjust it according to the number of timeseries in a specific storage group.
-   *
-   * Abbreviation of parameters:
-   *
-   * 1 memtableSize: m
-   * 2 maxMemTableNum: Nm
-   * 3 SeriesNumber: Ns
-   * 4 chunkSizeThreshold: Sc
-   * 5 Total timeseries number: Nts  {@link IoTDBConfigDynamicAdapter#totalTimeseries}
-   * 6 MemTable Number for Each SG: Nmes  {@link IoTDBConstant#MEMTABLE_NUM_IN_EACH_STORAGE_GROUP}
-   *
-   * <p>The equation: Σ(Ns * Sc) * Nmes = m * Nm  ==> Σ(Ns) * Sc * Nmes = m * Nm ==> Sc = m * Nm / Nmes / Nts
-   * <p>Note: Σ means the sum of storage groups , so Nts = ΣNs
+   * it's inappropriate to judge whether to flush the memtable according to the average memtable
+   * size. We need to adjust it according to the number of timeseries in a specific storage group.
    *
    */
   private long getMemtableSizeThresholdBasedOnSeriesNum() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    return IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries() == 0 ? config
-        .getMemtableSizeThreshold() :
-        config.getMemtableSizeThreshold() * config.getMaxMemtableNumber()
-            / IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP / IoTDBConfigDynamicAdapter.getInstance()
-            .getTotalTimeseries() * MManager.getInstance().getSeriesNumber(storageGroupName);
+    long memTableSize = (long) (config.getMemtableSizeThreshold() * config.getMaxMemtableNumber()
+        / IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP * ActiveTimeSeriesCounter.getInstance().getActiveRatio(storageGroupName));
+    return Math.max(memTableSize, config.getMemtableSizeThreshold());
   }
 
 

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.service.MetricsService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.junit.Assert;
 import org.slf4j.Logger;
@@ -93,7 +95,7 @@ public class EnvironmentUtils {
     MManager.getInstance().clear();
 
     MergeManager.getINSTANCE().stop();
-
+    MetricsService.getInstance().stop();
     // delete all directory
     cleanAllDir();
 
@@ -116,8 +118,6 @@ public class EnvironmentUtils {
     cleanDir(config.getSystemDir());
     // delete wal
     cleanDir(config.getWalFolder());
-    // delete index
-    cleanDir(config.getIndexFileDir());
     // delete query
     cleanDir(config.getQueryDir());
     cleanDir(config.getBaseDir());
@@ -181,8 +181,6 @@ public class EnvironmentUtils {
     createDir(config.getSystemDir());
     // create wal
     createDir(config.getWalFolder());
-    // create index
-    createDir(config.getIndexFileDir());
     // create query
     createDir(config.getQueryDir());
     // create data

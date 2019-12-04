@@ -47,7 +47,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    long maxTimestamp = pageHeader.getMaxTimestamp();
+    long maxTimestamp = pageHeader.getEndTime();
     updateMaxTimeResult(0, maxTimestamp);
   }
 

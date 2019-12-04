@@ -29,6 +29,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.integration.Constant;
 import org.apache.iotdb.db.service.IoTDB;
@@ -47,8 +48,8 @@ import org.junit.Test;
 public class IoTDBWatermarkTest {
 
   private static IoTDB daemon;
-  private static String filePath1 = "watermarked_query_result.csv";
-  private static String filePath2 = "notWatermarked_query_result.csv";
+  private static String filePath1 = TestConstant.BASE_OUTPUT_PATH.concat("watermarked_query_result.csv");
+  private static String filePath2 = TestConstant.BASE_OUTPUT_PATH.concat("notWatermarked_query_result.csv");
   private static PrintWriter writer1;
   private static PrintWriter writer2;
   private static String secretKey = "ASDFGHJKL";

@@ -20,7 +20,7 @@ package org.apache.iotdb.tsfile.utils;
 
 import static org.junit.Assert.assertEquals;
 
-import org.apache.iotdb.tsfile.constant.TimeseriesTestConstant;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -32,14 +32,14 @@ public class FileUtilsTest {
     long mb = kb * 1024;
     long gb = mb * 1024;
     Assert.assertEquals(3.0 * 1024, FileUtils.transformUnit(kb, FileUtils.Unit.B),
-        TimeseriesTestConstant.double_min_delta);
+            TestConstant.double_min_delta);
     assertEquals(3, FileUtils.transformUnit(kb, FileUtils.Unit.KB),
-        TimeseriesTestConstant.double_min_delta);
+            TestConstant.double_min_delta);
 
     assertEquals(3, FileUtils.transformUnit(mb, FileUtils.Unit.MB),
-        TimeseriesTestConstant.double_min_delta);
+            TestConstant.double_min_delta);
     assertEquals(3, FileUtils.transformUnit(gb, FileUtils.Unit.GB),
-        TimeseriesTestConstant.double_min_delta);
+            TestConstant.double_min_delta);
   }
 
   @Test

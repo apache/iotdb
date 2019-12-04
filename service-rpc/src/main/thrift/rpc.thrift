@@ -126,6 +126,9 @@ struct TSExecuteStatementReq {
   3: required i64 statementId
 }
 
+struct TSExecuteInsertRowInBatchResp{
+	1: required list<TSStatus> statusList
+}
 
 struct TSExecuteBatchStatementResp{
 	1: required TSStatus status
@@ -240,6 +243,13 @@ struct TSInsertReq {
     4: required i64 timestamp
 }
 
+struct TSInsertInBatchReq {
+    1: required list<string> deviceIds
+    2: required list<list<string>> measurementsList
+    3: required list<list<string>> valuesList
+    4: required list<i64> timestamps
+}
+
 struct TSDeleteDataReq {
     1: required list<string> paths
     2: required i64 timestamp
@@ -298,6 +308,8 @@ service TSIService {
   TSStatus deleteStorageGroups(1:list<string> storageGroup);
 
 	TSStatus insertRow(1:TSInsertReq req);
+
+	TSExecuteInsertRowInBatchResp insertRowInBatch(1:TSInsertInBatchReq req);
 
 	TSStatus deleteData(1:TSDeleteDataReq req);
 
