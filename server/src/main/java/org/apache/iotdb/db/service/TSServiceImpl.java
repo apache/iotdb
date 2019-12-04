@@ -217,7 +217,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     TSStatus tsStatus;
     if (status) {
-      tsStatus = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
+      tsStatus = getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully");
       username.set(req.getUsername());
       zoneIds.set(config.getZoneID());
       initForOneSession();
@@ -251,7 +251,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (username.get() == null) {
       tsStatus = getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     } else {
-      tsStatus = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+      tsStatus = getStatus(TSStatusCode.SUCCESS_STATUS);
       username.remove();
     }
     if (zoneIds.get() != null) {
@@ -296,7 +296,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSStatus cancelOperation(TSCancelOperationReq req) {
-    return new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+    return getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
@@ -321,9 +321,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     } catch (Exception e) {
       logger.error("Error in closeOperation : ", e);
-      return new TSStatus(getStatus(TSStatusCode.CLOSE_OPERATION_ERROR, "Error in closeOperation"));
+      return getStatus(TSStatusCode.CLOSE_OPERATION_ERROR, "Error in closeOperation");
     }
-    return new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+    return getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   /**
@@ -382,53 +382,53 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           String path = req.getColumnPath();
           List<List<String>> timeseriesList = getTimeSeriesForPath(path);
           resp.setTimeseriesList(timeseriesList);
-          status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+          status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "SHOW_STORAGE_GROUP":
           Set<String> storageGroups = new HashSet<>(getAllStorageGroups());
           resp.setStorageGroups(storageGroups);
-          status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+          status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "METADATA_IN_JSON":
           String metadataInJson = getMetadataInString();
           resp.setMetadataInJson(metadataInJson);
-          status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+          status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "SHOW_DEVICES":
           Set<String> devices = getAllDevices();
           resp.setDevices(devices);
-          status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+          status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "SHOW_CHILD_PATHS":
           path = req.getColumnPath();
           Set<String> childPaths = getChildPaths(path);
           resp.setChildPaths(childPaths);
-          status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+          status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COLUMN":
           resp.setDataType(getSeriesType(req.getColumnPath()).toString());
-          status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+          status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "ALL_COLUMNS":
           resp.setColumnsList(getPaths(req.getColumnPath()));
-          status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+          status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COUNT_TIMESERIES":
           resp.setTimeseriesNum(getPaths(req.getColumnPath()).size());
-          status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+          status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COUNT_NODES":
           resp.setNodesList(getNodesList(req.getColumnPath(), req.getNodeLevel()));
-          status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+          status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COUNT_NODE_TIMESERIES":
           resp.setNodeTimeseriesNum(
               getNodeTimeseriesNum(getNodesList(req.getColumnPath(), req.getNodeLevel())));
-          status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+          status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "VERSION":
           resp.setVersion(getVersion());
-          status = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+          status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         default:
           status = getStatus(TSStatusCode.METADATA_ERROR, req.getType());
@@ -1102,7 +1102,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSStatus tsStatus;
     TSGetTimeZoneResp resp;
     try {
-      tsStatus = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+      tsStatus = getStatus(TSStatusCode.SUCCESS_STATUS);
       resp = new TSGetTimeZoneResp(tsStatus, zoneIds.get().toString());
     } catch (Exception e) {
       logger.error("meet error while generating time zone.", e);
@@ -1118,7 +1118,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       String timeZoneID = req.getTimeZone();
       zoneIds.set(ZoneId.of(timeZoneID));
-      tsStatus = new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+      tsStatus = getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (Exception e) {
       logger.error("meet error while setting time zone.", e);
       tsStatus = getStatus(TSStatusCode.SET_TIME_ZONE_ERROR);
@@ -1178,7 +1178,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSExecuteInsertRowInBatchResp resp = new TSExecuteInsertRowInBatchResp();
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      resp.addToStatusList(new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR)));
+      resp.addToStatusList(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
       return resp;
     }
 
@@ -1205,7 +1205,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSStatus insertRow(TSInsertReq req) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
+      return getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
 
     InsertPlan plan = new InsertPlan();
@@ -1225,7 +1225,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSStatus deleteData(TSDeleteDataReq req) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
+      return getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
 
     DeletePlan plan = new DeletePlan();
@@ -1297,7 +1297,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSStatus setStorageGroup(String storageGroup) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
+      return getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
 
     SetStorageGroupPlan plan = new SetStorageGroupPlan(new Path(storageGroup));
@@ -1312,7 +1312,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSStatus deleteStorageGroups(List<String> storageGroups) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
+      return getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
     List<Path> storageGroupList = new ArrayList<>();
     for (String storageGroup : storageGroups) {
@@ -1330,7 +1330,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSStatus createTimeseries(TSCreateTimeseriesReq req) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
+      return getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
     CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.getPath()),
         TSDataType.values()[req.getDataType()], TSEncoding.values()[req.getEncoding()],
@@ -1346,7 +1346,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSStatus deleteTimeseries(List<String> paths) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
+      return getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
     List<Path> pathList = new ArrayList<>();
     for (String path : paths) {
