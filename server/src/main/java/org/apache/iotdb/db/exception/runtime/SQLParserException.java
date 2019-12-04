@@ -16,15 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.file.metadata.statistics;
+package org.apache.iotdb.db.exception.runtime;
 
-import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
+public class SQLParserException extends RuntimeException{
+  private static final long serialVersionUID = 3249707655860110299L;
+  public SQLParserException() {
+    super("Error format in SQL statement, please check whether SQL statement is correct.");
+  }
+  public SQLParserException(String message) {
+    super(message);
+  }
 
-public class StatisticsClassException extends TsFileRuntimeException {
-
-  private static final long serialVersionUID = -5445795844780183770L;
-
-  public StatisticsClassException(Class<?> className1, Class<?> className2) {
-    super("tsfile-file Statistics classes mismatched: " + className1 + " vs. " + className2);
+  public SQLParserException(String type, String message) {
+    super(String.format("Unsupported type: [%s]. " + message, type));
   }
 }

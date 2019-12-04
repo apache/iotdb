@@ -30,6 +30,7 @@ import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -52,22 +53,21 @@ public class TsFileGeneratorForTest {
 
   public static final long START_TIMESTAMP = 1480562618000L;
   private static final Logger LOG = LoggerFactory.getLogger(TsFileGeneratorForTest.class);
-  public static TsFileWriter innerWriter;
-  public static String inputDataFile;
-  public static String outputDataFile = "target/testTsFile.tsfile";
-  public static String errorOutputDataFile;
+  private static String inputDataFile;
+  public static String outputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("testTsFile.tsfile");
+  private static String errorOutputDataFile;
   private static int rowCount;
   private static int chunkGroupSize;
   private static int pageSize;
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   public static void generateFile(int rowCount, int chunkGroupSize, int pageSize)
-      throws IOException, InterruptedException, WriteProcessException {
+      throws IOException {
     generateFile(rowCount, rowCount, chunkGroupSize, pageSize);
   }
 
   public static void generateFile(int minRowCount, int maxRowCount,int chunkGroupSize, int pageSize)
-      throws IOException, InterruptedException, WriteProcessException {
+      throws IOException {
     TsFileGeneratorForTest.rowCount = maxRowCount;
     TsFileGeneratorForTest.chunkGroupSize = chunkGroupSize;
     TsFileGeneratorForTest.pageSize = pageSize;
@@ -76,8 +76,8 @@ public class TsFileGeneratorForTest {
   }
 
   public static void prepare(int minrowCount, int maxRowCount) throws IOException {
-    inputDataFile = "target/perTestInputData";
-    errorOutputDataFile = "target/perTestErrorOutputData.tsfile";
+    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestInputData");
+    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestErrorOutputData.tsfile");
     generateSampleInputDataFile(minrowCount, maxRowCount);
   }
 
@@ -163,7 +163,8 @@ public class TsFileGeneratorForTest {
 
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
-    innerWriter = new TsFileWriter(file, schema, TSFileDescriptor.getInstance().getConfig());
+    TsFileWriter innerWriter = new TsFileWriter(file, schema,
+        TSFileDescriptor.getInstance().getConfig());
 
     // write
     try (Scanner in = new Scanner(fsFactory.getFile(inputDataFile))) {

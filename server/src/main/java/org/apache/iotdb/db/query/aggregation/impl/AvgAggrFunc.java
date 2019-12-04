@@ -59,7 +59,7 @@ public class AvgAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    sum += pageHeader.getStatistics().getSum();
+    sum += pageHeader.getStatistics().getSumValue();
     cnt += pageHeader.getNumOfValues();
   }
 

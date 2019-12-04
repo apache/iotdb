@@ -81,7 +81,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   private List<String> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   private RowRecord record;
   private int rowsFetched = 0;
-  private int maxRows; // defined in TsfileStatement
+  private int maxRows; // defined in IoTDBStatement
   private int fetchSize;
   private boolean emptyResultSet = false;
   
@@ -154,7 +154,7 @@ public class IoTDBQueryResultSet implements ResultSet {
       if (posLimit != -1) {
         rowsLimit = Integer.parseInt(splited[posLimit + 1]);
 
-        // NOTE that maxRows=0 in TsfileStatement means it is not constrained
+        // NOTE that maxRows=0 in IoTDBStatement means it is not constrained
         // NOTE that LIMIT <N>: N is ensured to be a positive integer by the server side
         if (maxRows == 0) {
           maxRowsOrRowsLimit = rowsLimit;
@@ -787,10 +787,6 @@ public class IoTDBQueryResultSet implements ResultSet {
   // the next record rule considering both the maxRows constraint and the LIMIT&OFFSET constraint
   public boolean next() throws SQLException {
     if (maxRowsOrRowsLimit > 0 && rowsFetched >= maxRowsOrRowsLimit) {
-      // The constraint of maxRows instead of rowsLimit is embodied
-      if (rowsLimit == 0 || (maxRows > 0 && maxRows < rowsLimit)) {
-        logger.debug("Reach max rows " + maxRows);
-      }
       return false;
     }
 

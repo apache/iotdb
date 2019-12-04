@@ -46,7 +46,7 @@ public class MaxValueAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    Comparable<Object> maxVal = (Comparable<Object>) pageHeader.getStatistics().getMax();
+    Comparable<Object> maxVal = (Comparable<Object>) pageHeader.getStatistics().getMaxValue();
     updateResult(maxVal);
   }
 

@@ -71,13 +71,13 @@ public class Utils {
     }
   }
 
-  public static void isTwoTsDigestEqual(Statistics digestA, Statistics digestB, String name) {
-    if ((digestA == null) ^ (digestB == null)) {
+  public static void isTwoTsDigestEqual(Statistics statisticsA, Statistics statisticsB, String name) {
+    if ((statisticsA == null) ^ (statisticsB == null)) {
       System.out.println("error");
       fail(String.format("one of %s is null", name));
     }
-    if (digestA != null) {
-      Assert.assertEquals(digestA, digestB);
+    if (statisticsA != null) {
+      Assert.assertEquals(statisticsA, statisticsB);
     }
   }
 
@@ -118,9 +118,9 @@ public class Utils {
       assertTrue(metadata1.getNumOfPoints() == metadata2.getNumOfPoints());
       assertTrue(metadata1.getStartTime() == metadata2.getStartTime());
       assertTrue(metadata1.getEndTime() == metadata2.getEndTime());
-      assertNotNull(metadata1.getDigest());
-      assertNotNull(metadata2.getDigest());
-      Utils.isTwoTsDigestEqual(metadata1.getDigest(), metadata2.getDigest(), "TsDigest");
+      assertNotNull(metadata1.getStatistics());
+      assertNotNull(metadata2.getStatistics());
+      Utils.isTwoTsDigestEqual(metadata1.getStatistics(), metadata2.getStatistics(), "TsDigest");
     }
   }
 
@@ -206,8 +206,8 @@ public class Utils {
       assertTrue(header1.getUncompressedSize() == header2.getUncompressedSize());
       assertTrue(header1.getCompressedSize() == header2.getCompressedSize());
       assertTrue(header1.getNumOfValues() == header2.getNumOfValues());
-      assertTrue(header1.getMaxTimestamp() == header2.getMaxTimestamp());
-      assertTrue(header1.getMinTimestamp() == header2.getMinTimestamp());
+      assertTrue(header1.getEndTime() == header2.getEndTime());
+      assertTrue(header1.getStartTime() == header2.getStartTime());
       if (Utils
           .isTwoObjectsNotNULL(header1.getStatistics(), header2.getStatistics(), "statistics")) {
         Utils.isStatisticsEqual(header1.getStatistics(), header2.getStatistics());
@@ -225,11 +225,11 @@ public class Utils {
         fail("one of statistics is empty while the other one is not");
       }
       if (!statistics1.isEmpty() && !statistics2.isEmpty()) {
-        assertEquals(statistics1.getMin(), statistics2.getMin());
-        assertEquals(statistics1.getMax(), statistics2.getMax());
-        assertEquals(statistics1.getFirst(), statistics2.getFirst());
-        assertEquals(statistics1.getSum(), statistics2.getSum(), maxError);
-        assertEquals(statistics1.getLast(), statistics2.getLast());
+        assertEquals(statistics1.getMinValue(), statistics2.getMinValue());
+        assertEquals(statistics1.getMaxValue(), statistics2.getMaxValue());
+        assertEquals(statistics1.getFirstValue(), statistics2.getFirstValue());
+        assertEquals(statistics1.getSumValue(), statistics2.getSumValue(), maxError);
+        assertEquals(statistics1.getLastValue(), statistics2.getLastValue());
       }
     }
   }

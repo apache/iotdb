@@ -29,7 +29,7 @@ public class ChunkReaderWithoutFilter extends ChunkReader {
 
   @Override
   public boolean pageSatisfied(PageHeader pageHeader) {
-    return pageHeader.getMaxTimestamp() > deletedAt;
+    return pageHeader.getEndTime() > deletedAt;
   }
 
 }

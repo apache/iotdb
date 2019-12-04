@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.write;
 import java.io.File;
 import java.io.IOException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.NotCompatibleException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
@@ -40,7 +41,7 @@ import org.junit.Test;
 
 public class TsFileIOWriterTest {
 
-  private static String tsfile = "target/tsfileIOWriterTest.tsfile";
+  private static String tsfile = TestConstant.BASE_OUTPUT_PATH.concat("tsfileIOWriterTest.tsfile");
   private static String deviceId = "device1";
 
   @Before
@@ -54,13 +55,13 @@ public class TsFileIOWriterTest {
 
     // chunk statistics
     Statistics statistics = Statistics.getStatsByType(measurementSchema.getType());
-    statistics.updateStats(0L);
+    statistics.updateStats(0L, 0L);
 
     // chunk group 1
     writer.startChunkGroup(deviceId);
     writer.startFlushChunk(measurementSchema, measurementSchema.getCompressor(),
-        measurementSchema.getType(), measurementSchema.getEncodingType(), statistics, 0, 0, 0, 0);
-    writer.endChunk(0);
+        measurementSchema.getType(), measurementSchema.getEncodingType(), statistics, 0, 0);
+    writer.endCurrentChunk();
     writer.endChunkGroup(0);
 
     // end file

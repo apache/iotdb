@@ -31,7 +31,7 @@ public class ChunkReaderByTimestamp extends ChunkReader {
 
   @Override
   public boolean pageSatisfied(PageHeader pageHeader) {
-    long maxTimestamp = pageHeader.getMaxTimestamp();
+    long maxTimestamp = pageHeader.getEndTime();
     // if maxTimestamp > currentTimestamp, this page should NOT be skipped
     return maxTimestamp >= currentTimestamp && maxTimestamp > deletedAt;
   }
