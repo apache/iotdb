@@ -23,8 +23,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -436,4 +438,18 @@ public class StorageEngine implements IService {
     getProcessor(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
   }
 
+  /**
+   *
+   * @return TsFiles (seq or unseq) grouped by their storage group.
+   */
+  public Map<String, List<TsFileResource>> getAllClosedStorageGroupTsFile() {
+    Map<String, List<TsFileResource>> ret = new HashMap<>();
+    for (Entry<String, StorageGroupProcessor> entry : processorMap
+        .entrySet()) {
+      ret.computeIfAbsent(entry.getKey(), sg -> new ArrayList<>()).addAll(entry.getValue().getSequenceFileList());
+      ret.get(entry.getKey()).addAll(entry.getValue().getUnSequenceFileList());
+      ret.get(entry.getKey()).removeIf(file -> !file.isClosed());
+    }
+    return ret;
+  }
 }

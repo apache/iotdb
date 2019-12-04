@@ -4,7 +4,11 @@
 
 package org.apache.iotdb.cluster.utils;
 
+import static org.apache.iotdb.cluster.config.ClusterConstant.HASH_SALT;
+import static org.apache.iotdb.cluster.partition.SocketPartitionTable.PARTITION_INTERVAL;
+
 import java.util.Objects;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logs.PhysicalPlanLog;
@@ -65,7 +69,10 @@ public class PartitionUtils {
         return partitionByPathTime(createTimeSeriesPlan.getPath().getFullPath(), 0, partitionTable);
       } else if (plan instanceof InsertPlan) {
         InsertPlan insertPlan = ((InsertPlan) plan);
-        return partitionByPathTime(insertPlan.getDeviceId(), insertPlan.getTime(), partitionTable);
+        return partitionByPathTime(insertPlan.getDeviceId(), 0, partitionTable);
+        // TODO-Cluster: use time in partitioning
+        // return partitionByPathTime(insertPlan.getDeviceId(), insertPlan.getTime(),
+        // partitionTable);
       }
     } catch (StorageGroupNotSetException e) {
       logger.debug("Storage group is not found for plan {}", plan);
@@ -79,5 +86,11 @@ public class PartitionUtils {
       throws StorageGroupNotSetException {
     String storageGroup = MManager.getInstance().getStorageGroupNameByPath(path);
     return partitionTable.route(storageGroup, timestamp);
+  }
+
+  public static int calculateStorageGroupSocket(String storageGroupName, long timestamp) {
+    long partitionInstance = timestamp / PARTITION_INTERVAL;
+    int hash = Objects.hash(storageGroupName, partitionInstance * HASH_SALT);
+    return Math.abs(hash % ClusterConstant.SOCKET_NUM);
   }
 }

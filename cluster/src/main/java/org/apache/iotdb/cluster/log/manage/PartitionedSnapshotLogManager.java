@@ -32,10 +32,10 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(PartitionedSnapshotLogManager.class);
 
-  private Map<Integer, DataSimpleSnapshot> socketSnapshots = new HashMap<>();
+  Map<Integer, Snapshot> socketSnapshots = new HashMap<>();
   private Map<Integer, List<MeasurementSchema>> socketTimeseries = new HashMap<>();
-  private long snapshotLastLogId;
-  private long snapshotLastLogTerm;
+  long snapshotLastLogId;
+  long snapshotLastLogTerm;
   private PartitionTable partitionTable;
 
   public PartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable) {
@@ -48,7 +48,7 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
     // copy snapshots
     synchronized (socketSnapshots) {
       PartitionedSnapshot partitionedSnapshot = new PartitionedSnapshot();
-      for (Entry<Integer, DataSimpleSnapshot> entry : socketSnapshots.entrySet()) {
+      for (Entry<Integer, Snapshot> entry : socketSnapshots.entrySet()) {
         partitionedSnapshot.putSnapshot(entry.getKey(), entry.getValue());
       }
       partitionedSnapshot.setLastLogId(snapshotLastLogId);
@@ -59,29 +59,34 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
 
   @Override
   public void takeSnapshot() {
+    logger.info("Taking snapshots, flushing IoTDB");
+    StorageEngine.getInstance().syncCloseAllProcessor();
+    logger.info("Taking snapshots, IoTDB is flushed");
     synchronized (socketSnapshots) {
-      logger.info("Taking snapshots, flushing IoTDB");
-      StorageEngine.getInstance().syncCloseAllProcessor();
-      logger.info("Taking snapshots, IoTDB is flushed");
-
-      List<MNode> allSgNodes = MManager.getInstance().getAllStorageGroups();
-      for (MNode sgNode : allSgNodes) {
-        String storageGroupName = sgNode.getFullPath();
-        int socket = Objects.hash(storageGroupName, 0);
-        List<MeasurementSchema> schemas = socketTimeseries.computeIfAbsent(socket, s -> new ArrayList<>());
-        MManager.getInstance().collectSeries(sgNode, schemas);
-      }
+      collectTimeseriesSchemas();
 
       while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
         Log log = logBuffer.removeFirst();
-        socketSnapshots.computeIfAbsent(PartitionUtils.calculateLogSocket(log, partitionTable),
-            socket -> new DataSimpleSnapshot(socketTimeseries.get(socket))).add(log);
+        DataSimpleSnapshot dataSimpleSnapshot =
+            (DataSimpleSnapshot) socketSnapshots.computeIfAbsent(PartitionUtils.calculateLogSocket(log,
+            partitionTable), socket -> new DataSimpleSnapshot(socketTimeseries.get(socket)));
+        dataSimpleSnapshot.add(log);
         snapshotLastLogId = log.getCurrLogIndex();
         snapshotLastLogTerm = log.getCurrLogTerm();
       }
-      // TODO-Cluster: record closed data files in the snapshot
+
       logger.info("Snapshot is taken");
-      // TODO-Cluster: serialize the snapshots
+    }
+  }
+
+  void collectTimeseriesSchemas() {
+    socketTimeseries.clear();
+    List<MNode> allSgNodes = MManager.getInstance().getAllStorageGroups();
+    for (MNode sgNode : allSgNodes) {
+      String storageGroupName = sgNode.getFullPath();
+      int socket = Objects.hash(storageGroupName, 0);
+      List<MeasurementSchema> schemas = socketTimeseries.computeIfAbsent(socket, s -> new ArrayList<>());
+      MManager.getInstance().collectSeries(sgNode, schemas);
     }
   }
 

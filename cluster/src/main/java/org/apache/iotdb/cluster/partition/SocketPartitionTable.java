@@ -4,8 +4,6 @@
 
 package org.apache.iotdb.cluster.partition;
 
-import static org.apache.iotdb.cluster.config.ClusterConstant.HASH_SALT;
-
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -18,11 +16,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +34,7 @@ public class SocketPartitionTable implements PartitionTable {
 
   private static final int REPLICATION_NUM =
       ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
-  private static final long PARTITION_INTERVAL =
+  public static final long PARTITION_INTERVAL =
       ClusterDescriptor.getINSTANCE().getConfig().getPartitionInterval();
 
   private List<Node> nodeRing = new ArrayList<>();
@@ -140,13 +138,10 @@ public class SocketPartitionTable implements PartitionTable {
   @Override
   public PartitionGroup route(String storageGroupName, long timestamp) {
     synchronized (nodeRing) {
-      long partitionInstance = timestamp / PARTITION_INTERVAL;
-      int hash = Objects.hash(storageGroupName, partitionInstance * HASH_SALT);
-      int socketNum = Math.abs(hash % ClusterConstant.SOCKET_NUM);
+      int socketNum = PartitionUtils.calculateStorageGroupSocket(storageGroupName, timestamp);
       Node node = socketNodeMap.get(socketNum);
       logger.debug("The socket of {}@{} is {}, held by {}", storageGroupName, timestamp,
           socketNum, node);
-
       return getHeaderGroup(node);
     }
   }

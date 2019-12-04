@@ -5,6 +5,7 @@
 package org.apache.iotdb.cluster.log.snapshot;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -24,6 +25,21 @@ public class FileSnapshot extends Snapshot {
 
   private List<TsFileResource> dataFiles;
   private List<byte[]> md5s;
+
+  public FileSnapshot() {
+    dataFiles = new ArrayList<>();
+    md5s = new ArrayList<>();
+  }
+
+  public void addFile(TsFileResource resource) {
+    dataFiles.add(resource);
+    md5s.add(getFileMd5(resource));
+  }
+
+  private byte[] getFileMd5(TsFileResource resource) {
+    // TODO-Cluster: implement
+    return new byte[0];
+  }
 
   @Override
   public ByteBuffer serialize() {
