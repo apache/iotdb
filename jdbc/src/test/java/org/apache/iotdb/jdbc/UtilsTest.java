@@ -78,6 +78,12 @@ public class UtilsTest {
   }
 
   @Test(expected = IoTDBURLException.class)
+  public void testParseWrongUrl() throws IoTDBURLException {
+    Properties properties = new Properties();
+    Utils.parseUrl("jdbc:iotdb//test6667", properties);
+  }
+
+  @Test(expected = IoTDBURLException.class)
   public void testParseWrongPort() throws IoTDBURLException {
     String userName = "test";
     String userPwd = "test";
