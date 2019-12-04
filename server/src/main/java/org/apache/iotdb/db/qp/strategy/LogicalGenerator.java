@@ -511,7 +511,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     queryOp.setGroupBy(true);
 
     // parse timeUnit
-    System.out.println("Unit: " + ctx.DURATION(0).getText());
     queryOp.setUnit(parseDuration(ctx.DURATION(0).getText()));
     queryOp.setSlidingStep(queryOp.getUnit());
     // parse sliding step

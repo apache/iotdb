@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -27,10 +26,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import java.sql.*;
 
 import static org.apache.iotdb.db.integration.Constant.*;
 import static org.junit.Assert.*;
@@ -262,8 +258,7 @@ public class IOTDBGroupByInnerIntervalIT {
                       + "GROUP BY ([1, 30], -1ms)");
       fail();
     } catch (Exception e) {
-      System.out.println(e.getClass());
-      assertTrue(e instanceof SQLParserException);
+      assertTrue(e instanceof SQLException);
     }
   }
 
@@ -279,7 +274,7 @@ public class IOTDBGroupByInnerIntervalIT {
                       + "GROUP BY ([1, 30], 2ms, 1ms)");
       fail();
     } catch (Exception e) {
-      assertTrue(e instanceof SQLParserException);
+      assertTrue(e instanceof IoTDBSQLException);
     }
   }
 
