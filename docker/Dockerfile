@@ -26,7 +26,7 @@ RUN apt-get update \
 WORKDIR incubator-iotdb-master
 RUN mvn package -Papache-release -DskipTests
 RUN mkdir /iotdb \
-  && mv /incubator-iotdb-master/distribution/target/apache-iotdb-0.9.0-SNAPSHOT-incubating-bin/apache-iotdb-0.9.0-SNAPSHOT-incubating/* /iotdb/
+  && mv /incubator-iotdb-master/distribution/target/apache-iotdb-0.10.0-SNAPSHOT-incubating-bin/apache-iotdb-0.10.0-SNAPSHOT-incubating/* /iotdb/
 WORKDIR /
 RUN ls -lh ~/.m2 \
   && rm -rf ~/.m2 \
