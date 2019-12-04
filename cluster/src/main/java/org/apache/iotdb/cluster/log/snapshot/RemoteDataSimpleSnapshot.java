@@ -7,6 +7,7 @@ package org.apache.iotdb.cluster.log.snapshot;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import org.apache.iotdb.cluster.log.Log;
@@ -21,11 +22,14 @@ import org.slf4j.LoggerFactory;
 public class RemoteDataSimpleSnapshot extends DataSimpleSnapshot {
 
   private static final Logger logger = LoggerFactory.getLogger(RemoteDataSimpleSnapshot.class);
-  private Future<DataSimpleSnapshot> remoteSnapshotFuture;
+  private Future<Map<Integer, DataSimpleSnapshot>> remoteSnapshotFuture;
   private List<Log> tempList = new ArrayList<>();
+  private int socket;
 
-  public RemoteDataSimpleSnapshot(Future<DataSimpleSnapshot> remoteSnapshotFuture) {
+  public RemoteDataSimpleSnapshot(Future<Map<Integer, DataSimpleSnapshot>> remoteSnapshotFuture,
+      int socket) {
     this.remoteSnapshotFuture = remoteSnapshotFuture;
+    this.socket = socket;
   }
 
   @Override
@@ -71,13 +75,16 @@ public class RemoteDataSimpleSnapshot extends DataSimpleSnapshot {
     if (snapshot == null) {
       try {
         logger.info("Waiting for the remote snapshot");
-        DataSimpleSnapshot remoteSnapshot = remoteSnapshotFuture.get();
+        Map<Integer, DataSimpleSnapshot> remoteSnapshots = remoteSnapshotFuture.get();
         synchronized (this) {
           logger.info("The remote snapshot is ready");
-          snapshot = remoteSnapshot.snapshot;
-          timeseriesSchemas = remoteSnapshot.timeseriesSchemas;
-          snapshot.addAll(tempList);
-          tempList = null;
+          DataSimpleSnapshot remoteSnapshot = remoteSnapshots.get(socket);
+          if (remoteSnapshot != null) {
+            snapshot = remoteSnapshot.snapshot;
+            timeseriesSchemas.addAll(remoteSnapshot.timeseriesSchemas);
+            snapshot.addAll(tempList);
+            tempList = null;
+          }
         }
       } catch (InterruptedException | ExecutionException e) {
         Thread.currentThread().interrupt();

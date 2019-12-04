@@ -9,8 +9,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -20,7 +22,6 @@ import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
-import org.apache.iotdb.cluster.exception.NotManagedSocketException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
@@ -265,20 +266,26 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // this synchronized should work with the one in AppendEntry when a log is going to commit,
     // which may prevent the newly arrived data from being invisible to the new header.
     synchronized (logManager) {
-      int requiredSocket = request.getRequiredSocket();
+      List<Integer> requiredSockets = request.getRequiredSockets();
       // check whether this socket is held by the node
       List<Integer> heldSockets = metaGroupMember.getPartitionTable().getNodeSockets(getHeader());
-      if (!heldSockets.contains(requiredSocket)) {
-        resultHandler.onError(new NotManagedSocketException(requiredSocket, heldSockets));
-        return;
-      }
 
-      logManager.takeSnapshot();
-      PartitionedSnapshot allSnapshot = (PartitionedSnapshot) logManager.getSnapshot();
-      Snapshot snapshot = allSnapshot.getSnapshot(requiredSocket);
       PullSnapshotResp resp = new PullSnapshotResp();
-      resp.setSnapshotBytes(snapshot.serialize());
-      logger.debug("{} sending snapshot {} to the requester", name, snapshot);
+      Map<Integer, ByteBuffer> resultMap = new HashMap<>();
+      logManager.takeSnapshot();
+
+      for (int requiredSocket : requiredSockets) {
+        if (!heldSockets.contains(requiredSocket)) {
+          logger.debug("{}: the required socket {} is not held by the node", name, requiredSocket);
+          continue;
+        }
+
+        PartitionedSnapshot allSnapshot = (PartitionedSnapshot) logManager.getSnapshot();
+        Snapshot snapshot = allSnapshot.getSnapshot(requiredSocket);
+        resultMap.put(requiredSocket, snapshot.serialize());
+      }
+      resp.setSnapshotBytes(resultMap);
+      logger.debug("{}: Sending {} snapshots to the requester", name, resultMap.size());
       resultHandler.onComplete(resp);
     }
   }
@@ -288,23 +295,32 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       logger.info("{} pulling {} sockets from remote", name, sockets.size());
       PartitionedSnapshot snapshot = (PartitionedSnapshot) logManager.getSnapshot();
       Map<Integer, Node> prevHolders = metaGroupMember.getPartitionTable().getPreviousNodeMap(newNode);
+      Map<Node, List<Integer>> holderSocketsMap = new HashMap<>();
       // logger.debug("{}: Holders of each socket: {}", name, prevHolders);
 
       for (int socket : sockets) {
-        Node node = prevHolders.get(socket);
         if (snapshot.getSnapshot(socket) == null) {
-          Future<DataSimpleSnapshot> snapshotFuture =
-              pullSnapshotService.submit(new PullSnapshotTask(node, socket, this,
-                  metaGroupMember.getPartitionTable().getHeaderGroup(node)));
-          logManager.setSnapshot(new RemoteDataSimpleSnapshot(snapshotFuture), socket);
+          Node node = prevHolders.get(socket);
+          holderSocketsMap.computeIfAbsent(node, n -> new ArrayList<>()).add(socket);
+        }
+      }
+
+      for (Entry<Node, List<Integer>> entry : holderSocketsMap.entrySet()) {
+        Node node = entry.getKey();
+        List<Integer> nodeSockets = entry.getValue();
+        Future<Map<Integer, DataSimpleSnapshot>> snapshotFuture =
+            pullSnapshotService.submit(new PullSnapshotTask(node, nodeSockets, this,
+                metaGroupMember.getPartitionTable().getHeaderGroup(node)));
+        for (int socket : sockets) {
+          logManager.setSnapshot(new RemoteDataSimpleSnapshot(snapshotFuture, socket), socket);
         }
       }
     }
   }
 
-  class PullSnapshotTask implements Callable<DataSimpleSnapshot> {
+  class PullSnapshotTask implements Callable<Map<Integer, DataSimpleSnapshot>> {
 
-    int socket;
+    List<Integer> sockets;
     // the new member created by a node addition
     DataGroupMember newMember;
     // the nodes the may hold the target socket
@@ -314,15 +330,15 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
     PullSnapshotRequest request;
 
-    PullSnapshotTask(Node header, int socket,
+    PullSnapshotTask(Node header, List<Integer> sockets,
         DataGroupMember member, List<Node> oldMembers) {
       this.header = header;
-      this.socket = socket;
+      this.sockets = sockets;
       this.newMember = member;
       this.oldMembers = oldMembers;
     }
 
-    private boolean pullSnapshot(AtomicReference<DataSimpleSnapshot> snapshotRef, int nodeIndex)
+    private boolean pullSnapshot(AtomicReference<Map<Integer, DataSimpleSnapshot>> snapshotRef, int nodeIndex)
         throws InterruptedException, TException {
       Node node = oldMembers.get(nodeIndex);
       TSDataService.AsyncClient client =
@@ -332,17 +348,17 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         Thread.sleep(ClusterConstant.CONNECTION_TIME_OUT_MS);
       } else {
         synchronized (snapshotRef) {
-          client.pullSnapshot(request, new PullSnapshotHandler(snapshotRef, node, socket));
+          client.pullSnapshot(request, new PullSnapshotHandler(snapshotRef, node, sockets));
           snapshotRef.wait(ClusterConstant.CONNECTION_TIME_OUT_MS);
         }
-        DataSimpleSnapshot result = snapshotRef.get();
+        Map<Integer, DataSimpleSnapshot> result = snapshotRef.get();
         if (result != null) {
           if (logger.isInfoEnabled()) {
-            logger.info("{} received a snapshot {} of socket {} from {}", name,
-                snapshotRef.get(),
-                socket, oldMembers.get(nodeIndex));
+            logger.info("{} received a snapshot {} from {}", name, snapshotRef.get(), oldMembers.get(nodeIndex));
           }
-          newMember.applySnapshot(result, socket);
+          for (Entry<Integer, DataSimpleSnapshot> entry : result.entrySet()) {
+            newMember.applySnapshot(entry.getValue(), entry.getKey());
+          }
           return true;
         } else {
           Thread.sleep(PULL_SNAPSHOT_RETRY_INTERVAL);
@@ -352,11 +368,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
 
     @Override
-    public DataSimpleSnapshot call() {
+    public Map<Integer, DataSimpleSnapshot> call() {
       request = new PullSnapshotRequest();
       request.setHeader(header);
-      request.setRequiredSocket(socket);
-      AtomicReference<DataSimpleSnapshot> snapshotRef = new AtomicReference<>();
+      request.setRequiredSockets(sockets);
+      AtomicReference<Map<Integer, DataSimpleSnapshot>> snapshotRef = new AtomicReference<>();
       boolean finished = false;
       int nodeIndex = -1;
       while (!finished) {
@@ -366,10 +382,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
           finished = pullSnapshot(snapshotRef, nodeIndex);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
-          logger.error("{}: Unexpected interruption when pulling socket {}", name, socket, e);
+          logger.error("{}: Unexpected interruption when pulling socket {}", name, sockets, e);
           finished = true;
         } catch (TException e) {
-          logger.debug("{} cannot pull socket {} from {}, retry", name, socket, header, e);
+          logger.debug("{} cannot pull socket {} from {}, retry", name, sockets, header, e);
         }
       }
       return snapshotRef.get();

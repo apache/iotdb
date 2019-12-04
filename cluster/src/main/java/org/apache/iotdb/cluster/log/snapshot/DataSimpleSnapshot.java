@@ -18,8 +18,9 @@ public class DataSimpleSnapshot extends SimpleSnapshot {
 
   List<MeasurementSchema> timeseriesSchemas;
 
-  DataSimpleSnapshot() {
+  public DataSimpleSnapshot() {
     snapshot = new ArrayList<>();
+    timeseriesSchemas = new ArrayList<>();
   }
 
   public DataSimpleSnapshot(List<MeasurementSchema> timeseriesSchemas) {

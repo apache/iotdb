@@ -4,8 +4,13 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
+import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.DataSimpleSnapshot;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -18,12 +23,12 @@ import org.slf4j.LoggerFactory;
 public class PullSnapshotHandler implements AsyncMethodCallback<PullSnapshotResp> {
 
   private static final Logger logger = LoggerFactory.getLogger(PullSnapshotHandler.class);
-  private AtomicReference<SimpleSnapshot> resultRef;
+  private AtomicReference<Map<Integer, DataSimpleSnapshot>> resultRef;
   private Node node;
-  private int socket;
+  private List<Integer> socket;
 
-  public PullSnapshotHandler(AtomicReference resultRef,
-      Node node, int socket) {
+  public PullSnapshotHandler(AtomicReference<Map<Integer, DataSimpleSnapshot>> resultRef,
+      Node node, List<Integer> socket) {
     this.resultRef = resultRef;
     this.node = node;
     this.socket = socket;
@@ -32,11 +37,14 @@ public class PullSnapshotHandler implements AsyncMethodCallback<PullSnapshotResp
   @Override
   public void onComplete(PullSnapshotResp response) {
     synchronized (resultRef) {
-      if (response.getSnapshotBytes().length > 0) {
-        SimpleSnapshot snapshot = new SimpleSnapshot();
-        snapshot.deserialize(response.snapshotBytes);
-        resultRef.set(snapshot);
+      Map<Integer, DataSimpleSnapshot> ret = new HashMap<>();
+      Map<Integer, ByteBuffer> snapshotBytes = response.snapshotBytes;
+      for (Entry<Integer, ByteBuffer> entry : snapshotBytes.entrySet()) {
+        DataSimpleSnapshot snapshot = new DataSimpleSnapshot();
+        snapshot.deserialize(entry.getValue());
+        ret.put(entry.getKey(), snapshot);
       }
+      resultRef.set(ret);
       resultRef.notifyAll();
     }
   }

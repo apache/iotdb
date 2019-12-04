@@ -109,13 +109,13 @@ struct SendSnapshotRequest {
 }
 
 struct PullSnapshotRequest {
-  1: required int requiredSocket
+  1: required list<int> requiredSockets
   // for data group
   2: optional Node header
 }
 
 struct PullSnapshotResp {
-  1: optional binary snapshotBytes
+  1: optional map<int, binary> snapshotBytes
 }
 
 struct ExecutNonQueryReq {
@@ -192,9 +192,9 @@ service RaftService {
   long requestCommitIndex(1:Node header)
 
   /**
-    * Pull all timeseries schemas prefixed by a given path.
-    **/
-    PullSchemaResp pullTimeSeriesSchema(1: PullSchemaRequest request)
+  * Pull all timeseries schemas prefixed by a given path.
+  **/
+  PullSchemaResp pullTimeSeriesSchema(1: PullSchemaRequest request)
 }
 
 
