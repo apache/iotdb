@@ -17,15 +17,20 @@ import org.apache.iotdb.cluster.log.snapshot.DataSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * PartitionedSnapshotLogManager provides a PartitionedSnapshot as snapshot, dividing each log to
  * a sub-snapshot according to its socket and stores timeseries schemas of each socket.
  */
 public class PartitionedSnapshotLogManager extends MemoryLogManager {
+
+  private static final Logger logger = LoggerFactory.getLogger(PartitionedSnapshotLogManager.class);
 
   private Map<Integer, DataSimpleSnapshot> socketSnapshots = new HashMap<>();
   private Map<Integer, List<MeasurementSchema>> socketTimeseries = new HashMap<>();
@@ -55,6 +60,10 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
   @Override
   public void takeSnapshot() {
     synchronized (socketSnapshots) {
+      logger.info("Taking snapshots, flushing IoTDB");
+      StorageEngine.getInstance().syncCloseAllProcessor();
+      logger.info("Taking snapshots, IoTDB is flushed");
+
       List<MNode> allSgNodes = MManager.getInstance().getAllStorageGroups();
       for (MNode sgNode : allSgNodes) {
         String storageGroupName = sgNode.getFullPath();
@@ -70,6 +79,9 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
         snapshotLastLogId = log.getCurrLogIndex();
         snapshotLastLogTerm = log.getCurrLogTerm();
       }
+      // TODO-Cluster: record closed data files in the snapshot
+      logger.info("Snapshot is taken");
+      // TODO-Cluster: serialize the snapshots
     }
   }
 
