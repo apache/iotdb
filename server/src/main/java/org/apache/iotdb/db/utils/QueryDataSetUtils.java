@@ -124,7 +124,8 @@ public class QueryDataSetUtils {
             }
           }
         }
-        if (rowCount % 8 == 0 && rowCount != 0) {
+        rowCount++;
+        if (rowCount % 8 == 0) {
           for (int j = 0; j < bitmap.length; j++) {
             DataOutputStream dataBitmapOutputStream = dataOutputStreams[2*(j+1)];
             dataBitmapOutputStream.writeByte(bitmap[j]);
@@ -132,8 +133,6 @@ public class QueryDataSetUtils {
             bitmap[j] = 0;
           }
         }
-        rowCount++;
-
       } else {
         break;
       }

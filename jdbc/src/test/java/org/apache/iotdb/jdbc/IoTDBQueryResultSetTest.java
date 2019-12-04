@@ -216,7 +216,6 @@ public class IoTDBQueryResultSetTest {
           resultStr.append(resultSet.getString(i)).append(",");
         }
         resultStr.append("\n");
-        System.out.println(resultStr);
         fetchResultsResp.hasResultSet = false; // at the second time to fetch
       }
       String standard =
@@ -291,7 +290,7 @@ public class IoTDBQueryResultSetTest {
           }
         }
       }
-      if (i % 8 == 0 && i != 0) {
+      if (i % 8 == 7) {
         for (int j = 0; j < bitmap.length; j++) {
           DataOutputStream dataBitmapOutputStream = dataOutputStreams[2*(j+1)];
           dataBitmapOutputStream.writeByte(bitmap[j]);

@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.thrift.TException;
 import org.slf4j.LoggerFactory;
@@ -62,7 +63,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   private boolean emptyResultSet = false;
   
   private TSQueryDataSet tsQueryDataSet = null;
-  Object[] record;
+  private byte[][] record;
   private static final int flag = 0x80;
 
   // 0 means it is not constrained in sql
@@ -99,7 +100,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     this.maxRows = statement.getMaxRows();
     this.fetchSize = statement.getFetchSize();
     this.columnTypeList = columnTypeList;
-    record = new Object[columnNameList.size()+1];
+    record = new byte[columnNameList.size()+1][];
 
     this.columnInfoList = new ArrayList<>();
     this.columnInfoList.add(TIMESTAMP_STR);
@@ -300,13 +301,8 @@ public class IoTDBQueryResultSet implements ResultSet {
   public boolean getBoolean(String columnName) throws SQLException {
     checkRecord();
     int index = columnInfoMap.get(columnName) - START_INDEX;
-    if (!isNull(index, rowsIndex-1) &&
-            TSDataType.valueOf(columnTypeList.get(index)) == TSDataType.BOOLEAN) {
-      ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(index);
-      int beforePosition = valueBuffer.position();
-      boolean res = ReadWriteIOUtils.readBool(valueBuffer);
-      valueBuffer.position(beforePosition);
-      return res;
+    if (record[index+1] != null) {
+      return BytesUtils.bytesToBool(record[index+1]);
     }
     else {
       throw new SQLException(
@@ -393,17 +389,12 @@ public class IoTDBQueryResultSet implements ResultSet {
   public double getDouble(String columnName) throws SQLException {
     checkRecord();
     int index = columnInfoMap.get(columnName) - START_INDEX;
-    if (!isNull(index, rowsIndex-1) &&
-            TSDataType.valueOf(columnTypeList.get(index)) == TSDataType.DOUBLE) {
-      ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(index);
-      int beforePosition = valueBuffer.position();
-      double res = ReadWriteIOUtils.readDouble(valueBuffer);
-      valueBuffer.position(beforePosition);
-      return res;
+    if (record[index+1] != null) {
+      return Utils.bytesToDouble(record[index+1]);
     }
     else {
       throw new SQLException(
-          String.format("The value got by %s (column name) is NULL.", columnName));
+              String.format("The value got by %s (column name) is NULL.", columnName));
     }
   }
 
@@ -436,17 +427,12 @@ public class IoTDBQueryResultSet implements ResultSet {
   public float getFloat(String columnName) throws SQLException {
     checkRecord();
     int index = columnInfoMap.get(columnName) - START_INDEX;
-    if (!isNull(index, rowsIndex-1) &&
-            TSDataType.valueOf(columnTypeList.get(index)) == TSDataType.FLOAT) {
-      ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(index);
-      int beforePosition = valueBuffer.position();
-      float res = ReadWriteIOUtils.readFloat(valueBuffer);
-      valueBuffer.position(beforePosition);
-      return res;
+    if (record[index+1] != null) {
+      return Utils.bytesToFloat(record[index+1]);
     }
     else {
       throw new SQLException(
-          String.format("The value got by %s (column name) is NULL.", columnName));
+              String.format("The value got by %s (column name) is NULL.", columnName));
     }
   }
 
@@ -464,17 +450,12 @@ public class IoTDBQueryResultSet implements ResultSet {
   public int getInt(String columnName) throws SQLException {
     checkRecord();
     int index = columnInfoMap.get(columnName) - START_INDEX;
-    if (!isNull(index, rowsIndex-1) &&
-            TSDataType.valueOf(columnTypeList.get(index)) == TSDataType.INT32) {
-      ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(index);
-      int beforePosition = valueBuffer.position();
-      int res = ReadWriteIOUtils.readInt(valueBuffer);
-      valueBuffer.position(beforePosition);
-      return res;
+    if (record[index+1] != null) {
+      return Utils.bytesToInt(record[index+1]);
     }
     else {
       throw new SQLException(
-          String.format("The value got by %s (column name) is NULL.", columnName));
+              String.format("The value got by %s (column name) is NULL.", columnName));
     }
   }
 
@@ -487,23 +468,15 @@ public class IoTDBQueryResultSet implements ResultSet {
   public long getLong(String columnName) throws SQLException {
     checkRecord();
     if (columnName.equals(TIMESTAMP_STR)) {
-      ByteBuffer timeBuffer = tsQueryDataSet.time;
-      int beforePosition = timeBuffer.position();
-      timeBuffer.position(beforePosition-Long.BYTES);
-      return ReadWriteIOUtils.readLong(timeBuffer);
+      return Utils.bytesToLong(record[0]);
     }
     int index = columnInfoMap.get(columnName) - START_INDEX;
-    if (!isNull(index, rowsIndex-1) &&
-            TSDataType.valueOf(columnTypeList.get(index)) == TSDataType.INT64) {
-      ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(index);
-      int beforePosition = valueBuffer.position();
-      long res = ReadWriteIOUtils.readLong(valueBuffer);
-      valueBuffer.position(beforePosition);
-      return res;
+    if (record[index+1] != null) {
+      return Utils.bytesToLong(record[index+1]);
     }
     else {
       throw new SQLException(
-          String.format("The value got by %s (column name) is NULL.", columnName));
+              String.format("The value got by %s (column name) is NULL.", columnName));
     }
   }
 
@@ -779,14 +752,12 @@ public class IoTDBQueryResultSet implements ResultSet {
   }
 
   private void constructOneRow() {
-    long time = ReadWriteIOUtils.readLong(tsQueryDataSet.time);
-    record[0] = time;
+    record[0] = new byte[Long.BYTES];
+    tsQueryDataSet.time.get(record[0]);
     for (int i = 0; i < tsQueryDataSet.bitmapList.size(); i++) {
       ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(i);
       // another new 8 row, should move the bitmap buffer position to next byte
       if (rowsIndex % 8 == 0) {
-        System.out.println(rowsIndex);
-        System.out.println("index: " + i + " position: " + bitmapBuffer.position()  + " limit: " + bitmapBuffer.limit());
         bitmapBuffer.get();
       }
 
@@ -795,31 +766,35 @@ public class IoTDBQueryResultSet implements ResultSet {
       if (!isNull(i, rowsIndex)) {
         ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(i);
         TSDataType dataType = TSDataType.valueOf(columnTypeList.get(i));
-        Object field;
         switch (dataType) {
           case BOOLEAN:
-            field = ReadWriteIOUtils.readBool(valueBuffer);
+            record[i+1] = new byte[1];
+            valueBuffer.get(record[i+1]);
             break;
           case INT32:
-            field = ReadWriteIOUtils.readInt(valueBuffer);
+            record[i+1] = new byte[Integer.BYTES];
+            valueBuffer.get(record[i+1]);
             break;
           case INT64:
-            field = ReadWriteIOUtils.readLong(valueBuffer);
+            record[i+1] = new byte[Long.BYTES];
+            valueBuffer.get(record[i+1]);
             break;
           case FLOAT:
-            field = ReadWriteIOUtils.readFloat(valueBuffer);
+            record[i+1] = new byte[Float.BYTES];
+            valueBuffer.get(record[i+1]);
             break;
           case DOUBLE:
-            field = ReadWriteIOUtils.readDouble(valueBuffer);
+            record[i+1] = new byte[Double.BYTES];
+            valueBuffer.get(record[i+1]);
             break;
           case TEXT:
-            field = ReadWriteIOUtils.readBinary(valueBuffer);
+            int length = valueBuffer.getInt();
+            record[i+1] = ReadWriteIOUtils.readBytes(valueBuffer, length);
             break;
           default:
             throw new UnSupportedDataTypeException(
                     String.format("Data type %s is not supported.", columnTypeList.get(i)));
         }
-        record[i+1] = field;
       }
     }
     rowsIndex++;
@@ -867,7 +842,6 @@ public class IoTDBQueryResultSet implements ResultSet {
     } else { // maxRowsOrRowsLimit=0 means neither maxRows nor LIMIT is constrained.
       isNext = nextWithoutConstraints(fetchSize);
     }
-    System.out.println("isNext: " + isNext);
 
     if (isNext) {
       /*
@@ -1332,7 +1306,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   }
 
   private void checkRecord() throws SQLException {
-    if (tsQueryDataSet == null || tsQueryDataSet.time.limit() == 0) {
+    if (Objects.isNull(record)) {
       throw new SQLException("No record remains");
     }
   }
@@ -1351,51 +1325,29 @@ public class IoTDBQueryResultSet implements ResultSet {
   private String getValueByName(String columnName) throws SQLException {
     checkRecord();
     if (columnName.equals(TIMESTAMP_STR)) {
-      ByteBuffer timeBuffer = tsQueryDataSet.time;
-      int beforePosition = timeBuffer.position();
-      timeBuffer.position(beforePosition-Long.BYTES);
-      return String.valueOf(ReadWriteIOUtils.readLong(timeBuffer));
+      return String.valueOf(Utils.bytesToLong(record[0]));
     }
     int index = columnInfoMap.get(columnName) - START_INDEX;
-    if (index < 0 || index >= columnTypeList.size()) {
+    if (index < 0 || index >= record.length-1 || record[index+1] == null) {
       return null;
     }
-    if (!isNull(index, rowsIndex-1)) {
-      ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(index);
-      int beforePosition = valueBuffer.position();
-      TSDataType dataType = TSDataType.valueOf(columnTypeList.get(index));
-      switch (dataType) {
-        case BOOLEAN:
-          boolean resBool = ReadWriteIOUtils.readBool(valueBuffer);
-          valueBuffer.position(beforePosition);
-          return String.valueOf(resBool);
-        case INT32:
-          int resInt = ReadWriteIOUtils.readInt(valueBuffer);
-          valueBuffer.position(beforePosition);
-          return String.valueOf(resInt);
-        case INT64:
-          long resLong = ReadWriteIOUtils.readLong(valueBuffer);
-          valueBuffer.position(beforePosition);
-          return String.valueOf(resLong);
-        case FLOAT:
-          float resFloat = ReadWriteIOUtils.readFloat(valueBuffer);
-          valueBuffer.position(beforePosition);
-          return String.valueOf(resFloat);
-        case DOUBLE:
-          double resDouble = ReadWriteIOUtils.readDouble(valueBuffer);
-          valueBuffer.position(beforePosition);
-          return String.valueOf(resDouble);
-        case TEXT:
-          int binarySize = valueBuffer.getInt();
-          byte[] binaryValue = new byte[binarySize];
-          valueBuffer.get(binaryValue);
-          valueBuffer.position(beforePosition);
-          return new String(binaryValue);
-        default:
-          return null;
-      }
+    TSDataType dataType = TSDataType.valueOf(columnTypeList.get(index));
+    switch (dataType) {
+      case BOOLEAN:
+        return String.valueOf(BytesUtils.bytesToBool(record[index+1]));
+      case INT32:
+        return String.valueOf(Utils.bytesToInt(record[index+1]));
+      case INT64:
+        return String.valueOf(Utils.bytesToLong(record[index+1]));
+      case FLOAT:
+        return String.valueOf(Utils.bytesToFloat(record[index+1]));
+      case DOUBLE:
+        return String.valueOf(Utils.bytesToDouble(record[index+1]));
+      case TEXT:
+        return new String(record[index+1]);
+      default:
+        return null;
     }
-    return null;
   }
 
   public boolean isIgnoreTimeStamp() {

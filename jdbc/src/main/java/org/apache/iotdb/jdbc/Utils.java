@@ -73,5 +73,31 @@ public class Utils {
 
     return params;
   }
+
+  static float bytesToFloat(byte[] b) {
+    return Float.intBitsToFloat(bytesToInt(b));
+  }
+
+  static int bytesToInt(byte[] b) {
+    int l = 0;
+    for (int i = 0; i < Integer.BYTES; i++) {
+      l |= (b[3-i] << (8 * i)) & (0xFF << (8 * i));
+    }
+
+    return l;
+  }
+
+  static double bytesToDouble(byte[] b) {
+    return Double.longBitsToDouble(bytesToLong(b));
+  }
+
+  static long bytesToLong(byte[] b) {
+    long l = 0;
+    for (int i = 0; i < Long.BYTES; i++) {
+      l |= ((long) b[7-i] << (8 * i)) & (0xFFL << (8 * i));
+    }
+
+    return l;
+  }
   
 }
