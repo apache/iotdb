@@ -75,7 +75,7 @@ public abstract class MemoryLogManager implements LogManager {
   }
 
   @Override
-  public void commitLog(long maxLogIndex) {
+  public synchronized void commitLog(long maxLogIndex) {
     if (maxLogIndex <= commitLogIndex) {
       return;
     }

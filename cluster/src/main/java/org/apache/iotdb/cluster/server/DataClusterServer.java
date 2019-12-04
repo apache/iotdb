@@ -23,6 +23,8 @@ import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncProcessor;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
@@ -234,6 +236,26 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
+  public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
+    if (header == null) {
+      resultHandler.onError(new NoHeaderNodeException());
+      return;
+    }
+
+    DataGroupMember member = getDataMember(header);
+    if (member == null) {
+      if (partitionTable != null) {
+        resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
+            thisNode));
+      } else {
+        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
+      }
+    }  else {
+      member.requestCommitIndex(header, resultHandler);
+    }
+  }
+
+  @Override
   AsyncProcessor getProcessor() {
     return new AsyncProcessor(this);
   }
@@ -267,6 +289,28 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
           dataGroupMember.stop();
         }
       }
+    }
+  }
+
+  @Override
+  public void pullTimeSeriesSchema(PullSchemaRequest request,
+      AsyncMethodCallback<PullSchemaResp> resultHandler) {
+    if (!request.isSetHeader()) {
+      resultHandler.onError(new NoHeaderNodeException());
+      return;
+    }
+
+    Node header = request.getHeader();
+    DataGroupMember member = getDataMember(header);
+    if (member == null) {
+      if (partitionTable != null) {
+        resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
+            thisNode));
+      } else {
+        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
+      }
+    }  else {
+      member.pullTimeSeriesSchema(request, resultHandler);
     }
   }
 

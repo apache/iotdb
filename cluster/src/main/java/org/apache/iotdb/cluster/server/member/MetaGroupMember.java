@@ -4,6 +4,8 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import static org.apache.iotdb.cluster.server.RaftServer.CONNECTION_TIME_OUT_MS;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -29,9 +31,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.MetaClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
+import org.apache.iotdb.cluster.exception.NotInSameGroupException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
@@ -49,6 +53,8 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
@@ -59,6 +65,7 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardAddNodeHandler;
 import org.apache.iotdb.cluster.server.heartbeat.MetaHeartBeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
@@ -66,12 +73,15 @@ import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.async.TAsyncClientManager;
@@ -103,8 +113,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private ClientServer clientServer;
 
   // all data servers in this node shares the same partitioned data log manager
+  QueryProcessExecutor queryExecutor;
   private LogApplier metaLogApplier = new MetaLogApplier(this);
-  private LogApplier dataLogApplier = new DataLogApplier();
+  private LogApplier dataLogApplier = new DataLogApplier(this);
   private DataGroupMember.Factory dataMemberFactory;
 
   private MetaSingleSnapshotLogManager logManager;
@@ -245,7 +256,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   /**
    * This node is a node seed node and wants to join an established cluster
    */
-  public void joinCluster() {
+  public boolean joinCluster() {
     int retry = DEFAULT_JOIN_RETRY;
     Node[] nodes = allNodes.toArray(new Node[0]);
     JoinClusterHandler handler = new JoinClusterHandler();
@@ -262,15 +273,16 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           setCharacter(NodeCharacter.FOLLOWER);
           setLastHeartBeatReceivedTime(System.currentTimeMillis());
           heartBeatService.submit(new MetaHeartBeatThread(this));
-          // TODO-Cluster: pull data from the previous socket holders
-          return;
+          return true;
         }
+        // wait a heartbeat to start the next try
+        Thread.sleep(ClusterConstant.HEART_BEAT_INTERVAL_MS);
       } catch (TException | IOException e) {
         logger.warn("Cannot join the cluster from {}, because:", node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn("Cannot join the cluster from {}, because time out after {}ms",
-            node, CONNECTION_TIME_OUT_MS);
+            node, ClusterConstant.CONNECTION_TIME_OUT_MS);
       }
       // start next try
       retry--;
@@ -278,6 +290,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     // all tries failed
     logger.error("Cannot join the cluster after {} retries", DEFAULT_JOIN_RETRY);
     stop();
+    return false;
   }
 
   private boolean joinCluster(Node node, AtomicReference<AddNodeResponse> response,
@@ -290,7 +303,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
       synchronized (response) {
         client.addNode(thisNode, handler);
-        response.wait(CONNECTION_TIME_OUT_MS);
+        response.wait(ClusterConstant.CONNECTION_TIME_OUT_MS);
       }
       AddNodeResponse resp = response.get();
       if (resp == null) {
@@ -635,7 +648,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
 
       try {
-        groupRemainings.wait(CONNECTION_TIME_OUT_MS);
+        groupRemainings.wait(ClusterConstant.CONNECTION_TIME_OUT_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
@@ -852,7 +865,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     return forwardPlan(plan, leader);
   }
 
-
   private TSStatus processPartitionedPlan(PhysicalPlan plan) throws UnsupportedPlanException {
     logger.debug("{}: Received a partitioned plan {}", name, plan);
     if (partitionTable == null) {
@@ -877,5 +889,63 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       // forward the query to the group that should handle it
       return forwardPlan(plan, partitionGroup);
     }
+  }
+
+  /**
+   * Pull the all timeseries schemas of a given device from a remote node.
+   * @param deviceId
+   */
+  public void pullDeviceSchemas(String deviceId) throws StorageGroupNotSetException {
+    logger.debug("{}: Pulling timeseries schemas of {}", name, deviceId);
+    PartitionGroup partitionGroup;
+    try {
+      partitionGroup = PartitionUtils.partitionByPathTime(deviceId, 0, partitionTable);
+    } catch (StorageGroupNotSetException e) {
+      // the storage group is not found locally, but may be found in the leader, retry after
+      // synchronizing with the leader
+      if (syncLeader()) {
+        partitionGroup = PartitionUtils.partitionByPathTime(deviceId, 0, partitionTable);
+      } else {
+        throw e;
+      }
+    }
+
+    PullSchemaRequest pullSchemaRequest = new PullSchemaRequest();
+    pullSchemaRequest.setHeader(partitionGroup.getHeader());
+    pullSchemaRequest.setPrefixPath(deviceId);
+    AtomicReference<List<MeasurementSchema>> timeseriesSchemas = new AtomicReference<>();
+    for (Node node : partitionGroup) {
+      logger.debug("{}: Pulling timeseries schemas of {} from {}", name, deviceId, node);
+      AsyncClient client = (AsyncClient) connectNode(node);
+      synchronized (timeseriesSchemas) {
+        try {
+          client.pullTimeSeriesSchema(pullSchemaRequest, new PullTimeseriesSchemaHandler(node,
+              deviceId, timeseriesSchemas));
+          timeseriesSchemas.wait(CONNECTION_TIME_OUT_MS);
+        } catch (TException | InterruptedException e) {
+          logger.error("{}: Cannot pull timeseries schemas of {} from {}", name, deviceId, node, e);
+          continue;
+        }
+      }
+      List<MeasurementSchema> schemas = timeseriesSchemas.get();
+      if (schemas != null) {
+        for (MeasurementSchema schema : schemas) {
+          SchemaUtils.registerTimeseries(schema);
+        }
+        return;
+      }
+    }
+  }
+
+  @Override
+  public void pullTimeSeriesSchema(PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+    Node header = request.getHeader();
+    DataGroupMember dataGroupMember = dataClusterServer.getDataMember(header);
+    if (dataGroupMember == null) {
+      resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header), thisNode));
+      return;
+    }
+
+    dataGroupMember.pullTimeSeriesSchema(request, resultHandler);
   }
 }

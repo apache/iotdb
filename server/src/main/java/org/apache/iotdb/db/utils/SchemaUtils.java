@@ -18,14 +18,27 @@
  */
 package org.apache.iotdb.db.utils;
 
+import java.util.Collections;
 import java.util.List;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class SchemaUtils {
+
+  private static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
 
   private SchemaUtils(){}
 
@@ -53,5 +66,27 @@ public class SchemaUtils {
       schema.registerMeasurement(measurementSchema);
     }
     return schema;
+  }
+
+  public static void registerTimeseries(MeasurementSchema schema) {
+    try {
+      String path = schema.getMeasurementId();
+      TSDataType dataType = schema.getType();
+      TSEncoding encoding = schema.getEncodingType();
+      CompressionType compressionType = schema.getCompressor();
+      MManager.getInstance().addPathToMTree(path, dataType, encoding, compressionType,
+          Collections.emptyMap());
+      boolean result = MManager.getInstance().addPathToMTree(path, dataType, encoding,
+          compressionType, Collections.emptyMap());
+      if (result) {
+        StorageEngine.getInstance().addTimeSeries(new Path(path), dataType, encoding,
+            compressionType, Collections.emptyMap());
+      }
+    } catch (PathAlreadyExistException ignored) {
+      // ignore added timeseries
+    } catch (MetadataException | StorageEngineException e) {
+      logger.error("Cannot create timeseries in snapshot, ignored", schema.getMeasurementId(), e);
+    }
+
   }
 }

@@ -26,6 +26,8 @@ public class ClusterConstant {
   public static final long ELECTION_RANDOM_TIME_OUT_MS = 8 * 1000L;
   public static final int SOCKET_NUM = 10000;
   public static final int HASH_SALT = 2333;
+  public static final int CONNECTION_TIME_OUT_MS = 20 * 1000;
+  public static final int SYNC_LEADER_MAX_WAIT_MS = 20 * 1000;
 
   private ClusterConstant() {
     // constant class

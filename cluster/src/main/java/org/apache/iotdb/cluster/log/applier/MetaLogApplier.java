@@ -24,6 +24,7 @@ public class MetaLogApplier extends BaseApplier {
   private QueryProcessExecutor queryExecutor;
 
   public MetaLogApplier(MetaGroupMember member) {
+    super(member);
     this.member = member;
   }
 

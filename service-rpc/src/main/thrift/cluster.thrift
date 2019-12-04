@@ -123,6 +123,15 @@ struct ExecutNonQueryReq {
   2: optional Node header
 }
 
+struct PullSchemaRequest {
+  1: required string prefixPath
+  2: optional Node header
+}
+
+struct PullSchemaResp {
+  1: required binary schemaBytes
+}
+
 service RaftService {
   /**
   * Leader will call this method to all followers to ensure its authority.
@@ -172,10 +181,20 @@ service RaftService {
   PullSnapshotResp pullSnapshot(1:PullSnapshotRequest request)
 
   /**
-  * execute a binarized non-query PhysicalPlan
+  * Execute a binarized non-query PhysicalPlan
   **/
   rpc.TSStatus executeNonQueryPlan(1:ExecutNonQueryReq request)
 
+  /**
+  * Ask the leader for its commit index, used to check whether the node has caught up with the
+  * leader.
+  **/
+  long requestCommitIndex(1:Node header)
+
+  /**
+    * Pull all timeseries schemas prefixed by a given path.
+    **/
+    PullSchemaResp pullTimeSeriesSchema(1: PullSchemaRequest request)
 }
 
 
@@ -195,5 +214,4 @@ service TSMetaService extends RaftService {
   * @param node a new node that needs to be added
   **/
   AddNodeResponse addNode(1: Node node)
-
 }

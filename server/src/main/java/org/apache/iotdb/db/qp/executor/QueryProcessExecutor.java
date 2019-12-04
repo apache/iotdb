@@ -40,6 +40,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
@@ -66,7 +68,6 @@ import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -232,16 +233,14 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         // check if timeseries exists
         if (!node.hasChild(measurementList[i])) {
           if (!conf.isAutoCreateSchemaEnabled()) {
-            throw new QueryProcessException(
+            throw new PathNotExistException(
                 String.format("Current deviceId[%s] does not contain measurement:%s",
                     deviceId, measurementList[i]));
           }
           try {
             addPathToMTree(deviceId, measurementList[i], strValues[i]);
-          } catch (MetadataException e) {
-            if (!e.getMessage().contains("already exist")) {
-              throw e;
-            }
+          } catch (PathAlreadyExistException ignored) {
+            // ignore
           }
         }
         MNode measurementNode = node.getChild(measurementList[i]);
@@ -257,8 +256,6 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       storageEngine.insert(insertPlan);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
-    } catch (CacheException e) {
-      throw new QueryProcessException(e.getMessage());
     }
   }
 
@@ -299,8 +296,6 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       return storageEngine.insertBatch(batchInsertPlan);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
-    } catch (CacheException e) {
-      throw new QueryProcessException(e.getMessage());
     }
   }
 
@@ -422,7 +417,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return true;
   }
 
-  private boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan)
+  public boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan)
       throws QueryProcessException {
     Path path = setStorageGroupPlan.getPath();
     try {
@@ -698,7 +693,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
    * Add a seriesPath to MTree
    */
   private void addPathToMTree(String deviceId, String measurementId, TSDataType dataType)
-      throws MetadataException, MetadataException, StorageEngineException {
+      throws MetadataException, StorageEngineException {
     String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
     TSEncoding defaultEncoding = getDefaultEncoding(dataType);
     CompressionType defaultCompressor =
@@ -712,7 +707,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   }
 
   private void addPathToMTree(String deviceId, String measurementId, Object value)
-      throws MetadataException, MetadataException, StorageEngineException {
+      throws MetadataException, StorageEngineException {
     TSDataType predictedDataType = TypeInferenceUtils.getPredictedDataType(value);
     addPathToMTree(deviceId, measurementId, predictedDataType);
   }

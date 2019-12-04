@@ -15,13 +15,19 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
 package org.apache.iotdb.db.exception.metadata;
 
-public class TimeseriesNotExistException extends MetadataException {
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public TimeseriesNotExistException(String path) {
-    super(String.format("%s does not exist", path));
+public class PathAlreadyExistException extends MetadataException {
+
+  private static final long serialVersionUID = -6713847897890531438L;
+
+  public PathAlreadyExistException(String path) {
+    super(String.format("Path [%s] already exist", path));
+    errorCode = TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode();
   }
 }

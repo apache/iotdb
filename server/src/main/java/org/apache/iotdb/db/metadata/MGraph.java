@@ -29,7 +29,7 @@ import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.RootNotExistException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -326,7 +326,7 @@ public class MGraph implements Serializable {
    * Get the file name for given seriesPath Notice: This method could be called if and only if the
    * seriesPath includes one node whose {@code isStorageGroup} is true.
    */
-  String getStorageGroupNameByPath(String path) throws MetadataException {
+  String getStorageGroupNameByPath(String path) throws StorageGroupNotSetException {
     return mtree.getStorageGroupNameByPath(path);
   }
 

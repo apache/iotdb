@@ -5,9 +5,13 @@
 package org.apache.iotdb.cluster.log.applier;
 
 import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,10 +22,33 @@ abstract class BaseApplier implements LogApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(BaseApplier.class);
 
+  private MetaGroupMember metaGroupMember;
   private QueryProcessExecutor queryExecutor;
 
+  BaseApplier(MetaGroupMember metaGroupMember) {
+    this.metaGroupMember = metaGroupMember;
+  }
+
   void applyPhysicalPlan(PhysicalPlan plan) throws QueryProcessException {
-    if (!plan.isQuery()) {
+    if (plan instanceof InsertPlan) {
+      try {
+        getQueryExecutor().processNonQuery(plan);
+      } catch (QueryProcessException e) {
+        if (e.getCause() instanceof PathNotExistException) {
+          logger.debug("Timeseries is not found locally, try pulling it from another group: {}",
+              e.getCause().getMessage());
+          InsertPlan insertPlan = ((InsertPlan) plan);
+          try {
+            metaGroupMember.pullDeviceSchemas(insertPlan.getDeviceId());
+          } catch (StorageGroupNotSetException e1) {
+            throw new QueryProcessException(e1);
+          }
+          getQueryExecutor().processNonQuery(plan);
+        } else {
+          throw e;
+        }
+      }
+    } else if (!plan.isQuery()) {
       getQueryExecutor().processNonQuery(plan);
     } else {
       // TODO-Cluster support more types of logs

@@ -19,11 +19,7 @@
 package org.apache.iotdb.cluster;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import org.apache.iotdb.cluster.server.ClientServer;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,7 +53,9 @@ public class ClusterMain {
     if (MODE_START.equals(mode)) {
       metaServer.buildCluster();
     } else if (MODE_ADD.equals(mode)) {
-      metaServer.joinCluster();
+      if (!metaServer.joinCluster()) {
+        metaServer.stop();
+      }
     } else {
       logger.error("Unrecognized mode {}", mode);
     }

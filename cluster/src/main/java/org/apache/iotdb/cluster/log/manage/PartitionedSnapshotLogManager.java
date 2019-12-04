@@ -4,9 +4,7 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +60,7 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
         String storageGroupName = sgNode.getFullPath();
         int socket = Objects.hash(storageGroupName, 0);
         List<MeasurementSchema> schemas = socketTimeseries.computeIfAbsent(socket, s -> new ArrayList<>());
-        collectSeries(sgNode, schemas);
+        MManager.getInstance().collectSeries(sgNode, schemas);
       }
 
       while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
@@ -71,21 +69,6 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
             socket -> new DataSimpleSnapshot(socketTimeseries.get(socket))).add(log);
         snapshotLastLogId = log.getCurrLogIndex();
         snapshotLastLogTerm = log.getCurrLogTerm();
-      }
-    }
-  }
-
-  private void collectSeries(MNode storageGroupNode, List<MeasurementSchema> timeseriesSchemas) {
-    Deque<MNode> nodeDeque = new ArrayDeque<>();
-    nodeDeque.addLast(storageGroupNode);
-    while (!nodeDeque.isEmpty()) {
-      MNode node = nodeDeque.removeFirst();
-      if (node.isLeaf()) {
-        MeasurementSchema nodeSchema = node.getSchema();
-        timeseriesSchemas.add(new MeasurementSchema(node.getFullPath(),
-            nodeSchema.getType(), nodeSchema.getEncodingType(), nodeSchema.getCompressor()));
-      } else if (node.hasChildren()) {
-        nodeDeque.addAll(node.getChildren().values());
       }
     }
   }

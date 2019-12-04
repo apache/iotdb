@@ -11,6 +11,7 @@ import org.apache.iotdb.cluster.log.logs.PhysicalPlanLog;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
@@ -58,26 +59,25 @@ public class PartitionUtils {
   public static PartitionGroup partitionPlan(PhysicalPlan plan, PartitionTable partitionTable)
       throws UnsupportedPlanException {
     // TODO-Cluster: support more plans
-    if (plan instanceof CreateTimeSeriesPlan) {
-      CreateTimeSeriesPlan createTimeSeriesPlan = ((CreateTimeSeriesPlan) plan);
-      return partitionByPathTime(createTimeSeriesPlan.getPath().getFullPath(), 0, partitionTable);
-    } else if (plan instanceof InsertPlan) {
-      InsertPlan insertPlan = ((InsertPlan) plan);
-      return partitionByPathTime(insertPlan.getDeviceId(), insertPlan.getTime(), partitionTable);
+    try {
+      if (plan instanceof CreateTimeSeriesPlan) {
+        CreateTimeSeriesPlan createTimeSeriesPlan = ((CreateTimeSeriesPlan) plan);
+        return partitionByPathTime(createTimeSeriesPlan.getPath().getFullPath(), 0, partitionTable);
+      } else if (plan instanceof InsertPlan) {
+        InsertPlan insertPlan = ((InsertPlan) plan);
+        return partitionByPathTime(insertPlan.getDeviceId(), insertPlan.getTime(), partitionTable);
+      }
+    } catch (StorageGroupNotSetException e) {
+      logger.debug("Storage group is not found for plan {}", plan);
+      return null;
     }
     logger.error("Unable to partition plan {}", plan);
     throw new UnsupportedPlanException(plan);
   }
 
-  private static PartitionGroup partitionByPathTime(String path, long timestamp, PartitionTable partitionTable) {
-    String storageGroup;
-    try {
-      storageGroup = MManager.getInstance()
-          .getStorageGroupNameByPath(path);
-    } catch (MetadataException e) {
-      return null;
-    }
-
+  public static PartitionGroup partitionByPathTime(String path, long timestamp, PartitionTable partitionTable)
+      throws StorageGroupNotSetException {
+    String storageGroup = MManager.getInstance().getStorageGroupNameByPath(path);
     return partitionTable.route(storageGroup, timestamp);
   }
 }

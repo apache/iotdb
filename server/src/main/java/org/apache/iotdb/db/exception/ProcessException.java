@@ -29,6 +29,11 @@ public class ProcessException extends Exception {
     super(message);
   }
 
+  public ProcessException(Throwable cause, int errorCode) {
+    super(cause);
+    this.errorCode = errorCode;
+  }
+
   public int getErrorCode() {
     return errorCode;
   }

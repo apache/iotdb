@@ -20,7 +20,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogManager;
@@ -42,6 +44,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.RequestCommitIdHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -59,7 +62,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
 
-  public static final int CONNECTION_TIME_OUT_MS = 20 * 1000;
   static final int PULL_SNAPSHOT_RETRY_INTERVAL = 5 * 1000;
 
   String name;
@@ -82,6 +84,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   QueryProcessor queryProcessor;
   private ClientPool clientPool;
+  // when the commit progress is updated by a heart beat, this object is notified so that we may
+  // know if this node is synchronized with the leader
+  private Object syncLock = new Object();
 
   RaftMember(String name, ClientPool pool) {
     this.name = name;
@@ -139,8 +144,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         response.setLastLogIndex(logManager.getLastLogIndex());
         response.setLastLogTerm(logManager.getLastLogTerm());
 
-        synchronized (logManager) {
+        synchronized (syncLock) {
           logManager.commitLog(request.getCommitLogIndex());
+          syncLock.notifyAll();
         }
         term.set(leaderTerm);
         setLeader(request.getLeader());
@@ -319,7 +325,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       }
 
       try {
-        quorum.wait(CONNECTION_TIME_OUT_MS);
+        quorum.wait(ClusterConstant.CONNECTION_TIME_OUT_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
@@ -342,7 +348,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   public AsyncClient connectNode(Node node) {
-    if (node.equals(thisNode) || node == null) {
+    if (node == null || node.equals(thisNode)) {
       return null;
     }
 
@@ -501,7 +507,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       // check if the last catch-up is still ongoing
       Long lastCatchupResp = lastCatchUpResponseTime.get(follower);
       if (lastCatchupResp != null
-          && System.currentTimeMillis() - lastCatchupResp < CONNECTION_TIME_OUT_MS) {
+          && System.currentTimeMillis() - lastCatchupResp < ClusterConstant.CONNECTION_TIME_OUT_MS) {
         logger.debug("{}: last catch up of {} is ongoing", name, follower);
         return;
       } else {
@@ -585,7 +591,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         }
         synchronized (status) {
           client.executeNonQueryPlan(req, new ForwardPlanHandler(status, plan, node));
-          status.wait(CONNECTION_TIME_OUT_MS);
+          status.wait(ClusterConstant.CONNECTION_TIME_OUT_MS);
         }
         return status.get() == null ? StatusUtils.TIME_OUT : status.get();
       } catch (IOException | TException e) {
@@ -662,5 +668,66 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
   }
 
+  /**
+   * Request and check the leader's commitId to see whether this node has caught up, if not wait
+   * until this node catches up.
+   * @return true if the node has caught up, false otherwise
+   */
+  boolean syncLeader() {
+    if (character == NodeCharacter.LEADER) {
+      return true;
+    }
+    if (leader == null) {
+      return false;
+    }
+    logger.debug("{}: try synchronizing with leader {}", name, leader);
+    long startTime = System.currentTimeMillis();
+    long waitedTime = 0;
+    AtomicLong commitIdResult = new AtomicLong(Long.MAX_VALUE);
+    while (waitedTime < ClusterConstant.SYNC_LEADER_MAX_WAIT_MS) {
+      AsyncClient client = connectNode(leader);
+      if (client == null) {
+        return false;
+      }
+      try {
+        synchronized (commitIdResult) {
+          client.requestCommitIndex(getHeader(), new RequestCommitIdHandler(leader, commitIdResult));
+          commitIdResult.wait(ClusterConstant.SYNC_LEADER_MAX_WAIT_MS);
+        }
+        long leaderCommitId = commitIdResult.get();
+        long localCommitId = logManager.getCommitLogIndex();
+        logger.debug("{}: synchronizing commitIndex {}/{}", name, localCommitId, leaderCommitId);
+        if (leaderCommitId <= localCommitId) {
+          // this node has caught up
+          return true;
+        }
+        // wait for next heartbeat to catch up
+        waitedTime = System.currentTimeMillis() - startTime;
+        Thread.sleep(ClusterConstant.HEART_BEAT_INTERVAL_MS);
+      } catch (TException | InterruptedException e) {
+        logger.error("{}: Cannot request commit index from {}", name, leader, e);
+      }
+    }
+    return false;
+  }
+
   abstract TSStatus executeNonQuery(PhysicalPlan plan);
+
+  @Override
+  public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
+    if (character == NodeCharacter.LEADER) {
+      resultHandler.onComplete(logManager.getCommitLogIndex());
+      return;
+    }
+    AsyncClient client = connectNode(leader);
+    if (client == null) {
+      resultHandler.onError(new LeaderUnknownException());
+      return;
+    }
+    try {
+      client.requestCommitIndex(header, resultHandler);
+    } catch (TException e) {
+      resultHandler.onError(e);
+    }
+  }
 }

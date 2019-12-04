@@ -30,6 +30,20 @@ public class StatusUtils {
     tsStatusType.setCode(statusCode.getStatusCode());
     TSStatus status = new TSStatus();
     status.setStatusType(tsStatusType);
+    switch (statusCode) {
+      case TIME_OUT:
+        tsStatusType.setMessage("Request timed out");
+        break;
+      case NO_LEADER:
+        tsStatusType.setMessage("Leader cannot be found");
+        break;
+      case PARTITION_NOT_READY:
+        tsStatusType.setMessage("Partition table is not ready");
+        break;
+      default:
+        tsStatusType.setMessage("");
+        break;
+    }
     return status;
   }
 }

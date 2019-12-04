@@ -36,8 +36,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.TimeseriesAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.TimeseriesNotExistException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -79,7 +79,7 @@ public class MTree implements Serializable {
     }
     leaf.setStorageGroupName(levelPath);
     if (cur.isLeaf()) {
-      throw new TimeseriesAlreadyExistException(cur.getFullPath());
+      throw new PathAlreadyExistException(cur.getFullPath());
     }
     cur.addChild(nodeNames[nodeNames.length - 1], leaf);
   }
@@ -113,7 +113,7 @@ public class MTree implements Serializable {
       }
       if (!cur.hasChild(nodeName)) {
         if (cur.isLeaf()) {
-          throw new TimeseriesAlreadyExistException(cur.getFullPath());
+          throw new PathAlreadyExistException(cur.getFullPath());
         }
         cur.addChild(nodeName, new MNode(nodeName, cur, false));
       }
@@ -213,7 +213,7 @@ public class MTree implements Serializable {
     if (temp == null) {
       cur.addChild(nodeNames[i], new MNode(nodeNames[i], cur, false));
     } else {
-      throw new TimeseriesAlreadyExistException(temp.getFullPath());
+      throw new PathAlreadyExistException(temp.getFullPath());
     }
     cur = cur.getChild(nodeNames[i]);
     cur.setDataTTL(IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
@@ -287,7 +287,7 @@ public class MTree implements Serializable {
     MNode cur = getRoot();
     for (int i = 1; i < nodes.length; i++) {
       if (!cur.hasChild(nodes[i])) {
-        throw new TimeseriesNotExistException(path);
+        throw new PathNotExistException(path);
       }
       cur = cur.getChild(nodes[i]);
     }
@@ -346,7 +346,7 @@ public class MTree implements Serializable {
       cur = cur.getChild(node[i]);
     }
     if (!cur.isLeaf()) {
-      throw new TimeseriesNotExistException(path);
+      throw new PathNotExistException(path);
     }
     return cur;
   }
@@ -358,7 +358,7 @@ public class MTree implements Serializable {
       cur = cur.getChild(nodes[i]);
     }
     if (!cur.isLeaf()) {
-      throw new TimeseriesNotExistException(path);
+      throw new PathNotExistException(path);
     }
     return cur;
   }
@@ -372,12 +372,12 @@ public class MTree implements Serializable {
     MNode cur = node.getChild(nodes[0]);
     for (int i = 1; i < nodes.length; i++) {
       if (!cur.hasChild(nodes[i])) {
-        throw new TimeseriesNotExistException(path);
+        throw new PathNotExistException(path);
       }
       cur = cur.getChild(nodes[i]);
     }
     if (!cur.isLeaf()) {
-      throw new TimeseriesNotExistException(path);
+      throw new PathNotExistException(path);
     }
     return cur;
   }
@@ -391,12 +391,12 @@ public class MTree implements Serializable {
     MNode cur = getRoot();
     for (int i = 1; i < nodes.length; i++) {
       if (!cur.hasChild(nodes[i])) {
-        throw new TimeseriesNotExistException(path);
+        throw new PathNotExistException(path);
       }
       cur = cur.getChild(nodes[i]);
     }
     if (!cur.isLeaf()) {
-      throw new TimeseriesNotExistException(path);
+      throw new PathNotExistException(path);
     }
     return cur;
   }
@@ -418,7 +418,7 @@ public class MTree implements Serializable {
         if (!storageGroupChecked) {
           throw new StorageGroupNotSetException(path);
         }
-        throw new TimeseriesNotExistException(path);
+        throw new PathNotExistException(path);
       }
       cur = cur.getChild(nodes[i]);
 
@@ -446,7 +446,7 @@ public class MTree implements Serializable {
     MNode cur = getRoot();
     for (int i = 1; i < nodes.length; i++) {
       if (!cur.hasChild(nodes[i])) {
-        throw new TimeseriesNotExistException(path);
+        throw new PathNotExistException(path);
       }
       cur = cur.getChild(nodes[i]);
     }
@@ -461,7 +461,7 @@ public class MTree implements Serializable {
     MNode cur = node;
     for (String node1 : nodes) {
       if (!cur.hasChild(node1)) {
-        throw new TimeseriesNotExistException(path);
+        throw new PathNotExistException(path);
       }
       cur = cur.getChild(node1);
     }
@@ -472,7 +472,7 @@ public class MTree implements Serializable {
    *
    * @return String storage group seriesPath
    */
-  String getStorageGroupNameByPath(String path) throws MetadataException {
+  String getStorageGroupNameByPath(String path) throws StorageGroupNotSetException {
     String[] nodes = MetaUtils.getNodeNames(path, PATH_SEPARATOR);
     MNode cur = getRoot();
     for (int i = 1; i < nodes.length; i++) {
@@ -654,12 +654,12 @@ public class MTree implements Serializable {
     MNode cur = getRoot();
     for (int i = 1; i < nodes.length; i++) {
       if (!cur.hasChild(nodes[i])) {
-        throw new TimeseriesNotExistException(path);
+        throw new PathNotExistException(path);
       }
       cur = cur.getChild(nodes[i]);
     }
     if (!cur.hasChildren()) {
-      throw new TimeseriesNotExistException(path);
+      throw new PathNotExistException(path);
     }
     for (MNode child : cur.getChildren().values()) {
       ret.add(path + "." + child.getName());

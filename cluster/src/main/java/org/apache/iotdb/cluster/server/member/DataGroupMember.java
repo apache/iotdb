@@ -4,9 +4,11 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -16,6 +18,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.DataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.NotManagedSocketException;
 import org.apache.iotdb.cluster.log.Log;
@@ -28,6 +31,8 @@ import org.apache.iotdb.cluster.log.snapshot.RemoteDataSimpleSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
@@ -38,13 +43,12 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPullSnapshotHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.TimeseriesAlreadyExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
@@ -235,14 +239,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       logManager.setSnapshot(snapshot, socket);
 
       for (MeasurementSchema schema : snapshot.getTimeseriesSchemas()) {
-        try {
-          MManager.getInstance().addPathToMTree(schema.getMeasurementId(), schema.getType(),
-              schema.getEncodingType(), schema.getCompressor(), Collections.emptyMap());
-        } catch (TimeseriesAlreadyExistException ignored) {
-          // ignore added timeseries
-        } catch (MetadataException e) {
-          logger.error("{}: Cannot create timeseries in snapshot, ignored", name, schema.getMeasurementId(), e);
-        }
+        SchemaUtils.registerTimeseries(schema);
       }
     }
   }
@@ -332,11 +329,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
           (TSDataService.AsyncClient) newMember.connectNode(node);
       if (client == null) {
         // network is bad, wait and retry
-        Thread.sleep(CONNECTION_TIME_OUT_MS);
+        Thread.sleep(ClusterConstant.CONNECTION_TIME_OUT_MS);
       } else {
         synchronized (snapshotRef) {
           client.pullSnapshot(request, new PullSnapshotHandler(snapshotRef, node, socket));
-          snapshotRef.wait(CONNECTION_TIME_OUT_MS);
+          snapshotRef.wait(ClusterConstant.CONNECTION_TIME_OUT_MS);
         }
         DataSimpleSnapshot result = snapshotRef.get();
         if (result != null) {
@@ -394,4 +391,44 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     return forwardPlan(plan, leader);
   }
 
+  @Override
+  public void pullTimeSeriesSchema(PullSchemaRequest request,
+      AsyncMethodCallback<PullSchemaResp> resultHandler) {
+    // try to synchronize with the leader first in case that some schema logs are accepted but
+    // not committed yet
+    if (!syncLeader()) {
+      // if this node cannot synchronize with the leader with in a given time, forward the
+      // request to the leader
+      AsyncClient client = connectNode(leader);
+      if (client == null) {
+        resultHandler.onError(new LeaderUnknownException());
+        return;
+      }
+      try {
+        client.pullTimeSeriesSchema(request, resultHandler);
+      } catch (TException e) {
+        resultHandler.onError(e);
+      }
+      return;
+    }
+
+    // collect local timeseries schemas and send to the requester
+    String prefixPath = request.getPrefixPath();
+    List<MeasurementSchema> timeseriesSchemas = new ArrayList<>();
+    MManager.getInstance().collectSeries(prefixPath, timeseriesSchemas);
+
+    PullSchemaResp resp = new PullSchemaResp();
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      dataOutputStream.writeInt(timeseriesSchemas.size());
+      for (MeasurementSchema timeseriesSchema : timeseriesSchemas) {
+        timeseriesSchema.serializeTo(dataOutputStream);
+      }
+    } catch (IOException ignored) {
+      // unreachable
+    }
+    resp.setSchemaBytes(byteArrayOutputStream.toByteArray());
+    resultHandler.onComplete(resp);
+  }
 }

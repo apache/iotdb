@@ -214,7 +214,7 @@ public class MManagerImproveTest {
   }
 
   private void doCacheTest(String deviceId, List<String> measurementList)
-      throws CacheException, MetadataException {
+      throws MetadataException {
     MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
     for (String s : measurementList) {
       assertTrue(node.hasChild(s));

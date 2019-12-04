@@ -4,7 +4,7 @@
 
 package org.apache.iotdb.cluster.client;
 
-import static org.apache.iotdb.cluster.server.member.RaftMember.CONNECTION_TIME_OUT_MS;
+import static org.apache.iotdb.cluster.config.ClusterConstant.CONNECTION_TIME_OUT_MS;
 
 import java.io.IOException;
 import org.apache.iotdb.cluster.rpc.thrift.Node;

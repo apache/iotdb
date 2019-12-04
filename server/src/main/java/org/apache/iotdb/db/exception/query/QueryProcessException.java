@@ -30,7 +30,6 @@ public class QueryProcessException extends ProcessException {
   }
 
   public QueryProcessException(ProcessException e) {
-    super(e.getMessage());
-    errorCode = e.getErrorCode();
+    super(e, e.getErrorCode());
   }
 }
