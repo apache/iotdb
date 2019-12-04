@@ -42,7 +42,7 @@ locate the thrift source file by relative path, so if you move the scripts else 
 no longer valid.
 
 Optionally, if you know the basic usage of thrift, you can only download the thrift source file in
-`service-rpc\src\main\thrift\rpc.thrift`, and simply use `thrift -gen py -out ./target rpc.thrift` 
+`service-rpc\src\main\thrift\rpc.thrift`, and simply use `thrift -gen py -out ./target/iotdb rpc.thrift` 
 to generate the python library.
 
 ## Example
