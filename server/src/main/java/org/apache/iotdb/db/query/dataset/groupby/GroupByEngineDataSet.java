@@ -16,11 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
@@ -33,13 +30,16 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
   protected long jobId;
-  protected List<Path> selectedSeries;
   private long unit;
-  private long origin;
-  private List<Pair<Long, Long>> mergedIntervals;
+  private long slidingStep;
+  private long intervalStartTime;
+  private long intervalEndTime;
 
   protected long startTime;
   protected long endTime;
@@ -50,14 +50,14 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   /**
    * groupBy query.
    */
-  public GroupByEngineDataSet(long jobId, List<Path> paths, long unit, long origin,
-      List<Pair<Long, Long>> mergedIntervals) {
+  public GroupByEngineDataSet(long jobId, List<Path> paths, long unit,
+                              long slidingStep, long startTime, long endTime) {
     super(paths);
     this.jobId = jobId;
-    this.selectedSeries = paths;
     this.unit = unit;
-    this.origin = origin;
-    this.mergedIntervals = mergedIntervals;
+    this.slidingStep = slidingStep;
+    this.intervalStartTime = startTime;
+    this.intervalEndTime = endTime;
     this.functions = new ArrayList<>();
 
     // init group by time partition
@@ -71,7 +71,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     // construct AggregateFunctions
     for (int i = 0; i < paths.size(); i++) {
       TSDataType tsDataType = MManager.getInstance()
-          .getSeriesType(selectedSeries.get(i).getFullPath());
+          .getSeriesType(paths.get(i).getFullPath());
       AggregateFunction function = AggreFuncFactory.getAggrFuncByName(aggres.get(i), tsDataType);
       function.init();
       functions.add(function);
@@ -81,46 +81,21 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   }
 
   @Override
-  public boolean hasNext() {
+  protected boolean hasNextWithoutConstraint() {
     // has cached
     if (hasCachedTimeInterval) {
       return true;
     }
 
-    // skip the intervals in coverage of last time-partition
-    while (usedIndex < mergedIntervals.size() && mergedIntervals.get(usedIndex).right < endTime) {
-      usedIndex++;
-    }
-
-    // end
-    if (usedIndex >= mergedIntervals.size()) {
+    startTime = usedIndex * slidingStep + intervalStartTime;
+    usedIndex++;
+    if (startTime <= intervalEndTime) {
+      hasCachedTimeInterval = true;
+      endTime = Math.min(startTime + unit, intervalEndTime+1);
+      return true;
+    } else {
       return false;
     }
-
-    // initialize the start-end time of next interval
-    if (endTime < mergedIntervals.get(usedIndex).left) {
-      // interval start time
-      startTime = mergedIntervals.get(usedIndex).left;
-      if (origin > startTime) {
-        endTime = origin - (origin - startTime) / unit * unit;
-        if (endTime == startTime) { // origin - startTime is an integral multiple of unit
-          endTime += unit;
-        }
-      } else {
-        endTime = origin + (startTime - origin) / unit * unit + unit;
-      }
-      hasCachedTimeInterval = true;
-      return true;
-    }
-
-    // current interval is not covered yet
-    if (endTime <= mergedIntervals.get(usedIndex).right) {
-      startTime = endTime;
-      endTime += unit;
-      hasCachedTimeInterval = true;
-      return true;
-    }
-    return false;
   }
 
   /**

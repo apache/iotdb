@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.write;
 import java.io.File;
 import java.io.IOException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.NotCompatibleException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
@@ -40,7 +41,7 @@ import org.junit.Test;
 
 public class TsFileIOWriterTest {
 
-  private static String tsfile = "target/tsfileIOWriterTest.tsfile";
+  private static String tsfile = TestConstant.BASE_OUTPUT_PATH.concat("tsfileIOWriterTest.tsfile");
   private static String deviceId = "device1";
 
   @Before

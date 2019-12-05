@@ -16,37 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sql.parse;
 
-import org.antlr.runtime.BaseRecognizer;
-import org.antlr.runtime.RecognitionException;
+package org.apache.iotdb.tsfile.constant;
 
-public class ParseError {
+import java.io.File;
+import java.util.Random;
 
-  private final BaseRecognizer br;
-  private final RecognitionException re;
-  private final String[] tokenNames;
-
-  ParseError(BaseRecognizer br, RecognitionException re, String[] tokenNames) {
-    this.br = br;
-    this.re = re;
-    this.tokenNames = tokenNames;
-  }
-
-  BaseRecognizer getBaseRecognizer() {
-    return br;
-  }
-
-  RecognitionException getRecognitionException() {
-    return re;
-  }
-
-  String[] getTokenNames() {
-    return tokenNames;
-  }
-
-  String getMessage() {
-    return br.getErrorHeader(re) + " " + br.getErrorMessage(re, tokenNames);
-  }
+public class TestConstant {
+    public static final String BASE_OUTPUT_PATH = "target".concat(File.separator);
+    public static final float float_min_delta = 0.00001f;
+    public static final double double_min_delta = 0.00001d;
+    public static final Random random = new Random(System.currentTimeMillis());
 
 }

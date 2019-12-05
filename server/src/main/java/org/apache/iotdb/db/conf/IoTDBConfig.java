@@ -40,7 +40,7 @@ public class IoTDBConfig {
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
-  
+
   /**
    * Port which the metrics service listens to.
    */
@@ -147,11 +147,6 @@ public class IoTDBConfig {
   private String walFolder = "data/wal";
 
   /**
-   * Data directory for index files (KV-match indexes).
-   */
-  private String indexFileDir = "data/index";
-
-  /**
    * Maximum MemTable number in MemTable pool.
    */
   private int maxMemtableNumber = 20;
@@ -159,7 +154,7 @@ public class IoTDBConfig {
   /**
    * The amount of data that is read every time when IoTDB merges data.
    */
-  private int fetchSize = 10000;
+  private int aggregateFetchSize = 100000;
 
   /**
    * How many threads can concurrently flush. When <= 0, use CPU core number.
@@ -551,7 +546,7 @@ public class IoTDBConfig {
     }
   }
 
-  private String getHdfsDir(){
+  private String getHdfsDir() {
     String[] hdfsIps = TSFileDescriptor.getInstance().getConfig().getHdfsIp();
     String hdfsDir = "hdfs://";
     if (hdfsIps.length > 1) {
@@ -666,20 +661,12 @@ public class IoTDBConfig {
     this.multiDirStrategyClassName = multiDirStrategyClassName;
   }
 
-  public String getIndexFileDir() {
-    return indexFileDir;
+  public int getAggregateFetchSize() {
+    return aggregateFetchSize;
   }
 
-  private void setIndexFileDir(String indexFileDir) {
-    this.indexFileDir = indexFileDir;
-  }
-
-  public int getFetchSize() {
-    return fetchSize;
-  }
-
-  void setFetchSize(int fetchSize) {
-    this.fetchSize = fetchSize;
+  void setAggregateFetchSize(int aggregateFetchSize) {
+    this.aggregateFetchSize = aggregateFetchSize;
   }
 
   public int getMaxMemtableNumber() {

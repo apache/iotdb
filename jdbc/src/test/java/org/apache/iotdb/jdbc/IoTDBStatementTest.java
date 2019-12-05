@@ -251,19 +251,4 @@ public class IoTDBStatementTest {
     IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
     stmt.setFetchSize(-1);
   }
-
-  @SuppressWarnings("resource")
-  @Test
-  public void testSetMaxRows1() throws SQLException {
-    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
-    stmt.setMaxRows(123);
-    assertEquals(123, stmt.getMaxRows());
-  }
-
-  @SuppressWarnings("resource")
-  @Test(expected = SQLException.class)
-  public void testSetMaxRows2() throws SQLException {
-    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
-    stmt.setMaxRows(-1);
-  }
 }

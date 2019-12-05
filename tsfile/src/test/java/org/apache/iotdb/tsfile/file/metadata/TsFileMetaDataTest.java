@@ -22,6 +22,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.file.metadata.utils.Utils;
 import org.junit.After;
@@ -32,7 +34,7 @@ public class TsFileMetaDataTest {
 
   public static final int VERSION = 123;
   public static final String CREATED_BY = "tsf";
-  final String PATH = "target/output1.tsfile";
+  final String PATH = TestConstant.BASE_OUTPUT_PATH.concat("output1.tsfile");
 
   @Before
   public void setUp() {

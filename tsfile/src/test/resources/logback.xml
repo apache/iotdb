@@ -20,7 +20,7 @@
 
 -->
 <configuration debug="false">
-    <property name="LOG_PATH" value="logs"/>
+    <property name="LOG_PATH" value="target/logs"/>
     <!-- prevent logback from outputting its own status at the start of every log -->
     <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEERROR">

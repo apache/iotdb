@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
@@ -39,10 +36,14 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -56,8 +57,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * constructor.
    */
   public GroupByWithoutValueFilterDataSet(long jobId, List<Path> paths, long unit,
-      long origin, List<Pair<Long, Long>> mergedIntervals) {
-    super(jobId, paths, unit, origin, mergedIntervals);
+                                          long slidingStep, long startTime, long endTime) {
+    super(jobId, paths, unit, slidingStep, startTime, endTime);
+
     this.unSequenceReaderList = new ArrayList<>();
     this.sequenceReaderList = new ArrayList<>();
     this.timeFilter = null;
@@ -79,7 +81,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
-    for (Path path : selectedSeries) {
+    for (Path path : paths) {
       QueryDataSource queryDataSource = QueryResourceManager.getInstance()
           .getQueryDataSource(path, context);
       timeFilter = queryDataSource.updateTimeFilter(timeFilter);
@@ -101,7 +103,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   @Override
-  public RowRecord next() throws IOException {
+  protected RowRecord nextWithoutConstraint() throws IOException {
     if (!hasCachedTimeInterval) {
       throw new IOException("need to call hasNext() before calling next() "
           + "in GroupByWithoutValueFilterDataSet.");
@@ -304,6 +306,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       AggregateFunction function)
       throws IOException, QueryProcessException {
     if (timeFilter != null && !timeFilter.containStartEndTime(minTime, maxTime)) {
+      return false;
+    }
+
+    TimeRange range = new TimeRange(startTime, endTime - 1);
+    if (!range.contains(new TimeRange(minTime, maxTime))) {
       return false;
     }
 
