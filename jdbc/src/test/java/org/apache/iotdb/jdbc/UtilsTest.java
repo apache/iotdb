@@ -26,7 +26,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.nio.ByteBuffer;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
@@ -147,50 +146,6 @@ public class UtilsTest {
       return;
     }
     fail();
-  }
-
-  @Test
-  public void testBytesToInt() {
-    int expectedInt = 12;
-    ByteBuffer a = ByteBuffer.allocate(Integer.BYTES);
-    a.putInt(expectedInt);
-    byte[] b =  new byte[Integer.BYTES];
-    a.flip();
-    a.get(b);
-    assertEquals(expectedInt, Utils.bytesToInt(b));
-  }
-
-  @Test
-  public void testBytesToLong() {
-    long expectedLong = 1L;
-    ByteBuffer a = ByteBuffer.allocate(Long.BYTES);
-    a.putLong(expectedLong);
-    byte[] b =  new byte[Long.BYTES];
-    a.flip();
-    a.get(b);
-    assertEquals(expectedLong, Utils.bytesToLong(b));
-  }
-
-  @Test
-  public void testBytesToFloat() {
-    float expectedFloat = 1.234f;
-    ByteBuffer a = ByteBuffer.allocate(Float.BYTES);
-    a.putFloat(expectedFloat);
-    byte[] b =  new byte[Float.BYTES];
-    a.flip();
-    a.get(b);
-    assertEquals(expectedFloat, Utils.bytesToFloat(b), 0.0000001f);
-  }
-
-  @Test
-  public void testBytesToDouble() {
-    double expectedDouble = 1.234;
-    ByteBuffer a = ByteBuffer.allocate(Double.BYTES);
-    a.putDouble(expectedDouble);
-    byte[] b =  new byte[Double.BYTES];
-    a.flip();
-    a.get(b);
-    assertEquals(expectedDouble, Utils.bytesToDouble(b), 0.0000001);
   }
 
 }

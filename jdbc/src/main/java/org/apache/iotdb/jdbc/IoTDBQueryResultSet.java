@@ -52,13 +52,14 @@ public class IoTDBQueryResultSet implements ResultSet {
   private List<String> columnTypeList; // no deduplication
   private Map<String, Integer> columnInfoMap; // used because the server returns deduplicated columns
   private List<String> columnTypeDeduplicatedList; // deduplicated from columnTypeList
-  private int rowsIndex = 0;
+  private int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
   private int fetchSize;
   private boolean emptyResultSet = false;
 
   private TSQueryDataSet tsQueryDataSet = null;
-  private byte[][] record;
-  private static final int flag = 0x80;
+  private byte[] time; // used to cache the current time value
+  private byte[][] values; // used to cache the current row record value
+  private static final int flag = 0x80; // used to do `or` operation with bitmap to judge whether the value is null
 
   private long queryId;
   private boolean ignoreTimeStamp = false;
@@ -74,7 +75,9 @@ public class IoTDBQueryResultSet implements ResultSet {
     this.statement = statement;
     this.fetchSize = statement.getFetchSize();
     this.columnTypeList = columnTypeList;
-    record = new byte[columnNameList.size()+1][];
+
+    time = new byte[Long.BYTES];
+    values = new byte[columnNameList.size()][];
 
     this.columnInfoList = new ArrayList<>();
     this.columnInfoList.add(TIMESTAMP_STR);
@@ -245,8 +248,8 @@ public class IoTDBQueryResultSet implements ResultSet {
   public boolean getBoolean(String columnName) throws SQLException {
     checkRecord();
     int index = columnInfoMap.get(columnName) - START_INDEX;
-    if (record[index+1] != null) {
-      return BytesUtils.bytesToBool(record[index+1]);
+    if (values[index] != null) {
+      return BytesUtils.bytesToBool(values[index]);
     }
     else {
       throw new SQLException(
@@ -333,8 +336,8 @@ public class IoTDBQueryResultSet implements ResultSet {
   public double getDouble(String columnName) throws SQLException {
     checkRecord();
     int index = columnInfoMap.get(columnName) - START_INDEX;
-    if (record[index+1] != null) {
-      return Utils.bytesToDouble(record[index+1]);
+    if (values[index] != null) {
+      return BytesUtils.bytesToDouble(values[index]);
     }
     else {
       throw new SQLException(
@@ -371,8 +374,8 @@ public class IoTDBQueryResultSet implements ResultSet {
   public float getFloat(String columnName) throws SQLException {
     checkRecord();
     int index = columnInfoMap.get(columnName) - START_INDEX;
-    if (record[index+1] != null) {
-      return Utils.bytesToFloat(record[index+1]);
+    if (values[index] != null) {
+      return BytesUtils.bytesToFloat(values[index]);
     }
     else {
       throw new SQLException(
@@ -394,8 +397,8 @@ public class IoTDBQueryResultSet implements ResultSet {
   public int getInt(String columnName) throws SQLException {
     checkRecord();
     int index = columnInfoMap.get(columnName) - START_INDEX;
-    if (record[index+1] != null) {
-      return Utils.bytesToInt(record[index+1]);
+    if (values[index] != null) {
+      return BytesUtils.bytesToInt(values[index]);
     }
     else {
       throw new SQLException(
@@ -412,11 +415,11 @@ public class IoTDBQueryResultSet implements ResultSet {
   public long getLong(String columnName) throws SQLException {
     checkRecord();
     if (columnName.equals(TIMESTAMP_STR)) {
-      return Utils.bytesToLong(record[0]);
+      return BytesUtils.bytesToLong(time);
     }
     int index = columnInfoMap.get(columnName) - START_INDEX;
-    if (record[index+1] != null) {
-      return Utils.bytesToLong(record[index+1]);
+    if (values[index] != null) {
+      return BytesUtils.bytesToLong(values[index]);
     }
     else {
       throw new SQLException(
@@ -679,6 +682,7 @@ public class IoTDBQueryResultSet implements ResultSet {
           emptyResultSet = true;
         } else {
           tsQueryDataSet = resp.getQueryDataSet();
+          rowsIndex = 0;
         }
       } catch (TException e) {
         throw new SQLException(
@@ -694,50 +698,51 @@ public class IoTDBQueryResultSet implements ResultSet {
   }
 
   private void constructOneRow() {
-    record[0] = new byte[Long.BYTES];
-    tsQueryDataSet.time.get(record[0]);
+    tsQueryDataSet.time.get(time);
     for (int i = 0; i < tsQueryDataSet.bitmapList.size(); i++) {
       ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(i);
       // another new 8 row, should move the bitmap buffer position to next byte
       if (rowsIndex % 8 == 0) {
         bitmapBuffer.get();
       }
-
-      record[i+1] = null;
-      // the column value is not null, we should move the corresponding value buffer to next position
+      values[i] = null;
       if (!isNull(i, rowsIndex)) {
         ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(i);
-        TSDataType dataType = TSDataType.valueOf(columnTypeList.get(i));
+        TSDataType dataType = TSDataType.valueOf(columnTypeDeduplicatedList.get(i));
         switch (dataType) {
           case BOOLEAN:
-            record[i+1] = new byte[1];
-            valueBuffer.get(record[i+1]);
+            if (values[i] == null)
+              values[i] = new byte[1];
+            valueBuffer.get(values[i]);
             break;
           case INT32:
-            record[i+1] = new byte[Integer.BYTES];
-            valueBuffer.get(record[i+1]);
+            if (values[i] == null)
+              values[i] = new byte[Integer.BYTES];
+            valueBuffer.get(values[i]);
             break;
           case INT64:
-            record[i+1] = new byte[Long.BYTES];
-            valueBuffer.get(record[i+1]);
+            if (values[i] == null)
+              values[i] = new byte[Long.BYTES];
+            valueBuffer.get(values[i]);
             break;
           case FLOAT:
-            record[i+1] = new byte[Float.BYTES];
-            valueBuffer.get(record[i+1]);
+            if (values[i] == null)
+              values[i] = new byte[Float.BYTES];
+            valueBuffer.get(values[i]);
             break;
           case DOUBLE:
-            record[i+1] = new byte[Double.BYTES];
-            valueBuffer.get(record[i+1]);
+            if (values[i] == null)
+              values[i] = new byte[Double.BYTES];
+            valueBuffer.get(values[i]);
             break;
           case TEXT:
             int length = valueBuffer.getInt();
-            record[i+1] = ReadWriteIOUtils.readBytes(valueBuffer, length);
+            values[i] = ReadWriteIOUtils.readBytes(valueBuffer, length);
             break;
           default:
             throw new UnSupportedDataTypeException(
                     String.format("Data type %s is not supported.", columnTypeList.get(i)));
         }
-      } else {
       }
     }
     rowsIndex++;
@@ -753,7 +758,6 @@ public class IoTDBQueryResultSet implements ResultSet {
     int beforePosition = bitmapBuffer.position();
     bitmapBuffer.position(beforePosition-1);
     byte bitmap = bitmapBuffer.get();
-    bitmapBuffer.position(beforePosition);
     int shift = rowNum % 8;
     return ((flag >>> shift) & bitmap) == 0;
   }
@@ -1210,7 +1214,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   }
 
   private void checkRecord() throws SQLException {
-    if (Objects.isNull(record)) {
+    if (Objects.isNull(tsQueryDataSet)) {
       throw new SQLException("No record remains");
     }
   }
@@ -1229,26 +1233,26 @@ public class IoTDBQueryResultSet implements ResultSet {
   private String getValueByName(String columnName) throws SQLException {
     checkRecord();
     if (columnName.equals(TIMESTAMP_STR)) {
-      return String.valueOf(Utils.bytesToLong(record[0]));
+      return String.valueOf(BytesUtils.bytesToLong(time));
     }
     int index = columnInfoMap.get(columnName) - START_INDEX;
-    if (index < 0 || index >= record.length-1 || record[index+1] == null) {
+    if (index < 0 || index >= values.length || values[index] == null) {
       return null;
     }
-    TSDataType dataType = TSDataType.valueOf(columnTypeList.get(index));
+    TSDataType dataType = TSDataType.valueOf(columnTypeDeduplicatedList.get(index));
     switch (dataType) {
       case BOOLEAN:
-        return String.valueOf(BytesUtils.bytesToBool(record[index+1]));
+        return String.valueOf(BytesUtils.bytesToBool(values[index]));
       case INT32:
-        return String.valueOf(Utils.bytesToInt(record[index+1]));
+        return String.valueOf(BytesUtils.bytesToInt(values[index]));
       case INT64:
-        return String.valueOf(Utils.bytesToLong(record[index+1]));
+        return String.valueOf(BytesUtils.bytesToLong(values[index]));
       case FLOAT:
-        return String.valueOf(Utils.bytesToFloat(record[index+1]));
+        return String.valueOf(BytesUtils.bytesToFloat(values[index]));
       case DOUBLE:
-        return String.valueOf(Utils.bytesToDouble(record[index+1]));
+        return String.valueOf(BytesUtils.bytesToDouble(values[index]));
       case TEXT:
-        return new String(record[index+1]);
+        return new String(values[index]);
       default:
         return null;
     }
