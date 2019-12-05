@@ -49,6 +49,7 @@ public class SessionDataSet {
   private int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
   private TSQueryDataSet tsQueryDataSet = null;
   private RowRecord rowRecord = null;
+  private byte[] currentBitmap; // used to cache the current bitmap for every column
   private static final int flag = 0x80; // used to do `or` operation with bitmap to judge whether the value is null
 
 
@@ -113,9 +114,9 @@ public class SessionDataSet {
       ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(i);
       // another new 8 row, should move the bitmap buffer position to next byte
       if (rowsIndex % 8 == 0) {
-        bitmapBuffer.get();
+        currentBitmap[i] = bitmapBuffer.get();
       }
-      Field field = null;
+      Field field;
       if (!isNull(i, rowsIndex)) {
         ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(i);
         TSDataType dataType = TSDataType.valueOf(columnTypeDeduplicatedList.get(i));
@@ -166,10 +167,7 @@ public class SessionDataSet {
    * @return
    */
   private boolean isNull(int index, int rowNum) {
-    ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(index);
-    int beforePosition = bitmapBuffer.position();
-    bitmapBuffer.position(beforePosition-1);
-    byte bitmap = bitmapBuffer.get();
+    byte bitmap = currentBitmap[index];
     int shift = rowNum % 8;
     return ((flag >>> shift) & bitmap) == 0;
   }

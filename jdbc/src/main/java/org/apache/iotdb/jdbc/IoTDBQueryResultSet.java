@@ -59,6 +59,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   private TSQueryDataSet tsQueryDataSet = null;
   private byte[] time; // used to cache the current time value
   private byte[][] values; // used to cache the current row record value
+  private byte[] currentBitmap; // used to cache the current bitmap for every column
   private static final int flag = 0x80; // used to do `or` operation with bitmap to judge whether the value is null
 
   private long queryId;
@@ -78,6 +79,7 @@ public class IoTDBQueryResultSet implements ResultSet {
 
     time = new byte[Long.BYTES];
     values = new byte[columnNameList.size()][];
+    currentBitmap = new byte[columnNameList.size()];
 
     this.columnInfoList = new ArrayList<>();
     this.columnInfoList.add(TIMESTAMP_STR);
@@ -703,7 +705,7 @@ public class IoTDBQueryResultSet implements ResultSet {
       ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(i);
       // another new 8 row, should move the bitmap buffer position to next byte
       if (rowsIndex % 8 == 0) {
-        bitmapBuffer.get();
+        currentBitmap[i] = bitmapBuffer.get();
       }
       values[i] = null;
       if (!isNull(i, rowsIndex)) {
@@ -754,10 +756,7 @@ public class IoTDBQueryResultSet implements ResultSet {
    * @return
    */
   private boolean isNull(int index, int rowNum) {
-    ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(index);
-    int beforePosition = bitmapBuffer.position();
-    bitmapBuffer.position(beforePosition-1);
-    byte bitmap = bitmapBuffer.get();
+    byte bitmap = currentBitmap[index];
     int shift = rowNum % 8;
     return ((flag >>> shift) & bitmap) == 0;
   }
