@@ -6,16 +6,19 @@ package org.apache.iotdb.cluster.log.manage;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.snapshot.DataSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.MManager;
@@ -36,18 +39,22 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
   Map<Integer, List<MeasurementSchema>> socketTimeseries = new HashMap<>();
   long snapshotLastLogId;
   long snapshotLastLogTerm;
-  private PartitionTable partitionTable;
+  PartitionTable partitionTable;
+  Node header;
+  Set<Integer> holdingSockets;
 
-  public PartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable) {
+  public PartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
+      Node header) {
     super(logApplier);
     this.partitionTable = partitionTable;
+    this.header = header;
   }
 
   @Override
   public Snapshot getSnapshot() {
     // copy snapshots
     synchronized (socketSnapshots) {
-      PartitionedSnapshot partitionedSnapshot = new PartitionedSnapshot();
+      PartitionedSnapshot partitionedSnapshot = new PartitionedSnapshot(DataSimpleSnapshot::new);
       for (Entry<Integer, Snapshot> entry : socketSnapshots.entrySet()) {
         partitionedSnapshot.putSnapshot(entry.getKey(), entry.getValue());
       }
@@ -62,17 +69,20 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
     logger.info("Taking snapshots, flushing IoTDB");
     StorageEngine.getInstance().syncCloseAllProcessor();
     logger.info("Taking snapshots, IoTDB is flushed");
+    holdingSockets = new HashSet<>(partitionTable.getNodeSockets(header));
+
     synchronized (socketSnapshots) {
       collectTimeseriesSchemas();
 
       while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
         Log log = logBuffer.removeFirst();
+        snapshotLastLogId = log.getCurrLogIndex();
+        snapshotLastLogTerm = log.getCurrLogTerm();
+
         DataSimpleSnapshot dataSimpleSnapshot =
             (DataSimpleSnapshot) socketSnapshots.computeIfAbsent(PartitionUtils.calculateLogSocket(log,
             partitionTable), socket -> new DataSimpleSnapshot(socketTimeseries.get(socket)));
         dataSimpleSnapshot.add(log);
-        snapshotLastLogId = log.getCurrLogIndex();
-        snapshotLastLogTerm = log.getCurrLogTerm();
       }
 
       logger.info("Snapshot is taken");
@@ -85,6 +95,9 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
     for (MNode sgNode : allSgNodes) {
       String storageGroupName = sgNode.getFullPath();
       int socket = Objects.hash(storageGroupName, 0);
+      if (!holdingSockets.contains(socket)) {
+        continue;
+      }
       List<MeasurementSchema> schemas = socketTimeseries.computeIfAbsent(socket, s -> new ArrayList<>());
       MManager.getInstance().collectSeries(sgNode, schemas);
     }

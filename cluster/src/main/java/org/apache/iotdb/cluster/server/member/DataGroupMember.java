@@ -119,8 +119,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode)
         throws IOException {
       return new DataGroupMember(protocolFactory, partitionGroup, thisNode,
-          new PartitionedSnapshotLogManager(applier, metaGroupMember.getPartitionTable()),
-          metaGroupMember);
+          new PartitionedSnapshotLogManager(applier, metaGroupMember.getPartitionTable(),
+              partitionGroup.getHeader()), metaGroupMember);
     }
   }
 
@@ -203,28 +203,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   @Override
   public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
-    PartitionedSnapshot snapshot = new PartitionedSnapshot();
+    PartitionedSnapshot snapshot = new PartitionedSnapshot<>(DataSimpleSnapshot::new);
     try {
       snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
       logger.debug("{} received a snapshot {}", name, snapshot);
-      applySnapshot(snapshot);
+      applyPartitionedSnapshot(snapshot);
       resultHandler.onComplete(null);
     } catch (Exception e) {
       resultHandler.onError(e);
-    }
-  }
-
-  private void applySnapshot(PartitionedSnapshot snapshot) {
-    synchronized (logManager) {
-      List<Integer> sockets = metaGroupMember.getPartitionTable().getNodeSockets(getHeader());
-      for (Integer socket : sockets) {
-        Snapshot subSnapshot = snapshot.getSnapshot(socket);
-        if (subSnapshot != null) {
-          applySnapshot(subSnapshot, socket);
-        }
-      }
-      logManager.setLastLogId(snapshot.getLastLogId());
-      logManager.setLastLogTerm(snapshot.getLastLogTerm());
     }
   }
 
@@ -268,8 +254,23 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
+  private void applyPartitionedSnapshot(PartitionedSnapshot snapshot) {
+    synchronized (logManager) {
+      List<Integer> sockets = metaGroupMember.getPartitionTable().getNodeSockets(getHeader());
+      for (Integer socket : sockets) {
+        Snapshot subSnapshot = snapshot.getSnapshot(socket);
+        if (subSnapshot != null) {
+          applySnapshot(subSnapshot, socket);
+        }
+      }
+      logManager.setLastLogId(snapshot.getLastLogId());
+      logManager.setLastLogTerm(snapshot.getLastLogTerm());
+    }
+  }
+
   private void loadRemoteFile(RemoteTsFileResource resource) {
     //TODO-Cluster: implement
+    
   }
 
   @Override

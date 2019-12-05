@@ -8,7 +8,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,24 +17,25 @@ import org.apache.iotdb.cluster.log.Snapshot;
 /**
  * PartitionedSnapshot stores the snapshot of each socket in a map.
  */
-public class PartitionedSnapshot extends Snapshot {
+public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
 
-  private Map<Integer, Snapshot> socketSnapshots;
+  private Map<Integer, T> socketSnapshots;
+  private SnapshotFactory<T> factory;
 
-  public PartitionedSnapshot() {
+  public PartitionedSnapshot(SnapshotFactory<T> factory) {
     socketSnapshots = new HashMap<>();
   }
 
   private PartitionedSnapshot(
-      Map<Integer, Snapshot> socketSnapshots) {
+      Map<Integer, T> socketSnapshots, SnapshotFactory<T> factory) {
     this.socketSnapshots = socketSnapshots;
   }
 
-  public void putSnapshot(int socket, Snapshot snapshot) {
+  public void putSnapshot(int socket, T snapshot) {
     socketSnapshots.put(socket, snapshot);
   }
 
-  private Snapshot getPartitionSnapshot(int socket) {
+  private T getPartitionSnapshot(int socket) {
     return socketSnapshots.get(socket);
   }
 
@@ -46,7 +46,7 @@ public class PartitionedSnapshot extends Snapshot {
 
     try {
       dataOutputStream.writeInt(socketSnapshots.size());
-      for (Entry<Integer, Snapshot> entry : socketSnapshots.entrySet()) {
+      for (Entry<Integer, T> entry : socketSnapshots.entrySet()) {
         dataOutputStream.writeInt(entry.getKey());
         dataOutputStream.write(entry.getValue().serialize().array());
       }
@@ -62,25 +62,22 @@ public class PartitionedSnapshot extends Snapshot {
    int size = buffer.getInt();
     for (int i = 0; i < size; i++) {
       int socket = buffer.getInt();
-      Snapshot snapshot = newEmptySnapshot();
+      T snapshot = factory.create();
       snapshot.deserialize(buffer);
       socketSnapshots.put(socket, snapshot);
     }
   }
 
-  private Snapshot newEmptySnapshot() {
-    return new DataSimpleSnapshot();
-  }
 
   public PartitionedSnapshot getSubSnapshots(List<Integer> sockets) {
     Map<Integer, Snapshot> subSnapshots = new HashMap<>();
     for (Integer socket : sockets) {
       subSnapshots.put(socket, getPartitionSnapshot(socket));
     }
-    return new PartitionedSnapshot(subSnapshots);
+    return new PartitionedSnapshot(subSnapshots, factory);
   }
 
   public Snapshot getSnapshot(int socket) {
-    return socketSnapshots.getOrDefault(socket, new SimpleSnapshot(Collections.emptyList()));
+    return socketSnapshots.getOrDefault(socket, factory.create());
   }
 }

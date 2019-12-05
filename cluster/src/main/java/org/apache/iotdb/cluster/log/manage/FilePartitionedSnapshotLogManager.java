@@ -5,6 +5,7 @@
 package org.apache.iotdb.cluster.log.manage;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -14,6 +15,7 @@ import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.RemoteSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -29,8 +31,9 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
 
   private static final Logger logger = LoggerFactory.getLogger(FilePartitionedSnapshotLogManager.class);
 
-  public FilePartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable) {
-    super(logApplier, partitionTable);
+  public FilePartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
+      Node header) {
+    super(logApplier, partitionTable, header);
   }
 
   @Override
@@ -43,6 +46,9 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
         }
       }
     }
+
+    holdingSockets = new HashSet<>(partitionTable.getNodeSockets(header));
+
     logger.info("Taking snapshots, flushing IoTDB");
     StorageEngine.getInstance().syncCloseAllProcessor();
     logger.info("Taking snapshots, IoTDB is flushed");
@@ -72,6 +78,10 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       String storageGroupName = entry.getKey();
       // TODO-Cluster: add time partitioning
       int socketNum = PartitionUtils.calculateStorageGroupSocket(storageGroupName, 0);
+      if (!holdingSockets.contains(socketNum)) {
+        continue;
+      }
+
       FileSnapshot snapshot = (FileSnapshot) socketSnapshots.computeIfAbsent(socketNum,
           s -> new FileSnapshot());
       if (snapshot.getTimeseriesSchemas() == null) {
