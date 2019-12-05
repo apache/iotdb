@@ -81,6 +81,24 @@ public class TsFileResource {
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
+  public TsFileResource() {
+  }
+
+  public TsFileResource(TsFileResource other) {
+    this.file = other.file;
+    this.startTimeMap = other.startTimeMap;
+    this.endTimeMap = other.endTimeMap;
+    this.processor = other.processor;
+    this.modFile = other.modFile;
+    this.closed = other.closed;
+    this.deleted = other.deleted;
+    this.isMerging = other.isMerging;
+    this.chunkMetaDataList = other.chunkMetaDataList;
+    this.readOnlyMemChunk = other.readOnlyMemChunk;
+    this.writeQueryLock = other.writeQueryLock;
+    this.fsFactory = other.fsFactory;
+  }
+
   public TsFileResource(File file) {
     this.file = file;
     this.startTimeMap = new ConcurrentHashMap<>();
@@ -315,5 +333,13 @@ public class TsFileResource {
       }
     }
     return false;
+  }
+
+  public void setStartTimeMap(Map<String, Long> startTimeMap) {
+    this.startTimeMap = startTimeMap;
+  }
+
+  public void setEndTimeMap(Map<String, Long> endTimeMap) {
+    this.endTimeMap = endTimeMap;
   }
 }

@@ -4,11 +4,16 @@
 
 package org.apache.iotdb.cluster.log.snapshot;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * FileSnapshot records the data files in a socket and their md5 (or other verification).
@@ -23,32 +28,63 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
  */
 public class FileSnapshot extends Snapshot {
 
-  private List<TsFileResource> dataFiles;
-  private List<byte[]> md5s;
+  private List<MeasurementSchema> timeseriesSchemas;
+  private List<RemoteTsFileResource> dataFiles;
 
   public FileSnapshot() {
     dataFiles = new ArrayList<>();
-    md5s = new ArrayList<>();
+    timeseriesSchemas = new ArrayList<>();
   }
 
   public void addFile(TsFileResource resource) {
-    dataFiles.add(resource);
-    md5s.add(getFileMd5(resource));
-  }
-
-  private byte[] getFileMd5(TsFileResource resource) {
-    // TODO-Cluster: implement
-    return new byte[0];
+    dataFiles.add(new RemoteTsFileResource(resource));
   }
 
   @Override
   public ByteBuffer serialize() {
-    // TODO-Cluster: implement
-    return null;
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
+    try {
+      dataOutputStream.writeInt(timeseriesSchemas.size());
+      for (MeasurementSchema measurementSchema : timeseriesSchemas) {
+        measurementSchema.serializeTo(dataOutputStream);
+      }
+      dataOutputStream.writeInt(dataFiles.size());
+      for (RemoteTsFileResource dataFile : dataFiles) {
+        dataFile.serialize(dataOutputStream);
+      }
+    } catch (IOException ignored) {
+      // unreachable
+    }
+
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-    // TODO-Cluster: implement
+    int timeseriesNum = buffer.getInt();
+    for (int i = 0; i < timeseriesNum; i++) {
+      timeseriesSchemas.add(MeasurementSchema.deserializeFrom(buffer));
+    }
+    int fileNum = buffer.getInt();
+    for (int i = 0; i < fileNum; i++) {
+      RemoteTsFileResource resource = new RemoteTsFileResource();
+      resource.deserialize(buffer);
+      dataFiles.add(resource);
+    }
+  }
+
+  public List<RemoteTsFileResource> getDataFiles() {
+    return dataFiles;
+  }
+
+  public List<MeasurementSchema> getTimeseriesSchemas() {
+    return timeseriesSchemas;
+  }
+
+  public void setTimeseriesSchemas(
+      List<MeasurementSchema> timeseriesSchemas) {
+    this.timeseriesSchemas = timeseriesSchemas;
   }
 }

@@ -62,8 +62,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
 
-  static final int PULL_SNAPSHOT_RETRY_INTERVAL = 5 * 1000;
-
   String name;
 
   Random random = new Random();

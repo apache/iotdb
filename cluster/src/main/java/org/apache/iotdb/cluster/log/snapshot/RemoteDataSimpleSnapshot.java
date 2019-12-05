@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
  * RemoteDataSimpleSnapshot is a snapshot that is being pulled from a remote node. Any query or
  * modification to this snapshot must wait until the pulling is finished.
  */
-public class RemoteDataSimpleSnapshot extends DataSimpleSnapshot {
+public class RemoteDataSimpleSnapshot extends DataSimpleSnapshot implements RemoteSnapshot {
 
   private static final Logger logger = LoggerFactory.getLogger(RemoteDataSimpleSnapshot.class);
   private Future<Map<Integer, DataSimpleSnapshot>> remoteSnapshotFuture;
@@ -67,11 +67,7 @@ public class RemoteDataSimpleSnapshot extends DataSimpleSnapshot {
     return super.getTimeseriesSchemas();
   }
 
-  public boolean isPulled() {
-    return snapshot != null;
-  }
-
-  private void getRemoteSnapshot() {
+  public void getRemoteSnapshot() {
     if (snapshot == null) {
       try {
         logger.info("Waiting for the remote snapshot");

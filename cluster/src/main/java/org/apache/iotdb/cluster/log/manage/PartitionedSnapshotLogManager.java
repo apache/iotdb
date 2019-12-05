@@ -33,7 +33,7 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
   private static final Logger logger = LoggerFactory.getLogger(PartitionedSnapshotLogManager.class);
 
   Map<Integer, Snapshot> socketSnapshots = new HashMap<>();
-  private Map<Integer, List<MeasurementSchema>> socketTimeseries = new HashMap<>();
+  Map<Integer, List<MeasurementSchema>> socketTimeseries = new HashMap<>();
   long snapshotLastLogId;
   long snapshotLastLogTerm;
   private PartitionTable partitionTable;
@@ -90,7 +90,7 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
     }
   }
 
-  public void setSnapshot(DataSimpleSnapshot snapshot, int socket) {
+  public void setSnapshot(Snapshot snapshot, int socket) {
     synchronized (socketSnapshots) {
       socketSnapshots.put(socket, snapshot);
     }

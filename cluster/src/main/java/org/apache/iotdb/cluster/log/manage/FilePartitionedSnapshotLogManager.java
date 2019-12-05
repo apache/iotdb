@@ -4,12 +4,15 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.RemoteSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -32,6 +35,14 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
 
   @Override
   public void takeSnapshot() {
+    synchronized (socketSnapshots) {
+      // make sure every remote snapshot is pulled before creating local snapshot
+      for (Entry<Integer, Snapshot> entry : socketSnapshots.entrySet()) {
+        if (entry.getValue() instanceof RemoteSnapshot) {
+          ((RemoteSnapshot) entry.getValue()).getRemoteSnapshot();
+        }
+      }
+    }
     logger.info("Taking snapshots, flushing IoTDB");
     StorageEngine.getInstance().syncCloseAllProcessor();
     logger.info("Taking snapshots, IoTDB is flushed");
@@ -63,6 +74,9 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       int socketNum = PartitionUtils.calculateStorageGroupSocket(storageGroupName, 0);
       FileSnapshot snapshot = (FileSnapshot) socketSnapshots.computeIfAbsent(socketNum,
           s -> new FileSnapshot());
+      if (snapshot.getTimeseriesSchemas() == null) {
+        snapshot.setTimeseriesSchemas(socketTimeseries.getOrDefault(socketNum, Collections.emptyList()));
+      }
       for (TsFileResource tsFileResource : entry.getValue()) {
         snapshot.addFile(tsFileResource);
       }

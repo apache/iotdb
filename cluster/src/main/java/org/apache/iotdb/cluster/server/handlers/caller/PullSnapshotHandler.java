@@ -10,7 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iotdb.cluster.log.snapshot.DataSimpleSnapshot;
+import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.snapshot.SnapshotFactory;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -20,27 +21,29 @@ import org.slf4j.LoggerFactory;
 /**
  * PullSnapshotHandler receives the result of pulling a data partition from a node.
  */
-public class PullSnapshotHandler implements AsyncMethodCallback<PullSnapshotResp> {
+public class PullSnapshotHandler<T extends Snapshot> implements AsyncMethodCallback<PullSnapshotResp> {
 
   private static final Logger logger = LoggerFactory.getLogger(PullSnapshotHandler.class);
-  private AtomicReference<Map<Integer, DataSimpleSnapshot>> resultRef;
+  private AtomicReference<Map<Integer, T>> resultRef;
   private Node node;
   private List<Integer> socket;
+  private SnapshotFactory<T> factory;
 
-  public PullSnapshotHandler(AtomicReference<Map<Integer, DataSimpleSnapshot>> resultRef,
-      Node node, List<Integer> socket) {
+  public PullSnapshotHandler(AtomicReference<Map<Integer, T>> resultRef,
+      Node node, List<Integer> socket, SnapshotFactory factory) {
     this.resultRef = resultRef;
     this.node = node;
     this.socket = socket;
+    this.factory = factory;
   }
 
   @Override
   public void onComplete(PullSnapshotResp response) {
     synchronized (resultRef) {
-      Map<Integer, DataSimpleSnapshot> ret = new HashMap<>();
+      Map<Integer, T> ret = new HashMap<>();
       Map<Integer, ByteBuffer> snapshotBytes = response.snapshotBytes;
       for (Entry<Integer, ByteBuffer> entry : snapshotBytes.entrySet()) {
-        DataSimpleSnapshot snapshot = new DataSimpleSnapshot();
+        T snapshot = factory.create();
         snapshot.deserialize(entry.getValue());
         ret.put(entry.getKey(), snapshot);
       }

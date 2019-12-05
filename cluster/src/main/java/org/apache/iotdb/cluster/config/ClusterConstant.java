@@ -28,6 +28,7 @@ public class ClusterConstant {
   public static final int HASH_SALT = 2333;
   public static final int CONNECTION_TIME_OUT_MS = 20 * 1000;
   public static final int SYNC_LEADER_MAX_WAIT_MS = 20 * 1000;
+  public static final int PULL_SNAPSHOT_RETRY_INTERVAL = 5 * 1000;
 
   private ClusterConstant() {
     // constant class

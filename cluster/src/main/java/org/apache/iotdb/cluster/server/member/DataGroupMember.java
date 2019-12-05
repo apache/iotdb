@@ -13,22 +13,23 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.DataClient;
-import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.DataSimpleSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
 import org.apache.iotdb.cluster.log.snapshot.RemoteDataSimpleSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -41,7 +42,6 @@ import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPullSnapshotHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -218,7 +218,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     synchronized (logManager) {
       List<Integer> sockets = metaGroupMember.getPartitionTable().getNodeSockets(getHeader());
       for (Integer socket : sockets) {
-        DataSimpleSnapshot subSnapshot = (DataSimpleSnapshot) snapshot.getSnapshot(socket);
+        Snapshot subSnapshot = snapshot.getSnapshot(socket);
         if (subSnapshot != null) {
           applySnapshot(subSnapshot, socket);
         }
@@ -228,8 +228,22 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
-  private void applySnapshot(DataSimpleSnapshot snapshot, int socket) {
+  public void applySnapshot(Snapshot snapshot, int socket) {
+    if (snapshot instanceof DataSimpleSnapshot) {
+      applySimpleSnapshot((DataSimpleSnapshot) snapshot, socket);
+    } else if (snapshot instanceof FileSnapshot) {
+      applyFileSnapshot((FileSnapshot) snapshot, socket);
+    } else {
+      logger.error("Unrecognized snapshot {}", snapshot);
+    }
+  }
+
+  private void applySimpleSnapshot(DataSimpleSnapshot snapshot, int socket) {
     synchronized (logManager) {
+      for (MeasurementSchema schema : snapshot.getTimeseriesSchemas()) {
+        SchemaUtils.registerTimeseries(schema);
+      }
+
       for (Log log : snapshot.getSnapshot()) {
         try {
           logManager.getApplier().apply(log);
@@ -238,11 +252,24 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         }
       }
       logManager.setSnapshot(snapshot, socket);
+    }
+  }
 
+  private void applyFileSnapshot(FileSnapshot snapshot, int socket) {
+    synchronized (logManager) {
       for (MeasurementSchema schema : snapshot.getTimeseriesSchemas()) {
         SchemaUtils.registerTimeseries(schema);
       }
+
+      List<RemoteTsFileResource> remoteTsFileResources = snapshot.getDataFiles();
+      for (RemoteTsFileResource resource : remoteTsFileResources) {
+        loadRemoteFile(resource);
+      }
     }
+  }
+
+  private void loadRemoteFile(RemoteTsFileResource resource) {
+    //TODO-Cluster: implement
   }
 
   @Override
@@ -308,89 +335,34 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       for (Entry<Node, List<Integer>> entry : holderSocketsMap.entrySet()) {
         Node node = entry.getKey();
         List<Integer> nodeSockets = entry.getValue();
-        Future<Map<Integer, DataSimpleSnapshot>> snapshotFuture =
-            pullSnapshotService.submit(new PullSnapshotTask(node, nodeSockets, this,
-                metaGroupMember.getPartitionTable().getHeaderGroup(node)));
-        for (int socket : sockets) {
-          logManager.setSnapshot(new RemoteDataSimpleSnapshot(snapshotFuture, socket), socket);
-        }
+        pullDataSimpleSnapshot(node, nodeSockets);
       }
     }
   }
 
-  class PullSnapshotTask implements Callable<Map<Integer, DataSimpleSnapshot>> {
-
-    List<Integer> sockets;
-    // the new member created by a node addition
-    DataGroupMember newMember;
-    // the nodes the may hold the target socket
-    List<Node> oldMembers;
-    // the header of the old members
-    Node header;
-
-    PullSnapshotRequest request;
-
-    PullSnapshotTask(Node header, List<Integer> sockets,
-        DataGroupMember member, List<Node> oldMembers) {
-      this.header = header;
-      this.sockets = sockets;
-      this.newMember = member;
-      this.oldMembers = oldMembers;
+  private void pullDataSimpleSnapshot(Node node, List<Integer> nodeSockets) {
+    PartitionGroup prevHolders = metaGroupMember.getPartitionTable().getHeaderGroup(node);
+    if (prevHolders.contains(thisNode)) {
+      // the sockets are already stored locally, skip them.
+      return;
     }
-
-    private boolean pullSnapshot(AtomicReference<Map<Integer, DataSimpleSnapshot>> snapshotRef, int nodeIndex)
-        throws InterruptedException, TException {
-      Node node = oldMembers.get(nodeIndex);
-      TSDataService.AsyncClient client =
-          (TSDataService.AsyncClient) newMember.connectNode(node);
-      if (client == null) {
-        // network is bad, wait and retry
-        Thread.sleep(ClusterConstant.CONNECTION_TIME_OUT_MS);
-      } else {
-        synchronized (snapshotRef) {
-          client.pullSnapshot(request, new PullSnapshotHandler(snapshotRef, node, sockets));
-          snapshotRef.wait(ClusterConstant.CONNECTION_TIME_OUT_MS);
-        }
-        Map<Integer, DataSimpleSnapshot> result = snapshotRef.get();
-        if (result != null) {
-          if (logger.isInfoEnabled()) {
-            logger.info("{} received a snapshot {} from {}", name, snapshotRef.get(), oldMembers.get(nodeIndex));
-          }
-          for (Entry<Integer, DataSimpleSnapshot> entry : result.entrySet()) {
-            newMember.applySnapshot(entry.getValue(), entry.getKey());
-          }
-          return true;
-        } else {
-          Thread.sleep(PULL_SNAPSHOT_RETRY_INTERVAL);
-        }
-      }
-      return false;
-    }
-
-    @Override
-    public Map<Integer, DataSimpleSnapshot> call() {
-      request = new PullSnapshotRequest();
-      request.setHeader(header);
-      request.setRequiredSockets(sockets);
-      AtomicReference<Map<Integer, DataSimpleSnapshot>> snapshotRef = new AtomicReference<>();
-      boolean finished = false;
-      int nodeIndex = -1;
-      while (!finished) {
-        try {
-          // sequentially pick up a node that may have this socket
-          nodeIndex = (nodeIndex + 1) % oldMembers.size();
-          finished = pullSnapshot(snapshotRef, nodeIndex);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          logger.error("{}: Unexpected interruption when pulling socket {}", name, sockets, e);
-          finished = true;
-        } catch (TException e) {
-          logger.debug("{} cannot pull socket {} from {}, retry", name, sockets, header, e);
-        }
-      }
-      return snapshotRef.get();
+    Future<Map<Integer, DataSimpleSnapshot>> snapshotFuture =
+        pullSnapshotService.submit(new PullSnapshotTask(node, nodeSockets, this,
+            prevHolders, DataSimpleSnapshot::new));
+    for (int socket : nodeSockets) {
+      logManager.setSnapshot(new RemoteDataSimpleSnapshot(snapshotFuture, socket), socket);
     }
   }
+
+  private void pullFileSnapshot(Node node, List<Integer> nodeSockets) {
+    Future<Map<Integer, FileSnapshot>> snapshotFuture =
+        pullSnapshotService.submit(new PullSnapshotTask(node, nodeSockets, this,
+            metaGroupMember.getPartitionTable().getHeaderGroup(node), FileSnapshot::new));
+    for (int socket : nodeSockets) {
+      logManager.setSnapshot(new RemoteFileSnapshot(snapshotFuture), socket);
+    }
+  }
+
 
   public MetaGroupMember getMetaGroupMember() {
     return metaGroupMember;
