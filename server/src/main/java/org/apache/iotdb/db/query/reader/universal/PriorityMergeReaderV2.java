@@ -23,13 +23,15 @@ import java.util.List;
 import java.util.PriorityQueue;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 /**
  * This class implements {@link IPointReader} for data sources with different priorities.
  */
-public class PriorityMergeReaderV2 implements IAggregateReader {
+public class PriorityMergeReaderV2 implements IAggregateReader, IPointReader {
 
   private PriorityQueue<Element> heap = new PriorityQueue<>((o1, o2) -> {
     int timeCompare = Long.compare(o1.currBatchData().currentTime(),
@@ -58,6 +60,21 @@ public class PriorityMergeReaderV2 implements IAggregateReader {
   @Override
   public boolean hasNext() {
     return !heap.isEmpty();
+  }
+
+  @Override
+  public TimeValuePair next() throws IOException {
+    // FIXME To be removed
+    BatchData next = nextBatch();
+    return new TimeValuePair(next.currentTime(),
+        TsPrimitiveType.getByType(next.getDataType(), next.currentValue()));
+  }
+
+  @Override
+  public TimeValuePair current() throws IOException {
+    BatchData current = heap.peek().batchData;
+    return new TimeValuePair(current.currentTime(),
+        TsPrimitiveType.getByType(current.getDataType(), current.currentValue()));
   }
 
   @Override
@@ -138,7 +155,6 @@ public class PriorityMergeReaderV2 implements IAggregateReader {
 
     BatchData currBatchData() {
       return batchData;
-      // new TimeValuePair(currTime(), TsPrimitiveType.getByType(batchData.getDataType(), batchData.currentValue()));
     }
 
     boolean hasNext() throws IOException {

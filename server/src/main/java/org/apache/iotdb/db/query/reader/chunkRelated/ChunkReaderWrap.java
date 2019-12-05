@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
@@ -38,6 +39,7 @@ public class ChunkReaderWrap {
 
   // attributes for disk chunk
   private ChunkMetaData chunkMetaData;
+  private List<ChunkMetaData> chunkMetaDataList;
   private IChunkLoader chunkLoader;
 
   // attributes for mem chunk
@@ -53,9 +55,10 @@ public class ChunkReaderWrap {
   /**
    * constructor of diskChunkReader
    */
-  public ChunkReaderWrap(ChunkMetaData metaData, IChunkLoader chunkLoader, Filter filter) {
+  public ChunkReaderWrap(List<ChunkMetaData> metaDataList, IChunkLoader chunkLoader,
+      Filter filter) {
     this.type = ChunkReaderType.DISK_CHUNK;
-    this.chunkMetaData = metaData;
+    this.chunkMetaDataList = metaDataList;
     this.chunkLoader = chunkLoader;
     this.filter = filter;
   }
@@ -91,7 +94,7 @@ public class ChunkReaderWrap {
 
   public IReaderByTimestamp getIReaderByTimestamp() throws IOException {
     if (type.equals(ChunkReaderType.DISK_CHUNK)) {
-      Chunk chunk = chunkLoader.getChunk(chunkMetaData);
+      Chunk chunk = chunkLoader.getChunk(chunkMetaData); // TODO
       ChunkReaderByTimestamp chunkReader = new ChunkReaderByTimestamp(chunk);
       return new DiskChunkReaderByTimestamp(chunkReader);
     } else {
@@ -100,7 +103,7 @@ public class ChunkReaderWrap {
   }
 
   public String getMeasurementUid() {
-    if (chunkMetaData != null) {
+    if (chunkMetaData != null) { // TODO
       return chunkMetaData.getMeasurementUid();
     } else {
       return null;

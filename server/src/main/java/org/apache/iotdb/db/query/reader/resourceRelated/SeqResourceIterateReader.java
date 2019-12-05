@@ -110,7 +110,7 @@ public class SeqResourceIterateReader extends IterateReader {
   public boolean constructNextReader(int idx) throws IOException {
     TsFileResource tsFileResource = seqResources.get(idx);
     if (tsFileResource.isClosed()) {
-      if (isTsFileNotSatisfied(tsFileResource, filter)) {
+      if (!ResourceRelatedUtil.isTsFileSatisfied(tsFileResource, filter, seriesPath)) {
         return false;
       }
       currentSeriesReader = initSealedTsFileReader(tsFileResource, filter, context);
@@ -120,7 +120,7 @@ public class SeqResourceIterateReader extends IterateReader {
       // If endTimeMap size is 0, conservatively assume that this TsFile might satisfy this filter.
       // If endTimeMap size is not 0, call isTsFileNotSatisfied to check.
       if (tsFileResource.getEndTimeMap().size() != 0) {
-        if (isTsFileNotSatisfied(tsFileResource, filter)) {
+        if (!ResourceRelatedUtil.isTsFileSatisfied(tsFileResource, filter, seriesPath)) {
           return false;
         }
       }
