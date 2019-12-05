@@ -170,7 +170,12 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterLoadFiles(LoadFilesContext ctx) {
     super.enterLoadFiles(ctx);
-    initializedOperator = new LoadFilesOperator(new File(ctx.getChild(1).getText()));
+    boolean createSchemaAutomatically =
+        ctx.getChild(2).getChild(0) == null || Boolean.parseBoolean(ctx.getChild(2).getChild(0).getText());
+    int sgLevel = ctx.getChild(2).getChild(1) == null ? IoTDBDescriptor.getInstance().getConfig()
+        .getDefaultStorageGroupLevel() : Integer.parseInt(ctx.getChild(2).getChild(1).getText());
+    initializedOperator = new LoadFilesOperator(new File(ctx.getChild(1).getText()),
+        createSchemaAutomatically, sgLevel);
   }
 
   @Override

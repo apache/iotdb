@@ -28,10 +28,19 @@ public class OperateFilePlan extends PhysicalPlan {
 
   private File file;
   private File targetDir;
+  private boolean autoCreateSchema;
+  private int sgLevel;
 
   public OperateFilePlan(File file, OperatorType operatorType) {
     super(false, operatorType);
     this.file = file;
+  }
+
+  public OperateFilePlan(File file, OperatorType operatorType, boolean autoCreateSchema, int sgLevel) {
+    super(false, operatorType);
+    this.file = file;
+    this.autoCreateSchema = autoCreateSchema;
+    this.sgLevel = sgLevel;
   }
 
   public OperateFilePlan(File file, File targetDir, OperatorType operatorType) {
@@ -53,12 +62,21 @@ public class OperateFilePlan extends PhysicalPlan {
     return targetDir;
   }
 
+  public boolean isAutoCreateSchema() {
+    return autoCreateSchema;
+  }
+
+  public int getSgLevel() {
+    return sgLevel;
+  }
+
   @Override
   public String toString() {
     return "OperateFilePlan{" +
-        "file=" + file.getPath() +
-        ", targetDir=" + (targetDir == null ? " null":targetDir.getPath()) +
-        ", operatorType=" + getOperatorType() +
+        "file=" + file +
+        ", targetDir=" + targetDir +
+        ", autoCreateSchema=" + autoCreateSchema +
+        ", sgLevel=" + sgLevel +
         '}';
   }
 }

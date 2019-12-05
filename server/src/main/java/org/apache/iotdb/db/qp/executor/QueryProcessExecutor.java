@@ -27,8 +27,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -42,7 +44,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -88,6 +89,8 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
@@ -169,29 +172,31 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
           String.format("File path %s doesn't exists.", file.getPath()));
     }
     if (file.isDirectory()) {
-      recursionFileDir(file);
+      recursionFileDir(file, plan);
     } else {
-      loadFile(file);
+      loadFile(file, plan);
     }
   }
 
-  private void recursionFileDir(File curFile) throws QueryProcessException {
+  private void recursionFileDir(File curFile, OperateFilePlan plan) throws QueryProcessException {
     File[] files = curFile.listFiles();
     for (File file : files) {
       if (file.isDirectory()) {
-        recursionFileDir(file);
+        recursionFileDir(file, plan);
       } else {
-        loadFile(file);
+        loadFile(file, plan);
       }
     }
   }
 
-  private void loadFile(File file) throws QueryProcessException {
+  private void loadFile(File file, OperateFilePlan plan) throws QueryProcessException {
     if (!file.getName().endsWith(TSFILE_SUFFIX)) {
       return;
     }
     TsFileResource tsFileResource = new TsFileResource(file);
     try {
+      // check file
+      Map<String, MeasurementSchema> knownSchemas = getFileSchemas(file);
       FileLoaderUtils.checkTsFileResource(tsFileResource);
       if (UpgradeUtils.isNeedUpgrade(tsFileResource)) {
         throw new QueryProcessException(
@@ -199,10 +204,44 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
                 "Cannot load file %s because the file's version is old which needs to be upgraded.",
                 file.getAbsolutePath()));
       }
+
+      //create schemas if they doesn't exist
+      if(plan.isAutoCreateSchema()) {
+        createSchemaAutomatically(knownSchemas, plan.getSgLevel());
+      }
+
       StorageEngine.getInstance().loadNewTsFile(tsFileResource);
-    } catch (IOException | TsFileProcessorException | StorageEngineException | StorageGroupException e) {
+    } catch (Exception e) {
       throw new QueryProcessException(
           String.format("Cannot load file %s because %s", file.getAbsolutePath(), e.getMessage()));
+    }
+  }
+
+  private Map<String, MeasurementSchema> getFileSchemas(File file)
+      throws IOException, QueryProcessException {
+    RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);
+    if (restorableTsFileIOWriter.hasCrashed()){
+      restorableTsFileIOWriter.close();
+      throw new QueryProcessException(
+          String.format("Cannot load file %s because the file has crashed.", file.getAbsolutePath()));
+    }
+    return restorableTsFileIOWriter.getKnownSchema();
+  }
+
+  private void createSchemaAutomatically(Map<String, MeasurementSchema> knownSchemas, int sgLevel)
+      throws CacheException, QueryProcessException, MetadataException, StorageEngineException {
+
+    Iterator<Entry<String, MeasurementSchema>> iterator = knownSchemas.entrySet().iterator();
+    MNode node = null;
+    if(iterator.hasNext()){
+      Entry<String, MeasurementSchema> entry = iterator.next();
+      String path = entry.getKey();
+      node = mManager.getNodeByPathFromCache(path, true, sgLevel);
+    }
+    for(Entry<String, MeasurementSchema> entry:knownSchemas.entrySet()) {
+      String fullPath = entry.getKey();
+      MeasurementSchema schema = entry.getValue();
+      checkPathExists(node, fullPath, schema);
     }
   }
 
@@ -313,35 +352,12 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
-      MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
+      MNode node = mManager.getNodeByPathFromCache(deviceId);
       String[] strValues = insertPlan.getValues();
       TSDataType[] dataTypes = new TSDataType[measurementList.length];
-      IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
       for (int i = 0; i < measurementList.length; i++) {
-
-        // check if timeseries exists
-        if (!node.hasChild(measurementList[i])) {
-          if (!conf.isAutoCreateSchemaEnabled()) {
-            throw new QueryProcessException(
-                String.format("Current deviceId[%s] does not contain measurement:%s",
-                    deviceId, measurementList[i]));
-          }
-          try {
-            addPathToMTree(deviceId, measurementList[i], strValues[i]);
-          } catch (MetadataException e) {
-            if (!e.getMessage().contains("already exist")) {
-              throw e;
-            }
-          }
-        }
-        MNode measurementNode = node.getChild(measurementList[i]);
-        if (!measurementNode.isLeaf()) {
-          throw new QueryProcessException(
-              String.format("Current Path is not leaf node. %s.%s", deviceId,
-                  measurementList[i]));
-        }
-
+        MNode measurementNode = checkPathExists(node, deviceId, measurementList[i], strValues[i]);
         dataTypes[i] = measurementNode.getSchema().getType();
       }
       insertPlan.setDataTypes(dataTypes);
@@ -353,12 +369,60 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
   }
 
+  private MNode checkPathExists(MNode node, String deviceId, String measurement, String strValue)
+      throws MetadataException, QueryProcessException, StorageEngineException {
+    // check if timeseries exists
+    if (!node.hasChild(measurement)) {
+      if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+        throw new QueryProcessException(
+            String.format("Current deviceId[%s] does not contain measurement:%s", deviceId, measurement));
+      }
+      try {
+        addPathToMTree(deviceId, measurement, strValue);
+      } catch (MetadataException e) {
+        if (!e.getMessage().contains("already exist")) {
+          throw e;
+        }
+      }
+    }
+    MNode measurementNode = node.getChild(measurement);
+    if (!measurementNode.isLeaf()) {
+      throw new QueryProcessException(
+          String.format("Current Path is not leaf node. %s.%s", deviceId, measurement));
+    }
+    return measurementNode;
+  }
+
+  private void checkPathExists(MNode node, String fullPath, MeasurementSchema schema)
+      throws QueryProcessException, StorageEngineException, MetadataException {
+    // check if timeseries exists
+    String measurement = schema.getMeasurementId();
+    if (!node.hasChild(measurement)) {
+      if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+        throw new QueryProcessException(
+            String.format("Path[%s] does not exist", fullPath));
+      }
+      try {
+        addPathToMTree(fullPath, schema.getType(), schema.getEncodingType(), schema.getCompressor());
+      } catch (MetadataException e) {
+        if (!e.getMessage().contains("already exist")) {
+          throw e;
+        }
+      }
+    }
+    MNode measurementNode = node.getChild(measurement);
+    if (!measurementNode.isLeaf()) {
+      throw new QueryProcessException(
+          String.format("Current Path is not leaf node. %s", fullPath));
+    }
+  }
+
   @Override
   public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
     try {
       String[] measurementList = batchInsertPlan.getMeasurements();
       String deviceId = batchInsertPlan.getDeviceId();
-      MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
+      MNode node = mManager.getNodeByPathFromCache(deviceId);
       TSDataType[] dataTypes = batchInsertPlan.getDataTypes();
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
@@ -789,24 +853,25 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   /**
    * Add a seriesPath to MTree
    */
-  private void addPathToMTree(String deviceId, String measurementId, TSDataType dataType)
+  private void addPathToMTree(String fullPath, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressionType)
       throws PathException, MetadataException, StorageEngineException {
-    String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
-    TSEncoding defaultEncoding = getDefaultEncoding(dataType);
-    CompressionType defaultCompressor =
-        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
     boolean result = mManager.addPathToMTree(
-        fullPath, dataType, defaultEncoding, defaultCompressor, Collections.emptyMap());
+        fullPath, dataType, encoding, compressionType, Collections.emptyMap());
     if (result) {
       storageEngine.addTimeSeries(
-          new Path(fullPath), dataType, defaultEncoding, defaultCompressor, Collections.emptyMap());
+          new Path(fullPath), dataType, encoding, compressionType, Collections.emptyMap());
     }
   }
 
   private void addPathToMTree(String deviceId, String measurementId, Object value)
       throws PathException, MetadataException, StorageEngineException {
     TSDataType predictedDataType = TypeInferenceUtils.getPredictedDataType(value);
-    addPathToMTree(deviceId, measurementId, predictedDataType);
+    String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
+    TSEncoding encoding = getDefaultEncoding(predictedDataType);
+    CompressionType compressionType =
+        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
+    addPathToMTree(fullPath, predictedDataType, encoding, compressionType);
   }
 
   /**

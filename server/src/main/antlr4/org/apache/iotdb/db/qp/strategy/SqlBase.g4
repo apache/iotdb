@@ -70,7 +70,7 @@ statement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | LOAD CONFIGURATION #loadConfigurationStatement
-    | LOAD FILE #loadFiles
+    | LOAD FILE autoCreateSchema? #loadFiles
     | REMOVE FILE#removeFile
     | MOVE FILE FILE #moveFile
 
@@ -300,6 +300,12 @@ realLiteral
 
 property
     : name=ID OPERATOR_EQ value=propertyValue
+    ;
+
+autoCreateSchema
+    :
+    | BOOLEAN_VALUE
+    | BOOLEAN_VALUE INT
     ;
 
 //============================
@@ -680,6 +686,11 @@ STRING_LITERAL
    ;
 
 INT : [0-9]+;
+
+BOOLEAN_VALUE
+   : T R U E
+   | F A L S E
+   ;
 
 EXPONENT : INT ('e'|'E') ('+'|'-')? INT ;
 

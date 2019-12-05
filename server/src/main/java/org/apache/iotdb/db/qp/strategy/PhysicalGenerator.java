@@ -173,7 +173,9 @@ public class PhysicalGenerator {
                 .format("not supported operator type %s in show operation.", operator.getType()));
         }
       case LOAD_FILES:
-        return new OperateFilePlan(((LoadFilesOperator)operator).getFile(), OperatorType.LOAD_FILES);
+        return new OperateFilePlan(((LoadFilesOperator) operator).getFile(),
+            OperatorType.LOAD_FILES, ((LoadFilesOperator) operator).isAutoCreateSchema(),
+            ((LoadFilesOperator) operator).getSgLevel());
       case REMOVE_FILE:
         return new OperateFilePlan(((RemoveFileOperator)operator).getFile(), OperatorType.REMOVE_FILE);
       case MOVE_FILE:
