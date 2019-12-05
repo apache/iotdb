@@ -337,6 +337,7 @@ public class StorageEngine implements IService {
 
   /**
    * count all Tsfiles which need to be upgraded
+   *
    * @return total num of the tsfiles which need to be upgraded
    */
   public int countUpgradeFiles() {
@@ -427,14 +428,31 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void loadNewTsFile(TsFileResource newTsFileResource)
+  public void loadNewTsFileForSync(TsFileResource newTsFileResource)
       throws TsFileProcessorException, StorageEngineException {
     getProcessor(newTsFileResource.getFile().getParentFile().getName())
-        .loadNewTsFile(newTsFileResource);
+        .loadNewTsFileForSync(newTsFileResource);
   }
 
-  public void deleteTsfile(File deletedTsfile) throws StorageEngineException {
-    getProcessor(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
+  public void loadNewTsFile(TsFileResource newTsFileResource)
+      throws TsFileProcessorException, StorageEngineException, StorageGroupException {
+    Map<String, Long> startTimeMap = newTsFileResource.getStartTimeMap();
+    if (startTimeMap == null || startTimeMap.isEmpty()) {
+      throw new StorageEngineException("Can not get the corresponding storage group.");
+    }
+    String device = startTimeMap.keySet().iterator().next();
+    String storageGroupName = MManager.getInstance().getStorageGroupNameByPath(device);
+    getProcessor(storageGroupName).loadNewTsFile(newTsFileResource);
+  }
+
+  public boolean deleteTsfile(File deletedTsfile) throws StorageEngineException {
+    return getProcessor(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
+  }
+
+  public boolean moveTsfile(File tsfileToBeMoved, File targetDir)
+      throws StorageEngineException, IOException {
+    return getProcessor(tsfileToBeMoved.getParentFile().getName())
+        .moveTsfile(tsfileToBeMoved, targetDir);
   }
 
 }

@@ -22,6 +22,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.File;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.QueryProcessor;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
@@ -540,5 +542,60 @@ public class PhysicalPlanTest {
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     ShowPlan plan = (ShowPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals("SHOW FLUSH_TASK_INFO", plan.toString());
+  }
+
+  @Test
+  public void testLoadFiles() throws QueryProcessException, MetadataException {
+    String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
+    String metadata = String.format("load %s", filePath);
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(String.format(
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=2, operatorType=LOAD_FILES}",
+        filePath), plan.toString());
+
+    metadata = String.format("load %s true", filePath);
+    processor = new QueryProcessor(new MemIntQpExecutor());
+    plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(String.format(
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=2, operatorType=LOAD_FILES}",
+        filePath), plan.toString());
+
+    metadata = String.format("load %s false", filePath);
+    processor = new QueryProcessor(new MemIntQpExecutor());
+    plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(String.format(
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=2, operatorType=LOAD_FILES}",
+        filePath), plan.toString());
+
+    metadata = String.format("load %s true 3", filePath);
+    processor = new QueryProcessor(new MemIntQpExecutor());
+    plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(String.format(
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=3, operatorType=LOAD_FILES}",
+        filePath), plan.toString());
+  }
+
+  @Test
+  public void testRemoveFile() throws QueryProcessException, MetadataException {
+    String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
+    String metadata = String.format("remove %s", filePath);
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(String.format(
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=0, operatorType=REMOVE_FILE}",
+        filePath), plan.toString());
+  }
+
+  @Test
+  public void testMoveFile() throws QueryProcessException, MetadataException {
+    String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
+    String targetDir = "user" + File.separator + "backup";
+    String metadata = String.format("move %s %s", filePath, targetDir);
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(
+        String.format("OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, operatorType=MOVE_FILE}", filePath,
+            targetDir), plan.toString());
   }
 }

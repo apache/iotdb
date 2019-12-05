@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.tools.MemEst;
+package org.apache.iotdb.db.tools.memestimation;
 
 import io.airlift.airline.Command;
 import io.airlift.airline.Option;
