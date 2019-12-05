@@ -37,7 +37,7 @@ setuptools.setup(
     description="Apache IoTDB (incubating) client API",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/apache/incuabtor-iotdb",
+    url="https://github.com/apache/incubator-iotdb",
     packages=setuptools.find_packages(),
     install_requires=[
               'thrift',
@@ -51,4 +51,5 @@ setuptools.setup(
     ],
     python_requires='>=3.7',
     license='Apache License, Version 2.0',
+    website='https://iotdb.apache.org',
 )
