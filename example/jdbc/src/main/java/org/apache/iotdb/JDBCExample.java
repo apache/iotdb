@@ -45,7 +45,7 @@ public class JDBCExample {
       outputResult(resultSet);
       resultSet = statement.executeQuery("select count(*) from root");
       outputResult(resultSet);
-      resultSet = statement.executeQuery("select count(*) from root where time >= 1 and time <= 100 group by ([0, 100], 20ms, 1s)");
+      resultSet = statement.executeQuery("select count(*) from root where time >= 1 and time <= 100 group by ([0, 100], 20ms, 20ms)");
       outputResult(resultSet);
     }
   }
