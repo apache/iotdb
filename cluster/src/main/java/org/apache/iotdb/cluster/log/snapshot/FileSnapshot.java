@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -36,8 +37,8 @@ public class FileSnapshot extends Snapshot {
     timeseriesSchemas = new ArrayList<>();
   }
 
-  public void addFile(TsFileResource resource) {
-    dataFiles.add(new RemoteTsFileResource(resource));
+  public void addFile(TsFileResource resource, Node header) {
+    dataFiles.add(new RemoteTsFileResource(resource, header));
   }
 
   @Override

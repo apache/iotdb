@@ -107,4 +107,20 @@ public class RemoteTsFileResource extends TsFileResource {
     setEndTimeMap(endTimeMap);
     isRemote = true;
   }
+
+  public Node getSource() {
+    return source;
+  }
+
+  public boolean isRemote() {
+    return isRemote;
+  }
+
+  public byte[] getMd5() {
+    return md5;
+  }
+
+  public void setRemote(boolean remote) {
+    isRemote = remote;
+  }
 }

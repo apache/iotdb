@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.cluster.utils.ClusterConsistent;
 
-// TODO-Cluster: add the configs into the config file
 public class ClusterConfig {
 
   static final String CONFIG_NAME = "iotdb-cluster.properties";

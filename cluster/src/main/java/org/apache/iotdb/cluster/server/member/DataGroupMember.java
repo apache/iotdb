@@ -4,8 +4,13 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import static org.apache.iotdb.cluster.config.ClusterConstant.CONNECTION_TIME_OUT_MS;
+
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -16,6 +21,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.DataClient;
@@ -42,8 +48,13 @@ import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPullSnapshotHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.QueryProcessor;
@@ -63,6 +74,7 @@ import org.slf4j.LoggerFactory;
 public class DataGroupMember extends RaftMember implements TSDataService.AsyncIface {
 
   private static final Logger logger = LoggerFactory.getLogger(DataGroupMember.class);
+  private static final String REMOTE_FILE_TEMP_DIR = "remote";
 
   private MetaGroupMember metaGroupMember;
 
@@ -269,9 +281,104 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   private void loadRemoteFile(RemoteTsFileResource resource) {
-    //TODO-Cluster: implement
-    
+    Node source = resource.getSource();
+    PartitionGroup partitionGroup = metaGroupMember.getPartitionTable().getHeaderGroup(source);
+    for (Node node : partitionGroup) {
+      File tempFile = pullRemoteFile(resource, node);
+      if (tempFile != null) {
+        resource.setFile(tempFile);
+        loadRemoteResource(resource);
+        logger.info("{}: Remote file {} is successfully loaded", name, resource);
+        return;
+      }
+    }
+    logger.error("{}: Cannot load remote file {} from group {}", name, resource, partitionGroup);
   }
+
+  private void loadRemoteResource(RemoteTsFileResource resource) {
+    String[] pathSegments = resource.getFile().getAbsolutePath().split(File.separator);
+    int segSize = pathSegments.length;
+    String storageGroupName = pathSegments[segSize - 2];
+    File remoteModFile =
+        new File(resource.getFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
+    //TODO-Cluster: load the file resource into a proper storage group processor
+    try {
+      StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource);
+    } catch (TsFileProcessorException | StorageEngineException e) {
+      logger.error("{}: Cannot load remote file {} into storage group", name, resource, e);
+      return;
+    }
+    if (remoteModFile.exists()) {
+      // when successfully loaded, the file in the resource will be changed
+      File localModFile =
+          new File(resource.getFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
+      remoteModFile.renameTo(localModFile);
+    }
+    resource.setRemote(false);
+  }
+
+  private File pullRemoteFile(RemoteTsFileResource resource, Node node) {
+    logger.debug("{}: pulling remote file {} from {}", name, resource, node);
+    AsyncClient client = connectNode(node);
+    if (client == null) {
+      return null;
+    }
+    String[] pathSegments = resource.getFile().getAbsolutePath().split(File.separator);
+    int segSize = pathSegments.length;
+    // {nodeIdentifier}_{storageGroupName}_{fileName}
+    String tempFileName =
+        node.getNodeIdentifier() + "_" + pathSegments[segSize - 2] + "_" + pathSegments[segSize - 1];
+    File tempFile = new File(REMOTE_FILE_TEMP_DIR, tempFileName);
+    File tempModFile = new File(REMOTE_FILE_TEMP_DIR, tempFileName + ModificationFile.FILE_SUFFIX);
+    if (pullRemoteFile(resource.getFile().getAbsolutePath(), node, tempFile, client)) {
+      if (!checkMd5(tempFile, resource.getMd5())) {
+        return null;
+      }
+      pullRemoteFile(resource.getModFile().getFilePath(), node, tempModFile, client);
+      return tempFile;
+    }
+    return null;
+  }
+
+  private boolean checkMd5(File tempFile, byte[] expectedMd5) {
+    // TODO-Cluster: implement
+    return true;
+  }
+
+  private boolean pullRemoteFile(String remotePath, Node node, File dest, AsyncClient client) {
+    AtomicReference<ByteBuffer> result = new AtomicReference<>();
+    try (BufferedOutputStream bufferedOutputStream =
+        new BufferedOutputStream(new FileOutputStream(dest))) {
+      int offset = 0;
+      int fetchSize = 64 * 1024;
+      result.set(null);
+      GenericHandler<ByteBuffer> handler = new GenericHandler<>(node, result);
+
+      while (true) {
+        synchronized (result) {
+          client.readFile(remotePath, offset, fetchSize, handler);
+          result.wait(CONNECTION_TIME_OUT_MS);
+        }
+        ByteBuffer buffer = result.get();
+        if (buffer == null || buffer.array().length == 0) {
+          break;
+        }
+        bufferedOutputStream.write(buffer.array());
+        offset += buffer.array().length;
+      }
+      bufferedOutputStream.flush();
+    } catch (IOException e) {
+      logger.error("{}: Cannot create temp file for {}", name, remotePath);
+      return false;
+    } catch (TException | InterruptedException e) {
+      logger.error("{}: Cannot pull file {} from {}", name, remotePath, node);
+      dest.delete();
+      return false;
+    }
+    logger.info("{}: remote file {} is pulled at {}", name, remotePath, dest);
+    return true;
+  }
+
 
   @Override
   public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {

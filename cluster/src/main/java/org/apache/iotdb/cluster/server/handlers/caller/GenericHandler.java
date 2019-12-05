@@ -4,35 +4,35 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class RequestCommitIdHandler implements AsyncMethodCallback<Long> {
+public class GenericHandler<T> implements AsyncMethodCallback<T> {
 
-  private static final Logger logger = LoggerFactory.getLogger(RequestCommitIdHandler.class);
+  private static final Logger logger = LoggerFactory.getLogger(GenericHandler.class);
 
-  private Node leader;
-  private AtomicLong result;
+  private Node source;
+  private AtomicReference<T> result;
 
-  public RequestCommitIdHandler(Node leader, AtomicLong result) {
-    this.leader = leader;
+  public GenericHandler(Node source, AtomicReference<T> result) {
+    this.source = source;
     this.result = result;
   }
 
   @Override
-  public void onComplete(Long response) {
+  public void onComplete(T response) {
     synchronized (result) {
       result.set(response);
-      result.notifyAll();;
+      result.notifyAll();
     }
   }
 
   @Override
   public void onError(Exception exception) {
-    logger.error("Cannot request commit index from leader {}", leader, exception);
+    logger.error("Cannot receive result from {}", source, exception);
     synchronized (result) {
       result.notifyAll();
     }

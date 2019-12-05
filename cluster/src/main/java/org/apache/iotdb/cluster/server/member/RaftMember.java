@@ -4,9 +4,12 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -725,6 +728,25 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     try {
       client.requestCommitIndex(header, resultHandler);
     } catch (TException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void readFile(String filePath, long offset, int length,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    try (BufferedInputStream bufferedInputStream =
+        new BufferedInputStream(new FileInputStream(filePath))) {
+      byte[] bytes = new byte[length];
+      ByteBuffer result = ByteBuffer.wrap(bytes);
+      int len = bufferedInputStream.read(bytes);
+      if (len > 0) {
+        result.limit(len);
+      } else {
+        result.limit(0);
+      }
+      resultHandler.onComplete(result);
+    } catch (IOException e) {
       resultHandler.onError(e);
     }
   }

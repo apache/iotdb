@@ -88,7 +88,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
         snapshot.setTimeseriesSchemas(socketTimeseries.getOrDefault(socketNum, Collections.emptyList()));
       }
       for (TsFileResource tsFileResource : entry.getValue()) {
-        snapshot.addFile(tsFileResource);
+        snapshot.addFile(tsFileResource, header);
       }
     }
   }

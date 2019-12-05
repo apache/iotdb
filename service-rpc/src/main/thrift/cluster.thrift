@@ -195,6 +195,8 @@ service RaftService {
   * Pull all timeseries schemas prefixed by a given path.
   **/
   PullSchemaResp pullTimeSeriesSchema(1: PullSchemaRequest request)
+
+  binary readFile(1:string filePath, 2:i64 offset, 3:i32 length)
 }
 
 
