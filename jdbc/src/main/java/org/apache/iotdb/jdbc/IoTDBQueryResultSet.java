@@ -741,7 +741,7 @@ public class IoTDBQueryResultSet implements ResultSet {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                    String.format("Data type %s is not supported.", columnTypeList.get(i)));
+                    String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
         }
       }
     }
