@@ -169,7 +169,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterLoadFiles(LoadFilesContext ctx) {
     super.enterLoadFiles(ctx);
-    if (!ctx.getChild(2).getChild(0).getText().equalsIgnoreCase("true") && !ctx.getChild(2)
+    if (ctx.getChild(2).getChild(0) != null && !ctx.getChild(2).getChild(0).getText()
+        .equalsIgnoreCase("true") && !ctx.getChild(2)
         .getChild(0).getText().equalsIgnoreCase("false")) {
       initializedOperator = new LoadFilesOperator(true,
           "Please check the statement: load [FILE] true/false [storage group level]");

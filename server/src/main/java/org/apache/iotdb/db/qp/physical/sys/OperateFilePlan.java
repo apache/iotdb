@@ -77,6 +77,7 @@ public class OperateFilePlan extends PhysicalPlan {
         ", targetDir=" + targetDir +
         ", autoCreateSchema=" + autoCreateSchema +
         ", sgLevel=" + sgLevel +
+        ", operatorType=" + getOperatorType() +
         '}';
   }
 }

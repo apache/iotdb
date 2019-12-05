@@ -551,28 +551,28 @@ public class PhysicalPlanTest {
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(String.format(
-        "OperateFilePlan{file=data/213213441243-1-2.tsfile, targetDir=null, autoCreateSchema=true, sgLevel=2}",
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=2, operatorType=LOAD_FILES}",
         filePath), plan.toString());
 
     metadata = String.format("load %s true", filePath);
     processor = new QueryProcessor(new MemIntQpExecutor());
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(String.format(
-        "OperateFilePlan{file=data/213213441243-1-2.tsfile, targetDir=null, autoCreateSchema=true, sgLevel=2}",
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=2, operatorType=LOAD_FILES}",
         filePath), plan.toString());
 
     metadata = String.format("load %s false", filePath);
     processor = new QueryProcessor(new MemIntQpExecutor());
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(String.format(
-        "OperateFilePlan{file=data/213213441243-1-2.tsfile, targetDir=null, autoCreateSchema=false, sgLevel=2}",
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=2, operatorType=LOAD_FILES}",
         filePath), plan.toString());
 
     metadata = String.format("load %s true 3", filePath);
     processor = new QueryProcessor(new MemIntQpExecutor());
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(String.format(
-        "OperateFilePlan{file=data/213213441243-1-2.tsfile, targetDir=null, autoCreateSchema=true, sgLevel=3}",
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=3, operatorType=LOAD_FILES}",
         filePath), plan.toString());
   }
 
@@ -582,9 +582,9 @@ public class PhysicalPlanTest {
     String metadata = String.format("remove %s", filePath);
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
-    assertEquals(
-        String.format("OperateFilePlan{file=%s, targetDir= null, operatorType=REMOVE_FILE}",
-            filePath), plan.toString());
+    assertEquals(String.format(
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=0, operatorType=REMOVE_FILE}",
+        filePath), plan.toString());
   }
 
   @Test
@@ -595,7 +595,7 @@ public class PhysicalPlanTest {
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
-        String.format("OperateFilePlan{file=%s, targetDir=%s, operatorType=MOVE_FILE}", filePath,
+        String.format("OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, operatorType=MOVE_FILE}", filePath,
             targetDir), plan.toString());
   }
 }
