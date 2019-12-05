@@ -27,6 +27,7 @@ import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.auth.user.LocalFileUserManager;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
@@ -41,7 +42,7 @@ public class LocalFileUserManagerTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    testFolder = new File("test/");
+    testFolder = new File(TestConstant.BASE_OUTPUT_PATH.concat("test"));
     testFolder.mkdirs();
     manager = new LocalFileUserManager(testFolder.getPath());
   }

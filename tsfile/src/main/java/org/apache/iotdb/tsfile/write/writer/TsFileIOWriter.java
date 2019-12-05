@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.write.writer;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,7 +43,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -108,23 +106,6 @@ public class TsFileIOWriter {
     startFile();
   }
 
-  /**
-   * for writing data into an existing and incomplete Tsfile. The caller need to guarantee existing
-   * data in the TsFileOutput matches the given metadata list
-   *
-   * @param out the target output
-   * @param chunkGroupMetaDataList existing chunkgroups' metadata
-   * @throws IOException if I/O error occurs
-   */
-  public TsFileIOWriter(TsFileOutput out, List<ChunkGroupMetaData> chunkGroupMetaDataList)
-      throws IOException {
-    this.out = FSFactoryProducer.getFileOutputFactory()
-        .getTsFileOutput(file.getPath(), false); //NOTE overwrite false here
-    this.chunkGroupMetaDataList = chunkGroupMetaDataList;
-    if (chunkGroupMetaDataList.isEmpty()) {
-      startFile();
-    }
-  }
 
   /**
    * Writes given bytes to output stream. This method is called when total memory size exceeds the
@@ -179,18 +160,15 @@ public class TsFileIOWriter {
    * @param compressionCodecName - compression name of this time series
    * @param tsDataType - data type
    * @param statistics - Chunk statistics
-   * @param maxTime - maximum timestamp of the whole series in this stage
-   * @param minTime - minimum timestamp of the whole series in this stage
    * @param dataSize - the serialized size of all pages
-   * @return the serialized size of CHunkHeader
    * @throws IOException if I/O error occurs
    */
-  public int startFlushChunk(MeasurementSchema descriptor, CompressionType compressionCodecName,
-      TSDataType tsDataType, TSEncoding encodingType, Statistics<?> statistics, long maxTime,
-      long minTime, int dataSize, int numOfPages) throws IOException {
+  public void startFlushChunk(MeasurementSchema descriptor, CompressionType compressionCodecName,
+      TSDataType tsDataType, TSEncoding encodingType, Statistics<?> statistics,
+      int dataSize, int numOfPages) throws IOException {
 
     currentChunkMetaData = new ChunkMetaData(descriptor.getMeasurementId(), tsDataType,
-        out.getPosition(), minTime, maxTime);
+        out.getPosition(), statistics);
 
     // flush ChunkHeader to TsFileIOWriter
     if (logger.isDebugEnabled()) {
@@ -204,24 +182,6 @@ public class TsFileIOWriter {
     if (logger.isDebugEnabled()) {
       logger.debug("finish series chunk:{} header, file position {}", header, out.getPosition());
     }
-
-    // TODO add your statistics
-    ByteBuffer[] statisticsArray = new ByteBuffer[Statistics.StatisticType.getTotalTypeNum()];
-    statisticsArray[Statistics.StatisticType.max_value.ordinal()] = ByteBuffer.wrap(statistics.getMaxBytes());
-    statisticsArray[Statistics.StatisticType.min_value.ordinal()] = ByteBuffer.wrap(statistics.getMinBytes());
-    statisticsArray[Statistics.StatisticType.first_value.ordinal()] = ByteBuffer
-        .wrap(statistics.getFirstBytes());
-    statisticsArray[Statistics.StatisticType.last_value.ordinal()] = ByteBuffer
-        .wrap(statistics.getLastBytes());
-    statisticsArray[Statistics.StatisticType.sum_value.ordinal()] = ByteBuffer.wrap(statistics.getSumBytes());
-
-    Statistics tsDigest = Statistics.getStatsByType(tsDataType);
-
-    tsDigest.setStatistics(statisticsArray);
-
-    currentChunkMetaData.setDigest(tsDigest);
-
-    return header.getSerializedSize();
   }
 
   /**
@@ -230,23 +190,18 @@ public class TsFileIOWriter {
   public void writeChunk(Chunk chunk, ChunkMetaData chunkMetadata) throws IOException {
     ChunkHeader chunkHeader = chunk.getHeader();
     currentChunkMetaData = new ChunkMetaData(chunkHeader.getMeasurementID(),
-        chunkHeader.getDataType(), out.getPosition(), chunkMetadata.getStartTime(),
-        chunkMetadata.getEndTime());
-    currentChunkMetaData.setDigest(chunkMetadata.getDigest());
+        chunkHeader.getDataType(), out.getPosition(), chunkMetadata.getStatistics());
     chunkHeader.serializeTo(out.wrapAsStream());
     out.write(chunk.getData());
-    endChunk(chunkMetadata.getNumOfPoints());
+    endCurrentChunk();
+    logger.debug("end flushing a chunk:{}, totalvalue:{}", currentChunkMetaData, chunkMetadata.getNumOfPoints());
   }
 
   /**
    * end chunk and write some log.
-   *
-   * @param totalValueCount -set the number of points to the currentChunkMetaData
    */
-  public void endChunk(long totalValueCount) {
-    currentChunkMetaData.setNumOfPoints(totalValueCount);
+  public void endCurrentChunk() {
     currentChunkGroupMetaData.addTimeSeriesChunkMetaData(currentChunkMetaData);
-    logger.debug("end series chunk:{},totalvalue:{}", currentChunkMetaData, totalValueCount);
     currentChunkMetaData = null;
     totalChunkNum++;
   }

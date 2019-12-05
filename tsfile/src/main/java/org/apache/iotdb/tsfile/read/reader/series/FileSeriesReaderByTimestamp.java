@@ -54,7 +54,7 @@ public class FileSeriesReaderByTimestamp {
   }
 
   public TSDataType getDataType() {
-    return chunkMetaDataList.get(0).getTsDataType();
+    return chunkMetaDataList.get(0).getDataType();
   }
 
   /**

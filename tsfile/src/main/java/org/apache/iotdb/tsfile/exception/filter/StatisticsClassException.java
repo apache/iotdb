@@ -16,28 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sql.parse;
+package org.apache.iotdb.tsfile.exception.filter;
 
-/**
- * Library of utility functions used in the parse code.
- */
-public final class ParseUtils {
+import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
 
-  private ParseUtils() {
-    // prevent instantiation
+public class StatisticsClassException extends TsFileRuntimeException {
+
+  private static final long serialVersionUID = -5445795844780183770L;
+
+  public StatisticsClassException(Class<?> className1, Class<?> className2) {
+    super("Statistics classes mismatched: " + className1 + " vs. " + className2);
   }
 
-  /**
-   * Performs a descent of the leftmost branch of a tree, stopping when either a node with a
-   * non-null token is found or the leaf level is encountered.
-   *
-   * @param tree candidate node from which to start searching
-   * @return node at which descent stopped
-   */
-  public static AstNode findRootNonNullToken(AstNode tree) {
-    while ((tree.getToken() == null) && (tree.getChildCount() > 0)) {
-      tree = tree.getChild(0);
-    }
-    return tree;
+  public StatisticsClassException(String message) {
+    super(message);
   }
+
 }

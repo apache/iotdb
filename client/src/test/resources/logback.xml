@@ -20,7 +20,7 @@
 
 -->
 <configuration>
-    <property name="LOG_PATH" value="logs"/>
+    <property name="LOG_PATH" value="target/logs"/>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEERROR">
         <file>${LOG_PATH}/log_error.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">

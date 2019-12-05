@@ -18,14 +18,6 @@
  */
 package org.apache.iotdb.db.qp.utils;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.TreeMap;
-import java.util.TreeSet;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
@@ -48,6 +40,10 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.*;
+import java.util.Map.Entry;
 
 /**
  * Implement a simple executor with a memory demo reading processor for test.
@@ -113,9 +109,10 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
 
   @Override
   public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
-      long unit, long origin, List<Pair<Long, Long>> intervals, QueryContext context)
-      throws IOException, PathException, StorageEngineException,
-      QueryFilterOptimizationException {
+                              long unit, long slidingStep, long startTime, long endTime,
+                              QueryContext context)
+          throws IOException, PathException,
+          StorageEngineException, QueryFilterOptimizationException {
     return null;
   }
 

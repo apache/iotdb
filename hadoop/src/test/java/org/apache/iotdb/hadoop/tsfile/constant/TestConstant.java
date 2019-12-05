@@ -16,28 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sql;
 
-import org.apache.iotdb.db.sql.parse.AstNode;
-import org.apache.iotdb.db.sql.parse.ParseDriver;
-import org.apache.iotdb.db.sql.parse.ParseException;
+package org.apache.iotdb.hadoop.tsfile.constant;
 
-/**
- * ParseContextGenerator is a class that offers methods to generate AstNode Tree
- *
- */
-public final class ParseGenerator {
+import java.io.File;
 
-  private ParseGenerator() {
-
-  }
-
-  /**
-   * Parse the input {@link String} command and generate an AstNode Tree.
-   */
-  public static AstNode generateAST(String command) throws ParseException {
-    ParseDriver pd = new ParseDriver();
-    return pd.parse(command);
-  }
-
+public class TestConstant {
+    public static final String BASE_OUTPUT_PATH = "target".concat(File.separator);
+    public static final String OUTPUT_DATA_DIR = BASE_OUTPUT_PATH.concat("data").concat(File.separator);
 }

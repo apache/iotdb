@@ -26,6 +26,7 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.iotdb.hadoop.tsfile.TSFInputSplit;
+import org.apache.iotdb.hive.constant.TestConstant;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -49,15 +50,17 @@ public class TSFHiveInputFormatTest {
   private long startOffset;
   private long endOffset;
   private String[] measurementIds;
-  private String filePath = "test.tsfile";
+  private String filePath = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() {
     TsFileTestHelper.writeTsFile(filePath);
     inputFormat = new TSFHiveInputFormat();
+    //in windows
+    String jobPath = filePath.replaceAll("\\\\","/");
     job = new JobConf();
-    job.set(FileInputFormat.INPUT_DIR, filePath);
-    Path path = new Path(filePath);
+    job.set(FileInputFormat.INPUT_DIR, jobPath);
+    Path path = new Path(jobPath);
     String[] hosts = {"127.0.0.1"};
     List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList = new ArrayList<>();
     deviceId = "device_1";
@@ -66,7 +69,7 @@ public class TSFHiveInputFormatTest {
       measurementIds[i] = "sensor_" + (i + 1);
     }
     startOffset = 12L;
-    endOffset = 3727528L;
+    endOffset = 3727688L;
     length = endOffset - startOffset;
     TSFInputSplit.ChunkGroupInfo chunkGroupInfo = new TSFInputSplit.ChunkGroupInfo(deviceId, measurementIds, startOffset, endOffset);
     chunkGroupInfoList.add(chunkGroupInfo);
@@ -97,12 +100,12 @@ public class TSFHiveInputFormatTest {
       assertEquals(1, inputSplits.length);
       assertTrue(inputSplits[0] instanceof TSFInputSplit);
       TSFInputSplit inputSplit = (TSFInputSplit) inputSplits[0];
-      assertEquals(length, inputSplit.getLength());
-      assertEquals(1, inputSplit.getChunkGroupInfoList().size());
       TSFInputSplit.ChunkGroupInfo chunkGroupInfo = inputSplit.getChunkGroupInfoList().get(0);
       assertEquals(deviceId, chunkGroupInfo.getDeviceId());
       assertEquals(startOffset, chunkGroupInfo.getStartOffset());
       assertEquals(endOffset, chunkGroupInfo.getEndOffset());
+      assertEquals(length, inputSplit.getLength());
+      assertEquals(1, inputSplit.getChunkGroupInfoList().size());
       assertEquals(Arrays.stream(measurementIds).collect(toSet()), Arrays.stream(chunkGroupInfo.getMeasurementIds()).collect(toSet()));
     } catch (IOException e) {
       e.printStackTrace();

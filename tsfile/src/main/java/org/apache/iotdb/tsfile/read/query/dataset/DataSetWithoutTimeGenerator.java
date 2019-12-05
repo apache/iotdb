@@ -91,12 +91,12 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
   }
 
   @Override
-  public boolean hasNext() {
+  protected boolean hasNextWithoutConstraint() {
     return timeHeap.size() > 0;
   }
 
   @Override
-  public RowRecord next() throws IOException {
+  protected RowRecord nextWithoutConstraint() throws IOException {
     long minTime = timeHeapGet();
 
     RowRecord record = new RowRecord(minTime);

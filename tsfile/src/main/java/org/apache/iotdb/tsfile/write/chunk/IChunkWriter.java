@@ -57,11 +57,6 @@ public interface IChunkWriter {
   /**
    * write a time value pair.
    */
-  void write(long time, BigDecimal value);
-
-  /**
-   * write a time value pair.
-   */
   void write(long time, Binary value);
 
   /**
@@ -88,11 +83,6 @@ public interface IChunkWriter {
    * write time series
    */
   void write(long[] timestamps, double[] values, int batchSize);
-
-  /**
-   * write time series
-   */
-  void write(long[] timestamps, BigDecimal[] values, int batchSize);
 
   /**
    * write time series

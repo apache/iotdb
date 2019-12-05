@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.query.dataset;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.TreeSet;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
@@ -28,10 +31,6 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.TreeSet;
 
 /**
  * TODO implement this class as TsFile DataSetWithoutTimeGenerator.
@@ -53,7 +52,7 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
    * @throws IOException IOException
    */
   public EngineDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-                                         List<IPointReader> readers)
+      List<IPointReader> readers)
       throws IOException {
     super(paths, dataTypes);
     this.seriesReaderWithoutValueFilterList = readers;
@@ -75,12 +74,12 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
   }
 
   @Override
-  public boolean hasNext() {
+  protected boolean hasNextWithoutConstraint() {
     return !timeHeap.isEmpty();
   }
 
   @Override
-  public RowRecord next() throws IOException {
+  protected RowRecord nextWithoutConstraint() throws IOException {
     long minTime = timeHeapGet();
 
     RowRecord record = new RowRecord(minTime);

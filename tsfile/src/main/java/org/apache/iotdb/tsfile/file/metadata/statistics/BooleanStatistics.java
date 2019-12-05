@@ -20,194 +20,172 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-/**
- * Boolean Statistics.
- */
 public class BooleanStatistics extends Statistics<Boolean> {
 
-  private boolean min;
-  private boolean max;
-  private boolean first;
-  private boolean last;
-  private double sum;
+  private boolean firstValue;
+  private boolean lastValue;
 
   @Override
-  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    min = BytesUtils.bytesToBool(minBytes);
-    max = BytesUtils.bytesToBool(maxBytes);
+  public TSDataType getType() {
+    return TSDataType.BOOLEAN;
   }
 
   @Override
-  public void updateStats(boolean value) {
-    if (isEmpty) {
-      initializeStats(value, value, value, value, 0);
-      isEmpty = false;
-    } else {
-      updateStats(value, value, value, value, 0);
-      isEmpty = false;
-    }
-  }
-
-  @Override
-  public void updateStats(boolean[] values) {
-    for (boolean value : values) {
-      if (isEmpty) {
-        initializeStats(value, value, value, value, 0);
-        isEmpty = false;
-      } else {
-        updateStats(value, value, value, value, 0);
-        isEmpty = false;
-      }
-    }
-  }
-
-  private void updateStats(boolean minValue, boolean maxValue, boolean firstValue,
-      boolean lastValue, double sumValue) {
-    if (!minValue && min) {
-      min = false;
-    }
-    if (maxValue && !max) {
-      max = true;
-    }
-    this.last = lastValue;
-  }
-
-  @Override
-  public Boolean getMin() {
-    return min;
-  }
-
-  @Override
-  public Boolean getMax() {
-    return max;
-  }
-
-  @Override
-  public Boolean getFirst() {
-    return first;
-  }
-
-  @Override
-  public Boolean getLast() {
-    return last;
-  }
-
-  @Override
-  public double getSum() {
-    return sum;
-  }
-
-  @Override
-  public ByteBuffer getMinBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(min);
-  }
-
-  @Override
-  public ByteBuffer getMaxBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(max);
-  }
-
-  @Override
-  public ByteBuffer getFirstBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(first);
-  }
-
-  @Override
-  public ByteBuffer getLastBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(last);
-  }
-
-  @Override
-  public ByteBuffer getSumBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(sum);
-  }
-
-  @Override
-  protected void mergeStatisticsValue(Statistics<?> stats) {
-    BooleanStatistics boolStats = (BooleanStatistics) stats;
-    if (isEmpty) {
-      initializeStats(boolStats.getMin(), boolStats.getMax(), boolStats.getFirst(),
-          boolStats.getLast(), boolStats.getSum());
-      isEmpty = false;
-    } else {
-      updateStats(boolStats.getMin(), boolStats.getMax(), boolStats.getFirst(),
-          boolStats.getLast(), boolStats.getSum());
-    }
+  public int getStatsSize() {
+    return 2;
   }
 
   /**
    * initialize boolean Statistics.
    *
-   * @param min min boolean
-   * @param max max boolean
    * @param firstValue first boolean value
    * @param lastValue last boolean value
-   * @param sumValue sum value (double type)
    */
-  private void initializeStats(boolean min, boolean max, boolean firstValue, boolean lastValue,
-      double sumValue) {
-    this.min = min;
-    this.max = max;
-    this.first = firstValue;
-    this.last = lastValue;
+  private void initializeStats(boolean firstValue, boolean lastValue) {
+    this.firstValue = firstValue;
+    this.lastValue = lastValue;
+  }
+
+  private void updateStats(boolean firstValue, boolean lastValue) {
+    this.lastValue = lastValue;
   }
 
   @Override
-  public byte[] getMinBytes() {
-    return BytesUtils.boolToBytes(min);
+  void updateStats(boolean value) {
+    if (isEmpty) {
+      initializeStats(value, value);
+      isEmpty = false;
+    } else {
+      updateStats(value, value);
+    }
   }
 
   @Override
-  public byte[] getMaxBytes() {
-    return BytesUtils.boolToBytes(max);
+  void updateStats(boolean[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      updateStats(values[i]);
+    }
   }
 
   @Override
-  public byte[] getFirstBytes() {
-    return BytesUtils.boolToBytes(first);
+  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
   }
 
   @Override
-  public byte[] getLastBytes() {
-    return BytesUtils.boolToBytes(last);
+  public Boolean getMinValue() {
+    throw new StatisticsClassException("Boolean statistics does not support: min");
   }
 
   @Override
-  public byte[] getSumBytes() {
-    return BytesUtils.doubleToBytes(sum);
+  public Boolean getMaxValue() {
+    throw new StatisticsClassException("Boolean statistics does not support: max");
   }
 
   @Override
-  public int sizeOfDatum() {
-    return 1;
+  public Boolean getFirstValue() {
+    return firstValue;
   }
 
   @Override
-  public String toString() {
-    return "[min:" + min + ",max:" + max + ",first:" + first + ",last:" + last + ",sum:" + sum
-        + "]";
+  public Boolean getLastValue() {
+    return lastValue;
+  }
+
+  @Override
+  public double getSumValue() {
+    throw new StatisticsClassException("Boolean statistics does not support: sum");
+  }
+
+  @Override
+  public ByteBuffer getMinValueBuffer() {
+    throw new StatisticsClassException("Boolean statistics do not support: min");
+  }
+
+  @Override
+  public ByteBuffer getMaxValueBuffer() {
+    throw new StatisticsClassException("Boolean statistics do not support: max");
+  }
+
+  @Override
+  public ByteBuffer getFirstValueBuffer() {
+    return ReadWriteIOUtils.getByteBuffer(firstValue);
+  }
+
+  @Override
+  public ByteBuffer getLastValueBuffer() {
+    return ReadWriteIOUtils.getByteBuffer(lastValue);
+  }
+
+  @Override
+  public ByteBuffer getSumValueBuffer() {
+    throw new StatisticsClassException("Boolean statistics do not support: sum");
+  }
+
+  @Override
+  protected void mergeStatisticsValue(Statistics stats) {
+    BooleanStatistics boolStats = (BooleanStatistics) stats;
+    if (isEmpty) {
+      initializeStats(boolStats.getFirstValue(), boolStats.getLastValue());
+      isEmpty = false;
+    } else {
+      updateStats(boolStats.getFirstValue(), boolStats.getLastValue());
+    }
+  }
+
+  @Override
+  public byte[] getMinValueBytes() {
+    throw new StatisticsClassException("Boolean statistics does not support: min");
+  }
+
+  @Override
+  public byte[] getMaxValueBytes() {
+    throw new StatisticsClassException("Boolean statistics does not support: max");
+  }
+
+  @Override
+  public byte[] getFirstValueBytes() {
+    return BytesUtils.boolToBytes(firstValue);
+  }
+
+  @Override
+  public byte[] getLastValueBytes() {
+    return BytesUtils.boolToBytes(lastValue);
+  }
+
+  @Override
+  public byte[] getSumValueBytes() {
+    throw new StatisticsClassException("Boolean statistics does not support: sum");
+  }
+
+  @Override
+  public int serializeStats(OutputStream outputStream) throws IOException {
+    int byteLen = 0;
+    byteLen += ReadWriteIOUtils.write(firstValue, outputStream);
+    byteLen += ReadWriteIOUtils.write(lastValue, outputStream);
+    return byteLen;
   }
 
   @Override
   void deserialize(InputStream inputStream) throws IOException {
-    this.min = ReadWriteIOUtils.readBool(inputStream);
-    this.max = ReadWriteIOUtils.readBool(inputStream);
-    this.first = ReadWriteIOUtils.readBool(inputStream);
-    this.last = ReadWriteIOUtils.readBool(inputStream);
-    this.sum = ReadWriteIOUtils.readDouble(inputStream);
+    this.firstValue = ReadWriteIOUtils.readBool(inputStream);
+    this.lastValue = ReadWriteIOUtils.readBool(inputStream);
   }
 
   @Override
-  void deserialize(ByteBuffer byteBuffer) throws IOException {
-    this.min = ReadWriteIOUtils.readBool(byteBuffer);
-    this.max = ReadWriteIOUtils.readBool(byteBuffer);
-    this.first = ReadWriteIOUtils.readBool(byteBuffer);
-    this.last = ReadWriteIOUtils.readBool(byteBuffer);
-    this.sum = ReadWriteIOUtils.readDouble(byteBuffer);
+  void deserialize(ByteBuffer byteBuffer) {
+    this.firstValue = ReadWriteIOUtils.readBool(byteBuffer);
+    this.lastValue = ReadWriteIOUtils.readBool(byteBuffer);
   }
 
+  @Override
+  public String toString() {
+    return "[firstValue:" + firstValue + ",lastValue:" + lastValue + "]";
+  }
 }

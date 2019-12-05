@@ -24,6 +24,7 @@ import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -256,7 +257,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         currentNode.addChildOperator(
             new BasicFunctionOperator(operator.getTokenIntType(), noStarPaths.get(i),
                 ((BasicFunctionOperator) operator).getValue()));
-      } catch (LogicalOperatorException e) {
+      } catch (SQLParserException e) {
         throw new LogicalOptimizeException(e.getMessage());
       }
     }

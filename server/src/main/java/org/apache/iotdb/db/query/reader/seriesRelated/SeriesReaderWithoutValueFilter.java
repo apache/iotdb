@@ -55,11 +55,6 @@ public class SeriesReaderWithoutValueFilter implements IPointReader {
     this.hasCachedBatchData = false;
   }
 
-  public SeriesReaderWithoutValueFilter(Path seriesPath, Filter timeFilter, QueryContext context)
-      throws StorageEngineException, IOException {
-    this(seriesPath, timeFilter, context, true);
-  }
-
   /**
    * Constructor function.
    *
@@ -67,9 +62,9 @@ public class SeriesReaderWithoutValueFilter implements IPointReader {
    * @param timeFilter time filter condition
    * @param context query context
    * @param pushdownUnseq True to push down the filter on the unsequence TsFile resource; False not
-   * to.
+   * to. We do not push down value filter to unsequence readers
    */
-  protected SeriesReaderWithoutValueFilter(Path seriesPath, Filter timeFilter, QueryContext context,
+  public SeriesReaderWithoutValueFilter(Path seriesPath, Filter timeFilter, QueryContext context,
       boolean pushdownUnseq) throws StorageEngineException, IOException {
     QueryDataSource queryDataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(seriesPath, context);
