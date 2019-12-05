@@ -18,14 +18,6 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
@@ -78,6 +70,8 @@ import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+
+import java.util.*;
 
 /**
  * Used to convert logical operator to physical plan
@@ -163,7 +157,7 @@ public class PhysicalGenerator {
       case LOAD_CONFIGURATION:
         return new LoadConfigurationPlan();
       case SHOW:
-        switch (operator.getTokenIntType()){
+        switch (operator.getTokenIntType()) {
           case SQLConstant.TOK_DYNAMIC_PARAMETER:
             return new ShowPlan(ShowContentType.DYNAMIC_PARAMETER);
           case SQLConstant.TOK_FLUSH_TASK_INFO:
@@ -194,8 +188,9 @@ public class PhysicalGenerator {
     if (queryOperator.isGroupBy()) {
       queryPlan = new GroupByPlan();
       ((GroupByPlan) queryPlan).setUnit(queryOperator.getUnit());
-      ((GroupByPlan) queryPlan).setOrigin(queryOperator.getOrigin());
-      ((GroupByPlan) queryPlan).setIntervals(queryOperator.getIntervals());
+      ((GroupByPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
+      ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime());
+      ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime());
       ((GroupByPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
     } else if (queryOperator.isFill()) {
@@ -215,12 +210,8 @@ public class PhysicalGenerator {
       queryPlan = new QueryPlan();
     }
 
-    if (!queryOperator.isGroupByDevice()) {
-      List<Path> paths = queryOperator.getSelectedPaths();
-      queryPlan.setPaths(paths);
-
-    } else {
-      // below is the core realization of GROUP_BY_DEVICE sql
+    if (queryOperator.isGroupByDevice()) {
+      // below is the core realization of GROUP_BY_DEVICE sql logic
       List<Path> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
       List<Path> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();
       List<String> originAggregations = queryOperator.getSelectOperator().getAggregations();
@@ -326,6 +317,9 @@ public class PhysicalGenerator {
       queryPlan.setMeasurementColumnsGroupByDevice(measurementColumnsGroupByDevice);
       queryPlan.setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
       queryPlan.setPaths(new ArrayList<>(allSelectPaths));
+    } else {
+      List<Path> paths = queryOperator.getSelectedPaths();
+      queryPlan.setPaths(paths);
     }
 
     queryPlan.checkPaths(executor);
@@ -337,6 +331,9 @@ public class PhysicalGenerator {
       IExpression expression = filterOperator.transformToExpression(executor);
       queryPlan.setExpression(expression);
     }
+
+    queryPlan.setRowLimit(queryOperator.getRowLimit());
+    queryPlan.setRowOffset(queryOperator.getRowOffset());
 
     return queryPlan;
   }

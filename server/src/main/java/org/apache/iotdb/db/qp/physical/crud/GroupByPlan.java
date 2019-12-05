@@ -18,19 +18,36 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 public class GroupByPlan extends AggregationPlan {
 
+  private long startTime;
+  private long endTime;
+  // time interval
   private long unit;
-  private long origin;
-  private List<Pair<Long, Long>> intervals; // show intervals
+  // sliding step
+  private long slidingStep;
 
   public GroupByPlan() {
     super();
     setOperatorType(Operator.OperatorType.GROUPBY);
+  }
+
+  public long getStartTime() {
+    return startTime;
+  }
+
+  public void setStartTime(long startTime) {
+    this.startTime = startTime;
+  }
+
+  public long getEndTime() {
+    return endTime;
+  }
+
+  public void setEndTime(long endTime) {
+    this.endTime = endTime;
   }
 
   public long getUnit() {
@@ -41,19 +58,11 @@ public class GroupByPlan extends AggregationPlan {
     this.unit = unit;
   }
 
-  public long getOrigin() {
-    return origin;
+  public long getSlidingStep() {
+    return slidingStep;
   }
 
-  public void setOrigin(long origin) {
-    this.origin = origin;
-  }
-
-  public List<Pair<Long, Long>> getIntervals() {
-    return intervals;
-  }
-
-  public void setIntervals(List<Pair<Long, Long>> intervals) {
-    this.intervals = intervals;
+  public void setSlidingStep(long slidingStep) {
+    this.slidingStep = slidingStep;
   }
 }

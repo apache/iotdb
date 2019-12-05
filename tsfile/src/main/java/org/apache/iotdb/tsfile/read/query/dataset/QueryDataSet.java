@@ -32,6 +32,10 @@ public abstract class QueryDataSet {
   protected List<Path> paths;
   protected List<TSDataType> dataTypes;
 
+  private int rowLimit = 0; // rowLimit > 0 means the LIMIT constraint exists
+  private int rowOffset = 0;
+  private int alreadyReturnedRowNum = 0;
+
   public QueryDataSet(List<Path> paths, List<TSDataType> dataTypes) {
     this.paths = paths;
     this.dataTypes = dataTypes;
@@ -41,15 +45,40 @@ public abstract class QueryDataSet {
     this.paths = paths;
   }
 
-  /**
-   * This method is used for batch query.
-   */
-  public abstract boolean hasNext() throws IOException;
+  public boolean hasNext() throws IOException {
+    // proceed to the OFFSET row by skipping rows
+    while (rowOffset > 0) {
+      if (hasNextWithoutConstraint()) {
+        nextWithoutConstraint(); // DO NOT use next()
+        rowOffset--;
+      } else {
+        return false;
+      }
+    }
+
+    // make sure within the LIMIT constraint if exists
+    if (rowLimit > 0) {
+      if (alreadyReturnedRowNum >= rowLimit) {
+        return false;
+      }
+    }
+
+    return hasNextWithoutConstraint();
+  }
+
+  protected abstract boolean hasNextWithoutConstraint() throws IOException;
 
   /**
    * This method is used for batch query, return RowRecord.
    */
-  public abstract RowRecord next() throws IOException;
+  public RowRecord next() throws IOException {
+    if (rowLimit > 0) {
+      alreadyReturnedRowNum++;
+    }
+    return nextWithoutConstraint();
+  }
+
+  protected abstract RowRecord nextWithoutConstraint() throws IOException;
 
   public List<Path> getPaths() {
     return paths;
@@ -92,5 +121,25 @@ public abstract class QueryDataSet {
         throw new UnSupportedDataTypeException("UnSupported: " + dataType);
     }
     return field;
+  }
+
+  public int getRowLimit() {
+    return rowLimit;
+  }
+
+  public void setRowLimit(int rowLimit) {
+    this.rowLimit = rowLimit;
+  }
+
+  public int getRowOffset() {
+    return rowOffset;
+  }
+
+  public void setRowOffset(int rowOffset) {
+    this.rowOffset = rowOffset;
+  }
+
+  public boolean hasLimit() {
+    return rowLimit > 0;
   }
 }

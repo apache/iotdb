@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PRIVILEGE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.ROLE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.USER;
+import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
@@ -320,14 +318,15 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
   @Override
   public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
-      long unit, long origin, List<Pair<Long, Long>> intervals, QueryContext context)
-      throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
-    return queryRouter.groupBy(paths, aggres, expression, unit, origin, intervals, context);
+                              long unit, long slidingStep, long startTime, long endTime,
+                              QueryContext context)
+          throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
+    return queryRouter.groupBy(paths, aggres, expression, unit, slidingStep, startTime, endTime, context);
+
   }
 
   @Override
-  public void update(Path path, long startTime, long endTime, String value)
-      throws QueryProcessException {
+  public void update(Path path, long startTime, long endTime, String value) {
   }
 
   @Override

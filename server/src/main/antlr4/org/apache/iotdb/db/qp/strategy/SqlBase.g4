@@ -166,8 +166,10 @@ fillClause
 
 groupByClause
     : GROUP BY LR_BRACKET
-      DURATION (COMMA timeValue)?
-      COMMA timeInterval (COMMA timeInterval)* RR_BRACKET
+      timeInterval
+      COMMA DURATION
+      (COMMA DURATION)?
+      RR_BRACKET
     ;
 
 typeClause

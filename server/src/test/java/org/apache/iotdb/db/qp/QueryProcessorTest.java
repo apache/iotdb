@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.qp;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.Collections;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -33,6 +30,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.Collections;
+
+import static org.junit.Assert.assertEquals;
 
 public class QueryProcessorTest {
 
@@ -127,7 +128,7 @@ public class QueryProcessorTest {
     PhysicalPlan plan8 = processor.parseSQLToPhysicalPlan(aggregationStatement);
     assertEquals(OperatorType.AGGREGATION, plan8.getOperatorType());
 
-    String groupbyStatement = "select sum(*) from root.vehicle where root.vehicle.device1.sensor1 > 50 group by (20ms, [100,1100])";
+    String groupbyStatement = "select sum(*) from root.vehicle where root.vehicle.device1.sensor1 > 50 group by ([100,1100], 20ms)";
     PhysicalPlan plan9 = processor.parseSQLToPhysicalPlan(groupbyStatement);
     assertEquals(OperatorType.GROUPBY, plan9.getOperatorType());
 

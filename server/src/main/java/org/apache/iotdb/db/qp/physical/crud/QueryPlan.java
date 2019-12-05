@@ -35,6 +35,9 @@ public class QueryPlan extends PhysicalPlan {
   private List<TSDataType> dataTypes = null;
   private IExpression expression = null;
 
+  private int rowLimit = 0;
+  private int rowOffset = 0;
+
   private boolean isGroupByDevice = false; // for group by device sql
   private List<String> measurementColumnList; // for group by device sql
   private Map<String, Set<String>> measurementColumnsGroupByDevice; // for group by device sql
@@ -83,6 +86,26 @@ public class QueryPlan extends PhysicalPlan {
 
   public void setDataTypes(List<TSDataType> dataTypes) {
     this.dataTypes = dataTypes;
+  }
+
+  public int getRowLimit() {
+    return rowLimit;
+  }
+
+  public void setRowLimit(int rowLimit) {
+    this.rowLimit = rowLimit;
+  }
+
+  public int getRowOffset() {
+    return rowOffset;
+  }
+
+  public void setRowOffset(int rowOffset) {
+    this.rowOffset = rowOffset;
+  }
+
+  public boolean hasLimit() {
+    return rowLimit > 0;
   }
 
   public boolean isGroupByDevice() {
