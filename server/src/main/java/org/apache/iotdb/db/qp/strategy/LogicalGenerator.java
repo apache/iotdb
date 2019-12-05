@@ -31,10 +31,104 @@ import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
-import org.apache.iotdb.db.qp.logical.crud.*;
-import org.apache.iotdb.db.qp.logical.sys.*;
+import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
+import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.qp.logical.crud.FromOperator;
+import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.qp.logical.crud.UpdateOperator;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.*;
+import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
+import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
+import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
+import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
+import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AddLabelContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AndExpressionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClausesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ConstantContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreatePropertyContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateTimeseriesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DateExpressionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteLabelContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteStorageGroupContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteTimeseriesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DropRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DropUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FillClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FromClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FunctionCallContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FunctionElementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleToUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantWatermarkEmbeddingContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByDeviceClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertColumnSpecContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertValuesSpecContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LimitClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LinkPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListAllRoleOfUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListAllUserOfRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListPrivilegesRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListPrivilegesUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListRolePrivilegesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListUserPrivilegesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LoadConfigurationStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LoadFilesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LoadStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.MoveFileContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.NodeNameContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.NodeNameWithoutStarContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.OffsetClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.OrExpressionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PredicateContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PrefixPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PrivilegesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PropertyContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RemoveFileContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeRoleFromUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeUserContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeWatermarkEmbeddingContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RootOrIdContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SelectElementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SelectStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetColContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetStorageGroupContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowAllTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SlimitClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SoffsetClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeIntervalContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeseriesPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TypeClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UnlinkPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UnsetTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UpdateStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.WhereClauseContext;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
@@ -75,12 +169,18 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterLoadFiles(LoadFilesContext ctx) {
     super.enterLoadFiles(ctx);
-    boolean createSchemaAutomatically =
-        ctx.getChild(2).getChild(0) == null || Boolean.parseBoolean(ctx.getChild(2).getChild(0).getText());
-    int sgLevel = ctx.getChild(2).getChild(1) == null ? IoTDBDescriptor.getInstance().getConfig()
-        .getDefaultStorageGroupLevel() : Integer.parseInt(ctx.getChild(2).getChild(1).getText());
-    initializedOperator = new LoadFilesOperator(new File(ctx.getChild(1).getText()),
-        createSchemaAutomatically, sgLevel);
+    if (!ctx.getChild(2).getChild(0).getText().equalsIgnoreCase("true") && !ctx.getChild(2)
+        .getChild(0).getText().equalsIgnoreCase("false")) {
+      initializedOperator = new LoadFilesOperator(true,
+          "Please check the statement: load [FILE] true/false [storage group level]");
+    } else {
+      boolean createSchemaAutomatically = ctx.getChild(2).getChild(0) == null || Boolean
+          .parseBoolean(ctx.getChild(2).getChild(0).getText());
+      int sgLevel = ctx.getChild(2).getChild(1) == null ? IoTDBDescriptor.getInstance().getConfig()
+          .getDefaultStorageGroupLevel() : Integer.parseInt(ctx.getChild(2).getChild(1).getText());
+      initializedOperator = new LoadFilesOperator(new File(ctx.getChild(1).getText()),
+          createSchemaAutomatically, sgLevel);
+    }
   }
 
   @Override

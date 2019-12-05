@@ -18,6 +18,14 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
@@ -70,8 +78,6 @@ import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-
-import java.util.*;
 
 /**
  * Used to convert logical operator to physical plan
@@ -167,11 +173,15 @@ public class PhysicalGenerator {
                 .format("not supported operator type %s in show operation.", operator.getType()));
         }
       case LOAD_FILES:
+        if (((LoadFilesOperator) operator).isInvalid()) {
+          throw new LogicalOperatorException(((LoadFilesOperator) operator).getErrMsg());
+        }
         return new OperateFilePlan(((LoadFilesOperator) operator).getFile(),
             OperatorType.LOAD_FILES, ((LoadFilesOperator) operator).isAutoCreateSchema(),
             ((LoadFilesOperator) operator).getSgLevel());
       case REMOVE_FILE:
-        return new OperateFilePlan(((RemoveFileOperator)operator).getFile(), OperatorType.REMOVE_FILE);
+        return new OperateFilePlan(((RemoveFileOperator) operator).getFile(),
+            OperatorType.REMOVE_FILE);
       case MOVE_FILE:
         return new OperateFilePlan(((MoveFileOperator) operator).getFile(),
             ((MoveFileOperator) operator).getTargetDir(), OperatorType.MOVE_FILE);

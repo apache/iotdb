@@ -306,8 +306,8 @@ property
 
 autoCreateSchema
     :
-    | BOOLEAN_VALUE
-    | BOOLEAN_VALUE INT
+    | ID
+    | ID INT
     ;
 
 //============================
@@ -688,11 +688,6 @@ STRING_LITERAL
    ;
 
 INT : [0-9]+;
-
-BOOLEAN_VALUE
-   : T R U E
-   | F A L S E
-   ;
 
 EXPONENT : INT ('e'|'E') ('+'|'-')? INT ;
 

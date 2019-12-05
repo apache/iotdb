@@ -18,17 +18,18 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.*;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PRIVILEGE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.ROLE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.USER;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -77,9 +78,12 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -194,7 +198,18 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     TsFileResource tsFileResource = new TsFileResource(file);
     try {
       // check file
-      Map<String, MeasurementSchema> knownSchemas = getFileSchemas(file);
+      RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);
+      if (restorableTsFileIOWriter.hasCrashed()){
+        restorableTsFileIOWriter.close();
+        throw new QueryProcessException(
+            String.format("Cannot load file %s because the file has crashed.", file.getAbsolutePath()));
+      }
+      Map<String, MeasurementSchema> schemaMap = new HashMap<>();
+      List<ChunkGroupMetaData> chunkGroupMetaData = new ArrayList<>();
+      try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
+        reader.selfCheck(schemaMap, chunkGroupMetaData, false);
+      }
+
       FileLoaderUtils.checkTsFileResource(tsFileResource);
       if (UpgradeUtils.isNeedUpgrade(tsFileResource)) {
         throw new QueryProcessException(
@@ -205,7 +220,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
       //create schemas if they doesn't exist
       if(plan.isAutoCreateSchema()) {
-        createSchemaAutomatically(knownSchemas, plan.getSgLevel());
+        createSchemaAutomatically(chunkGroupMetaData, schemaMap, plan.getSgLevel());
       }
 
       StorageEngine.getInstance().loadNewTsFile(tsFileResource);
@@ -215,31 +230,26 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
   }
 
-  private Map<String, MeasurementSchema> getFileSchemas(File file)
-      throws IOException, QueryProcessException {
-    RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);
-    if (restorableTsFileIOWriter.hasCrashed()){
-      restorableTsFileIOWriter.close();
-      throw new QueryProcessException(
-          String.format("Cannot load file %s because the file has crashed.", file.getAbsolutePath()));
-    }
-    return restorableTsFileIOWriter.getKnownSchema();
-  }
-
-  private void createSchemaAutomatically(Map<String, MeasurementSchema> knownSchemas, int sgLevel)
+  private void createSchemaAutomatically(List<ChunkGroupMetaData> chunkGroupMetaDatas,
+      Map<String, MeasurementSchema> knownSchemas, int sgLevel)
       throws CacheException, QueryProcessException, MetadataException, StorageEngineException {
-
-    Iterator<Entry<String, MeasurementSchema>> iterator = knownSchemas.entrySet().iterator();
-    MNode node = null;
-    if(iterator.hasNext()){
-      Entry<String, MeasurementSchema> entry = iterator.next();
-      String path = entry.getKey();
-      node = mManager.getNodeByPathFromCache(path, true, sgLevel);
+    if (chunkGroupMetaDatas.isEmpty()) {
+      return;
     }
-    for(Entry<String, MeasurementSchema> entry:knownSchemas.entrySet()) {
-      String fullPath = entry.getKey();
-      MeasurementSchema schema = entry.getValue();
-      checkPathExists(node, fullPath, schema);
+    for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDatas) {
+      String device = chunkGroupMetaData.getDeviceID();
+      MNode node = mManager.getNodeByPathFromCache(device, true, sgLevel);
+      for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+        String fullPath =
+            device + IoTDBConstant.PATH_SEPARATOR + chunkMetaData.getMeasurementUid();
+        MeasurementSchema schema = knownSchemas.get(chunkMetaData.getMeasurementUid());
+        if (schema == null) {
+          throw new MetadataException(String
+              .format("Can not get schema if measurement [%s]",
+                  chunkMetaData.getMeasurementUid()));
+        }
+        checkPathExists(node, fullPath, schema, true);
+      }
     }
   }
 
@@ -392,12 +402,12 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return measurementNode;
   }
 
-  private void checkPathExists(MNode node, String fullPath, MeasurementSchema schema)
+  private void checkPathExists(MNode node, String fullPath, MeasurementSchema schema, boolean autoCreateSchema)
       throws QueryProcessException, StorageEngineException, MetadataException {
     // check if timeseries exists
     String measurement = schema.getMeasurementId();
     if (!node.hasChild(measurement)) {
-      if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+      if (!autoCreateSchema) {
         throw new QueryProcessException(
             String.format("Path[%s] does not exist", fullPath));
       }

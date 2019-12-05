@@ -1171,15 +1171,15 @@ public class MManager {
   }
 
     /**
-     * function for getting node by path from cache.
+     * function for getting node by deviceId from cache.
      */
-  public MNode getNodeByPathFromCache(String path, boolean autoCreateSchema, int sgLevel) throws CacheException, PathException {
+  public MNode getNodeByPathFromCache(String deviceID, boolean autoCreateSchema, int sgLevel) throws CacheException, PathException {
     lock.readLock().lock();
     MNode node = null;
     boolean createSchema = false;
     boolean setStorageGroup = false;
     try {
-      node = mNodeCache.get(path);
+      node = mNodeCache.get(deviceID);
     } catch (CacheException e) {
       if (!autoCreateSchema) {
         throw e;
@@ -1192,13 +1192,13 @@ public class MManager {
       if (createSchema) {
         if (setStorageGroup) {
           try {
-            String storageGroupName = getStorageGroupNameByAutoLevel(path, sgLevel);
+            String storageGroupName = getStorageGroupNameByAutoLevel(deviceID, sgLevel);
             setStorageGroupToMTree(storageGroupName);
           } catch (MetadataException | PathException e1) {
             throw new CacheException(e1);
           }
         }
-        node = addDeviceIdToMTree(path);
+        node = addDeviceIdToMTree(deviceID);
       }
     }
     return node;
