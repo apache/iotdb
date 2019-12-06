@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.manage.FilePartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.DataSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
@@ -131,7 +132,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode)
         throws IOException {
       return new DataGroupMember(protocolFactory, partitionGroup, thisNode,
-          new PartitionedSnapshotLogManager(applier, metaGroupMember.getPartitionTable(),
+          new FilePartitionedSnapshotLogManager(applier, metaGroupMember.getPartitionTable(),
               partitionGroup.getHeader()), metaGroupMember);
     }
   }
@@ -146,9 +147,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // taking the leadership
     synchronized (term) {
       term.incrementAndGet();
+      setLastHeartBeatReceivedTime(System.currentTimeMillis());
       setCharacter(NodeCharacter.ELECTOR);
       leader = null;
-      setLastHeartBeatReceivedTime(System.currentTimeMillis());
     }
     synchronized (allNodes) {
       int insertIndex = -1;
@@ -356,7 +357,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
       while (true) {
         synchronized (result) {
-          client.readFile(remotePath, offset, fetchSize, handler);
+          client.readFile(remotePath, offset, fetchSize, getHeader(), handler);
           result.wait(CONNECTION_TIME_OUT_MS);
         }
         ByteBuffer buffer = result.get();
@@ -402,6 +403,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // which may prevent the newly arrived data from being invisible to the new header.
     synchronized (logManager) {
       List<Integer> requiredSockets = request.getRequiredSockets();
+      logger.debug("{}: {} sockets are requested", name, requiredSockets.size());
       // check whether this socket is held by the node
       List<Integer> heldSockets = metaGroupMember.getPartitionTable().getNodeSockets(getHeader());
 
@@ -443,7 +445,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       for (Entry<Node, List<Integer>> entry : holderSocketsMap.entrySet()) {
         Node node = entry.getKey();
         List<Integer> nodeSockets = entry.getValue();
-        pullDataSimpleSnapshot(node, nodeSockets);
+        pullFileSnapshot(node, nodeSockets);
       }
     }
   }

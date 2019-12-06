@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster.server;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -154,6 +155,12 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   public void pullTimeSeriesSchema(PullSchemaRequest request,
       AsyncMethodCallback<PullSchemaResp> resultHandler) {
     member.pullTimeSeriesSchema(request, resultHandler);
+  }
+
+  @Override
+  public void readFile(String filePath, long offset, int length, Node header,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    member.readFile(filePath, offset ,length, header, resultHandler);
   }
 
   public MetaGroupMember getMember() {

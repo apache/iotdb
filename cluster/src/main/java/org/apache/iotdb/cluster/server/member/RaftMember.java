@@ -69,7 +69,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   Random random = new Random();
   Node thisNode;
-  List<Node> allNodes;
+  volatile List<Node> allNodes;
 
   volatile NodeCharacter character = NodeCharacter.ELECTOR;
   AtomicLong term = new AtomicLong(0);
@@ -480,12 +480,14 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   long verifyElector(long thisTerm, long thisLastLogIndex, long thisLastLogTerm,
       long thatTerm, long thatLastLogId, long thatLastLogTerm) {
     long response;
-    if (thatTerm <= thisTerm
-        || thatLastLogTerm < thisLastLogTerm
+    if (thatTerm <= thisTerm) {
+      response = thatTerm;
+      logger.debug("{} rejected an election request, term:{}/{}",
+          name, thatTerm, thisTerm);
+    } else if (thatLastLogTerm < thisLastLogTerm
         || (thatLastLogTerm == thisLastLogTerm && thatLastLogId < thisLastLogIndex)) {
-      logger.debug("{} rejected an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
-          name, thatTerm, thisTerm, thatLastLogId, thisLastLogIndex, thatLastLogTerm,
-          thisLastLogTerm);
+      logger.debug("{} rejected an election request, logIndex:{}/{}, logTerm:{}/{}",
+          name, thatLastLogId, thisLastLogIndex, thatLastLogTerm, thisLastLogTerm);
       response = Response.RESPONSE_LOG_MISMATCH;
     } else {
       logger.debug("{} accepted an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
@@ -572,13 +574,14 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   TSStatus forwardPlan(PhysicalPlan plan, Node node) {
-    if (character != NodeCharacter.FOLLOWER || leader == null) {
+    if (character != NodeCharacter.FOLLOWER || node == null) {
+      logger.debug("{}: plan {} has no where to be forwarded", name, plan);
       return StatusUtils.NO_LEADER;
     }
 
-    logger.info("{}: Forward {} to leader {}", name, plan, leader);
+    logger.info("{}: Forward {} to leader {}", name, plan, node);
 
-    AsyncClient client = connectNode(leader);
+    AsyncClient client = connectNode(node);
     if (client != null) {
       ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
       DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -733,7 +736,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   @Override
-  public void readFile(String filePath, long offset, int length,
+  public void readFile(String filePath, long offset, int length, Node header,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     try (BufferedInputStream bufferedInputStream =
         new BufferedInputStream(new FileInputStream(filePath))) {

@@ -876,6 +876,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     // the storage group is not found locally, forward it to the leader
     if (partitionGroup == null) {
       if (character != NodeCharacter.LEADER) {
+        logger.debug("{}: Cannot found partition group for {}, forwarding to {}", name, plan, leader);
         return forwardPlan(plan, leader);
       } else {
         return StatusUtils.NO_STORAGE_GROUP;
@@ -884,7 +885,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
     if (partitionGroup.contains(thisNode)) {
       // the query should be handled by a group the local node is in, handle it with in the group
-      return dataClusterServer.getDataMember(partitionGroup.getHeader()).executeNonQuery(plan);
+      return dataClusterServer.getDataMember(partitionGroup.getHeader(), null).executeNonQuery(plan);
     } else {
       // forward the query to the group that should handle it
       return forwardPlan(plan, partitionGroup);
@@ -940,7 +941,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   @Override
   public void pullTimeSeriesSchema(PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
     Node header = request.getHeader();
-    DataGroupMember dataGroupMember = dataClusterServer.getDataMember(header);
+    DataGroupMember dataGroupMember = dataClusterServer.getDataMember(header, resultHandler);
     if (dataGroupMember == null) {
       resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header), thisNode));
       return;

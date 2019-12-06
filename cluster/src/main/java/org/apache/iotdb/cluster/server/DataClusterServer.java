@@ -6,6 +6,7 @@ package org.apache.iotdb.cluster.server;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -55,160 +56,112 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     headerGroupMap.put(dataGroupMember.getHeader(), dataGroupMember);
   }
 
-  public DataGroupMember getDataMember(Node header) {
+  public DataGroupMember getDataMember(Node header, AsyncMethodCallback resultHandler) {
+    if (header == null) {
+      if (resultHandler != null) {
+        resultHandler.onError(new NoHeaderNodeException());
+      }
+      return null;
+    }
     // avoid creating two members for a header
+    Exception ex = null;
     synchronized (headerGroupMap) {
       DataGroupMember member = headerGroupMap.get(header);
       if (member == null) {
         logger.info("Received a request from unregistered header {}", header);
         if (partitionTable != null) {
-          synchronized (partitionTable) {
-            // it may be that the header and this node are in the same group, but it is the first time
-            // the header contacts this node
-            PartitionGroup partitionGroup = partitionTable.getHeaderGroup(header);
-            if (partitionGroup.contains(thisNode)) {
-              // the two nodes are in the same group, create a new data member
-              try {
-                member = dataMemberFactory.create(partitionGroup, thisNode);
-                headerGroupMap.put(header, member);
-                logger.info("Created a member for header {}", header);
-              } catch (IOException e) {
-                logger.error("Cannot create data member for header {}", header, e);
-              }
-            } else {
-              logger.info("This node {} does not belong to the group {}", thisNode, partitionGroup);
-            }
+          try {
+            member = createNewMember(header);
+          } catch (IOException | NotInSameGroupException e) {
+            ex = e;
           }
         } else {
           logger.info("Partition is not ready, cannot create member");
+          ex = new PartitionTableUnavailableException(thisNode);
         }
+      }
+      if (ex != null && resultHandler != null) {
+        resultHandler.onError(ex);
       }
       return member;
     }
   }
 
+  private DataGroupMember createNewMember(Node header) throws IOException, NotInSameGroupException {
+    DataGroupMember member;
+    synchronized (partitionTable) {
+      // it may be that the header and this node are in the same group, but it is the first time
+      // the header contacts this node
+      PartitionGroup partitionGroup = partitionTable.getHeaderGroup(header);
+      if (partitionGroup.contains(thisNode)) {
+        // the two nodes are in the same group, create a new data member
+        try {
+          member = dataMemberFactory.create(partitionGroup, thisNode);
+          headerGroupMap.put(header, member);
+          logger.info("Created a member for header {}", header);
+        } catch (IOException e) {
+          logger.error("Cannot create data member for header {}", header, e);
+          throw e;
+        }
+      } else {
+        logger.info("This node {} does not belong to the group {}", thisNode, partitionGroup);
+        throw new NotInSameGroupException(partitionTable.getHeaderGroup(header),
+            thisNode);
+      }
+    }
+    return member;
+  }
+
   @Override
   public void sendHeartBeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
-    if (!request.isSetHeader()) {
-      resultHandler.onError(new NoHeaderNodeException());
-      return;
-    }
-
     Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header);
-    if (member == null) {
-      if (partitionTable != null) {
-        resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
-            thisNode));
-      } else {
-        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
-      }
-    } else {
+    DataGroupMember member = getDataMember(header, resultHandler);
+    if (member != null) {
       member.sendHeartBeat(request, resultHandler);
     }
   }
 
   @Override
-  public void startElection(ElectionRequest electionRequest, AsyncMethodCallback resultHandler) {
-    if (!electionRequest.isSetHeader()) {
-      resultHandler.onError(new NoHeaderNodeException());
-      return;
-    }
-
-    Node header = electionRequest.getHeader();
-    DataGroupMember member = getDataMember(header);
-    if (member == null) {
-      if (partitionTable != null) {
-        resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
-            thisNode));
-      } else {
-        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
-      }
-    }  else {
-      member.startElection(electionRequest, resultHandler);
+  public void startElection(ElectionRequest request, AsyncMethodCallback resultHandler) {
+    Node header = request.getHeader();
+    DataGroupMember member = getDataMember(header, resultHandler);
+    if (member != null) {
+      member.startElection(request, resultHandler);
     }
   }
 
   @Override
   public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback resultHandler) {
-    if (!request.isSetHeader()) {
-      resultHandler.onError(new NoHeaderNodeException());
-      return;
-    }
-
     Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header);
-    if (member == null) {
-      if (partitionTable != null) {
-        resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
-            thisNode));
-      } else {
-        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
-      }
-    }  else {
+    DataGroupMember member = getDataMember(header, resultHandler);
+    if (member != null) {
       member.appendEntries(request, resultHandler);
     }
   }
 
   @Override
   public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
-    if (!request.isSetHeader()) {
-      resultHandler.onError(new NoHeaderNodeException());
-      return;
-    }
-
     Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header);
-    if (member == null) {
-      if (partitionTable != null) {
-        resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
-            thisNode));
-      } else {
-        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
-      }
-    }  else {
+    DataGroupMember member = getDataMember(header, resultHandler);
+    if (member != null) {
       member.appendEntry(request, resultHandler);
     }
   }
 
   @Override
   public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
-    if (!request.isSetHeader()) {
-      resultHandler.onError(new NoHeaderNodeException());
-      return;
-    }
-
     Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header);
-    if (member == null) {
-      if (partitionTable != null) {
-        resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
-            thisNode));
-      } else {
-        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
-      }
-    }  else {
+    DataGroupMember member = getDataMember(header, resultHandler);
+    if (member != null) {
       member.sendSnapshot(request, resultHandler);
     }
   }
 
   @Override
   public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
-    if (!request.isSetHeader()) {
-      resultHandler.onError(new NoHeaderNodeException());
-      return;
-    }
-
     Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header);
-    if (member == null) {
-      if (partitionTable != null) {
-        resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
-            thisNode));
-      } else {
-        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
-      }
-    }  else {
+    DataGroupMember member = getDataMember(header, resultHandler);
+    if (member != null) {
       member.pullSnapshot(request, resultHandler);
     }
   }
@@ -216,42 +169,27 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void executeNonQueryPlan(ExecutNonQueryReq request,
       AsyncMethodCallback<TSStatus> resultHandler) {
-    if (!request.isSetHeader()) {
-      resultHandler.onError(new NoHeaderNodeException());
-      return;
-    }
-
     Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header);
-    if (member == null) {
-      if (partitionTable != null) {
-        resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
-            thisNode));
-      } else {
-        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
-      }
-    }  else {
+    DataGroupMember member = getDataMember(header, resultHandler);
+    if (member != null) {
       member.executeNonQueryPlan(request, resultHandler);
     }
   }
 
   @Override
   public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
-    if (header == null) {
-      resultHandler.onError(new NoHeaderNodeException());
-      return;
-    }
-
-    DataGroupMember member = getDataMember(header);
-    if (member == null) {
-      if (partitionTable != null) {
-        resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
-            thisNode));
-      } else {
-        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
-      }
-    }  else {
+    DataGroupMember member = getDataMember(header, resultHandler);
+    if (member != null) {
       member.requestCommitIndex(header, resultHandler);
+    }
+  }
+
+  @Override
+  public void readFile(String filePath, long offset, int length, Node header,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    DataGroupMember member = getDataMember(header, resultHandler);
+    if (member != null) {
+      member.readFile(filePath, offset, length, header, resultHandler);
     }
   }
 
@@ -295,21 +233,9 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void pullTimeSeriesSchema(PullSchemaRequest request,
       AsyncMethodCallback<PullSchemaResp> resultHandler) {
-    if (!request.isSetHeader()) {
-      resultHandler.onError(new NoHeaderNodeException());
-      return;
-    }
-
     Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header);
-    if (member == null) {
-      if (partitionTable != null) {
-        resultHandler.onError(new NotInSameGroupException(partitionTable.getHeaderGroup(header),
-            thisNode));
-      } else {
-        resultHandler.onError(new PartitionTableUnavailableException(thisNode));
-      }
-    }  else {
+    DataGroupMember member = getDataMember(header, resultHandler);
+    if (member != null) {
       member.pullTimeSeriesSchema(request, resultHandler);
     }
   }
@@ -324,7 +250,9 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   public void pullSnapshots() {
     List<Integer> sockets = partitionTable.getNodeSockets(thisNode);
-    DataGroupMember dataGroupMember = getDataMember(thisNode);
+    DataGroupMember dataGroupMember = headerGroupMap.get(thisNode);
     dataGroupMember.pullSnapshots(sockets, thisNode);
   }
+
+
 }
