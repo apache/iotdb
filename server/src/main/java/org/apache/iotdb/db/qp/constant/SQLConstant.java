@@ -124,6 +124,7 @@ public class SQLConstant {
 
   public static final int TOK_FLUSH_TASK_INFO = 67;
   public static final int TOK_DYNAMIC_PARAMETER = 68;
+  public static final int TOK_VERSION = 69;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();

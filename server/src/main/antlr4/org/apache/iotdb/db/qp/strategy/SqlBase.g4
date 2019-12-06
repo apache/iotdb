@@ -69,6 +69,7 @@ statement
     | SHOW ALL TTL #showAllTTLStatement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
+    | SHOW VERSION #showVersion
     | LOAD CONFIGURATION #loadConfigurationStatement
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
@@ -610,6 +611,10 @@ DYNAMIC
 
 PARAMETER
     : P A R A M E T E R
+    ;
+
+VERSION
+    : V E R S I O N
     ;
 //============================
 // End of the keywords list

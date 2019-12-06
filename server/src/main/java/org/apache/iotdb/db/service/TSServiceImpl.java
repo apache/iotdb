@@ -716,6 +716,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return executeShowFlushTaskInfo();
       case DYNAMIC_PARAMETER:
         return executeShowDynamicParameter();
+      case VERSION:
+        return executeShowVersion();
       default:
         logger.error("Unsupported show content type: {}", showPlan.getShowContentType());
         throw new Exception("Unsupported show content type:" + showPlan.getShowContentType());
@@ -761,6 +763,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     columns.add(PARAMETER);
     columns.add(VALUE);
     columnTypes.add(TSDataType.TEXT.toString());
+    columnTypes.add(TSDataType.TEXT.toString());
+    resp.setColumns(columns);
+    resp.setDataTypeList(columnTypes);
+    return resp;
+  }
+
+  private TSExecuteStatementResp executeShowVersion() {
+    TSExecuteStatementResp resp =
+        getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS));
+    resp.setIgnoreTimeStamp(true);
+    List<String> columns = new ArrayList<>();
+    List<String> columnTypes = new ArrayList<>();
+    columns.add("version        ");
     columnTypes.add(TSDataType.TEXT.toString());
     resp.setColumns(columns);
     resp.setDataTypeList(columnTypes);

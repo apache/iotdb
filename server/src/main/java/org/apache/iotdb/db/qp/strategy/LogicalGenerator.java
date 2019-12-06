@@ -75,6 +75,12 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   @Override
+  public void enterShowVersion(ShowVersionContext ctx) {
+    super.enterShowVersion(ctx);
+    initializedOperator = new ShowOperator(SQLConstant.TOK_VERSION);
+  }
+
+  @Override
   public void enterShowDynamicParameter(SqlBaseParser.ShowDynamicParameterContext ctx) {
     super.enterShowDynamicParameter(ctx);
     initializedOperator = new ShowOperator(SQLConstant.TOK_DYNAMIC_PARAMETER);

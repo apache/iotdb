@@ -157,6 +157,8 @@ public class PhysicalGenerator {
             return new ShowPlan(ShowContentType.DYNAMIC_PARAMETER);
           case SQLConstant.TOK_FLUSH_TASK_INFO:
             return new ShowPlan(ShowContentType.FLUSH_TASK_INFO);
+          case SQLConstant.TOK_VERSION:
+            return new ShowPlan(ShowContentType.VERSION);
           default:
             throw new LogicalOperatorException(String
                 .format("not supported operator type %s in show operation.", operator.getType()));
