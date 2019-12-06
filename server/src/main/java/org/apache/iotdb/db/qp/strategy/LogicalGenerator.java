@@ -170,32 +170,37 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterLoadFiles(LoadFilesContext ctx) {
     super.enterLoadFiles(ctx);
-    if (ctx.getChild(2).getChild(0) != null && !ctx.getChild(2).getChild(0).getText()
-        .equalsIgnoreCase("true") && !ctx.getChild(2)
-        .getChild(0).getText().equalsIgnoreCase("false")) {
-      initializedOperator = new LoadFilesOperator(true,
-          "Please check the statement: load [FILE] true/false [storage group level]");
+    int sgLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
+    if(ctx.autoCreateSchema() == null) {
+      initializedOperator = new LoadFilesOperator(new File(ctx.FILE().getText()), true, sgLevel);
     } else {
-      boolean createSchemaAutomatically = ctx.getChild(2).getChild(0) == null || Boolean
-          .parseBoolean(ctx.getChild(2).getChild(0).getText());
-      int sgLevel = ctx.getChild(2).getChild(1) == null ? IoTDBDescriptor.getInstance().getConfig()
-          .getDefaultStorageGroupLevel() : Integer.parseInt(ctx.getChild(2).getChild(1).getText());
-      initializedOperator = new LoadFilesOperator(new File(ctx.getChild(1).getText()),
-          createSchemaAutomatically, sgLevel);
+      if(!ctx.autoCreateSchema().ID().getText().equalsIgnoreCase("true") &&
+          !ctx.autoCreateSchema().ID().getText().equalsIgnoreCase("false")) {
+        throw new SQLParserException("Please use true or false.");
+      }
+      if(ctx.autoCreateSchema().INT() == null) {
+        initializedOperator = new LoadFilesOperator(new File(ctx.FILE().getText())
+            , Boolean.parseBoolean(ctx.autoCreateSchema().ID().getText())
+            , sgLevel);
+      } else {
+        initializedOperator = new LoadFilesOperator(new File(ctx.FILE().getText())
+            , Boolean.parseBoolean(ctx.autoCreateSchema().ID().getText())
+            , Integer.parseInt(ctx.autoCreateSchema().INT().getText()));
+      }
     }
   }
 
   @Override
   public void enterMoveFile(MoveFileContext ctx) {
     super.enterMoveFile(ctx);
-    initializedOperator = new MoveFileOperator(new File(ctx.getChild(1).getText()),
-        new File(ctx.getChild(2).getText()));
+    initializedOperator = new MoveFileOperator(new File(ctx.FILE(0).getText()),
+        new File(ctx.FILE(1).getText()));
   }
 
   @Override
   public void enterRemoveFile(RemoveFileContext ctx) {
     super.enterRemoveFile(ctx);
-    initializedOperator = new RemoveFileOperator(new File(ctx.getChild(1).getText()));
+    initializedOperator = new RemoveFileOperator(new File(ctx.FILE().getText()));
   }
 
   @Override

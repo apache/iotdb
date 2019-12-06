@@ -27,21 +27,12 @@ public class LoadFilesOperator extends RootOperator {
   private File file;
   private boolean autoCreateSchema;
   private int sgLevel;
-  private boolean invalid;
-  private String errMsg;
 
   public LoadFilesOperator(File file, boolean autoCreateSchema, int sgLevel) {
     super(SQLConstant.TOK_LOAD_FILES);
     this.file = file;
     this.autoCreateSchema = autoCreateSchema;
     this.sgLevel = sgLevel;
-    this.operatorType = OperatorType.LOAD_FILES;
-  }
-
-  public LoadFilesOperator(boolean invalid, String errMsg) {
-    super(SQLConstant.TOK_LOAD_FILES);
-    this.invalid = invalid;
-    this.errMsg = errMsg;
     this.operatorType = OperatorType.LOAD_FILES;
   }
 
@@ -55,13 +46,5 @@ public class LoadFilesOperator extends RootOperator {
 
   public int getSgLevel() {
     return sgLevel;
-  }
-
-  public boolean isInvalid() {
-    return invalid;
-  }
-
-  public String getErrMsg() {
-    return errMsg;
   }
 }
