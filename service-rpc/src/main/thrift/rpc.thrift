@@ -303,8 +303,6 @@ service TSIService {
 
 	TSExecuteStatementResp insert(1:TSInsertionReq req);
 
-	TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
-
 	TSStatus setStorageGroup(1:string storageGroup);
 
 	TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
@@ -313,9 +311,17 @@ service TSIService {
 
   TSStatus deleteStorageGroups(1:list<string> storageGroup);
 
+  TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
+
 	TSStatus insertRow(1:TSInsertReq req);
 
 	TSExecuteInsertRowInBatchResp insertRowInBatch(1:TSInsertInBatchReq req);
+
+	TSExecuteBatchStatementResp testInsertBatch(1:TSBatchInsertionReq req);
+
+  TSStatus testInsertRow(1:TSInsertReq req);
+
+  TSExecuteInsertRowInBatchResp testInsertRowInBatch(1:TSInsertInBatchReq req);
 
 	TSStatus deleteData(1:TSDeleteDataReq req);
 

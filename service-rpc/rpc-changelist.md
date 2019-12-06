@@ -53,6 +53,9 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add method TSStatus deleteStorageGroups(1:list\<string> storageGroup) | Yi Tao                             |
 | Add Struct TSExecuteInsertRowInBatchResp                     | Kaifeng Xue |
 | Add method insertRowInBatch(1:TSInsertInBatchReq req);       | Kaifeng Xue |
+| Add method testInsertRowInBatch(1:TSInsertInBatchReq req);   | Kaifeng Xue |
+| Add method testInsertRow(1:TSInsertReq req);                 | Kaifeng Xue |
+| Add method testInsertBatch(1:TSBatchInsertionReq req);       | Kaifeng Xue |
 
 
 ## 3. Update

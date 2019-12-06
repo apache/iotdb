@@ -112,6 +112,18 @@ Here we show the commonly used interfaces and their parameters in the Session:
 * Batch insertion into timeseries
 
   ​	TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch)
+  
+* Test Insert data into existing timeseries in batch. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
+ 
+   ​	TSStatus testInsertInBatch(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, List<List<String>> valuesList)
+
+* Insert data into existing timeseries. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
+
+  ​	TSStatus testInsert(String deviceId, long time, List<String> measurements, List<String> values)
+
+* Batch insertion into timeseries. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
+
+  ​	TSExecuteBatchStatementResp testInsertBatch(RowBatch rowBatch)
 
 #### Sample code
 
