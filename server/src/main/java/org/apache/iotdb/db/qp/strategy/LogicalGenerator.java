@@ -192,14 +192,14 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterMoveFile(MoveFileContext ctx) {
     super.enterMoveFile(ctx);
-    initializedOperator = new MoveFileOperator(new File(ctx.getChild(1).getText()),
-        new File(ctx.getChild(2).getText()));
+    initializedOperator = new MoveFileOperator(new File(ctx.FILE(0).getText()),
+        new File(ctx.FILE(1).getText()));
   }
 
   @Override
   public void enterRemoveFile(RemoveFileContext ctx) {
     super.enterRemoveFile(ctx);
-    initializedOperator = new RemoveFileOperator(new File(ctx.getChild(1).getText()));
+    initializedOperator = new RemoveFileOperator(new File(ctx.FILE().getText()));
   }
 
   @Override
