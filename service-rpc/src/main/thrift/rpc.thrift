@@ -166,8 +166,12 @@ struct TSCloseOperationReq {
 }
 
 struct TSQueryDataSet{
-   1: required binary values
-   2: required i32 rowCount
+   // ByteBuffer for time column
+   1: required binary time
+   // ByteBuffer for each column values
+   2: required list<binary> valueList
+   // Bitmap for each column to indicate whether it is a null value
+   3: required list<binary> bitmapList
 }
 
 struct TSFetchResultsReq{
