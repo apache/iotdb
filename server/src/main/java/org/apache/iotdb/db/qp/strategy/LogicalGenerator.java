@@ -59,6 +59,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AddLabelContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AndExpressionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClausesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AutoCreateSchemaContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ConstantContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreatePropertyContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateRoleContext;
@@ -170,18 +171,21 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterLoadFiles(LoadFilesContext ctx) {
     super.enterLoadFiles(ctx);
-    if (ctx.getChild(2).getChild(0) != null && !ctx.getChild(2).getChild(0).getText()
-        .equalsIgnoreCase("true") && !ctx.getChild(2)
-        .getChild(0).getText().equalsIgnoreCase("false")) {
-      initializedOperator = new LoadFilesOperator(true,
-          "Please check the statement: load [FILE] true/false [storage group level]");
+    AutoCreateSchemaContext acsc = ctx.autoCreateSchema();
+    if (acsc != null) {
+      if (!acsc.ID().getText().equalsIgnoreCase("true") && !acsc.ID().getText()
+          .equalsIgnoreCase("false")) {
+        initializedOperator = new LoadFilesOperator(true,
+            "Please check the statement: load [FILE] true/false [storage group level]");
+      } else {
+        int sgLevel = acsc.INT() == null ? IoTDBDescriptor.getInstance().getConfig()
+            .getDefaultStorageGroupLevel() : Integer.parseInt(acsc.INT().getText());
+        initializedOperator = new LoadFilesOperator(new File(ctx.FILE().getText()), Boolean
+            .parseBoolean(acsc.ID().getText()), sgLevel);
+      }
     } else {
-      boolean createSchemaAutomatically = ctx.getChild(2).getChild(0) == null || Boolean
-          .parseBoolean(ctx.getChild(2).getChild(0).getText());
-      int sgLevel = ctx.getChild(2).getChild(1) == null ? IoTDBDescriptor.getInstance().getConfig()
-          .getDefaultStorageGroupLevel() : Integer.parseInt(ctx.getChild(2).getChild(1).getText());
-      initializedOperator = new LoadFilesOperator(new File(ctx.getChild(1).getText()),
-          createSchemaAutomatically, sgLevel);
+      initializedOperator = new LoadFilesOperator(new File(ctx.getChild(1).getText()), true,
+          IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel());
     }
   }
 
@@ -654,19 +658,21 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     // parse sliding step
     if (ctx.DURATION().size() == 2) {
       queryOp.setSlidingStep(parseDuration(ctx.DURATION(1).getText()));
-      if (queryOp.getSlidingStep() < queryOp.getUnit())
-        throw new SQLParserException("The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
+      if (queryOp.getSlidingStep() < queryOp.getUnit()) {
+        throw new SQLParserException(
+            "The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
+      }
     }
 
     long startTime;
     long endTime;
     TimeIntervalContext timeInterval = ctx.timeInterval();
-    if(timeInterval.timeValue(0).INT() != null) {
+    if (timeInterval.timeValue(0).INT() != null) {
       startTime = Long.parseLong(timeInterval.timeValue(0).INT().getText());
     } else {
       startTime = parseTimeFormat(timeInterval.timeValue(0).dateFormat().getText());
     }
-    if(timeInterval.timeValue(1).INT() != null) {
+    if (timeInterval.timeValue(1).INT() != null) {
       endTime = Long.parseLong(timeInterval.timeValue(1).INT().getText());
     } else {
       endTime = parseTimeFormat(timeInterval.timeValue(1).dateFormat().getText());
@@ -971,6 +977,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
   /**
    * parse duration to time value.
+   *
    * @param durationStr represent duration string like: 12d8m9ns, 1y1mo, etc.
    * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
    */
