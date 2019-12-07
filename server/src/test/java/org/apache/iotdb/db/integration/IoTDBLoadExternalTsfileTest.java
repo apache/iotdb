@@ -113,12 +113,12 @@ public class IoTDBLoadExternalTsfileTest {
           StorageEngine.getInstance().getProcessor("root.vehicle")
               .getSequenceFileList());
       assertEquals(1, resources.size());
-      File tmpDir = new File(resources.get(0).getFile().getParentFile().getParentFile(), "tmp");
+      File tmpDir = new File(resources.get(0).getFile().getParentFile().getParentFile(),
+          "tmp" + File.separator + "root.vehicle");
       if (!tmpDir.exists()) {
         tmpDir.mkdirs();
       }
       for (TsFileResource resource : resources) {
-        System.out.println(String.format("move %s %s", resource.getFile().getPath(), tmpDir));
         statement.execute(String.format("move %s %s", resource.getFile().getPath(), tmpDir));
       }
       assertEquals(0, StorageEngine.getInstance().getProcessor("root.vehicle")
@@ -131,13 +131,18 @@ public class IoTDBLoadExternalTsfileTest {
           StorageEngine.getInstance().getProcessor("root.test")
               .getSequenceFileList());
       assertEquals(2, resources.size());
+      tmpDir = new File(resources.get(0).getFile().getParentFile().getParentFile(),
+          "tmp" + File.separator + "root.test");
+      if (!tmpDir.exists()) {
+        tmpDir.mkdirs();
+      }
       for (TsFileResource resource : resources) {
         statement.execute(String.format("move %s %s", resource.getFile().getPath(), tmpDir));
       }
       assertEquals(0, StorageEngine.getInstance().getProcessor("root.test")
           .getSequenceFileList().size());
       assertNotNull(tmpDir.listFiles());
-      assertEquals(3, tmpDir.listFiles().length >> 1);
+      assertEquals(2, tmpDir.listFiles().length >> 1);
     } catch (StorageEngineException e) {
       Assert.fail();
     }
@@ -153,7 +158,8 @@ public class IoTDBLoadExternalTsfileTest {
       List<TsFileResource> resources = new ArrayList<>(
           StorageEngine.getInstance().getProcessor("root.vehicle")
               .getSequenceFileList());
-      File tmpDir = new File(resources.get(0).getFile().getParentFile().getParentFile(), "tmp");
+      File tmpDir = new File(resources.get(0).getFile().getParentFile().getParentFile(),
+          "tmp" + File.separator + "root.vehicle");
       if (!tmpDir.exists()) {
         tmpDir.mkdirs();
       }
@@ -165,11 +171,17 @@ public class IoTDBLoadExternalTsfileTest {
       resources = new ArrayList<>(
           StorageEngine.getInstance().getProcessor("root.test")
               .getSequenceFileList());
+      tmpDir = new File(resources.get(0).getFile().getParentFile().getParentFile(),
+          "tmp" + File.separator + "root.test");
+      if (!tmpDir.exists()) {
+        tmpDir.mkdirs();
+      }
       for (TsFileResource resource : resources) {
         statement.execute(String.format("move %s %s", resource.getFile().getPath(), tmpDir));
       }
 
       // load all tsfile in tmp dir
+      tmpDir = new File(resources.get(0).getFile().getParentFile().getParentFile(), "tmp");
       statement.execute(String.format("load %s", tmpDir.getAbsolutePath()));
       resources = new ArrayList<>(
           StorageEngine.getInstance().getProcessor("root.vehicle")
@@ -180,7 +192,8 @@ public class IoTDBLoadExternalTsfileTest {
               .getSequenceFileList());
       assertEquals(2, resources.size());
       assertNotNull(tmpDir.listFiles());
-      assertEquals(0, tmpDir.listFiles().length >> 1);
+      assertEquals(0, new File(tmpDir, "root.vehicle").listFiles().length);
+      assertEquals(0, new File(tmpDir, "root.test").listFiles().length);
     } catch (StorageEngineException e) {
       Assert.fail();
     }

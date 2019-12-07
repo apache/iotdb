@@ -305,8 +305,7 @@ property
     ;
 
 autoCreateSchema
-    :
-    | ID
+    : ID
     | ID INT
     ;
 
