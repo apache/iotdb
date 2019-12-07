@@ -60,7 +60,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   private byte[] time; // used to cache the current time value
   private byte[][] values; // used to cache the current row record value
   private byte[] currentBitmap; // used to cache the current bitmap for every column
-  private static final int flag = 0x80; // used to do `or` operation with bitmap to judge whether the value is null
+  private static final int flag = 0x80; // used to do `and` operation with bitmap to judge whether the value is null
 
   private long queryId;
   private boolean ignoreTimeStamp = false;
