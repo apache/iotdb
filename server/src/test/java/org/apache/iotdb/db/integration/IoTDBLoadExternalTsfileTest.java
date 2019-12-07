@@ -243,7 +243,7 @@ public class IoTDBLoadExternalTsfileTest {
       } catch (Exception e) {
         hasError = true;
         Assert.assertEquals(
-            "Check metadata error: Please use true or false.",
+            "Statement format is not right: Please check the statement: load [FILE] true/false [storage group level]",
             e.getMessage());
       }
       Assert.assertTrue(hasError);
