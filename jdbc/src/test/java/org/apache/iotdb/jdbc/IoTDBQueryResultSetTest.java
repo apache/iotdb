@@ -147,7 +147,7 @@ public class IoTDBQueryResultSetTest {
   public void testQuery() throws Exception {
 
     String testSql = "select *,s1,s0,s2 from root.vehicle.d0 where s1 > 190 or s2 < 10.0 "
-        + "limit 20 offset 1 slimit 4 soffset 2";
+        + "limit 20 slimit 4 soffset 2";
 
     /*
      * step 1: execute statement
