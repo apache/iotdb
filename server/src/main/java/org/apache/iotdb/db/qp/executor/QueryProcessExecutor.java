@@ -83,11 +83,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
-  private StorageEngine storageEngine;
   private MManager mManager = MManager.getInstance();
 
   public QueryProcessExecutor() {
-    storageEngine = StorageEngine.getInstance();
   }
 
   @Override
@@ -211,7 +209,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
             String.format("Time series %s does not exist.", path.getFullPath()));
       }
       mManager.getStorageGroupNameByPath(path.getFullPath());
-      storageEngine.delete(deviceId, measurementId, timestamp);
+      StorageEngine.getInstance().delete(deviceId, measurementId, timestamp);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -253,7 +251,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         dataTypes[i] = measurementNode.getSchema().getType();
       }
       insertPlan.setDataTypes(dataTypes);
-      storageEngine.insert(insertPlan);
+      StorageEngine.getInstance().insert(insertPlan);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -293,7 +291,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
                   measurementNode.getSchema().getType()));
         }
       }
-      return storageEngine.insertBatch(batchInsertPlan);
+      return StorageEngine.getInstance().insertBatch(batchInsertPlan);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -394,7 +392,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       boolean result = mManager.addPathToMTree(path, dataType, encoding, compressor, props);
       if (result) {
-        storageEngine.addTimeSeries(path, dataType, encoding, compressor, props);
+        StorageEngine.getInstance().addTimeSeries(path, dataType, encoding, compressor, props);
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
@@ -409,7 +407,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       deleteDataOfTimeSeries(deletePathList);
       Set<String> emptyStorageGroups = mManager.deletePaths(deletePathList, false);
       for (String deleteStorageGroup : emptyStorageGroups) {
-        storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
+        StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
       }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
@@ -434,7 +432,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       mManager.deleteStorageGroupsFromMTree(deletePathList);
       for (Path storageGroupPath : deletePathList) {
-        storageEngine.deleteStorageGroup(storageGroupPath.getFullPath());
+        StorageEngine.getInstance().deleteStorageGroup(storageGroupPath.getFullPath());
       }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
@@ -701,7 +699,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     boolean result = mManager.addPathToMTree(
         fullPath, dataType, defaultEncoding, defaultCompressor, Collections.emptyMap());
     if (result) {
-      storageEngine.addTimeSeries(
+      StorageEngine.getInstance().addTimeSeries(
           new Path(fullPath), dataType, defaultEncoding, defaultCompressor, Collections.emptyMap());
     }
   }

@@ -132,6 +132,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     initLogManager();
     setThisNode(thisNode);
     loadIdentifier();
+
+    dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory);
+    clientServer = new ClientServer(this);
   }
 
   @Override
@@ -158,9 +161,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   private void initSubServers() throws TTransportException {
-    dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory);
     dataClusterServer.start();
-    clientServer = new ClientServer(this);
     clientServer.start();
   }
 

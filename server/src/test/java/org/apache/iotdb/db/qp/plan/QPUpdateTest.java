@@ -91,13 +91,13 @@ public class QPUpdateTest {
     String sql = "UPDATE root.laptop SET d1.s1 = -33000, d2.s1 = 'string' WHERE time < 100";
     try {
       plan = processor.parseSQLToPhysicalPlan(sql);
-    } catch (QueryProcessException | MetadataException e) {
+    } catch (QueryProcessException e) {
       assertEquals("UPDATE clause doesn't support multi-update yet.", e.getMessage());
     }
     sql = "UPDATE root.laptop SET d1.s1 = -33000 WHERE time < 100";
     try {
       plan = processor.parseSQLToPhysicalPlan(sql);
-    } catch (QueryProcessException | MetadataException e) {
+    } catch (QueryProcessException e) {
       assertTrue(false);
     }
     assertEquals("UpdatePlan:  paths:  root.laptop.d1.s1\n" + "  value:-33000\n" + "  filter: \n"
