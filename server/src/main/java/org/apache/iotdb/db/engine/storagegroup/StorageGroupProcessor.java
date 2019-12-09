@@ -1165,8 +1165,9 @@ public class StorageGroupProcessor {
       loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource,
           getBinarySearchIndex(newTsFileResource));
       updateLatestTimeMap(newTsFileResource);
-    } catch (TsFileProcessorException | DiskSpaceInsufficientException e) {
-      logger.error("Failed to append the tsfile {} to storage group processor {}.",
+    } catch (DiskSpaceInsufficientException e) {
+      logger.error(
+          "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
           tsfileToBeInserted.getAbsolutePath(), tsfileToBeInserted.getParentFile().getName());
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new TsFileProcessorException(e);
@@ -1259,8 +1260,9 @@ public class StorageGroupProcessor {
 
       // update latest time map
       updateLatestTimeMap(newTsFileResource);
-    } catch (TsFileProcessorException | DiskSpaceInsufficientException e) {
-      logger.error("Failed to append the tsfile {} to storage group processor {}.",
+    } catch (DiskSpaceInsufficientException e) {
+      logger.error(
+          "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
           tsfileToBeInserted.getAbsolutePath(), tsfileToBeInserted.getParentFile().getName());
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new TsFileProcessorException(e);
@@ -1415,23 +1417,28 @@ public class StorageGroupProcessor {
     if (!targetFile.getParentFile().exists()) {
       targetFile.getParentFile().mkdirs();
     }
-    if (syncedTsFile.exists() && !targetFile.exists()) {
-      try {
-        FileUtils.moveFile(syncedTsFile, targetFile);
-      } catch (IOException e) {
-        throw new TsFileProcessorException(String.format(
-            "File renaming failed when loading tsfile. Origin: %s, Target: %s, because %s",
-            syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath(), e.getMessage()));
-      }
-    }
     try {
-      FileUtils.moveFile(new File(syncedTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
-          new File(targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
+      FileUtils.moveFile(syncedTsFile, targetFile);
     } catch (IOException e) {
+      logger.error("File renaming failed when loading tsfile. Origin: {}, Target: {}",
+          syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath(), e);
+      throw new TsFileProcessorException(String.format(
+          "File renaming failed when loading tsfile. Origin: %s, Target: %s, because %s",
+          syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath(), e.getMessage()));
+    }
+    File syncedResourceFile = new File(
+        syncedTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+    File targetResourceFile = new File(
+        targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+    try {
+      FileUtils.moveFile(syncedResourceFile, targetResourceFile);
+    } catch (IOException e) {
+      logger.error("File renaming failed when loading .resource file. Origin: {}, Target: {}",
+          syncedResourceFile.getAbsolutePath(), targetResourceFile.getAbsolutePath(), e);
       throw new TsFileProcessorException(String.format(
           "File renaming failed when loading .resource file. Origin: %s, Target: %s, because %s",
-          new File(syncedTsFile + TsFileResource.RESOURCE_SUFFIX).getAbsolutePath(),
-          new File(targetFile + TsFileResource.RESOURCE_SUFFIX).getAbsolutePath(), e.getMessage()));
+          syncedResourceFile.getAbsolutePath(), targetResourceFile.getAbsolutePath(),
+          e.getMessage()));
     }
   }
 
