@@ -23,24 +23,25 @@ import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
 
 /**
  * To read chunk data on disk, this class implements an interface {@link IPointReader} based on the
- * data reader {@link ChunkReader}.
+ * data reader {@link AbstractChunkReader}.
  * <p>
  * Note that <code>ChunkReader</code> is an abstract class with three concrete classes, two of which
  * are used here: <code>ChunkReaderWithoutFilter</code> and <code>ChunkReaderWithFilter</code>.
  * <p>
  * This class is used in {@link org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader}.
  */
-public class DiskChunkReader implements IPointReader {
+public class DiskChunkReader implements IPointReader, IBatchReader {
 
-  private ChunkReader chunkReader;
+  private AbstractChunkReader AbstractChunkReader;
   private BatchData data;
 
-  public DiskChunkReader(ChunkReader chunkReader) {
-    this.chunkReader = chunkReader;
+  public DiskChunkReader(AbstractChunkReader AbstractChunkReader) {
+    this.AbstractChunkReader = AbstractChunkReader;
   }
 
   @Override
@@ -48,8 +49,8 @@ public class DiskChunkReader implements IPointReader {
     if (data != null && data.hasNext()) {
       return true;
     }
-    while (chunkReader.hasNextBatch()) {
-      data = chunkReader.nextBatch();
+    while (AbstractChunkReader.hasNextBatch()) {
+      data = AbstractChunkReader.nextBatch();
       if (data.hasNext()) {
         return true;
       }
@@ -71,7 +72,17 @@ public class DiskChunkReader implements IPointReader {
   }
 
   @Override
+  public boolean hasNextBatch() throws IOException {
+    return false;
+  }
+
+  @Override
+  public BatchData nextBatch() throws IOException {
+    return null;
+  }
+
+  @Override
   public void close() {
-    this.chunkReader.close();
+    this.AbstractChunkReader.close();
   }
 }

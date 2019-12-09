@@ -18,25 +18,24 @@
  */
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
+import java.io.IOException;
 import java.util.Iterator;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileIterateReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 /**
- * To read chunk data in memory, this class implements two interfaces {@link IPointReader} and
- * {@link IAggregateReader} based on the data source {@link ReadOnlyMemChunk}.
+ * To read chunk data in memory
  * <p>
  * This class is used in {@link UnSealedTsFileIterateReader} and {@link
  * org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader}.
  */
-public class MemChunkReader implements IPointReader, IAggregateReader {
+public class MemChunkReader implements IPointReader, IBatchReader {
 
   private Iterator<TimeValuePair> timeValuePairIterator;
   private Filter filter;
@@ -88,6 +87,11 @@ public class MemChunkReader implements IPointReader, IAggregateReader {
   }
 
   @Override
+  public boolean hasNextBatch() throws IOException {
+    return hasNext();
+  }
+
+  @Override
   public BatchData nextBatch() {
     BatchData batchData = new BatchData(dataType, true);
     if (hasCachedTimeValuePair) {
@@ -111,13 +115,4 @@ public class MemChunkReader implements IPointReader, IAggregateReader {
     // Do nothing because mem chunk reader will not open files
   }
 
-  @Override
-  public PageHeader nextPageHeader() {
-    return null;
-  }
-
-  @Override
-  public void skipPageData() {
-    nextBatch();
-  }
 }

@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 
 /**
@@ -40,7 +40,7 @@ public class FileSeriesReaderByTimestamp {
   protected List<ChunkMetaData> chunkMetaDataList;
   private int currentChunkIndex = 0;
 
-  private ChunkReader chunkReader;
+  private AbstractChunkReader AbstractChunkReader;
   private long currentTimestamp;
   private BatchData data = null; // current batch data
 
@@ -64,13 +64,13 @@ public class FileSeriesReaderByTimestamp {
     this.currentTimestamp = timestamp;
 
     // first initialization, only invoked in the first time
-    if (chunkReader == null) {
+    if (AbstractChunkReader == null) {
       if (!constructNextSatisfiedChunkReader()) {
         return null;
       }
 
-      if (chunkReader.hasNextBatch()) {
-        data = chunkReader.nextBatch();
+      if (AbstractChunkReader.hasNextBatch()) {
+        data = AbstractChunkReader.nextBatch();
       } else {
         return null;
       }
@@ -93,8 +93,8 @@ public class FileSeriesReaderByTimestamp {
         }
         return null;
       } else {
-        if (chunkReader.hasNextBatch()) {
-          data = chunkReader.nextBatch();
+        if (AbstractChunkReader.hasNextBatch()) {
+          data = AbstractChunkReader.nextBatch();
         } else if (!constructNextSatisfiedChunkReader()) {
           return null;
         }
@@ -111,20 +111,20 @@ public class FileSeriesReaderByTimestamp {
    */
   public boolean hasNext() throws IOException {
 
-    if (chunkReader != null) {
+    if (AbstractChunkReader != null) {
       if (data != null && data.hasNext()) {
         return true;
       }
-      while (chunkReader.hasNextBatch()) {
-        data = chunkReader.nextBatch();
+      while (AbstractChunkReader.hasNextBatch()) {
+        data = AbstractChunkReader.nextBatch();
         if (data != null && data.hasNext()) {
           return true;
         }
       }
     }
     while (constructNextSatisfiedChunkReader()) {
-      while (chunkReader.hasNextBatch()) {
-        data = chunkReader.nextBatch();
+      while (AbstractChunkReader.hasNextBatch()) {
+        data = AbstractChunkReader.nextBatch();
         if (data != null && data.hasNext()) {
           return true;
         }
@@ -138,7 +138,7 @@ public class FileSeriesReaderByTimestamp {
       ChunkMetaData chunkMetaData = chunkMetaDataList.get(currentChunkIndex++);
       if (chunkSatisfied(chunkMetaData)) {
         initChunkReader(chunkMetaData);
-        ((ChunkReaderByTimestamp) chunkReader).setCurrentTimestamp(currentTimestamp);
+        ((ChunkReaderByTimestamp) AbstractChunkReader).setCurrentTimestamp(currentTimestamp);
         return true;
       }
     }
@@ -147,7 +147,7 @@ public class FileSeriesReaderByTimestamp {
 
   private void initChunkReader(ChunkMetaData chunkMetaData) throws IOException {
     Chunk chunk = chunkLoader.getChunk(chunkMetaData);
-    this.chunkReader = new ChunkReaderByTimestamp(chunk);
+    this.AbstractChunkReader = new ChunkReaderByTimestamp(chunk);
   }
 
   private boolean chunkSatisfied(ChunkMetaData chunkMetaData) {

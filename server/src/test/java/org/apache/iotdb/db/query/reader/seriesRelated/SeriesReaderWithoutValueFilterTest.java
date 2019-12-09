@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IBatchReader;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.junit.Assert;

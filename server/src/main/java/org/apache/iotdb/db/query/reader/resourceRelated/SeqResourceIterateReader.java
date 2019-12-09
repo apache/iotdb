@@ -26,8 +26,6 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.IAggregateReader;
-import org.apache.iotdb.db.query.reader.fileRelated.FileSeriesReaderAdapter;
 import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileIterateReader;
 import org.apache.iotdb.db.query.reader.universal.IterateReader;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -37,13 +35,11 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 
 /**
- * To read a chronologically ordered list of sequence TsFiles, this class extends {@link
- * IterateReader} to implements <code>IAggregateReader</code> for the TsFiles.
+ * To read a chronologically ordered list of sequence TsFiles.
  * <p>
  * Notes: 1) The list of sequence TsFiles is in strict chronological order. 2) The data in a
  * sequence TsFile is also organized in chronological order. 3) A sequence TsFile can be either
@@ -104,7 +100,7 @@ public class SeqResourceIterateReader extends IterateReader {
 
   /**
    * If the idx-th TsFile in the <code>seqResources</code> might satisfy this <code>filter</code>,
-   * then construct <code>IAggregateReader</code> for it, assign to <code>currentSeriesReader</code>
+   * then construct a reader for it, assign to <code>currentSeriesReader</code>
    * and return true. Otherwise, return false.
    *
    * @param idx the index of the TsFile in the resource list
@@ -155,7 +151,7 @@ public class SeqResourceIterateReader extends IterateReader {
     return !filter.satisfyStartEndTime(startTime, endTime);
   }
 
-  private IAggregateReader initSealedTsFileReader(TsFileResource sealedTsFile, Filter filter,
+  private IBatchReader initSealedTsFileReader(TsFileResource sealedTsFile, Filter filter,
       QueryContext context) throws IOException {
     // prepare metaDataList
     List<ChunkMetaData> metaDataList = DeviceMetaDataCache.getInstance()
@@ -175,12 +171,6 @@ public class SeqResourceIterateReader extends IterateReader {
     IChunkLoader chunkLoader = new ChunkLoaderImpl(tsFileReader);
 
     // init fileSeriesReader
-    FileSeriesReader fileSeriesReader;
-    if (filter == null) {
-      fileSeriesReader = new FileSeriesReaderWithoutFilter(chunkLoader, metaDataList);
-    } else {
-      fileSeriesReader = new FileSeriesReaderWithFilter(chunkLoader, metaDataList, filter);
-    }
-    return new FileSeriesReaderAdapter(fileSeriesReader);
+    return new FileSeriesReader(chunkLoader, metaDataList, filter);
   }
 }

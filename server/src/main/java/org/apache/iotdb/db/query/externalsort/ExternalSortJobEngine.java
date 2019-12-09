@@ -23,6 +23,7 @@ import java.util.List;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 
 public interface ExternalSortJobEngine {
@@ -37,6 +38,8 @@ public interface ExternalSortJobEngine {
   List<IPointReader> executeForIPointReader(long queryId, List<ChunkReaderWrap>
       chunkReaderWraps) throws IOException;
 
+  List<IBatchReader> executeForIBatchReader(long queryId, List<IBatchReader> batchReaders)
+      throws IOException;
 
   /**
    * Receive a list of chunkReaderWraps and judge whether it should be processed using external

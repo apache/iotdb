@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
-import org.apache.iotdb.db.query.reader.IBatchReader;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -61,7 +61,7 @@ public class FakedIBatchPoint implements IBatchReader {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNextBatch() {
     if (hasCachedBatchData) {
       return true;
     }

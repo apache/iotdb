@@ -23,6 +23,7 @@ import java.io.IOException;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 
 /**
  * CachedPriorityMergeReader use a cache to reduce unnecessary heap updates and increase locality.
@@ -92,4 +93,5 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
       return timeValuePairCache[cacheIdx];
     }
   }
+
 }

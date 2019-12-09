@@ -19,9 +19,13 @@
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import java.io.IOException;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.IBatchReader;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -51,36 +55,42 @@ public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter 
     this.filter = filter;
   }
 
-  public SeriesReaderWithValueFilter(IBatchReader seqResourceIterateReader,
-      IPointReader unseqResourceMergeReader, Filter filter) {
+  /**
+   * for test
+   */
+  SeriesReaderWithValueFilter(IBatchReader seqResourceIterateReader,
+      IBatchReader unseqResourceMergeReader, Filter filter) {
     super(seqResourceIterateReader, unseqResourceMergeReader);
     this.filter = filter;
   }
 
-  @Override
-  public boolean hasNext() throws IOException {
-    if (hasCachedValue) {
-      return true;
-    }
-    while (super.hasNext()) {
-      timeValuePair = super.next();
-      if (filter.satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
-        hasCachedValue = true;
-        return true;
-      }
-    }
-    return false;
-  }
+//  @Override
+//  public boolean hasNext() throws IOException {
+//    if (hasCachedValue) {
+//      return true;
+//    }
+//    while (super.hasNext()) {
+//      timeValuePair = super.next();
+//      if (filter.satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+//        hasCachedValue = true;
+//        return true;
+//      }
+//    }
+//    return false;
+//  }
+//
+//  @Override
+//  public TimeValuePair next() throws IOException {
+//    if (hasCachedValue || hasNext()) {
+//      hasCachedValue = false;
+//      return timeValuePair;
+//    } else {
+//      throw new IOException("data reader is out of bound.");
+//    }
+//  }
 
-  @Override
-  public TimeValuePair next() throws IOException {
-    if (hasCachedValue || hasNext()) {
-      hasCachedValue = false;
-      return timeValuePair;
-    } else {
-      throw new IOException("data reader is out of bound.");
-    }
-  }
+
+
 
   @Override
   public TimeValuePair current() {
