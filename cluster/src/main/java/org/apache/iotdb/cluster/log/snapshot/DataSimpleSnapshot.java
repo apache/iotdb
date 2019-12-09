@@ -8,7 +8,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
@@ -16,14 +16,14 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
  */
 public class DataSimpleSnapshot extends SimpleSnapshot {
 
-  List<MeasurementSchema> timeseriesSchemas;
+  Collection<MeasurementSchema> timeseriesSchemas;
 
   public DataSimpleSnapshot() {
     snapshot = new ArrayList<>();
     timeseriesSchemas = new ArrayList<>();
   }
 
-  public DataSimpleSnapshot(List<MeasurementSchema> timeseriesSchemas) {
+  public DataSimpleSnapshot(Collection<MeasurementSchema> timeseriesSchemas) {
     this.snapshot = new ArrayList<>();
     this.timeseriesSchemas = timeseriesSchemas;
   }
@@ -48,7 +48,7 @@ public class DataSimpleSnapshot extends SimpleSnapshot {
     }
   }
 
-  public List<MeasurementSchema> getTimeseriesSchemas() {
+  public Collection<MeasurementSchema> getTimeseriesSchemas() {
     return timeseriesSchemas;
   }
 }

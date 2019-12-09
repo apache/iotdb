@@ -48,11 +48,13 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
   private boolean pullSnapshot(AtomicReference<Map<Integer, T>> snapshotRef, int nodeIndex)
       throws InterruptedException, TException {
     Node node = oldMembers.get(nodeIndex);
+    logger.debug("Pulling {} snapshots from {}", sockets.size(), node);
+
     TSDataService.AsyncClient client =
         (TSDataService.AsyncClient) newMember.connectNode(node);
     if (client == null) {
       // network is bad, wait and retry
-      Thread.sleep(ClusterConstant.CONNECTION_TIME_OUT_MS);
+      Thread.sleep(ClusterConstant.PULL_SNAPSHOT_RETRY_INTERVAL);
     } else {
       synchronized (snapshotRef) {
         client.pullSnapshot(request, new PullSnapshotHandler<>(snapshotRef,
@@ -62,8 +64,7 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
       Map<Integer, T> result = snapshotRef.get();
       if (result != null) {
         if (logger.isInfoEnabled()) {
-          logger.info("Received a snapshot {} from {}", snapshotRef.get(),
-              oldMembers.get(nodeIndex));
+          logger.info("Received a snapshot {} from {}", result, oldMembers.get(nodeIndex));
         }
         for (Entry<Integer, T> entry : result.entrySet()) {
           newMember.applySnapshot(entry.getValue(), entry.getKey());

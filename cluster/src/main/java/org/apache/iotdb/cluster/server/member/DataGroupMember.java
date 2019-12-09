@@ -52,6 +52,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPullSnapshotHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -83,9 +84,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   private PartitionedSnapshotLogManager logManager;
 
   private DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
-      PartitionedSnapshotLogManager logManager, MetaGroupMember metaGroupMember) throws IOException {
+      PartitionedSnapshotLogManager logManager, MetaGroupMember metaGroupMember,
+      TAsyncClientManager clientManager) {
     super("Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getMetaPort() + ")",
-        new ClientPool(new DataClient.Factory(new TAsyncClientManager(), factory)));
+        new ClientPool(new DataClient.Factory(clientManager, factory)));
     this.thisNode = thisNode;
     this.logManager = logManager;
     super.logManager = logManager;
@@ -121,19 +123,21 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   public static class Factory {
     private TProtocolFactory protocolFactory;
     private MetaGroupMember metaGroupMember;
+    private TAsyncClientManager clientManager;
     private LogApplier applier;
 
-    Factory(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember, LogApplier applier) {
+    Factory(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember, LogApplier applier
+        ,TAsyncClientManager clientManager) {
       this.protocolFactory = protocolFactory;
       this.metaGroupMember = metaGroupMember;
       this.applier = applier;
+      this.clientManager = clientManager;
     }
 
-    public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode)
-        throws IOException {
+    public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode) {
       return new DataGroupMember(protocolFactory, partitionGroup, thisNode,
           new FilePartitionedSnapshotLogManager(applier, metaGroupMember.getPartitionTable(),
-              partitionGroup.getHeader()), metaGroupMember);
+              partitionGroup.getHeader()), metaGroupMember, clientManager);
     }
   }
 
@@ -192,7 +196,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
     long metaResponse = verifyElector(thisMetaTerm, thisMetaLastLogIndex, thisMetaLastLogTerm,
         thatMetaTerm, thatMetaLastLogId, thatMetaLastLogTerm);
-    if (metaResponse != Response.RESPONSE_AGREE) {
+    if (metaResponse == Response.RESPONSE_LOG_MISMATCH) {
       return Response.RESPONSE_META_LOG_STALE;
     }
 
@@ -216,7 +220,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   @Override
   public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
-    PartitionedSnapshot snapshot = new PartitionedSnapshot<>(DataSimpleSnapshot::new);
+    PartitionedSnapshot snapshot = new PartitionedSnapshot<>(FileSnapshot::new);
     try {
       snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
       logger.debug("{} received a snapshot {}", name, snapshot);
@@ -228,6 +232,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   public void applySnapshot(Snapshot snapshot, int socket) {
+    logger.debug("{}: applying snapshot {} of socket {}", name, snapshot, socket);
     if (snapshot instanceof DataSimpleSnapshot) {
       applySimpleSnapshot((DataSimpleSnapshot) snapshot, socket);
     } else if (snapshot instanceof FileSnapshot) {
@@ -262,10 +267,30 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
       List<RemoteTsFileResource> remoteTsFileResources = snapshot.getDataFiles();
       for (RemoteTsFileResource resource : remoteTsFileResources) {
-        loadRemoteFile(resource);
+        if (!isFileAlreadyPulled(resource)) {
+          loadRemoteFile(resource);
+        }
       }
     }
   }
+
+  private boolean isFileAlreadyPulled(RemoteTsFileResource resource) {
+    String[] pathSegments = resource.getFile().getAbsolutePath().split(File.separator);
+    int segSize = pathSegments.length;
+    // {storageGroupName}/{fileName}
+    String sgFileName = pathSegments[segSize - 2] + File.separator + pathSegments[segSize - 1];
+    boolean isSeq = pathSegments[segSize - 3].equals("sequence");
+    List<String> dataFolders = isSeq ? DirectoryManager.getInstance()
+        .getAllSequenceFileFolders() : DirectoryManager.getInstance().getAllUnSequenceFileFolders();
+    for (String dataFolder : dataFolders) {
+      File localFile = new File(dataFolder, sgFileName);
+      if (localFile.exists()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
 
   private void applyPartitionedSnapshot(PartitionedSnapshot snapshot) {
     synchronized (logManager) {
@@ -288,22 +313,28 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       File tempFile = pullRemoteFile(resource, node);
       if (tempFile != null) {
         resource.setFile(tempFile);
-        loadRemoteResource(resource);
-        logger.info("{}: Remote file {} is successfully loaded", name, resource);
-        return;
+        try {
+          resource.serialize();
+          loadRemoteResource(resource);
+          logger.info("{}: Remote file {} is successfully loaded", name, resource);
+          return;
+        } catch (IOException e) {
+          logger.error("{}: Cannot serialize {}", name, resource, e);
+        }
       }
     }
     logger.error("{}: Cannot load remote file {} from group {}", name, resource, partitionGroup);
   }
 
   private void loadRemoteResource(RemoteTsFileResource resource) {
+    // remote/{nodeIdentifier}/{storageGroupName}/{fileName}
     String[] pathSegments = resource.getFile().getAbsolutePath().split(File.separator);
     int segSize = pathSegments.length;
     String storageGroupName = pathSegments[segSize - 2];
     File remoteModFile =
         new File(resource.getFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
-    //TODO-Cluster: load the file resource into a proper storage group processor
     try {
+      //TODO-Cluster: load the file resource into a proper storage group processor
       StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource);
     } catch (TsFileProcessorException | StorageEngineException e) {
       logger.error("{}: Cannot load remote file {} into storage group", name, resource, e);
@@ -320,22 +351,22 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   private File pullRemoteFile(RemoteTsFileResource resource, Node node) {
     logger.debug("{}: pulling remote file {} from {}", name, resource, node);
-    AsyncClient client = connectNode(node);
-    if (client == null) {
-      return null;
-    }
+
     String[] pathSegments = resource.getFile().getAbsolutePath().split(File.separator);
     int segSize = pathSegments.length;
-    // {nodeIdentifier}_{storageGroupName}_{fileName}
+    // remote/{nodeIdentifier}/{storageGroupName}/{fileName}
     String tempFileName =
-        node.getNodeIdentifier() + "_" + pathSegments[segSize - 2] + "_" + pathSegments[segSize - 1];
+        node.getNodeIdentifier() + File.separator + pathSegments[segSize - 2] + File.separator + pathSegments[segSize - 1];
     File tempFile = new File(REMOTE_FILE_TEMP_DIR, tempFileName);
+    tempFile.getParentFile().mkdirs();
     File tempModFile = new File(REMOTE_FILE_TEMP_DIR, tempFileName + ModificationFile.FILE_SUFFIX);
-    if (pullRemoteFile(resource.getFile().getAbsolutePath(), node, tempFile, client)) {
+    if (pullRemoteFile(resource.getFile().getAbsolutePath(), node, tempFile)) {
       if (!checkMd5(tempFile, resource.getMd5())) {
         return null;
       }
-      pullRemoteFile(resource.getModFile().getFilePath(), node, tempModFile, client);
+      if (resource.isWithModification()) {
+        pullRemoteFile(resource.getModFile().getFilePath(), node, tempModFile);
+      }
       return tempFile;
     }
     return null;
@@ -346,16 +377,21 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     return true;
   }
 
-  private boolean pullRemoteFile(String remotePath, Node node, File dest, AsyncClient client) {
+  private boolean pullRemoteFile(String remotePath, Node node, File dest) {
+    AsyncClient client = connectNode(node);
+    if (client == null) {
+      return false;
+    }
+
     AtomicReference<ByteBuffer> result = new AtomicReference<>();
     try (BufferedOutputStream bufferedOutputStream =
         new BufferedOutputStream(new FileOutputStream(dest))) {
       int offset = 0;
       int fetchSize = 64 * 1024;
-      result.set(null);
       GenericHandler<ByteBuffer> handler = new GenericHandler<>(node, result);
 
       while (true) {
+        result.set(null);
         synchronized (result) {
           client.readFile(remotePath, offset, fetchSize, getHeader(), handler);
           result.wait(CONNECTION_TIME_OUT_MS);
@@ -364,15 +400,17 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         if (buffer == null || buffer.array().length == 0) {
           break;
         }
-        bufferedOutputStream.write(buffer.array());
+
+        bufferedOutputStream.write(buffer.array(), buffer.position() + buffer.arrayOffset(),
+            buffer.limit() - buffer.position());
         offset += buffer.array().length;
       }
       bufferedOutputStream.flush();
     } catch (IOException e) {
-      logger.error("{}: Cannot create temp file for {}", name, remotePath);
+      logger.error("{}: Cannot create temp file for {}", name, remotePath, e);
       return false;
     } catch (TException | InterruptedException e) {
-      logger.error("{}: Cannot pull file {} from {}", name, remotePath, node);
+      logger.error("{}: Cannot pull file {} from {}", name, remotePath, node, e);
       dest.delete();
       return false;
     }
@@ -413,7 +451,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
       for (int requiredSocket : requiredSockets) {
         if (!heldSockets.contains(requiredSocket)) {
-          logger.debug("{}: the required socket {} is not held by the node", name, requiredSocket);
+          // logger.debug("{}: the required socket {} is not held by the node", name,
+          // requiredSocket);
           continue;
         }
 
@@ -451,11 +490,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   private void pullDataSimpleSnapshot(Node node, List<Integer> nodeSockets) {
-    PartitionGroup prevHolders = metaGroupMember.getPartitionTable().getHeaderGroup(node);
-    if (prevHolders.contains(thisNode)) {
-      // the sockets are already stored locally, skip them.
-      return;
-    }
+    PartitionGroup prevHolders =
+        new PartitionGroup(metaGroupMember.getPartitionTable().getHeaderGroup(node));
+
     Future<Map<Integer, DataSimpleSnapshot>> snapshotFuture =
         pullSnapshotService.submit(new PullSnapshotTask(node, nodeSockets, this,
             prevHolders, DataSimpleSnapshot::new));
@@ -465,9 +502,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   private void pullFileSnapshot(Node node, List<Integer> nodeSockets) {
+    PartitionGroup prevHolders =
+        new PartitionGroup(metaGroupMember.getPartitionTable().getHeaderGroup(node));
+
     Future<Map<Integer, FileSnapshot>> snapshotFuture =
         pullSnapshotService.submit(new PullSnapshotTask(node, nodeSockets, this,
-            metaGroupMember.getPartitionTable().getHeaderGroup(node), FileSnapshot::new));
+            prevHolders, FileSnapshot::new));
     for (int socket : nodeSockets) {
       logManager.setSnapshot(new RemoteFileSnapshot(snapshotFuture), socket);
     }

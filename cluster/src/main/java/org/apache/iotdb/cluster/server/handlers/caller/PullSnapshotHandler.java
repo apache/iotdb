@@ -54,7 +54,7 @@ public class PullSnapshotHandler<T extends Snapshot> implements AsyncMethodCallb
 
   @Override
   public void onError(Exception exception) {
-    logger.error("Cannot pull snapshot of {} from {}", socket, node, exception);
+    logger.error("Cannot pull snapshot of {} from {}", socket.size(), node, exception);
     synchronized (resultRef) {
       resultRef.notifyAll();
     }

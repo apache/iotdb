@@ -4,7 +4,6 @@
 
 package org.apache.iotdb.cluster.server;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Collection;
@@ -56,7 +55,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     headerGroupMap.put(dataGroupMember.getHeader(), dataGroupMember);
   }
 
-  public DataGroupMember getDataMember(Node header, AsyncMethodCallback resultHandler) {
+  public DataGroupMember getDataMember(Node header, AsyncMethodCallback resultHandler,
+      Object request) {
     if (header == null) {
       if (resultHandler != null) {
         resultHandler.onError(new NoHeaderNodeException());
@@ -68,11 +68,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     synchronized (headerGroupMap) {
       DataGroupMember member = headerGroupMap.get(header);
       if (member == null) {
-        logger.info("Received a request from unregistered header {}", header);
+        logger.info("Received a request \"{}\" from unregistered header {}", request, header);
         if (partitionTable != null) {
           try {
             member = createNewMember(header);
-          } catch (IOException | NotInSameGroupException e) {
+          } catch (NotInSameGroupException e) {
             ex = e;
           }
         } else {
@@ -87,7 +87,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     }
   }
 
-  private DataGroupMember createNewMember(Node header) throws IOException, NotInSameGroupException {
+  private DataGroupMember createNewMember(Node header) throws NotInSameGroupException {
     DataGroupMember member;
     synchronized (partitionTable) {
       // it may be that the header and this node are in the same group, but it is the first time
@@ -95,14 +95,9 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       PartitionGroup partitionGroup = partitionTable.getHeaderGroup(header);
       if (partitionGroup.contains(thisNode)) {
         // the two nodes are in the same group, create a new data member
-        try {
-          member = dataMemberFactory.create(partitionGroup, thisNode);
-          headerGroupMap.put(header, member);
-          logger.info("Created a member for header {}", header);
-        } catch (IOException e) {
-          logger.error("Cannot create data member for header {}", header, e);
-          throw e;
-        }
+        member = dataMemberFactory.create(partitionGroup, thisNode);
+        headerGroupMap.put(header, member);
+        logger.info("Created a member for header {}", header);
       } else {
         logger.info("This node {} does not belong to the group {}", thisNode, partitionGroup);
         throw new NotInSameGroupException(partitionTable.getHeaderGroup(header),
@@ -115,7 +110,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void sendHeartBeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
     Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header, resultHandler);
+    DataGroupMember member = getDataMember(header, resultHandler, request);
     if (member != null) {
       member.sendHeartBeat(request, resultHandler);
     }
@@ -124,7 +119,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void startElection(ElectionRequest request, AsyncMethodCallback resultHandler) {
     Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header, resultHandler);
+    DataGroupMember member = getDataMember(header, resultHandler, request);
     if (member != null) {
       member.startElection(request, resultHandler);
     }
@@ -133,7 +128,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback resultHandler) {
     Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header, resultHandler);
+    DataGroupMember member = getDataMember(header, resultHandler, request);
     if (member != null) {
       member.appendEntries(request, resultHandler);
     }
@@ -142,7 +137,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
     Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header, resultHandler);
+    DataGroupMember member = getDataMember(header, resultHandler, request);
     if (member != null) {
       member.appendEntry(request, resultHandler);
     }
@@ -151,7 +146,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
     Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header, resultHandler);
+    DataGroupMember member = getDataMember(header, resultHandler, request);
     if (member != null) {
       member.sendSnapshot(request, resultHandler);
     }
@@ -160,7 +155,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
     Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header, resultHandler);
+    DataGroupMember member = getDataMember(header, resultHandler, request);
     if (member != null) {
       member.pullSnapshot(request, resultHandler);
     }
@@ -170,7 +165,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   public void executeNonQueryPlan(ExecutNonQueryReq request,
       AsyncMethodCallback<TSStatus> resultHandler) {
     Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header, resultHandler);
+    DataGroupMember member = getDataMember(header, resultHandler, request);
     if (member != null) {
       member.executeNonQueryPlan(request, resultHandler);
     }
@@ -178,7 +173,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   @Override
   public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
-    DataGroupMember member = getDataMember(header, resultHandler);
+    DataGroupMember member = getDataMember(header, resultHandler, "Request commit index");
     if (member != null) {
       member.requestCommitIndex(header, resultHandler);
     }
@@ -187,7 +182,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void readFile(String filePath, long offset, int length, Node header,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    DataGroupMember member = getDataMember(header, resultHandler);
+    DataGroupMember member = getDataMember(header, resultHandler, "Read file:" + filePath);
     if (member != null) {
       member.readFile(filePath, offset, length, header, resultHandler);
     }
@@ -234,7 +229,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   public void pullTimeSeriesSchema(PullSchemaRequest request,
       AsyncMethodCallback<PullSchemaResp> resultHandler) {
     Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header, resultHandler);
+    DataGroupMember member = getDataMember(header, resultHandler, request);
     if (member != null) {
       member.pullTimeSeriesSchema(request, resultHandler);
     }

@@ -24,11 +24,13 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
 
   public PartitionedSnapshot(SnapshotFactory<T> factory) {
     socketSnapshots = new HashMap<>();
+    this.factory = factory;
   }
 
   private PartitionedSnapshot(
       Map<Integer, T> socketSnapshots, SnapshotFactory<T> factory) {
     this.socketSnapshots = socketSnapshots;
+    this.factory = factory;
   }
 
   public void putSnapshot(int socket, T snapshot) {
@@ -50,6 +52,8 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
         dataOutputStream.writeInt(entry.getKey());
         dataOutputStream.write(entry.getValue().serialize().array());
       }
+      dataOutputStream.writeLong(getLastLogId());
+      dataOutputStream.writeLong(getLastLogTerm());
     } catch (IOException e) {
       // unreachable
     }
@@ -66,6 +70,8 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
       snapshot.deserialize(buffer);
       socketSnapshots.put(socket, snapshot);
     }
+    setLastLogId(buffer.getLong());
+    setLastLogTerm(buffer.getLong());
   }
 
 
@@ -78,6 +84,15 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
   }
 
   public Snapshot getSnapshot(int socket) {
-    return socketSnapshots.getOrDefault(socket, factory.create());
+    return socketSnapshots.get(socket);
+  }
+
+  @Override
+  public String toString() {
+    return "PartitionedSnapshot{" +
+        "socketSnapshots=" + socketSnapshots.size() +
+        ", lastLogId=" + lastLogId +
+        ", lastLogTerm=" + lastLogTerm +
+        '}';
   }
 }

@@ -219,8 +219,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         // the incoming log points to the local last log, append it
         logManager.appendLog(log);
         if (logger.isDebugEnabled()) {
-          logger.debug("{} append a new log {}, new term:{}, new index:{}", name, log, term.get(),
-              logManager.getLastLogIndex());
+          logger.debug("{} append a new log {}", name, log);
         }
         resp = Response.RESPONSE_AGREE;
       } else if (lastLog != null && lastLog.getPreviousLogIndex() == previousLogIndex
@@ -228,8 +227,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         // the incoming log points to the previous log of the local last log, and its term is
         // bigger than or equals to the local last log's, replace the local last log with it
         logManager.replaceLastLog(log);
-        logger.debug("{} replaced the last log with {}, new term:{}, new index:{}", name, log,
-            log.getCurrLogTerm(), log.getCurrLogIndex());
+        logger.debug("{} replaced the last log with {}", name, log);
         resp = Response.RESPONSE_AGREE;
       } else {
         long lastPrevLogTerm = lastLog == null ? -1 : lastLog.getPreviousLogTerm();
@@ -241,7 +239,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
             name,
             logManager.getLastLogTerm(), logManager.getLastLogIndex(),
             lastPrevLogTerm, lastPrevLogId,
-            log.getCurrLogTerm(), log.getPreviousLogIndex(),
+            log.getCurrLogTerm(), log.getCurrLogIndex(),
             previousLogTerm, previousLogIndex);
         resp = Response.RESPONSE_LOG_MISMATCH;
       }
@@ -579,7 +577,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       return StatusUtils.NO_LEADER;
     }
 
-    logger.info("{}: Forward {} to leader {}", name, plan, node);
+    logger.info("{}: Forward {} to node {}", name, plan, node);
 
     AsyncClient client = connectNode(node);
     if (client != null) {
@@ -610,6 +608,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   TSStatus processPlanLocally(PhysicalPlan plan) {
+    logger.debug("{}: Processing plan {}", name, plan);
     synchronized (logManager) {
       PhysicalPlanLog log = new PhysicalPlanLog();
       log.setCurrLogTerm(getTerm().get());
@@ -740,6 +739,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     try (BufferedInputStream bufferedInputStream =
         new BufferedInputStream(new FileInputStream(filePath))) {
+      bufferedInputStream.skip(offset);
       byte[] bytes = new byte[length];
       ByteBuffer result = ByteBuffer.wrap(bytes);
       int len = bufferedInputStream.read(bytes);
@@ -748,6 +748,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       } else {
         result.limit(0);
       }
+
       resultHandler.onComplete(result);
     } catch (IOException e) {
       resultHandler.onError(e);

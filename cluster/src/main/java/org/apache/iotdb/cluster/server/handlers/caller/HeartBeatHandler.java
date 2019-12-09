@@ -21,9 +21,9 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 
+import java.net.ConnectException;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -83,7 +83,11 @@ public class HeartBeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
 
   @Override
   public void onError(Exception exception) {
-    logger.error("{}: Heart beat error, receiver {}, {}", memberName, receiver,
-        exception.getMessage());
+    if (exception instanceof ConnectException) {
+      logger.debug("{}: Cannot connect to {}: {}", memberName, receiver, exception.getMessage());
+    } else {
+      logger.error("{}: Heart beat error, receiver {}, {}", memberName, receiver,
+          exception.getMessage());
+    }
   }
 }

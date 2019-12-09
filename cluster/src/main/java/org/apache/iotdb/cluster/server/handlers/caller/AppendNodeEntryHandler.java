@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 
+import java.net.ConnectException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -81,7 +82,11 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
 
   @Override
   public void onError(Exception exception) {
-    logger.warn("Cannot append log {} to {}", log, receiver, exception);
+    if (exception instanceof ConnectException) {
+      logger.debug("Cannot connect to {}: {}", receiver, exception.getMessage());
+    } else {
+      logger.warn("Cannot append log {} to {}", log, receiver, exception);
+    }
   }
 
   public Log getLog() {

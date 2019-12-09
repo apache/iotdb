@@ -24,6 +24,7 @@ import static org.apache.iotdb.cluster.server.Response.RESPONSE_LEADER_STILL_ONL
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.net.ConnectException;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -101,6 +102,10 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
 
   @Override
   public void onError(Exception exception) {
-    logger.warn("{}: A voter {} encountered an error:", memberName, voter, exception);
+    if (exception instanceof ConnectException) {
+      logger.debug("{}: Cannot connect to {}: {}", memberName, voter, exception.getMessage());
+    } else {
+      logger.warn("{}: A voter {} encountered an error:", memberName, voter, exception);
+    }
   }
 }

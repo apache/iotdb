@@ -9,7 +9,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -27,14 +30,14 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
  * synchronized with the remote one.
  * TODO-Cluster: implement and use this
  */
-public class FileSnapshot extends Snapshot {
+public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
-  private List<MeasurementSchema> timeseriesSchemas;
+  private Set<MeasurementSchema> timeseriesSchemas;
   private List<RemoteTsFileResource> dataFiles;
 
   public FileSnapshot() {
     dataFiles = new ArrayList<>();
-    timeseriesSchemas = new ArrayList<>();
+    timeseriesSchemas = new HashSet<>();
   }
 
   public void addFile(TsFileResource resource, Node header) {
@@ -80,12 +83,24 @@ public class FileSnapshot extends Snapshot {
     return dataFiles;
   }
 
-  public List<MeasurementSchema> getTimeseriesSchemas() {
+  @Override
+  public Set<MeasurementSchema> getTimeseriesSchemas() {
     return timeseriesSchemas;
   }
 
+  @Override
   public void setTimeseriesSchemas(
-      List<MeasurementSchema> timeseriesSchemas) {
-    this.timeseriesSchemas = timeseriesSchemas;
+      Collection<MeasurementSchema> timeseriesSchemas) {
+    this.timeseriesSchemas = (Set) timeseriesSchemas;
+  }
+
+  @Override
+  public String toString() {
+    return "FileSnapshot{" +
+        "timeseriesSchemas=" + timeseriesSchemas.size() +
+        ", dataFiles=" + dataFiles.size() +
+        ", lastLogId=" + lastLogId +
+        ", lastLogTerm=" + lastLogTerm +
+        '}';
   }
 }

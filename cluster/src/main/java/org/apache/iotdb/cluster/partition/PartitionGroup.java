@@ -16,6 +16,14 @@ public class PartitionGroup extends ArrayList<Node> {
 
   private Node thisNode;
 
+  PartitionGroup() {
+  }
+
+  public PartitionGroup(PartitionGroup other) {
+    super(other);
+    this.thisNode = other.thisNode;
+  }
+
   @Override
   public boolean equals(Object o) {
     return super.equals(o);

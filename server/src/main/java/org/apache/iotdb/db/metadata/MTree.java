@@ -484,7 +484,7 @@ public class MTree implements Serializable {
         cur = cur.getChild(nodes[i]);
       }
     }
-    if (cur.isStorageGroup()) {
+    if (cur != null && cur.isStorageGroup()) {
       return cur.getStorageGroupName();
     }
     throw new StorageGroupNotSetException(path);

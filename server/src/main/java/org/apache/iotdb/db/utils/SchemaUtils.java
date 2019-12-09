@@ -60,7 +60,7 @@ public class SchemaUtils {
    * @param schemaList the schema of the columns in this file.
    * @return a Schema contains the provided schemas.
    */
-  public static Schema getSchemaFromColumnSchema(List<MeasurementSchema> schemaList) {
+  private static Schema getSchemaFromColumnSchema(List<MeasurementSchema> schemaList) {
     Schema schema = new Schema();
     for (MeasurementSchema measurementSchema : schemaList) {
       schema.registerMeasurement(measurementSchema);
@@ -70,6 +70,7 @@ public class SchemaUtils {
 
   public static void registerTimeseries(MeasurementSchema schema) {
     try {
+      logger.debug("Registering timeseries {}", schema);
       String path = schema.getMeasurementId();
       TSDataType dataType = schema.getType();
       TSEncoding encoding = schema.getEncodingType();

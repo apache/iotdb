@@ -4,14 +4,12 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.Set;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
@@ -36,12 +34,11 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
   private static final Logger logger = LoggerFactory.getLogger(PartitionedSnapshotLogManager.class);
 
   Map<Integer, Snapshot> socketSnapshots = new HashMap<>();
-  Map<Integer, List<MeasurementSchema>> socketTimeseries = new HashMap<>();
+  Map<Integer, Collection<MeasurementSchema>> socketTimeseries = new HashMap<>();
   long snapshotLastLogId;
   long snapshotLastLogTerm;
   PartitionTable partitionTable;
   Node header;
-  Set<Integer> holdingSockets;
 
   public PartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
       Node header) {
@@ -69,7 +66,6 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
     logger.info("Taking snapshots, flushing IoTDB");
     StorageEngine.getInstance().syncCloseAllProcessor();
     logger.info("Taking snapshots, IoTDB is flushed");
-    holdingSockets = new HashSet<>(partitionTable.getNodeSockets(header));
 
     synchronized (socketSnapshots) {
       collectTimeseriesSchemas();
@@ -91,15 +87,18 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
 
   void collectTimeseriesSchemas() {
     socketTimeseries.clear();
+    // TODO-Cluster: the collection is re-collected each time to prevent inconsistency when some of
+    //  them are removed during two snapshots. Incremental addition or removal may be used to
+    //  optimize
     List<MNode> allSgNodes = MManager.getInstance().getAllStorageGroups();
     for (MNode sgNode : allSgNodes) {
       String storageGroupName = sgNode.getFullPath();
-      int socket = Objects.hash(storageGroupName, 0);
-      if (!holdingSockets.contains(socket)) {
-        continue;
-      }
-      List<MeasurementSchema> schemas = socketTimeseries.computeIfAbsent(socket, s -> new ArrayList<>());
+      int socket = PartitionUtils.calculateStorageGroupSocket(storageGroupName, 0);
+
+      Collection<MeasurementSchema> schemas = socketTimeseries.computeIfAbsent(socket,
+          s -> new HashSet<>());
       MManager.getInstance().collectSeries(sgNode, schemas);
+      logger.debug("{} timeseries are snapshot in socket {}", schemas.size(), socket);
     }
   }
 

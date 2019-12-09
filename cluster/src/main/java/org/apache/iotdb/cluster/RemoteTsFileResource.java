@@ -21,13 +21,17 @@ public class RemoteTsFileResource extends TsFileResource {
   private Node source;
   private boolean isRemote = false;
   private byte[] md5;
+  private boolean withModification = false;
 
   public RemoteTsFileResource() {
+    setClosed(true);
   }
 
-  public RemoteTsFileResource(TsFileResource other) {
+  private RemoteTsFileResource(TsFileResource other) {
     super(other);
     md5 = getFileMd5(other);
+    withModification = new File(getModFile().getFilePath()).exists();
+    setClosed(true);
   }
 
   public RemoteTsFileResource(TsFileResource other, Node source) {
@@ -79,6 +83,8 @@ public class RemoteTsFileResource extends TsFileResource {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
         dataOutputStream.writeLong(entry.getValue());
       }
+
+      dataOutputStream.writeBoolean(withModification);
     } catch (IOException ignored) {
       // unreachable
     }
@@ -103,6 +109,8 @@ public class RemoteTsFileResource extends TsFileResource {
       endTimeMap.put(SerializeUtils.deserializeString(buffer), buffer.getLong());
     }
 
+    withModification = buffer.get() == 1;
+
     setStartTimeMap(startTimeMap);
     setEndTimeMap(endTimeMap);
     isRemote = true;
@@ -122,5 +130,9 @@ public class RemoteTsFileResource extends TsFileResource {
 
   public void setRemote(boolean remote) {
     isRemote = remote;
+  }
+
+  public boolean isWithModification() {
+    return withModification;
   }
 }

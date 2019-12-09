@@ -5,7 +5,6 @@
 package org.apache.iotdb.cluster.log.manage;
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -47,8 +46,6 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       }
     }
 
-    holdingSockets = new HashSet<>(partitionTable.getNodeSockets(header));
-
     logger.info("Taking snapshots, flushing IoTDB");
     StorageEngine.getInstance().syncCloseAllProcessor();
     logger.info("Taking snapshots, IoTDB is flushed");
@@ -72,21 +69,20 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
 
   private void collectTsFiles() {
     socketSnapshots.clear();
+    // TODO-Cluster: the collection is re-collected each time to prevent inconsistency when some of
+    //  them are removed during two snapshots. Incremental addition or removal may be used to
+    //  optimize
     Map<String, List<TsFileResource>> storageGroupFiles =
         StorageEngine.getInstance().getAllClosedStorageGroupTsFile();
     for (Entry<String, List<TsFileResource>> entry : storageGroupFiles.entrySet()) {
       String storageGroupName = entry.getKey();
       // TODO-Cluster: add time partitioning
       int socketNum = PartitionUtils.calculateStorageGroupSocket(storageGroupName, 0);
-      if (!holdingSockets.contains(socketNum)) {
-        continue;
-      }
 
       FileSnapshot snapshot = (FileSnapshot) socketSnapshots.computeIfAbsent(socketNum,
           s -> new FileSnapshot());
-      if (snapshot.getTimeseriesSchemas() == null) {
-        snapshot.setTimeseriesSchemas(socketTimeseries.getOrDefault(socketNum, Collections.emptyList()));
-      }
+      snapshot.setTimeseriesSchemas(socketTimeseries.getOrDefault(socketNum,
+        Collections.emptySet()));
       for (TsFileResource tsFileResource : entry.getValue()) {
         snapshot.addFile(tsFileResource, header);
       }
