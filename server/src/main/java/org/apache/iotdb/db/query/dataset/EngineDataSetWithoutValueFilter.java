@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.dataset;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.TreeSet;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -27,21 +28,38 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 /**
  * TODO implement this class as TsFile DataSetWithoutTimeGenerator.
  */
 public class EngineDataSetWithoutValueFilter extends QueryDataSet {
 
-  private List<IPointReader> seriesReaderWithoutValueFilterList;
+  private List<IBatchReader> seriesReaderWithoutValueFilterList;
 
   private TimeValuePair[] cacheTimeValueList;
 
   private TreeSet<Long> timeHeap;
+
+
+  private List<List<BatchData>> batchDataInFilter;
+
+  private ByteBuffer timeBuffer;
+
+  /**
+   * each buffer contains values of one time series
+   */
+  private List<ByteBuffer> valueBuffers;
+
+  /**
+   * indicate whether the points in value buffer are null
+   */
+  private List<ByteBuffer> bitmapBuffer;
 
   /**
    * constructor of EngineDataSetWithoutValueFilter.
@@ -52,7 +70,7 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
    * @throws IOException IOException
    */
   public EngineDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-      List<IPointReader> readers)
+      List<IBatchReader> readers)
       throws IOException {
     super(paths, dataTypes);
     this.seriesReaderWithoutValueFilterList = readers;
@@ -64,13 +82,26 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
     cacheTimeValueList = new TimeValuePair[seriesReaderWithoutValueFilterList.size()];
 
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
-      IPointReader reader = seriesReaderWithoutValueFilterList.get(i);
+      IBatchReader reader = seriesReaderWithoutValueFilterList.get(i);
       if (reader.hasNext()) {
         TimeValuePair timeValuePair = reader.next();
         cacheTimeValueList[i] = timeValuePair;
         timeHeapPut(timeValuePair.getTimestamp());
       }
     }
+  }
+
+
+  /**
+   *
+   * Yuan Tian !!!
+   *
+   * fill time buffer, value buffers and bitmap buffers
+   *
+   * @param batchReaders readers of each time series
+   */
+  private void fillBuffer(List<IBatchReader> batchReaders) {
+
   }
 
   @Override
@@ -85,7 +116,7 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
     RowRecord record = new RowRecord(minTime);
 
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
-      IPointReader reader = seriesReaderWithoutValueFilterList.get(i);
+      IBatchReader reader = seriesReaderWithoutValueFilterList.get(i);
       if (cacheTimeValueList[i] == null) {
         record.addField(new Field(null));
       } else {
