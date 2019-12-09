@@ -52,6 +52,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.DeviceIterateDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
+import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.executor.IEngineQueryRouter;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -135,12 +136,15 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   private QueryDataSet processShowVersion() {
     List<Path> paths = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    paths.add(new Path("VERSION"));
+    paths.add(new Path("root"));
     dataTypes.add(TSDataType.TEXT);
-    dataTypes.add(TSDataType.TEXT);
-    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
-    addRowRecordForShowQuery(listDataSet, 0, IoTDBConstant.VERSION, IoTDBConstant.VERSION);
-    return listDataSet;
+    SingleDataSet singleDataSet = new SingleDataSet(paths, dataTypes);
+    Field field = new Field(TSDataType.TEXT);
+    field.setBinaryV(new Binary(IoTDBConstant.VERSION));
+    RowRecord rowRecord = new RowRecord(0);
+    rowRecord.addField(field);
+    singleDataSet.setRecord(rowRecord);
+    return singleDataSet;
   }
 
   private QueryDataSet processShowDynamicParameterQuery() {
