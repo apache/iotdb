@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.jdbc;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -34,28 +37,11 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSHandleIdentifier;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.service.rpc.thrift.TSStatusType;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.*;
 
 /*
     This class is designed to test the function of TsfileQueryResultSet.
@@ -230,7 +216,6 @@ public class IoTDBQueryResultSetTest {
           resultStr.append(resultSet.getString(i)).append(",");
         }
         resultStr.append("\n");
-
         fetchResultsResp.hasResultSet = false; // at the second time to fetch
       }
       String standard =
@@ -269,12 +254,10 @@ public class IoTDBQueryResultSetTest {
         {105L, 11.11F, 199L, 33333,},
         {1000L, 1000.11F, 55555L, 22222,}};
 
-    TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
-    int rowCount = input.length;
-    tsQueryDataSet.setRowCount(rowCount);
-
     int columnNum = tsDataTypeList.size();
-    int columnNumWithTime = columnNum + 1;
+    TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
+    // one time column and each value column has a actual value buffer and a bitmap value to indicate whether it is a null
+    int columnNumWithTime = columnNum * 2 + 1;
     DataOutputStream[] dataOutputStreams = new DataOutputStream[columnNumWithTime];
     ByteArrayOutputStream[] byteArrayOutputStreams = new ByteArrayOutputStream[columnNumWithTime];
     for (int i = 0; i < columnNumWithTime; i++) {
@@ -282,43 +265,74 @@ public class IoTDBQueryResultSetTest {
       dataOutputStreams[i] = new DataOutputStream(byteArrayOutputStreams[i]);
     }
 
-    int valueOccupation = 0;
+    int rowCount = input.length;
+    int[] valueOccupation = new int[columnNum];
+    // used to record a bitmap for every 8 row record
+    int[] bitmap = new int[columnNum];
     for (int i = 0; i < rowCount; i++) {
       Object[] row = input[i];
       // use columnOutput to write byte array
-      dataOutputStreams[0].writeLong((long) row[0]);
+      dataOutputStreams[0].writeLong((long)row[0]);
       for (int k = 0; k < columnNum; k++) {
-        DataOutputStream dataOutputStream = dataOutputStreams[k + 1]; // DO NOT FORGET +1
         Object value = row[1 + k];
+        DataOutputStream dataOutputStream = dataOutputStreams[2*k + 1]; // DO NOT FORGET +1
         if (value == null) {
-          dataOutputStream.writeBoolean(true); // is_empty true
+          bitmap[k] =  (bitmap[k] << 1);
         } else {
-          dataOutputStream.writeBoolean(false); // is_empty false
+          bitmap[k] =  (bitmap[k] << 1) | 0x01;
           if (k == 0) { // TSDataType.FLOAT
-            dataOutputStream.writeFloat((float) value);
-            valueOccupation += 4;
+            dataOutputStream.writeFloat((float)value);
+            valueOccupation[k] += 4;
           } else if (k == 1) { // TSDataType.INT64
             dataOutputStream.writeLong((long) value);
-            valueOccupation += 8;
+            valueOccupation[k] += 8;
           } else { // TSDataType.INT32
             dataOutputStream.writeInt((int) value);
-            valueOccupation += 4;
+            valueOccupation[k] += 4;
           }
+        }
+      }
+      if (i % 8 == 7) {
+        for (int j = 0; j < bitmap.length; j++) {
+          DataOutputStream dataBitmapOutputStream = dataOutputStreams[2*(j+1)];
+          dataBitmapOutputStream.writeByte(bitmap[j]);
+          // we should clear the bitmap every 8 row record
+          bitmap[j] = 0;
         }
       }
     }
 
-    // calculate total valueOccupation
-    valueOccupation += rowCount * 8; // note the timestamp column needn't the boolean is_empty
-    valueOccupation += rowCount * columnNum; // for all is_empty
-
-    ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation);
-    for (ByteArrayOutputStream byteArrayOutputStream : byteArrayOutputStreams) {
-      valueBuffer.put(byteArrayOutputStream.toByteArray());
+    // feed the remaining bitmap
+    for (int j = 0; j < bitmap.length; j++) {
+      DataOutputStream dataBitmapOutputStream = dataOutputStreams[2*(j+1)];
+      dataBitmapOutputStream.writeByte(bitmap[j] << (8 - rowCount % 8));
     }
-    valueBuffer.flip(); // PAY ATTENTION TO HERE
-    tsQueryDataSet.setValues(valueBuffer);
-    tsQueryDataSet.setRowCount(rowCount);
+
+    // calculate the time buffer size
+    int timeOccupation = rowCount * 8;
+    ByteBuffer timeBuffer = ByteBuffer.allocate(timeOccupation);
+    timeBuffer.put(byteArrayOutputStreams[0].toByteArray());
+    timeBuffer.flip();
+    tsQueryDataSet.setTime(timeBuffer);
+
+    // calculate the bitmap buffer size
+    int bitmapOccupation = rowCount / 8 + 1;
+
+    List<ByteBuffer> bitmapList = new LinkedList<>();
+    List<ByteBuffer> valueList = new LinkedList<>();
+    for (int i = 1; i < byteArrayOutputStreams.length; i += 2) {
+      ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation[(i-1)/2]);
+      valueBuffer.put(byteArrayOutputStreams[i].toByteArray());
+      valueBuffer.flip();
+      valueList.add(valueBuffer);
+
+      ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapOccupation);
+      bitmapBuffer.put(byteArrayOutputStreams[i+1].toByteArray());
+      bitmapBuffer.flip();
+      bitmapList.add(bitmapBuffer);
+    }
+    tsQueryDataSet.setBitmapList(bitmapList);
+    tsQueryDataSet.setValueList(valueList);
     return tsQueryDataSet;
   }
 }
