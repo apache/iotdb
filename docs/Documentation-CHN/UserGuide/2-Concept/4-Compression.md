@@ -27,7 +27,7 @@
 
 IoTDB允许在创建一个时间序列的时候指定该列的压缩方式。现阶段IoTDB现在支持的压缩方式有两种：
 
-* UNCOMPRESSOR（不压缩）
+* UNCOMPRESSED（不压缩）
 * SNAPPY压缩
 
 压缩方式的指定语法详见本文[5.4节](/#/Documents/progress/chap5/sec4)。
