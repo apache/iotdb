@@ -19,8 +19,6 @@
 
 -->
 
-<!-- TOC -->
-
 Documents of Apache IoTDB (incubating) are open source. If you have found any mistakes and would like to contribute, here is a brief step:
 
 
