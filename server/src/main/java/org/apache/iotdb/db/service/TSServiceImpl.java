@@ -311,7 +311,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * convert from TSStatusCode to TSStatus, which has message appending with existed status message
    *
-   * @param statusType status type
+   * @param statusType    status type
    * @param appendMessage appending message
    */
   private TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
@@ -568,6 +568,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         if (sqlArgumentsList.size() > MAX_SIZE) {
           sqlArgumentsList.subList(0, DELETE_SIZE).clear();
         }
+        //fill data
+        long queryId = resp.getOperationHandle().operationId.queryId;
+        QueryDataSet newDataSet = createNewDataSet(queryId);
+        TSQueryDataSet tsQueryDataSet = getTsQueryDataSet(req.fetchSize, newDataSet);
+        TSFetchResultsResp tsFetchResultsResp = getTsFetchResultsResp(queryId, tsQueryDataSet);
+        if (tsFetchResultsResp.hasResultSet) {
+          resp.setQueryDataSet(tsFetchResultsResp.queryDataSet);
+        }
         return resp;
       } else {
         return executeUpdateStatement(physicalPlan);
@@ -584,12 +592,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info("meet error while parsing SQL to physical plan: {}", e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR,
           e.getMessage()));
+    } catch (Exception e) {
+      logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      return getTSExecuteStatementResp(
+          getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
     }
   }
 
   /**
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
-   * AuthorPlan
+   *             AuthorPlan
    */
   private TSExecuteStatementResp executeQueryStatement(long statementId, PhysicalPlan plan) {
     long t1 = System.currentTimeMillis();
@@ -859,40 +871,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       QueryDataSet queryDataSet;
       if (!queryId2DataSet.get().containsKey(req.queryId)) {
-        queryDataSet = createNewDataSet(req);
+        queryDataSet = createNewDataSet(req.queryId);
       } else {
         queryDataSet = queryId2DataSet.get().get(req.queryId);
       }
 
-      IAuthorizer authorizer;
-      try {
-        authorizer = LocalFileAuthorizer.getInstance();
-      } catch (AuthException e) {
-        throw new TException(e);
-      }
-      TSQueryDataSet result;
-      if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(username.get())) {
-        WatermarkEncoder encoder;
-        if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
-          encoder = new GroupedLSBWatermarkEncoder(config);
-        } else {
-          throw new UnSupportedDataTypeException(String.format(
-              "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
-        }
-        result = QueryDataSetUtils
-            .convertQueryDataSetByFetchSize(queryDataSet, req.fetchSize, encoder);
-      } else {
-        result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, req.fetchSize);
-      }
-      boolean hasResultSet = (result.bufferForTime().limit() != 0);
-      if (!hasResultSet && queryId2DataSet.get() != null) {
-        queryId2DataSet.get().remove(req.queryId);
-      }
-
-      TSFetchResultsResp resp = getTSFetchResultsResp(getStatus(TSStatusCode.SUCCESS_STATUS,
-          "FetchResult successfully. Has more result: " + hasResultSet));
-      resp.setHasResultSet(hasResultSet);
-      resp.setQueryDataSet(result);
+      TSQueryDataSet result = getTsQueryDataSet(req.fetchSize, queryDataSet);
+      TSFetchResultsResp resp = getTsFetchResultsResp(req.queryId, result);
       return resp;
     } catch (Exception e) {
       logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
@@ -900,19 +885,57 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private QueryDataSet createNewDataSet(TSFetchResultsReq req)
+  private TSFetchResultsResp getTsFetchResultsResp(long queryId, TSQueryDataSet result) {
+    boolean hasResultSet = (result.bufferForTime().limit() != 0);
+    if (!hasResultSet && queryId2DataSet.get() != null) {
+      queryId2DataSet.get().remove(queryId);
+    }
+
+    TSFetchResultsResp resp = getTSFetchResultsResp(getStatus(TSStatusCode.SUCCESS_STATUS,
+        "FetchResult successfully. Has more result: " + hasResultSet));
+    resp.setHasResultSet(hasResultSet);
+    resp.setQueryDataSet(result);
+    return resp;
+  }
+
+  private TSQueryDataSet getTsQueryDataSet(int fetchSize, QueryDataSet queryDataSet)
+      throws TException, AuthException, IOException {
+    IAuthorizer authorizer;
+    try {
+      authorizer = LocalFileAuthorizer.getInstance();
+    } catch (AuthException e) {
+      throw new TException(e);
+    }
+    TSQueryDataSet result;
+    if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(username.get())) {
+      WatermarkEncoder encoder;
+      if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
+        encoder = new GroupedLSBWatermarkEncoder(config);
+      } else {
+        throw new UnSupportedDataTypeException(String.format(
+            "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
+      }
+      result = QueryDataSetUtils
+          .convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
+    } else {
+      result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
+    }
+    return result;
+  }
+
+  private QueryDataSet createNewDataSet(long queryId)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException {
-    PhysicalPlan physicalPlan = queryId2Plan.get().get(req.queryId);
+    PhysicalPlan physicalPlan = queryId2Plan.get().get(queryId);
 
     QueryDataSet queryDataSet;
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignJobId());
 
     initContextMap();
-    contextMapLocal.get().put(req.queryId, context);
+    contextMapLocal.get().put(queryId, context);
 
     queryDataSet = processor.getExecutor().processQuery(physicalPlan, context);
 
-    queryId2DataSet.get().put(req.queryId, queryDataSet);
+    queryId2DataSet.get().put(queryId, queryDataSet);
     return queryDataSet;
   }
 
