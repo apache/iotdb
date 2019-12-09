@@ -166,4 +166,5 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   public MetaGroupMember getMember() {
     return member;
   }
+
 }

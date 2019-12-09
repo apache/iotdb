@@ -21,7 +21,6 @@ package org.apache.iotdb.db.qp;
 import java.time.ZoneId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -41,8 +40,8 @@ import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
  */
 public class QueryProcessor {
 
-  private IQueryProcessExecutor executor;
-  private ParseDriver parseDriver;
+  protected IQueryProcessExecutor executor;
+  protected ParseDriver parseDriver;
 
   public QueryProcessor(IQueryProcessExecutor executor) {
     this.executor = executor;
@@ -54,7 +53,7 @@ public class QueryProcessor {
   }
 
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     return parseSQLToPhysicalPlan(sqlStr, config.getZoneID());
   }
@@ -75,7 +74,7 @@ public class QueryProcessor {
    * @return optimized logical operator
    * @throws LogicalOptimizeException exception in logical optimizing
    */
-  private Operator logicalOptimize(Operator operator, IQueryProcessExecutor executor)
+  protected Operator logicalOptimize(Operator operator, IQueryProcessExecutor executor)
       throws LogicalOperatorException {
     switch (operator.getType()) {
       case AUTHOR:

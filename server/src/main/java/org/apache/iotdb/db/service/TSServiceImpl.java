@@ -77,6 +77,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
@@ -145,56 +146,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // (statement -> Set(queryId))
   private ThreadLocal<Map<Long, Set<Long>>> statementId2QueryId = new ThreadLocal<>();
   // (queryId -> PhysicalPlan)
-  private ThreadLocal<Map<Long, PhysicalPlan>> queryId2Plan = new ThreadLocal<>();
+  protected ThreadLocal<Map<Long, PhysicalPlan>> queryId2Plan = new ThreadLocal<>();
   // (queryId -> QueryDataSet)
-  private ThreadLocal<Map<Long, QueryDataSet>> queryId2DataSet = new ThreadLocal<>();
+  protected ThreadLocal<Map<Long, QueryDataSet>> queryId2DataSet = new ThreadLocal<>();
   private ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  protected IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private ThreadLocal<Map<Long, QueryContext>> contextMapLocal = new ThreadLocal<>();
 
   public TSServiceImpl() {
     processor = new QueryProcessor(new QueryProcessExecutor());
-  }
-
-  public static TSDataType getSeriesType(String path)
-      throws QueryProcessException, MetadataException {
-    switch (path.toLowerCase()) {
-      // authorization queries
-      case ROLE:
-      case USER:
-      case PRIVILEGE:
-      case STORAGE_GROUP:
-        return TSDataType.TEXT;
-      case TTL:
-        return TSDataType.INT64;
-      default:
-        // do nothing
-    }
-
-    if (path.contains("(") && !path.startsWith("(") && path.endsWith(")")) {
-      // aggregation
-      int leftBracketIndex = path.indexOf('(');
-      String aggrType = path.substring(0, leftBracketIndex);
-      String innerPath = path.substring(leftBracketIndex + 1, path.length() - 1);
-      switch (aggrType.toLowerCase()) {
-        case SQLConstant.MIN_TIME:
-        case SQLConstant.MAX_TIME:
-        case SQLConstant.COUNT:
-          return TSDataType.INT64;
-        case SQLConstant.LAST_VALUE:
-        case SQLConstant.FIRST_VALUE:
-        case SQLConstant.MIN_VALUE:
-        case SQLConstant.MAX_VALUE:
-          return getSeriesType(innerPath);
-        case SQLConstant.AVG:
-        case SQLConstant.SUM:
-          return TSDataType.DOUBLE;
-        default:
-          throw new QueryProcessException(
-              "aggregate does not support " + aggrType + " function.");
-      }
-    }
-    return MManager.getInstance().getSeriesType(path);
   }
 
   @Override
@@ -351,7 +311,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    *
    * @param statusType status type
    */
-  private TSStatus getStatus(TSStatusCode statusType) {
+  protected TSStatus getStatus(TSStatusCode statusType) {
     TSStatusType statusCodeAndMessage = new TSStatusType(statusType.getStatusCode(), "");
     return new TSStatus(statusCodeAndMessage);
   }
@@ -362,9 +322,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @param statusType status type
    * @param appendMessage appending message
    */
-  private TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
+  protected TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
     TSStatusType statusCodeAndMessage = new TSStatusType(statusType.getStatusCode(), appendMessage);
     return new TSStatus(statusCodeAndMessage);
+  }
+
+  protected TSDataType getSeriesType(String path) throws QueryProcessException, MetadataException {
+    return SchemaUtils.getSeriesType(path);
   }
 
   @Override
@@ -948,7 +912,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private QueryDataSet createNewDataSet(TSFetchResultsReq req)
+  protected QueryDataSet createNewDataSet(TSFetchResultsReq req)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException {
     PhysicalPlan physicalPlan = queryId2Plan.get().get(req.queryId);
 
@@ -1037,7 +1001,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    *
    * @return true: If logged in; false: If not logged in
    */
-  private boolean checkLogin() {
+  protected boolean checkLogin() {
     return username.get() != null;
   }
 
@@ -1070,7 +1034,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  private TSFetchResultsResp getTSFetchResultsResp(TSStatus status) {
+  protected TSFetchResultsResp getTSFetchResultsResp(TSStatus status) {
     TSFetchResultsResp resp = new TSFetchResultsResp();
     TSStatus tsStatus = new TSStatus(status);
     resp.setStatus(tsStatus);

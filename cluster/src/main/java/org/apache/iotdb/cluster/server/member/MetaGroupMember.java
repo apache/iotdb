@@ -48,6 +48,7 @@ import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SocketPartitionTable;
+import org.apache.iotdb.cluster.query.ClusterQueryParser;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
@@ -72,15 +73,17 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -142,7 +145,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     addSeedNodes();
     super.start();
 
-    queryProcessor = new QueryProcessor(new QueryProcessExecutor());
+    queryProcessor = new ClusterQueryParser(this);
   }
 
   @Override
@@ -953,5 +956,15 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
 
     dataGroupMember.pullTimeSeriesSchema(request, resultHandler);
+  }
+
+  public TSDataType getSeriesType(String pathStr) throws QueryProcessException, MetadataException {
+    try {
+      return SchemaUtils.getSeriesType(pathStr);
+    } catch (PathNotExistException e) {
+      Path path = new Path(pathStr);
+      pullDeviceSchemas(path.getDevice());
+      return SchemaUtils.getSeriesType(pathStr);
+    }
   }
 }

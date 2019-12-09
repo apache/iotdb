@@ -15,10 +15,13 @@ import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -96,6 +99,7 @@ public class ClientServer extends TSServiceImpl {
     serverService.shutdownNow();
   }
 
+
   @Override
   protected TSStatus executePlan(PhysicalPlan plan) {
     return metaGroupMember.executeNonQuery(plan);
@@ -123,5 +127,10 @@ public class ClientServer extends TSServiceImpl {
         TTransport outputTransport) {
       // do nothing
     }
+  }
+
+  @Override
+  public TSDataType getSeriesType(String pathStr) throws QueryProcessException, MetadataException {
+    return metaGroupMember.getSeriesType(pathStr);
   }
 }

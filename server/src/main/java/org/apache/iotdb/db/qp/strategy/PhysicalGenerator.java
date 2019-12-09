@@ -69,7 +69,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
-import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -172,6 +172,9 @@ public class PhysicalGenerator {
     }
   }
 
+  protected TSDataType getSeriesType(String path) throws QueryProcessException, MetadataException {
+    return SchemaUtils.getSeriesType(path);
+  }
 
   private PhysicalPlan transformQuery(QueryOperator queryOperator)
       throws QueryProcessException {
@@ -249,7 +252,7 @@ public class PhysicalGenerator {
               // check the consistency of data types
               // a example of inconsistency: select s0 from root.sg1.d1, root.sg2.d3 group by device,
               // while root.sg1.d1.s0 is INT32 and root.sg2.d3.s0 is FLOAT.
-              TSDataType dataType = TSServiceImpl.getSeriesType(pathForDataType);
+              TSDataType dataType = getSeriesType(pathForDataType);
               if (dataTypeConsistencyChecker.containsKey(measurementColumn)) {
                 if (!dataType.equals(dataTypeConsistencyChecker.get(measurementColumn))) {
                   throw new QueryProcessException(

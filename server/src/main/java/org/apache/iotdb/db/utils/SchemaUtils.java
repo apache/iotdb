@@ -18,13 +18,21 @@
  */
 package org.apache.iotdb.db.utils;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PRIVILEGE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.ROLE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.TTL;
+import static org.apache.iotdb.db.conf.IoTDBConstant.USER;
+
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -89,5 +97,46 @@ public class SchemaUtils {
       logger.error("Cannot create timeseries in snapshot, ignored", schema.getMeasurementId(), e);
     }
 
+  }
+
+  public static TSDataType getSeriesType(String path)
+      throws QueryProcessException, MetadataException {
+    switch (path.toLowerCase()) {
+      // authorization queries
+      case ROLE:
+      case USER:
+      case PRIVILEGE:
+      case STORAGE_GROUP:
+        return TSDataType.TEXT;
+      case TTL:
+        return TSDataType.INT64;
+      default:
+        // do nothing
+    }
+
+    if (path.contains("(") && !path.startsWith("(") && path.endsWith(")")) {
+      // aggregation
+      int leftBracketIndex = path.indexOf('(');
+      String aggrType = path.substring(0, leftBracketIndex);
+      String innerPath = path.substring(leftBracketIndex + 1, path.length() - 1);
+      switch (aggrType.toLowerCase()) {
+        case SQLConstant.MIN_TIME:
+        case SQLConstant.MAX_TIME:
+        case SQLConstant.COUNT:
+          return TSDataType.INT64;
+        case SQLConstant.LAST_VALUE:
+        case SQLConstant.FIRST_VALUE:
+        case SQLConstant.MIN_VALUE:
+        case SQLConstant.MAX_VALUE:
+          return getSeriesType(innerPath);
+        case SQLConstant.AVG:
+        case SQLConstant.SUM:
+          return TSDataType.DOUBLE;
+        default:
+          throw new QueryProcessException(
+              "aggregate does not support " + aggrType + " function.");
+      }
+    }
+    return MManager.getInstance().getSeriesType(path);
   }
 }
