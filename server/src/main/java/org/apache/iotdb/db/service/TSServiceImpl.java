@@ -569,12 +569,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           sqlArgumentsList.subList(0, DELETE_SIZE).clear();
         }
         //fill data
-        long queryId = resp.getOperationHandle().operationId.queryId;
-        QueryDataSet newDataSet = createNewDataSet(queryId);
-        TSQueryDataSet tsQueryDataSet = getTsQueryDataSet(req.fetchSize, newDataSet);
-        TSFetchResultsResp tsFetchResultsResp = getTsFetchResultsResp(queryId, tsQueryDataSet);
-        if (tsFetchResultsResp.hasResultSet) {
-          resp.setQueryDataSet(tsFetchResultsResp.queryDataSet);
+        if (resp.operationHandle.hasResultSet) {
+          long queryId = resp.getOperationHandle().operationId.queryId;
+          QueryDataSet newDataSet = createNewDataSet(queryId);
+          TSQueryDataSet tsQueryDataSet = getTsQueryDataSet(req.fetchSize, newDataSet);
+          TSFetchResultsResp tsFetchResultsResp = getTsFetchResultsResp(queryId, tsQueryDataSet);
+
+          resp.operationHandle.hasResultSet = tsFetchResultsResp.hasResultSet;
+          if (tsFetchResultsResp.hasResultSet) {
+            resp.setQueryDataSet(tsFetchResultsResp.queryDataSet);
+          }
         }
         return resp;
       } else {
