@@ -74,7 +74,7 @@
         <spark.version>2.4.3</spark.version>
         <common.io.version>2.5</common.io.version>
         <commons.collections4>4.0</commons.collections4>
-        <thrift.version>0.12.0</thrift.version>
+        <thrift.version>0.13.0</thrift.version>
         <airline.version>0.8</airline.version>
         <jackson.version>2.10.0</jackson.version>
         <antlr4.version>4.7.1</antlr4.version>
