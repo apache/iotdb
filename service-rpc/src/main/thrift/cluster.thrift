@@ -29,8 +29,9 @@ struct HeartBeatRequest {
   1: required long term // leader's meta log
   2: required long commitLogIndex  // leader's meta log
   3: required Node leader
+  // if the leader does not know the follower's id, and require it reports to the leader, then true
   4: required bool requireIdentifier
-  5: required bool regenerateIdentifier
+  5: required bool regenerateIdentifier //if the leader finds the follower's id is conflicted, then true
   // serialized partitionTable
   6: optional binary partitionTableBytes
 
