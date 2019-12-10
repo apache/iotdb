@@ -51,7 +51,7 @@ abstract class BaseApplier implements LogApplier {
     } else if (!plan.isQuery()) {
       getQueryExecutor().processNonQuery(plan);
     } else {
-      // TODO-Cluster support more types of logs
+      // TODO-Cluster#348 support more types of logs
       logger.error("Unsupported physical plan: {}", plan);
     }
   }

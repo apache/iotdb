@@ -27,13 +27,8 @@ public class DataLogApplier extends BaseApplier {
     if (log instanceof PhysicalPlanLog) {
       applyPhysicalPlan(((PhysicalPlanLog) log).getPlan());
     } else {
-      // TODO-Cluster support more types of logs
+      // TODO-Cluster#348 support more types of logs
       logger.error("Unsupported log: {}", log);
     }
-  }
-
-  @Override
-  public void revert(Log log) {
-    //TODO-Cluster: implement
   }
 }

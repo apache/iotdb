@@ -42,14 +42,4 @@ public class MetaLogApplier extends BaseApplier {
       logger.error("Unsupported log: {}", log);
     }
   }
-
-  @Override
-  public void revert(Log log) {
-    if (log instanceof AddNodeLog) {
-      // TODO-Cluster implement node deletion
-    } else {
-      // TODO-Cluster support more types of logs
-      logger.error("Unsupported log: {}", log);
-    }
-  }
 }
