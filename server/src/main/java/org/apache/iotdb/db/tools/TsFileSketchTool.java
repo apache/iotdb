@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -78,7 +79,7 @@ public class TsFileSketchTool {
       chunkGroupMetaDataTmpList.addAll(deviceMetadata.getChunkGroupMetaDataList());
     }
     List<ChunkGroupMetaData> chunkGroupMetaDataSortedList = chunkGroupMetaDataTmpList.stream()
-        .sorted((x, y) -> (int) (x.getStartOffsetOfChunkGroup() - y.getStartOffsetOfChunkGroup()))
+        .sorted(Comparator.comparingLong(ChunkGroupMetaData::getStartOffsetOfChunkGroup))
         .collect(Collectors.toList());
 
     // begin print
