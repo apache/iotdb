@@ -120,6 +120,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetStorageGroupContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowAllTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowTimeseriesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowVersionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SlimitClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SoffsetClauseContext;
@@ -224,6 +225,12 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterShowFlushTaskInfo(SqlBaseParser.ShowFlushTaskInfoContext ctx) {
     super.enterShowFlushTaskInfo(ctx);
     initializedOperator = new ShowOperator(SQLConstant.TOK_FLUSH_TASK_INFO);
+  }
+
+  @Override
+  public void enterShowTimeseries(ShowTimeseriesContext ctx) {
+    super.enterShowTimeseries(ctx);
+    initializedOperator = new ShowOperator(SQLConstant.TOK_TIMESERIES);
   }
 
   @Override

@@ -49,7 +49,7 @@ public class ShowPlan extends PhysicalPlan {
   }
 
   public enum ShowContentType {
-    DYNAMIC_PARAMETER, FLUSH_TASK_INFO, TTL, VERSION
+    DYNAMIC_PARAMETER, FLUSH_TASK_INFO, TTL, VERSION, TIMESERIES
   }
 
 }

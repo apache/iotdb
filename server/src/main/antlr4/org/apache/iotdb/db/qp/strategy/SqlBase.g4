@@ -70,6 +70,7 @@ statement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
+    | SHOW TIMESERIES #showTimeseries
     | LOAD CONFIGURATION #loadConfigurationStatement
     | LOAD FILE autoCreateSchema? #loadFiles
     | REMOVE FILE #removeFile
