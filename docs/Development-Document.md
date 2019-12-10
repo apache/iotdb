@@ -21,6 +21,7 @@
 
 Documents of Apache IoTDB (incubating) are open source. If you have found any mistakes and would like to contribute, here is a brief step:
 
+## Contributing by Documentation Changes
 
 ### Fork and open pull Request
 
@@ -44,14 +45,4 @@ Then,
    * Step 1: create a new folder named "7-RoadMap", and add document named `1-B.md` in folder "7-RoadMap";
    * Step 2: modify `0-Content.md` file by adding "# Chapter 7: RoadMap" in the end, and  adding `* 1-B.md` in the list of this new chapter.
 
-#### Reviewing and PR closing
-
-1. Other reviewers, including committers, may comment on the changes and suggest modifications. Changes can be added by simply pushing more commits to the same branch.
-2. Try to be responsive to the discussion rather than let days pass between replies
-3. If a change is accepted, it will be merged, and the pull request will automatically be closed, along with the associated JIRA if any
-    * Note that in the rare case you are asked to open a pull request against a branch beside the master, you actually have to close the pull request manually
-4. If your pull request is ultimately rejected, please close it promptly
-    * … because committers can’t close PRs directly
-    * Pull requests will be automatically closed by an automated process at Apache after about a week if a committer has made a comment like “mind closing this PR?” This means that the committer is specifically requesting that it be closed.
-
-> If you want to contribute more (for example, reviewing Changes, reporting bugs, or even being commiters), please refer to [this page]](/#/Development/Contributing).
+> If you want to contribute more (for example, reviewing Changes, reporting bugs, or even being commiters), please refer to [this page](/#/Development/Contributing).
