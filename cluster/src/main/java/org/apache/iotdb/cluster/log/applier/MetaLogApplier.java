@@ -38,7 +38,7 @@ public class MetaLogApplier extends BaseApplier {
     } else if (log instanceof PhysicalPlanLog) {
       applyPhysicalPlan(((PhysicalPlanLog) log).getPlan());
     } else {
-      // TODO-Cluster support more types of logs
+      // TODO-Cluster#348 support more types of logs
       logger.error("Unsupported log: {}", log);
     }
   }

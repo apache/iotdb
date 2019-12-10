@@ -30,7 +30,6 @@ import java.nio.ByteBuffer;
  * The snapshot could be a file recording the list of current system files, or the compressed all
  * historical logs, depending on the implementation.
  */
-//TODO-CLuster: implement the serialized Snapshot mechanism
 public abstract class Snapshot {
 
   protected long lastLogId;

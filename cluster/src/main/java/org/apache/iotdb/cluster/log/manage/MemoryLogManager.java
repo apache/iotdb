@@ -16,8 +16,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// TODO-Cluster: implement a serializable LogManager, the LogManager should load complete
-//  snapshots on start-up
+// TODO-Cluster#351: implement a serializable LogManager.
 /**
  * MemoryLogManager stores all logs in a memory deque without providing snapshots.
  */

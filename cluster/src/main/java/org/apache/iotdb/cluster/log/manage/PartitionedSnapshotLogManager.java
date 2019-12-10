@@ -87,7 +87,7 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
 
   void collectTimeseriesSchemas() {
     socketTimeseries.clear();
-    // TODO-Cluster: the collection is re-collected each time to prevent inconsistency when some of
+    // TODO-Cluster#349: the collection is re-collected each time to prevent inconsistency when some of
     //  them are removed during two snapshots. Incremental addition or removal may be used to
     //  optimize
     List<MNode> allSgNodes = MManager.getInstance().getAllStorageGroups();

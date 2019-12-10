@@ -41,7 +41,7 @@ public class RemoteTsFileResource extends TsFileResource {
   }
 
   private byte[] getFileMd5(TsFileResource resource) {
-    // TODO-Cluster: implement
+    // TODO-Cluster#353: implement
     return new byte[0];
   }
 

@@ -61,22 +61,20 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
 
       collectTsFiles();
 
-      // TODO-Cluster: record closed data files in the snapshot
       logger.info("Snapshot is taken");
-      // TODO-Cluster: serialize the snapshots
     }
   }
 
   private void collectTsFiles() {
     socketSnapshots.clear();
-    // TODO-Cluster: the collection is re-collected each time to prevent inconsistency when some of
-    //  them are removed during two snapshots. Incremental addition or removal may be used to
-    //  optimize
+    // TODO-Cluster#349: the collection is re-collected each time to prevent inconsistency when
+    //  some of them are removed during two snapshots. Incremental addition or removal may be
+    //  used to optimize
     Map<String, List<TsFileResource>> storageGroupFiles =
         StorageEngine.getInstance().getAllClosedStorageGroupTsFile();
     for (Entry<String, List<TsFileResource>> entry : storageGroupFiles.entrySet()) {
       String storageGroupName = entry.getKey();
-      // TODO-Cluster: add time partitioning
+      // TODO-Cluster#350: add time partitioning
       int socketNum = PartitionUtils.calculateStorageGroupSocket(storageGroupName, 0);
 
       FileSnapshot snapshot = (FileSnapshot) socketSnapshots.computeIfAbsent(socketNum,

@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
  *  2.2 otherwise pull the file from the remote.
  * 3. replace the remote snapshot with a FileSnapshot indicating that the socket of this node is
  * synchronized with the remote one.
- * TODO-Cluster: implement and use this
  */
 public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 

@@ -264,7 +264,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   @Override
   public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback resultHandler) {
-    //TODO-Cluster: implement
+    //TODO-Cluster#354: implement
   }
 
   /**

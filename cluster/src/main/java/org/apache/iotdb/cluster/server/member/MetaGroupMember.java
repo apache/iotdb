@@ -174,7 +174,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         continue;
       }
       String ip = split[0];
-      // TODO-Cluster: check ip format
       try {
         int metaPort = Integer.parseInt(split[1]);
         int dataPort = Integer.parseInt(split[2]);
@@ -199,7 +198,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       logger.warn("Incorrect node url: {}", url);
       return;
     }
-    // TODO: check url format
     String ip = split[1];
     try {
       int identifier = Integer.parseInt(split[0]);
@@ -229,7 +227,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         PartitionGroup newGroup = partitionTable.addNode(newNode);
         savePartitionTable();
 
-        // TODO-Cluster serialize the table to the persist store
         dataClusterServer.addNode(newNode);
         if (newGroup.contains(thisNode)) {
           try {

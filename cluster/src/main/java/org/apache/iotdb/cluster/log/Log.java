@@ -38,7 +38,7 @@ public abstract class Log {
   public abstract void deserialize(ByteBuffer buffer);
 
   public enum Types {
-    // TODO-Cluster support more logs
+    // TODO-Cluster#348 support more logs
     ADD_NODE, PHYSICAL_PLAN
   }
 

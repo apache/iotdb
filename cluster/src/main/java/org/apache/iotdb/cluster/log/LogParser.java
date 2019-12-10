@@ -57,7 +57,7 @@ public class LogParser {
     logger.debug("The log type is {}", type);
     Log log;
     switch (type) {
-      // TODO-Cluster support more logs
+      // TODO-Cluster#348 support more logs
       case ADD_NODE:
         AddNodeLog addNodeLog = new AddNodeLog();
         addNodeLog.deserialize(buffer);

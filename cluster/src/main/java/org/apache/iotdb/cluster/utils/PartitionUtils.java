@@ -34,7 +34,7 @@ public class PartitionUtils {
   }
 
   public static boolean isPlanPartitioned(PhysicalPlan plan) {
-    // TODO-Cluster: support more plans
+    // TODO-Cluster#348: support more plans
     return plan instanceof CreateTimeSeriesPlan ||
         plan instanceof InsertPlan ||
         plan instanceof BatchInsertPlan ||
@@ -62,7 +62,7 @@ public class PartitionUtils {
 
   public static PartitionGroup partitionPlan(PhysicalPlan plan, PartitionTable partitionTable)
       throws UnsupportedPlanException {
-    // TODO-Cluster: support more plans
+    // TODO-Cluster#348: support more plans
     try {
       if (plan instanceof CreateTimeSeriesPlan) {
         CreateTimeSeriesPlan createTimeSeriesPlan = ((CreateTimeSeriesPlan) plan);
@@ -70,7 +70,7 @@ public class PartitionUtils {
       } else if (plan instanceof InsertPlan) {
         InsertPlan insertPlan = ((InsertPlan) plan);
         return partitionByPathTime(insertPlan.getDeviceId(), 0, partitionTable);
-        // TODO-Cluster: use time in partitioning
+        // TODO-Cluster#350: use time in partitioning
         // return partitionByPathTime(insertPlan.getDeviceId(), insertPlan.getTime(),
         // partitionTable);
       }

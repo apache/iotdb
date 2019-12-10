@@ -274,7 +274,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   private boolean isFileAlreadyPulled(RemoteTsFileResource resource) {
-    // TODO-Cluster: currently some files are loaded redundantly because the same files
+    // TODO-Cluster#352: currently some files are loaded redundantly because the same files
     //  (containing the same date) are named differently on different node. How can we recognize
     //  the duplicated files that have different names.
     String[] pathSegments = resource.getFile().getAbsolutePath().split(File.separator);
@@ -336,7 +336,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     File remoteModFile =
         new File(resource.getFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
     try {
-      //TODO-Cluster: load the file resource into a proper storage group processor
       StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource);
     } catch (TsFileProcessorException | StorageEngineException e) {
       logger.error("{}: Cannot load remote file {} into storage group", name, resource, e);
@@ -375,7 +374,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   private boolean checkMd5(File tempFile, byte[] expectedMd5) {
-    // TODO-Cluster: implement
+    // TODO-Cluster#353: implement
     return true;
   }
 
