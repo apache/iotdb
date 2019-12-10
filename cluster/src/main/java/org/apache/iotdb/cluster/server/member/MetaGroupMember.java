@@ -382,8 +382,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   @Override
   public void processValidHeartbeatResp(HeartBeatResponse response, Node receiver) {
     // register the id of the node
-    if (response.isSetFolloweIdentifier()) {
-      registerNodeIdentifier(receiver, response.getFolloweIdentifier());
+    if (response.isSetFollowerIdentifier()) {
+      registerNodeIdentifier(receiver, response.getFollowerIdentifier());
       // if all nodes' ids are known, we can build the partition table
       if (allNodesIdKnown()) {
         if (partitionTable == null && !loadPartitionTable()) {

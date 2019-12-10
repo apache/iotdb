@@ -145,9 +145,12 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         response.setLastLogIndex(logManager.getLastLogIndex());
         response.setLastLogTerm(logManager.getLastLogTerm());
 
-        synchronized (syncLock) {
-          logManager.commitLog(request.getCommitLogIndex());
-          syncLock.notifyAll();
+        // The term of the last log needs to be same with leader's term in order to preserve safety.
+        if (logManager.getLastLogTerm() == leaderTerm) {
+          synchronized (syncLock) {
+            logManager.commitLog(request.getCommitLogIndex());
+            syncLock.notifyAll();
+          }
         }
         term.set(leaderTerm);
         setLeader(request.getLeader());

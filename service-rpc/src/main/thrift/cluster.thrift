@@ -46,7 +46,7 @@ struct HeartBeatResponse {
   3: optional long lastLogTerm // follower's meta log
   // used to perform a catch up when necessary
   4: optional Node follower
-  5: optional int followeIdentifier
+  5: optional int followerIdentifier
   6: required bool requirePartitionTable
 
   // because a data server may play many data groups members, this is used to identify which
