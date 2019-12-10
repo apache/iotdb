@@ -690,33 +690,48 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public boolean next() throws SQLException {
-    if ((tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining()) && operationHandle.hasResultSet) {
-      TSFetchResultsReq req = new TSFetchResultsReq(sql, fetchSize, queryId);
-      try {
-        TSFetchResultsResp resp = client.fetchResults(req);
-
-        try {
-          RpcUtils.verifySuccess(resp.getStatus());
-        } catch (IoTDBRPCException e) {
-          throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-        }
-        if (!resp.hasResultSet) {
-          emptyResultSet = true;
-        } else {
-          tsQueryDataSet = resp.getQueryDataSet();
-          rowsIndex = 0;
-        }
-      } catch (TException e) {
-        throw new SQLException(
-            "Cannot fetch result from server, because of network connection: {} ", e);
-      }
-
+    if (!checkDataSetIsNull()) {
+      constructOneRow();
+      return true;
     }
-    if (emptyResultSet || !operationHandle.hasResultSet) {
+    if (!isServerHasMoreData()) {
       return false;
     }
-    constructOneRow();
+    requestDataFromServer();
+    if (emptyResultSet) {
+      return false;
+    }
     return true;
+  }
+
+  private void requestDataFromServer() throws SQLException {
+    TSFetchResultsReq req = new TSFetchResultsReq(sql, fetchSize, queryId);
+    try {
+      TSFetchResultsResp resp = client.fetchResults(req);
+
+      try {
+        RpcUtils.verifySuccess(resp.getStatus());
+      } catch (IoTDBRPCException e) {
+        throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
+      }
+      if (!resp.hasResultSet) {
+        emptyResultSet = true;
+      } else {
+        tsQueryDataSet = resp.getQueryDataSet();
+        rowsIndex = 0;
+      }
+    } catch (TException e) {
+      throw new SQLException(
+          "Cannot fetch result from server, because of network connection: {} ", e);
+    }
+  }
+
+  private boolean isServerHasMoreData() {
+    return operationHandle.hasResultSet;
+  }
+
+  private boolean checkDataSetIsNull() {
+    return tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining();
   }
 
   private void constructOneRow() {
