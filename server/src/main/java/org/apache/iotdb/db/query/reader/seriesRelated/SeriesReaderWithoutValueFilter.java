@@ -44,11 +44,11 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 
 /**
- * add seqResourceIterateReader and unseqResourceMergeReader into PriorityMergeReader
+ * merge seqResourceIterateReader and unseqResourceMergeReader
  *
- *
+ * return batch data
  */
-public class SeriesReaderWithoutValueFilter extends PriorityMergeReader {
+public class SeriesReaderWithoutValueFilter {
 
   private IBatchReader seqResourceIterateReader;
   private IBatchReader unseqResourceMergeReader;
