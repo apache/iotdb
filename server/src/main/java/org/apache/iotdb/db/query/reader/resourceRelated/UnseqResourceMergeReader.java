@@ -43,9 +43,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 /**
- * To read a list of unsequence TsFiles, this class extends {@link PriorityMergeReader} to
- * implement
- * <code>IPointReader</code> for the TsFiles.
+ * To read a list of unsequence TsFiles, this class implements <code>IBatchReader</code> for the TsFiles.
  * <p>
  * Note that an unsequence TsFile can be either closed or unclosed. An unclosed unsequence TsFile
  * consists of data on disk and data in memtables that will be flushed to this unclosed TsFile.
@@ -70,6 +68,8 @@ public class UnseqResourceMergeReader implements IBatchReader {
    */
   public UnseqResourceMergeReader(Path seriesPath, List<TsFileResource> unseqResources,
       QueryContext context, Filter timeFilter) throws IOException {
+
+    this.seriesPath = seriesPath;
     long queryId = context.getJobId();
 
     List<ChunkReaderWrap> readerWrapList = new ArrayList<>();
@@ -82,8 +82,7 @@ public class UnseqResourceMergeReader implements IBatchReader {
           continue;
         }
 
-        metaDataList = DeviceMetaDataCache.getInstance()
-            .get(tsFileResource, seriesPath);
+        metaDataList = DeviceMetaDataCache.getInstance().get(tsFileResource, seriesPath);
         List<Modification> pathModifications = context
             .getPathModifications(tsFileResource.getModFile(), seriesPath.getFullPath());
         if (!pathModifications.isEmpty()) {
@@ -106,7 +105,6 @@ public class UnseqResourceMergeReader implements IBatchReader {
       }
 
       for (ChunkMetaData chunkMetaData : metaDataList) {
-
         if (timeFilter != null && !timeFilter.satisfy(chunkMetaData.getStatistics())) {
           continue;
         }
@@ -125,9 +123,9 @@ public class UnseqResourceMergeReader implements IBatchReader {
         .executeForIPointReader(queryId, readerWrapList);
     int priorityValue = 1;
 
-    // TODO check: is priorityValue the sort of start time?
+    priorityMergeReader = new PriorityMergeReader();
     for (IPointReader chunkReader : readerList) {
-      addReaderWithPriority(chunkReader, priorityValue++);
+      priorityMergeReader.addReaderWithPriority(chunkReader, priorityValue++);
     }
   }
 

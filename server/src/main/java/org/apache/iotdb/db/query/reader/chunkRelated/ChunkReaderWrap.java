@@ -39,7 +39,6 @@ public class ChunkReaderWrap {
 
   // attributes for disk chunk
   private ChunkMetaData chunkMetaData;
-  private List<ChunkMetaData> chunkMetaDataList;
   private IChunkLoader chunkLoader;
 
   // attributes for mem chunk
@@ -55,10 +54,9 @@ public class ChunkReaderWrap {
   /**
    * constructor of diskChunkReader
    */
-  public ChunkReaderWrap(List<ChunkMetaData> metaDataList, IChunkLoader chunkLoader,
-      Filter filter) {
+  public ChunkReaderWrap(ChunkMetaData metaData, IChunkLoader chunkLoader, Filter filter) {
     this.type = ChunkReaderType.DISK_CHUNK;
-    this.chunkMetaDataList = metaDataList;
+    this.chunkMetaData = metaData;
     this.chunkLoader = chunkLoader;
     this.filter = filter;
   }
@@ -94,7 +92,7 @@ public class ChunkReaderWrap {
 
   public IReaderByTimestamp getIReaderByTimestamp() throws IOException {
     if (type.equals(ChunkReaderType.DISK_CHUNK)) {
-      Chunk chunk = chunkLoader.getChunk(chunkMetaData); // TODO
+      Chunk chunk = chunkLoader.getChunk(chunkMetaData);
       ChunkReaderByTimestamp chunkReader = new ChunkReaderByTimestamp(chunk);
       return new DiskChunkReaderByTimestamp(chunkReader);
     } else {
@@ -103,7 +101,7 @@ public class ChunkReaderWrap {
   }
 
   public String getMeasurementUid() {
-    if (chunkMetaData != null) { // TODO
+    if (chunkMetaData != null) {
       return chunkMetaData.getMeasurementUid();
     } else {
       return null;
