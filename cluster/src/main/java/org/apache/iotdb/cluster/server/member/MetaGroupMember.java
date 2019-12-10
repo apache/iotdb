@@ -622,6 +622,26 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     request.setTerm(term.get());
     request.setEntry(log.serialize());
 
+    askGroupVotes(groupRemainings, nodeRing, request, leaderShipStale, log, newLeaderTerm);
+
+    if (!leaderShipStale.get()) {
+      boolean succeed = true;
+      // if all quorums of all groups have received this log, it is considered succeeded.
+      for (int remaining : groupRemainings) {
+        if (remaining > 0) {
+          return AppendLogResult.TIME_OUT;
+        }
+      }
+    } else {
+      return AppendLogResult.LEADERSHIP_STALE;
+    }
+
+    return AppendLogResult.OK;
+  }
+
+  private void askGroupVotes(int[] groupRemainings, List<Node> nodeRing,
+      AppendEntryRequest request, AtomicBoolean leaderShipStale, Log log, AtomicLong newLeaderTerm) {
+    int nodeSize = nodeRing.size();
     synchronized (groupRemainings) {
       // ask a vote from every node
       for (int i = 0; i < nodeSize; i++) {
@@ -652,20 +672,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         Thread.currentThread().interrupt();
       }
     }
-
-    if (!leaderShipStale.get()) {
-      boolean succeed = true;
-      // if all quorums of all groups have received this log, it is considered succeeded.
-      for (int remaining : groupRemainings) {
-        if (remaining > 0) {
-          return AppendLogResult.TIME_OUT;
-        }
-      }
-    } else {
-      return AppendLogResult.LEADERSHIP_STALE;
-    }
-
-    return AppendLogResult.OK;
   }
 
   /**

@@ -154,7 +154,7 @@ public class TsFileResource {
     fsFactory.moveFile(src, dest);
   }
 
-  public void deSerialize() throws IOException {
+  public void deserialize() throws IOException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(
         file + RESOURCE_SUFFIX)) {
       int size = ReadWriteIOUtils.readInt(inputStream);

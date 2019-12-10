@@ -54,7 +54,7 @@ public class TsFileResourcePrinter {
     filename = filename.substring(0, filename.length() - 9);
     TsFileResource resource = new TsFileResource(SystemFileFactory.INSTANCE.getFile(filename));
     System.err.println(String.format("analyzing %s ...", filename));
-    resource.deSerialize();
+    resource.deserialize();
 
     for (String device : resource.getStartTimeMap().keySet()) {
       System.out.println(String.format("device %s, start time %d (%s), end time %d (%s)", device,

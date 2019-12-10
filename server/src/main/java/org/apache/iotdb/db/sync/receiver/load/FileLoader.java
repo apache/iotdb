@@ -175,7 +175,7 @@ public class FileLoader implements IFileLoader {
       // write .resource file
       tsFileResource.serialize();
     } else {
-      tsFileResource.deSerialize();
+      tsFileResource.deserialize();
     }
   }
 

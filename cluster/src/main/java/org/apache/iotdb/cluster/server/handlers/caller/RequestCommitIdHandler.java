@@ -26,7 +26,7 @@ public class RequestCommitIdHandler implements AsyncMethodCallback<Long> {
   public void onComplete(Long response) {
     synchronized (result) {
       result.set(response);
-      result.notifyAll();;
+      result.notifyAll();
     }
   }
 
