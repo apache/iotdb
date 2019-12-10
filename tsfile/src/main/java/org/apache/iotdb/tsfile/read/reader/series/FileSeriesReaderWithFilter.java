@@ -44,7 +44,7 @@ public class FileSeriesReaderWithFilter extends FileSeriesReader {
   protected void initChunkReader(ChunkMetaData chunkMetaData) throws IOException {
     Chunk chunk = chunkLoader.getChunk(chunkMetaData);
     this.chunkReader = new ChunkReaderWithFilter(chunk, filter);
-  }
+}
 
   @Override
   protected boolean chunkSatisfied(ChunkMetaData chunkMetaData) {

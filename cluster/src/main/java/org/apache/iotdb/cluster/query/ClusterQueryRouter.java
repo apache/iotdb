@@ -6,6 +6,7 @@ package org.apache.iotdb.cluster.query;
 
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -17,8 +18,11 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 public class ClusterQueryRouter extends EngineQueryRouter {
 
-  ClusterQueryRouter() {
-    executorFactory = ClusterDataQueryExecutor::new;
+  private MetaGroupMember metaGroupMember;
+
+  ClusterQueryRouter(MetaGroupMember metaGroupMember) {
+    this.metaGroupMember = metaGroupMember;
+    executorFactory = expression -> new ClusterDataQueryExecutor(expression, this.metaGroupMember);
   }
 
   @Override

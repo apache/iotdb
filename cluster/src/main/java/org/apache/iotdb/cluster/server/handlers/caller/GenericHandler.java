@@ -24,17 +24,21 @@ public class GenericHandler<T> implements AsyncMethodCallback<T> {
 
   @Override
   public void onComplete(T response) {
-    synchronized (result) {
-      result.set(response);
-      result.notifyAll();
+    if (result != null) {
+      synchronized (result) {
+        result.set(response);
+        result.notifyAll();
+      }
     }
   }
 
   @Override
   public void onError(Exception exception) {
     logger.error("Cannot receive result from {}", source, exception);
-    synchronized (result) {
-      result.notifyAll();
+    if (result != null) {
+      synchronized (result) {
+        result.notifyAll();
+      }
     }
   }
 }

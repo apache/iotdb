@@ -4,18 +4,9 @@
 
 package org.apache.iotdb.cluster.exception;
 
-import org.apache.iotdb.cluster.log.Log;
+public class ReaderNotFoundException extends Exception {
 
-/**
- * Raised when a request times out before reaching an agreement in a group.
- */
-public class RequestTimeOutException extends Exception {
-
-  public RequestTimeOutException(Log log) {
-    super("Request \"" + log + "\" timeout");
-  }
-
-  public RequestTimeOutException(String request) {
-    super("Request \"" + request + "\" timeout");
+  public ReaderNotFoundException(long readerId) {
+    super(String.format("The requested reader %d is not found", readerId));
   }
 }

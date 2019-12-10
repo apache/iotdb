@@ -28,7 +28,7 @@ public class ClusterDataQueryExecutor extends EngineExecutor {
   @Override
   protected IPointReader getSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
       QueryContext context, boolean pushdownUnseq) throws IOException, StorageEngineException {
-    return super.getSeriesReaderWithoutValueFilter(path, timeFilter, context, pushdownUnseq);
+    return metaGroupMember.getSeriesReaderWithoutValueFilter(path, timeFilter, context, pushdownUnseq);
   }
 
   @Override

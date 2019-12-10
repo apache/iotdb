@@ -25,7 +25,7 @@ class ClusterQueryExecutor extends QueryProcessExecutor {
 
   ClusterQueryExecutor(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
-    this.queryRouter = new ClusterQueryRouter();
+    this.queryRouter = new ClusterQueryRouter(metaGroupMember);
   }
 
   @Override

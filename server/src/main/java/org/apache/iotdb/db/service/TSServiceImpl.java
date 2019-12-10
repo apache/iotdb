@@ -917,7 +917,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     PhysicalPlan physicalPlan = queryId2Plan.get().get(req.queryId);
 
     QueryDataSet queryDataSet;
-    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignJobId());
+    QueryContext context = genQueryContext();
 
     initContextMap();
     contextMapLocal.get().put(req.queryId, context);
@@ -926,6 +926,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     queryId2DataSet.get().put(req.queryId, queryDataSet);
     return queryDataSet;
+  }
+
+  protected QueryContext genQueryContext() {
+    return new QueryContext(QueryResourceManager.getInstance().assignJobId());
   }
 
   private void initContextMap() {

@@ -7,8 +7,13 @@ package org.apache.iotdb.cluster.utils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class SerializeUtils {
 
@@ -73,4 +78,105 @@ public class SerializeUtils {
     node.setNodeIdentifier(buffer.getInt());
     node.setDataPort(buffer.getInt());
   }
+
+  public static void serializeTVPairs(List<TimeValuePair> timeValuePairs,
+      DataOutputStream dataOutputStream) {
+    try {
+      dataOutputStream.writeInt(timeValuePairs.size());
+      switch (timeValuePairs.get(0).getValue().getDataType()) {
+        case TEXT:
+          for (TimeValuePair timeValuePair : timeValuePairs) {
+            dataOutputStream.writeLong(timeValuePair.getTimestamp());
+            dataOutputStream.writeInt(timeValuePair.getValue().getBinary().getLength());
+            dataOutputStream.write(timeValuePair.getValue().getBinary().getValues());
+          }
+          break;
+        case BOOLEAN:
+          for (TimeValuePair timeValuePair : timeValuePairs) {
+            dataOutputStream.writeLong(timeValuePair.getTimestamp());
+            dataOutputStream.writeBoolean(timeValuePair.getValue().getBoolean());
+          }
+        case INT64:
+          for (TimeValuePair timeValuePair : timeValuePairs) {
+            dataOutputStream.writeLong(timeValuePair.getTimestamp());
+            dataOutputStream.writeLong(timeValuePair.getValue().getLong());
+          }
+        case INT32:
+          for (TimeValuePair timeValuePair : timeValuePairs) {
+            dataOutputStream.writeLong(timeValuePair.getTimestamp());
+            dataOutputStream.writeInt(timeValuePair.getValue().getInt());
+          }
+        case FLOAT:
+          for (TimeValuePair timeValuePair : timeValuePairs) {
+            dataOutputStream.writeLong(timeValuePair.getTimestamp());
+            dataOutputStream.writeFloat(timeValuePair.getValue().getFloat());
+          }
+        case DOUBLE:
+          for (TimeValuePair timeValuePair : timeValuePairs) {
+            dataOutputStream.writeLong(timeValuePair.getTimestamp());
+            dataOutputStream.writeDouble(timeValuePair.getValue().getDouble());
+          }
+      }
+    } catch (IOException ignored) {
+      // unreachable
+    }
+  }
+
+  public static List<TimeValuePair> deserializeTVPairs(ByteBuffer buffer) {
+    if (buffer == null || buffer.limit() == 0) {
+      return Collections.emptyList();
+    }
+    TSDataType dataType = TSDataType.values()[buffer.get()];
+    int size = buffer.getInt();
+    List<TimeValuePair> ret = new ArrayList<>(size);
+    switch (dataType) {
+      case DOUBLE:
+        for (int i = 0; i < size; i++) {
+          TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, buffer.getDouble());
+          TimeValuePair pair = new TimeValuePair(buffer.getLong(), primitiveType);
+          ret.add(pair);
+        }
+        break;
+      case FLOAT:
+        for (int i = 0; i < size; i++) {
+          TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, buffer.getDouble());
+          TimeValuePair pair = new TimeValuePair(buffer.getLong(), primitiveType);
+          ret.add(pair);
+        }
+        break;
+      case INT32:
+        for (int i = 0; i < size; i++) {
+          TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, buffer.getInt());
+          TimeValuePair pair = new TimeValuePair(buffer.getLong(), primitiveType);
+          ret.add(pair);
+        }
+        break;
+      case INT64:
+        for (int i = 0; i < size; i++) {
+          TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, buffer.getLong());
+          TimeValuePair pair = new TimeValuePair(buffer.getLong(), primitiveType);
+          ret.add(pair);
+        }
+        break;
+      case BOOLEAN:
+        for (int i = 0; i < size; i++) {
+          TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, buffer.get() == 1);
+          TimeValuePair pair = new TimeValuePair(buffer.getLong(), primitiveType);
+          ret.add(pair);
+        }
+        break;
+      case TEXT:
+        for (int i = 0; i < size; i++) {
+          int bytesLen = buffer.getInt();
+          byte[] bytes = new byte[bytesLen];
+          buffer.get(bytes);
+          TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, bytes);
+          TimeValuePair pair = new TimeValuePair(buffer.getLong(), primitiveType);
+          ret.add(pair);
+        }
+        break;
+    }
+    return ret;
+  }
+
 }

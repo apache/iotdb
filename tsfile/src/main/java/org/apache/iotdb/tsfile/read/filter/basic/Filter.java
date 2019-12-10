@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.filter.basic;
 
+import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
 /**
@@ -63,4 +64,12 @@ public interface Filter {
   boolean containStartEndTime(long startTime, long endTime);
 
   Filter clone();
+
+  default ByteBuffer serialize() {
+    return null;
+  }
+
+  default void deserialize(ByteBuffer buffer) {
+
+  }
 }

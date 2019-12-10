@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
+import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
@@ -38,7 +39,9 @@ import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
 import org.apache.iotdb.cluster.log.snapshot.RemoteDataSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.query.ClusterQueryManager;
 import org.apache.iotdb.cluster.query.ClusterQueryParser;
+import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -47,12 +50,14 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPullSnapshotHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
+import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -61,8 +66,14 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -82,6 +93,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   private ExecutorService pullSnapshotService;
   private PartitionedSnapshotLogManager logManager;
 
+  private ClusterQueryManager queryManager;
+
   private DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
       PartitionedSnapshotLogManager logManager, MetaGroupMember metaGroupMember,
       TAsyncClientManager clientManager) {
@@ -93,6 +106,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
     queryProcessor = new ClusterQueryParser(metaGroupMember);
+    queryManager = new ClusterQueryManager();
   }
 
   @Override
@@ -570,4 +584,84 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     resp.setSchemaBytes(byteArrayOutputStream.toByteArray());
     resultHandler.onComplete(resp);
   }
+
+  IPointReader getSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
+      QueryContext context, boolean pushdownUnseq)
+      throws IOException, StorageEngineException {
+    // pull the newest data
+    if (syncLeader()) {
+      return new SeriesReaderWithoutValueFilter(path, timeFilter, context, true);
+    } else {
+      throw new StorageEngineException(new LeaderUnknownException());
+    }
+  }
+
+  @Override
+  public void querySingleSeries(SingleSeriesQueryRequest request,
+      AsyncMethodCallback<Long> resultHandler) {
+    logger.debug("{}: {} is querying {}", name, request.getRequester(), request.getPath());
+    if (!syncLeader()) {
+      resultHandler.onError(new LeaderUnknownException());
+      return;
+    }
+
+    Path path = new Path(request.getPath());
+    Filter timeFilter = null;
+    if (request.isSetFilterBytes()) {
+      // TODO-Cluster: deserialize the filters
+    }
+    RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequester(),
+        request.getQueryId());
+    try {
+      IPointReader pointReader = getSeriesReaderWithoutValueFilter(path, timeFilter, queryContext,
+          request.isPushdownUnseq());
+      long readerId = queryManager.registerReader(pointReader);
+      logger.debug("{}: Build a reader of {} for {}, readerId: {}", name, path,
+          request.getRequester(), readerId);
+      resultHandler.onComplete(readerId);
+    } catch (IOException | StorageEngineException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void fetchSingleSeries(Node header, long readerId, int fetchSize,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    IPointReader reader = queryManager.getReader(readerId);
+    if (reader == null) {
+      resultHandler.onError(new ReaderNotFoundException(readerId));
+      return;
+    }
+    try {
+      if (reader.hasNext()) {
+        int count = 0;
+        List<TimeValuePair> timeValuePairs = new ArrayList<>(fetchSize);
+        while (reader.hasNext() && count < fetchSize) {
+          timeValuePairs.add(reader.next());
+          count++;
+        }
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
+        dataOutputStream.write(timeValuePairs.get(0).getValue().getDataType().ordinal());
+        SerializeUtils.serializeTVPairs(timeValuePairs, dataOutputStream);
+        logger.debug("{}: Send {} results of reader {}", name, timeValuePairs.size(), readerId);
+        resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+      } else {
+        resultHandler.onComplete(ByteBuffer.allocate(0));
+      }
+    } catch (IOException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void releaseReaders(Node header, List<Long> readerIds,
+      AsyncMethodCallback<Void> resultHandler) {
+    for (Long readerId : readerIds) {
+      queryManager.releaseReader(readerId);
+    }
+    resultHandler.onComplete(null);
+  }
 }
+

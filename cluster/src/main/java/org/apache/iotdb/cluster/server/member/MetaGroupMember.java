@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.ClientPool;
+import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.client.MetaClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -49,6 +50,8 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterQueryParser;
+import org.apache.iotdb.cluster.query.RemoteQueryContext;
+import org.apache.iotdb.cluster.query.RemoteSimpleSeriesReader;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
@@ -58,6 +61,8 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
 import org.apache.iotdb.cluster.server.ClientServer;
@@ -65,6 +70,7 @@ import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardAddNodeHandler;
@@ -72,6 +78,8 @@ import org.apache.iotdb.cluster.server.heartbeat.MetaHeartBeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
@@ -80,10 +88,13 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -123,12 +134,16 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   private MetaSingleSnapshotLogManager logManager;
 
+  private ClientPool dataClientPool;
+
   public MetaGroupMember(TProtocolFactory factory, Node thisNode)
       throws IOException {
     super("Meta", new ClientPool(new MetaClient.Factory(new TAsyncClientManager(), factory)));
     allNodes = new ArrayList<>();
     this.protocolFactory = factory;
     dataMemberFactory = new Factory(protocolFactory, this, dataLogApplier, new TAsyncClientManager());
+    dataClientPool =
+        new ClientPool(new DataClient.Factory(new TAsyncClientManager(), factory));
     initLogManager();
     setThisNode(thisNode);
     loadIdentifier();
@@ -970,5 +985,66 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       pullDeviceSchemas(path.getDevice());
       return SchemaUtils.getSeriesType(pathStr);
     }
+  }
+
+  public IPointReader getSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
+      QueryContext context, boolean pushdownUnseq)
+      throws IOException, StorageEngineException {
+    // make sure the partition table is new
+    syncLeader();
+    String storageGroup;
+    PartitionGroup partitionGroup;
+    try {
+      storageGroup = MManager.getInstance().getStorageGroupNameByPath(path.getFullPath());
+      // TODO-Cluster#350: use time in partitioning
+      partitionGroup = PartitionUtils.partitionByPathTime(storageGroup, 0,
+          partitionTable);
+    } catch (StorageGroupNotSetException e) {
+      throw new StorageEngineException(e);
+    }
+
+    if (partitionGroup.contains(thisNode)) {
+      // the target storage group contains this node, perform a local query
+      return dataClusterServer.getDataMember(partitionGroup.getHeader(), null, String.format(
+          "Query: %s, time filter: %s", partitionGroup, timeFilter))
+          .getSeriesReaderWithoutValueFilter(path, timeFilter, context, true);
+    } else {
+      // query a remote node
+      AtomicReference<Long> result = new AtomicReference<>();
+      SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
+      request.setFilterBytes(timeFilter.serialize());
+      request.setPath(path.getFullPath());
+      request.setHeader(partitionGroup.getHeader());
+      request.setQueryId(context.getJobId());
+      request.setRequester(thisNode);
+      request.setPushdownUnseq(pushdownUnseq);
+
+      for (Node node : partitionGroup) {
+        logger.debug("{}: querying {} from {}", name, path, node);
+        GenericHandler<Long> handler = new GenericHandler<>(node, result);
+        TSDataService.AsyncClient client = (TSDataService.AsyncClient) dataClientPool.getClient(node);
+        try {
+          synchronized (result) {
+            result.set(null);
+            client.querySingleSeries(request, handler);
+            result.wait(CONNECTION_TIME_OUT_MS);
+          }
+          Long readerId = result.get();
+          if (readerId != null) {
+            ((RemoteQueryContext) context).registerReader(node, readerId);
+            logger.debug("{}: get a readerId {} for {} from {}", name, readerId, path, node);
+            return new RemoteSimpleSeriesReader(readerId, node, partitionGroup.getHeader(), this);
+          }
+        } catch (TException | InterruptedException e) {
+          logger.error("{}: Cannot query {} from {}", name, path, node, e);
+        }
+      }
+    }
+
+    throw new StorageEngineException(new RequestTimeOutException("Query " + path + " in " + partitionGroup));
+  }
+
+  public ClientPool getDataClientPool() {
+    return dataClientPool;
   }
 }

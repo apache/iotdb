@@ -25,6 +25,7 @@ public class ClusterQueryParser extends QueryProcessor {
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
       throws QueryProcessException {
     Operator operator = parseDriver.parse(sqlStr, zoneId);
+    // TODO-Cluster: support wildcard
     operator = logicalOptimize(operator, executor);
     PhysicalGenerator physicalGenerator = new ClusterPhysicalGenerator(executor, metaGroupMember);
     return physicalGenerator.transformToPhysicalPlan(operator);

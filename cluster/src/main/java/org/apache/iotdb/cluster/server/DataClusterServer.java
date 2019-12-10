@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncProcessor;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -185,6 +186,34 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     DataGroupMember member = getDataMember(header, resultHandler, "Read file:" + filePath);
     if (member != null) {
       member.readFile(filePath, offset, length, header, resultHandler);
+    }
+  }
+
+  @Override
+  public void querySingleSeries(SingleSeriesQueryRequest request,
+      AsyncMethodCallback<Long> resultHandler) {
+    DataGroupMember member = getDataMember(request.getHeader(), resultHandler,
+        "Query series:" + request.getPath());
+    if (member != null) {
+      member.querySingleSeries(request, resultHandler);
+    }
+  }
+
+  @Override
+  public void fetchSingleSeries(Node header, long readerId, int fetchSize,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    DataGroupMember member = getDataMember(header, resultHandler, "Fetch reader:" + readerId);
+    if (member != null) {
+      member.fetchSingleSeries(header, readerId, fetchSize, resultHandler);
+    }
+  }
+
+  @Override
+  public void releaseReaders(Node header, List<Long> readerIds,
+      AsyncMethodCallback<Void> resultHandler) {
+    DataGroupMember member = getDataMember(header, resultHandler, "Release reader:" + readerIds);
+    if (member != null) {
+      member.releaseReaders(header, readerIds, resultHandler);
     }
   }
 
