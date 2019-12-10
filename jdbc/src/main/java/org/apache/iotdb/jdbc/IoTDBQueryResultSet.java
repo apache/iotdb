@@ -694,7 +694,7 @@ public class IoTDBQueryResultSet implements ResultSet {
       constructOneRow();
       return true;
     }
-    if (!isServerHasMoreData()) {
+    if (!isServerHasMoreData() || emptyResultSet) {
       return false;
     }
     requestDataFromServer();
