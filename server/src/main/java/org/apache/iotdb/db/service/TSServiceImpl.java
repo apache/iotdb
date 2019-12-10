@@ -561,31 +561,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       PhysicalPlan physicalPlan;
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
-        resp = executeQueryStatement(req.statementId, physicalPlan);
+        resp = executeQueryStatement(req.statementId, physicalPlan, req.fetchSize);
         long endTime = System.currentTimeMillis();
         sqlArgument = new SqlArgument(resp, physicalPlan, statement, startTime, endTime);
         sqlArgumentsList.add(sqlArgument);
         if (sqlArgumentsList.size() > MAX_SIZE) {
           sqlArgumentsList.subList(0, DELETE_SIZE).clear();
         }
-        if (!resp.operationHandle.hasResultSet) {
-          return resp;
-        }
-        //fill data
-        long queryId = resp.getOperationHandle().operationId.queryId;
-        QueryDataSet newDataSet = createQueryDataSet(queryId);
-        TSQueryDataSet result = fillRpcReturnData(req.fetchSize, newDataSet);
-
-        boolean hasResultSet = result.bufferForTime().limit() != 0;
-        if (hasResultSet) {
-          resp.setQueryDataSet(result);
-          return resp;
-        }
-        //without any data
-        if (queryId2DataSet.get() != null) {
-          queryId2DataSet.get().remove(queryId);
-        }
-        resp.operationHandle.hasResultSet = false;
         return resp;
       } else {
         return executeUpdateStatement(physicalPlan);
@@ -602,18 +584,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info("meet error while parsing SQL to physical plan: {}", e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR,
           e.getMessage()));
-    } catch (Exception e) {
-      logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
-      return getTSExecuteStatementResp(
-          getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
     }
   }
 
   /**
-   * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
-   *             AuthorPlan
+   * @param plan      must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
+   *                  AuthorPlan
+   * @param fetchSize
    */
-  private TSExecuteStatementResp executeQueryStatement(long statementId, PhysicalPlan plan) {
+  private TSExecuteStatementResp executeQueryStatement(long statementId, PhysicalPlan plan,
+      int fetchSize) {
     long t1 = System.currentTimeMillis();
     try {
       TSExecuteStatementResp resp; // column headers
@@ -638,10 +618,22 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       TSHandleIdentifier operationId = new TSHandleIdentifier(
           ByteBuffer.wrap(username.get().getBytes()), ByteBuffer.wrap("PASS".getBytes()),
           queryId);
-      TSOperationHandle operationHandle = new TSOperationHandle(operationId, true);
+      queryId2Plan.get().put(queryId, plan);
+
+      //fill data
+      QueryDataSet newDataSet = createQueryDataSet(queryId);
+      TSQueryDataSet result = fillRpcReturnData(fetchSize, newDataSet);
+
+      boolean hasResultSet = result.bufferForTime().limit() != 0;
+      TSOperationHandle operationHandle = new TSOperationHandle(operationId, hasResultSet);
       resp.setOperationHandle(operationHandle);
 
-      queryId2Plan.get().put(queryId, plan);
+      if (hasResultSet) {
+        resp.setQueryDataSet(result);
+        return resp;
+      }
+      //without any data
+      queryId2DataSet.get().remove(queryId);
       return resp;
     } catch (Exception e) {
       logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
@@ -672,7 +664,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getTSExecuteStatementResp(getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR,
           "Statement is not a query statement."));
     }
-    return executeQueryStatement(req.statementId, physicalPlan);
+    return executeQueryStatement(req.statementId, physicalPlan, req.fetchSize);
   }
 
   private List<String> queryColumnsType(List<String> columns) throws QueryProcessException {
@@ -888,7 +880,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       TSQueryDataSet result = fillRpcReturnData(req.fetchSize, queryDataSet);
 
       boolean hasResultSet = result.bufferForTime().limit() != 0;
-      if (!hasResultSet && queryId2DataSet.get() != null) {
+      if (!hasResultSet) {
         queryId2DataSet.get().remove(req.queryId);
       }
 
