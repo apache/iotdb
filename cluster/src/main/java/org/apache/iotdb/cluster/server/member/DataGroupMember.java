@@ -274,6 +274,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   private boolean isFileAlreadyPulled(RemoteTsFileResource resource) {
+    // TODO-Cluster: currently some files are loaded redundantly because the same files
+    //  (containing the same date) are named differently on different node. How can we recognize
+    //  the duplicated files that have different names.
     String[] pathSegments = resource.getFile().getAbsolutePath().split(File.separator);
     int segSize = pathSegments.length;
     // {storageGroupName}/{fileName}
