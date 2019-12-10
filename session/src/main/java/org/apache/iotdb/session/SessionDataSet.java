@@ -59,6 +59,7 @@ public class SessionDataSet {
     this.queryId = queryId;
     this.client = client;
     this.operationHandle = operationHandle;
+    currentBitmap = new byte[columnNameList.size()];
 
     // deduplicate columnTypeList according to columnNameList
     this.columnTypeDeduplicatedList = new ArrayList<>();

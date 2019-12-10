@@ -245,7 +245,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         MeasurementSchema schema = knownSchemas.get(chunkMetaData.getMeasurementUid());
         if (schema == null) {
           throw new MetadataException(String
-              .format("Can not get schema if measurement [%s]",
+              .format("Can not get the schema of measurement [%s]",
                   chunkMetaData.getMeasurementUid()));
         }
         checkPathExists(node, fullPath, schema, true);

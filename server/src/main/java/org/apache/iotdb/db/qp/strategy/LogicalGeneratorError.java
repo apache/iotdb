@@ -15,41 +15,20 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.qp.physical.sys;
+package org.apache.iotdb.db.qp.strategy;
 
-import java.util.List;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 
-public class ShowPlan extends PhysicalPlan {
+public class LogicalGeneratorError extends BaseErrorListener {
 
-  private ShowContentType showContentType;
-
-  public ShowPlan(ShowContentType showContentType){
-    super(true);
-    this.showContentType = showContentType;
-    setOperatorType(OperatorType.SHOW);
-  }
+  public static final LogicalGeneratorError INSTANCE = new LogicalGeneratorError();
 
   @Override
-  public List<Path> getPaths() {
-    return null;
+  public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
+    throw new ParseCancellationException("line " + line + ":" + charPositionInLine + " " + msg);
   }
-
-  public ShowContentType getShowContentType() {
-    return showContentType;
-  }
-
-  @Override
-  public String toString() {
-    return String.format("%s %s", getOperatorType().toString(), showContentType);
-  }
-
-  public enum ShowContentType {
-    DYNAMIC_PARAMETER, FLUSH_TASK_INFO, TTL, VERSION
-  }
-
 }

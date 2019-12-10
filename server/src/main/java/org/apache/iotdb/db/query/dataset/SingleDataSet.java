@@ -15,41 +15,38 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.qp.physical.sys;
+package org.apache.iotdb.db.query.dataset;
 
+import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-public class ShowPlan extends PhysicalPlan {
+public class SingleDataSet extends QueryDataSet {
 
-  private ShowContentType showContentType;
+  private RowRecord record;
+  private int i = 0;
 
-  public ShowPlan(ShowContentType showContentType){
-    super(true);
-    this.showContentType = showContentType;
-    setOperatorType(OperatorType.SHOW);
+  public SingleDataSet(List<Path> paths,
+      List<TSDataType> dataTypes) {
+    super(paths, dataTypes);
+  }
+
+  public void setRecord(RowRecord record) {
+    this.record = record;
   }
 
   @Override
-  public List<Path> getPaths() {
-    return null;
-  }
-
-  public ShowContentType getShowContentType() {
-    return showContentType;
+  protected boolean hasNextWithoutConstraint() throws IOException {
+    return i == 0;
   }
 
   @Override
-  public String toString() {
-    return String.format("%s %s", getOperatorType().toString(), showContentType);
+  protected RowRecord nextWithoutConstraint() throws IOException {
+    i++;
+    return record;
   }
-
-  public enum ShowContentType {
-    DYNAMIC_PARAMETER, FLUSH_TASK_INFO, TTL, VERSION
-  }
-
 }
