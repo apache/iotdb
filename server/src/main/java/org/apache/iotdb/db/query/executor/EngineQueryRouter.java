@@ -49,6 +49,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
  */
 public class EngineQueryRouter implements IEngineQueryRouter {
 
+  protected DataQueryExecutorFactory executorFactory = EngineExecutor::new;
+
   @Override
   public QueryDataSet query(QueryExpression queryExpression, QueryContext context)
       throws StorageEngineException {
@@ -58,22 +60,20 @@ public class EngineQueryRouter implements IEngineQueryRouter {
         IExpression optimizedExpression = ExpressionOptimizer.getInstance()
             .optimize(queryExpression.getExpression(), queryExpression.getSelectedSeries());
         queryExpression.setExpression(optimizedExpression);
-        EngineExecutor engineExecutor =
-            new EngineExecutor(queryExpression);
+        DataQueryExecutor dataQueryExecutor = executorFactory.getExecutor(queryExpression);
         if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-          return engineExecutor.executeWithoutValueFilter(context);
+          return dataQueryExecutor.executeWithoutValueFilter(context);
         } else {
-          return engineExecutor.executeWithValueFilter(context);
+          return dataQueryExecutor.executeWithValueFilter(context);
         }
 
       } catch (QueryFilterOptimizationException | IOException e) {
         throw new StorageEngineException(e.getMessage());
       }
     } else {
-      EngineExecutor engineExecutor = new EngineExecutor(
-          queryExpression);
+      DataQueryExecutor dataQueryExecutor = executorFactory.getExecutor(queryExpression);
       try {
-        return engineExecutor.executeWithoutValueFilter(context);
+        return dataQueryExecutor.executeWithoutValueFilter(context);
       } catch (IOException e) {
         throw new StorageEngineException(e.getMessage());
       }

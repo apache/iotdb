@@ -63,7 +63,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecutor {
 
-  IEngineQueryRouter queryRouter = new EngineQueryRouter();
+  protected IEngineQueryRouter queryRouter = new EngineQueryRouter();
 
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
@@ -190,7 +190,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   protected abstract QueryDataSet processAuthorQuery(AuthorPlan plan, QueryContext context)
       throws QueryProcessException;
 
-  private QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
+  protected QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
       throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
       IOException {
     QueryDataSet queryDataSet;

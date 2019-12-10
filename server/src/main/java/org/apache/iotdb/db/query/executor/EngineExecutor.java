@@ -42,7 +42,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 /**
  * IoTDB query executor.
  */
-public class EngineExecutor {
+public class EngineExecutor implements DataQueryExecutor {
 
   private QueryExpression queryExpression;
 
@@ -50,9 +50,16 @@ public class EngineExecutor {
     this.queryExpression = queryExpression;
   }
 
+  protected IPointReader getSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
+      QueryContext context, boolean pushdownUnseq) throws IOException, StorageEngineException {
+    return new SeriesReaderWithoutValueFilter(path, timeFilter, context, true);
+  }
+
+
   /**
    * without filter or with global time filter.
    */
+  @Override
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
       throws StorageEngineException, IOException {
 
@@ -71,7 +78,7 @@ public class EngineExecutor {
         throw new StorageEngineException(e);
       }
 
-      IPointReader reader = new SeriesReaderWithoutValueFilter(path, timeFilter, context, true);
+      IPointReader reader = getSeriesReaderWithoutValueFilter(path, timeFilter, context, true);
       readersOfSelectedSeries.add(reader);
     }
 
@@ -89,6 +96,7 @@ public class EngineExecutor {
    * @return QueryDataSet object
    * @throws StorageEngineException StorageEngineException
    */
+  @Override
   public QueryDataSet executeWithValueFilter(QueryContext context) throws StorageEngineException, IOException {
 
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(
