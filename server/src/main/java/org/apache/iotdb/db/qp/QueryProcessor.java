@@ -96,6 +96,9 @@ public class QueryProcessor {
       case TTL:
       case LOAD_CONFIGURATION:
       case SHOW:
+      case LOAD_FILES:
+      case REMOVE_FILE:
+      case MOVE_FILE:
         return operator;
       case QUERY:
       case UPDATE:

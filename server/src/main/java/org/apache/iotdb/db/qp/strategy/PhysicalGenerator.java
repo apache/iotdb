@@ -18,6 +18,14 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
@@ -26,6 +34,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
@@ -37,7 +46,10 @@ import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
+import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
+import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
@@ -55,6 +67,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
@@ -65,8 +78,6 @@ import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-
-import java.util.*;
 
 /**
  * Used to convert logical operator to physical plan
@@ -161,6 +172,19 @@ public class PhysicalGenerator {
             throw new LogicalOperatorException(String
                 .format("not supported operator type %s in show operation.", operator.getType()));
         }
+      case LOAD_FILES:
+        if (((LoadFilesOperator) operator).isInvalid()) {
+          throw new LogicalOperatorException(((LoadFilesOperator) operator).getErrMsg());
+        }
+        return new OperateFilePlan(((LoadFilesOperator) operator).getFile(),
+            OperatorType.LOAD_FILES, ((LoadFilesOperator) operator).isAutoCreateSchema(),
+            ((LoadFilesOperator) operator).getSgLevel());
+      case REMOVE_FILE:
+        return new OperateFilePlan(((RemoveFileOperator) operator).getFile(),
+            OperatorType.REMOVE_FILE);
+      case MOVE_FILE:
+        return new OperateFilePlan(((MoveFileOperator) operator).getFile(),
+            ((MoveFileOperator) operator).getTargetDir(), OperatorType.MOVE_FILE);
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }

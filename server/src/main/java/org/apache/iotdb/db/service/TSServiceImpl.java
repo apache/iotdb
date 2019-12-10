@@ -34,6 +34,7 @@ import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -636,7 +637,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   /**
-   * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some AuthorPlan
+   * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
+   * AuthorPlan
    */
   private TSExecuteStatementResp executeQueryStatement(long statementId, PhysicalPlan plan) {
     long t1 = System.currentTimeMillis();
@@ -931,7 +933,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       } else {
         result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, req.fetchSize);
       }
-      boolean hasResultSet = (result.getRowCount() != 0);
+      boolean hasResultSet = (result.bufferForTime().limit() != 0);
       if (!hasResultSet && queryId2DataSet.get() != null) {
         queryId2DataSet.get().remove(req.queryId);
       }
@@ -1173,13 +1175,37 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       plan.setValues(req.getValuesList().get(i).toArray(new String[0]));
       TSStatus status = checkAuthority(plan);
       if (status != null) {
-          resp.addToStatusList(new TSStatus(status));
-      }
-      else{
+        resp.addToStatusList(new TSStatus(status));
+      } else {
         resp.addToStatusList(executePlan(plan));
       }
     }
 
+    return resp;
+  }
+
+  @Override
+  public TSExecuteBatchStatementResp testInsertBatch(TSBatchInsertionReq req) throws TException {
+    logger.debug("Test insert batch request receive.");
+    TSExecuteBatchStatementResp resp = new TSExecuteBatchStatementResp();
+    resp.setStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+    resp.setResult(Collections.emptyList());
+    return resp;
+  }
+
+  @Override
+  public TSStatus testInsertRow(TSInsertReq req) throws TException {
+    logger.debug("Test insert row request receive.");
+    return getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSExecuteInsertRowInBatchResp testInsertRowInBatch(TSInsertInBatchReq req)
+      throws TException {
+    logger.debug("Test insert row in batch request receive.");
+
+    TSExecuteInsertRowInBatchResp resp = new TSExecuteInsertRowInBatchResp();
+    resp.addToStatusList(getStatus(TSStatusCode.SUCCESS_STATUS));
     return resp;
   }
 
