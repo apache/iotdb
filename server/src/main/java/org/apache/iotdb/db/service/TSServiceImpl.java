@@ -574,8 +574,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return executeUpdateStatement(physicalPlan);
       }
     } catch (ParseCancellationException e) {
-      logger.debug(e.getMessage());
-      return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
+      logger.debug("sql syntax error: ", e);
+      return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR,
+          "Sql syntax error: " + e.getMessage()));
     }
       catch (SQLParserException e) {
       logger.error("check metadata error: ", e);

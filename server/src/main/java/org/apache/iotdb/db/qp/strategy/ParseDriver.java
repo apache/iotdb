@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.qp.strategy;
 
 import java.time.ZoneId;
-import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
