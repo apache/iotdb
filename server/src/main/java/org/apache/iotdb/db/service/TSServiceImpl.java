@@ -568,18 +568,24 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         if (sqlArgumentsList.size() > MAX_SIZE) {
           sqlArgumentsList.subList(0, DELETE_SIZE).clear();
         }
-        //fill data
-        if (resp.operationHandle.hasResultSet) {
-          long queryId = resp.getOperationHandle().operationId.queryId;
-          QueryDataSet newDataSet = createNewDataSet(queryId);
-          TSQueryDataSet tsQueryDataSet = getTsQueryDataSet(req.fetchSize, newDataSet);
-          TSFetchResultsResp tsFetchResultsResp = getTsFetchResultsResp(queryId, tsQueryDataSet);
-
-          resp.operationHandle.hasResultSet = tsFetchResultsResp.hasResultSet;
-          if (tsFetchResultsResp.hasResultSet) {
-            resp.setQueryDataSet(tsFetchResultsResp.queryDataSet);
-          }
+        if (!resp.operationHandle.hasResultSet) {
+          return resp;
         }
+        //fill data
+        long queryId = resp.getOperationHandle().operationId.queryId;
+        QueryDataSet newDataSet = createQueryDataSet(queryId);
+        TSQueryDataSet result = fillRpcReturnData(req.fetchSize, newDataSet);
+
+        boolean hasResultSet = result.bufferForTime().limit() != 0;
+        if (hasResultSet) {
+          resp.setQueryDataSet(result);
+          return resp;
+        }
+        //without any data
+        if (queryId2DataSet.get() != null) {
+          queryId2DataSet.get().remove(queryId);
+        }
+        resp.operationHandle.hasResultSet = false;
         return resp;
       } else {
         return executeUpdateStatement(physicalPlan);
@@ -873,15 +879,23 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Has not executed statement"));
       }
 
-      QueryDataSet queryDataSet;
       if (!queryId2DataSet.get().containsKey(req.queryId)) {
-        queryDataSet = createNewDataSet(req.queryId);
-      } else {
-        queryDataSet = queryId2DataSet.get().get(req.queryId);
+        return getTSFetchResultsResp(
+            getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Has not executed query"));
       }
 
-      TSQueryDataSet result = getTsQueryDataSet(req.fetchSize, queryDataSet);
-      TSFetchResultsResp resp = getTsFetchResultsResp(req.queryId, result);
+      QueryDataSet queryDataSet = queryId2DataSet.get().get(req.queryId);
+      TSQueryDataSet result = fillRpcReturnData(req.fetchSize, queryDataSet);
+
+      boolean hasResultSet = result.bufferForTime().limit() != 0;
+      if (!hasResultSet && queryId2DataSet.get() != null) {
+        queryId2DataSet.get().remove(req.queryId);
+      }
+
+      TSFetchResultsResp resp = getTSFetchResultsResp(getStatus(TSStatusCode.SUCCESS_STATUS,
+          "FetchResult successfully. Has more result: " + hasResultSet));
+      resp.setHasResultSet(hasResultSet);
+      resp.setQueryDataSet(result);
       return resp;
     } catch (Exception e) {
       logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
@@ -889,20 +903,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private TSFetchResultsResp getTsFetchResultsResp(long queryId, TSQueryDataSet result) {
-    boolean hasResultSet = (result.bufferForTime().limit() != 0);
-    if (!hasResultSet && queryId2DataSet.get() != null) {
-      queryId2DataSet.get().remove(queryId);
-    }
-
-    TSFetchResultsResp resp = getTSFetchResultsResp(getStatus(TSStatusCode.SUCCESS_STATUS,
-        "FetchResult successfully. Has more result: " + hasResultSet));
-    resp.setHasResultSet(hasResultSet);
-    resp.setQueryDataSet(result);
-    return resp;
-  }
-
-  private TSQueryDataSet getTsQueryDataSet(int fetchSize, QueryDataSet queryDataSet)
+  private TSQueryDataSet fillRpcReturnData(int fetchSize, QueryDataSet queryDataSet)
       throws TException, AuthException, IOException {
     IAuthorizer authorizer;
     try {
@@ -927,7 +928,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return result;
   }
 
-  private QueryDataSet createNewDataSet(long queryId)
+  private QueryDataSet createQueryDataSet(long queryId)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException {
     PhysicalPlan physicalPlan = queryId2Plan.get().get(queryId);
 
