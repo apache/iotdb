@@ -44,7 +44,6 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   private String currentStorageGroup;
   private String currentDevice;
   private String currentChildPath;
-  private String currentVersion;
   private List<String> currentTimeseries;
   private List<String> timeseriesNumList;
   private List<String> nodesNumList;
@@ -281,10 +280,6 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
           Map.Entry pair = (Map.Entry) columnItr.next();
           currentNode = (String) pair.getKey();
           currentNodeTimeseriesNum = (String) pair.getValue();
-          break;
-        case VERSION:
-          currentVersion = (String) columnItr.next();
-          hasNext = false;
           break;
         default:
           break;
