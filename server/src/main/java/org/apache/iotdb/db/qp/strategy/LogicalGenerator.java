@@ -120,6 +120,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetStorageGroupContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowAllTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowVersionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SlimitClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SoffsetClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathContext;
@@ -191,20 +192,26 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterMoveFile(MoveFileContext ctx) {
     super.enterMoveFile(ctx);
-    initializedOperator = new MoveFileOperator(new File(ctx.getChild(1).getText()),
-        new File(ctx.getChild(2).getText()));
+    initializedOperator = new MoveFileOperator(new File(ctx.FILE(0).getText()),
+        new File(ctx.FILE(1).getText()));
   }
 
   @Override
   public void enterRemoveFile(RemoveFileContext ctx) {
     super.enterRemoveFile(ctx);
-    initializedOperator = new RemoveFileOperator(new File(ctx.getChild(1).getText()));
+    initializedOperator = new RemoveFileOperator(new File(ctx.FILE().getText()));
   }
 
   @Override
   public void enterLoadConfigurationStatement(LoadConfigurationStatementContext ctx) {
     super.enterLoadConfigurationStatement(ctx);
     initializedOperator = new LoadConfigurationOperator();
+  }
+
+  @Override
+  public void enterShowVersion(ShowVersionContext ctx) {
+    super.enterShowVersion(ctx);
+    initializedOperator = new ShowOperator(SQLConstant.TOK_VERSION);
   }
 
   @Override
