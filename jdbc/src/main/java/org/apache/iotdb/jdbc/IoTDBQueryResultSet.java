@@ -690,7 +690,7 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public boolean next() throws SQLException {
-    if ((tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining()) && !emptyResultSet) {
+    if ((tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining()) && operationHandle.hasResultSet) {
       TSFetchResultsReq req = new TSFetchResultsReq(sql, fetchSize, queryId);
       try {
         TSFetchResultsResp resp = client.fetchResults(req);
@@ -712,7 +712,7 @@ public class IoTDBQueryResultSet implements ResultSet {
       }
 
     }
-    if (emptyResultSet) {
+    if (emptyResultSet || !operationHandle.hasResultSet) {
       return false;
     }
     constructOneRow();
