@@ -22,7 +22,6 @@ package org.apache.iotdb.db.query.reader.resourceRelated;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -69,12 +68,10 @@ public class UnseqResourceMergeReader implements IBatchReader {
   public UnseqResourceMergeReader(Path seriesPath, List<TsFileResource> unseqResources,
       QueryContext context, Filter timeFilter) throws IOException {
 
-    this.seriesPath = seriesPath;
     long queryId = context.getJobId();
-
     List<ChunkReaderWrap> readerWrapList = new ArrayList<>();
-    for (TsFileResource tsFileResource : unseqResources) {
 
+    for (TsFileResource tsFileResource : unseqResources) {
       // prepare metaDataList
       List<ChunkMetaData> metaDataList;
       if (tsFileResource.isClosed()) {
@@ -121,11 +118,11 @@ public class UnseqResourceMergeReader implements IBatchReader {
     ExternalSortJobEngine externalSortJobEngine = SimpleExternalSortEngine.getInstance();
     List<IPointReader> readerList = externalSortJobEngine
         .executeForIPointReader(queryId, readerWrapList);
-    int priorityValue = 1;
+    int index = 1;
 
     priorityMergeReader = new PriorityMergeReader();
     for (IPointReader chunkReader : readerList) {
-      priorityMergeReader.addReaderWithPriority(chunkReader, priorityValue++);
+      priorityMergeReader.addReaderWithPriority(chunkReader, index++);
     }
   }
 
