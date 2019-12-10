@@ -244,9 +244,9 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   public void pullSnapshots() {
-    List<Integer> sockets = partitionTable.getNodeSockets(thisNode);
+    List<Integer> slots = partitionTable.getNodeSlots(thisNode);
     DataGroupMember dataGroupMember = headerGroupMap.get(thisNode);
-    dataGroupMember.pullSnapshots(sockets, thisNode);
+    dataGroupMember.pullSnapshots(slots, thisNode);
   }
 
 

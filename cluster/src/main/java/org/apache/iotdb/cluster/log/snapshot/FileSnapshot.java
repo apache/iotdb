@@ -20,13 +20,13 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
- * FileSnapshot records the data files in a socket and their md5 (or other verification).
+ * FileSnapshot records the data files in a slot and their md5 (or other verification).
  * When the snapshot is used to perform a catch-up, the receiver should:
- * 1. create a remote snapshot indicating that the socket is being pulled from the remote
+ * 1. create a remote snapshot indicating that the slot is being pulled from the remote
  * 2. traverse the file list, for each file:
  *  2.1 if the file exists locally and the md5 is correct, skip it.
  *  2.2 otherwise pull the file from the remote.
- * 3. replace the remote snapshot with a FileSnapshot indicating that the socket of this node is
+ * 3. replace the remote snapshot with a FileSnapshot indicating that the slot of this node is
  * synchronized with the remote one.
  */
 public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {

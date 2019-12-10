@@ -12,7 +12,7 @@ import java.util.Collection;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
- * DataSimpleSnapshot also records timeseries in the socket.
+ * DataSimpleSnapshot also records timeseries in the slot.
  */
 public class DataSimpleSnapshot extends SimpleSnapshot {
 

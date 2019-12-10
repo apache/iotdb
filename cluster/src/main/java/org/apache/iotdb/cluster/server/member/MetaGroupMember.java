@@ -47,7 +47,7 @@ import org.apache.iotdb.cluster.log.manage.MetaSingleSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
-import org.apache.iotdb.cluster.partition.SocketPartitionTable;
+import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterQueryParser;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -234,7 +234,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             DataGroupMember dataGroupMember = dataMemberFactory.create(newGroup, thisNode);
             dataClusterServer.addDataGroupMember(dataGroupMember);
             dataGroupMember.start();
-            dataGroupMember.pullSnapshots(partitionTable.getNodeSockets(newNode), newNode);
+            dataGroupMember.pullSnapshots(partitionTable.getNodeSlots(newNode), newNode);
           } catch (TTransportException e) {
             logger.error("Fail to create data newMember for new header {}", newNode, e);
           }
@@ -310,7 +310,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       } else if (resp.getRespNum() == Response.RESPONSE_AGREE) {
         logger.info("Node {} admitted this node into the cluster", node);
         ByteBuffer partitionTableBuffer = ByteBuffer.wrap(resp.getPartitionTableBytes());
-        partitionTable = new SocketPartitionTable(thisNode);
+        partitionTable = new SlotPartitionTable(thisNode);
         partitionTable.deserialize(partitionTableBuffer);
         savePartitionTable();
 
@@ -358,7 +358,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         synchronized (this) {
           // if the leader has sent the node set then accept it
           ByteBuffer byteBuffer = ByteBuffer.wrap(request.getPartitionTableBytes());
-          partitionTable = new SocketPartitionTable(thisNode);
+          partitionTable = new SlotPartitionTable(thisNode);
           partitionTable.deserialize(byteBuffer);
           allNodes = new ArrayList<>(partitionTable.getAllNodes());
           savePartitionTable();
@@ -387,7 +387,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       // if all nodes' ids are known, we can build the partition table
       if (allNodesIdKnown()) {
         if (partitionTable == null && !loadPartitionTable()) {
-          partitionTable = new SocketPartitionTable(allNodes, thisNode);
+          partitionTable = new SlotPartitionTable(allNodes, thisNode);
           logger.info("Partition table is set up");
         }
         startSubServers();
@@ -715,7 +715,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       byte[] tableBuffer = new byte[size];
       inputStream.read(tableBuffer);
 
-      partitionTable = new SocketPartitionTable(thisNode);
+      partitionTable = new SlotPartitionTable(thisNode);
       partitionTable.deserialize(ByteBuffer.wrap(tableBuffer));
       allNodes = new ArrayList<>(partitionTable.getAllNodes());
       for (Node node : allNodes) {

@@ -26,11 +26,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * SocketPartitionTable manages the sockets (data partition) of each node using a look-up table.
+ * SlotPartitionTable manages the slots (data partition) of each node using a look-up table.
  */
-public class SocketPartitionTable implements PartitionTable {
+public class SlotPartitionTable implements PartitionTable {
 
-  private static final Logger logger = LoggerFactory.getLogger(SocketPartitionTable.class);
+  private static final Logger logger = LoggerFactory.getLogger(SlotPartitionTable.class);
 
   private static final int REPLICATION_NUM =
       ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
@@ -38,11 +38,11 @@ public class SocketPartitionTable implements PartitionTable {
       ClusterDescriptor.getINSTANCE().getConfig().getPartitionInterval();
 
   private List<Node> nodeRing = new ArrayList<>();
-  // the sockets held by each node
-  private Map<Node, List<Integer>> nodeSocketMap = new ConcurrentHashMap<>();
-  // each socket is managed by whom
-  private Map<Integer, Node> socketNodeMap = new ConcurrentHashMap<>();
-  // the nodes that each socket belongs to before a new node is added, used for the new node to
+  // the slots held by each node
+  private Map<Node, List<Integer>> nodeSlotMap = new ConcurrentHashMap<>();
+  // each slot is managed by whom
+  private Map<Integer, Node> slotNodeMap = new ConcurrentHashMap<>();
+  // the nodes that each slot belongs to before a new node is added, used for the new node to
   // find the data source
   private Map<Node, Map<Integer, Node>> previousNodeMap = new ConcurrentHashMap<>();
 
@@ -50,11 +50,11 @@ public class SocketPartitionTable implements PartitionTable {
   private List<PartitionGroup> localGroups;
   private Node thisNode;
 
-  public SocketPartitionTable(Node thisNode) {
+  public SlotPartitionTable(Node thisNode) {
     this.thisNode = thisNode;
   }
 
-  public SocketPartitionTable(Collection<Node> nodes, Node thisNode) {
+  public SlotPartitionTable(Collection<Node> nodes, Node thisNode) {
     this.thisNode = thisNode;
     init(nodes);
   }
@@ -68,27 +68,27 @@ public class SocketPartitionTable implements PartitionTable {
   }
 
   private void assignPartitions() {
-    // evenly assign the sockets to each node
+    // evenly assign the slots to each node
     int nodeNum = nodeRing.size();
-    int socketsPerNode = ClusterConstant.SOCKET_NUM / nodeNum;
+    int slotsPerNode = ClusterConstant.SLOT_NUM / nodeNum;
     for (Node node : nodeRing) {
-      List<Integer> nodeSockets = new ArrayList<>();
-      nodeSocketMap.put(node, nodeSockets);
+      List<Integer> nodeSlots = new ArrayList<>();
+      nodeSlotMap.put(node, nodeSlots);
     }
 
-    for (int i = 0; i < ClusterConstant.SOCKET_NUM; i++) {
-      int nodeIdx = i / socketsPerNode;
+    for (int i = 0; i < ClusterConstant.SLOT_NUM; i++) {
+      int nodeIdx = i / slotsPerNode;
       if (nodeIdx >= nodeNum) {
-        // the last node may receive a little more if total sockets cannot de divided by node number
+        // the last node may receive a little more if total slots cannot de divided by node number
         nodeIdx--;
       }
-      nodeSocketMap.get(nodeRing.get(nodeIdx)).add(i);
+      nodeSlotMap.get(nodeRing.get(nodeIdx)).add(i);
     }
 
-    // build the index to find a node by socket
-    for (Entry<Node, List<Integer>> entry : nodeSocketMap.entrySet()) {
-      for (Integer socket : entry.getValue()) {
-        socketNodeMap.put(socket, entry.getKey());
+    // build the index to find a node by slot
+    for (Entry<Node, List<Integer>> entry : nodeSlotMap.entrySet()) {
+      for (Integer slot : entry.getValue()) {
+        slotNodeMap.put(slot, entry.getKey());
       }
     }
   }
@@ -138,10 +138,10 @@ public class SocketPartitionTable implements PartitionTable {
   @Override
   public PartitionGroup route(String storageGroupName, long timestamp) {
     synchronized (nodeRing) {
-      int socketNum = PartitionUtils.calculateStorageGroupSocket(storageGroupName, timestamp);
-      Node node = socketNodeMap.get(socketNum);
-      logger.debug("The socket of {}@{} is {}, held by {}", storageGroupName, timestamp,
-          socketNum, node);
+      int slotNum = PartitionUtils.calculateStorageGroupSlot(storageGroupName, timestamp);
+      Node node = slotNodeMap.get(slotNum);
+      logger.debug("The slot of {}@{} is {}, held by {}", storageGroupName, timestamp,
+          slotNum, node);
       return getHeaderGroup(node);
     }
   }
@@ -184,33 +184,33 @@ public class SocketPartitionTable implements PartitionTable {
         localGroups.add(newGroup);
       }
 
-      // the sockets movement is only done logically, the new node itself will pull data from the
+      // the slots movement is only done logically, the new node itself will pull data from the
       // old node
-      moveSocketsToNew(node);
+      moveSlotsToNew(node);
       return newGroup;
     }
   }
 
-  private void moveSocketsToNew(Node node) {
-    // as a node is added, the average sockets for each node decrease
-    // move the sockets to the new node if any previous node have more sockets than the new average
-    List<Integer> newSockets = new ArrayList<>();
+  private void moveSlotsToNew(Node node) {
+    // as a node is added, the average slots for each node decrease
+    // move the slots to the new node if any previous node have more slots than the new average
+    List<Integer> newSlots = new ArrayList<>();
     Map<Integer, Node> previousHolders = new HashMap<>();
-    int newAvg = ClusterConstant.SOCKET_NUM / nodeRing.size();
-    for (Entry<Node, List<Integer>> entry : nodeSocketMap.entrySet()) {
-      List<Integer> sockets = entry.getValue();
-      int transferNum = sockets.size() - newAvg;
+    int newAvg = ClusterConstant.SLOT_NUM / nodeRing.size();
+    for (Entry<Node, List<Integer>> entry : nodeSlotMap.entrySet()) {
+      List<Integer> slots = entry.getValue();
+      int transferNum = slots.size() - newAvg;
       if (transferNum > 0) {
-        List<Integer> socketsToMove = sockets.subList(sockets.size() - transferNum, sockets.size());
-        newSockets.addAll(socketsToMove);
-        for (Integer integer : socketsToMove) {
+        List<Integer> slotsToMove = slots.subList(slots.size() - transferNum, slots.size());
+        newSlots.addAll(slotsToMove);
+        for (Integer integer : slotsToMove) {
           // record what node previously hold the integer
           previousHolders.put(integer, entry.getKey());
         }
-        socketsToMove.clear();
+        slotsToMove.clear();
       }
     }
-    nodeSocketMap.put(node, newSockets);
+    nodeSlotMap.put(node, newSlots);
     previousNodeMap.put(node, previousHolders);
   }
 
@@ -225,8 +225,8 @@ public class SocketPartitionTable implements PartitionTable {
     DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
 
     try {
-      dataOutputStream.writeInt(nodeSocketMap.size());
-      for (Entry<Node, List<Integer>> entry : nodeSocketMap.entrySet()) {
+      dataOutputStream.writeInt(nodeSlotMap.size());
+      for (Entry<Node, List<Integer>> entry : nodeSlotMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
         SerializeUtils.serialize(entry.getValue(), dataOutputStream);
       }
@@ -255,13 +255,13 @@ public class SocketPartitionTable implements PartitionTable {
     Map<Integer, Node> idNodeMap = new HashMap<>();
     for (int i = 0; i < size; i++) {
       Node node = new Node();
-      List<Integer> sockets = new ArrayList<>();
+      List<Integer> slots = new ArrayList<>();
       SerializeUtils.deserialize(node, buffer);
-      SerializeUtils.deserialize(sockets, buffer);
-      nodeSocketMap.put(node, sockets);
+      SerializeUtils.deserialize(slots, buffer);
+      nodeSlotMap.put(node, slots);
       idNodeMap.put(node.getNodeIdentifier(), node);
-      for (Integer socket : sockets) {
-        socketNodeMap.put(socket, node);
+      for (Integer slot : slots) {
+        slotNodeMap.put(slot, node);
       }
     }
 
@@ -274,14 +274,14 @@ public class SocketPartitionTable implements PartitionTable {
       Map<Integer, Node> prevHolders = new HashMap<>();
       int holderNum = buffer.getInt();
       for (int i1 = 0; i1 < holderNum; i1++) {
-        int socket = buffer.getInt();
+        int slot = buffer.getInt();
         Node holder = idNodeMap.get(buffer.getInt());
-        prevHolders.put(socket, holder);
+        prevHolders.put(slot, holder);
       }
       previousNodeMap.put(node, prevHolders);
     }
 
-    nodeRing.addAll(nodeSocketMap.keySet());
+    nodeRing.addAll(nodeSlotMap.keySet());
     nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
 
     localGroups = getPartitionGroups(thisNode);
@@ -299,7 +299,7 @@ public class SocketPartitionTable implements PartitionTable {
 
 
   @Override
-  public List<Integer> getNodeSockets(Node header) {
-    return nodeSocketMap.get(header);
+  public List<Integer> getNodeSlots(Node header) {
+    return nodeSlotMap.get(header);
   }
 }

@@ -25,12 +25,12 @@ public class RemoteDataSimpleSnapshot extends DataSimpleSnapshot implements Remo
   private static final Logger logger = LoggerFactory.getLogger(RemoteDataSimpleSnapshot.class);
   private Future<Map<Integer, DataSimpleSnapshot>> remoteSnapshotFuture;
   private List<Log> tempList = new ArrayList<>();
-  private int socket;
+  private int slot;
 
   public RemoteDataSimpleSnapshot(Future<Map<Integer, DataSimpleSnapshot>> remoteSnapshotFuture,
-      int socket) {
+      int slot) {
     this.remoteSnapshotFuture = remoteSnapshotFuture;
-    this.socket = socket;
+    this.slot = slot;
   }
 
   @Override
@@ -75,7 +75,7 @@ public class RemoteDataSimpleSnapshot extends DataSimpleSnapshot implements Remo
         Map<Integer, DataSimpleSnapshot> remoteSnapshots = remoteSnapshotFuture.get();
         synchronized (this) {
           logger.info("The remote snapshot is ready");
-          DataSimpleSnapshot remoteSnapshot = remoteSnapshots.get(socket);
+          DataSimpleSnapshot remoteSnapshot = remoteSnapshots.get(slot);
           if (remoteSnapshot != null) {
             snapshot = remoteSnapshot.snapshot;
             timeseriesSchemas.addAll(remoteSnapshot.timeseriesSchemas);

@@ -27,14 +27,14 @@ import org.slf4j.LoggerFactory;
 
 /**
  * PartitionedSnapshotLogManager provides a PartitionedSnapshot as snapshot, dividing each log to
- * a sub-snapshot according to its socket and stores timeseries schemas of each socket.
+ * a sub-snapshot according to its slot and stores timeseries schemas of each slot.
  */
 public class PartitionedSnapshotLogManager extends MemoryLogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(PartitionedSnapshotLogManager.class);
 
-  Map<Integer, Snapshot> socketSnapshots = new HashMap<>();
-  Map<Integer, Collection<MeasurementSchema>> socketTimeseries = new HashMap<>();
+  Map<Integer, Snapshot> slotSnapshots = new HashMap<>();
+  Map<Integer, Collection<MeasurementSchema>> slotTimeseries = new HashMap<>();
   long snapshotLastLogId;
   long snapshotLastLogTerm;
   PartitionTable partitionTable;
@@ -50,9 +50,9 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
   @Override
   public Snapshot getSnapshot() {
     // copy snapshots
-    synchronized (socketSnapshots) {
+    synchronized (slotSnapshots) {
       PartitionedSnapshot partitionedSnapshot = new PartitionedSnapshot(DataSimpleSnapshot::new);
-      for (Entry<Integer, Snapshot> entry : socketSnapshots.entrySet()) {
+      for (Entry<Integer, Snapshot> entry : slotSnapshots.entrySet()) {
         partitionedSnapshot.putSnapshot(entry.getKey(), entry.getValue());
       }
       partitionedSnapshot.setLastLogId(snapshotLastLogId);
@@ -67,7 +67,7 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
     StorageEngine.getInstance().syncCloseAllProcessor();
     logger.info("Taking snapshots, IoTDB is flushed");
 
-    synchronized (socketSnapshots) {
+    synchronized (slotSnapshots) {
       collectTimeseriesSchemas();
 
       while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
@@ -76,8 +76,8 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
         snapshotLastLogTerm = log.getCurrLogTerm();
 
         DataSimpleSnapshot dataSimpleSnapshot =
-            (DataSimpleSnapshot) socketSnapshots.computeIfAbsent(PartitionUtils.calculateLogSocket(log,
-            partitionTable), socket -> new DataSimpleSnapshot(socketTimeseries.get(socket)));
+            (DataSimpleSnapshot) slotSnapshots.computeIfAbsent(PartitionUtils.calculateLogSlot(log,
+            partitionTable), slot -> new DataSimpleSnapshot(slotTimeseries.get(slot)));
         dataSimpleSnapshot.add(log);
       }
 
@@ -86,25 +86,25 @@ public class PartitionedSnapshotLogManager extends MemoryLogManager {
   }
 
   void collectTimeseriesSchemas() {
-    socketTimeseries.clear();
+    slotTimeseries.clear();
     // TODO-Cluster#349: the collection is re-collected each time to prevent inconsistency when some of
     //  them are removed during two snapshots. Incremental addition or removal may be used to
     //  optimize
     List<MNode> allSgNodes = MManager.getInstance().getAllStorageGroups();
     for (MNode sgNode : allSgNodes) {
       String storageGroupName = sgNode.getFullPath();
-      int socket = PartitionUtils.calculateStorageGroupSocket(storageGroupName, 0);
+      int slot = PartitionUtils.calculateStorageGroupSlot(storageGroupName, 0);
 
-      Collection<MeasurementSchema> schemas = socketTimeseries.computeIfAbsent(socket,
+      Collection<MeasurementSchema> schemas = slotTimeseries.computeIfAbsent(slot,
           s -> new HashSet<>());
       MManager.getInstance().collectSeries(sgNode, schemas);
-      logger.debug("{} timeseries are snapshot in socket {}", schemas.size(), socket);
+      logger.debug("{} timeseries are snapshot in slot {}", schemas.size(), slot);
     }
   }
 
-  public void setSnapshot(Snapshot snapshot, int socket) {
-    synchronized (socketSnapshots) {
-      socketSnapshots.put(socket, snapshot);
+  public void setSnapshot(Snapshot snapshot, int slot) {
+    synchronized (slotSnapshots) {
+      slotSnapshots.put(slot, snapshot);
     }
   }
 }

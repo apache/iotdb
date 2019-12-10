@@ -15,30 +15,30 @@ import java.util.Map.Entry;
 import org.apache.iotdb.cluster.log.Snapshot;
 
 /**
- * PartitionedSnapshot stores the snapshot of each socket in a map.
+ * PartitionedSnapshot stores the snapshot of each slot in a map.
  */
 public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
 
-  private Map<Integer, T> socketSnapshots;
+  private Map<Integer, T> slotSnapshots;
   private SnapshotFactory<T> factory;
 
   public PartitionedSnapshot(SnapshotFactory<T> factory) {
-    socketSnapshots = new HashMap<>();
+    slotSnapshots = new HashMap<>();
     this.factory = factory;
   }
 
   private PartitionedSnapshot(
-      Map<Integer, T> socketSnapshots, SnapshotFactory<T> factory) {
-    this.socketSnapshots = socketSnapshots;
+      Map<Integer, T> slotSnapshots, SnapshotFactory<T> factory) {
+    this.slotSnapshots = slotSnapshots;
     this.factory = factory;
   }
 
-  public void putSnapshot(int socket, T snapshot) {
-    socketSnapshots.put(socket, snapshot);
+  public void putSnapshot(int slot, T snapshot) {
+    slotSnapshots.put(slot, snapshot);
   }
 
-  private T getPartitionSnapshot(int socket) {
-    return socketSnapshots.get(socket);
+  private T getPartitionSnapshot(int slot) {
+    return slotSnapshots.get(slot);
   }
 
   @Override
@@ -47,8 +47,8 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
     DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
 
     try {
-      dataOutputStream.writeInt(socketSnapshots.size());
-      for (Entry<Integer, T> entry : socketSnapshots.entrySet()) {
+      dataOutputStream.writeInt(slotSnapshots.size());
+      for (Entry<Integer, T> entry : slotSnapshots.entrySet()) {
         dataOutputStream.writeInt(entry.getKey());
         dataOutputStream.write(entry.getValue().serialize().array());
       }
@@ -65,32 +65,32 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
   public void deserialize(ByteBuffer buffer) {
    int size = buffer.getInt();
     for (int i = 0; i < size; i++) {
-      int socket = buffer.getInt();
+      int slot = buffer.getInt();
       T snapshot = factory.create();
       snapshot.deserialize(buffer);
-      socketSnapshots.put(socket, snapshot);
+      slotSnapshots.put(slot, snapshot);
     }
     setLastLogId(buffer.getLong());
     setLastLogTerm(buffer.getLong());
   }
 
 
-  public PartitionedSnapshot getSubSnapshots(List<Integer> sockets) {
+  public PartitionedSnapshot getSubSnapshots(List<Integer> slots) {
     Map<Integer, Snapshot> subSnapshots = new HashMap<>();
-    for (Integer socket : sockets) {
-      subSnapshots.put(socket, getPartitionSnapshot(socket));
+    for (Integer slot : slots) {
+      subSnapshots.put(slot, getPartitionSnapshot(slot));
     }
     return new PartitionedSnapshot(subSnapshots, factory);
   }
 
-  public Snapshot getSnapshot(int socket) {
-    return socketSnapshots.get(socket);
+  public Snapshot getSnapshot(int slot) {
+    return slotSnapshots.get(slot);
   }
 
   @Override
   public String toString() {
     return "PartitionedSnapshot{" +
-        "socketSnapshots=" + socketSnapshots.size() +
+        "slotSnapshots=" + slotSnapshots.size() +
         ", lastLogId=" + lastLogId +
         ", lastLogTerm=" + lastLogTerm +
         '}';

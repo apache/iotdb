@@ -68,14 +68,14 @@ public interface PartitionTable {
 
   /**
    *
-   * @return each socket's previous holder after the node's addition.
+   * @return each slot's previous holder after the node's addition.
    */
   Map<Integer, Node> getPreviousNodeMap(Node node);
 
   /**
    *
    * @param header
-   * @return the sockets held by the header.
+   * @return the slots held by the header.
    */
-  List<Integer> getNodeSockets(Node header);
+  List<Integer> getNodeSlots(Node header);
 }

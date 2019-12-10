@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * RemoteFileSnapshot is a place holder that indicates the socket has unpulled data in the remote
+ * RemoteFileSnapshot is a place holder that indicates the slot has unpulled data in the remote
  * node.
  */
 public class RemoteFileSnapshot extends Snapshot implements RemoteSnapshot {

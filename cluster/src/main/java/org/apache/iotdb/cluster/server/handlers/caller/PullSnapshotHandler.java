@@ -26,14 +26,14 @@ public class PullSnapshotHandler<T extends Snapshot> implements AsyncMethodCallb
   private static final Logger logger = LoggerFactory.getLogger(PullSnapshotHandler.class);
   private AtomicReference<Map<Integer, T>> resultRef;
   private Node node;
-  private List<Integer> socket;
+  private List<Integer> slot;
   private SnapshotFactory<T> factory;
 
   public PullSnapshotHandler(AtomicReference<Map<Integer, T>> resultRef,
-      Node node, List<Integer> socket, SnapshotFactory factory) {
+      Node node, List<Integer> slot, SnapshotFactory factory) {
     this.resultRef = resultRef;
     this.node = node;
-    this.socket = socket;
+    this.slot = slot;
     this.factory = factory;
   }
 
@@ -54,7 +54,7 @@ public class PullSnapshotHandler<T extends Snapshot> implements AsyncMethodCallb
 
   @Override
   public void onError(Exception exception) {
-    logger.error("Cannot pull snapshot of {} from {}", socket.size(), node, exception);
+    logger.error("Cannot pull snapshot of {} from {}", slot.size(), node, exception);
     synchronized (resultRef) {
       resultRef.notifyAll();
     }

@@ -24,7 +24,7 @@ public class ClusterConstant {
   // a failed election will restart in 2s~10s
   public static final long ELECTION_LEAST_TIME_OUT_MS = 2 * 1000L;
   public static final long ELECTION_RANDOM_TIME_OUT_MS = 8 * 1000L;
-  public static final int SOCKET_NUM = 10000;
+  public static final int SLOT_NUM = 10000;
   public static final int HASH_SALT = 2333;
   public static final int CONNECTION_TIME_OUT_MS = 20 * 1000;
   public static final int SYNC_LEADER_MAX_WAIT_MS = 20 * 1000;

@@ -5,7 +5,7 @@
 package org.apache.iotdb.cluster.utils;
 
 import static org.apache.iotdb.cluster.config.ClusterConstant.HASH_SALT;
-import static org.apache.iotdb.cluster.partition.SocketPartitionTable.PARTITION_INTERVAL;
+import static org.apache.iotdb.cluster.partition.SlotPartitionTable.PARTITION_INTERVAL;
 
 import java.util.Objects;
 import org.apache.iotdb.cluster.config.ClusterConstant;
@@ -41,7 +41,7 @@ public class PartitionUtils {
         plan instanceof DeletePlan;
   }
 
-  public static int calculateLogSocket(Log log, PartitionTable partitionTable) {
+  public static int calculateLogSlot(Log log, PartitionTable partitionTable) {
     if (log instanceof PhysicalPlanLog) {
       PhysicalPlanLog physicalPlanLog = ((PhysicalPlanLog) log);
       PhysicalPlan plan = physicalPlanLog.getPlan();
@@ -88,9 +88,9 @@ public class PartitionUtils {
     return partitionTable.route(storageGroup, timestamp);
   }
 
-  public static int calculateStorageGroupSocket(String storageGroupName, long timestamp) {
+  public static int calculateStorageGroupSlot(String storageGroupName, long timestamp) {
     long partitionInstance = timestamp / PARTITION_INTERVAL;
     int hash = Objects.hash(storageGroupName, partitionInstance * HASH_SALT);
-    return Math.abs(hash % ClusterConstant.SOCKET_NUM);
+    return Math.abs(hash % ClusterConstant.SLOT_NUM);
   }
 }

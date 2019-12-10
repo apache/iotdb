@@ -230,18 +230,18 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
-  public void applySnapshot(Snapshot snapshot, int socket) {
-    logger.debug("{}: applying snapshot {} of socket {}", name, snapshot, socket);
+  public void applySnapshot(Snapshot snapshot, int slot) {
+    logger.debug("{}: applying snapshot {} of slot {}", name, snapshot, slot);
     if (snapshot instanceof DataSimpleSnapshot) {
-      applySimpleSnapshot((DataSimpleSnapshot) snapshot, socket);
+      applySimpleSnapshot((DataSimpleSnapshot) snapshot, slot);
     } else if (snapshot instanceof FileSnapshot) {
-      applyFileSnapshot((FileSnapshot) snapshot, socket);
+      applyFileSnapshot((FileSnapshot) snapshot, slot);
     } else {
       logger.error("Unrecognized snapshot {}", snapshot);
     }
   }
 
-  private void applySimpleSnapshot(DataSimpleSnapshot snapshot, int socket) {
+  private void applySimpleSnapshot(DataSimpleSnapshot snapshot, int slot) {
     synchronized (logManager) {
       for (MeasurementSchema schema : snapshot.getTimeseriesSchemas()) {
         SchemaUtils.registerTimeseries(schema);
@@ -254,11 +254,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
           logger.error("{}: Cannot apply a log {} in snapshot, ignored", name, log, e);
         }
       }
-      logManager.setSnapshot(snapshot, socket);
+      logManager.setSnapshot(snapshot, slot);
     }
   }
 
-  private void applyFileSnapshot(FileSnapshot snapshot, int socket) {
+  private void applyFileSnapshot(FileSnapshot snapshot, int slot) {
     synchronized (logManager) {
       for (MeasurementSchema schema : snapshot.getTimeseriesSchemas()) {
         SchemaUtils.registerTimeseries(schema);
@@ -296,11 +296,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   private void applyPartitionedSnapshot(PartitionedSnapshot snapshot) {
     synchronized (logManager) {
-      List<Integer> sockets = metaGroupMember.getPartitionTable().getNodeSockets(getHeader());
-      for (Integer socket : sockets) {
-        Snapshot subSnapshot = snapshot.getSnapshot(socket);
+      List<Integer> slots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
+      for (Integer slot : slots) {
+        Snapshot subSnapshot = snapshot.getSnapshot(slot);
         if (subSnapshot != null) {
-          applySnapshot(subSnapshot, socket);
+          applySnapshot(subSnapshot, slot);
         }
       }
       logManager.setLastLogId(snapshot.getLastLogId());
@@ -441,25 +441,25 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // this synchronized should work with the one in AppendEntry when a log is going to commit,
     // which may prevent the newly arrived data from being invisible to the new header.
     synchronized (logManager) {
-      List<Integer> requiredSockets = request.getRequiredSockets();
-      logger.debug("{}: {} sockets are requested", name, requiredSockets.size());
-      // check whether this socket is held by the node
-      List<Integer> heldSockets = metaGroupMember.getPartitionTable().getNodeSockets(getHeader());
+      List<Integer> requiredSlots = request.getRequiredSlots();
+      logger.debug("{}: {} slots are requested", name, requiredSlots.size());
+      // check whether this slot is held by the node
+      List<Integer> heldSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
 
       PullSnapshotResp resp = new PullSnapshotResp();
       Map<Integer, ByteBuffer> resultMap = new HashMap<>();
       logManager.takeSnapshot();
 
-      for (int requiredSocket : requiredSockets) {
-        if (!heldSockets.contains(requiredSocket)) {
-          // logger.debug("{}: the required socket {} is not held by the node", name,
-          // requiredSocket);
+      for (int requiredSlot : requiredSlots) {
+        if (!heldSlots.contains(requiredSlot)) {
+          // logger.debug("{}: the required slot {} is not held by the node", name,
+          // requiredSlot);
           continue;
         }
 
         PartitionedSnapshot allSnapshot = (PartitionedSnapshot) logManager.getSnapshot();
-        Snapshot snapshot = allSnapshot.getSnapshot(requiredSocket);
-        resultMap.put(requiredSocket, snapshot.serialize());
+        Snapshot snapshot = allSnapshot.getSnapshot(requiredSlot);
+        resultMap.put(requiredSlot, snapshot.serialize());
       }
       resp.setSnapshotBytes(resultMap);
       logger.debug("{}: Sending {} snapshots to the requester", name, resultMap.size());
@@ -467,50 +467,50 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
-  public void pullSnapshots(List<Integer> sockets, Node newNode) {
+  public void pullSnapshots(List<Integer> slots, Node newNode) {
     synchronized (logManager) {
-      logger.info("{} pulling {} sockets from remote", name, sockets.size());
+      logger.info("{} pulling {} slots from remote", name, slots.size());
       PartitionedSnapshot snapshot = (PartitionedSnapshot) logManager.getSnapshot();
       Map<Integer, Node> prevHolders = metaGroupMember.getPartitionTable().getPreviousNodeMap(newNode);
-      Map<Node, List<Integer>> holderSocketsMap = new HashMap<>();
-      // logger.debug("{}: Holders of each socket: {}", name, prevHolders);
+      Map<Node, List<Integer>> holderSlotsMap = new HashMap<>();
+      // logger.debug("{}: Holders of each slot: {}", name, prevHolders);
 
-      for (int socket : sockets) {
-        if (snapshot.getSnapshot(socket) == null) {
-          Node node = prevHolders.get(socket);
-          holderSocketsMap.computeIfAbsent(node, n -> new ArrayList<>()).add(socket);
+      for (int slot : slots) {
+        if (snapshot.getSnapshot(slot) == null) {
+          Node node = prevHolders.get(slot);
+          holderSlotsMap.computeIfAbsent(node, n -> new ArrayList<>()).add(slot);
         }
       }
 
-      for (Entry<Node, List<Integer>> entry : holderSocketsMap.entrySet()) {
+      for (Entry<Node, List<Integer>> entry : holderSlotsMap.entrySet()) {
         Node node = entry.getKey();
-        List<Integer> nodeSockets = entry.getValue();
-        pullFileSnapshot(node, nodeSockets);
+        List<Integer> nodeSlots = entry.getValue();
+        pullFileSnapshot(node, nodeSlots);
       }
     }
   }
 
-  private void pullDataSimpleSnapshot(Node node, List<Integer> nodeSockets) {
+  private void pullDataSimpleSnapshot(Node node, List<Integer> nodeSlots) {
     PartitionGroup prevHolders =
         new PartitionGroup(metaGroupMember.getPartitionTable().getHeaderGroup(node));
 
     Future<Map<Integer, DataSimpleSnapshot>> snapshotFuture =
-        pullSnapshotService.submit(new PullSnapshotTask(node, nodeSockets, this,
+        pullSnapshotService.submit(new PullSnapshotTask(node, nodeSlots, this,
             prevHolders, DataSimpleSnapshot::new));
-    for (int socket : nodeSockets) {
-      logManager.setSnapshot(new RemoteDataSimpleSnapshot(snapshotFuture, socket), socket);
+    for (int slot : nodeSlots) {
+      logManager.setSnapshot(new RemoteDataSimpleSnapshot(snapshotFuture, slot), slot);
     }
   }
 
-  private void pullFileSnapshot(Node node, List<Integer> nodeSockets) {
+  private void pullFileSnapshot(Node node, List<Integer> nodeSlots) {
     PartitionGroup prevHolders =
         new PartitionGroup(metaGroupMember.getPartitionTable().getHeaderGroup(node));
 
     Future<Map<Integer, FileSnapshot>> snapshotFuture =
-        pullSnapshotService.submit(new PullSnapshotTask(node, nodeSockets, this,
+        pullSnapshotService.submit(new PullSnapshotTask(node, nodeSlots, this,
             prevHolders, FileSnapshot::new));
-    for (int socket : nodeSockets) {
-      logManager.setSnapshot(new RemoteFileSnapshot(snapshotFuture), socket);
+    for (int slot : nodeSlots) {
+      logManager.setSnapshot(new RemoteFileSnapshot(snapshotFuture), slot);
     }
   }
 

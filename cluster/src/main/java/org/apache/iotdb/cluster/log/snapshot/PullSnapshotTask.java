@@ -25,10 +25,10 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
 
   private static final Logger logger = LoggerFactory.getLogger(PullSnapshotTask.class);
 
-  private List<Integer> sockets;
+  private List<Integer> slots;
   // the new member created by a node addition
   private DataGroupMember newMember;
-  // the nodes the may hold the target socket
+  // the nodes the may hold the target slot
   private List<Node> oldMembers;
   // the header of the old members
   private Node header;
@@ -36,10 +36,10 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
   private PullSnapshotRequest request;
   private SnapshotFactory snapshotFactory;
 
-  public PullSnapshotTask(Node header, List<Integer> sockets,
+  public PullSnapshotTask(Node header, List<Integer> slots,
       DataGroupMember member, List<Node> oldMembers, SnapshotFactory snapshotFactory) {
     this.header = header;
-    this.sockets = sockets;
+    this.slots = slots;
     this.newMember = member;
     this.oldMembers = oldMembers;
     this.snapshotFactory = snapshotFactory;
@@ -48,7 +48,7 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
   private boolean pullSnapshot(AtomicReference<Map<Integer, T>> snapshotRef, int nodeIndex)
       throws InterruptedException, TException {
     Node node = oldMembers.get(nodeIndex);
-    logger.debug("Pulling {} snapshots from {}", sockets.size(), node);
+    logger.debug("Pulling {} snapshots from {}", slots.size(), node);
 
     TSDataService.AsyncClient client =
         (TSDataService.AsyncClient) newMember.connectNode(node);
@@ -58,7 +58,7 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
     } else {
       synchronized (snapshotRef) {
         client.pullSnapshot(request, new PullSnapshotHandler<>(snapshotRef,
-            node, sockets, snapshotFactory));
+            node, slots, snapshotFactory));
         snapshotRef.wait(ClusterConstant.CONNECTION_TIME_OUT_MS);
       }
       Map<Integer, T> result = snapshotRef.get();
@@ -81,21 +81,21 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
   public Map<Integer, T> call() {
     request = new PullSnapshotRequest();
     request.setHeader(header);
-    request.setRequiredSockets(sockets);
+    request.setRequiredSlots(slots);
     AtomicReference<Map<Integer, T>> snapshotRef = new AtomicReference<>();
     boolean finished = false;
     int nodeIndex = -1;
     while (!finished) {
       try {
-        // sequentially pick up a node that may have this socket
+        // sequentially pick up a node that may have this slot
         nodeIndex = (nodeIndex + 1) % oldMembers.size();
         finished = pullSnapshot(snapshotRef, nodeIndex);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.error("Unexpected interruption when pulling socket {}", sockets, e);
+        logger.error("Unexpected interruption when pulling slot {}", slots, e);
         finished = true;
       } catch (TException e) {
-        logger.debug("Cannot pull socket {} from {}, retry", sockets, header, e);
+        logger.debug("Cannot pull slot {} from {}, retry", slots, header, e);
       }
     }
     return snapshotRef.get();

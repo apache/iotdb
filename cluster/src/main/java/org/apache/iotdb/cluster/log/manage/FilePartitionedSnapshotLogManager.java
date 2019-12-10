@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Different from PartitionedSnapshotLogManager, FilePartitionedSnapshotLogManager does not store
  * the committed in memory, it considers the logs are contained in the TsFiles so it will record
- * every TsFiles in the socket instead.
+ * every TsFiles in the slot instead.
  */
 public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogManager{
 
@@ -37,9 +37,9 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
 
   @Override
   public void takeSnapshot() {
-    synchronized (socketSnapshots) {
+    synchronized (slotSnapshots) {
       // make sure every remote snapshot is pulled before creating local snapshot
-      for (Entry<Integer, Snapshot> entry : socketSnapshots.entrySet()) {
+      for (Entry<Integer, Snapshot> entry : slotSnapshots.entrySet()) {
         if (entry.getValue() instanceof RemoteSnapshot) {
           ((RemoteSnapshot) entry.getValue()).getRemoteSnapshot();
         }
@@ -49,7 +49,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     logger.info("Taking snapshots, flushing IoTDB");
     StorageEngine.getInstance().syncCloseAllProcessor();
     logger.info("Taking snapshots, IoTDB is flushed");
-    synchronized (socketSnapshots) {
+    synchronized (slotSnapshots) {
       collectTimeseriesSchemas();
 
       while (!logBuffer.isEmpty() && logBuffer.getFirst().getCurrLogIndex() <= commitLogIndex) {
@@ -66,7 +66,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
   }
 
   private void collectTsFiles() {
-    socketSnapshots.clear();
+    slotSnapshots.clear();
     // TODO-Cluster#349: the collection is re-collected each time to prevent inconsistency when
     //  some of them are removed during two snapshots. Incremental addition or removal may be
     //  used to optimize
@@ -75,11 +75,11 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     for (Entry<String, List<TsFileResource>> entry : storageGroupFiles.entrySet()) {
       String storageGroupName = entry.getKey();
       // TODO-Cluster#350: add time partitioning
-      int socketNum = PartitionUtils.calculateStorageGroupSocket(storageGroupName, 0);
+      int slotNum = PartitionUtils.calculateStorageGroupSlot(storageGroupName, 0);
 
-      FileSnapshot snapshot = (FileSnapshot) socketSnapshots.computeIfAbsent(socketNum,
+      FileSnapshot snapshot = (FileSnapshot) slotSnapshots.computeIfAbsent(slotNum,
           s -> new FileSnapshot());
-      snapshot.setTimeseriesSchemas(socketTimeseries.getOrDefault(socketNum,
+      snapshot.setTimeseriesSchemas(slotTimeseries.getOrDefault(slotNum,
         Collections.emptySet()));
       for (TsFileResource tsFileResource : entry.getValue()) {
         snapshot.addFile(tsFileResource, header);

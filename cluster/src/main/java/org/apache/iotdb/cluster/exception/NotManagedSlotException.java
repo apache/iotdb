@@ -8,11 +8,11 @@ import java.util.List;
 
 /**
  * Raised when a data group leader receives a PullSnapshotRequest but finds it does not manage
- * the requested socket.
+ * the requested slot.
  */
-public class NotManagedSocketException extends Exception {
+public class NotManagedSlotException extends Exception {
 
-  public NotManagedSocketException(int requiredSockets, List<Integer> sockets) {
-    super(String.format("%d is not int the managed sockets %s", requiredSockets, sockets));
+  public NotManagedSlotException(int requiredSlots, List<Integer> slots) {
+    super(String.format("%d is not in the managed slots %s", requiredSlots, slots));
   }
 }
