@@ -24,6 +24,7 @@ import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.atn.PredictionMode;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -46,24 +47,28 @@ public class ParseDriver {
     logicalGenerator = new LogicalGenerator(zoneId);
   }
 
-  public Operator parse(String sql, ZoneId zoneId) {
+  public Operator parse(String sql, ZoneId zoneId) throws ParseCancellationException {
     logicalGenerator.setZoneId(zoneId);
-    CharStream charStream = CharStreams.fromString(sql);
-    SqlBaseLexer lexer1 = new SqlBaseLexer(charStream);
+    CharStream charStream1 = CharStreams.fromString(sql);
+    SqlBaseLexer lexer1 = new SqlBaseLexer(charStream1);
     CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
-    SqlBaseParser parser = new SqlBaseParser(tokens1);
-    parser.getInterpreter().setPredictionMode(PredictionMode.SLL);
-    parser.setErrorHandler(new BailErrorStrategy());
+    SqlBaseParser parser1 = new SqlBaseParser(tokens1);
+    parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
+    parser1.removeErrorListeners();
+    parser1.addErrorListener(LogicalGeneratorError.INSTANCE);
     ParseTree tree;
     try {
-      tree = parser.singleStatement();  // STAGE 1
+      tree = parser1.singleStatement();  // STAGE 1
     }
     catch (Exception ex) {
-      SqlBaseLexer lexer2 = new SqlBaseLexer(charStream);
+      CharStream charStream2 = CharStreams.fromString(sql);
+      SqlBaseLexer lexer2 = new SqlBaseLexer(charStream2);
       CommonTokenStream tokens2 = new CommonTokenStream(lexer2);
-      SqlBaseParser parserLL = new SqlBaseParser(tokens2);
-      parserLL.getInterpreter().setPredictionMode(PredictionMode.LL);
-      tree = parser.singleStatement();  // STAGE 2
+      SqlBaseParser parser2 = new SqlBaseParser(tokens2);
+      parser2.getInterpreter().setPredictionMode(PredictionMode.LL);
+      parser2.removeErrorListeners();
+      parser2.addErrorListener(LogicalGeneratorError.INSTANCE);
+      tree = parser2.singleStatement();  // STAGE 2
       // if we parse ok, it's LL not SLL
     }
     walker.walk(logicalGenerator, tree);

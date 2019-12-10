@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -572,7 +573,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       } else {
         return executeUpdateStatement(physicalPlan);
       }
-    } catch (SQLParserException e) {
+    } catch (ParseCancellationException e) {
+      logger.debug(e.getMessage());
+      return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
+    }
+      catch (SQLParserException e) {
       logger.error("check metadata error: ", e);
       return getTSExecuteStatementResp(getStatus(TSStatusCode.METADATA_ERROR,
           "Check metadata error: " + e.getMessage()));
