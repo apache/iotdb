@@ -24,6 +24,10 @@ public class StorageEngineException extends ProcessException {
 
   private static final long serialVersionUID = 9001649171768311032L;
 
+  public StorageEngineException(Throwable cause) {
+    super(cause, TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode());
+  }
+
   public StorageEngineException(String message) {
     super(message);
     errorCode = TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode();

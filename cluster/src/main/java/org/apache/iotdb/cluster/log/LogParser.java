@@ -22,8 +22,8 @@ package org.apache.iotdb.cluster.log;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log.Types;
-import org.apache.iotdb.cluster.log.logs.AddNodeLog;
-import org.apache.iotdb.cluster.log.logs.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
+import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
