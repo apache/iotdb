@@ -364,7 +364,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       if (logger.isDebugEnabled()) {
         logger.debug("Send identifier {} to the leader", thisNode.getNodeIdentifier());
       }
-      response.setFolloweIdentifier(thisNode.getNodeIdentifier());
+      response.setFollowerIdentifier(thisNode.getNodeIdentifier());
     }
 
     if (partitionTable == null) {
@@ -397,8 +397,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   @Override
   public void processValidHeartbeatResp(HeartBeatResponse response, Node receiver) {
     // register the id of the node
-    if (response.isSetFolloweIdentifier()) {
-      registerNodeIdentifier(receiver, response.getFolloweIdentifier());
+    if (response.isSetFollowerIdentifier()) {
+      registerNodeIdentifier(receiver, response.getFollowerIdentifier());
       // if all nodes' ids are known, we can build the partition table
       if (allNodesIdKnown()) {
         if (partitionTable == null && !loadPartitionTable()) {
@@ -640,7 +640,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     askGroupVotes(groupRemainings, nodeRing, request, leaderShipStale, log, newLeaderTerm);
 
     if (!leaderShipStale.get()) {
-      boolean succeed = true;
       // if all quorums of all groups have received this log, it is considered succeeded.
       for (int remaining : groupRemainings) {
         if (remaining > 0) {

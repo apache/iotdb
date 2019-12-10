@@ -14,6 +14,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 public class SerializeUtils {
 
@@ -23,7 +24,7 @@ public class SerializeUtils {
 
   public static void serialize(String str, DataOutputStream dataOutputStream) {
     try {
-      byte[] strBytes = str.getBytes();
+      byte[] strBytes = str.getBytes(TSFileConfig.STRING_CHARSET);
       dataOutputStream.writeInt(strBytes.length);
       dataOutputStream.write(strBytes);
     } catch (IOException e) {
