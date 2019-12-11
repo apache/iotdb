@@ -18,21 +18,19 @@
  */
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
-import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+
+import java.io.IOException;
 
 /**
  * To read series data without value filter, this class implements {@link IPointReader} for the
@@ -48,13 +46,19 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  *
  * return batch data
  */
-public class SeriesReaderWithoutValueFilter {
+public class SeriesReaderWithoutValueFilter implements IBatchReader {
 
   private IBatchReader seqResourceIterateReader;
   private IBatchReader unseqResourceMergeReader;
 
-  private boolean hasCachedBatchData;
-  private BatchData batchData;
+  // cache batch data for sequence reader
+  private BatchData seqBatchData;
+  // cache batch data for unsequence reader
+  private BatchData unseqBatchData;
+
+  private static final int DEFAULT_BATCH_DATA_SIZE = 10000;
+
+  private int batchDataSize;
 
   /**
    * Constructor function.
@@ -67,24 +71,28 @@ public class SeriesReaderWithoutValueFilter {
    */
   public SeriesReaderWithoutValueFilter(Path seriesPath, Filter timeFilter, QueryContext context,
       boolean pushdownUnseq) throws StorageEngineException, IOException {
+    this(seriesPath, timeFilter, context, pushdownUnseq, DEFAULT_BATCH_DATA_SIZE);
+  }
+
+  public SeriesReaderWithoutValueFilter(Path seriesPath, Filter timeFilter, QueryContext context,
+                                        boolean pushdownUnseq, int batchDataSize) throws StorageEngineException, IOException {
     QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-        .getQueryDataSource(seriesPath, context);
+            .getQueryDataSource(seriesPath, context);
     timeFilter = queryDataSource.updateTimeFilter(timeFilter);
 
     // reader for sequence resources
     this.seqResourceIterateReader = new SeqResourceIterateReader(
-        queryDataSource.getSeriesPath(), queryDataSource.getSeqResources(), timeFilter, context);
+            queryDataSource.getSeriesPath(), queryDataSource.getSeqResources(), timeFilter, context);
 
     // reader for unsequence resources, we only push down time filter on unseq reader
     if (pushdownUnseq) {
       this.unseqResourceMergeReader = new UnseqResourceMergeReader(seriesPath,
-          queryDataSource.getUnseqResources(), context, timeFilter);
+              queryDataSource.getUnseqResources(), context, timeFilter);
     } else {
       this.unseqResourceMergeReader = new UnseqResourceMergeReader(seriesPath,
-          queryDataSource.getUnseqResources(), context, null);
+              queryDataSource.getUnseqResources(), context, null);
     }
-
-    this.hasCachedBatchData = false;
+    this.batchDataSize = batchDataSize;
   }
 
   /**
@@ -92,88 +100,88 @@ public class SeriesReaderWithoutValueFilter {
    */
   SeriesReaderWithoutValueFilter(IBatchReader seqResourceIterateReader,
       IBatchReader unseqResourceMergeReader) {
-    this.seqResourceIterateReader = seqResourceIterateReader;
-    this.unseqResourceMergeReader = unseqResourceMergeReader;
-    this.hasCachedBatchData = false;
+    this(seqResourceIterateReader, unseqResourceMergeReader, DEFAULT_BATCH_DATA_SIZE);
   }
 
+  SeriesReaderWithoutValueFilter(IBatchReader seqResourceIterateReader,
+                                 IBatchReader unseqResourceMergeReader, int batchDataSize) {
+    this.seqResourceIterateReader = seqResourceIterateReader;
+    this.unseqResourceMergeReader = unseqResourceMergeReader;
+    this.batchDataSize = batchDataSize;
+  }
 
-  /**
-   * methods in IPointReader
-   */
-//  @Override
-//  public boolean hasNext() throws IOException {
-//    if (hasNextInBatchDataOrBatchReader()) {
-//      return true;
-//    }
-//    return unseqResourceMergeReader != null && unseqResourceMergeReader.hasNext();
-//  }
-//
-//  @Override
-//  public TimeValuePair next() throws IOException {
-//    boolean hasNextBatch = hasNextInBatchDataOrBatchReader();
-//    boolean hasNextPoint = unseqResourceMergeReader != null && unseqResourceMergeReader.hasNext();
-//
-//    // has next in both batch reader and point reader
-//    if (hasNextBatch && hasNextPoint) {
-//      long timeInPointReader = unseqResourceMergeReader.current().getTimestamp();
-//      long timeInBatchData = batchData.currentTime();
-//      if (timeInPointReader > timeInBatchData) {
-//        TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(batchData);
-//        batchData.next();
-//        return timeValuePair;
-//      } else if (timeInPointReader == timeInBatchData) {
-//        // Note that batchData here still moves next even though the current data to be read is
-//        // overwritten by unsequence data source. Only in this way can hasNext() work correctly.
-//        batchData.next();
-//        return unseqResourceMergeReader.next();
-//      } else {
-//        return unseqResourceMergeReader.next();
-//      }
-//    }
-//
-//    // only has next in batch reader
-//    if (hasNextBatch) {
-//      TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(batchData);
-//      batchData.next();
-//      return timeValuePair;
-//    }
-//
-//    // only has next in point reader
-//    if (hasNextPoint) {
-//      return unseqResourceMergeReader.next();
-//    }
-//
-//    return null;
-//  }
+  @Override
+  public boolean hasNextBatch() throws IOException {
 
-  private boolean hasNextInBatchDataOrBatchReader() throws IOException {
-    // has value in batchData
-    if (hasCachedBatchData && batchData.hasNext()) {
+    return hasNextInSeq() || hasNextInUnSeq();
+  }
+
+  private boolean hasNextInSeq() throws IOException {
+    // has next point in cached seqBatchData
+    if (seqBatchData != null && seqBatchData.hasNext())
       return true;
-    } else {
-      hasCachedBatchData = false;
-    }
-
-    // has value in batchReader
-    while (seqResourceIterateReader != null && seqResourceIterateReader.hasNextBatch()) {
-      batchData = seqResourceIterateReader.nextBatch();
-      if (batchData.hasNext()) {
-        hasCachedBatchData = true;
-        return true;
-      }
+    // has next batch in seq reader
+    if (seqResourceIterateReader.hasNextBatch()) {
+      seqBatchData = seqResourceIterateReader.nextBatch();
+      return true;
     }
     return false;
   }
 
-
-  @Override
-  public boolean hasNextBatch() throws IOException {
+  private boolean hasNextInUnSeq() throws IOException {
+    // has next point in cached unseqBatchData
+    if (unseqBatchData != null && unseqBatchData.hasNext())
+      return true;
+    // has next batch in unseq reader
+    if (unseqResourceMergeReader != null && unseqResourceMergeReader.hasNextBatch()) {
+      unseqBatchData = unseqResourceMergeReader.nextBatch();
+      return true;
+    }
     return false;
   }
 
   @Override
   public BatchData nextBatch() throws IOException {
+    // has next in both seq data and unseq data
+    if (hasNextInSeq() && hasNextInUnSeq()) {
+      // if the count reaches batch data size
+      int count = 0;
+      BatchData batchData = new BatchData(seqBatchData.getDataType(), true);
+      while (count < batchDataSize && hasNextInSeq() && hasNextInUnSeq()) {
+        long timeInSeq = seqBatchData.currentTime();
+        long timeInUnseq = unseqBatchData.currentTime();
+        Object currentValue;
+        long currentTime;
+        if (timeInSeq < timeInUnseq) { // sequence data time is less than the unsequence data time, just use the sequence data point
+          currentTime = timeInSeq;
+          currentValue = seqBatchData.currentValue();
+          seqBatchData.next();
+        } else if (timeInSeq == timeInUnseq) { // the time equals, use the unseq data point to overwrite the seq data point
+          currentTime = timeInUnseq;
+          currentValue = unseqBatchData.currentValue();
+          unseqBatchData.next();
+          // Note that seqBatchData here still moves next even though the current data to be read is
+          // overwritten by unsequence data source. Only in this way can hasNext() work correctly.
+          seqBatchData.next();
+        } else { // sequence data time is greater than the unsequence data time, just use the unsequence data point
+          currentTime = timeInUnseq;
+          currentValue = unseqBatchData.currentValue();
+          unseqBatchData.next();
+        }
+        batchData.putTime(currentTime);
+        batchData.putAnObject(currentValue);
+      }
+      return batchData;
+    }
+
+    // only has next in seq data
+    if (hasNextInSeq())
+      return seqBatchData;
+
+    // only has next in unseq data
+    if (hasNextInUnSeq())
+      return unseqBatchData;
+
     return null;
   }
 
