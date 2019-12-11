@@ -21,18 +21,18 @@ package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.externalsort.ExternalSortJobEngine;
-import org.apache.iotdb.db.query.externalsort.SimpleExternalSortEngine;
-import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -42,44 +42,36 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 /**
- * To read a list of unsequence TsFiles, this class implements <code>IBatchReader</code> for the TsFiles.
- * <p>
- * Note that an unsequence TsFile can be either closed or unclosed. An unclosed unsequence TsFile
- * consists of data on disk and data in memtables that will be flushed to this unclosed TsFile.
- * <p>
- * This class is used in {@link org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter}.
+ * To read a list of unsequence TsFiles, this class implements <code>IBatchReader</code> for the
+ * TsFiles. Note that an unsequence TsFile can be either closed or unclosed. An unclosed unsequence
+ * TsFile consists of data on disk and data in memtables that will be flushed to this unclosed
+ * TsFile. This class is used in {@link org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter}.
  */
 public class UnseqResourceMergeReader implements IBatchReader {
 
-  private Path seriesPath;
-
-  private PriorityMergeReader priorityMergeReader;
+  private PriorityMergeReader priorityMergeReader = new PriorityMergeReader();
+  private List<ChunkMetaData> metaDataList = new ArrayList<>();
+  private Filter timeFilter;
+  private int index = 0; // used to index current metadata in metaDataList
 
   /**
-   * Zesong Sun !!!
-   *
-   * put Reader into merge reader one by one
-   *
-   * (1) get all ChunkMetadata
-   * (2) set priority to each ChunkMetadata
-   * (3) sort All ChunkMetadata by start time
-   * (4) create a ChunkReader with priority for each ChunkMetadata and add the ChunkReader to merge reader one by one
+   * prepare metaDataList
    */
   public UnseqResourceMergeReader(Path seriesPath, List<TsFileResource> unseqResources,
       QueryContext context, Filter timeFilter) throws IOException {
 
-    long queryId = context.getJobId();
-    List<ChunkReaderWrap> readerWrapList = new ArrayList<>();
+    this.timeFilter = timeFilter;
+    int priority = 1;
 
+    // get all ChunkMetadata
     for (TsFileResource tsFileResource : unseqResources) {
-      // prepare metaDataList
-      List<ChunkMetaData> metaDataList;
+      List<ChunkMetaData> tsFileMetaDataList;
       if (tsFileResource.isClosed()) {
         if (!ResourceRelatedUtil.isTsFileSatisfied(tsFileResource, timeFilter, seriesPath)) {
           continue;
         }
 
-        metaDataList = DeviceMetaDataCache.getInstance().get(tsFileResource, seriesPath);
+        tsFileMetaDataList = DeviceMetaDataCache.getInstance().get(tsFileResource, seriesPath);
         List<Modification> pathModifications = context
             .getPathModifications(tsFileResource.getModFile(), seriesPath.getFullPath());
         if (!pathModifications.isEmpty()) {
@@ -91,61 +83,98 @@ public class UnseqResourceMergeReader implements IBatchReader {
             continue;
           }
         }
-        metaDataList = tsFileResource.getChunkMetaDataList();
+        tsFileMetaDataList = tsFileResource.getChunkMetaDataList();
       }
 
-      ChunkLoaderImpl chunkLoader = null;
-      if (!metaDataList.isEmpty()) {
+      if (!tsFileMetaDataList.isEmpty()) {
         TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
             .get(tsFileResource, tsFileResource.isClosed());
-        chunkLoader = new ChunkLoaderImpl(tsFileReader);
-      }
+        ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileReader);
 
-      for (ChunkMetaData chunkMetaData : metaDataList) {
-        if (timeFilter != null && !timeFilter.satisfy(chunkMetaData.getStatistics())) {
-          continue;
+        for (ChunkMetaData chunkMetaData : tsFileMetaDataList) {
+          if (timeFilter != null && !timeFilter.satisfy(chunkMetaData.getStatistics())) {
+            tsFileMetaDataList.remove(chunkMetaData);
+            continue;
+          }
+          chunkMetaData.setPriority(priority++);
+          chunkMetaData.setChunkLoader(chunkLoader);
         }
-        // create and add DiskChunkReader
-        readerWrapList.add(new ChunkReaderWrap(chunkMetaData, chunkLoader, timeFilter));
+        metaDataList.addAll(tsFileMetaDataList);
       }
 
+      // create and add MemChunkReader
       if (!tsFileResource.isClosed()) {
-        // create and add MemChunkReader
-        readerWrapList.add(new ChunkReaderWrap(tsFileResource.getReadOnlyMemChunk(), timeFilter));
+        ChunkReaderWrap memChunkReaderWrap = new ChunkReaderWrap(
+            tsFileResource.getReadOnlyMemChunk(), timeFilter);
+        priorityMergeReader.addReaderWithPriority(memChunkReaderWrap.getIPointReader(), priority++);
       }
     }
 
-    ExternalSortJobEngine externalSortJobEngine = SimpleExternalSortEngine.getInstance();
-    List<IPointReader> readerList = externalSortJobEngine
-        .executeForIPointReader(queryId, readerWrapList);
-    int index = 1;
-
-    priorityMergeReader = new PriorityMergeReader();
-    for (IPointReader chunkReader : readerList) {
-      priorityMergeReader.addReaderWithPriority(chunkReader, index++);
-    }
+    // sort All ChunkMetadata by start time
+    metaDataList = metaDataList.stream().sorted(Comparator.comparing(ChunkMetaData::getStartTime))
+        .collect(Collectors.toList());
   }
 
-
   /**
-   * Zesong Sun !!!
+   * put Reader into merge reader one by one. Create a ChunkReader with priority for each
+   * ChunkMetadata and add the ChunkReader to merge reader one by one
    */
   @Override
   public boolean hasNextBatch() throws IOException {
-    return false;
+    return hasNext();
   }
 
-
-  /**
-   * Zesong Sun !!!
-   */
   @Override
   public BatchData nextBatch() throws IOException {
-    return null;
+    BatchData batchData = new BatchData();
+    for (int i = 0; i < 4096; i++) {
+      TimeValuePair timeValuePair = priorityMergeReader.next();
+      batchData.putTime(timeValuePair.getTimestamp());
+      batchData.putAnObject(timeValuePair.getValue());
+      if (!hasNext()) {
+        break;
+      }
+    }
+
+    return batchData;
   }
 
   @Override
   public void close() throws IOException {
+    priorityMergeReader.close();
+  }
 
+  private boolean hasNext() throws IOException {
+    ChunkMetaData metaData;
+    ChunkReaderWrap diskChunkReaderWrap;
+    if (priorityMergeReader.hasNext()) {
+      long currentTime = priorityMergeReader.current().getTimestamp();
+
+      metaData = metaDataList.get(index);
+      long nextMetaDataStartTime = metaData.getStartTime();
+
+      // create and add DiskChunkReader
+      while (currentTime >= nextMetaDataStartTime) {
+        diskChunkReaderWrap = new ChunkReaderWrap(metaData, metaData.getChunkLoader(), timeFilter);
+        priorityMergeReader
+            .addReaderWithPriority(diskChunkReaderWrap.getIPointReader(), metaData.getPriority());
+        index++;
+        if (index < metaDataList.size()) {
+          metaData = metaDataList.get(index);
+          nextMetaDataStartTime = metaData.getStartTime();
+        }
+      }
+      return true;
+    }
+
+    if (index >= metaDataList.size()) {
+      return false;
+    }
+    metaData = metaDataList.get(index++);
+    diskChunkReaderWrap = new ChunkReaderWrap(metaData, metaData.getChunkLoader(), timeFilter);
+    priorityMergeReader
+        .addReaderWithPriority(diskChunkReaderWrap.getIPointReader(), metaData.getPriority());
+
+    return hasNext();
   }
 }
