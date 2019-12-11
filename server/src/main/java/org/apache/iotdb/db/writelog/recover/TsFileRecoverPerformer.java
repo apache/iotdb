@@ -50,8 +50,7 @@ import org.slf4j.LoggerFactory;
  * TsFileRecoverPerformer recovers a SeqTsFile to correct status, redoes the WALs since last crash
  * and removes the redone logs.
  */
-public class
-TsFileRecoverPerformer {
+public class TsFileRecoverPerformer {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileRecoverPerformer.class);
 
@@ -208,8 +207,7 @@ TsFileRecoverPerformer {
         // flush logs
 
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable, schema,
-            restorableTsFileIOWriter,
-            logNodePrefix);
+            restorableTsFileIOWriter, tsFileResource.getFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
       }
       // close file
