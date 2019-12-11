@@ -719,6 +719,7 @@ public class IoTDBQueryResultSet implements ResultSet {
       } else {
         tsQueryDataSet = resp.getQueryDataSet();
         rowsIndex = 0;
+        constructOneRow();
       }
     } catch (TException e) {
       throw new SQLException(
