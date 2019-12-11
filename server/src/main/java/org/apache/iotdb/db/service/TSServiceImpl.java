@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -378,10 +379,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               getNodeTimeseriesNum(getNodesList(req.getColumnPath(), req.getNodeLevel())));
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
-        case "VERSION":
-          resp.setVersion(getVersion());
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
         default:
           status = getStatus(TSStatusCode.METADATA_ERROR, req.getType());
           break;
@@ -420,10 +417,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private Set<String> getChildPaths(String path) throws PathException {
     return MManager.getInstance().getChildNodePathInNextLevel(path);
-  }
-
-  private String getVersion() throws SQLException {
-    return IoTDBConstant.VERSION;
   }
 
   private List<List<String>> getTimeSeriesForPath(String path)
@@ -572,6 +565,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       } else {
         return executeUpdateStatement(physicalPlan);
       }
+    } catch (ParseCancellationException e) {
+      logger.debug(e.getMessage());
+      return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     } catch (SQLParserException e) {
       logger.error("check metadata error: ", e);
       return getTSExecuteStatementResp(getStatus(TSStatusCode.METADATA_ERROR,
@@ -669,6 +665,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return executeShowFlushTaskInfo();
       case DYNAMIC_PARAMETER:
         return executeShowDynamicParameter();
+      case VERSION:
+        return executeShowVersion();
       default:
         logger.error("Unsupported show content type: {}", showPlan.getShowContentType());
         throw new Exception("Unsupported show content type:" + showPlan.getShowContentType());
@@ -714,6 +712,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     columns.add(PARAMETER);
     columns.add(VALUE);
     columnTypes.add(TSDataType.TEXT.toString());
+    columnTypes.add(TSDataType.TEXT.toString());
+    resp.setColumns(columns);
+    resp.setDataTypeList(columnTypes);
+    return resp;
+  }
+
+  private TSExecuteStatementResp executeShowVersion() {
+    TSExecuteStatementResp resp =
+        getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS));
+    resp.setIgnoreTimeStamp(true);
+    List<String> columns = new ArrayList<>();
+    List<String> columnTypes = new ArrayList<>();
+    columns.add("version        ");
     columnTypes.add(TSDataType.TEXT.toString());
     resp.setColumns(columns);
     resp.setDataTypeList(columnTypes);

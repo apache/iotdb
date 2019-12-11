@@ -16,16 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.reader;
+package org.apache.iotdb.db.query.dataset;
 
 import java.io.IOException;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-public interface IBatchReader {
+public class SingleDataSet extends QueryDataSet {
 
-  boolean hasNext() throws IOException;
+  private RowRecord record;
+  private int i = 0;
 
-  BatchData nextBatch() throws IOException;
+  public SingleDataSet(List<Path> paths,
+      List<TSDataType> dataTypes) {
+    super(paths, dataTypes);
+  }
 
-  void close() throws IOException;
+  public void setRecord(RowRecord record) {
+    this.record = record;
+  }
+
+  @Override
+  protected boolean hasNextWithoutConstraint() throws IOException {
+    return i == 0;
+  }
+
+  @Override
+  protected RowRecord nextWithoutConstraint() throws IOException {
+    i++;
+    return record;
+  }
 }

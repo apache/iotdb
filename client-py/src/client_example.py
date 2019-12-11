@@ -60,12 +60,27 @@ Compressor = {
     'PLA': 6
 }
 
+# used to do `and` operation with bitmap to judge whether the value is null
+flag = 0x80
+
+INT32_BYTE_LEN = 4
+BOOL_BYTE_LEN = 1
+INT64_BYTE_LEN = 8
+FLOAT_BYTE_LEN = 4
+DOUBLE_BYTE_LEN = 8
+
+
+def is_null(bitmap_bytes, rowNum):
+    bitmap = bitmap_bytes[rowNum // 8]
+    shift = rowNum % 8
+    return ((flag >> shift) & bitmap) == 0
+
 
 def convertQueryDataSet(queryDataSet, dataTypeList):
-    bytes = queryDataSet.values
-    row_count = queryDataSet.rowCount
-    time_bytes = bytes[:8 * row_count]
-    value_bytes = bytes[8 * row_count:]
+    time_bytes = queryDataSet.time
+    value_bytes_list = queryDataSet.valueList
+    bitmap_list = queryDataSet.bitmapList
+    row_count = len(time_bytes) // 8
     time_unpack_str = '>' + str(row_count) + 'q'
     records = []
     times = struct.unpack(time_unpack_str, time_bytes)
@@ -73,39 +88,44 @@ def convertQueryDataSet(queryDataSet, dataTypeList):
         records.append([times[i]])
 
     for i in range(len(dataTypeList)):
-        type = dataTypeList[i]
+        value_type = dataTypeList[i]
+        value_bytes = value_bytes_list[i]
+        bitmap = bitmap_list[i]
+        # the actual number of value
+        if value_type == 'BOOLEAN':
+            value_count = len(value_bytes) // BOOL_BYTE_LEN
+            values_list = struct.unpack('>' + str(value_count) + '?', value_bytes)
+        elif value_type == 'INT32':
+            value_count = len(value_bytes) // INT32_BYTE_LEN
+            values_list = struct.unpack('>' + str(value_count) + 'i', value_bytes)
+        elif value_type == 'INT64':
+            value_count = len(value_bytes) // INT64_BYTE_LEN
+            values_list = struct.unpack('>' + str(value_count) + 'q', value_bytes)
+        elif value_type == 'FLOAT':
+            value_count = len(value_bytes) // FLOAT_BYTE_LEN
+            values_list = struct.unpack('>' + str(value_count) + 'f', value_bytes)
+        elif value_type == 'DOUBLE':
+            value_count = len(value_bytes) // DOUBLE_BYTE_LEN
+            values_list = struct.unpack('>' + str(value_count) + 'd', value_bytes)
+        elif value_type == 'TEXT':
+            values_list = []
+
+        # current index for value in values_list
+        value_index = 0
         for j in range(row_count):
-            is_null = value_bytes[0]
-            value_bytes = value_bytes[1:]
-            if is_null == 1:
+            if is_null(bitmap, j):
                 records[j].append('null')
             else:
-                if type == 'BOOLEAN':
-                    value = value_bytes[:1]
-                    value_bytes = value_bytes[1:]
-                    records[j].append(struct.unpack('>?', value)[0])
-                elif type == 'INT32':
-                    value = value_bytes[:4]
-                    value_bytes = value_bytes[4:]
-                    records[j].append(struct.unpack('>i', value)[0])
-                elif type == 'INT64':
-                    value = value_bytes[:8]
-                    value_bytes = value_bytes[8:]
-                    records[j].append(struct.unpack('>q', value)[0])
-                elif type == 'FLOAT':
-                    value = value_bytes[:4]
-                    value_bytes = value_bytes[4:]
-                    records[j].append(struct.unpack('>f', value)[0])
-                elif type == 'DOUBLE':
-                    value = value_bytes[:8]
-                    value_bytes = value_bytes[8:]
-                    records[j].append(struct.unpack('>d', value)[0])
-                elif type == 'TEXT':
+                if value_type != 'TEXT':
+                    records[j].append(values_list[value_index])
+                else:
                     size = value_bytes[:4]
                     value_bytes = value_bytes[4:]
                     size = struct.unpack('>i', size)[0]
                     records[j].append(value_bytes[:size])
                     value_bytes = value_bytes[size:]
+                value_index += 1
+
     return records
 
 

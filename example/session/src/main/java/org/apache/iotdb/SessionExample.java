@@ -73,7 +73,7 @@ public class SessionExample {
   }
 
   private static void insertInBatch() throws IoTDBSessionException {
-    String deviceId = "root.sg1.d2";
+    String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
@@ -160,6 +160,6 @@ public class SessionExample {
   }
 
   private static void nonQuery() throws TException, IoTDBRPCException, SQLException {
-    session.executeNonQueryStatement("insert into root.sg1.d1(timestamp,s0) values(200, 1);");
+    session.executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(200, 1);");
   }
 }

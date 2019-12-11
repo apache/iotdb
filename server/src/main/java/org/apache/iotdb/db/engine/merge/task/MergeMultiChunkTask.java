@@ -49,8 +49,8 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -401,9 +401,9 @@ class MergeMultiChunkTask {
   private int writeChunkWithUnseq(Chunk chunk, IChunkWriter chunkWriter, IPointReader unseqReader,
       long chunkLimitTime, int pathIdx) throws IOException {
     int cnt = 0;
-    ChunkReader chunkReader = new ChunkReaderWithoutFilter(chunk);
-    while (chunkReader.hasNextBatch()) {
-      BatchData batchData = chunkReader.nextBatch();
+    AbstractChunkReader AbstractChunkReader = new ChunkReader(chunk);
+    while (AbstractChunkReader.hasNextBatch()) {
+      BatchData batchData = AbstractChunkReader.nextBatch();
       cnt += mergeWriteBatch(batchData, chunkWriter, unseqReader, pathIdx);
     }
     cnt += writeRemainingUnseq(chunkWriter, unseqReader, chunkLimitTime, pathIdx);

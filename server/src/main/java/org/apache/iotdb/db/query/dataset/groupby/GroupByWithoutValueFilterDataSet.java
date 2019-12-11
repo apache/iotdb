@@ -27,7 +27,6 @@ import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
@@ -44,11 +43,12 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   private List<IPointReader> unSequenceReaderList;
-  private List<IAggregateReader> sequenceReaderList;
+  private List<IBatchReader> sequenceReaderList;
   private List<BatchData> batchDataList;
   private List<Boolean> hasCachedSequenceDataList;
   private Filter timeFilter;
@@ -87,7 +87,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       timeFilter = queryDataSource.updateTimeFilter(timeFilter);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
-      IAggregateReader seqResourceIterateReader = new SeqResourceIterateReader(
+      IBatchReader seqResourceIterateReader = new SeqResourceIterateReader(
           queryDataSource.getSeriesPath(), queryDataSource.getSeqResources(), timeFilter, context,
           false);
 
@@ -133,7 +133,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    */
   private AggreResultData nextSeries(int idx) throws IOException, QueryProcessException {
     IPointReader unsequenceReader = unSequenceReaderList.get(idx);
-    IAggregateReader sequenceReader = sequenceReaderList.get(idx);
+    IBatchReader sequenceReader = sequenceReaderList.get(idx);
     AggregateFunction function = functions.get(idx);
     function.init();
 
@@ -222,7 +222,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * @param unsequenceReader unsequence Reader
    * @throws IOException exception when reading file
    */
-  private void skipBeforeStartTimeData(int idx, IAggregateReader sequenceReader,
+  private void skipBeforeStartTimeData(int idx, IBatchReader sequenceReader,
       IPointReader unsequenceReader)
       throws IOException {
 

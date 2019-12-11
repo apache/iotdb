@@ -35,9 +35,11 @@ import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 /**
  * To read a list of unsequence TsFiles, this class extends {@link PriorityMergeReader} to
@@ -49,15 +51,26 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  * <p>
  * This class is used in {@link org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter}.
  */
-public class UnseqResourceMergeReader extends PriorityMergeReader {
+public class UnseqResourceMergeReader implements IBatchReader {
 
   private Path seriesPath;
-  private long queryId;
 
+  private PriorityMergeReader priorityMergeReader;
+
+  /**
+   * Zesong Sun !!!
+   *
+   * put Reader into merge reader one by one
+   *
+   * (1) get all ChunkMetadata
+   * (2) set priority to each ChunkMetadata
+   * (3) sort All ChunkMetadata by start time
+   * (4) create a ChunkReader with priority for each ChunkMetadata and add the ChunkReader to merge reader one by one
+   */
   public UnseqResourceMergeReader(Path seriesPath, List<TsFileResource> unseqResources,
-      QueryContext context, Filter filter) throws IOException {
+      QueryContext context, Filter timeFilter) throws IOException {
     this.seriesPath = seriesPath;
-    this.queryId = context.getJobId();
+    long queryId = context.getJobId();
 
     List<ChunkReaderWrap> readerWrapList = new ArrayList<>();
     for (TsFileResource tsFileResource : unseqResources) {
@@ -65,7 +78,7 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
       // prepare metaDataList
       List<ChunkMetaData> metaDataList;
       if (tsFileResource.isClosed()) {
-        if (isTsFileNotSatisfied(tsFileResource, filter)) {
+        if (!isTsFileSatisfied(tsFileResource, timeFilter)) {
           continue;
         }
 
@@ -78,7 +91,7 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
         }
       } else {
         if (tsFileResource.getEndTimeMap().size() != 0) {
-          if (isTsFileNotSatisfied(tsFileResource, filter)) {
+          if (!isTsFileSatisfied(tsFileResource, timeFilter)) {
             continue;
           }
         }
@@ -94,16 +107,16 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
 
       for (ChunkMetaData chunkMetaData : metaDataList) {
 
-        if (filter != null && !filter.satisfy(chunkMetaData.getStatistics())) {
+        if (timeFilter != null && !timeFilter.satisfy(chunkMetaData.getStatistics())) {
           continue;
         }
         // create and add DiskChunkReader
-        readerWrapList.add(new ChunkReaderWrap(chunkMetaData, chunkLoader, filter));
+        readerWrapList.add(new ChunkReaderWrap(chunkMetaData, chunkLoader, timeFilter));
       }
 
       if (!tsFileResource.isClosed()) {
         // create and add MemChunkReader
-        readerWrapList.add(new ChunkReaderWrap(tsFileResource.getReadOnlyMemChunk(), filter));
+        readerWrapList.add(new ChunkReaderWrap(tsFileResource.getReadOnlyMemChunk(), timeFilter));
       }
     }
 
@@ -115,6 +128,30 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
       addReaderWithPriority(chunkReader, priorityValue++);
     }
   }
+
+
+  /**
+   * Zesong Sun !!!
+   */
+  @Override
+  public boolean hasNextBatch() throws IOException {
+    return false;
+  }
+
+
+  /**
+   * Zesong Sun !!!
+   */
+  @Override
+  public BatchData nextBatch() throws IOException {
+    return null;
+  }
+
+  @Override
+  public void close() throws IOException {
+
+  }
+
 
   /**
    * Returns true if the start and end time of the series data in this unsequence TsFile do not
@@ -129,12 +166,12 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
    * satisfy.
    */
   // TODO future work: deduplicate code. See SeqResourceIterateReader.
-  private boolean isTsFileNotSatisfied(TsFileResource tsFile, Filter filter) {
+  private boolean isTsFileSatisfied(TsFileResource tsFile, Filter filter) {
     if (filter == null) {
-      return false;
+      return true;
     }
     long startTime = tsFile.getStartTimeMap().get(seriesPath.getDevice());
     long endTime = tsFile.getEndTimeMap().get(seriesPath.getDevice());
-    return !filter.satisfyStartEndTime(startTime, endTime);
+    return filter.satisfyStartEndTime(startTime, endTime);
   }
 }

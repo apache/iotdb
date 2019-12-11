@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.read.reader;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -33,9 +32,8 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.junit.After;
 import org.junit.Assert;
@@ -70,8 +68,8 @@ public class ReaderTest {
     List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
         .getChunkMetaDataList(new Path("d1.s1"));
 
-    FileSeriesReader seriesReader = new FileSeriesReaderWithoutFilter(seriesChunkLoader,
-        chunkMetaDataList);
+    AbstractFileSeriesReader seriesReader = new FileSeriesReader(seriesChunkLoader,
+        chunkMetaDataList, null);
     long startTime = TsFileGeneratorForTest.START_TIMESTAMP;
     BatchData data = null;
 
@@ -87,7 +85,7 @@ public class ReaderTest {
     Assert.assertEquals(rowCount, count);
 
     chunkMetaDataList = metadataQuerierByFile.getChunkMetaDataList(new Path("d1.s4"));
-    seriesReader = new FileSeriesReaderWithoutFilter(seriesChunkLoader, chunkMetaDataList);
+    seriesReader = new FileSeriesReader(seriesChunkLoader, chunkMetaDataList, null);
     count = 0;
 
     while (seriesReader.hasNextBatch()) {
@@ -110,7 +108,7 @@ public class ReaderTest {
         FilterFactory.and(TimeFilter.gt(1480563570029L), TimeFilter.lt(1480563570033L)),
         FilterFactory.and(ValueFilter.gtEq(9520331), ValueFilter.ltEq(9520361)));
     SingleSeriesExpression singleSeriesExp = new SingleSeriesExpression(new Path("d1.s1"), filter);
-    FileSeriesReader seriesReader = new FileSeriesReaderWithFilter(seriesChunkLoader,
+    AbstractFileSeriesReader seriesReader = new FileSeriesReader(seriesChunkLoader,
         chunkMetaDataList,
         singleSeriesExp.getFilter());
 

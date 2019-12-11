@@ -24,19 +24,19 @@ import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
 
 public class CachedDiskChunkReader implements IPointReader {
 
-  private ChunkReader chunkReader;
+  private AbstractChunkReader AbstractChunkReader;
   private BatchData data;
   private TimeValuePair prev;
   private TimeValuePair current;
 
-  public CachedDiskChunkReader(ChunkReader chunkReader) {
-    this.chunkReader = chunkReader;
+  public CachedDiskChunkReader(AbstractChunkReader AbstractChunkReader) {
+    this.AbstractChunkReader = AbstractChunkReader;
     this.prev =
-        TimeValuePairUtils.getEmptyTimeValuePair(chunkReader.getChunkHeader().getDataType());
+        TimeValuePairUtils.getEmptyTimeValuePair(AbstractChunkReader.getChunkHeader().getDataType());
   }
 
   @Override
@@ -44,8 +44,8 @@ public class CachedDiskChunkReader implements IPointReader {
     if (data != null && data.hasNext()) {
       return true;
     }
-    while (chunkReader.hasNextBatch()) {
-      data = chunkReader.nextBatch();
+    while (AbstractChunkReader.hasNextBatch()) {
+      data = AbstractChunkReader.nextBatch();
       if (data.hasNext()) {
         return true;
       }
@@ -60,8 +60,8 @@ public class CachedDiskChunkReader implements IPointReader {
     if (data.hasNext()) {
       TimeValuePairUtils.setCurrentTimeValuePair(data, current());
     } else {
-      while (chunkReader.hasNextBatch()) {
-        data = chunkReader.nextBatch();
+      while (AbstractChunkReader.hasNextBatch()) {
+        data = AbstractChunkReader.nextBatch();
         if (data.hasNext()) {
           TimeValuePairUtils.setCurrentTimeValuePair(data, current());
           break;
@@ -75,7 +75,7 @@ public class CachedDiskChunkReader implements IPointReader {
   public TimeValuePair current() {
     if (current == null) {
       this.current =
-          TimeValuePairUtils.getEmptyTimeValuePair(chunkReader.getChunkHeader().getDataType());
+          TimeValuePairUtils.getEmptyTimeValuePair(AbstractChunkReader.getChunkHeader().getDataType());
       TimeValuePairUtils.setCurrentTimeValuePair(data, current);
     }
     return current;
@@ -83,6 +83,6 @@ public class CachedDiskChunkReader implements IPointReader {
 
   @Override
   public void close() {
-    this.chunkReader.close();
+    this.AbstractChunkReader.close();
   }
 }

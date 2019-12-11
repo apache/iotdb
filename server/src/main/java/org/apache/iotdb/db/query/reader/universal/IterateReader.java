@@ -19,16 +19,15 @@
 package org.apache.iotdb.db.query.reader.universal;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IAggregateReader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 /**
- * This class implements {@link IAggregateReader} for sequential data sources.
+ * This class is for sequential data sources.
  */
-public abstract class IterateReader implements IAggregateReader {
+public abstract class IterateReader implements IBatchReader {
 
-  protected IAggregateReader currentSeriesReader;
+  protected IBatchReader currentSeriesReader;
   private boolean curReaderInitialized;
   private int nextSeriesReaderIndex;
   private int readerSize;
@@ -41,9 +40,9 @@ public abstract class IterateReader implements IAggregateReader {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNextBatch() throws IOException {
 
-    if (curReaderInitialized && currentSeriesReader.hasNext()) {
+    if (curReaderInitialized && currentSeriesReader.hasNextBatch()) {
       return true;
     } else {
       curReaderInitialized = false;
@@ -51,7 +50,7 @@ public abstract class IterateReader implements IAggregateReader {
 
     while (nextSeriesReaderIndex < readerSize) {
       boolean isConstructed = constructNextReader(nextSeriesReaderIndex++);
-      if (isConstructed && currentSeriesReader.hasNext()) {
+      if (isConstructed && currentSeriesReader.hasNextBatch()) {
         curReaderInitialized = true;
         return true;
       }
@@ -60,7 +59,7 @@ public abstract class IterateReader implements IAggregateReader {
   }
 
   /**
-   * If the idx-th data source in order needs reading, construct <code>IAggregateReader</code> for
+   * If the idx-th data source in order needs reading, construct <code>IBatchReader</code> for
    * it, assign to <code>currentSeriesReader</code> and return true. Otherwise, return false.
    *
    * @param idx the index of the data source
@@ -71,16 +70,6 @@ public abstract class IterateReader implements IAggregateReader {
   @Override
   public BatchData nextBatch() throws IOException {
     return currentSeriesReader.nextBatch();
-  }
-
-  @Override
-  public PageHeader nextPageHeader() throws IOException {
-    return currentSeriesReader.nextPageHeader();
-  }
-
-  @Override
-  public void skipPageData() throws IOException {
-    currentSeriesReader.skipPageData();
   }
 
   @Override

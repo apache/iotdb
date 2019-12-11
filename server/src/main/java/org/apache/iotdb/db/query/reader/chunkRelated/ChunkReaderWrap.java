@@ -26,10 +26,10 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 public class ChunkReaderWrap {
 
@@ -72,10 +72,18 @@ public class ChunkReaderWrap {
   public IPointReader getIPointReader() throws IOException {
     if (type.equals(ChunkReaderType.DISK_CHUNK)) {
       Chunk chunk = chunkLoader.getChunk(chunkMetaData);
-      ChunkReader chunkReader = filter != null ? new ChunkReaderWithFilter(chunk, filter)
-          : new ChunkReaderWithoutFilter(chunk);
+      AbstractChunkReader AbstractChunkReader = new ChunkReader(chunk, filter);
+      return new DiskChunkReader(AbstractChunkReader);
+    } else {
+      return new MemChunkReader(readOnlyMemChunk, filter);
+    }
+  }
 
-      return new DiskChunkReader(chunkReader);
+  public IBatchReader getIBatchReader() throws IOException {
+    if (type.equals(ChunkReaderType.DISK_CHUNK)) {
+      Chunk chunk = chunkLoader.getChunk(chunkMetaData);
+      AbstractChunkReader AbstractChunkReader = new ChunkReader(chunk, filter);
+      return new DiskChunkReader(AbstractChunkReader);
     } else {
       return new MemChunkReader(readOnlyMemChunk, filter);
     }

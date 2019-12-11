@@ -69,11 +69,11 @@ statement
     | SHOW ALL TTL #showAllTTLStatement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
+    | SHOW VERSION #showVersion
     | LOAD CONFIGURATION #loadConfigurationStatement
     | LOAD FILE autoCreateSchema? #loadFiles
-    | REMOVE FILE#removeFile
+    | REMOVE FILE #removeFile
     | MOVE FILE FILE #moveFile
-
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
     p1=timeseriesPath COMMA p2=timeseriesPath COMMA n1=timeValue COMMA n2=timeValue COMMA
@@ -619,6 +619,11 @@ DYNAMIC
 
 PARAMETER
     : P A R A M E T E R
+    ;
+
+
+VERSION
+    : V E R S I O N
     ;
 
 REMOVE

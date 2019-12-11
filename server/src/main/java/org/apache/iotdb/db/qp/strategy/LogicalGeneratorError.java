@@ -16,20 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.reader;
+package org.apache.iotdb.db.qp.strategy;
 
-import java.io.IOException;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 
-public interface IAggregateReader extends IBatchReader {
+public class LogicalGeneratorError extends BaseErrorListener {
 
-  /**
-   * Returns meta-information of batch data.
-   * <p>
-   * Returns null if batch data comes from memory. Returns pageHeader if batch data comes from page
-   * data.
-   */
-  PageHeader nextPageHeader() throws IOException;
+  public static final LogicalGeneratorError INSTANCE = new LogicalGeneratorError();
 
-  void skipPageData() throws IOException;
+  @Override
+  public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
+    throw new ParseCancellationException("line " + line + ":" + charPositionInLine + " " + msg);
+  }
 }

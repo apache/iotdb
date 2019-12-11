@@ -37,7 +37,6 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.AggreResultDataPointReader;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.factory.AggreFuncFactory;
-import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
@@ -52,6 +51,7 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 public class AggregateEngineExecutor {
 
@@ -87,7 +87,7 @@ public class AggregateEngineExecutor {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
 
-    List<IAggregateReader> readersOfSequenceData = new ArrayList<>();
+    List<IBatchReader> readersOfSequenceData = new ArrayList<>();
     List<IPointReader> readersOfUnSequenceData = new ArrayList<>();
     List<AggregateFunction> aggregateFunctions = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
@@ -104,7 +104,7 @@ public class AggregateEngineExecutor {
       timeFilter = queryDataSource.updateTimeFilter(timeFilter);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
-      IAggregateReader seqResourceIterateReader;
+      IBatchReader seqResourceIterateReader;
       if (function instanceof MaxTimeAggrFunc || function instanceof LastValueAggrFunc) {
         seqResourceIterateReader = new SeqResourceIterateReader(queryDataSource.getSeriesPath(),
             queryDataSource.getSeqResources(), timeFilter, context, true);
@@ -141,7 +141,7 @@ public class AggregateEngineExecutor {
    * @return one series aggregate result data
    */
   private AggreResultData aggregateWithoutValueFilter(AggregateFunction function,
-      IAggregateReader sequenceReader, IPointReader unSequenceReader, Filter filter)
+      IBatchReader sequenceReader, IPointReader unSequenceReader, Filter filter)
       throws IOException, QueryProcessException {
     if (function instanceof MaxTimeAggrFunc || function instanceof LastValueAggrFunc) {
       return handleLastMaxTimeWithOutTimeGenerator(function, sequenceReader, unSequenceReader,
@@ -208,7 +208,7 @@ public class AggregateEngineExecutor {
    * @return BatchData-aggregate result
    */
   private AggreResultData handleLastMaxTimeWithOutTimeGenerator(AggregateFunction function,
-      IAggregateReader sequenceReader, IPointReader unSequenceReader, Filter timeFilter)
+      IBatchReader sequenceReader, IPointReader unSequenceReader, Filter timeFilter)
       throws IOException, QueryProcessException {
     long lastBatchTimeStamp = Long.MIN_VALUE;
     boolean isChunkEnd = false;

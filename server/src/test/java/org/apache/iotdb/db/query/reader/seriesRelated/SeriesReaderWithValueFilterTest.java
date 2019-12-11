@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IBatchReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
@@ -35,7 +36,7 @@ public class SeriesReaderWithValueFilterTest {
     // (100,0),(105,1),(110,0),(115,1),(120,0),...
     IBatchReader batchReader = new FakedIBatchPoint(100, 1000, 5, 2);
     // (100,0),(105,1),(110,2),(115,3),(120,0),...
-    IPointReader pointReader = new FakedIPointReader(100, 500, 5, 4);
+    IBatchReader pointReader = new FakedIBatchPoint(100, 500, 5, 4);
     reader = new SeriesReaderWithValueFilter(batchReader, pointReader, ValueFilter.eq(0L));
   }
 
