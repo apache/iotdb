@@ -30,8 +30,10 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
+import org.apache.iotdb.db.query.aggregation.impl.FirstValueAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.LastValueAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrFunc;
+import org.apache.iotdb.db.query.aggregation.impl.MinTimeAggrFunc;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.AggreResultDataPointReader;
@@ -154,6 +156,9 @@ public class AggregateEngineExecutor {
       if (chunkMetaData != null && canUseHeader(function, chunkMetaData.getStartTime(),
           chunkMetaData.getEndTime(), unSequenceReader, filter)) {
         function.calculateValueFromChunkMetaData(chunkMetaData);
+        if (isEarlyBreakFunc(function)) {
+          break;
+        }
         continue;
       }
       while (sequenceReader.hasNextPageInCurrentChunk()) {
@@ -164,6 +169,9 @@ public class AggregateEngineExecutor {
             unSequenceReader, filter)) {
           // cal by pageHeader
           function.calculateValueFromPageHeader(pageHeader);
+          if (isEarlyBreakFunc(function)) {
+            break;
+          }
           sequenceReader.skipPageData();
         } else {
           // cal by pageData
@@ -180,6 +188,13 @@ public class AggregateEngineExecutor {
       function.calculateValueFromUnsequenceReader(unSequenceReader);
     }
     return function.getResult();
+  }
+
+  private boolean isEarlyBreakFunc(AggregateFunction function) {
+    if (function instanceof FirstValueAggrFunc || function instanceof MinTimeAggrFunc) {
+      return true;
+    }
+    return false;
   }
 
   /**
