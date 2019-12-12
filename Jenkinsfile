@@ -117,6 +117,9 @@ pipeline {
                 } else if (env.BRANCH_NAME.equals("master")) {
                     // this is just a branch
                     sonarcloudParams="${sonarcloudParams} -Dsonar.branch.name=${BRANCH_NAME}"
+                } else {
+                    //temporarily for test
+                    sonarcloudParams="${sonarcloudParams} -Dsonar.branch.name=${BRANCH_NAME}"
                 }
                 // Then run the analysis
                 // 'my-sonarcloud-token' needs to be defined for this job and contains the user token
