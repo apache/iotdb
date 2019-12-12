@@ -480,8 +480,8 @@ public class Session {
           + "\" is not a query statement, you should use executeNonQueryStatement method instead.");
     }
 
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, statementId,
-        fetchSize);
+    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, statementId);
+    execReq.setFetchSize(fetchSize);
     TSExecuteStatementResp execResp = client.executeStatement(execReq);
 
     RpcUtils.verifySuccess(execResp.getStatus());
@@ -501,8 +501,7 @@ public class Session {
           + "\" is a query statement, you should use executeQueryStatement method instead.");
     }
 
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, statementId,
-        fetchSize);
+    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, statementId);
     TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
     RpcUtils.verifySuccess(execResp.getStatus());
   }

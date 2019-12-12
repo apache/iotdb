@@ -126,7 +126,7 @@ struct TSExecuteStatementReq {
   // statementId
   3: required i64 statementId
 
-  4: required i32 fetchSize
+  4: optional i32 fetchSize
 }
 
 struct TSExecuteInsertRowInBatchResp{

@@ -82,7 +82,7 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add optional string version in TSFetchMetadataResp           | Genius_pig             |
 | Add required i64 statementId in TSExecuteStatementReq        | Yuan Tian |
 | Add required binary time, required list<binary> valueList, required list<binary> bitmapList and remove required binary values, required i32 rowCount in TSQueryDataSet| Yuan Tian |
-| Add required i32 fetchSize in TSExecuteStatementReq,<br />Add optional TSQueryDataSet in TSExecuteStatementResp| liutaohua |
+| Add optional i32 fetchSize in TSExecuteStatementReq,<br />Add optional TSQueryDataSet in TSExecuteStatementResp| liutaohua |
 
 
 

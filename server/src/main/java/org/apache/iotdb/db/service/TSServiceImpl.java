@@ -619,10 +619,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       TSHandleIdentifier operationId = new TSHandleIdentifier(
           ByteBuffer.wrap(username.get().getBytes()), ByteBuffer.wrap("PASS".getBytes()),
           queryId);
-      queryId2Plan.get().put(queryId, plan);
 
       //fill data
-      QueryDataSet newDataSet = createQueryDataSet(queryId);
+      QueryDataSet newDataSet = createQueryDataSet(queryId, plan);
       TSQueryDataSet result = fillRpcReturnData(fetchSize, newDataSet);
 
       boolean hasResultSet = result.bufferForTime().limit() != 0;
@@ -936,9 +935,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return result;
   }
 
-  private QueryDataSet createQueryDataSet(long queryId)
+  private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException {
-    PhysicalPlan physicalPlan = queryId2Plan.get().get(queryId);
 
     QueryDataSet queryDataSet;
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignJobId());
@@ -947,7 +945,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     contextMapLocal.get().put(queryId, context);
 
     queryDataSet = processor.getExecutor().processQuery(physicalPlan, context);
-
+    queryId2Plan.get().put(queryId, physicalPlan);
     queryId2DataSet.get().put(queryId, queryDataSet);
     return queryDataSet;
   }

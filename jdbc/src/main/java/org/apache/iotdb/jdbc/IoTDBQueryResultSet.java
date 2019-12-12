@@ -701,6 +701,8 @@ public class IoTDBQueryResultSet implements ResultSet {
     if (emptyResultSet) {
       return false;
     }
+    //when the new data is pulled from the server, the last item must be updated
+    constructOneRow();
     return true;
   }
 
@@ -719,7 +721,6 @@ public class IoTDBQueryResultSet implements ResultSet {
       } else {
         tsQueryDataSet = resp.getQueryDataSet();
         rowsIndex = 0;
-        constructOneRow();
       }
     } catch (TException e) {
       throw new SQLException(
