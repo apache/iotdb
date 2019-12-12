@@ -236,9 +236,9 @@ public class IoTDBStatement implements Statement {
   }
 
   /**
-   * There are four kinds of sql here: (1) show timeseries path/show timeseries (2) show storage group (3) query sql
-   * (4) update sql . <p></p> (1) and (2) return new TsfileMetadataResultSet (3) return new
-   * TsfileQueryResultSet (4) simply get executed
+   * There are four kinds of sql here: (1) show timeseries path/show timeseries (2) show storage
+   * group (3) query sql (4) update sql . <p></p> (1) and (2) return new TsfileMetadataResultSet (3)
+   * return new TsfileQueryResultSet (4) simply get executed
    */
   private boolean executeSQL(String sql) throws TException, SQLException {
     isCancelled = false;
@@ -316,7 +316,7 @@ public class IoTDBStatement implements Statement {
         return true;
       }
     } else {
-      TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, stmtId);
+      TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, stmtId, fetchSize);
       TSExecuteStatementResp execResp = client.executeStatement(execReq);
       operationHandle = execResp.getOperationHandle();
       try {
@@ -328,7 +328,7 @@ public class IoTDBStatement implements Statement {
         this.resultSet = new IoTDBQueryResultSet(this,
             execResp.getColumns(), execResp.getDataTypeList(),
             execResp.ignoreTimeStamp, client, operationHandle, sql,
-            operationHandle.getOperationId().getQueryId());
+            operationHandle.getOperationId().getQueryId(), execResp.queryDataSet);
         return true;
       }
       return false;
@@ -417,7 +417,7 @@ public class IoTDBStatement implements Statement {
 
   private ResultSet executeQuerySQL(String sql) throws TException, SQLException {
     isCancelled = false;
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, stmtId);
+    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, stmtId, fetchSize);
     TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
     operationHandle = execResp.getOperationHandle();
     try {
@@ -427,7 +427,7 @@ public class IoTDBStatement implements Statement {
     }
     this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
         execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, operationHandle, sql,
-        operationHandle.getOperationId().getQueryId());
+        operationHandle.getOperationId().getQueryId(), execResp.queryDataSet);
     return resultSet;
   }
 
@@ -470,7 +470,10 @@ public class IoTDBStatement implements Statement {
   }
 
   private int executeUpdateSQL(String sql) throws TException, IoTDBSQLException {
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, stmtId);
+    TSExecuteStatementReq execReq = new TSExecuteStatementReq();
+    execReq.setSessionHandle(sessionHandle);
+    execReq.setStatement(sql);
+    execReq.setStatementId(stmtId);
     TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
     operationHandle = execResp.getOperationHandle();
     try {

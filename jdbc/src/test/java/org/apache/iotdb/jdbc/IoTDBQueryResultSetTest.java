@@ -121,6 +121,9 @@ public class IoTDBQueryResultSetTest {
 
     statement = new IoTDBStatement(connection, client, sessHandle, zoneID);
 
+    TSQueryDataSet tsQueryDataSet = FakedFirstFetchResult();
+    execResp.queryDataSet = tsQueryDataSet;
+
     when(connection.isClosed()).thenReturn(false);
     when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execResp);
     operationHandle.hasResultSet = true;
@@ -181,8 +184,6 @@ public class IoTDBQueryResultSetTest {
      * step 2: fetch result
      */
     fetchResultsResp.hasResultSet = true; // at the first time to fetch
-    TSQueryDataSet tsQueryDataSet = FakedFirstFetchResult();
-    when(fetchResultsResp.getQueryDataSet()).thenReturn(tsQueryDataSet);
 
     try (ResultSet resultSet = statement.getResultSet()) {
       // check columnInfoMap
@@ -233,7 +234,7 @@ public class IoTDBQueryResultSetTest {
     }
 
     // The client issues 2 fetchResultReq in total. The last fetchResultReq get empty resultSet.
-    verify(fetchResultsResp, times(2)).getStatus();
+    verify(fetchResultsResp, times(1)).getStatus();
   }
 
   // fake the first-time fetched result of 'testSql' from an IoTDB server
@@ -272,16 +273,16 @@ public class IoTDBQueryResultSetTest {
     for (int i = 0; i < rowCount; i++) {
       Object[] row = input[i];
       // use columnOutput to write byte array
-      dataOutputStreams[0].writeLong((long)row[0]);
+      dataOutputStreams[0].writeLong((long) row[0]);
       for (int k = 0; k < columnNum; k++) {
         Object value = row[1 + k];
-        DataOutputStream dataOutputStream = dataOutputStreams[2*k + 1]; // DO NOT FORGET +1
+        DataOutputStream dataOutputStream = dataOutputStreams[2 * k + 1]; // DO NOT FORGET +1
         if (value == null) {
-          bitmap[k] =  (bitmap[k] << 1);
+          bitmap[k] = (bitmap[k] << 1);
         } else {
-          bitmap[k] =  (bitmap[k] << 1) | 0x01;
+          bitmap[k] = (bitmap[k] << 1) | 0x01;
           if (k == 0) { // TSDataType.FLOAT
-            dataOutputStream.writeFloat((float)value);
+            dataOutputStream.writeFloat((float) value);
             valueOccupation[k] += 4;
           } else if (k == 1) { // TSDataType.INT64
             dataOutputStream.writeLong((long) value);
@@ -294,7 +295,7 @@ public class IoTDBQueryResultSetTest {
       }
       if (i % 8 == 7) {
         for (int j = 0; j < bitmap.length; j++) {
-          DataOutputStream dataBitmapOutputStream = dataOutputStreams[2*(j+1)];
+          DataOutputStream dataBitmapOutputStream = dataOutputStreams[2 * (j + 1)];
           dataBitmapOutputStream.writeByte(bitmap[j]);
           // we should clear the bitmap every 8 row record
           bitmap[j] = 0;
@@ -304,7 +305,7 @@ public class IoTDBQueryResultSetTest {
 
     // feed the remaining bitmap
     for (int j = 0; j < bitmap.length; j++) {
-      DataOutputStream dataBitmapOutputStream = dataOutputStreams[2*(j+1)];
+      DataOutputStream dataBitmapOutputStream = dataOutputStreams[2 * (j + 1)];
       dataBitmapOutputStream.writeByte(bitmap[j] << (8 - rowCount % 8));
     }
 
@@ -321,13 +322,13 @@ public class IoTDBQueryResultSetTest {
     List<ByteBuffer> bitmapList = new LinkedList<>();
     List<ByteBuffer> valueList = new LinkedList<>();
     for (int i = 1; i < byteArrayOutputStreams.length; i += 2) {
-      ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation[(i-1)/2]);
+      ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation[(i - 1) / 2]);
       valueBuffer.put(byteArrayOutputStreams[i].toByteArray());
       valueBuffer.flip();
       valueList.add(valueBuffer);
 
       ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapOccupation);
-      bitmapBuffer.put(byteArrayOutputStreams[i+1].toByteArray());
+      bitmapBuffer.put(byteArrayOutputStreams[i + 1].toByteArray());
       bitmapBuffer.flip();
       bitmapList.add(bitmapBuffer);
     }
