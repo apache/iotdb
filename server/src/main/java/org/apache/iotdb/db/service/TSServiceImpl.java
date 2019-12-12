@@ -49,6 +49,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -882,18 +883,27 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         throw new TException(e);
       }
       TSQueryDataSet result;
-      if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(username.get())) {
-        WatermarkEncoder encoder;
-        if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
-          encoder = new GroupedLSBWatermarkEncoder(config);
+      // optimize for query without value filter and
+      // !!!!!!!!!!!!!!!!!!Attention !!!!!!!!!!!!!!!!!!!
+      // !!!!!!!don't support watermark now!!!!!
+      if (queryDataSet instanceof EngineDataSetWithoutValueFilter) {
+        result = ((EngineDataSetWithoutValueFilter)queryDataSet).fillBuffer(req.fetchSize);
+      }
+      // TODO need to refactor the other query in the future
+      else {
+        if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(username.get())) {
+          WatermarkEncoder encoder;
+          if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
+            encoder = new GroupedLSBWatermarkEncoder(config);
+          } else {
+            throw new UnSupportedDataTypeException(String.format(
+                    "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
+          }
+          result = QueryDataSetUtils
+                  .convertQueryDataSetByFetchSize(queryDataSet, req.fetchSize, encoder);
         } else {
-          throw new UnSupportedDataTypeException(String.format(
-              "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
+          result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, req.fetchSize);
         }
-        result = QueryDataSetUtils
-            .convertQueryDataSetByFetchSize(queryDataSet, req.fetchSize, encoder);
-      } else {
-        result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, req.fetchSize);
       }
       boolean hasResultSet = (result.bufferForTime().limit() != 0);
       if (!hasResultSet && queryId2DataSet.get() != null) {
