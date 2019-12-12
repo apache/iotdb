@@ -482,7 +482,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       long thatTerm, long thatLastLogId, long thatLastLogTerm) {
     long response;
     if (thatTerm <= thisTerm) {
-      response = thatTerm;
+      response = thisTerm;
       logger.debug("{} rejected an election request, term:{}/{}",
           name, thatTerm, thisTerm);
     } else if (thatLastLogTerm < thisLastLogTerm
