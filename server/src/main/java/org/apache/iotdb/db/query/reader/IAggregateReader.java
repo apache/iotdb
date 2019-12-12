@@ -20,15 +20,9 @@ package org.apache.iotdb.db.query.reader;
 
 import java.io.IOException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 
 public interface IAggregateReader extends IBatchReader {
 
-  boolean hasNextChunk() throws IOException;
-
-  ChunkMetaData nextChunkMeta();
-
-  boolean hasNextPageInCurrentChunk() throws IOException;
   /**
    * Returns meta-information of batch data.
    * <p>
