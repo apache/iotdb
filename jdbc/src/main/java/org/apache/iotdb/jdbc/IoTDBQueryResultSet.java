@@ -77,7 +77,6 @@ public class IoTDBQueryResultSet implements ResultSet {
   private List<String> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   private int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
   private int fetchSize;
-  private boolean emptyResultSet = false;
 
   private TSQueryDataSet tsQueryDataSet = null;
   private byte[] time; // used to cache the current time value
@@ -690,23 +689,23 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public boolean next() throws SQLException {
-    if (!checkDataSetIsNull()) {
+    if (hasCachedResults()) {
       constructOneRow();
       return true;
     }
-    if (!isServerHasMoreData() || emptyResultSet) {
-      return false;
+    if (fetchResults()) {
+      constructOneRow();
+      return true;
     }
-    requestDataFromServer();
-    if (emptyResultSet) {
-      return false;
-    }
-    //when the new data is pulled from the server, the last item must be updated
-    constructOneRow();
-    return true;
+    return false;
   }
 
-  private void requestDataFromServer() throws SQLException {
+
+  /**
+   * @return true means has results
+   */
+  private boolean fetchResults() throws SQLException {
+    rowsIndex = 0;
     TSFetchResultsReq req = new TSFetchResultsReq(sql, fetchSize, queryId);
     try {
       TSFetchResultsResp resp = client.fetchResults(req);
@@ -716,24 +715,16 @@ public class IoTDBQueryResultSet implements ResultSet {
       } catch (IoTDBRPCException e) {
         throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
       }
-      if (!resp.hasResultSet) {
-        emptyResultSet = true;
-      } else {
-        tsQueryDataSet = resp.getQueryDataSet();
-        rowsIndex = 0;
-      }
+      tsQueryDataSet = resp.getQueryDataSet();
+      return resp.hasResultSet;
     } catch (TException e) {
       throw new SQLException(
           "Cannot fetch result from server, because of network connection: {} ", e);
     }
   }
 
-  private boolean isServerHasMoreData() {
-    return operationHandle.hasResultSet;
-  }
-
-  private boolean checkDataSetIsNull() {
-    return tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining();
+  private boolean hasCachedResults() {
+    return tsQueryDataSet != null && tsQueryDataSet.time.hasRemaining();
   }
 
   private void constructOneRow() {

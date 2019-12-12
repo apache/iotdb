@@ -225,15 +225,6 @@ struct TSSetTimeZoneReq {
     1: required string timeZone
 }
 
-// for prepared statement
-struct TSInsertionReq {
-    1: optional string deviceId
-    2: optional list<string> measurements
-    3: optional list<string> values
-    4: optional i64 timestamp
-    5: required i64 stmtId
-}
-
 // for session
 struct TSInsertReq {
     1: required string deviceId
@@ -303,8 +294,6 @@ service TSIService {
 
 	ServerProperties getProperties();
 
-	TSExecuteStatementResp insert(1:TSInsertionReq req);
-
 	TSStatus setStorageGroup(1:string storageGroup);
 
 	TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
@@ -313,9 +302,9 @@ service TSIService {
 
   TSStatus deleteStorageGroups(1:list<string> storageGroup);
 
-  TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
+  TSStatus insert(1:TSInsertReq req);
 
-	TSStatus insertRow(1:TSInsertReq req);
+  TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
 
 	TSExecuteInsertRowInBatchResp insertRowInBatch(1:TSInsertInBatchReq req);
 

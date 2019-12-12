@@ -44,11 +44,6 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   private final Map<Integer, String> parameters = new HashMap<>();
 
   public IoTDBPreparedStatement(IoTDBConnection connection, Iface client,
-      TS_SessionHandle sessionHandle, ZoneId zoneId) throws SQLException{
-    super(connection, client, sessionHandle, zoneId);
-  }
-
-  public IoTDBPreparedStatement(IoTDBConnection connection, Iface client,
       TS_SessionHandle sessionHandle, String sql,
       ZoneId zoneId) throws SQLException {
     super(connection, client, sessionHandle, zoneId);

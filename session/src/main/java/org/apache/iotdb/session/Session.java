@@ -250,7 +250,7 @@ public class Session {
     request.setValues(values);
 
     try {
-      return checkAndReturn(client.insertRow(request));
+      return checkAndReturn(client.insert(request));
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }

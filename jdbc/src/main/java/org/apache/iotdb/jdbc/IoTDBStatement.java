@@ -316,8 +316,7 @@ public class IoTDBStatement implements Statement {
         return true;
       }
     } else {
-      TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, stmtId);
-      execReq.setFetchSize(fetchSize);
+      TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, stmtId, fetchSize);
       TSExecuteStatementResp execResp = client.executeStatement(execReq);
       operationHandle = execResp.getOperationHandle();
       try {
@@ -418,8 +417,7 @@ public class IoTDBStatement implements Statement {
 
   private ResultSet executeQuerySQL(String sql) throws TException, SQLException {
     isCancelled = false;
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, stmtId);
-    execReq.setFetchSize(fetchSize);
+    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, stmtId, fetchSize);
     TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
     operationHandle = execResp.getOperationHandle();
     try {
@@ -472,7 +470,10 @@ public class IoTDBStatement implements Statement {
   }
 
   private int executeUpdateSQL(String sql) throws TException, IoTDBSQLException {
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, stmtId);
+    TSExecuteStatementReq execReq = new TSExecuteStatementReq();
+    execReq.setSessionHandle(sessionHandle);
+    execReq.setStatement(sql);
+    execReq.setStatementId(stmtId);
     TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
     operationHandle = execResp.getOperationHandle();
     try {
