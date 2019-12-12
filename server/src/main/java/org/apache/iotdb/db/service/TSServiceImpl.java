@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.service;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -90,22 +92,26 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   protected QueryProcessor processor;
   // Record the username for every rpc connection. Username.get() is null if
   // login is failed.
-  protected ThreadLocal<String> username = new ThreadLocal<>();
-
-  // The statementId is unique in one session for each statement.
-  private ThreadLocal<Long> statementIdGenerator = new ThreadLocal<>();
-  // The operationIdGenerator is unique in one session for each operation.
-  private ThreadLocal<Long> operationIdGenerator = new ThreadLocal<>();
+  protected Map<Long, String> usernameMap = new ConcurrentHashMap<>();
+  private Map<Long, ZoneId> zoneIds = new ConcurrentHashMap<>();
+  
+  // The sessionId is unique in one IoTDB instance.
+  private AtomicLong sessionIdGenerator = new AtomicLong();
+  // The statementId is unique in one IoTDB instance.
+  private AtomicLong statementIdGenerator = new AtomicLong();
+  // The queryIdGenerator is unique in one IoTDB instance for each operation that needs an id.
+  private AtomicLong queryIdGenerator = new AtomicLong();
   // (statement -> Set(queryId))
-  private ThreadLocal<Map<Long, Set<Long>>> statementId2QueryId = new ThreadLocal<>();
+  private Map<Long, Set<Long>> statementId2QueryId = new ConcurrentHashMap<>();
   // (queryId -> PhysicalPlan)
-  private ThreadLocal<Map<Long, PhysicalPlan>> queryId2Plan = new ThreadLocal<>();
+  private Map<Long, PhysicalPlan> queryId2Plan = new ConcurrentHashMap<>();
   // (queryId -> QueryDataSet)
-  private ThreadLocal<Map<Long, QueryDataSet>> queryId2DataSet = new ThreadLocal<>();
-  private ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
+  private Map<Long, QueryDataSet> queryId2DataSet = new ConcurrentHashMap<>();
+  // (queryId -> QueryContext)
+  private Map<Long, QueryContext> contextMapLocal = new ConcurrentHashMap<>();
+  
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private ThreadLocal<Map<Long, QueryContext>> contextMapLocal = new ThreadLocal<>();
-
+  
   public TSServiceImpl() {
     processor = new QueryProcessor(new QueryProcessExecutor());
   }
@@ -191,7 +197,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private void initForOneSession() {
     queryId2Plan.set(new HashMap<>());
     queryId2DataSet.set(new HashMap<>());
-    operationIdGenerator.set(0L);
+    queryIdGenerator.set(0L);
     statementIdGenerator.set(0L);
     contextMapLocal.set(new HashMap<>());
     statementId2QueryId.set(new HashMap<>());
@@ -215,8 +221,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       statementIdGenerator.remove();
     }
     // clear the queryId counter
-    if (operationIdGenerator.get() != null) {
-      operationIdGenerator.remove();
+    if (queryIdGenerator.get() != null) {
+      queryIdGenerator.remove();
     }
     // clear all cached physical plans of the connection
     if (queryId2Plan.get() != null) {
@@ -608,16 +614,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       } // else default ignoreTimeStamp is false
       resp.setOperationType(plan.getOperatorType().toString());
       // generate the queryId for the operation
-      long queryId = generateOperationId();
+      long queryId = generateQueryId();
       // put it into the corresponding Set
       Set<Long> queryIdSet = statementId2QueryId.get()
           .computeIfAbsent(statementId, k -> new HashSet<>());
       queryIdSet.add(queryId);
 
-      TSHandleIdentifier operationId = new TSHandleIdentifier(
+      TSHandleIdentifier queryId = new TSHandleIdentifier(
           ByteBuffer.wrap(username.get().getBytes()), ByteBuffer.wrap("PASS".getBytes()),
           queryId);
-      TSOperationHandle operationHandle = new TSOperationHandle(operationId, true);
+      TSOperationHandle operationHandle = new TSOperationHandle(queryId, true);
       resp.setOperationHandle(operationHandle);
 
       queryId2Plan.get().put(queryId, plan);
@@ -964,12 +970,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     status = executePlan(plan);
     TSExecuteStatementResp resp = getTSExecuteStatementResp(status);
-    long queryId = generateOperationId();
-    TSHandleIdentifier operationId = new TSHandleIdentifier(
+    long queryId = generateQueryId();
+    TSHandleIdentifier queryId = new TSHandleIdentifier(
         ByteBuffer.wrap(username.get().getBytes()),
         ByteBuffer.wrap("PASS".getBytes()), queryId);
     TSOperationHandle operationHandle;
-    operationHandle = new TSOperationHandle(operationId, false);
+    operationHandle = new TSOperationHandle(queryId, false);
     resp.setOperationHandle(operationHandle);
     return resp;
   }
@@ -1021,10 +1027,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSExecuteStatementResp resp = new TSExecuteStatementResp();
     TSStatus tsStatus = new TSStatus(status);
     resp.setStatus(tsStatus);
-    TSHandleIdentifier operationId = new TSHandleIdentifier(
+    TSHandleIdentifier queryId = new TSHandleIdentifier(
         ByteBuffer.wrap(username.get().getBytes()),
-        ByteBuffer.wrap("PASS".getBytes()), generateOperationId());
-    TSOperationHandle operationHandle = new TSOperationHandle(operationId, false);
+        ByteBuffer.wrap("PASS".getBytes()), generateQueryId());
+    TSOperationHandle operationHandle = new TSOperationHandle(queryId, false);
     resp.setOperationHandle(operationHandle);
     return resp;
   }
@@ -1369,9 +1375,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         : getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
-  private long generateOperationId() {
-    long queryId = operationIdGenerator.get();
-    operationIdGenerator.set(queryId + 1);
+  private long generateQueryId() {
+    long queryId = queryIdGenerator.get();
+    queryIdGenerator.set(queryId + 1);
     return queryId;
   }
 }
