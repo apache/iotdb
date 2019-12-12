@@ -32,6 +32,7 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Delete struct TSSetStorageGroupReq | Jialin Qiao        |
 | Remove struct TSDataValue          | Lei Rui            |
 | Remove struct TSRowRecord          | Lei Rui            |
+| Remove optional string version in TSFetchMetadataResp | Genius_pig |
 
 
 
