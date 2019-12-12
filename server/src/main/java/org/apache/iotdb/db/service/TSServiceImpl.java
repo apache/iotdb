@@ -876,35 +876,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       QueryDataSet queryDataSet = queryId2DataSet.get().get(req.queryId);
       TSQueryDataSet result = fillRpcReturnData(req.fetchSize, queryDataSet);
 
-      IAuthorizer authorizer;
-      try {
-        authorizer = LocalFileAuthorizer.getInstance();
-      } catch (AuthException e) {
-        throw new TException(e);
-      }
-      TSQueryDataSet result;
-      // optimize for query without value filter and
-      // !!!!!!!!!!!!!!!!!!Attention !!!!!!!!!!!!!!!!!!!
-      // !!!!!!!don't support watermark now!!!!!
-      if (queryDataSet instanceof EngineDataSetWithoutValueFilter) {
-        result = ((EngineDataSetWithoutValueFilter)queryDataSet).fillBuffer(req.fetchSize);
-      }
-      // TODO need to refactor the other query in the future
-      else {
-        if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(username.get())) {
-          WatermarkEncoder encoder;
-          if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
-            encoder = new GroupedLSBWatermarkEncoder(config);
-          } else {
-            throw new UnSupportedDataTypeException(String.format(
-                    "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
-          }
-          result = QueryDataSetUtils
-                  .convertQueryDataSetByFetchSize(queryDataSet, req.fetchSize, encoder);
-        } else {
-          result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, req.fetchSize);
-        }
-      }
+
       boolean hasResultSet = result.bufferForTime().limit() != 0;
       if (!hasResultSet) {
         queryId2DataSet.get().remove(req.queryId);
@@ -930,18 +902,27 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       throw new TException(e);
     }
     TSQueryDataSet result;
-    if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(username.get())) {
-      WatermarkEncoder encoder;
-      if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
-        encoder = new GroupedLSBWatermarkEncoder(config);
+    // optimize for query without value filter and
+    // !!!!!!!!!!!!!!!!!!Attention !!!!!!!!!!!!!!!!!!!
+    // !!!!!!!don't support watermark now!!!!!
+    if (queryDataSet instanceof EngineDataSetWithoutValueFilter) {
+      result = ((EngineDataSetWithoutValueFilter)queryDataSet).fillBuffer(fetchSize);
+    }
+    // TODO need to refactor the other query in the future
+    else {
+      if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(username.get())) {
+        WatermarkEncoder encoder;
+        if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
+          encoder = new GroupedLSBWatermarkEncoder(config);
+        } else {
+          throw new UnSupportedDataTypeException(String.format(
+                  "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
+        }
+        result = QueryDataSetUtils
+                .convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
       } else {
-        throw new UnSupportedDataTypeException(String.format(
-            "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
+        result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
       }
-      result = QueryDataSetUtils
-          .convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
-    } else {
-      result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
     }
     return result;
   }
