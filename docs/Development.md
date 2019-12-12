@@ -120,7 +120,7 @@ Changes to IoTDB source codes are made through Github pull request. Anyone can r
 
 ### Contributing by Documentation Changes
 
-To propose a change to release documentation (that is, docs that appear under <https://iotdb.apache.org/#/Documents/progress/chap1/sec1>), edit the Markdown source files in IoTDB’s docs/ directory(`documentation-EN` branch). The process to propose a doc change is otherwise the same as the process for proposing code changes below.  
+To propose a change to release documentation (that is, docs that appear under <https://iotdb.apache.org/#/Documents/0.8.x/chap1/sec1>), edit the Markdown source files in IoTDB’s docs/ directory(`documentation-EN` branch). The process to propose a doc change is otherwise the same as the process for proposing code changes below.  
 
 Whenever updating **User Guide** documents, remember to update `0-Content.md` at the same time. Here are two brief examples to show how to add new documents or how to modify existing documents:
 
