@@ -68,6 +68,7 @@ struct TSExecuteStatementResp {
 	5: optional bool ignoreTimeStamp
   // Data type list of columns in select statement of SQL
   6: optional list<string> dataTypeList
+  7: optional TSQueryDataSet queryDataSet
 }
 
 enum TSProtocolVersion {
@@ -124,6 +125,8 @@ struct TSExecuteStatementReq {
 
   // statementId
   3: required i64 statementId
+
+  4: optional i32 fetchSize
 }
 
 struct TSExecuteInsertRowInBatchResp{

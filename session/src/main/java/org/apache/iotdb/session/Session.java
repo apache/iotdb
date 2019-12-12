@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -73,21 +73,27 @@ public class Session {
   private boolean isClosed = true;
   private ZoneId zoneId;
   private long statementId;
+  private int fetchSize;
 
 
   public Session(String host, int port) {
-    this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
+    this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD, 10000);
   }
 
   public Session(String host, String port, String username, String password) {
-    this(host, Integer.parseInt(port), username, password);
+    this(host, Integer.parseInt(port), username, password, 10000);
   }
 
   public Session(String host, int port, String username, String password) {
+    this(host, port, username, password, 10000);
+  }
+
+  public Session(String host, int port, String username, String password, int fetchSize) {
     this.host = host;
     this.port = port;
     this.username = username;
     this.password = password;
+    this.fetchSize = fetchSize;
   }
 
   public synchronized void open() throws IoTDBSessionException {
@@ -362,7 +368,7 @@ public class Session {
    * delete data <= time in multiple timeseries
    *
    * @param paths data in which time series to delete
-   * @param time data with time stamp less than or equal to time will be deleted
+   * @param time  data with time stamp less than or equal to time will be deleted
    */
   public TSStatus deleteData(List<String> paths, long time)
       throws IoTDBSessionException {
@@ -475,6 +481,7 @@ public class Session {
     }
 
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, statementId);
+    execReq.setFetchSize(fetchSize);
     TSExecuteStatementResp execResp = client.executeStatement(execReq);
 
     RpcUtils.verifySuccess(execResp.getStatus());
