@@ -48,7 +48,6 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseTsFile
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -69,6 +68,8 @@ import org.slf4j.LoggerFactory;
 public class TsFileProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileProcessor.class);
+
+  private boolean useNVM = false;
 
   private RestorableTsFileIOWriter writer;
 
@@ -142,13 +143,13 @@ public class TsFileProcessor {
   public boolean insert(InsertPlan insertPlan) throws QueryProcessException {
 
     if (workMemTable == null) {
-      workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
+      workMemTable = MemTablePool.getInstance().getAvailableMemTable(this, useNVM);
     }
 
     // insert insertPlan to the work memtable
     workMemTable.insert(insertPlan);
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+    if (!useNVM && IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
         getLogNode().write(insertPlan);
       } catch (IOException e) {
@@ -172,13 +173,13 @@ public class TsFileProcessor {
       Integer[] results) throws QueryProcessException {
 
     if (workMemTable == null) {
-      workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
+      workMemTable = MemTablePool.getInstance().getAvailableMemTable(this, useNVM);
     }
 
     // insert insertPlan to the work memtable
     workMemTable.insertBatch(batchInsertPlan, indexes);
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+    if (!useNVM && IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
         batchInsertPlan.setIndex(new HashSet<>(indexes));
         getLogNode().write(batchInsertPlan);
@@ -404,7 +405,7 @@ public class TsFileProcessor {
       writer.makeMetadataVisible();
       flushingMemTables.remove(memTable);
       memTable.release();
-      MemTablePool.getInstance().putBack(memTable, storageGroupName);
+      MemTablePool.getInstance().putBack(memTable, storageGroupName, useNVM);
       logger.debug("storage group {} flush finished, remove a memtable from flushing list, "
           + "flushing memtable list size: {}", storageGroupName, flushingMemTables.size());
     } finally {
@@ -553,6 +554,14 @@ public class TsFileProcessor {
     return storageGroupName;
   }
 
+  public boolean isUseNVM() {
+    return useNVM;
+  }
+
+  public void setUseNVM(boolean useNVM) {
+    this.useNVM = useNVM;
+  }
+
   /**
    * get the chunk(s) in the memtable (one from work memtable and the other ones in flushing
    * memtables and then compact them into one TimeValuePairSorter). Then get the related
@@ -606,5 +615,4 @@ public class TsFileProcessor {
       flushQueryLock.readLock().unlock();
     }
   }
-
 }

@@ -47,7 +47,7 @@ public class MemTablePoolTest {
   public void testGetAndRelease() {
     long time = System.currentTimeMillis();
     for (int i = 0; i < 10; i++) {
-      IMemTable memTable = MemTablePool.getInstance().getAvailableMemTable("test case");
+      IMemTable memTable = MemTablePool.getInstance().getAvailableMemTable("test case", false);
       memTables.add(memTable);
     }
     time -= System.currentTimeMillis();
@@ -86,7 +86,7 @@ public class MemTablePoolTest {
           continue;
         }
         memTables.remove(memTable);
-        MemTablePool.getInstance().putBack(memTable, "test case");
+        MemTablePool.getInstance().putBack(memTable, "test case", false);
       }
     }
   }

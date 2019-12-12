@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import java.util.List;
-import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.nvm.datastructure.AbstractTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -68,9 +68,9 @@ public interface IWritableMemChunk extends TimeValuePairSorter {
    * served for query requests.
    * @return
    */
-  default TVList getSortedTVList(){return null;}
+  default AbstractTVList getSortedTVList(){return null;}
 
-  default TVList getTVList(){return null;}
+  default AbstractTVList getTVList(){return null;}
 
   default long getMinTime() {
     return Long.MIN_VALUE;

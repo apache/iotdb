@@ -89,6 +89,7 @@ public class BinaryTVList extends TVList {
     return cloneArray;
   }
 
+  @Override
   public void sort() {
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
       sortedTimestamps = (long[][]) PrimitiveArrayPool
@@ -105,7 +106,7 @@ public class BinaryTVList extends TVList {
   }
 
   @Override
-  void clearValue() {
+  protected void clearValue() {
     if (values != null) {
       for (Binary[] dataArray : values) {
         PrimitiveArrayPool.getInstance().release(dataArray);
@@ -115,7 +116,7 @@ public class BinaryTVList extends TVList {
   }
 
   @Override
-  void clearSortedValue() {
+  protected void clearSortedValue() {
     if (sortedValues != null) {
       for (Binary[] dataArray : sortedValues) {
         PrimitiveArrayPool.getInstance().release(dataArray);
@@ -129,17 +130,20 @@ public class BinaryTVList extends TVList {
     set(dest, sortedTimestamps[src/ARRAY_SIZE][src%ARRAY_SIZE], sortedValues[src/ARRAY_SIZE][src%ARRAY_SIZE]);
   }
 
+  @Override
   protected void set(int src, int dest) {
     long srcT = getTime(src);
     Binary srcV = getBinary(src);
     set(dest, srcT, srcV);
   }
 
+  @Override
   protected void setToSorted(int src, int dest) {
     sortedTimestamps[dest/ARRAY_SIZE][dest% ARRAY_SIZE] = getTime(src);
     sortedValues[dest/ARRAY_SIZE][dest%ARRAY_SIZE] = getBinary(src);
   }
 
+  @Override
   protected void reverseRange(int lo, int hi) {
     hi--;
     while (lo < hi) {

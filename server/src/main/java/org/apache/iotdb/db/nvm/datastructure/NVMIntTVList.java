@@ -1,39 +1,24 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-package org.apache.iotdb.db.utils.datastructure;
+package org.apache.iotdb.db.nvm.datastructure;
 
-import static org.apache.iotdb.db.rescon.PrimitiveArrayPool.ARRAY_SIZE;
+import static org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool.ARRAY_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool;
+import org.apache.iotdb.db.nvm.space.NVMSpaceManager.NVMSpace;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class IntTVList extends TVList {
+public class NVMIntTVList extends NVMTVList {
 
-  private List<int[]> values;
+  private List<NVMSpace> values;
 
+  // TODO
   private int[][] sortedValues;
 
   private int pivotValue;
 
-  IntTVList() {
+  NVMIntTVList() {
     super();
     values = new ArrayList<>();
   }
@@ -44,8 +29,8 @@ public class IntTVList extends TVList {
     int arrayIndex = size / ARRAY_SIZE;
     int elementIndex = size % ARRAY_SIZE;
     minTime = minTime <= timestamp ? minTime : timestamp;
-    timestamps.get(arrayIndex)[elementIndex] = timestamp;
-    values.get(arrayIndex)[elementIndex] = value;
+    timestamps.get(arrayIndex).set(elementIndex, timestamp);
+    values.get(arrayIndex).set(elementIndex, value);
     size++;
     if (sorted && size > 1 && timestamp < getTime(size - 2)) {
       sorted = false;
@@ -59,7 +44,7 @@ public class IntTVList extends TVList {
     }
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
-    return values.get(arrayIndex)[elementIndex];
+    return (int) values.get(arrayIndex).get(elementIndex);
   }
 
   protected void set(int index, long timestamp, int value) {
@@ -68,24 +53,22 @@ public class IntTVList extends TVList {
     }
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
-    timestamps.get(arrayIndex)[elementIndex] = timestamp;
-    values.get(arrayIndex)[elementIndex] = value;
+    timestamps.get(arrayIndex).set(elementIndex, timestamp);
+    values.get(arrayIndex).set(elementIndex, value);
   }
 
   @Override
-  public IntTVList clone() {
-    IntTVList cloneList = new IntTVList();
+  public NVMIntTVList clone() {
+    NVMIntTVList cloneList = new NVMIntTVList();
     cloneAs(cloneList);
-    for (int[] valueArray : values) {
-      cloneList.values.add(cloneValue(valueArray));
+    for (NVMSpace valueSpace : values) {
+      cloneList.values.add(cloneValue(valueSpace));
     }
     return cloneList;
   }
 
-  private int[] cloneValue(int[] array) {
-    int[] cloneArray = new int[array.length];
-    System.arraycopy(array, 0, cloneArray, 0, array.length);
-    return cloneArray;
+  private NVMSpace cloneValue(NVMSpace valueSpace) {
+    return valueSpace.clone();
   }
 
   @Override
@@ -107,8 +90,8 @@ public class IntTVList extends TVList {
   @Override
   protected void clearValue() {
     if (values != null) {
-      for (int[] dataArray : values) {
-        PrimitiveArrayPool.getInstance().release(dataArray);
+      for (NVMSpace valueSpace : values) {
+        PrimitiveArrayPool.getInstance().release(valueSpace);
       }
       values.clear();
     }
@@ -157,7 +140,7 @@ public class IntTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    values.add((int[]) PrimitiveArrayPool
+    values.add(NVMPrimitiveArrayPool
         .getInstance().getPrimitiveDataListByType(TSDataType.INT32));
   }
 
@@ -183,28 +166,32 @@ public class IntTVList extends TVList {
     int idx = 0;
     int length = time.length;
 
-    updateMinTimeAndSorted(time);
-
-    while (idx < length) {
-      int inputRemaining = length - idx;
-      int arrayIdx = size / ARRAY_SIZE;
-      int elementIdx = size % ARRAY_SIZE;
-      int internalRemaining  = ARRAY_SIZE - elementIdx;
-      if (internalRemaining >= inputRemaining) {
-        // the remaining inputs can fit the last array, copy all remaining inputs into last array
-        System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
-        System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, inputRemaining);
-        size += inputRemaining;
-        break;
-      } else {
-        // the remaining inputs cannot fit the last array, fill the last array and create a new
-        // one and enter the next loop
-        System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
-        System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, internalRemaining);
-        idx += internalRemaining;
-        size += internalRemaining;
-        checkExpansion();
-      }
+    for (int i = 0; i < length; i++) {
+      putInt(time[i], value[i]);
     }
+
+//    updateMinTimeAndSorted(time);
+//
+//    while (idx < length) {
+//      int inputRemaining = length - idx;
+//      int arrayIdx = size / ARRAY_SIZE;
+//      int elementIdx = size % ARRAY_SIZE;
+//      int internalRemaining  = ARRAY_SIZE - elementIdx;
+//      if (internalRemaining >= inputRemaining) {
+//        // the remaining inputs can fit the last array, copy all remaining inputs into last array
+//        System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
+//        System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, inputRemaining);
+//        size += inputRemaining;
+//        break;
+//      } else {
+//        // the remaining inputs cannot fit the last array, fill the last array and create a new
+//        // one and enter the next loop
+//        System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
+//        System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, internalRemaining);
+//        idx += internalRemaining;
+//        size += internalRemaining;
+//        checkExpansion();
+//      }
+//    }
   }
 }

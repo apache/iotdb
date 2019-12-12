@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -61,11 +62,21 @@ public class TsFileProcessorTest {
   private Map<String, String> props = Collections.emptyMap();
   private QueryContext context;
 
+  private TsFileProcessor processor2;
+  private String storageGroup2 = "storage_group2";
+  private String filePath2 = "data/testUnsealedTsFileProcessor.tsfile2";
+  private String deviceId2 = "root.vehicle.d2";
+  private String measurementId2 = "s2";
+  private TSDataType dataType2 = TSDataType.INT32;
+  private Map<String, String> props2 = Collections.emptyMap();
+  private QueryContext context2;
+
   @Before
   public void setUp() throws Exception {
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
+    context2 = EnvironmentUtils.TEST_QUERY_CONTEXT;
   }
 
   @After

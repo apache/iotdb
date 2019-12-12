@@ -32,6 +32,7 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -41,7 +42,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private List<Modification> modifications = new ArrayList<>();
 
-  private final Map<String, Map<String, IWritableMemChunk>> memTableMap;
+  protected final Map<String, Map<String, IWritableMemChunk>> memTableMap;
 
   private long memSize = 0;
 
@@ -63,7 +64,7 @@ public abstract class AbstractMemTable implements IMemTable {
    *
    * @return true if seriesPath is within this memtable
    */
-  private boolean checkPath(String deviceId, String measurement) {
+  protected boolean checkPath(String deviceId, String measurement) {
     return memTableMap.containsKey(deviceId) && memTableMap.get(deviceId).containsKey(measurement);
   }
 
@@ -203,15 +204,15 @@ public abstract class AbstractMemTable implements IMemTable {
     } else {
       long undeletedTime = findUndeletedTime(deviceId, measurement, timeLowerBound);
       IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
-      IWritableMemChunk chunkCopy = new WritableMemChunk(dataType, memChunk.getTVList().clone());
+      IWritableMemChunk chunkCopy = new WritableMemChunk(dataType,
+          (TVList) memChunk.getTVList().clone());
       chunkCopy.setTimeOffset(undeletedTime);
       sorter = chunkCopy;
     }
     return new ReadOnlyMemChunk(dataType, sorter, props);
   }
 
-
-  private long findUndeletedTime(String deviceId, String measurement, long timeLowerBound) {
+  protected long findUndeletedTime(String deviceId, String measurement, long timeLowerBound) {
     long undeletedTime = Long.MIN_VALUE;
     for (Modification modification : modifications) {
       if (modification instanceof Deletion) {
@@ -242,10 +243,12 @@ public abstract class AbstractMemTable implements IMemTable {
     this.modifications.add(deletion);
   }
 
+  @Override
   public void setVersion(long version) {
     this.version = version;
   }
 
+  @Override
   public long getVersion() {
     return version;
   }
