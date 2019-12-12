@@ -1164,19 +1164,27 @@ public class MManager {
   }
 
   /**
-   * function for getting node by deviceId from cache.
+   * function for getting node by path from cache.
    */
-  public MNode getNodeByDeviceIdFromCache(String deviceId) throws MetadataException {
-    lock.readLock().lock();
+  public MNode getNodeByPathFromCache(String path) throws MetadataException {
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    return getNodeByPathFromCache(path, conf.isAutoCreateSchemaEnabled(),
+        conf.getDefaultStorageGroupLevel());
+  }
+
+    /**
+     * function for getting node by deviceId from cache.
+     */
+  public MNode getNodeByPathFromCache(String path, boolean autoCreateSchema, int sgLevel) throws MetadataException {
+    lock.readLock().lock();
     MNode node = null;
     boolean createSchema = false;
     boolean setStorageGroup = false;
     try {
-      node = mNodeCache.get(deviceId);
+      node = mNodeCache.get(path);
     } catch (CacheException e) {
-      if (!conf.isAutoCreateSchemaEnabled()) {
-        throw new PathNotExistException(deviceId);
+      if (!autoCreateSchema) {
+        throw new PathNotExistException(path);
       } else {
         createSchema = true;
         setStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
@@ -1185,11 +1193,10 @@ public class MManager {
       lock.readLock().unlock();
       if (createSchema) {
         if (setStorageGroup) {
-          String storageGroupName = getStorageGroupNameByAutoLevel(
-              deviceId, conf.getDefaultStorageGroupLevel());
+          String storageGroupName = getStorageGroupNameByAutoLevel(path, sgLevel);
           setStorageGroupToMTree(storageGroupName);
         }
-        node = addDeviceIdToMTree(deviceId);
+        node = addDeviceIdToMTree(path);
       }
     }
     return node;

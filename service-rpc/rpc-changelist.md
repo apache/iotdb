@@ -32,6 +32,7 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Delete struct TSSetStorageGroupReq | Jialin Qiao        |
 | Remove struct TSDataValue          | Lei Rui            |
 | Remove struct TSRowRecord          | Lei Rui            |
+| Remove optional string version in TSFetchMetadataResp | Genius_pig |
 
 
 
@@ -53,6 +54,9 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add method TSStatus deleteStorageGroups(1:list\<string> storageGroup) | Yi Tao                             |
 | Add Struct TSExecuteInsertRowInBatchResp                     | Kaifeng Xue |
 | Add method insertRowInBatch(1:TSInsertInBatchReq req);       | Kaifeng Xue |
+| Add method testInsertRowInBatch(1:TSInsertInBatchReq req);   | Kaifeng Xue |
+| Add method testInsertRow(1:TSInsertReq req);                 | Kaifeng Xue |
+| Add method testInsertBatch(1:TSBatchInsertionReq req);       | Kaifeng Xue |
 
 
 ## 3. Update
@@ -77,6 +81,7 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add optional set\<string> childPaths in TSFetchMetadataResp     | Haonan Hou             |
 | Add optional string version in TSFetchMetadataResp           | Genius_pig             |
 | Add required i64 statementId in TSExecuteStatementReq        | Yuan Tian |
+| Add required binary time, required list<binary> valueList, required list<binary> bitmapList and remove required binary values, required i32 rowCount in TSQueryDataSet| Yuan Tian |
 
 
 

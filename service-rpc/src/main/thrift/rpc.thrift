@@ -166,8 +166,12 @@ struct TSCloseOperationReq {
 }
 
 struct TSQueryDataSet{
-   1: required binary values
-   2: required i32 rowCount
+   // ByteBuffer for time column
+   1: required binary time
+   // ByteBuffer for each column values
+   2: required list<binary> valueList
+   // Bitmap for each column to indicate whether it is a null value
+   3: required list<binary> bitmapList
 }
 
 struct TSFetchResultsReq{
@@ -194,7 +198,6 @@ struct TSFetchMetadataResp{
 		9: optional list<string> nodesList
 		10: optional map<string, string> nodeTimeseriesNum
 		11: optional set<string> childPaths
-		12: optional string version
 }
 
 struct TSFetchMetadataReq{
@@ -299,8 +302,6 @@ service TSIService {
 
 	TSExecuteStatementResp insert(1:TSInsertionReq req);
 
-	TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
-
 	TSStatus setStorageGroup(1:string storageGroup);
 
 	TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
@@ -309,9 +310,17 @@ service TSIService {
 
   TSStatus deleteStorageGroups(1:list<string> storageGroup);
 
+  TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
+
 	TSStatus insertRow(1:TSInsertReq req);
 
 	TSExecuteInsertRowInBatchResp insertRowInBatch(1:TSInsertInBatchReq req);
+
+	TSExecuteBatchStatementResp testInsertBatch(1:TSBatchInsertionReq req);
+
+  TSStatus testInsertRow(1:TSInsertReq req);
+
+  TSExecuteInsertRowInBatchResp testInsertRowInBatch(1:TSInsertInBatchReq req);
 
 	TSStatus deleteData(1:TSDeleteDataReq req);
 

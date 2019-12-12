@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
+import java.io.File;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -46,7 +47,10 @@ import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
+import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
+import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
@@ -55,6 +59,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AddLabelContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AndExpressionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClausesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AutoCreateSchemaContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ConstantContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreatePropertyContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateRoleContext;
@@ -91,7 +96,9 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListRolePrivilegesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListUserPrivilegesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LoadConfigurationStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LoadFilesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LoadStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.MoveFileContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.NodeNameContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.NodeNameWithoutStarContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.OffsetClauseContext;
@@ -100,6 +107,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PredicateContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PrefixPathContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PrivilegesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PropertyContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RemoveFileContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeRoleContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeRoleFromUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeUserContext;
@@ -112,6 +120,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetStorageGroupContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowAllTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowVersionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SlimitClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SoffsetClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathContext;
@@ -131,7 +140,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
@@ -161,9 +169,49 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   @Override
+  public void enterLoadFiles(LoadFilesContext ctx) {
+    super.enterLoadFiles(ctx);
+    AutoCreateSchemaContext acsc = ctx.autoCreateSchema();
+    if (acsc != null) {
+      if (!acsc.ID().getText().equalsIgnoreCase("true") && !acsc.ID().getText()
+          .equalsIgnoreCase("false")) {
+        initializedOperator = new LoadFilesOperator(true,
+            "Please check the statement: load [FILE] true/false [storage group level]");
+      } else {
+        int sgLevel = acsc.INT() == null ? IoTDBDescriptor.getInstance().getConfig()
+            .getDefaultStorageGroupLevel() : Integer.parseInt(acsc.INT().getText());
+        initializedOperator = new LoadFilesOperator(new File(ctx.FILE().getText()), Boolean
+            .parseBoolean(acsc.ID().getText()), sgLevel);
+      }
+    } else {
+      initializedOperator = new LoadFilesOperator(new File(ctx.getChild(1).getText()), true,
+          IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel());
+    }
+  }
+
+  @Override
+  public void enterMoveFile(MoveFileContext ctx) {
+    super.enterMoveFile(ctx);
+    initializedOperator = new MoveFileOperator(new File(ctx.FILE(0).getText()),
+        new File(ctx.FILE(1).getText()));
+  }
+
+  @Override
+  public void enterRemoveFile(RemoveFileContext ctx) {
+    super.enterRemoveFile(ctx);
+    initializedOperator = new RemoveFileOperator(new File(ctx.FILE().getText()));
+  }
+
+  @Override
   public void enterLoadConfigurationStatement(LoadConfigurationStatementContext ctx) {
     super.enterLoadConfigurationStatement(ctx);
     initializedOperator = new LoadConfigurationOperator();
+  }
+
+  @Override
+  public void enterShowVersion(ShowVersionContext ctx) {
+    super.enterShowVersion(ctx);
+    initializedOperator = new ShowOperator(SQLConstant.TOK_VERSION);
   }
 
   @Override
@@ -605,38 +653,33 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     queryOp.setGroupBy(true);
 
     // parse timeUnit
-    queryOp.setUnit(parseDuration(ctx.DURATION().getText()));
+    queryOp.setUnit(parseDuration(ctx.DURATION(0).getText()));
+    queryOp.setSlidingStep(queryOp.getUnit());
+    // parse sliding step
+    if (ctx.DURATION().size() == 2) {
+      queryOp.setSlidingStep(parseDuration(ctx.DURATION(1).getText()));
+      if (queryOp.getSlidingStep() < queryOp.getUnit()) {
+        throw new SQLParserException(
+            "The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
+      }
+    }
 
-    // parse show intervals
-    List<Pair<Long, Long>> intervals = new ArrayList<>();
     long startTime;
     long endTime;
-    List<TimeIntervalContext> timeIntervals = ctx.timeInterval();
-    for (TimeIntervalContext timeInterval : timeIntervals) {
-      if (timeInterval.timeValue(0).INT() != null) {
-        startTime = Long.parseLong(timeInterval.timeValue(0).INT().getText());
-      } else {
-        startTime = parseTimeFormat(timeInterval.timeValue(0).dateFormat().getText());
-      }
-      if (timeInterval.timeValue(1).INT() != null) {
-        endTime = Long.parseLong(timeInterval.timeValue(1).INT().getText());
-      } else {
-        endTime = parseTimeFormat(timeInterval.timeValue(1).dateFormat().getText());
-      }
-      intervals.add(new Pair<>(startTime, endTime));
-    }
-    queryOp.setIntervals(intervals);
-
-    //
-    if (ctx.timeValue() != null) {
-      if (ctx.timeValue().INT() != null) {
-        queryOp.setOrigin(Long.parseLong(ctx.timeValue().INT().getText()));
-      } else {
-        queryOp.setOrigin(parseTimeFormat(ctx.timeValue().dateFormat().getText()));
-      }
+    TimeIntervalContext timeInterval = ctx.timeInterval();
+    if (timeInterval.timeValue(0).INT() != null) {
+      startTime = Long.parseLong(timeInterval.timeValue(0).INT().getText());
     } else {
-      queryOp.setOrigin(parseTimeFormat(SQLConstant.START_TIME_STR));
+      startTime = parseTimeFormat(timeInterval.timeValue(0).dateFormat().getText());
     }
+    if (timeInterval.timeValue(1).INT() != null) {
+      endTime = Long.parseLong(timeInterval.timeValue(1).INT().getText());
+    } else {
+      endTime = parseTimeFormat(timeInterval.timeValue(1).dateFormat().getText());
+    }
+
+    queryOp.setStartTime(startTime);
+    queryOp.setEndTime(endTime);
   }
 
   @Override
@@ -934,6 +977,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
   /**
    * parse duration to time value.
+   *
    * @param durationStr represent duration string like: 12d8m9ns, 1y1mo, etc.
    * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
    */

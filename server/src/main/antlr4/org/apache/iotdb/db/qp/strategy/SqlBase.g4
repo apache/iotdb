@@ -69,7 +69,11 @@ statement
     | SHOW ALL TTL #showAllTTLStatement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
+    | SHOW VERSION #showVersion
     | LOAD CONFIGURATION #loadConfigurationStatement
+    | LOAD FILE autoCreateSchema? #loadFiles
+    | REMOVE FILE #removeFile
+    | MOVE FILE FILE #moveFile
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
     p1=timeseriesPath COMMA p2=timeseriesPath COMMA n1=timeValue COMMA n2=timeValue COMMA
@@ -162,8 +166,10 @@ fillClause
 
 groupByClause
     : GROUP BY LR_BRACKET
-      DURATION (COMMA timeValue)?
-      COMMA timeInterval (COMMA timeInterval)* RR_BRACKET
+      timeInterval
+      COMMA DURATION
+      (COMMA DURATION)?
+      RR_BRACKET
     ;
 
 typeClause
@@ -296,6 +302,11 @@ realLiteral
 
 property
     : name=ID OPERATOR_EQ value=propertyValue
+    ;
+
+autoCreateSchema
+    : ID
+    | ID INT
     ;
 
 //============================
@@ -609,6 +620,19 @@ DYNAMIC
 PARAMETER
     : P A R A M E T E R
     ;
+
+
+VERSION
+    : V E R S I O N
+    ;
+
+REMOVE
+    : R E M O V E
+    ;
+MOVE
+    : M O V E
+    ;
+
 //============================
 // End of the keywords list
 //============================
@@ -684,6 +708,10 @@ DATETIME
     ;
 /** Allow unicode rule/token names */
 ID			:	NameStartChar NameChar*;
+
+FILE
+    :  (('a'..'z'| 'A'..'Z')(':')?)* (('\\' | '/')+ PATH_FRAGMENT) +
+    ;
 
 fragment
 NameChar
@@ -824,6 +852,10 @@ fragment Y
 fragment Z
 	: 'z' | 'Z'
 	;
+
+fragment PATH_FRAGMENT
+    : ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'-'|'.')*
+    ;
 
 WS
     : [ \r\n\t]+ -> channel(HIDDEN)

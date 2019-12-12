@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.db.query.executor;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
+
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -31,7 +29,10 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 public interface IEngineQueryRouter {
 
@@ -55,12 +56,10 @@ public interface IEngineQueryRouter {
    * @param aggres aggregation name list
    * @param expression filter expression
    * @param unit time granularity for interval partitioning, unit is ms.
-   * @param origin the datum time point for interval division is divided into a time interval for
-   * each TimeUnit time from this point forward and backward.
-   * @param intervals time intervals, closed interval.
+   * @param slidingStep  the time sliding step, unit is ms
    */
   QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
-      IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals,
+      IExpression expression, long unit, long slidingStep, long startTime, long endTime,
       QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException,
       QueryProcessException, IOException;

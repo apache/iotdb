@@ -43,7 +43,7 @@ public class FillEngineExecutor {
   private long queryTime;
   private Map<TSDataType, IFill> typeIFillMap;
 
-  public FillEngineExecutor(long jobId, List<Path> selectedSeries, long queryTime,
+  FillEngineExecutor(long jobId, List<Path> selectedSeries, long queryTime,
       Map<TSDataType, IFill> typeIFillMap) {
     this.jobId = jobId;
     this.selectedSeries = selectedSeries;

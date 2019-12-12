@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
+
 import static org.apache.iotdb.db.conf.IoTDBConstant.ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.STORAGE_GROUP;
@@ -29,6 +30,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
@@ -50,6 +52,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.DeviceIterateDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
+import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.executor.IEngineQueryRouter;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -87,6 +90,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
         return processShowDynamicParameterQuery();
       case FLUSH_TASK_INFO:
         return processShowFlushTaskInfo();
+      case VERSION:
+        return processShowVersion();
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
@@ -126,6 +131,20 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     }
 
     return listDataSet;
+  }
+
+  private QueryDataSet processShowVersion() {
+    List<Path> paths = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    paths.add(new Path("root"));
+    dataTypes.add(TSDataType.TEXT);
+    SingleDataSet singleDataSet = new SingleDataSet(paths, dataTypes);
+    Field field = new Field(TSDataType.TEXT);
+    field.setBinaryV(new Binary(IoTDBConstant.VERSION));
+    RowRecord rowRecord = new RowRecord(0);
+    rowRecord.addField(field);
+    singleDataSet.setRecord(rowRecord);
+    return singleDataSet;
   }
 
   private QueryDataSet processShowDynamicParameterQuery() {
@@ -200,14 +219,13 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       // deduplicate executed paths and aggregations if exist
       List<Path> deduplicatedPaths = new ArrayList<>();
       if (queryPlan instanceof GroupByPlan) {
-        List<String> deduplicatedAggregations = new ArrayList<>();
         GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
+        List<String> deduplicatedAggregations = new ArrayList<>();
         deduplicate(groupByPlan.getPaths(), groupByPlan.getAggregations(), deduplicatedPaths,
-            deduplicatedAggregations);
-        queryDataSet = groupBy(deduplicatedPaths, deduplicatedAggregations,
-            groupByPlan.getExpression(),
-            groupByPlan.getUnit(),
-            groupByPlan.getOrigin(), groupByPlan.getIntervals(), context);
+                deduplicatedAggregations);
+        return groupBy(deduplicatedPaths, deduplicatedAggregations, groupByPlan.getExpression(),
+                groupByPlan.getUnit(),
+                groupByPlan.getSlidingStep(), groupByPlan.getStartTime(), groupByPlan.getEndTime(), context);
       } else if (queryPlan instanceof AggregationPlan) {
         List<String> deduplicatedAggregations = new ArrayList<>();
         deduplicate(queryPlan.getPaths(), queryPlan.getAggregations(), deduplicatedPaths,

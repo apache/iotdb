@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp;
 
 import java.time.ZoneId;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
+
 /**
  * provide a integration method for other user.
  */
@@ -53,13 +55,13 @@ public class QueryProcessor {
   }
 
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
-      throws QueryProcessException {
+      throws QueryProcessException, ParseCancellationException{
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     return parseSQLToPhysicalPlan(sqlStr, config.getZoneID());
   }
 
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
-      throws QueryProcessException {
+      throws QueryProcessException, ParseCancellationException {
     Operator operator = parseDriver.parse(sqlStr, zoneId);
     operator = logicalOptimize(operator, executor);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator(executor);
@@ -93,6 +95,9 @@ public class QueryProcessor {
       case TTL:
       case LOAD_CONFIGURATION:
       case SHOW:
+      case LOAD_FILES:
+      case REMOVE_FILE:
+      case MOVE_FILE:
         return operator;
       case QUERY:
       case UPDATE:

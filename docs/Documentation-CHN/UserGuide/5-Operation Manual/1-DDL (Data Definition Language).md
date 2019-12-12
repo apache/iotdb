@@ -166,8 +166,10 @@ IoTDB> set ttl to root.ln 3600000
 这个例子表示在`root.ln`存储组中，只有最近一个小时的数据将会保存，旧数据会被移除或不可见。
 
 ### 取消 TTL
+取消TTL的SQL语句如下所示：
 ```
-IoTDB> set ttl to root.ln 3600000。
+IoTDB> unset ttl to root.ln 3600000。
 ```
+取消设置TTL后，存储组`root.ln`中所有的数据都会被保存。
 
 

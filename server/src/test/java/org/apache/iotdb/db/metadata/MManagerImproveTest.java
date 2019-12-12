@@ -29,7 +29,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
@@ -133,7 +132,7 @@ public class MManagerImproveTest {
   }
 
   private void doOriginTest(String deviceId, List<String> measurementList)
-      throws MetadataException, StorageGroupException {
+      throws MetadataException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       assertTrue(mManager.pathExist(path));
@@ -146,7 +145,7 @@ public class MManagerImproveTest {
   }
 
   private void doPathLoopOnceTest(String deviceId, List<String> measurementList)
-      throws MetadataException, StorageGroupException {
+      throws MetadataException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       List<Path> paths = new ArrayList<>();
@@ -158,7 +157,7 @@ public class MManagerImproveTest {
   }
 
   private void doDealdeviceIdOnceTest(String deviceId, List<String> measurementList)
-      throws MetadataException, StorageGroupException {
+      throws MetadataException {
     boolean isFileLevelChecked;
     List<Path> tempList = new ArrayList<>();
     tempList.add(new Path(deviceId));
@@ -194,7 +193,7 @@ public class MManagerImproveTest {
   }
 
   private void doAllImproveTest(String deviceId, List<String> measurementList)
-      throws MetadataException, StorageGroupException {
+      throws MetadataException {
     boolean isFileLevelChecked;
     try {
       isFileLevelChecked = mManager.checkFileLevel(deviceId);
@@ -215,7 +214,7 @@ public class MManagerImproveTest {
 
   private void doCacheTest(String deviceId, List<String> measurementList)
       throws MetadataException {
-    MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
+    MNode node = mManager.getNodeByPathFromCache(deviceId);
     for (String s : measurementList) {
       assertTrue(node.hasChild(s));
       MNode measurementNode = node.getChild(s);
@@ -226,7 +225,7 @@ public class MManagerImproveTest {
   }
 
   @Test
-  public void improveTest() throws MetadataException, StorageGroupException, CacheException {
+  public void improveTest() throws MetadataException, StorageGroupException {
     mManager = MManager.getInstance();
 
     long startTime, endTime;

@@ -107,7 +107,8 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
 
   @Override
   public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
-      long unit, long origin, List<Pair<Long, Long>> intervals, QueryContext context) {
+                              long unit, long slidingStep, long startTime, long endTime,
+                              QueryContext context) {
     return null;
   }
 

@@ -22,6 +22,7 @@ import static org.apache.iotdb.session.Config.PATH_MATCHER;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.apache.commons.lang.StringEscapeUtils;
@@ -192,7 +193,11 @@ public class Session {
   }
 
   /**
-   * insert data in batch format, which can reduce the overhead of network
+   * Insert data in batch format, which can reduce the overhead of network. This method is just like
+   * jdbc batch insert, we pack some insert request in batch and send them to server If you want
+   * improve your performance, please see insertBatch method
+   *
+   * @see Session#insertBatch(RowBatch)
    */
   public List<TSStatus> insertInBatch(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList,
@@ -240,6 +245,78 @@ public class Session {
 
     try {
       return checkAndReturn(client.insertRow(request));
+    } catch (TException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
+  /**
+   * This method NOT insert data into database and the server just return after accept the request,
+   * this method should be used to test other time cost in client
+   */
+  public TSExecuteBatchStatementResp testInsertBatch(RowBatch rowBatch)
+      throws IoTDBSessionException {
+    TSBatchInsertionReq request = new TSBatchInsertionReq();
+    request.deviceId = rowBatch.deviceId;
+    for (MeasurementSchema measurementSchema : rowBatch.measurements) {
+      request.addToMeasurements(measurementSchema.getMeasurementId());
+      request.addToTypes(measurementSchema.getType().ordinal());
+    }
+    request.setTimestamps(SessionUtils.getTimeBuffer(rowBatch));
+    request.setValues(SessionUtils.getValueBuffer(rowBatch));
+    request.setSize(rowBatch.batchSize);
+
+    try {
+      return client.testInsertBatch(request);
+    } catch (TException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
+  /**
+   * This method NOT insert data into database and the server just return after accept the request,
+   * this method should be used to test other time cost in client
+   */
+  public List<TSStatus> testInsertInBatch(List<String> deviceIds, List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
+      throws IoTDBSessionException {
+    // check params size
+    int len = deviceIds.size();
+    if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException(
+          "deviceIds, times, measurementsList and valuesList's size should be equal");
+    }
+
+    TSInsertInBatchReq request = new TSInsertInBatchReq();
+    request.setDeviceIds(deviceIds);
+    request.setTimestamps(times);
+    request.setMeasurementsList(measurementsList);
+    request.setValuesList(valuesList);
+
+    try {
+      client.testInsertRowInBatch(request);
+      return Collections.emptyList();
+    } catch (TException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
+  /**
+   * This method NOT insert data into database and the server just return after accept the request,
+   * this method should be used to test other time cost in client
+   */
+  public TSStatus testInsert(String deviceId, long time, List<String> measurements,
+      List<String> values)
+      throws IoTDBSessionException {
+    TSInsertReq request = new TSInsertReq();
+    request.setDeviceId(deviceId);
+    request.setTimestamp(time);
+    request.setMeasurements(measurements);
+    request.setValues(values);
+
+    try {
+      return client.testInsertRow(request);
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }

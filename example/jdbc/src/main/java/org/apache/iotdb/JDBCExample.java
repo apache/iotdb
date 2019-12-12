@@ -38,14 +38,15 @@ public class JDBCExample {
 
       for (int i = 0; i <= 100; i++) {
         statement.addBatch("insert into root.sg1.d1(timestamp, s1, s2, s3) values("+ i + "," + 1 + "," + 1 + "," + 1 + ")");
-        statement.executeBatch();
-        statement.clearBatch();
       }
+      statement.executeBatch();
+      statement.clearBatch();
+
       ResultSet resultSet = statement.executeQuery("select * from root where time <= 10");
       outputResult(resultSet);
       resultSet = statement.executeQuery("select count(*) from root");
       outputResult(resultSet);
-      resultSet = statement.executeQuery("select count(*) from root where time >= 1 and time <= 100 group by (20ms, 0, [0, 100])");
+      resultSet = statement.executeQuery("select count(*) from root where time >= 1 and time <= 100 group by ([0, 100], 20ms, 20ms)");
       outputResult(resultSet);
     }
   }
