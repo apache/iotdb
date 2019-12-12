@@ -36,9 +36,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.TreeSet;
 
-/**
- * TODO implement this class as TsFile DataSetWithoutTimeGenerator.
- */
+
 public class EngineDataSetWithoutValueFilter extends QueryDataSet {
 
   private List<IBatchReader> seriesReaderWithoutValueFilterList;
