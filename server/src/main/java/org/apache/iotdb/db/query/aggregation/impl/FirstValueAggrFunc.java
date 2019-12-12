@@ -26,6 +26,7 @@ import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
@@ -150,5 +151,19 @@ public class FirstValueAggrFunc extends AggregateFunction {
   @Override
   public boolean isCalculatedAggregationResult() {
     return resultData.isSetTime();
+  }
+
+  @Override
+  public void calculateValueFromChunkMetaData(ChunkMetaData chunkMetaData)
+      throws QueryProcessException {
+    if (resultData.isSetTime()) {
+      return;
+    }
+
+    Object firstVal = chunkMetaData.getStatistics().getFirstValue();
+    if (firstVal == null) {
+      throw new QueryProcessException("chunkMetaData contains no FIRST value");
+    }
+    resultData.putTimeAndValue(0, firstVal);
   }
 }
