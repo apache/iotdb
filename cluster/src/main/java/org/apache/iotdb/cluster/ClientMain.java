@@ -56,7 +56,7 @@ public class ClientMain {
     TSOpenSessionResp openResp = client.openSession(openReq);
     TS_SessionHandle sessionHandle = openResp.getSessionHandle();
 
-    //testInsertion(client);
+    testInsertion(client);
 
     testQuery(client, sessionHandle);
 
@@ -65,7 +65,7 @@ public class ClientMain {
 
   private static void testQuery(Client client, TS_SessionHandle handle) throws TException {
     long statementId = client.requestStatementId();
-    String statement = "SELECT d1.s1 FROM root.shenzhen";
+    String statement = "SELECT * FROM root.shenzhen";
     TSExecuteStatementResp resp = client
         .executeQueryStatement(new TSExecuteStatementReq(handle, statement, statementId));
     TSOperationHandle operationHandle = resp.getOperationHandle();
@@ -176,12 +176,16 @@ public class ClientMain {
       insertReq.setTimestamp(i * 24 * 3600 * 1000L);
       insertReq.setValues(Collections.singletonList(Double.toString(i * 0.1)));
       insertReq.setDeviceId("root.beijing.d1");
+      System.out.println(insertReq);
       System.out.println(client.insertRow(insertReq));
       insertReq.setDeviceId("root.shanghai.d1");
+      System.out.println(insertReq);
       System.out.println(client.insertRow(insertReq));
       insertReq.setDeviceId("root.guangzhou.d1");
+      System.out.println(insertReq);
       System.out.println(client.insertRow(insertReq));
       insertReq.setDeviceId("root.shenzhen.d1");
+      System.out.println(insertReq);
       System.out.println(client.insertRow(insertReq));
     }
   }

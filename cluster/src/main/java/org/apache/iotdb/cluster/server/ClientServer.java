@@ -13,11 +13,11 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.query.ClusterQueryParser;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -50,6 +50,7 @@ public class ClientServer extends TSServiceImpl {
 
   public ClientServer(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
+    this.processor = new ClusterQueryParser(metaGroupMember);
   }
 
   public void start() throws TTransportException {
@@ -133,13 +134,12 @@ public class ClientServer extends TSServiceImpl {
   }
 
   @Override
-  public TSDataType getSeriesType(String pathStr) throws QueryProcessException, MetadataException {
+  public TSDataType getSeriesType(String pathStr) throws MetadataException {
     return metaGroupMember.getSeriesType(pathStr);
   }
 
   @Override
   protected QueryContext genQueryContext() {
-    return new RemoteQueryContext(QueryResourceManager.getInstance().assignJobId(),
-        metaGroupMember.getThisNode());
+    return new RemoteQueryContext(QueryResourceManager.getInstance().assignJobId(), null);
   }
 }

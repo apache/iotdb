@@ -7,9 +7,11 @@ package org.apache.iotdb.cluster.query;
 import java.io.IOException;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.EngineExecutor;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -34,5 +36,10 @@ public class ClusterDataQueryExecutor extends EngineExecutor {
   @Override
   public QueryDataSet executeWithValueFilter(QueryContext context) {
     throw new UnsupportedOperationException("Query with value filter not implemented");
+  }
+
+  @Override
+  protected TSDataType getDataType(String path) throws MetadataException {
+    return metaGroupMember.getSeriesType(path);
   }
 }

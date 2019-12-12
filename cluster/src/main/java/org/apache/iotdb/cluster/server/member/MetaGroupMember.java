@@ -20,6 +20,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -62,7 +63,6 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
 import org.apache.iotdb.cluster.server.ClientServer;
@@ -78,7 +78,6 @@ import org.apache.iotdb.cluster.server.heartbeat.MetaHeartBeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -902,6 +901,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         return StatusUtils.NO_STORAGE_GROUP;
       }
     }
+    logger.debug("{}: The data group of {} is {}", name, plan, partitionGroup);
 
     if (partitionGroup.contains(thisNode)) {
       // the query should be handled by a group the local node is in, handle it with in the group
@@ -913,54 +913,55 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   /**
-   * Pull the all timeseries schemas of a given device from a remote node.
-   * @param deviceId
+   * Pull the all timeseries schemas of a given prefixPath from a remote node.
+   * @param prefixPath
    */
-  public void pullDeviceSchemas(String deviceId) throws StorageGroupNotSetException {
-    logger.debug("{}: Pulling timeseries schemas of {}", name, deviceId);
+  public List<MeasurementSchema> pullTimeSeriesSchemas(String prefixPath) throws StorageGroupNotSetException {
+    logger.debug("{}: Pulling timeseries schemas of {}", name, prefixPath);
     PartitionGroup partitionGroup;
     try {
-      partitionGroup = PartitionUtils.partitionByPathTime(deviceId, 0, partitionTable);
+      partitionGroup = PartitionUtils.partitionByPathTime(prefixPath, 0, partitionTable);
     } catch (StorageGroupNotSetException e) {
       // the storage group is not found locally, but may be found in the leader, retry after
       // synchronizing with the leader
       if (syncLeader()) {
-        partitionGroup = PartitionUtils.partitionByPathTime(deviceId, 0, partitionTable);
+        partitionGroup = PartitionUtils.partitionByPathTime(prefixPath, 0, partitionTable);
       } else {
         throw e;
       }
     }
     if (partitionGroup.contains(thisNode)) {
       // the node is in the target group, synchronize with leader should be enough
-      syncLeader();
-      return;
+      dataClusterServer.getDataMember(partitionGroup.getHeader(), null,
+          "Pull timeseries of " + prefixPath).syncLeader();
+      List<MeasurementSchema> timeseriesSchemas = new ArrayList<>();
+      MManager.getInstance().collectSeries(prefixPath, timeseriesSchemas);
+      return timeseriesSchemas;
     }
 
     PullSchemaRequest pullSchemaRequest = new PullSchemaRequest();
     pullSchemaRequest.setHeader(partitionGroup.getHeader());
-    pullSchemaRequest.setPrefixPath(deviceId);
+    pullSchemaRequest.setPrefixPath(prefixPath);
     AtomicReference<List<MeasurementSchema>> timeseriesSchemas = new AtomicReference<>();
     for (Node node : partitionGroup) {
-      logger.debug("{}: Pulling timeseries schemas of {} from {}", name, deviceId, node);
+      logger.debug("{}: Pulling timeseries schemas of {} from {}", name, prefixPath, node);
       AsyncClient client = (AsyncClient) connectNode(node);
       synchronized (timeseriesSchemas) {
         try {
           client.pullTimeSeriesSchema(pullSchemaRequest, new PullTimeseriesSchemaHandler(node,
-              deviceId, timeseriesSchemas));
+              prefixPath, timeseriesSchemas));
           timeseriesSchemas.wait(CONNECTION_TIME_OUT_MS);
         } catch (TException | InterruptedException e) {
-          logger.error("{}: Cannot pull timeseries schemas of {} from {}", name, deviceId, node, e);
+          logger.error("{}: Cannot pull timeseries schemas of {} from {}", name, prefixPath, node, e);
           continue;
         }
       }
       List<MeasurementSchema> schemas = timeseriesSchemas.get();
       if (schemas != null) {
-        for (MeasurementSchema schema : schemas) {
-          SchemaUtils.registerTimeseries(schema);
-        }
-        return;
+        return schemas;
       }
     }
+    return Collections.emptyList();
   }
 
   @Override
@@ -976,13 +977,18 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     dataGroupMember.pullTimeSeriesSchema(request, resultHandler);
   }
 
-  public TSDataType getSeriesType(String pathStr) throws QueryProcessException, MetadataException {
+  public TSDataType getSeriesType(String pathStr) throws MetadataException {
     try {
       return SchemaUtils.getSeriesType(pathStr);
     } catch (PathNotExistException e) {
       Path path = new Path(pathStr);
-      pullDeviceSchemas(path.getDevice());
-      return SchemaUtils.getSeriesType(pathStr);
+      List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStr);
+      // TODO-Cluster: should we register the schemas locally?
+      if (schemas.isEmpty()) {
+        throw e;
+      }
+      SchemaUtils.registerTimeseries(schemas.get(0));
+      return schemas.get(0).getType();
     }
   }
 
@@ -1011,7 +1017,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       // query a remote node
       AtomicReference<Long> result = new AtomicReference<>();
       SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
-      request.setFilterBytes(timeFilter.serialize());
+      if (timeFilter != null) {
+        request.setFilterBytes(timeFilter.serialize());
+      }
       request.setPath(path.getFullPath());
       request.setHeader(partitionGroup.getHeader());
       request.setQueryId(context.getJobId());
@@ -1021,7 +1029,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       for (Node node : partitionGroup) {
         logger.debug("{}: querying {} from {}", name, path, node);
         GenericHandler<Long> handler = new GenericHandler<>(node, result);
-        TSDataService.AsyncClient client = (TSDataService.AsyncClient) dataClientPool.getClient(node);
+        DataClient client = (DataClient) dataClientPool.getClient(node);
         try {
           synchronized (result) {
             result.set(null);
@@ -1030,7 +1038,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           }
           Long readerId = result.get();
           if (readerId != null) {
-            ((RemoteQueryContext) context).registerReader(node, readerId);
+            ((RemoteQueryContext) context).registerRemoteReader(node, readerId);
             logger.debug("{}: get a readerId {} for {} from {}", name, readerId, path, node);
             return new RemoteSimpleSeriesReader(readerId, node, partitionGroup.getHeader(), this);
           }
@@ -1045,5 +1053,43 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   public ClientPool getDataClientPool() {
     return dataClientPool;
+  }
+
+  /**
+   * Get all paths after removing wildcards in the path
+   * @param storageGroupName the storage group of this path
+   * @param path a path with wildcard
+   * @return all paths after removing wildcards in the path
+   */
+  public List<String> getAllPaths(String storageGroupName, String path) throws MetadataException {
+    // find the data group that should hold the timeseries schemas of the storage group
+    PartitionGroup partitionGroup = partitionTable.route(storageGroupName, 0);
+    if (partitionGroup.contains(thisNode)) {
+      // this node is a member of the group, perform a local query after synchronizing with the
+      // leader
+      dataClusterServer.getDataMember(partitionGroup.getHeader(), null, "Get paths of " + path).syncLeader();
+      return MManager.getInstance().getPaths(path);
+    } else {
+      AtomicReference<List<String>> result = new AtomicReference<>();
+
+      for (Node node : partitionGroup) {
+        try {
+          DataClient client = (DataClient) dataClientPool.getClient(node);
+          GenericHandler<List<String>> handler = new GenericHandler<>(node, result);
+          result.set(null);
+          synchronized (result) {
+            client.getAllPaths(partitionGroup.getHeader(), path, handler);
+            result.wait(CONNECTION_TIME_OUT_MS);
+          }
+          List<String> paths = result.get();
+          if (paths != null) {
+            return paths;
+          }
+        } catch (IOException | TException | InterruptedException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
+    return Collections.emptyList();
   }
 }

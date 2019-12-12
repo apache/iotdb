@@ -4,12 +4,19 @@
 
 package org.apache.iotdb.cluster.query;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -18,9 +25,12 @@ import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class ClusterQueryExecutor extends QueryProcessExecutor {
 
+  private static final Logger logger = LoggerFactory.getLogger(ClusterQueryExecutor.class);
   private MetaGroupMember metaGroupMember;
 
   ClusterQueryExecutor(MetaGroupMember metaGroupMember) {
@@ -30,12 +40,7 @@ class ClusterQueryExecutor extends QueryProcessExecutor {
 
   @Override
   public TSDataType getSeriesType(Path path) throws MetadataException {
-    try {
-      return super.getSeriesType(path);
-    } catch (PathNotExistException e) {
-      metaGroupMember.pullDeviceSchemas(path.getDevice());
-      return super.getSeriesType(path);
-    }
+    return metaGroupMember.getSeriesType(path.getFullPath());
   }
 
   @Override
@@ -47,5 +52,32 @@ class ClusterQueryExecutor extends QueryProcessExecutor {
       //TODO-Cluster: support more queries
       throw new QueryProcessException(String.format("Unrecognized query plan %s", queryPlan));
     }
+  }
+
+  @Override
+  public List<String> getAllPaths(String originPath) throws MetadataException {
+    if (!originPath.contains(PATH_WILDCARD)) {
+      // path without wildcards does not need to be processed
+      return Collections.singletonList(originPath);
+    }
+    // make sure this node knows all storage groups
+    metaGroupMember.syncLeader();
+    // get all storage groups this path may belong to
+    Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(originPath);
+    List<String> ret = new ArrayList<>();
+    for (Entry<String, String> entry : sgPathMap.entrySet()) {
+      String storageGroupName = entry.getKey();
+      String fullPath = entry.getValue();
+      ret.addAll(metaGroupMember.getAllPaths(storageGroupName, fullPath));
+    }
+    logger.debug("The paths of path {} are {}", originPath, ret);
+
+    return ret;
+  }
+
+  @Override
+  public boolean judgePathExists(Path path) {
+    // this is guaranteed by ConcatPathOptimizer
+    return true;
   }
 }

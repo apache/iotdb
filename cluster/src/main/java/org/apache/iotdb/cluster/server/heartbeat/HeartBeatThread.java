@@ -97,7 +97,7 @@ public class HeartBeatThread implements Runnable {
 
   private void sendHeartBeats(Collection<Node> nodes) {
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: Send heartbeat to {} followers", memberName, nodes.size());
+      logger.debug("{}: Send heartbeat to {} followers", memberName, nodes.size() - 1);
     }
     for (Node node : nodes) {
       if (raftMember.getCharacter() != NodeCharacter.LEADER) {

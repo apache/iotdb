@@ -207,6 +207,10 @@ public class MGraph implements Serializable {
     throw new RootNotExistException(rootName);
   }
 
+  Map<String, String> determineStorageGroup(String path) throws IllegalPathException {
+    return mtree.determineStorageGroup(path);
+  }
+
   List<MNode> getAllStorageGroupNodes() {
     return mtree.getAllStorageGroupNodes();
   }

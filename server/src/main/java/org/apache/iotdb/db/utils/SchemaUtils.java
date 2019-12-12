@@ -30,7 +30,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -100,7 +99,7 @@ public class SchemaUtils {
   }
 
   public static TSDataType getSeriesType(String path)
-      throws QueryProcessException, MetadataException {
+      throws MetadataException {
     switch (path.toLowerCase()) {
       // authorization queries
       case ROLE:
@@ -133,7 +132,7 @@ public class SchemaUtils {
         case SQLConstant.SUM:
           return TSDataType.DOUBLE;
         default:
-          throw new QueryProcessException(
+          throw new MetadataException(
               "aggregate does not support " + aggrType + " function.");
       }
     }

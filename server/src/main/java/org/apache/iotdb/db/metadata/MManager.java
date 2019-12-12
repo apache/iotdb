@@ -1047,6 +1047,30 @@ public class MManager {
   }
 
   /**
+   * For a path with wildcard, infer all storage groups it may belong to. If the wildcard is
+   * not at the tail, only one level will be inferred and the wildcard will be removed, otherwise
+   * the inference will go on until the leaf is reached and the wildcard will be kept.
+   * Assuming we have three SGs: root.group1, root.group2, root.area1.group3
+   * Eg1:
+   *  for input "root.*", returns "root.group1, root.group1.*", "root.group2, root.group2.*"
+   *  "root.area1.group3, root.area1.group3.*"
+   * Eg2:
+   *  for input "root.*.s1", returns "root.group1, root.group1.s1", "root.group2, root.group2.s1"
+   * Eg3:
+   *  for input "root.area1.*", returns "root.area1.group3, root.area1.group3.*"
+   * @param path
+   * @return StorageGroupName-FullPath pairs
+   */
+  public Map<String, String> determineStorageGroup(String path) throws IllegalPathException {
+    lock.readLock().lock();
+    try {
+      return mgraph.determineStorageGroup(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
    * Return all paths for given seriesPath if the seriesPath is abstract. Or return the seriesPath
    * itself.
    */

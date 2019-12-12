@@ -12,8 +12,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncClient;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
@@ -74,7 +74,7 @@ public class RemoteSimpleSeriesReader implements IPointReader {
 
   @Override
   public void close() throws IOException {
-    AsyncClient client = (AsyncClient) metaGroupMember.getDataClientPool().getClient(source);
+    DataClient client = (DataClient) metaGroupMember.getDataClientPool().getClient(source);
     try {
       client.releaseReaders(header, Collections.singletonList(readerId),
           new GenericHandler<>(source, null));
@@ -84,7 +84,7 @@ public class RemoteSimpleSeriesReader implements IPointReader {
   }
 
   private void fetch() throws IOException {
-    AsyncClient client = (AsyncClient) metaGroupMember.getDataClientPool().getClient(source);
+    DataClient client = (DataClient) metaGroupMember.getDataClientPool().getClient(source);
     synchronized (fetchResult) {
       fetchResult.set(null);
       try {

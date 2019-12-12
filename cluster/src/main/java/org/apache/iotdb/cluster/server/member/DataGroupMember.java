@@ -63,6 +63,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -616,10 +617,23 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       IPointReader pointReader = getSeriesReaderWithoutValueFilter(path, timeFilter, queryContext,
           request.isPushdownUnseq());
       long readerId = queryManager.registerReader(pointReader);
+      queryContext.registerLocalReader(readerId);
+
       logger.debug("{}: Build a reader of {} for {}, readerId: {}", name, path,
           request.getRequester(), readerId);
       resultHandler.onComplete(readerId);
     } catch (IOException | StorageEngineException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void endQuery(Node header, Node thisNode, long queryId,
+      AsyncMethodCallback<Void> resultHandler) {
+    try {
+      queryManager.endQuery(thisNode, queryId);
+      resultHandler.onComplete(null);
+    } catch (StorageEngineException e) {
       resultHandler.onError(e);
     }
   }
@@ -656,12 +670,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   @Override
-  public void releaseReaders(Node header, List<Long> readerIds,
-      AsyncMethodCallback<Void> resultHandler) {
-    for (Long readerId : readerIds) {
-      queryManager.releaseReader(readerId);
+  public void getAllPaths(Node header, String path, AsyncMethodCallback<List<String>> resultHandler) {
+    try {
+      resultHandler.onComplete(MManager.getInstance().getPaths(path));
+    } catch (MetadataException e) {
+      resultHandler.onError(e);
     }
-    resultHandler.onComplete(null);
   }
 }
 

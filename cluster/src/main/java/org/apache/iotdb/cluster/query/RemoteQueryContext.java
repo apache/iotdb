@@ -13,14 +13,38 @@ import org.apache.iotdb.db.query.context.QueryContext;
 
 public class RemoteQueryContext extends QueryContext {
   private Node requester;
+  /**
+   * The readers requested from remote nodes to serve a local query.
+   */
   private Map<Node, Set<Long>> remoteReaderIdMap = new HashMap<>();
+  private long remoteQueryId;
+  /**
+   * The readers constructed locally to respond a remote query.
+   */
+  private Set<Long> localReaderIds = new HashSet<>();
 
   public RemoteQueryContext(long jobId, Node requester) {
     super(jobId);
     this.requester = requester;
   }
 
-  public void registerReader(Node node, long readerId) {
+  public void registerRemoteReader(Node node, long readerId) {
     remoteReaderIdMap.computeIfAbsent(node, n -> new HashSet<>()).add(readerId);
+  }
+
+  public void registerLocalReader(long readerId) {
+    localReaderIds.add(readerId);
+  }
+
+  public long getRemoteQueryId() {
+    return remoteQueryId;
+  }
+
+  void setRemoteQueryId(long remoteQueryId) {
+    this.remoteQueryId = remoteQueryId;
+  }
+
+  public Set<Long> getLocalReaderIds() {
+    return localReaderIds;
   }
 }

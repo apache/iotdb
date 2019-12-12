@@ -113,7 +113,7 @@ public class QueryProcessor {
    */
   private SFWOperator optimizeSFWOperator(SFWOperator root, IQueryProcessExecutor executor)
       throws LogicalOperatorException {
-    ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer(executor);
+    ConcatPathOptimizer concatPathOptimizer = getConcatPathOptimizer(executor);
     root = (SFWOperator) concatPathOptimizer.transform(root);
     FilterOperator filter = root.getFilterOperator();
     if (filter == null) {
@@ -129,4 +129,7 @@ public class QueryProcessor {
     return root;
   }
 
+  private ConcatPathOptimizer getConcatPathOptimizer(IQueryProcessExecutor executor) {
+    return new ConcatPathOptimizer(executor);
+  }
 }

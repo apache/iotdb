@@ -42,9 +42,13 @@ public class MetaClient extends AsyncClient {
       this.clientManager = clientManager;
       this.protocolFactory = protocolFactory;
     }
+
     @Override
     public RaftService.AsyncClient getAsyncClient(Node node, ClientPool pool)
         throws IOException {
+      if (!clientManager.isRunning()) {
+        clientManager = new TAsyncClientManager();
+      }
       return new MetaClient(protocolFactory, clientManager, node, pool);
     }
   }

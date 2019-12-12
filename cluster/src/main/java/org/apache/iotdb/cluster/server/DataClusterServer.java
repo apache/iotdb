@@ -26,10 +26,10 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncProcessor;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
+import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -209,11 +209,20 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void releaseReaders(Node header, List<Long> readerIds,
-      AsyncMethodCallback<Void> resultHandler) {
-    DataGroupMember member = getDataMember(header, resultHandler, "Release reader:" + readerIds);
+  public void getAllPaths(Node header, String path, AsyncMethodCallback<List<String>> resultHandler) {
+    DataGroupMember member = getDataMember(header, resultHandler, "Find path:" + path);
     if (member != null) {
-      member.releaseReaders(header, readerIds, resultHandler);
+      member.getAllPaths(header, path, resultHandler);
+    }
+  }
+
+  @Override
+  public void endQuery(Node header, Node thisNode, long queryId,
+      AsyncMethodCallback<Void> resultHandler) {
+    DataGroupMember member = getDataMember(header, resultHandler,
+        "End query:" + thisNode + "#" + queryId);
+    if (member != null) {
+      member.endQuery(header, thisNode, queryId, resultHandler);
     }
   }
 

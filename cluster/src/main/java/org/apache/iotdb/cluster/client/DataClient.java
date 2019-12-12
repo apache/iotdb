@@ -43,6 +43,9 @@ public class DataClient extends AsyncClient {
       this.protocolFactory = protocolFactory;
     }
     public RaftService.AsyncClient getAsyncClient(Node node, ClientPool pool) throws IOException {
+      if (!clientManager.isRunning()) {
+        clientManager = new TAsyncClientManager();
+      }
       return new DataClient(protocolFactory, clientManager, node, pool);
     }
   }

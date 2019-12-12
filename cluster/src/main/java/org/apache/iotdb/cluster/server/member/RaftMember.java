@@ -575,7 +575,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   TSStatus forwardPlan(PhysicalPlan plan, Node node) {
-    if (character != NodeCharacter.FOLLOWER || node == null) {
+    if (node == thisNode || node == null) {
       logger.debug("{}: plan {} has no where to be forwarded", name, plan);
       return StatusUtils.NO_LEADER;
     }
@@ -623,7 +623,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       logManager.appendLog(log);
 
       logger.debug("{}: Send plan {} to other nodes", name, plan);
-      AppendLogResult result = sendLogToFollowers(log, allNodes.size() - 1);
+      AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
 
       switch (result) {
         case OK:
@@ -679,7 +679,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * until this node catches up.
    * @return true if the node has caught up, false otherwise
    */
-  boolean syncLeader() {
+  public boolean syncLeader() {
     if (character == NodeCharacter.LEADER) {
       return true;
     }

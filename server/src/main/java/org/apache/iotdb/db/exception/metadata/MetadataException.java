@@ -29,6 +29,10 @@ public class MetadataException extends ProcessException {
 
   private static final long serialVersionUID = 3415275599091623570L;
 
+  public MetadataException(Throwable cause) {
+    super(cause, TSStatusCode.METADATA_ERROR.getStatusCode());
+  }
+
   public MetadataException(String msg) {
     super(msg);
     errorCode = TSStatusCode.METADATA_ERROR.getStatusCode();

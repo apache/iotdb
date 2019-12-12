@@ -4,6 +4,7 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
+import java.util.List;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -12,6 +13,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +42,11 @@ abstract class BaseApplier implements LogApplier {
               e.getCause().getMessage());
           InsertPlan insertPlan = ((InsertPlan) plan);
           try {
-            metaGroupMember.pullDeviceSchemas(insertPlan.getDeviceId());
+            List<MeasurementSchema> schemas = metaGroupMember
+                .pullTimeSeriesSchemas(insertPlan.getDeviceId());
+            for (MeasurementSchema schema : schemas) {
+              SchemaUtils.registerTimeseries(schema);
+            }
           } catch (StorageGroupNotSetException e1) {
             throw new QueryProcessException(e1);
           }

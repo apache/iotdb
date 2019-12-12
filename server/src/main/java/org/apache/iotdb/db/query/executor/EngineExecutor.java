@@ -73,7 +73,7 @@ public class EngineExecutor implements DataQueryExecutor {
     for (Path path : queryExpression.getSelectedSeries()) {
       try {
         // add data type
-        dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
+        dataTypes.add(getDataType(path.getFullPath()));
       } catch (MetadataException e) {
         throw new StorageEngineException(e);
       }
@@ -88,6 +88,11 @@ public class EngineExecutor implements DataQueryExecutor {
     } catch (IOException e) {
       throw new StorageEngineException(e.getMessage());
     }
+  }
+
+
+  protected TSDataType getDataType(String path) throws MetadataException {
+    return MManager.getInstance().getSeriesType(path);
   }
 
   /**

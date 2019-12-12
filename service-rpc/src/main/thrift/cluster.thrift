@@ -227,9 +227,14 @@ service TSDataService extends RaftService {
   binary fetchSingleSeries(1:Node header, 2:long readerId, 3:int fetchSize)
 
   /**
-  * Release the readers created by querySingleSeries.
+  * Find the local query established for the remote query and release all its resource.
   **/
-  void releaseReaders(1:Node header, 2:list<long> readerIds)
+  void endQuery(1:Node header, 2:Node thisNode, 3:long queryId)
+
+  /**
+  * Given a path pattern (path with wildcard), return all paths it matches.
+  **/
+  list<string> getAllPaths(1:Node header, 2:string path)
 }
 
 service TSMetaService extends RaftService {
