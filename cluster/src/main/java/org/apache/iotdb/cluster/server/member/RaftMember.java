@@ -709,7 +709,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         }
         // wait for next heartbeat to catch up
         waitedTime = System.currentTimeMillis() - startTime;
-        Thread.sleep(ClusterConstant.HEART_BEAT_INTERVAL_MS);
+        synchronized (syncLock) {
+          syncLock.wait(ClusterConstant.HEART_BEAT_INTERVAL_MS);
+        }
       } catch (TException | InterruptedException e) {
         logger.error("{}: Cannot request commit index from {}", name, leader, e);
       }
