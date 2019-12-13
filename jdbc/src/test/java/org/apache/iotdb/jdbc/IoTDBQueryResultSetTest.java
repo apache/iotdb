@@ -168,8 +168,11 @@ public class IoTDBQueryResultSetTest {
     dataTypeList.add("INT32");
     dataTypeList.add("FLOAT");
 
+    when(execResp.isSetColumns()).thenReturn(true);
     when(execResp.getColumns()).thenReturn(columns);
+    when(execResp.isSetDataTypeList()).thenReturn(true);
     when(execResp.getDataTypeList()).thenReturn(dataTypeList);
+    when(execResp.isSetOperationType()).thenReturn(true);
     when(execResp.getOperationType()).thenReturn("QUERY");
     when(execResp.isSetQueryId()).thenReturn(true);
     when(execResp.getQueryId()).thenReturn(queryId);
