@@ -30,6 +30,8 @@ class ResourceRelatedUtil {
    * filter condition. Returns false if not satisfy. <p> This method is used to in the constructor
    * function to check whether this TsFile can be skipped.
    *
+   * Note: Please make sure the TsFileResource contains seriesPath!
+   *
    * @param tsFile the TsFileResource corresponding to this TsFile
    * @param filter filter condition. Null if no filter.
    * @return True if the TsFile's start and end time satisfy the filter condition; False if not
