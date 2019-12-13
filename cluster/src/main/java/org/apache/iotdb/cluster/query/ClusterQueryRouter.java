@@ -32,13 +32,6 @@ public class ClusterQueryRouter extends EngineQueryRouter {
   }
 
   @Override
-  public QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
-      IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals,
-      QueryContext context) {
-    throw new UnsupportedOperationException("Group by not implemented");
-  }
-
-  @Override
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
       QueryContext context) {
     throw new UnsupportedOperationException("Fill not implemented");

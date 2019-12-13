@@ -19,7 +19,6 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.thrift.TException;
 
 /**
@@ -30,7 +29,6 @@ public class RemoteSimpleSeriesReader implements IPointReader {
   private long readerId;
   private Node source;
   private Node header;
-  private TSDataType dataType;
   private MetaGroupMember metaGroupMember;
 
   private int fetchSize = 1000;
@@ -74,13 +72,7 @@ public class RemoteSimpleSeriesReader implements IPointReader {
 
   @Override
   public void close() throws IOException {
-    DataClient client = (DataClient) metaGroupMember.getDataClientPool().getClient(source);
-    try {
-      client.releaseReaders(header, Collections.singletonList(readerId),
-          new GenericHandler<>(source, null));
-    } catch (TException e) {
-      throw new IOException(e);
-    }
+    // close by Resource manager
   }
 
   private void fetch() throws IOException {

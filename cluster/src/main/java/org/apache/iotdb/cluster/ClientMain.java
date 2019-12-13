@@ -4,10 +4,17 @@
 
 package org.apache.iotdb.cluster;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
+import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
+import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
@@ -24,12 +31,14 @@ import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
+import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.thrift.TException;
@@ -40,7 +49,8 @@ import org.apache.thrift.transport.TTransport;
 
 public class ClientMain {
 
-  public static void main(String[] args) throws TException, InterruptedException {
+  public static void main(String[] args)
+      throws TException, InterruptedException, SQLException, IoTDBRPCException {
     String ip = "127.0.0.1";
     int port = 55560;
     TSIService.Client.Factory factory = new Factory();
@@ -63,7 +73,8 @@ public class ClientMain {
     client.closeSession(new TSCloseSessionReq(openResp.getSessionHandle()));
   }
 
-  private static void testQuery(Client client, TS_SessionHandle handle) throws TException {
+  private static void testQuery(Client client, TS_SessionHandle handle)
+      throws TException, SQLException, IoTDBRPCException {
     long statementId = client.requestStatementId();
     String statement = "SELECT * FROM root.shenzhen";
     TSExecuteStatementResp resp = client
@@ -71,79 +82,15 @@ public class ClientMain {
     TSOperationHandle operationHandle = resp.getOperationHandle();
     System.out.println(resp.columns);
 
-    TSFetchResultsResp tsFetchResultsResp = client
-        .fetchResults(new TSFetchResultsReq(statement, 1000, operationHandle.operationId.queryId));
-    List<RowRecord> rowRecordList = convertRowRecords(tsFetchResultsResp.queryDataSet, resp.dataTypeList);
-    for (RowRecord record : rowRecordList) {
-      System.out.println(record);
+    SessionDataSet dataSet = new SessionDataSet(statement, resp.getColumns(),
+        resp.getDataTypeList(), operationHandle.getOperationId().getQueryId(), client, operationHandle);
+
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
     }
   }
 
-  public static List<RowRecord> convertRowRecords(TSQueryDataSet tsQueryDataSet,
-      List<String> columnTypeList) {
-    int rowCount = tsQueryDataSet.getRowCount();
-    ByteBuffer byteBuffer = tsQueryDataSet.bufferForValues();
 
-    // process time buffer
-    List<RowRecord> rowRecordList = processTimeAndCreateRowRecords(byteBuffer, rowCount);
-
-    for (String type : columnTypeList) {
-      for (int i = 0; i < rowCount; i++) {
-        Field field = null;
-        boolean is_empty = BytesUtils.byteToBool(byteBuffer.get());
-        if (is_empty) {
-          field = new Field(null);
-        } else {
-          TSDataType dataType = TSDataType.valueOf(type);
-          field = new Field(dataType);
-          switch (dataType) {
-            case BOOLEAN:
-              boolean booleanValue = BytesUtils.byteToBool(byteBuffer.get());
-              field.setBoolV(booleanValue);
-              break;
-            case INT32:
-              int intValue = byteBuffer.getInt();
-              field.setIntV(intValue);
-              break;
-            case INT64:
-              long longValue = byteBuffer.getLong();
-              field.setLongV(longValue);
-              break;
-            case FLOAT:
-              float floatValue = byteBuffer.getFloat();
-              field.setFloatV(floatValue);
-              break;
-            case DOUBLE:
-              double doubleValue = byteBuffer.getDouble();
-              field.setDoubleV(doubleValue);
-              break;
-            case TEXT:
-              int binarySize = byteBuffer.getInt();
-              byte[] binaryValue = new byte[binarySize];
-              byteBuffer.get(binaryValue);
-              field.setBinaryV(new Binary(binaryValue));
-              break;
-            default:
-              throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", type));
-          }
-        }
-        rowRecordList.get(i).getFields().add(field);
-      }
-    }
-    return rowRecordList;
-  }
-
-  private static List<RowRecord> processTimeAndCreateRowRecords(ByteBuffer byteBuffer,
-      int rowCount) {
-    List<RowRecord> rowRecordList = new ArrayList<>();
-    for (int i = 0; i < rowCount; i++) {
-      long timestamp = byteBuffer.getLong(); // byteBuffer has been flipped by the server side
-      RowRecord rowRecord = new RowRecord(timestamp);
-      rowRecordList.add(rowRecord);
-    }
-    return rowRecordList;
-  }
 
   private static void testInsertion(Client client) throws TException, InterruptedException {
     System.out.println(client.setStorageGroup("root.beijing"));
