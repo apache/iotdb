@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -41,6 +42,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
  */
 public class QueryResourceManager {
 
+  private AtomicLong queryIdAtom = new AtomicLong();
   private JobFileManager filePathsManager;
   /**
    * Record temporary files used for external sorting.
@@ -62,8 +64,10 @@ public class QueryResourceManager {
    * Register a new query. When a query request is created firstly, this method must
    * be invoked.
    */
-  public void registerQuery(long queryId) {
+  public long assignQueryId() {
+    long queryId = queryIdAtom.incrementAndGet();
     filePathsManager.addJobId(queryId);
+    return queryId;
   }
 
   /**

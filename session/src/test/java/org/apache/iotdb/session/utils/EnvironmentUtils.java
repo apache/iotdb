@@ -58,11 +58,8 @@ public class EnvironmentUtils {
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static DirectoryManager directoryManager = DirectoryManager.getInstance();
 
-  public static long TEST_QUERY_JOB_ID = 1;
-  public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
-  static {
-    QueryResourceManager.getInstance().registerQuery(TEST_QUERY_JOB_ID);
-  }
+  private static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
+  private static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
   private static long oldTsFileThreshold = config.getTsFileSizeThreshold();
 
@@ -105,7 +102,7 @@ public class EnvironmentUtils {
     IoTDBConfigDynamicAdapter.getInstance().reset();
   }
 
-  public static void cleanAllDir() throws IOException {
+  private static void cleanAllDir() throws IOException {
     // deleteData sequential files
     for (String path : directoryManager.getAllSequenceFileFolders()) {
       cleanDir(path);
@@ -125,7 +122,7 @@ public class EnvironmentUtils {
     }
   }
 
-  public static void cleanDir(String dir) throws IOException {
+  private static void cleanDir(String dir) throws IOException {
     FileUtils.deleteDirectory(new File(dir));
   }
 
@@ -163,8 +160,7 @@ public class EnvironmentUtils {
     StorageEngine.getInstance().reset();
     MultiFileLogNodeManager.getInstance().start();
     FlushManager.getInstance().start();
-    TEST_QUERY_JOB_ID ++;
-    QueryResourceManager.getInstance().registerQuery(TEST_QUERY_JOB_ID);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 
