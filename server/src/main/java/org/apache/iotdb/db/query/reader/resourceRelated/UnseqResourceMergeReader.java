@@ -116,35 +116,11 @@ public class UnseqResourceMergeReader implements IBatchReader {
   }
 
   /**
-   * put Reader into merge reader one by one. Create a ChunkReader with priority for each
-   * ChunkMetadata and add the ChunkReader to merge reader one by one
+   * Create a ChunkReader with priority for each ChunkMetadata and put the ChunkReader to
+   * mergeReader one by one
    */
   @Override
   public boolean hasNextBatch() throws IOException {
-    return hasNext();
-  }
-
-  @Override
-  public BatchData nextBatch() throws IOException {
-    BatchData batchData = new BatchData();
-    for (int i = 0; i < 4096; i++) {
-      TimeValuePair timeValuePair = priorityMergeReader.next();
-      batchData.putTime(timeValuePair.getTimestamp());
-      batchData.putAnObject(timeValuePair.getValue());
-      if (!hasNext()) {
-        break;
-      }
-    }
-
-    return batchData;
-  }
-
-  @Override
-  public void close() throws IOException {
-    priorityMergeReader.close();
-  }
-
-  private boolean hasNext() throws IOException {
     ChunkMetaData metaData;
     ChunkReaderWrap diskChunkReaderWrap;
     if (priorityMergeReader.hasNext()) {
@@ -175,6 +151,26 @@ public class UnseqResourceMergeReader implements IBatchReader {
     priorityMergeReader
         .addReaderWithPriority(diskChunkReaderWrap.getIPointReader(), metaData.getPriority());
 
-    return hasNext();
+    return hasNextBatch();
+  }
+
+  @Override
+  public BatchData nextBatch() throws IOException {
+    BatchData batchData = new BatchData();
+    for (int i = 0; i < 4096; i++) {
+      TimeValuePair timeValuePair = priorityMergeReader.next();
+      batchData.putTime(timeValuePair.getTimestamp());
+      batchData.putAnObject(timeValuePair.getValue());
+      if (!hasNextBatch()) {
+        break;
+      }
+    }
+
+    return batchData;
+  }
+
+  @Override
+  public void close() throws IOException {
+    priorityMergeReader.close();
   }
 }
