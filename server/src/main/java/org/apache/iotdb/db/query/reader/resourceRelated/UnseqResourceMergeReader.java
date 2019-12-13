@@ -128,14 +128,15 @@ public class UnseqResourceMergeReader implements IBatchReader {
       long nextMetaDataStartTime = metaData.getStartTime();
 
       // create and add DiskChunkReader
-      while (priorityMergeReader.current().getTime() >= nextMetaDataStartTime) {
+      while (index < metaDataList.size()) {
         diskChunkReaderWrap = new ChunkReaderWrap(metaData, metaData.getChunkLoader(), timeFilter);
         priorityMergeReader
             .addReaderWithPriority(diskChunkReaderWrap.getIPointReader(), metaData.getPriority());
         index++;
-        if (index < metaDataList.size()) {
-          metaData = metaDataList.get(index);
-          nextMetaDataStartTime = metaData.getStartTime();
+        metaData = metaDataList.get(index);
+        nextMetaDataStartTime = metaData.getStartTime();
+        if (priorityMergeReader.current().getTime() < nextMetaDataStartTime) {
+          break;
         }
       }
       return true;
