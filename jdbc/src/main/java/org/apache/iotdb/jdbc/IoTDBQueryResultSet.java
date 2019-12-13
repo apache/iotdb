@@ -145,27 +145,23 @@ public class IoTDBQueryResultSet implements ResultSet {
     if (isClosed) {
       return;
     }
-
     if (client != null) {
-      closeOperationHandle();
+      try {
+        TSCloseOperationReq closeReq = new TSCloseOperationReq(sessionId);
+        closeReq.setQueryId(queryId);
+        TSStatus closeResp = client.closeOperation(closeReq);
+        RpcUtils.verifySuccess(closeResp);
+      } catch (IoTDBRPCException e) {
+        throw new SQLException("Error occurs for close opeation in server side becasuse " + e);
+      } catch (TException e) {
+        throw new SQLException(
+            "Error occurs when connecting to server for close operation, becasue: " + e);
+      }
     }
     client = null;
     isClosed = true;
   }
 
-  private void closeOperationHandle() throws SQLException {
-    try {
-      TSCloseOperationReq closeReq = new TSCloseOperationReq(sessionId);
-      closeReq.setQueryId(queryId);
-      TSStatus closeResp = client.closeOperation(closeReq);
-      RpcUtils.verifySuccess(closeResp);
-    } catch (IoTDBRPCException e) {
-      throw new SQLException("Error occurs for close opeation in server side becasuse " + e);
-    } catch (TException e) {
-      throw new SQLException(
-          "Error occurs when connecting to server for close operation, becasue: " + e);
-    }
-  }
 
   @Override
   public void deleteRow() throws SQLException {
