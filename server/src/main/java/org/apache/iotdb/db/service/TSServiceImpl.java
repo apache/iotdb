@@ -133,10 +133,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public static Vector<SqlArgument> sqlArgumentsList = new Vector<>();
 
   protected QueryProcessor processor;
-  // Record the username for every rpc connection. Username.get() is null if
-  // login is failed.
-  private Map<Long, String> usernameMap = new ConcurrentHashMap<>();
-  private Map<Long, ZoneId> zoneIds = new ConcurrentHashMap<>();
+  // Record the username for every rpc connection (session).
+  private Map<Long, String> sessionIdUsernameMap = new ConcurrentHashMap<>();
+  private Map<Long, ZoneId> sessionIdZoneIdMap = new ConcurrentHashMap<>();
   
   // The sessionId is unique in one IoTDB instance.
   private AtomicLong sessionIdGenerator = new AtomicLong();
@@ -147,7 +146,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   // (sessionId -> Set(statementId))
   private Map<Long, Set<Long>> sessionId2StatementId = new ConcurrentHashMap<>();
-  // (statement -> Set(queryId))
+  // (statementId -> Set(queryId))
   private Map<Long, Set<Long>> statementId2QueryId = new ConcurrentHashMap<>();
 
   // (queryId -> PhysicalPlan)
@@ -157,6 +156,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  // When the client abnormally exits, we can still know who to disconnect
   private ThreadLocal<Long> currSessionId = new ThreadLocal<>();
 
   public TSServiceImpl() {
@@ -226,8 +226,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (status) {
       tsStatus = getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully");
       sessionId = sessionIdGenerator.incrementAndGet();
-      usernameMap.put(sessionId, req.getUsername());
-      zoneIds.put(sessionId, config.getZoneID());
+      sessionIdUsernameMap.put(sessionId, req.getUsername());
+      sessionIdZoneIdMap.put(sessionId, config.getZoneID());
       currSessionId.set(sessionId);
     } else {
       tsStatus = getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);
@@ -246,13 +246,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     logger.info("{}: receive close session", IoTDBConstant.GLOBAL_DB_NAME);
     long sessionId = req.getSessionId();
     TSStatus tsStatus;
-    if (usernameMap.remove(sessionId) == null) {
+    if (sessionIdUsernameMap.remove(sessionId) == null) {
       tsStatus = getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     } else {
       tsStatus = getStatus(TSStatusCode.SUCCESS_STATUS);
     }
 
-    zoneIds.remove(sessionId);
+    sessionIdZoneIdMap.remove(sessionId);
     List<Exception> exceptions = new ArrayList<>();
     Set<Long> statementIds = sessionId2StatementId.getOrDefault(sessionId, Collections.emptySet());
     for (long statementId : statementIds) {
@@ -264,6 +264,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         try {
           QueryResourceManager.getInstance().endQueryForGivenJob(queryId);
         } catch (StorageEngineException e) {
+          // release as many as resources as possible, so do not break as soon as one exception is
+          // raised
           exceptions.add(e);
           logger.error("Error in closeSession : ", e);
         }
@@ -468,7 +470,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @return true if the statement is ADMIN COMMAND
    */
   private boolean execAdminCommand(String statement, long sessionId) throws StorageEngineException {
-    if (!"root".equals(usernameMap.get(sessionId))) {
+    if (!"root".equals(sessionIdUsernameMap.get(sessionId))) {
       return false;
     }
     if (statement == null) {
@@ -529,7 +531,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private boolean executeStatementInBatch(String statement, StringBuilder batchErrorMessage,
       List<Integer> result, long sessionId) {
     try {
-      PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get(sessionId));
+      PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId));
       if (physicalPlan.isQuery()) {
         throw new QueryInBatchStatementException(statement);
       }
@@ -587,9 +589,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       PhysicalPlan physicalPlan;
-      physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get(req.getSessionId()));
+      physicalPlan = processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
       if (physicalPlan.isQuery()) {
-        resp = executeQueryStatement(req.statementId, physicalPlan, usernameMap.get(req.getSessionId()));
+        resp = executeQueryStatement(req.statementId, physicalPlan, sessionIdUsernameMap.get(req.getSessionId()));
         long endTime = System.currentTimeMillis();
         sqlArgument = new SqlArgument(resp, physicalPlan, statement, startTime, endTime);
         sqlArgumentsList.add(sqlArgument);
@@ -665,7 +667,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     String statement = req.getStatement();
     PhysicalPlan physicalPlan;
     try {
-      physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get(req.getSessionId()));
+      physicalPlan = processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
     } catch (QueryProcessException | SQLParserException e) {
       logger.info(ERROR_PARSING_SQL, e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
@@ -675,7 +677,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getTSExecuteStatementResp(getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR,
           "Statement is not a query statement."));
     }
-    return executeQueryStatement(req.statementId, physicalPlan, usernameMap.get(req.getSessionId()));
+    return executeQueryStatement(req.statementId, physicalPlan, sessionIdUsernameMap.get(req.getSessionId()));
   }
 
   private List<String> queryColumnsType(List<String> columns) throws QueryProcessException {
@@ -843,7 +845,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       authorizer = LocalFileAuthorizer.getInstance();
 
       TSQueryDataSet result;
-      if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(usernameMap.get(req.getSessionId()))) {
+      if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(sessionIdUsernameMap.get(req.getSessionId()))) {
         WatermarkEncoder encoder;
         if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
           encoder = new GroupedLSBWatermarkEncoder(config);
@@ -927,7 +929,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     PhysicalPlan physicalPlan;
     try {
-      physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get(sessionId));
+      physicalPlan = processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId));
     } catch (QueryProcessException | SQLParserException e) {
       logger.info(ERROR_PARSING_SQL, e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
@@ -947,7 +949,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @return true: If logged in; false: If not logged in
    */
   private boolean checkLogin(long sessionId) {
-    return usernameMap.get(sessionId) != null;
+    return sessionIdUsernameMap.get(sessionId) != null;
   }
 
   private boolean checkAuthorization(List<Path> paths, PhysicalPlan plan, String username) throws AuthException {
@@ -992,7 +994,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSGetTimeZoneResp resp;
     try {
       tsStatus = getStatus(TSStatusCode.SUCCESS_STATUS);
-      resp = new TSGetTimeZoneResp(tsStatus, zoneIds.get(sessionId).toString());
+      resp = new TSGetTimeZoneResp(tsStatus, sessionIdZoneIdMap.get(sessionId).toString());
     } catch (Exception e) {
       logger.error("meet error while generating time zone.", e);
       tsStatus = getStatus(TSStatusCode.GENERATE_TIME_ZONE_ERROR);
@@ -1006,7 +1008,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSStatus tsStatus;
     try {
       String timeZoneID = req.getTimeZone();
-      zoneIds.put(req.getSessionId(), ZoneId.of(timeZoneID));
+      sessionIdZoneIdMap.put(req.getSessionId(), ZoneId.of(timeZoneID));
       tsStatus = getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (Exception e) {
       logger.error("meet error while setting time zone.", e);
@@ -1292,7 +1294,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
     List<Path> paths = plan.getPaths();
     try {
-      if (!checkAuthorization(paths, plan, usernameMap.get(sessionId))) {
+      if (!checkAuthorization(paths, plan, sessionIdUsernameMap.get(sessionId))) {
         return getStatus(TSStatusCode.NO_PERMISSION_ERROR, plan.getOperatorType().toString());
       }
     } catch (AuthException e) {
