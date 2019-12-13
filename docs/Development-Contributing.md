@@ -123,7 +123,7 @@ Following `README.md` to test, run or build IoTDB.
 Generally, IoTDB uses JIRA to track logical issues, including bugs and improvements and uses Github pull requests to manage the review and merge specific code changes. That is, JIRAs are used to describe what should be fixed or changed, proposing high-level approaches. Pull requests describe how to implement that change in the project’s source code. For example, major design decisions discussed in JIRA.
 
 1. Find the existing IoTDB JIRA that the change pertains to.
-    1. o not create a new JIRA if you send a PR to address an existing issue labeled in JIRA; add it to the existing discussion.
+    1. Do not create a new JIRA if you send a PR to address an existing issue labeled in JIRA; add it to the existing discussion.
     2. Look for existing pull requests that are linked from the JIRA, to understand if someone is already working on the JIRA
 2. If the change is new, then it usually needs a new JIRA. However, trivial changes, such as changes are self-explained, do not require a JIRA. Example: Fix spelling error in JavaDoc
 3. If required, create a new JIRA:
