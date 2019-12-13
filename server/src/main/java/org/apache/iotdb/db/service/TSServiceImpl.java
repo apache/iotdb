@@ -977,8 +977,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   void handleClientExit() {
-    TSCloseSessionReq req = new TSCloseSessionReq(currSessionId.get());
-    closeSession(req);
+    Long sessionId = currSessionId.get();
+    if (sessionId != null) {
+      TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
+      closeSession(req);
+    }
   }
 
   @Override
