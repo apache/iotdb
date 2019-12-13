@@ -141,8 +141,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private AtomicLong sessionIdGenerator = new AtomicLong();
   // The statementId is unique in one IoTDB instance.
   private AtomicLong statementIdGenerator = new AtomicLong();
-  // The queryIdGenerator is unique in one IoTDB instance for each operation that needs an id.
-  private AtomicLong queryIdGenerator = new AtomicLong();
 
   // (sessionId -> Set(statementId))
   private Map<Long, Set<Long>> sessionId2StatementId = new ConcurrentHashMap<>();
@@ -844,7 +842,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     QueryDataSet queryDataSet;
     QueryContext context = genQueryContext(req.getQueryId());
-    QueryResourceManager.getInstance().registerQuery(req.getQueryId());
 
     queryDataSet = processor.getExecutor().processQuery(physicalPlan, context);
 
@@ -1287,7 +1284,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private long generateQueryId() {
-    return queryIdGenerator.incrementAndGet();
+    return QueryResourceManager.getInstance().assignQueryId();
   }
 }
 

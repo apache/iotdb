@@ -11,7 +11,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.ClientServer;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -26,18 +25,13 @@ public class ClusterQueryManager {
   private Map<Node, Map<Long, RemoteQueryContext>> queryContextMap = new ConcurrentHashMap<>();
   private Map<Long, IPointReader> seriesReaderMap = new ConcurrentHashMap<>();
 
-  private ClientServer clientServer;
-
-  public ClusterQueryManager(AtomicLong readerIdAtom) {
-    this.readerIdAtom = readerIdAtom;
-  }
 
   public synchronized RemoteQueryContext getQueryContext(Node node, long queryId) {
     Map<Long, RemoteQueryContext> nodeContextMap = queryContextMap.computeIfAbsent(node,
         n -> new HashMap<>());
     RemoteQueryContext remoteQueryContext = nodeContextMap.get(queryId);
     if (remoteQueryContext == null) {
-      remoteQueryContext = new RemoteQueryContext(QueryResourceManager.getInstance().assignJobId(), node);
+      remoteQueryContext = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(), node);
       remoteQueryContext.setRemoteQueryId(queryId);
       nodeContextMap.put(queryId, remoteQueryContext);
     }
@@ -60,7 +54,7 @@ public class ClusterQueryManager {
       return;
     }
     // release file resources
-    QueryResourceManager.getInstance().endQueryForGivenJob(remoteQueryContext.getJobId());
+    QueryResourceManager.getInstance().endQueryForGivenJob(remoteQueryContext.getQueryId());
 
     // remove the readers from the cache
     Set<Long> readerIds = remoteQueryContext.getLocalReaderIds();
