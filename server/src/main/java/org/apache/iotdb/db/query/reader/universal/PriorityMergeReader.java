@@ -23,24 +23,23 @@ import java.util.List;
 import java.util.PriorityQueue;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 /**
- * This class implements {@link IPointReader} for data sources with different priorities.
+ * This class is for data sources with different priorities. It used to implement {@link
+ * IPointReader}, but now, instead of returning TimeValuePair, it returns Element directly
  */
-public class PriorityMergeReader implements IBatchReader {
+public class PriorityMergeReader {
 
   PriorityQueue<Element> heap = new PriorityQueue<>((o1, o2) -> {
-    int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(),
-        o2.timeValuePair.getTimestamp());
+    int timeCompare = Long.compare(o1.time, o2.time);
     return timeCompare != 0 ? timeCompare : Integer.compare(o2.priority, o1.priority);
   });
 
   public PriorityMergeReader() {
   }
 
-  public PriorityMergeReader(List<IPointReader> prioritySeriesReaders, int startPriority) throws IOException {
+  public PriorityMergeReader(List<IPointReader> prioritySeriesReaders, int startPriority)
+      throws IOException {
     for (IPointReader reader : prioritySeriesReaders) {
       addReaderWithPriority(reader, startPriority++);
     }
@@ -48,75 +47,64 @@ public class PriorityMergeReader implements IBatchReader {
 
   public void addReaderWithPriority(IPointReader reader, int priority) throws IOException {
     if (reader.hasNext()) {
-      heap.add(new Element(reader, reader.next(), priority));
+      TimeValuePair pair = reader.next();
+      heap.add(new Element(reader, pair.getTimestamp(), pair.getValue(), priority));
     } else {
       reader.close();
     }
   }
 
-//  @Override
-//  public boolean hasNext() {
-//    return !heap.isEmpty();
-//  }
-//
-//  @Override
-//  public TimeValuePair next() throws IOException {
-//    Element top = heap.poll();
-//    TimeValuePair ret = top.timeValuePair;
-//    TimeValuePair topNext = null;
-//    if (top.hasNext()) {
-//      top.next();
-//      topNext = top.currPair();
-//    }
-//    long topNextTime = topNext == null ? Long.MAX_VALUE : topNext.getTimestamp();
-//    updateHeap(ret.getTimestamp(), topNextTime);
-//    if (topNext != null) {
-//      top.timeValuePair = topNext;
-//      heap.add(top);
-//    }
-//    return ret;
-//  }
-//
-//  @Override
-//  public TimeValuePair current() throws IOException {
-//    return heap.peek().timeValuePair;
-//  }
-//
-//  private void updateHeap(long topTime, long topNextTime) throws IOException {
-//    while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
-//      Element e = heap.poll();
-//      if (!e.hasNext()) {
-//        e.reader.close();
-//        continue;
-//      }
-//
-//      e.next();
-//      if (e.currTime() == topNextTime) {
-//        // if the next value of the peek will be overwritten by the next of the top, skip it
-//        if (e.hasNext()) {
-//          e.next();
-//          heap.add(e);
-//        } else {
-//          // the chunk is end
-//          e.close();
-//        }
-//      } else {
-//        heap.add(e);
-//      }
-//    }
-//  }
-
-  @Override
-  public boolean hasNextBatch() throws IOException {
-    return false;
+  public boolean hasNext() {
+    return !heap.isEmpty();
   }
 
-  @Override
-  public BatchData nextBatch() throws IOException {
-    return null;
+  public Element next() throws IOException {
+    Element top = heap.poll();
+    long ret = top.time;
+    long topNextTime = Long.MAX_VALUE;
+    Object topNextValue = null;
+    if (top.hasNext()) {
+      top.next();
+      topNextTime = top.currTime();
+      topNextValue = top.currValue();
+    }
+    updateHeap(ret, topNextTime);
+    if (topNextValue != null) {
+      top.time = topNextTime;
+      top.value = topNextValue;
+      heap.add(top);
+    }
+    return top;
   }
 
-  @Override
+  public Element current() throws IOException {
+    return heap.peek();
+  }
+
+  private void updateHeap(long topTime, long topNextTime) throws IOException {
+    while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
+      Element e = heap.poll();
+      if (!e.hasNext()) {
+        e.reader.close();
+        continue;
+      }
+
+      e.next();
+      if (e.currTime() == topNextTime) {
+        // if the next value of the peek will be overwritten by the next of the top, skip it
+        if (e.hasNext()) {
+          e.next();
+          heap.add(e);
+        } else {
+          // the chunk is end
+          e.close();
+        }
+      } else {
+        heap.add(e);
+      }
+    }
+  }
+
   public void close() throws IOException {
     while (!heap.isEmpty()) {
       Element e = heap.poll();
@@ -124,30 +112,26 @@ public class PriorityMergeReader implements IBatchReader {
     }
   }
 
-  class Element {
+  public class Element {
 
     IPointReader reader;
-    TimeValuePair timeValuePair;
+    long time;
+    Object value;
     int priority;
 
-    /**
-     * Zesong Sun !!!
-     */
-    BatchData batchData;
-    int index;
-
-    Element(IPointReader reader, TimeValuePair timeValuePair, int priority) {
+    Element(IPointReader reader, long time, Object value, int priority) {
       this.reader = reader;
-      this.timeValuePair = timeValuePair;
+      this.time = time;
+      this.value = value;
       this.priority = priority;
     }
 
     long currTime() {
-      return timeValuePair.getTimestamp();
+      return time;
     }
 
-    TimeValuePair currPair() {
-      return timeValuePair;
+    Object currValue() {
+      return value;
     }
 
     boolean hasNext() throws IOException {
@@ -155,11 +139,21 @@ public class PriorityMergeReader implements IBatchReader {
     }
 
     void next() throws IOException {
-      timeValuePair = reader.next();
+      TimeValuePair timeValuePair = reader.next();
+      time = timeValuePair.getTimestamp();
+      value = timeValuePair.getValue();
     }
 
     void close() throws IOException {
       reader.close();
+    }
+
+    public long getTime() {
+      return time;
+    }
+
+    public Object getValue() {
+      return value;
     }
   }
 }
