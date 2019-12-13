@@ -109,7 +109,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
           throws QueryFilterOptimizationException, StorageEngineException,
           QueryProcessException, IOException {
 
-    long nextJobId = context.getJobId();
+    long nextJobId = context.getQueryId();
 
     GlobalTimeExpression timeExpression = new GlobalTimeExpression(new GroupByFilter(unit, slidingStep, startTime, endTime, FilterType.GROUP_BY_FILTER));
 
@@ -139,7 +139,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
       QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
 
-    long nextJobId = context.getJobId();
+    long nextJobId = context.getQueryId();
 
     FillEngineExecutor fillEngineExecutor = new FillEngineExecutor(nextJobId, fillPaths, queryTime,
         fillType);

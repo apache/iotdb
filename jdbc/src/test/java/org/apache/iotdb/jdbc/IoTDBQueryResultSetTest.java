@@ -18,14 +18,11 @@
  */
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.*;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -39,9 +36,24 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.*;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TSStatusType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /*
     This class is designed to test the function of TsfileQueryResultSet.
@@ -93,16 +105,12 @@ public class IoTDBQueryResultSetTest {
 
   @Mock
   TSExecuteStatementResp execResp;
-  @Mock
-  TSOperationHandle operationHandle;
-  @Mock
-  TSHandleIdentifier handleIdentifier;
+  private long queryId;
+  private long sessionId;
   @Mock
   private IoTDBConnection connection;
   @Mock
   private TSIService.Iface client;
-  @Mock
-  private TS_SessionHandle sessHandle;
   @Mock
   private Statement statement;
   @Mock
@@ -119,16 +127,11 @@ public class IoTDBQueryResultSetTest {
   public void before() throws Exception {
     MockitoAnnotations.initMocks(this);
 
-    statement = new IoTDBStatement(connection, client, sessHandle, zoneID);
+    statement = new IoTDBStatement(connection, client, sessionId, zoneID);
 
     when(connection.isClosed()).thenReturn(false);
     when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execResp);
-    operationHandle.hasResultSet = true;
-    operationHandle.operationId = handleIdentifier;
-    handleIdentifier.queryId = 1L;
-    when(execResp.getOperationHandle()).thenReturn(operationHandle);
-    when(operationHandle.getOperationId()).thenReturn(handleIdentifier);
-    when(handleIdentifier.getQueryId()).thenReturn(1L);
+    when(execResp.getQueryId()).thenReturn(queryId);
     when(execResp.getStatus()).thenReturn(Status_SUCCESS);
 
     when(client.fetchMetadata(any(TSFetchMetadataReq.class))).thenReturn(fetchMetadataResp);
@@ -137,8 +140,7 @@ public class IoTDBQueryResultSetTest {
     when(client.fetchResults(any(TSFetchResultsReq.class))).thenReturn(fetchResultsResp);
     when(fetchResultsResp.getStatus()).thenReturn(Status_SUCCESS);
 
-    TSStatus closeResp = new TSStatus();
-    closeResp = Status_SUCCESS;
+    TSStatus closeResp = Status_SUCCESS;
     when(client.closeOperation(any(TSCloseOperationReq.class))).thenReturn(closeResp);
   }
 
@@ -169,6 +171,8 @@ public class IoTDBQueryResultSetTest {
     when(execResp.getColumns()).thenReturn(columns);
     when(execResp.getDataTypeList()).thenReturn(dataTypeList);
     when(execResp.getOperationType()).thenReturn("QUERY");
+    when(execResp.isSetQueryId()).thenReturn(true);
+    when(execResp.getQueryId()).thenReturn(queryId);
     doReturn("FLOAT").doReturn("INT64").doReturn("INT32").doReturn("FLOAT").when(fetchMetadataResp)
         .getDataType();
 

@@ -18,40 +18,56 @@
  */
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
-
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
+import java.sql.Array;
+import java.sql.Blob;
+import java.sql.Clob;
 import java.sql.Date;
-import java.sql.*;
+import java.sql.NClob;
+import java.sql.ParameterMetaData;
+import java.sql.PreparedStatement;
+import java.sql.Ref;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.RowId;
+import java.sql.SQLException;
+import java.sql.SQLXML;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
 
 public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedStatement {
 
   private String sql;
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
+  private long queryId;
 
   /**
    * save the SQL parameters as (paramLoc,paramValue) pairs.
    */
   private final Map<Integer, String> parameters = new HashMap<>();
 
-  public IoTDBPreparedStatement(IoTDBConnection connection, Iface client,
-      TS_SessionHandle sessionHandle, ZoneId zoneId) throws SQLException{
-    super(connection, client, sessionHandle, zoneId);
+  IoTDBPreparedStatement(IoTDBConnection connection, Iface client,
+      Long sessionId, ZoneId zoneId) throws SQLException{
+    super(connection, client, sessionId, zoneId);
   }
 
-  public IoTDBPreparedStatement(IoTDBConnection connection, Iface client,
-      TS_SessionHandle sessionHandle, String sql,
+  IoTDBPreparedStatement(IoTDBConnection connection, Iface client,
+      Long sessionId, String sql,
       ZoneId zoneId) throws SQLException {
-    super(connection, client, sessionHandle, zoneId);
+    super(connection, client, sessionId, zoneId);
     this.sql = sql;
   }
 
@@ -61,7 +77,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   }
 
   @Override
-  public void clearParameters() throws SQLException {
+  public void clearParameters() {
     this.parameters.clear();
   }
 
@@ -147,7 +163,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   }
 
   @Override
-  public void setBoolean(int parameterIndex, boolean x) throws SQLException {
+  public void setBoolean(int parameterIndex, boolean x) {
     this.parameters.put(parameterIndex, Boolean.toString(x));
   }
 
@@ -204,22 +220,22 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   }
 
   @Override
-  public void setDouble(int parameterIndex, double x) throws SQLException {
+  public void setDouble(int parameterIndex, double x) {
     this.parameters.put(parameterIndex, Double.toString(x));
   }
 
   @Override
-  public void setFloat(int parameterIndex, float x) throws SQLException {
+  public void setFloat(int parameterIndex, float x) {
     this.parameters.put(parameterIndex, Float.toString(x));
   }
 
   @Override
-  public void setInt(int parameterIndex, int x) throws SQLException {
+  public void setInt(int parameterIndex, int x) {
     this.parameters.put(parameterIndex, Integer.toString(x));
   }
 
   @Override
-  public void setLong(int parameterIndex, long x) throws SQLException {
+  public void setLong(int parameterIndex, long x) {
     this.parameters.put(parameterIndex, Long.toString(x));
   }
 
@@ -269,15 +285,15 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     if (x instanceof String) {
       setString(parameterIndex, (String) x);
     } else if (x instanceof Integer) {
-      setInt(parameterIndex, ((Integer) x).intValue());
+      setInt(parameterIndex, (Integer) x);
     } else if (x instanceof Long) {
-      setLong(parameterIndex, ((Long) x).longValue());
+      setLong(parameterIndex, (Long) x);
     } else if (x instanceof Float) {
-      setFloat(parameterIndex, ((Float) x).floatValue());
+      setFloat(parameterIndex, (Float) x);
     } else if (x instanceof Double) {
-      setDouble(parameterIndex, ((Double) x).doubleValue());
+      setDouble(parameterIndex, (Double) x);
     } else if (x instanceof Boolean) {
-      setBoolean(parameterIndex, ((Boolean) x).booleanValue());
+      setBoolean(parameterIndex, (Boolean) x);
     } else if (x instanceof Timestamp) {
       setTimestamp(parameterIndex, (Timestamp) x);
     } else {
@@ -321,7 +337,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   }
 
   @Override
-  public void setString(int parameterIndex, String x) throws SQLException {
+  public void setString(int parameterIndex, String x) {
     this.parameters.put(parameterIndex, "'" + x.replace("'", "\\'") + "'");
   }
 
@@ -336,7 +352,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   }
 
   @Override
-  public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
+  public void setTimestamp(int parameterIndex, Timestamp x) {
     ZonedDateTime zonedDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(x.getTime()),
         super.zoneId);
     this.parameters.put(parameterIndex, zonedDateTime
@@ -406,7 +422,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
           break;
       }
     }
-    parts.add(sql.substring(off, sql.length()));
+    parts.add(sql.substring(off));
     return parts;
 
   }

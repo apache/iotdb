@@ -101,10 +101,9 @@ struct TSExecuteInsertRowInBatchResp{
 }
 
 struct TSExecuteBatchStatementResp{
-  1: required i64 sessionId
-	2: required TSStatus status
+	1: required TSStatus status
   // For each value in result, Statement.SUCCESS_NO_INFO represents success, Statement.EXECUTE_FAILED represents fail otherwise.
-	3: optional list<i32> result
+	2: optional list<i32> result
 }
 
 struct TSExecuteBatchStatementReq{
@@ -133,7 +132,8 @@ struct TSCancelOperationReq {
 // CloseOperation()
 struct TSCloseOperationReq {
   1: required i64 sessionId
-  2: required i64 queryId
+  2: optional i64 queryId
+  3: optional i64 statementId
 }
 
 struct TSFetchResultsReq{
@@ -187,7 +187,7 @@ struct TSInsertionReq {
     3: optional list<string> measurements
     4: optional list<string> values
     5: optional i64 timestamp
-    6: required i64 stmtId
+    6: optional i64 queryId
 }
 
 // for session
@@ -274,7 +274,7 @@ service TSIService {
 
 	TSStatus closeOperation(1:TSCloseOperationReq req);
 
-	TSGetTimeZoneResp getTimeZone();
+	TSGetTimeZoneResp getTimeZone(1:i64 sessionId);
 
 	TSStatus setTimeZone(1:TSSetTimeZoneReq req);
 
@@ -282,13 +282,13 @@ service TSIService {
 
 	TSExecuteStatementResp insert(1:TSInsertionReq req);
 
-	TSStatus setStorageGroup(1:string storageGroup);
+	TSStatus setStorageGroup(1:i64 sessionId, 2:string storageGroup);
 
 	TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
 
-  TSStatus deleteTimeseries(1:list<string> path)
+  TSStatus deleteTimeseries(1:i64 sessionId, 2:list<string> path)
 
-  TSStatus deleteStorageGroups(1:list<string> storageGroup);
+  TSStatus deleteStorageGroups(1:i64 sessionId, 2:list<string> storageGroup);
 
   TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
 
@@ -304,5 +304,5 @@ service TSIService {
 
 	TSStatus deleteData(1:TSDeleteDataReq req);
 
-	i64 requestStatementId();
+	i64 requestStatementId(1:i64 sessionId);
 }
