@@ -23,12 +23,12 @@ import java.util.List;
 import java.util.PriorityQueue;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
 
 /**
- * This class implements {@link IPointReader} for data sources with different priorities.
+ * This class is for data sources with different priorities. It used to implement {@link
+ * IPointReader}, but now, instead of returning TimeValuePair, it returns Element directly
  */
-public class PriorityMergeReader implements IPointReader {
+public class PriorityMergeReader {
 
   PriorityQueue<Element> heap = new PriorityQueue<>((o1, o2) -> {
     int timeCompare = Long.compare(o1.time, o2.time);
@@ -54,18 +54,15 @@ public class PriorityMergeReader implements IPointReader {
     }
   }
 
-  @Override
   public boolean hasNext() {
     return !heap.isEmpty();
   }
 
-  @Override
-  public TimeValuePair next() throws IOException {
+  public Element next() throws IOException {
     Element top = heap.poll();
     long ret = top.time;
-    TsPrimitiveType value = top.value;
     long topNextTime = Long.MAX_VALUE;
-    TsPrimitiveType topNextValue = null;
+    Object topNextValue = null;
     if (top.hasNext()) {
       top.next();
       topNextTime = top.currTime();
@@ -77,13 +74,11 @@ public class PriorityMergeReader implements IPointReader {
       top.value = topNextValue;
       heap.add(top);
     }
-    return new TimeValuePair(ret, value);
+    return top;
   }
 
-  @Override
-  public TimeValuePair current() throws IOException {
-    Element e = heap.peek();
-    return new TimeValuePair(e.time, e.value);
+  public Element current() throws IOException {
+    return heap.peek();
   }
 
   private void updateHeap(long topTime, long topNextTime) throws IOException {
@@ -110,7 +105,6 @@ public class PriorityMergeReader implements IPointReader {
     }
   }
 
-  @Override
   public void close() throws IOException {
     while (!heap.isEmpty()) {
       Element e = heap.poll();
@@ -118,14 +112,14 @@ public class PriorityMergeReader implements IPointReader {
     }
   }
 
-  class Element {
+  public class Element {
 
     IPointReader reader;
     long time;
-    TsPrimitiveType value;
+    Object value;
     int priority;
 
-    Element(IPointReader reader, long time, TsPrimitiveType value, int priority) {
+    Element(IPointReader reader, long time, Object value, int priority) {
       this.reader = reader;
       this.time = time;
       this.value = value;
@@ -136,7 +130,7 @@ public class PriorityMergeReader implements IPointReader {
       return time;
     }
 
-    TsPrimitiveType currValue() {
+    Object currValue() {
       return value;
     }
 
@@ -152,6 +146,14 @@ public class PriorityMergeReader implements IPointReader {
 
     void close() throws IOException {
       reader.close();
+    }
+
+    public long getTime() {
+      return time;
+    }
+
+    public Object getValue() {
+      return value;
     }
   }
 }

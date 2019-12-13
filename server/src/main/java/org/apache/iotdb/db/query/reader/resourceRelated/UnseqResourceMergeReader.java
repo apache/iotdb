@@ -31,8 +31,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.Element;
 import org.apache.iotdb.db.utils.QueryUtils;
-import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -124,13 +124,11 @@ public class UnseqResourceMergeReader implements IBatchReader {
     ChunkMetaData metaData;
     ChunkReaderWrap diskChunkReaderWrap;
     if (priorityMergeReader.hasNext()) {
-      long currentTime = priorityMergeReader.current().getTimestamp();
-
       metaData = metaDataList.get(index);
       long nextMetaDataStartTime = metaData.getStartTime();
 
       // create and add DiskChunkReader
-      while (currentTime >= nextMetaDataStartTime) {
+      while (priorityMergeReader.current().getTime() >= nextMetaDataStartTime) {
         diskChunkReaderWrap = new ChunkReaderWrap(metaData, metaData.getChunkLoader(), timeFilter);
         priorityMergeReader
             .addReaderWithPriority(diskChunkReaderWrap.getIPointReader(), metaData.getPriority());
@@ -158,9 +156,9 @@ public class UnseqResourceMergeReader implements IBatchReader {
   public BatchData nextBatch() throws IOException {
     BatchData batchData = new BatchData();
     for (int i = 0; i < 4096; i++) {
-      TimeValuePair timeValuePair = priorityMergeReader.next();
-      batchData.putTime(timeValuePair.getTimestamp());
-      batchData.putAnObject(timeValuePair.getValue());
+      Element e = priorityMergeReader.next();
+      batchData.putTime(e.getTime());
+      batchData.putAnObject(e.getValue());
       if (!hasNextBatch()) {
         break;
       }
