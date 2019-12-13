@@ -41,8 +41,8 @@ public class SessionDataSet {
   private boolean getFlag = false;
   private String sql;
   private long queryId;
+  private long sessionId;
   private TSIService.Iface client;
-  private TSOperationHandle operationHandle;
   private int batchSize = 512;
   private List<String> columnTypeDeduplicatedList;
 
@@ -54,11 +54,11 @@ public class SessionDataSet {
 
 
   public SessionDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
-      long queryId, TSIService.Iface client, TSOperationHandle operationHandle) {
+      long queryId, TSIService.Iface client, long sessionId) {
+    this.sessionId = sessionId;
     this.sql = sql;
     this.queryId = queryId;
     this.client = client;
-    this.operationHandle = operationHandle;
     currentBitmap = new byte[columnNameList.size()];
 
     // deduplicate columnTypeList according to columnNameList
@@ -85,7 +85,7 @@ public class SessionDataSet {
     if (getFlag)
       return true;
     if (tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining()) {
-      TSFetchResultsReq req = new TSFetchResultsReq(sql, batchSize, queryId);
+      TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, batchSize, queryId);
       try {
         TSFetchResultsResp resp = client.fetchResults(req);
         RpcUtils.verifySuccess(resp.getStatus());
@@ -185,11 +185,10 @@ public class SessionDataSet {
 
   public void closeOperationHandle() throws SQLException {
     try {
-      if (operationHandle != null) {
-        TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle, queryId);
-        TSStatus closeResp = client.closeOperation(closeReq);
-        RpcUtils.verifySuccess(closeResp);
-      }
+      TSCloseOperationReq closeReq = new TSCloseOperationReq(sessionId);
+      closeReq.setQueryId(queryId);
+      TSStatus closeResp = client.closeOperation(closeReq);
+      RpcUtils.verifySuccess(closeResp);
     } catch (IoTDBRPCException e) {
       throw new SQLException("Error occurs for close opeation in server side. The reason is " + e);
     } catch (TException e) {
