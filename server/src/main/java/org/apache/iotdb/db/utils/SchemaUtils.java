@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.utils;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PRIVILEGE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.ROLE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.STORAGE_GROUP;
-import static org.apache.iotdb.db.conf.IoTDBConstant.TTL;
-import static org.apache.iotdb.db.conf.IoTDBConstant.USER;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 
 import java.util.Collections;
 import java.util.List;
@@ -102,12 +102,12 @@ public class SchemaUtils {
       throws MetadataException {
     switch (path.toLowerCase()) {
       // authorization queries
-      case ROLE:
-      case USER:
-      case PRIVILEGE:
-      case STORAGE_GROUP:
+      case COLUMN_ROLE:
+      case COLUMN_USER:
+      case COLUMN_PRIVILEGE:
+      case COLUMN_STORAGE_GROUP:
         return TSDataType.TEXT;
-      case TTL:
+      case COLUMN_TTL:
         return TSDataType.INT64;
       default:
         // do nothing

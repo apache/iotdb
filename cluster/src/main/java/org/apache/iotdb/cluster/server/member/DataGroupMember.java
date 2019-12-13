@@ -107,7 +107,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
     queryProcessor = new ClusterQueryParser(metaGroupMember);
-    queryManager = new ClusterQueryManager();
+    queryManager = new ClusterQueryManager(metaGroupMember.getClientServer().);
   }
 
   @Override

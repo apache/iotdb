@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.junit.Assert.fail;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -28,10 +35,6 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
-import java.sql.*;
-
-import static org.junit.Assert.fail;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
@@ -135,7 +138,6 @@ public class IoTDBMultiStatementsIT {
          Statement statement1 = connection.createStatement();
          Statement statement2 = connection.createStatement()) {
       statement1.setFetchSize(10);
-      statement1.close();
       boolean hasResultSet1 = statement1.execute(selectSql);
       Assert.assertTrue(hasResultSet1);
       ResultSet resultSet1 = statement1.getResultSet();

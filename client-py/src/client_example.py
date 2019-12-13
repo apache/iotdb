@@ -24,8 +24,7 @@ from thrift.protocol import TBinaryProtocol
 from thrift.transport import TSocket, TTransport
 
 from iotdb.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertionReq, \
-    TSBatchInsertionReq, TSExecuteStatementReq, \
-    TS_SessionHandle, TSHandleIdentifier, TSOpenSessionReq, TSQueryDataSet, \
+    TSBatchInsertionReq, TSExecuteStatementReq, TSOpenSessionReq, TSQueryDataSet, \
     TSFetchResultsReq, TSCloseOperationReq, \
     TSCloseSessionReq
 from iotdb.rpc.ttypes import TSProtocolVersion
@@ -158,42 +157,48 @@ if __name__ == '__main__':
         print('Inconsistent protocol, server version: %d, client version: %d'
               % (resp.serverProtocolVersion, clientProtocol))
         exit()
-    handle = resp.sessionHandle
+    sessionId = resp.sessionId
 
     # This is necessary for resource control
-    stmtId = client.requestStatementId()
+    stmtId = client.requestStatementId(sessionId)
 
     # create a storage group
-    status = client.setStorageGroup("root.group1")
+    status = client.setStorageGroup(sessionId, "root.group1")
     print(status.statusType)
 
     # create timeseries
-    status = client.createTimeseries(TSCreateTimeseriesReq("root.group1.s1",
+    status = client.createTimeseries(TSCreateTimeseriesReq(sessionId,
+                                                           "root.group1.s1",
                                                            TSDataType['INT64'],
                                                            TSEncoding['PLAIN'],
                                                            Compressor['UNCOMPRESSED']))
     print(status.statusType)
-    status = client.createTimeseries(TSCreateTimeseriesReq("root.group1.s2",
+    status = client.createTimeseries(TSCreateTimeseriesReq(sessionId,
+                                                           "root.group1.s2",
                                                            TSDataType['INT32'],
                                                            TSEncoding['PLAIN'],
                                                            Compressor['UNCOMPRESSED']))
     print(status.statusType)
-    status = client.createTimeseries(TSCreateTimeseriesReq("root.group1.s3",
+    status = client.createTimeseries(TSCreateTimeseriesReq(sessionId,
+                                                           "root.group1.s3",
                                                            TSDataType['DOUBLE'],
                                                            TSEncoding['PLAIN'],
                                                            Compressor['UNCOMPRESSED']))
     print(status.statusType)
-    status = client.createTimeseries(TSCreateTimeseriesReq("root.group1.s4",
+    status = client.createTimeseries(TSCreateTimeseriesReq(sessionId,
+                                                           "root.group1.s4",
                                                            TSDataType['FLOAT'],
                                                            TSEncoding['PLAIN'],
                                                            Compressor['UNCOMPRESSED']))
     print(status.statusType)
-    status = client.createTimeseries(TSCreateTimeseriesReq("root.group1.s5",
+    status = client.createTimeseries(TSCreateTimeseriesReq(sessionId,
+                                                           "root.group1.s5",
                                                            TSDataType['BOOLEAN'],
                                                            TSEncoding['PLAIN'],
                                                            Compressor['UNCOMPRESSED']))
     print(status.statusType)
-    status = client.createTimeseries(TSCreateTimeseriesReq("root.group1.s6",
+    status = client.createTimeseries(TSCreateTimeseriesReq(sessionId,
+                                                           "root.group1.s6",
                                                            TSDataType['TEXT'],
                                                            TSEncoding['PLAIN'],
                                                            Compressor['UNCOMPRESSED']))
@@ -205,8 +210,8 @@ if __name__ == '__main__':
     # insert a single row
     values = ["1", "11", "1.1", "11.1", "TRUE", "\'text0\'"]
     timestamp = 1
-    status = client.insert(TSInsertionReq(deviceId, measurements,
-                                          values, timestamp, stmtId))
+    status = client.insert(TSInsertionReq(sessionId, deviceId, measurements,
+                                          values, timestamp))
     print(status.status)
 
     # insert multiple rows, this interface is more efficient
@@ -233,13 +238,15 @@ if __name__ == '__main__':
                               len(bytes('\'text3\'', encoding)),
                               bytes('\'text3\'', encoding)))
     times.extend(struct.pack(time_pack_str, 2, 3, 4))
-    resp = client.insertBatch(TSBatchInsertionReq(deviceId, measurements, values,
+    resp = client.insertBatch(TSBatchInsertionReq(sessionId,deviceId,
+                                                  measurements, values,
                                                   times, dataTypes, rowCnt))
     status = resp.status
     print(status.statusType)
 
     # execute deletion (or other statements)
-    resp = client.executeStatement(TSExecuteStatementReq(handle, "DELETE FROM root.group1 where time < 2", stmtId))
+    resp = client.executeStatement(TSExecuteStatementReq(sessionId, "DELETE FROM "
+                                                            "root.group1 where time < 2", stmtId))
     status = resp.status
     print(status.statusType)
 
@@ -247,19 +254,19 @@ if __name__ == '__main__':
     stmt = "SELECT * FROM root.group1"
     fetchSize = 2
     # this is also for resource control, make sure different queries will not use the same id at the same time
-    resp = client.executeQueryStatement(TSExecuteStatementReq(handle, stmt, stmtId))
+    resp = client.executeQueryStatement(TSExecuteStatementReq(sessionId, stmt, stmtId))
     # headers
     dataTypeList = resp.dataTypeList
     print(resp.columns)
     print(dataTypeList)
 
-    stmtHandle = resp.operationHandle
     status = resp.status
     print(status.statusType)
 
-    queryId = resp.operationHandle.operationId.queryId
+    queryId = resp.queryId
     while True:
-        rst = client.fetchResults(TSFetchResultsReq(stmt, fetchSize, queryId)).queryDataSet
+        rst = client.fetchResults(TSFetchResultsReq(sessionId, stmt, fetchSize,
+                                                    queryId)).queryDataSet
         records = convertQueryDataSet(rst, dataTypeList)
         if len(records) == 0:
             break
@@ -267,7 +274,9 @@ if __name__ == '__main__':
             print(record)
 
     # do not forget to close it when a query is over
-    client.closeOperation(TSCloseOperationReq(stmtHandle, queryId, stmtId))
+    closeReq = TSCloseOperationReq(sessionId)
+    closeReq.queryId = queryId
+    client.closeOperation(closeReq)
 
     # and do not forget to close the session before exiting
-    client.closeSession(TSCloseSessionReq(handle))
+    client.closeSession(TSCloseSessionReq(sessionId))

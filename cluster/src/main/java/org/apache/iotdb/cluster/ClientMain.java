@@ -4,43 +4,24 @@
 
 package org.apache.iotdb.cluster;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Client;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Client.Factory;
 import org.apache.iotdb.service.rpc.thrift.TSInsertReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
-import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.iotdb.session.SessionDataSet;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TFramedTransport;
@@ -64,26 +45,26 @@ public class ClientMain {
     openReq.setUsername("root");
     openReq.setPassword("root");
     TSOpenSessionResp openResp = client.openSession(openReq);
-    TS_SessionHandle sessionHandle = openResp.getSessionHandle();
+    long sessionId = openResp.getSessionId();
 
-    testInsertion(client);
+    testInsertion(client, sessionId);
 
-    testQuery(client, sessionHandle);
+    testQuery(client, sessionId);
 
-    client.closeSession(new TSCloseSessionReq(openResp.getSessionHandle()));
+    client.closeSession(new TSCloseSessionReq(openResp.getSessionId()));
   }
 
-  private static void testQuery(Client client, TS_SessionHandle handle)
+  private static void testQuery(Client client, long sessionId)
       throws TException, SQLException, IoTDBRPCException {
-    long statementId = client.requestStatementId();
+    long statementId = client.requestStatementId(sessionId);
     String statement = "SELECT * FROM root.shenzhen";
     TSExecuteStatementResp resp = client
-        .executeQueryStatement(new TSExecuteStatementReq(handle, statement, statementId));
-    TSOperationHandle operationHandle = resp.getOperationHandle();
+        .executeQueryStatement(new TSExecuteStatementReq(sessionId, statement, statementId));
+    long queryId = resp.getQueryId();
     System.out.println(resp.columns);
 
     SessionDataSet dataSet = new SessionDataSet(statement, resp.getColumns(),
-        resp.getDataTypeList(), operationHandle.getOperationId().getQueryId(), client, operationHandle);
+        resp.getDataTypeList(), queryId, client, sessionId);
 
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
@@ -92,11 +73,12 @@ public class ClientMain {
 
 
 
-  private static void testInsertion(Client client) throws TException, InterruptedException {
-    System.out.println(client.setStorageGroup("root.beijing"));
-    System.out.println(client.setStorageGroup("root.shanghai"));
-    System.out.println(client.setStorageGroup("root.guangzhou"));
-    System.out.println(client.setStorageGroup("root.shenzhen"));
+  private static void testInsertion(Client client, long sessionId) throws TException,
+      InterruptedException {
+    System.out.println(client.setStorageGroup(sessionId, "root.beijing"));
+    System.out.println(client.setStorageGroup(sessionId, "root.shanghai"));
+    System.out.println(client.setStorageGroup(sessionId, "root.guangzhou"));
+    System.out.println(client.setStorageGroup(sessionId, "root.shenzhen"));
 
     // wait until the storage group creations are committed
     Thread.sleep(3000);

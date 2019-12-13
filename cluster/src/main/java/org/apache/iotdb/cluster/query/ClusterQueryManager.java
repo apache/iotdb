@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.ClientServer;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -24,6 +25,12 @@ public class ClusterQueryManager {
   private AtomicLong readerIdAtom = new AtomicLong();
   private Map<Node, Map<Long, RemoteQueryContext>> queryContextMap = new ConcurrentHashMap<>();
   private Map<Long, IPointReader> seriesReaderMap = new ConcurrentHashMap<>();
+
+  private ClientServer clientServer;
+
+  public ClusterQueryManager(AtomicLong readerIdAtom) {
+    this.readerIdAtom = readerIdAtom;
+  }
 
   public synchronized RemoteQueryContext getQueryContext(Node node, long queryId) {
     Map<Long, RemoteQueryContext> nodeContextMap = queryContextMap.computeIfAbsent(node,

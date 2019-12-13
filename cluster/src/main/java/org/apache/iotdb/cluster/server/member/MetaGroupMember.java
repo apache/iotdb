@@ -1022,7 +1022,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
       request.setPath(path.getFullPath());
       request.setHeader(partitionGroup.getHeader());
-      request.setQueryId(context.getJobId());
+      request.setQueryId(context.getQueryId());
       request.setRequester(thisNode);
       request.setPushdownUnseq(pushdownUnseq);
 
@@ -1091,5 +1091,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
     }
     return Collections.emptyList();
+  }
+
+  ClientServer getClientServer() {
+    return clientServer;
   }
 }

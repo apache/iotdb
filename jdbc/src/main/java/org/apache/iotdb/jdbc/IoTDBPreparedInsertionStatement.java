@@ -27,25 +27,26 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
 import org.apache.iotdb.service.rpc.thrift.TSInsertionReq;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.thrift.TException;
 
 public class IoTDBPreparedInsertionStatement extends IoTDBPreparedStatement {
 
   private TSInsertionReq req = new TSInsertionReq();
+  private long queryId;
 
-  public IoTDBPreparedInsertionStatement(IoTDBConnection connection,
-      Iface client,
-      TS_SessionHandle sessionHandle, ZoneId zoneId) throws SQLException {
-    super(connection, client, sessionHandle, zoneId);
-    req.setStmtId(stmtId);
+  IoTDBPreparedInsertionStatement(IoTDBConnection connection,
+      Iface client, long sessionId, ZoneId zoneId) throws SQLException {
+    super(connection, client, sessionId, zoneId);
+    req.setSessionId(sessionId);
   }
 
   @Override
   public boolean execute() throws SQLException {
-
     try {
       TSExecuteStatementResp resp = client.insert(req);
+      queryId = resp.getQueryId();
+      req.setQueryId(queryId);
+
       req.unsetDeviceId();
       req.unsetMeasurements();
       req.unsetTimestamp();

@@ -734,7 +734,7 @@ public class StorageGroupProcessor {
       // running merge
       // is null only in tests
       if (filePathsManager != null) {
-        filePathsManager.addUsedFilesForGivenJob(context.getJobId(), dataSource);
+        filePathsManager.addUsedFilesForGivenJob(context.getQueryId(), dataSource);
       }
       dataSource.setDataTTL(dataTTL);
       return dataSource;

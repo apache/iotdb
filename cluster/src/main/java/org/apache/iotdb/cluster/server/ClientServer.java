@@ -20,7 +20,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -139,7 +138,7 @@ public class ClientServer extends TSServiceImpl {
   }
 
   @Override
-  protected QueryContext genQueryContext() {
-    return new RemoteQueryContext(QueryResourceManager.getInstance().assignJobId(), null);
+  protected QueryContext genQueryContext(long queryId) {
+    return new RemoteQueryContext(queryId, null);
   }
 }
