@@ -4,26 +4,38 @@
 
 package org.apache.iotdb.cluster.server;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.query.ClusterQueryParser;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.service.rpc.thrift.TSIService.AsyncClient;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -46,6 +58,7 @@ public class ClientServer extends TSServiceImpl {
 
   private ExecutorService serverService;
   private TServer poolServer;
+  private Map<Long, RemoteQueryContext> queryContextMap = new HashMap<>();
 
   public ClientServer(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
@@ -139,6 +152,31 @@ public class ClientServer extends TSServiceImpl {
 
   @Override
   protected QueryContext genQueryContext(long queryId) {
-    return new RemoteQueryContext(queryId, null);
+    RemoteQueryContext context = new RemoteQueryContext(queryId);
+    queryContextMap.put(queryId, context);
+    return context;
+  }
+
+  @Override
+  protected void releaseQueryResource(long queryId) throws StorageEngineException {
+    super.releaseQueryResource(queryId);
+    RemoteQueryContext context = queryContextMap.get(queryId);
+    if (context != null) {
+      // release the resources in every queried node
+      for (Entry<Node, Set<Node>> headerEntry : context.getQueriedNodesMap().entrySet()) {
+        Node header = headerEntry.getKey();
+        Set<Node> queriedNodes = headerEntry.getValue();
+
+        for (Node queriedNode : queriedNodes) {
+          GenericHandler handler = new GenericHandler(queriedNode, new AtomicReference());
+          try {
+            DataClient client = (DataClient) metaGroupMember.getDataClientPool().getClient(queriedNode);
+            client.endQuery(header, metaGroupMember.getThisNode(), queryId, handler);
+          } catch (IOException | TException e) {
+            logger.error("Cannot end query {} in {}", queryId, queriedNode);
+          }
+        }
+      }
+    }
   }
 }

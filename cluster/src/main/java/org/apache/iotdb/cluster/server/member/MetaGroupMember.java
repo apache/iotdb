@@ -85,7 +85,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -125,8 +124,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private DataClusterServer dataClusterServer;
   private ClientServer clientServer;
 
-  // all data servers in this node shares the same partitioned data log manager
-  QueryProcessExecutor queryExecutor;
   private LogApplier metaLogApplier = new MetaLogApplier(this);
   private LogApplier dataLogApplier = new DataLogApplier(this);
   private DataGroupMember.Factory dataMemberFactory;
@@ -203,29 +200,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       } catch (NumberFormatException e) {
         logger.warn("Bad seed url: {}", seedUrl);
       }
-    }
-  }
-
-  private void loadNode(String url) {
-    String[] split = url.split(":");
-    if (split.length != 4) {
-      logger.warn("Incorrect node url: {}", url);
-      return;
-    }
-    String ip = split[1];
-    try {
-      int identifier = Integer.parseInt(split[0]);
-      int metaPort = Integer.parseInt(split[2]);
-      int dataPort = Integer.parseInt(split[3]);
-      Node node = new Node();
-      node.setIp(ip);
-      node.setMetaPort(metaPort);
-      node.setNodeIdentifier(identifier);
-      node.setDataPort(dataPort);
-      allNodes.add(node);
-      idNodeMap.put(identifier, node);
-    } catch (NumberFormatException e) {
-      logger.warn("Incorrect node url: {}", url);
     }
   }
 
@@ -481,11 +455,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   public Map<Integer, Node> getIdNodeMap() {
     return idNodeMap;
-  }
-
-  public void setIdNodeMap(
-      Map<Integer, Node> idNodeMap) {
-    this.idNodeMap = idNodeMap;
   }
 
   /**
@@ -981,7 +950,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     try {
       return SchemaUtils.getSeriesType(pathStr);
     } catch (PathNotExistException e) {
-      Path path = new Path(pathStr);
       List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStr);
       // TODO-Cluster: should we register the schemas locally?
       if (schemas.isEmpty()) {
@@ -993,7 +961,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   public IPointReader getSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
-      QueryContext context, boolean pushdownUnseq)
+      QueryContext context, boolean pushDownUnseq)
       throws IOException, StorageEngineException {
     // make sure the partition table is new
     syncLeader();
@@ -1024,7 +992,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       request.setHeader(partitionGroup.getHeader());
       request.setQueryId(context.getQueryId());
       request.setRequester(thisNode);
-      request.setPushdownUnseq(pushdownUnseq);
+      request.setPushdownUnseq(pushDownUnseq);
 
       for (Node node : partitionGroup) {
         logger.debug("{}: querying {} from {}", name, path, node);
@@ -1038,7 +1006,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           }
           Long readerId = result.get();
           if (readerId != null) {
-            ((RemoteQueryContext) context).registerRemoteReader(node, readerId);
+            ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
             logger.debug("{}: get a readerId {} for {} from {}", name, readerId, path, node);
             return new RemoteSimpleSeriesReader(readerId, node, partitionGroup.getHeader(), this);
           }
@@ -1091,9 +1059,5 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
     }
     return Collections.emptyList();
-  }
-
-  ClientServer getClientServer() {
-    return clientServer;
   }
 }

@@ -31,8 +31,7 @@ public class ClusterQueryManager {
         n -> new HashMap<>());
     RemoteQueryContext remoteQueryContext = nodeContextMap.get(queryId);
     if (remoteQueryContext == null) {
-      remoteQueryContext = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(), node);
-      remoteQueryContext.setRemoteQueryId(queryId);
+      remoteQueryContext = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId());
       nodeContextMap.put(queryId, remoteQueryContext);
     }
     return remoteQueryContext;

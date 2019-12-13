@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.service;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
-
 import java.io.IOException;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -248,7 +242,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
     logger.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
-    TSStatus status;
     if (!checkLogin(req.getSessionId())) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getStatus(TSStatusCode.NOT_LOGIN_ERROR);
@@ -278,7 +271,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * release single operation resource
    */
-  private void releaseQueryResource(long queryId) throws StorageEngineException {
+  protected void releaseQueryResource(long queryId) throws StorageEngineException {
 
     // remove the corresponding Physical Plan
     queryId2DataSet.remove(queryId);
@@ -303,7 +296,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @param statusType status type
    * @param appendMessage appending message
    */
-  protected TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
+  private TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
     TSStatusType statusCodeAndMessage = new TSStatusType(statusType.getStatusCode(), appendMessage);
     return new TSStatus(statusCodeAndMessage);
   }
@@ -836,7 +829,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  protected QueryDataSet createNewDataSet(TSFetchResultsReq req)
+  private QueryDataSet createNewDataSet(TSFetchResultsReq req)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException {
     PhysicalPlan physicalPlan = queryId2Plan.get(req.queryId);
 
@@ -850,8 +843,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   protected QueryContext genQueryContext(long queryId) {
-    QueryContext context = new QueryContext(queryId);
-    return context;
+    return new QueryContext(queryId);
   }
 
   @Override
@@ -942,7 +934,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  protected TSFetchResultsResp getTSFetchResultsResp(TSStatus status) {
+  private TSFetchResultsResp getTSFetchResultsResp(TSStatus status) {
     TSFetchResultsResp resp = new TSFetchResultsResp();
     TSStatus tsStatus = new TSStatus(status);
     resp.setStatus(tsStatus);

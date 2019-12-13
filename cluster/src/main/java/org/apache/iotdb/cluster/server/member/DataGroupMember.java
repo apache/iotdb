@@ -250,7 +250,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     if (snapshot instanceof DataSimpleSnapshot) {
       applySimpleSnapshot((DataSimpleSnapshot) snapshot, slot);
     } else if (snapshot instanceof FileSnapshot) {
-      applyFileSnapshot((FileSnapshot) snapshot, slot);
+      applyFileSnapshot((FileSnapshot) snapshot);
     } else {
       logger.error("Unrecognized snapshot {}", snapshot);
     }
@@ -273,7 +273,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
-  private void applyFileSnapshot(FileSnapshot snapshot, int slot) {
+  private void applyFileSnapshot(FileSnapshot snapshot) {
     synchronized (logManager) {
       for (MeasurementSchema schema : snapshot.getTimeseriesSchemas()) {
         SchemaUtils.registerTimeseries(schema);
@@ -591,7 +591,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       throws IOException, StorageEngineException {
     // pull the newest data
     if (syncLeader()) {
-      return new SeriesReaderWithoutValueFilter(path, timeFilter, context, true);
+      return new SeriesReaderWithoutValueFilter(path, timeFilter, context, pushdownUnseq);
     } else {
       throw new StorageEngineException(new LeaderUnknownException());
     }
@@ -628,10 +628,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   @Override
-  public void endQuery(Node header, Node thisNode, long queryId,
+  public void endQuery(Node header, Node requester, long queryId,
       AsyncMethodCallback<Void> resultHandler) {
     try {
-      queryManager.endQuery(thisNode, queryId);
+      queryManager.endQuery(requester, queryId);
       resultHandler.onComplete(null);
     } catch (StorageEngineException e) {
       resultHandler.onError(e);
