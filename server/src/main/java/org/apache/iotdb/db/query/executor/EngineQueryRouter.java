@@ -111,7 +111,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
 
     long nextJobId = context.getJobId();
 
-    GlobalTimeExpression timeExpression = new GlobalTimeExpression(new GroupByFilter(unit, slidingStep, startTime, endTime, FilterType.GROUP_BY_FILTER));
+    GlobalTimeExpression timeExpression = new GlobalTimeExpression(new GroupByFilter(unit, slidingStep, startTime, endTime));
 
     if (expression == null) {
       expression = timeExpression;

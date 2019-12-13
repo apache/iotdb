@@ -18,11 +18,16 @@
  */
 package org.apache.iotdb.tsfile.read.filter.operator;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Equals.
@@ -32,6 +37,9 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
 
   private static final long serialVersionUID = -6668083116644568248L;
+
+  public Eq() {
+  }
 
   public Eq(T value, FilterType filterType) {
     super(value, filterType);
@@ -60,10 +68,7 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
   public boolean satisfyStartEndTime(long startTime, long endTime) {
     if (filterType == FilterType.TIME_FILTER) {
       long time = (Long) value;
-      if (time > endTime || time < startTime) {
-        return false;
-      }
-      return true;
+      return time <= endTime && time >= startTime;
     } else {
       return true;
     }
@@ -73,11 +78,7 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
   public boolean containStartEndTime(long startTime, long endTime) {
     if (filterType == FilterType.TIME_FILTER) {
       long time = (Long) value;
-      if (time == startTime && time == endTime) {
-        return true;
-      } else {
-        return false;
-      }
+      return time == startTime && time == endTime;
     } else {
       return true;
     }
@@ -93,4 +94,8 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
     return getFilterType() + " == " + value;
   }
 
+  @Override
+  public FilterSerializeId getSerializeId() {
+    return FilterSerializeId.EQ;
+  }
 }
