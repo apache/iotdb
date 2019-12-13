@@ -169,11 +169,12 @@ public class IoTDBStatement implements Statement {
 
   private void closeClientOperation() throws SQLException {
     try {
-      if (sessionId != -1) {
+      if (stmtId != -1) {
         TSCloseOperationReq closeReq = new TSCloseOperationReq(sessionId);
+        closeReq.setStatementId(stmtId);
         TSStatus closeResp = client.closeOperation(closeReq);
         RpcUtils.verifySuccess(closeResp);
-        sessionId = -1;
+        stmtId = -1;
       }
     } catch (Exception e) {
       throw new SQLException("Error occurs when closing statement.", e);
