@@ -600,7 +600,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void querySingleSeries(SingleSeriesQueryRequest request,
       AsyncMethodCallback<Long> resultHandler) {
-    logger.debug("{}: {} is querying {}", name, request.getRequester(), request.getPath());
+    logger.debug("{}: {} is querying {}, queryId: {}", name, request.getRequester(),
+        request.getPath(), request.getQueryId());
     if (!syncLeader()) {
       resultHandler.onError(new LeaderUnknownException());
       return;
@@ -613,6 +614,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
     RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequester(),
         request.getQueryId());
+    logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
+        request.getPath(), queryContext.getQueryId());
     try {
       IPointReader pointReader = getSeriesReaderWithoutValueFilter(path, timeFilter, queryContext,
           request.isPushdownUnseq());

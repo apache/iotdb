@@ -84,6 +84,7 @@ public class ClientMain {
     Thread.sleep(3000);
 
     TSCreateTimeseriesReq req = new TSCreateTimeseriesReq();
+    req.setSessionId(sessionId);
     req.setDataType(TSDataType.DOUBLE.ordinal());
     req.setEncoding(TSEncoding.GORILLA.ordinal());
     req.setCompressor(CompressionType.SNAPPY.ordinal());
@@ -101,6 +102,7 @@ public class ClientMain {
 
     TSInsertReq insertReq = new TSInsertReq();
     insertReq.setMeasurements(Collections.singletonList("s1"));
+    insertReq.setSessionId(sessionId);
     for (int i = 0; i < 10; i ++) {
       insertReq.setTimestamp(i * 24 * 3600 * 1000L);
       insertReq.setValues(Collections.singletonList(Double.toString(i * 0.1)));
