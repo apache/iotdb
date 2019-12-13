@@ -20,12 +20,15 @@ import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * RemoteSimpleSeriesReader is a reader without value filter that reads points from a remote side.
  */
 public class RemoteSimpleSeriesReader implements IPointReader {
 
+  private static final Logger logger = LoggerFactory.getLogger(RemoteSimpleSeriesReader.class);
   private long readerId;
   private Node source;
   private Node header;
@@ -71,7 +74,7 @@ public class RemoteSimpleSeriesReader implements IPointReader {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     // close by Resource manager
   }
 
@@ -87,7 +90,7 @@ public class RemoteSimpleSeriesReader implements IPointReader {
       }
     }
     cache = SerializeUtils.deserializeTVPairs(fetchResult.get());
+    logger.debug("Fetched tv pairs from {}, {}", source, cache);
     cacheIndex = 0;
   }
-
 }

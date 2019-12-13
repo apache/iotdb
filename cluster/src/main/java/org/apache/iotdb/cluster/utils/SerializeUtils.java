@@ -133,46 +133,47 @@ public class SerializeUtils {
     switch (dataType) {
       case DOUBLE:
         for (int i = 0; i < size; i++) {
-          TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, buffer.getDouble());
-          TimeValuePair pair = new TimeValuePair(buffer.getLong(), primitiveType);
+          TimeValuePair pair = new TimeValuePair(buffer.getLong(),
+              TsPrimitiveType.getByType(dataType, buffer.getDouble()));
           ret.add(pair);
         }
         break;
       case FLOAT:
         for (int i = 0; i < size; i++) {
-          TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, buffer.getDouble());
-          TimeValuePair pair = new TimeValuePair(buffer.getLong(), primitiveType);
+          TimeValuePair pair = new TimeValuePair(buffer.getLong(),
+              TsPrimitiveType.getByType(dataType, buffer.getDouble()));
           ret.add(pair);
         }
         break;
       case INT32:
         for (int i = 0; i < size; i++) {
-          TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, buffer.getInt());
-          TimeValuePair pair = new TimeValuePair(buffer.getLong(), primitiveType);
+          TimeValuePair pair = new TimeValuePair(buffer.getLong(),
+              TsPrimitiveType.getByType(dataType, buffer.getInt()));
           ret.add(pair);
         }
         break;
       case INT64:
         for (int i = 0; i < size; i++) {
-          TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, buffer.getLong());
-          TimeValuePair pair = new TimeValuePair(buffer.getLong(), primitiveType);
+          TimeValuePair pair = new TimeValuePair(buffer.getLong(),
+              TsPrimitiveType.getByType(dataType, buffer.getLong()));
           ret.add(pair);
         }
         break;
       case BOOLEAN:
         for (int i = 0; i < size; i++) {
-          TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, buffer.get() == 1);
-          TimeValuePair pair = new TimeValuePair(buffer.getLong(), primitiveType);
+          TimeValuePair pair = new TimeValuePair(buffer.getLong(),
+              TsPrimitiveType.getByType(dataType, buffer.get() == 1));
           ret.add(pair);
         }
         break;
       case TEXT:
         for (int i = 0; i < size; i++) {
+          long time = buffer.getLong();
           int bytesLen = buffer.getInt();
           byte[] bytes = new byte[bytesLen];
           buffer.get(bytes);
           TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, bytes);
-          TimeValuePair pair = new TimeValuePair(buffer.getLong(), primitiveType);
+          TimeValuePair pair = new TimeValuePair(time, primitiveType);
           ret.add(pair);
         }
         break;

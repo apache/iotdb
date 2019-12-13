@@ -57,7 +57,7 @@ public class ClientMain {
   private static void testQuery(Client client, long sessionId)
       throws TException, SQLException, IoTDBRPCException {
     long statementId = client.requestStatementId(sessionId);
-    String statement = "SELECT * FROM root.shenzhen";
+    String statement = "SELECT * FROM root";
     TSExecuteStatementResp resp = client
         .executeQueryStatement(new TSExecuteStatementReq(sessionId, statement, statementId));
     long queryId = resp.getQueryId();

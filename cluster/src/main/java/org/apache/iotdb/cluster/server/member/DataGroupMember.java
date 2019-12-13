@@ -662,7 +662,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
         dataOutputStream.write(timeValuePairs.get(0).getValue().getDataType().ordinal());
         SerializeUtils.serializeTVPairs(timeValuePairs, dataOutputStream);
-        logger.debug("{}: Send {} results of reader {}", name, timeValuePairs.size(), readerId);
+        logger.debug("{}: Send results of reader {}, {}", name, readerId, timeValuePairs);
         resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
       } else {
         resultHandler.onComplete(ByteBuffer.allocate(0));
