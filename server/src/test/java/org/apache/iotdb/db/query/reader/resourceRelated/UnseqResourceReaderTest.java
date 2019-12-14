@@ -70,8 +70,9 @@ public class UnseqResourceReaderTest extends ReaderTestHelper {
     Path path = new Path(deviceId, measurementId);
     QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context,
         null);
-    IPointReader reader = new UnseqResourceMergeReader(path,
-        queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT, TimeFilter.lt(4));
+    IPointReader reader = null;
+//    new UnseqResourceMergeReader(path,
+//        queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT, TimeFilter.lt(4));
 
     int cnt = 0;
     while (reader.hasNext()) {
@@ -92,8 +93,9 @@ public class UnseqResourceReaderTest extends ReaderTestHelper {
     Path path = new Path(deviceId, measurementId);
     QueryDataSource queryDataSource = storageGroupProcessor
         .query(deviceId, measurementId, context, null);
-    IPointReader reader = new UnseqResourceMergeReader(path,
-        queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT, null);
+    IPointReader reader = null;
+//    new UnseqResourceMergeReader(path,
+//        queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT, null);
 
     int cnt = 0;
     while (reader.hasNext()) {

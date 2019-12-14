@@ -32,7 +32,7 @@ import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.Element;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -166,14 +166,15 @@ public class UnseqTsFileRecoverTest {
     for (ChunkMetaData chunkMetaData : metadataQuerier.getChunkMetaDataList(path)) {
       Chunk chunk = chunkLoader.getChunk(chunkMetaData);
       AbstractChunkReader AbstractChunkReader = new ChunkReader(chunk, null);
-      unSeqMergeReader.addReaderWithPriority(new DiskChunkReader(AbstractChunkReader), priorityValue);
+      unSeqMergeReader
+          .addReaderWithPriority(new DiskChunkReader(AbstractChunkReader), priorityValue);
       priorityValue++;
     }
 
     for (int i = 0; i < 10; i++) {
-      TimeValuePair timeValuePair = unSeqMergeReader.current();
-      assertEquals(i, timeValuePair.getTimestamp());
-      assertEquals(11, timeValuePair.getValue().getLong());
+      Element e = unSeqMergeReader.current();
+      assertEquals(i, e.getTime());
+      assertEquals(11, (long) e.getValue());
       unSeqMergeReader.next();
     }
     unSeqMergeReader.close();

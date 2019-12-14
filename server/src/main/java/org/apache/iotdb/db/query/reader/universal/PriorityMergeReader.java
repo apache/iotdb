@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.PriorityQueue;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
  * This class is for data sources with different priorities. It used to implement {@link
@@ -48,7 +49,9 @@ public class PriorityMergeReader {
   public void addReaderWithPriority(IPointReader reader, int priority) throws IOException {
     if (reader.hasNext()) {
       TimeValuePair pair = reader.next();
-      heap.add(new Element(reader, pair.getTimestamp(), pair.getValue(), priority));
+      heap.add(
+          new Element(reader, pair.getTimestamp(), pair.getValue(), pair.getValue().getDataType(),
+              priority));
     } else {
       reader.close();
     }
@@ -112,17 +115,36 @@ public class PriorityMergeReader {
     }
   }
 
-  public class Element {
+  /**
+   * This class is static because it is used in "TimeValuePairUtils"
+   */
+  public static class Element {
 
     IPointReader reader;
     long time;
     Object value;
     int priority;
 
-    Element(IPointReader reader, long time, Object value, int priority) {
+    /**
+     * dataType is only used in ExternalSort module now, and should be removed later
+     */
+    TSDataType dataType;
+
+    /**
+     * This constructor is only used in "TimeValuePairUtils" to get empty Element
+     * @param time
+     * @param value
+     */
+    public Element(long time, Object value) {
+      this.time = time;
+      this.value = value;
+    }
+
+    Element(IPointReader reader, long time, Object value, TSDataType dataType, int priority) {
       this.reader = reader;
       this.time = time;
       this.value = value;
+      this.dataType = dataType;
       this.priority = priority;
     }
 
@@ -154,6 +176,18 @@ public class PriorityMergeReader {
 
     public Object getValue() {
       return value;
+    }
+
+    public TSDataType getDataType() {
+      return dataType;
+    }
+
+    public void setTime(long time) {
+      this.time = time;
+    }
+
+    public void setValue(Object value) {
+      this.value = value;
     }
   }
 }

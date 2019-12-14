@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.Element;
 import org.apache.iotdb.db.utils.TsPrimitiveType.TsBinary;
 import org.apache.iotdb.db.utils.TsPrimitiveType.TsBoolean;
 import org.apache.iotdb.db.utils.TsPrimitiveType.TsDouble;
@@ -145,6 +147,11 @@ public class TimeValuePairUtils {
     }
   }
 
+  public static void setElement(Element from, Element to) {
+    to.setTime(from.getTime());
+    to.setValue(from.getValue());
+  }
+
   public static TimeValuePair getEmptyTimeValuePair(TSDataType dataType) {
     switch (dataType) {
       case FLOAT:
@@ -159,6 +166,25 @@ public class TimeValuePairUtils {
         return new TimeValuePair(0, new TsDouble(0.0));
       case TEXT:
         return new TimeValuePair(0, new TsBinary(new Binary("")));
+      default:
+        throw new UnsupportedOperationException("Unrecognized datatype: " + dataType);
+    }
+  }
+
+  public static Element getEmptyElement(TSDataType dataType) {
+    switch (dataType) {
+      case FLOAT:
+        return new Element(0, 0.0f);
+      case INT32:
+        return new Element(0, 0);
+      case INT64:
+        return new Element(0, 0);
+      case BOOLEAN:
+        return new Element(0, false);
+      case DOUBLE:
+        return new Element(0, 0.0);
+      case TEXT:
+        return new Element(0, new Binary(""));
       default:
         throw new UnsupportedOperationException("Unrecognized datatype: " + dataType);
     }

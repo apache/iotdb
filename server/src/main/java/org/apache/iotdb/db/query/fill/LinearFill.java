@@ -80,8 +80,8 @@ public class LinearFill extends IFill {
   public IPointReader getFillResult() throws IOException, UnSupportedFillTypeException {
     TimeValuePair beforePair = null;
     TimeValuePair afterPair = null;
-    while (allDataReader.hasNext()) {
-      afterPair = allDataReader.next();
+    while (allDataReader.hasNextBatch()) {
+//      afterPair = allDataReader.nextBatch();
       if (afterPair.getTimestamp() <= queryTime) {
         beforePair = afterPair;
       } else {

@@ -16,40 +16,46 @@
  * specific language governing permissions and limitations
  * under the License.
  */
- package org.apache.iotdb.db.query.externalsort;
+package org.apache.iotdb.db.query.externalsort;
 
- import java.io.IOException;
- import java.util.List;
- import org.apache.iotdb.db.query.control.QueryResourceManager;
- import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
- import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileSerializer;
- import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthIExternalSortFileDeserializer;
- import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthTimeValuePairSerializer;
- import org.apache.iotdb.db.query.reader.IPointReader;
- import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+import java.io.IOException;
+import java.util.List;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
+import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileSerializer;
+import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthIExternalSortFileDeserializer;
+import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthTimeValuePairSerializer;
+import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.Element;
+import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.utils.TsPrimitiveType;
 
 
- public class LineMerger {
+public class LineMerger {
 
-   private String tmpFilePath;
-   private long queryId;
+  private String tmpFilePath;
+  private long queryId;
 
-   public LineMerger(long queryId, String tmpFilePath) {
-     this.tmpFilePath = tmpFilePath;
-     this.queryId = queryId;
-   }
+  public LineMerger(long queryId, String tmpFilePath) {
+    this.tmpFilePath = tmpFilePath;
+    this.queryId = queryId;
+  }
 
-   public IPointReader merge(List<IPointReader> prioritySeriesReaders)
-       throws IOException {
-     IExternalSortFileSerializer serializer = new FixLengthTimeValuePairSerializer(tmpFilePath);
-     PriorityMergeReader reader = new PriorityMergeReader(prioritySeriesReaders, 1);
-     while (reader.hasNext()) {
-       serializer.write(reader.next());
-     }
-     reader.close();
-     serializer.close();
-     IExternalSortFileDeserializer deserializer = new FixLengthIExternalSortFileDeserializer(tmpFilePath);
-     QueryResourceManager.getInstance().registerTempExternalSortFile(queryId, deserializer);
-     return deserializer;
-   }
- }
+  public IPointReader merge(List<IPointReader> prioritySeriesReaders)
+      throws IOException {
+    IExternalSortFileSerializer serializer = new FixLengthTimeValuePairSerializer(tmpFilePath);
+    PriorityMergeReader reader = new PriorityMergeReader(prioritySeriesReaders, 1);
+    while (reader.hasNext()) {
+      Element e = reader.next();
+      serializer.write(
+          new TimeValuePair(e.getTime(), TsPrimitiveType.getByType(e.getDataType(), e.getValue())));
+    }
+    reader.close();
+    serializer.close();
+    IExternalSortFileDeserializer deserializer = new FixLengthIExternalSortFileDeserializer(
+        tmpFilePath);
+    QueryResourceManager.getInstance().registerTempExternalSortFile(queryId, deserializer);
+    return deserializer;
+  }
+}

@@ -273,7 +273,7 @@ public class IoTDBSeriesReaderIT {
   @Test
   public void selectOneSeriesWithValueFilterTest() throws IOException, StorageEngineException {
 
-    String selectSql = "select s0, s1 from root.vehicle.d0";
+    String selectSql = "select s0 from root.vehicle.d0 where s0 >= 20";
     //System.out.println("Test >>> " + selectSql);
 
     EngineQueryRouter engineExecutor = new EngineQueryRouter();

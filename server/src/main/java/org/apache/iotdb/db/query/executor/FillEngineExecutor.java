@@ -30,10 +30,10 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
-import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 public class FillEngineExecutor {
 
@@ -74,10 +74,10 @@ public class FillEngineExecutor {
       fillList.add(fill);
     }
 
-    List<IPointReader> readers = new ArrayList<>();
-    for (IFill fill : fillList) {
-      readers.add(fill.getFillResult());
-    }
+    List<IBatchReader> readers = new ArrayList<>();
+//    for (IFill fill : fillList) {
+//      readers.add(fill.getFillResult());
+//    }
 
     return new EngineDataSetWithoutValueFilter(selectedSeries, dataTypeList, readers);
   }
