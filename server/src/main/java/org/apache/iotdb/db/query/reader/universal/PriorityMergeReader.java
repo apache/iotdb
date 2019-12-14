@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.PriorityQueue;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.utils.TsPrimitiveType;
 
 /**
  * This class is for data sources with different priorities. It used to implement {@link
@@ -50,8 +50,7 @@ public class PriorityMergeReader {
     if (reader.hasNext()) {
       TimeValuePair pair = reader.next();
       heap.add(
-          new Element(reader, pair.getTimestamp(), pair.getValue(), pair.getValue().getDataType(),
-              priority));
+          new Element(reader, pair.getTimestamp(), pair.getValue(), priority));
     } else {
       reader.close();
     }
@@ -65,7 +64,7 @@ public class PriorityMergeReader {
     Element top = heap.poll();
     long ret = top.time;
     long topNextTime = Long.MAX_VALUE;
-    Object topNextValue = null;
+    TsPrimitiveType topNextValue = null;
     if (top.hasNext()) {
       top.next();
       topNextTime = top.currTime();
@@ -122,29 +121,21 @@ public class PriorityMergeReader {
 
     IPointReader reader;
     long time;
-    Object value;
+    TsPrimitiveType value;
     int priority;
 
     /**
-     * dataType is only used in ExternalSort module now, and should be removed later
-     */
-    TSDataType dataType;
-
-    /**
      * This constructor is only used in "TimeValuePairUtils" to get empty Element
-     * @param time
-     * @param value
      */
-    public Element(long time, Object value) {
+    public Element(long time, TsPrimitiveType value) {
       this.time = time;
       this.value = value;
     }
 
-    Element(IPointReader reader, long time, Object value, TSDataType dataType, int priority) {
+    Element(IPointReader reader, long time, TsPrimitiveType value, int priority) {
       this.reader = reader;
       this.time = time;
       this.value = value;
-      this.dataType = dataType;
       this.priority = priority;
     }
 
@@ -152,7 +143,7 @@ public class PriorityMergeReader {
       return time;
     }
 
-    Object currValue() {
+    TsPrimitiveType currValue() {
       return value;
     }
 
@@ -174,19 +165,15 @@ public class PriorityMergeReader {
       return time;
     }
 
-    public Object getValue() {
+    public TsPrimitiveType getValue() {
       return value;
-    }
-
-    public TSDataType getDataType() {
-      return dataType;
     }
 
     public void setTime(long time) {
       this.time = time;
     }
 
-    public void setValue(Object value) {
+    public void setValue(TsPrimitiveType value) {
       this.value = value;
     }
   }

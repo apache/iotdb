@@ -174,7 +174,7 @@ public class UnseqTsFileRecoverTest {
     for (int i = 0; i < 10; i++) {
       Element e = unSeqMergeReader.current();
       assertEquals(i, e.getTime());
-      assertEquals(11, (long) e.getValue());
+      assertEquals(11, (long) e.getValue().getValue());
       unSeqMergeReader.next();
     }
     unSeqMergeReader.close();

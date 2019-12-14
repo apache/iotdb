@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
-import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.Element;
 import org.apache.iotdb.db.utils.TsPrimitiveType.TsBinary;
 import org.apache.iotdb.db.utils.TsPrimitiveType.TsBoolean;
@@ -174,17 +173,17 @@ public class TimeValuePairUtils {
   public static Element getEmptyElement(TSDataType dataType) {
     switch (dataType) {
       case FLOAT:
-        return new Element(0, 0.0f);
+        return new Element(0, new TsFloat(0.0f));
       case INT32:
-        return new Element(0, 0);
+        return new Element(0, new TsInt(0));
       case INT64:
-        return new Element(0, 0);
+        return new Element(0, new TsLong(0));
       case BOOLEAN:
-        return new Element(0, false);
+        return new Element(0, new TsBoolean(false));
       case DOUBLE:
-        return new Element(0, 0.0);
+        return new Element(0, new TsDouble(0.0));
       case TEXT:
-        return new Element(0, new Binary(""));
+        return new Element(0, new TsBinary(new Binary("")));
       default:
         throw new UnsupportedOperationException("Unrecognized datatype: " + dataType);
     }

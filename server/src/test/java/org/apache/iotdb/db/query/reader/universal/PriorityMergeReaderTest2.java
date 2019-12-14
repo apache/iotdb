@@ -41,7 +41,7 @@ public class PriorityMergeReaderTest2 {
     while (priorityMergeReader.hasNext()) {
       Element e = priorityMergeReader.next();
       long time = e.getTime();
-      long value = (long) e.getValue();
+      long value = (long) e.getValue().getValue();
 
       // System.out.println(time + "," + value);
       if (time <= 500 && (time - 100) % 5 == 0) {

@@ -29,7 +29,6 @@ import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.Element;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
 
 
 public class LineMerger {
@@ -49,7 +48,7 @@ public class LineMerger {
     while (reader.hasNext()) {
       Element e = reader.next();
       serializer.write(
-          new TimeValuePair(e.getTime(), TsPrimitiveType.getByType(e.getDataType(), e.getValue())));
+          new TimeValuePair(e.getTime(), e.getValue()));
     }
     reader.close();
     serializer.close();

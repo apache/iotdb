@@ -151,11 +151,12 @@ public class UnseqResourceMergeReader implements IBatchReader {
 
   @Override
   public BatchData nextBatch() throws IOException {
-    BatchData batchData = new BatchData();
+    BatchData batchData = new BatchData(priorityMergeReader.current().getValue().getDataType(),
+        true);
     for (int i = 0; i < 4096; i++) {
       Element e = priorityMergeReader.next();
       batchData.putTime(e.getTime());
-      batchData.putAnObject(e.getValue());
+      batchData.putAnObject(e.getValue().getValue());
       if (!hasNextBatch()) {
         break;
       }
