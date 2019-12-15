@@ -77,6 +77,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   private List<String> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   private int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
   private int fetchSize;
+  private boolean emptyResultSet = false;
 
   private TSQueryDataSet tsQueryDataSet = null;
   private byte[] time; // used to cache the current time value
@@ -693,6 +694,9 @@ public class IoTDBQueryResultSet implements ResultSet {
       constructOneRow();
       return true;
     }
+    if (emptyResultSet) {
+      return false;
+    }
     if (fetchResults()) {
       constructOneRow();
       return true;
@@ -715,7 +719,11 @@ public class IoTDBQueryResultSet implements ResultSet {
       } catch (IoTDBRPCException e) {
         throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
       }
-      tsQueryDataSet = resp.getQueryDataSet();
+      if (!resp.hasResultSet) {
+        emptyResultSet = true;
+      } else {
+        tsQueryDataSet = resp.getQueryDataSet();
+      }
       return resp.hasResultSet;
     } catch (TException e) {
       throw new SQLException(
@@ -787,7 +795,6 @@ public class IoTDBQueryResultSet implements ResultSet {
    * judge whether the specified column value is null in the current position
    *
    * @param index column index
-   * @return
    */
   private boolean isNull(int index, int rowNum) {
     byte bitmap = currentBitmap[index];
