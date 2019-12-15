@@ -62,21 +62,11 @@ public class TsFileProcessorTest {
   private Map<String, String> props = Collections.emptyMap();
   private QueryContext context;
 
-  private TsFileProcessor processor2;
-  private String storageGroup2 = "storage_group2";
-  private String filePath2 = "data/testUnsealedTsFileProcessor.tsfile2";
-  private String deviceId2 = "root.vehicle.d2";
-  private String measurementId2 = "s2";
-  private TSDataType dataType2 = TSDataType.INT32;
-  private Map<String, String> props2 = Collections.emptyMap();
-  private QueryContext context2;
-
   @Before
   public void setUp() throws Exception {
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
-    context2 = EnvironmentUtils.TEST_QUERY_CONTEXT;
   }
 
   @After
@@ -119,7 +109,9 @@ public class TsFileProcessorTest {
     }
 
     // flush synchronously
+    System.out.println("flush start");
     processor.syncFlush();
+    System.out.println("flush stop");
 
     pair = processor.query(deviceId, measurementId, dataType, props, context);
     left = pair.left;
@@ -128,7 +120,10 @@ public class TsFileProcessorTest {
     assertEquals(1, right.size());
     assertEquals(measurementId, right.get(0).getMeasurementUid());
     assertEquals(dataType, right.get(0).getDataType());
-    processor.syncClose();
+
+    System.out.println("close start");
+//    processor.syncClose();
+    System.out.println("close stop");
   }
 
   @Test

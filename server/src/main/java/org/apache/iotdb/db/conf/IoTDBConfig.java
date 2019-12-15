@@ -137,6 +137,11 @@ public class IoTDBConfig {
   private String[] dataDirs = {"data/data"};
 
   /**
+   * NVM directory.
+   */
+  private String nvmDir = "data/nvm";
+
+  /**
    * Strategy of multiple directories.
    */
   private String multiDirStrategyClassName = null;
@@ -643,6 +648,10 @@ public class IoTDBConfig {
 
   void setDataDirs(String[] dataDirs) {
     this.dataDirs = dataDirs;
+  }
+
+  public String getNvmDir() {
+    return nvmDir;
   }
 
   public String getMultiDirStrategyClassName() {

@@ -621,19 +621,19 @@
               Check if all files contain Apache headers in them.
               Ignore this plugin, we use license-maven-plugin to check apache header.
             -->
-            <plugin>
-                <groupId>org.apache.rat</groupId>
-                <artifactId>apache-rat-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>license-check</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+            <!--            <plugin>-->
+            <!--                <groupId>org.apache.rat</groupId>-->
+            <!--                <artifactId>apache-rat-plugin</artifactId>-->
+            <!--                <executions>-->
+            <!--                    <execution>-->
+            <!--                        <id>license-check</id>-->
+            <!--                        <phase>verify</phase>-->
+            <!--                        <goals>-->
+            <!--                            <goal>check</goal>-->
+            <!--                        </goals>-->
+            <!--                    </execution>-->
+            <!--                </executions>-->
+            <!--            </plugin>-->
             <!--use `mvn cobertura:cobertura` -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>

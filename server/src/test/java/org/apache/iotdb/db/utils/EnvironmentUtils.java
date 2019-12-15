@@ -37,6 +37,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -67,6 +68,7 @@ public class EnvironmentUtils {
   private static long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
   public static void cleanEnv() throws IOException, StorageEngineException {
+    NVMSpaceManager.close();
 
     QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
 
@@ -125,6 +127,8 @@ public class EnvironmentUtils {
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
     }
+    // delete nvm
+    cleanDir(config.getNvmDir());
   }
 
   public static void cleanDir(String dir) throws IOException {
@@ -142,7 +146,7 @@ public class EnvironmentUtils {
    * disable memory control</br> this function should be called before all code in the setup
    */
   public static void envSetUp() throws StartupException, IOException {
-    IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(false);
+    config.setEnableParameterAdapter(false);
     MManager.getInstance().init();
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
 
@@ -166,6 +170,8 @@ public class EnvironmentUtils {
     MergeManager.getINSTANCE().start();
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+
+    NVMSpaceManager.init(config.getNvmDir());
   }
 
   private static void createAllDir() {
@@ -189,6 +195,8 @@ public class EnvironmentUtils {
     for (String dataDir : config.getDataDirs()) {
       createDir(dataDir);
     }
+    // create nvm
+    createDir(config.getNvmDir());
   }
 
   private static void createDir(String dir) {

@@ -21,15 +21,19 @@ public class NVMSpaceManager {
   private static long nvmSize;
   private static AtomicLong curOffset = new AtomicLong(0L);
 
-  public static void init(String path) {
+  public static void init(String dir) {
     try {
-      NVM_PATH = path;
+      NVM_PATH = dir + "/nvmFile";
       nvmFileChannel = new RandomAccessFile(NVM_PATH, "rw").getChannel();
       nvmSize = nvmFileChannel.size();
     } catch (IOException e) {
       logger.error("Fail to open NVM space at {}.", NVM_PATH, e);
       // TODO deal with error
     }
+  }
+
+  public static void close() throws IOException {
+    nvmFileChannel.close();
   }
 
   public static int getPrimitiveTypeByteSize(TSDataType dataType) {
