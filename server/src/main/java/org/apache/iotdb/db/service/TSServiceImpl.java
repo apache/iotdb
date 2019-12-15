@@ -87,7 +87,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final int DELETE_SIZE = 50;
   public static Vector<SqlArgument> sqlArgumentsList = new Vector<>();
 
-  protected QueryProcessor processor;
+  //  protected QueryProcessor processor;
   // Record the username for every rpc connection. Username.get() is null if
   // login is failed.
   protected ThreadLocal<String> username = new ThreadLocal<>();
@@ -107,7 +107,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private ThreadLocal<Map<Long, QueryContext>> contextMapLocal = new ThreadLocal<>();
 
   public TSServiceImpl() {
-    processor = new QueryProcessor(new QueryProcessExecutor());
+//    processor = new QueryProcessor(new QueryProcessExecutor());
   }
 
   public static TSDataType getSeriesType(String path) throws QueryProcessException {
@@ -312,7 +312,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * convert from TSStatusCode to TSStatus, which has message appending with existed status message
    *
-   * @param statusType status type
+   * @param statusType    status type
    * @param appendMessage appending message
    */
   private TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
@@ -499,6 +499,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private boolean executeStatementInBatch(String statement, StringBuilder batchErrorMessage,
       List<Integer> result) {
     try {
+      QueryProcessor processor = new QueryProcessor(new QueryProcessExecutor());
       PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
         throw new QueryInBatchStatementException(statement);
@@ -557,6 +558,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       PhysicalPlan physicalPlan;
+      QueryProcessor processor = new QueryProcessor(new QueryProcessExecutor());
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
         resp = executeQueryStatement(req.statementId, physicalPlan);
@@ -590,7 +592,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   /**
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
-   * AuthorPlan
+   *             AuthorPlan
    */
   private TSExecuteStatementResp executeQueryStatement(long statementId, PhysicalPlan plan) {
     long t1 = System.currentTimeMillis();
@@ -641,6 +643,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     String statement = req.getStatement();
     PhysicalPlan physicalPlan;
     try {
+      QueryProcessor processor = new QueryProcessor(new QueryProcessExecutor());
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
     } catch (QueryProcessException | SQLParserException e) {
       logger.info("meet error while parsing SQL to physical plan: {}", e.getMessage());
@@ -926,6 +929,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     initContextMap();
     contextMapLocal.get().put(req.queryId, context);
 
+    QueryProcessor processor = new QueryProcessor(new QueryProcessExecutor());
     queryDataSet = processor.getExecutor().processQuery(physicalPlan, context);
 
     queryId2DataSet.get().put(req.queryId, queryDataSet);
@@ -979,11 +983,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       throw new QueryProcessException(
           "Current system mode is read-only, does not support non-query operation");
     }
+    QueryProcessor processor = new QueryProcessor(new QueryProcessExecutor());
     return processor.getExecutor().processNonQuery(plan);
   }
 
   private TSExecuteStatementResp executeUpdateStatement(String statement) {
-
+    QueryProcessor processor = new QueryProcessor(new QueryProcessExecutor());
     PhysicalPlan physicalPlan;
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
@@ -1242,6 +1247,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (status != null) {
         return new TSExecuteBatchStatementResp(status);
       }
+      QueryProcessor processor = new QueryProcessor(new QueryProcessExecutor());
       Integer[] results = processor.getExecutor().insertBatch(batchInsertPlan);
 
       for (Integer result : results) {
