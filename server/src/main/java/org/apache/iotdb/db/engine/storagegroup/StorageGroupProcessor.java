@@ -463,9 +463,9 @@ public class StorageGroupProcessor {
     try {
       if (tsFileProcessor == null) {
         tsFileProcessor = createTsFileProcessor(sequence);
-      }
-      if (tsFileProcessor == null) {
-        return;
+        if (tsFileProcessor == null) {
+          return;
+        }
       }
       // insert TsFileProcessor
       result = tsFileProcessor.insert(insertPlan);
