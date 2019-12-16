@@ -58,8 +58,8 @@ public class EnvironmentUtils {
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static DirectoryManager directoryManager = DirectoryManager.getInstance();
 
-  public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
-  public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+  private static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
+  private static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
   private static long oldTsFileThreshold = config.getTsFileSizeThreshold();
 
@@ -69,7 +69,7 @@ public class EnvironmentUtils {
 
   public static void cleanEnv() throws IOException, StorageEngineException {
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
 
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
@@ -102,7 +102,7 @@ public class EnvironmentUtils {
     IoTDBConfigDynamicAdapter.getInstance().reset();
   }
 
-  public static void cleanAllDir() throws IOException {
+  private static void cleanAllDir() throws IOException {
     // deleteData sequential files
     for (String path : directoryManager.getAllSequenceFileFolders()) {
       cleanDir(path);
@@ -122,7 +122,7 @@ public class EnvironmentUtils {
     }
   }
 
-  public static void cleanDir(String dir) throws IOException {
+  private static void cleanDir(String dir) throws IOException {
     FileUtils.deleteDirectory(new File(dir));
   }
 
@@ -138,7 +138,7 @@ public class EnvironmentUtils {
    * disable memory control</br>
    * this function should be called before all code in the setup
    */
-  public static void envSetUp() throws StartupException, IOException {
+  public static void envSetUp() throws StartupException {
     IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(false);
     MManager.getInstance().init();
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
@@ -160,7 +160,7 @@ public class EnvironmentUtils {
     StorageEngine.getInstance().reset();
     MultiFileLogNodeManager.getInstance().start();
     FlushManager.getInstance().start();
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 

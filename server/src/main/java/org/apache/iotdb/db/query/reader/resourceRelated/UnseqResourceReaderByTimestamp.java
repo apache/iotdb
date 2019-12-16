@@ -52,7 +52,7 @@ public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimesta
 
   public UnseqResourceReaderByTimestamp(Path seriesPath,
       List<TsFileResource> unseqResources, QueryContext context) throws IOException {
-    this.queryId = context.getJobId();
+    this.queryId = context.getQueryId();
     List<ChunkReaderWrap> chunkReaderWrapList = new ArrayList<>();
     for (TsFileResource tsFileResource : unseqResources) {
 

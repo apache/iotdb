@@ -30,7 +30,7 @@ public class GroupByEngineDataSetTest {
 
   @Test
   public void test1() throws IOException {
-    long jobId = 1000L;
+    long queryId = 1000L;
     long unit = 3;
     long slidingStep = 5;
     long startTime = 8;
@@ -38,7 +38,7 @@ public class GroupByEngineDataSetTest {
 
     long[] startTimeArray = {8, 13, 18, 23, 28};
     long[] endTimeArray = {11, 16, 21, 26, 31};
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(jobId, null, unit, slidingStep, startTime, endTime);
+    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, null, unit, slidingStep, startTime, endTime);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
@@ -52,7 +52,7 @@ public class GroupByEngineDataSetTest {
 
   @Test
   public void test2() throws IOException {
-    long jobId = 1000L;
+    long queryId = 1000L;
     long unit = 3;
     long slidingStep = 5;
     long startTime = 8;
@@ -60,7 +60,7 @@ public class GroupByEngineDataSetTest {
 
     long[] startTimeArray = {8, 13, 18, 23, 28};
     long[] endTimeArray = {11, 16, 21, 26, 31};
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(jobId, null, unit, slidingStep, startTime, endTime);
+    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, null, unit, slidingStep, startTime, endTime);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
@@ -74,7 +74,7 @@ public class GroupByEngineDataSetTest {
 
   @Test
   public void test3() throws IOException {
-    long jobId = 1000L;
+    long queryId = 1000L;
     long unit = 3;
     long slidingStep = 3;
     long startTime = 8;
@@ -82,7 +82,7 @@ public class GroupByEngineDataSetTest {
 
     long[] startTimeArray = {8, 11, 14, 17, 20, 23};
     long[] endTimeArray = {11, 14, 17, 20, 23, 24};
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(jobId, null, unit, slidingStep, startTime, endTime);
+    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, null, unit, slidingStep, startTime, endTime);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
@@ -96,7 +96,7 @@ public class GroupByEngineDataSetTest {
 
   @Test
   public void test4() throws IOException {
-    long jobId = 1000L;
+    long queryId = 1000L;
     long unit = 3;
     long slidingStep = 3;
     long startTime = 8;
@@ -104,7 +104,7 @@ public class GroupByEngineDataSetTest {
 
     long[] startTimeArray = {8, 11, 14, 17, 20};
     long[] endTimeArray = {11, 14, 17, 20, 23};
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(jobId, null, unit, slidingStep, startTime, endTime);
+    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, null, unit, slidingStep, startTime, endTime);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
@@ -118,7 +118,7 @@ public class GroupByEngineDataSetTest {
 
   @Test
   public void test5() throws IOException {
-    long jobId = 1000L;
+    long queryId = 1000L;
     long unit = 3;
     long slidingStep = 3;
     long startTime = 8;
@@ -126,7 +126,7 @@ public class GroupByEngineDataSetTest {
 
     long[] startTimeArray = {8, 11, 14, 17, 20, 23};
     long[] endTimeArray = {11, 14, 17, 20, 23, 25};
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(jobId, null, unit, slidingStep, startTime, endTime);
+    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, null, unit, slidingStep, startTime, endTime);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
