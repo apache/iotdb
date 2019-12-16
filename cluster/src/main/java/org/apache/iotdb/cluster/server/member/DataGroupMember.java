@@ -58,6 +58,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPullSnapshotHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -73,6 +74,7 @@ import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFi
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
@@ -296,14 +298,30 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     String[] pathSegments = resource.getFile().getAbsolutePath().split(File.separator);
     int segSize = pathSegments.length;
     // {storageGroupName}/{fileName}
-    String sgFileName = pathSegments[segSize - 2] + File.separator + pathSegments[segSize - 1];
+    String storageGroupName = pathSegments[segSize - 2];
+    // {createTime}-{version}-{mergeNum}.tsfile
+    String fileName = pathSegments[segSize - 1].replace(TsFileConstant.TSFILE_SUFFIX, "");
+    String[] fileNameSplit = fileName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
+    String fileVersion = fileNameSplit[1];
+    String mergeNum = fileNameSplit[2];
+
     boolean isSeq = pathSegments[segSize - 3].equals("sequence");
     List<String> dataFolders = isSeq ? DirectoryManager.getInstance()
         .getAllSequenceFileFolders() : DirectoryManager.getInstance().getAllUnSequenceFileFolders();
     for (String dataFolder : dataFolders) {
-      File localFile = new File(dataFolder, sgFileName);
-      if (localFile.exists()) {
-        return true;
+      File storageGroupDir = new File(dataFolder, storageGroupName);
+      if (storageGroupDir.exists()) {
+        File[] tsFiles =
+            storageGroupDir.listFiles(f -> f.getName().endsWith(TsFileConstant.TSFILE_SUFFIX));
+        if (tsFiles != null) {
+          for (File tsFile : tsFiles) {
+            fileName = tsFile.getName();
+            fileNameSplit = fileName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
+            if (fileVersion.equals(fileNameSplit[1]) && mergeNum.equals(fileNameSplit[2])) {
+              return true;
+            }
+          }
+        }
       }
     }
     return false;
