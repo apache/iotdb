@@ -68,10 +68,6 @@ struct TSOpenSessionReq {
   4: optional map<string, string> configuration
 }
 
-struct TSAuthenticatedReq {
-  1: required i64 sessionId
-}
-
 // CloseSession()
 // Closes the specified session and frees any resources currently allocated to that session.
 // Any open operations in that session will be canceled.
@@ -246,12 +242,6 @@ struct TSQueryDataSet{
    3: required list<binary> bitmapList
 }
 
-struct TSColumnSchema{
-	1: optional string name;
-	2: optional string dataType;
-	3: optional string encoding;
-	4: optional map<string, string> otherArgs;
-}
 
 service TSIService {
 	TSOpenSessionResp openSession(1:TSOpenSessionReq req);
