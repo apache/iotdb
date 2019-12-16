@@ -27,14 +27,14 @@
 
   }
 
-  public synchronized long genQueryId() {
+  synchronized long genQueryId() {
    queryId++;
    return queryId;
   }
 
   private static class ExternalSortJobSchedulerHelper {
 
-   private static ExternalSortJobScheduler INSTANCE = new ExternalSortJobScheduler();
+   private static final ExternalSortJobScheduler INSTANCE = new ExternalSortJobScheduler();
   }
 
   public static ExternalSortJobScheduler getInstance() {

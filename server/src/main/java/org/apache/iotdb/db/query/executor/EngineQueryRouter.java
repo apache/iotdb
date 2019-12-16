@@ -109,7 +109,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
           throws QueryFilterOptimizationException, StorageEngineException,
           QueryProcessException, IOException {
 
-    long nextQueryId = context.getQueryId();
+    long queryId = context.getQueryId();
 
     GlobalTimeExpression timeExpression = new GlobalTimeExpression(new GroupByFilter(unit, slidingStep, startTime, endTime, FilterType.GROUP_BY_FILTER));
 
@@ -123,12 +123,12 @@ public class EngineQueryRouter implements IEngineQueryRouter {
         .optimize(expression, selectedSeries);
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
       GroupByWithoutValueFilterDataSet groupByEngine = new GroupByWithoutValueFilterDataSet(
-          nextQueryId, selectedSeries, unit, slidingStep, startTime, endTime);
+          queryId, selectedSeries, unit, slidingStep, startTime, endTime);
       groupByEngine.initGroupBy(context, aggres, optimizedExpression);
       return groupByEngine;
     } else {
       GroupByWithValueFilterDataSet groupByEngine = new GroupByWithValueFilterDataSet(
-          nextQueryId, selectedSeries, unit, slidingStep, startTime, endTime);
+          queryId, selectedSeries, unit, slidingStep, startTime, endTime);
       groupByEngine.initGroupBy(context, aggres, optimizedExpression);
       return groupByEngine;
     }
@@ -139,9 +139,10 @@ public class EngineQueryRouter implements IEngineQueryRouter {
       QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
 
-    long nextQueryId = context.getQueryId();
 
-    FillEngineExecutor fillEngineExecutor = new FillEngineExecutor(nextQueryId, fillPaths, queryTime,
+    long queryId = context.getQueryId();
+
+    FillEngineExecutor fillEngineExecutor = new FillEngineExecutor(fillPaths, queryTime,
         fillType);
     return fillEngineExecutor.execute(context);
   }

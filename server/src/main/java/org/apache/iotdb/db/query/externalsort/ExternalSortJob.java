@@ -31,12 +31,12 @@ public class ExternalSortJob {
   private long queryId;
   private List<ExternalSortJobPart> partList;
 
-  public ExternalSortJob(long queryId, List<ExternalSortJobPart> partList) {
+  ExternalSortJob(long queryId, List<ExternalSortJobPart> partList) {
     this.queryId = queryId;
     this.partList = partList;
   }
 
-  public List<IPointReader> executeForIPointReader() throws IOException {
+  List<IPointReader> executeForIPointReader() throws IOException {
     List<IPointReader> readers = new ArrayList<>();
     for (ExternalSortJobPart part : partList) {
       readers.add(part.executeForIPointReader());
