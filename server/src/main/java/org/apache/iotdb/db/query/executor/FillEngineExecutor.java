@@ -38,14 +38,12 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public class FillEngineExecutor {
 
-  private long jobId;
   private List<Path> selectedSeries;
   private long queryTime;
   private Map<TSDataType, IFill> typeIFillMap;
 
-  FillEngineExecutor(long jobId, List<Path> selectedSeries, long queryTime,
+  FillEngineExecutor(List<Path> selectedSeries, long queryTime,
       Map<TSDataType, IFill> typeIFillMap) {
-    this.jobId = jobId;
     this.selectedSeries = selectedSeries;
     this.queryTime = queryTime;
     this.typeIFillMap = typeIFillMap;

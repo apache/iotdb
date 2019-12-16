@@ -187,7 +187,7 @@ public class IoTDBSequenceDataQueryIT {
     }
     assertEquals(1000, cnt);
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
   @Test
@@ -215,7 +215,7 @@ public class IoTDBSequenceDataQueryIT {
     }
     assertEquals(350, cnt);
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
   @Test
@@ -248,7 +248,7 @@ public class IoTDBSequenceDataQueryIT {
     }
     assertEquals(count, cnt);
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
 }

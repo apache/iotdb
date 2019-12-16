@@ -216,7 +216,7 @@ public class TTLTest {
     assertEquals(0, seqResource.size());
     assertEquals(0, unseqResource.size());
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(EnvironmentUtils.TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(EnvironmentUtils.TEST_QUERY_JOB_ID);
   }
 
   @Test

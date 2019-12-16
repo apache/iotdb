@@ -214,7 +214,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         queryId2DataSet.remove(queryId);
 
         try {
-          QueryResourceManager.getInstance().endQueryForGivenJob(queryId);
+          QueryResourceManager.getInstance().endQuery(queryId);
         } catch (StorageEngineException e) {
           // release as many as resources as possible, so do not break as soon as one exception is
           // raised
@@ -277,7 +277,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     queryId2DataSet.remove(queryId);
     queryId2Plan.remove(queryId);
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(queryId);
+    QueryResourceManager.getInstance().endQuery(queryId);
   }
 
   /**
