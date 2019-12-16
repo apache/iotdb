@@ -22,6 +22,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
@@ -98,5 +99,19 @@ public class NotFilter implements Filter, Serializable {
   @Override
   public FilterSerializeId getSerializeId() {
     return FilterSerializeId.NOT;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof NotFilter)) {
+      return false;
+    }
+    NotFilter other = ((NotFilter) obj);
+    return this.that.equals(other.that);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(that);
   }
 }

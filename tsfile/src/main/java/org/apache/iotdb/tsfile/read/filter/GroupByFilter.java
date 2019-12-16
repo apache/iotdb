@@ -22,6 +22,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
@@ -127,5 +128,22 @@ public class GroupByFilter implements Filter, Serializable {
   @Override
   public FilterSerializeId getSerializeId() {
     return FilterSerializeId.GROUP_BY;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof GroupByFilter)) {
+      return false;
+    }
+    GroupByFilter other = ((GroupByFilter) obj);
+    return this.unit == other.unit
+        && this.slidingStep == other.slidingStep
+        && this.startTime == other.startTime
+        && this.endTime == other.endTime;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(unit, slidingStep, startTime, endTime);
   }
 }

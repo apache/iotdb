@@ -22,6 +22,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
 /**
@@ -73,5 +74,20 @@ public abstract class BinaryFilter implements Filter, Serializable {
   public void deserialize(ByteBuffer buffer) {
     left = FilterFactory.deserialize(buffer);
     right = FilterFactory.deserialize(buffer);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof BinaryFilter)) {
+      return false;
+    }
+    BinaryFilter other = ((BinaryFilter) obj);
+    return this.left.equals(other.left) && this.right.equals(other.right)
+        && this.getSerializeId().equals(other.getSerializeId());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(left, right, getSerializeId());
   }
 }
