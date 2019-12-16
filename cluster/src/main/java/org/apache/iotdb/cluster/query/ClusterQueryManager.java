@@ -53,7 +53,7 @@ public class ClusterQueryManager {
       return;
     }
     // release file resources
-    QueryResourceManager.getInstance().endQueryForGivenJob(remoteQueryContext.getQueryId());
+    QueryResourceManager.getInstance().endQuery(remoteQueryContext.getQueryId());
 
     // remove the readers from the cache
     Set<Long> readerIds = remoteQueryContext.getLocalReaderIds();
