@@ -30,7 +30,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -371,7 +370,8 @@ public class IoTDBLoadExternalTsfileTest {
       List<TsFileResource> resources = new ArrayList<>(
           StorageEngine.getInstance().getProcessor("root.vehicle")
               .getSequenceFileList());
-      File tmpDir = new File(resources.get(0).getFile().getParentFile().getParentFile(), "tmp");
+      File tmpDir = new File(resources.get(0).getFile().getParentFile().getParentFile(),
+          "tmp" + File.separator + "root.vehicle");
       if (!tmpDir.exists()) {
         tmpDir.mkdirs();
       }
@@ -383,6 +383,11 @@ public class IoTDBLoadExternalTsfileTest {
       resources = new ArrayList<>(
           StorageEngine.getInstance().getProcessor("root.test")
               .getSequenceFileList());
+      tmpDir = new File(resources.get(0).getFile().getParentFile().getParentFile(),
+          "tmp" + File.separator + "root.test");
+      if (!tmpDir.exists()) {
+        tmpDir.mkdirs();
+      }
       for (TsFileResource resource : resources) {
         statement.execute(String.format("move %s %s", resource.getFile().getPath(), tmpDir));
       }
@@ -428,6 +433,7 @@ public class IoTDBLoadExternalTsfileTest {
       Assert.assertTrue(hasError);
 
       // test load metadata automatically, it will succeed.
+      tmpDir = tmpDir.getParentFile();
       statement.execute(String.format("load %s true 2", tmpDir.getAbsolutePath()));
       resources = new ArrayList<>(
           StorageEngine.getInstance().getProcessor("root.vehicle")
@@ -437,8 +443,10 @@ public class IoTDBLoadExternalTsfileTest {
           StorageEngine.getInstance().getProcessor("root.test")
               .getSequenceFileList());
       assertEquals(2, resources.size());
-      assertNotNull(tmpDir.listFiles());
-      assertEquals(0, tmpDir.listFiles().length >> 1);
+      assertEquals(2, tmpDir.listFiles().length);
+      for(File dir: tmpDir.listFiles()){
+        assertEquals(0, dir.listFiles().length);
+      }
     } catch (StorageEngineException e) {
       Assert.fail();
     }
