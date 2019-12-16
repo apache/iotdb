@@ -108,15 +108,15 @@ public abstract class NVMTVList extends AbstractTVList {
         // TODO
 //        return new BinaryTVList();
       case FLOAT:
-//        return new FloatTVList();
+        return new NVMFloatTVList();
       case INT32:
         return new NVMIntTVList();
       case INT64:
         return new NVMLongTVList();
       case DOUBLE:
-//        return new DoubleTVList();
+        return new NVMDoubleTVList();
       case BOOLEAN:
-//        return new BooleanTVList();
+        return new NVMBooleanTVList();
     }
     return null;
   }

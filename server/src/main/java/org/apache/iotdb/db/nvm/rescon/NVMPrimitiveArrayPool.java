@@ -40,7 +40,7 @@ public class NVMPrimitiveArrayPool {
 
     long size = NVMSpaceManager.getPrimitiveTypeByteSize(dataType);
     if (nvmSpace == null) {
-      nvmSpace = NVMSpaceManager.allocate(size * ARRAY_SIZE, dataType);
+      nvmSpace = NVMSpaceManager.getInstance().allocate(size * ARRAY_SIZE, dataType);
     }
 
     return nvmSpace;

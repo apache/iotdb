@@ -26,6 +26,9 @@ import java.util.Queue;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.nvm.datastructure.AbstractTVList;
+import org.apache.iotdb.db.nvm.datastructure.NVMBooleanTVList;
+import org.apache.iotdb.db.nvm.datastructure.NVMDoubleTVList;
+import org.apache.iotdb.db.nvm.datastructure.NVMFloatTVList;
 import org.apache.iotdb.db.nvm.datastructure.NVMIntTVList;
 import org.apache.iotdb.db.nvm.datastructure.NVMLongTVList;
 import org.apache.iotdb.db.nvm.datastructure.NVMTVList;
@@ -81,10 +84,20 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
 
   public synchronized void release(AbstractTVList list) {
     list.clear();
-    if (list instanceof NVMIntTVList) {
-      nvmTVListCache.get(TSDataType.INT32).add((NVMTVList) list);
-    } else if (list instanceof NVMLongTVList) {
-      nvmTVListCache.get(TSDataType.INT64).add((NVMTVList) list);
+    if (list instanceof NVMTVList) {
+      NVMTVList tvList = (NVMTVList) list;
+      if (list instanceof NVMIntTVList) {
+        nvmTVListCache.get(TSDataType.INT32).add(tvList);
+      } else if (list instanceof NVMLongTVList) {
+        nvmTVListCache.get(TSDataType.INT64).add(tvList);
+      } else if (list instanceof NVMFloatTVList) {
+        nvmTVListCache.get(TSDataType.FLOAT).add(tvList);
+      } else if (list instanceof NVMDoubleTVList) {
+        nvmTVListCache.get(TSDataType.DOUBLE).add(tvList);
+      } else if (list instanceof NVMBooleanTVList) {
+        nvmTVListCache.get(TSDataType.BOOLEAN).add(tvList);
+      }
+      // TODO Binary
     } else {
       TVList tvList = (TVList) list;
 

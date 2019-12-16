@@ -6,8 +6,11 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,24 +18,31 @@ public class NVMSpaceManager {
 
   private static final Logger logger = LoggerFactory.getLogger(NVMSpaceManager.class);
 
-  private static String NVM_PATH;
-  private static FileChannel nvmFileChannel;
-  private static final MapMode MAP_MODE = MapMode.READ_WRITE;
-  private static long nvmSize;
-  private static AtomicLong curOffset = new AtomicLong(0L);
+  private final static NVMSpaceManager INSTANCE = new NVMSpaceManager();
 
-  public static void init(String dir) {
+  private String NVM_PATH;
+  private FileChannel nvmFileChannel;
+  private final MapMode MAP_MODE = MapMode.READ_WRITE;
+  private long nvmSize;
+  private AtomicLong curOffset = new AtomicLong(0L);
+
+  private NVMSpaceManager() {
+//    init();
+  }
+
+  public void init() throws StartupException {
     try {
-      NVM_PATH = dir + "/nvmFile";
+      NVM_PATH = IoTDBDescriptor.getInstance().getConfig().getNvmDir() + "/nvmFile";
+      FSFactoryProducer.getFSFactory().getFile(IoTDBDescriptor.getInstance().getConfig().getNvmDir()).mkdirs();
       nvmFileChannel = new RandomAccessFile(NVM_PATH, "rw").getChannel();
       nvmSize = nvmFileChannel.size();
     } catch (IOException e) {
       logger.error("Fail to open NVM space at {}.", NVM_PATH, e);
-      // TODO deal with error
+      throw new StartupException(e);
     }
   }
 
-  public static void close() throws IOException {
+  public void close() throws IOException {
     nvmFileChannel.close();
   }
 
@@ -63,7 +73,7 @@ public class NVMSpaceManager {
     return size >> 3;
   }
 
-  public static NVMSpace allocate(long size, TSDataType dataType) {
+  public NVMSpace allocate(long size, TSDataType dataType) {
     long offset = curOffset.getAndAdd(size);
     if (offset + size > nvmSize) {
       // TODO throw exception
@@ -78,7 +88,7 @@ public class NVMSpaceManager {
     }
   }
 
-  public static class NVMSpace {
+  public class NVMSpace {
 
     private long offset;
     private long size;
@@ -106,7 +116,7 @@ public class NVMSpaceManager {
 
     @Override
     public NVMSpace clone() {
-      NVMSpace cloneSpace = NVMSpaceManager.allocate(size, dataType);
+      NVMSpace cloneSpace = NVMSpaceManager.getInstance().allocate(size, dataType);
       int position = byteBuffer.position();
       byteBuffer.rewind();
       cloneSpace.getByteBuffer().put(byteBuffer);
@@ -168,11 +178,7 @@ public class NVMSpaceManager {
     }
   }
 
-  public static String getNvmPath() {
-    return NVM_PATH;
-  }
-
-  public static void setNvmPath(String nvmPath) {
-    NVM_PATH = nvmPath;
+  public static NVMSpaceManager getInstance() {
+    return INSTANCE;
   }
 }

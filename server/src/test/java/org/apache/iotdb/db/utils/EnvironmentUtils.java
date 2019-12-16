@@ -70,7 +70,7 @@ public class EnvironmentUtils {
   private static long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
   public static void cleanEnv() throws IOException, StorageEngineException {
-    NVMSpaceManager.close();
+    NVMSpaceManager.getInstance().close();
 
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
 
@@ -170,8 +170,6 @@ public class EnvironmentUtils {
     MergeManager.getINSTANCE().start();
     TEST_QUERY_JOB_ID  = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
-
-    NVMSpaceManager.init(config.getNvmDir());
   }
 
   private static void createAllDir() {
@@ -187,8 +185,6 @@ public class EnvironmentUtils {
     createDir(config.getSystemDir());
     // create wal
     createDir(config.getWalFolder());
-    // create index
-    createDir(config.getIndexFileDir());
     // create query
     createDir(config.getQueryDir());
     createDir(TestConstant.OUTPUT_DATA_DIR);
