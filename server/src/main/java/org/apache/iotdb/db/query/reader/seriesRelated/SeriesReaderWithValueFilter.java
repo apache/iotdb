@@ -88,12 +88,4 @@ public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter 
 //      throw new IOException("data reader is out of bound.");
 //    }
 //  }
-
-
-
-
-  @Override
-  public TimeValuePair current() {
-    return timeValuePair;
-  }
 }

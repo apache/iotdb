@@ -92,9 +92,10 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           false);
 
       // unseq reader for all chunk groups in unSeqFile, memory
-      IPointReader unseqResourceMergeReader = new UnseqResourceMergeReader(
-          queryDataSource.getSeriesPath(), queryDataSource.getUnseqResources(), context,
-          timeFilter);
+      IPointReader unseqResourceMergeReader = null;
+//          new UnseqResourceMergeReader(
+//          queryDataSource.getSeriesPath(), queryDataSource.getUnseqResources(), context,
+//          timeFilter);
 
       sequenceReaderList.add(seqResourceIterateReader);
       unSequenceReaderList.add(unseqResourceMergeReader);
@@ -149,37 +150,37 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     }
 
     // continue checking sequence data
-    while (sequenceReader.hasNext()) {
-      PageHeader pageHeader = sequenceReader.nextPageHeader();
-
-      // memory data
-      if (pageHeader == null) {
-        batchDataList.set(idx, sequenceReader.nextBatch());
-        hasCachedSequenceDataList.set(idx, true);
-        finishCheckSequenceData = calGroupByInBatchData(idx, function, unsequenceReader);
-      } else {
-        // page data
-        long minTime = pageHeader.getStartTime();
-        long maxTime = pageHeader.getEndTime();
-        // no point in sequence data with a timestamp less than endTime
-        if (minTime >= endTime) {
-          finishCheckSequenceData = true;
-        } else if (canUseHeader(minTime, maxTime, unsequenceReader, function)) {
-          // cal using page header
-          function.calculateValueFromPageHeader(pageHeader);
-          sequenceReader.skipPageData();
-        } else {
-          // cal using page data
-          batchDataList.set(idx, sequenceReader.nextBatch());
-          hasCachedSequenceDataList.set(idx, true);
-          finishCheckSequenceData = calGroupByInBatchData(idx, function, unsequenceReader);
-        }
-
-        if (finishCheckSequenceData) {
-          break;
-        }
-      }
-    }
+//    while (sequenceReader.hasNext()) {
+//      PageHeader pageHeader = sequenceReader.nextPageHeader();
+//
+//      // memory data
+//      if (pageHeader == null) {
+//        batchDataList.set(idx, sequenceReader.nextBatch());
+//        hasCachedSequenceDataList.set(idx, true);
+//        finishCheckSequenceData = calGroupByInBatchData(idx, function, unsequenceReader);
+//      } else {
+//        // page data
+//        long minTime = pageHeader.getStartTime();
+//        long maxTime = pageHeader.getEndTime();
+//        // no point in sequence data with a timestamp less than endTime
+//        if (minTime >= endTime) {
+//          finishCheckSequenceData = true;
+//        } else if (canUseHeader(minTime, maxTime, unsequenceReader, function)) {
+//          // cal using page header
+//          function.calculateValueFromPageHeader(pageHeader);
+//          sequenceReader.skipPageData();
+//        } else {
+//          // cal using page data
+//          batchDataList.set(idx, sequenceReader.nextBatch());
+//          hasCachedSequenceDataList.set(idx, true);
+//          finishCheckSequenceData = calGroupByInBatchData(idx, function, unsequenceReader);
+//        }
+//
+//        if (finishCheckSequenceData) {
+//          break;
+//        }
+//      }
+//    }
     // cal using unsequence data
     function.calculateValueFromUnsequenceReader(unsequenceReader, endTime);
     return function.getResult().deepCopy();
@@ -235,34 +236,34 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     }
 
     // skip the points in sequenceReader data whose timestamp are less than startTime
-    while (sequenceReader.hasNext()) {
-      PageHeader pageHeader = sequenceReader.nextPageHeader();
-      // memory data
-      if (pageHeader == null) {
-        batchDataList.set(idx, sequenceReader.nextBatch());
-        hasCachedSequenceDataList.set(idx, true);
-        if (skipPointInBatchData(idx)) {
-          return;
-        }
-      } else {
-        // page data
-
-        // timestamps of all points in the page are less than startTime
-        if (pageHeader.getEndTime() < startTime) {
-          sequenceReader.skipPageData();
-          continue;
-        } else if (pageHeader.getStartTime() >= startTime) {
-          // timestamps of all points in the page are greater or equal to startTime, needn't to skip
-          return;
-        }
-        // the page has overlap with startTime
-        batchDataList.set(idx, sequenceReader.nextBatch());
-        hasCachedSequenceDataList.set(idx, true);
-        if (skipPointInBatchData(idx)) {
-          return;
-        }
-      }
-    }
+//    while (sequenceReader.hasNext()) {
+//      PageHeader pageHeader = sequenceReader.nextPageHeader();
+//      // memory data
+//      if (pageHeader == null) {
+//        batchDataList.set(idx, sequenceReader.nextBatch());
+//        hasCachedSequenceDataList.set(idx, true);
+//        if (skipPointInBatchData(idx)) {
+//          return;
+//        }
+//      } else {
+//        // page data
+//
+//        // timestamps of all points in the page are less than startTime
+//        if (pageHeader.getEndTime() < startTime) {
+//          sequenceReader.skipPageData();
+//          continue;
+//        } else if (pageHeader.getStartTime() >= startTime) {
+//          // timestamps of all points in the page are greater or equal to startTime, needn't to skip
+//          return;
+//        }
+//        // the page has overlap with startTime
+//        batchDataList.set(idx, sequenceReader.nextBatch());
+//        hasCachedSequenceDataList.set(idx, true);
+//        if (skipPointInBatchData(idx)) {
+//          return;
+//        }
+//      }
+//    }
   }
 
   /**

@@ -30,13 +30,14 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 public abstract class IFill {
 
   long queryTime;
   TSDataType dataType;
 
-  IPointReader allDataReader;
+  IBatchReader allDataReader;
 
   public IFill(TSDataType dataType, long queryTime) {
     this.dataType = dataType;

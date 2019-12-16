@@ -198,7 +198,7 @@ public class TTLTest {
         seqResource, null, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     int cnt = 0;
-    while (reader.hasNext()) {
+    while (reader.hasNextBatch()) {
       BatchData batchData = reader.nextBatch();
       while (batchData.hasNext()) {
         batchData.next();

@@ -20,10 +20,8 @@
 package org.apache.iotdb.db.query.reader.universal;
 
 import java.io.IOException;
-import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 
 /**
  * CachedPriorityMergeReader use a cache to reduce unnecessary heap updates and increase locality.
@@ -32,7 +30,7 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
 
   private static final int CACHE_SIZE = 100;
 
-  private TimeValuePair[] timeValuePairCache = new TimeValuePair[CACHE_SIZE];
+  private Element[] timeValuePairCache = new Element[CACHE_SIZE];
   private int cacheLimit = 0;
   private int cacheIdx = 0;
 
@@ -40,7 +38,7 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
 
   public CachedPriorityMergeReader(TSDataType dataType) {
     for (int i = 0; i < CACHE_SIZE; i++) {
-      timeValuePairCache[i] = TimeValuePairUtils.getEmptyTimeValuePair(dataType);
+      timeValuePairCache[i] = TimeValuePairUtils.getEmptyElement(dataType);
     }
   }
 
@@ -55,7 +53,7 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
     while (!heap.isEmpty() && cacheLimit < CACHE_SIZE) {
       Element top = heap.peek();
       if (lastTimestamp == null || top.currTime() != lastTimestamp) {
-        TimeValuePairUtils.setTimeValuePair(top.timeValuePair, timeValuePairCache[cacheLimit++]);
+        TimeValuePairUtils.setElement(top, timeValuePairCache[cacheLimit++]);
         lastTimestamp = top.currTime();
       }
       // remove duplicates
@@ -73,8 +71,8 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
 
 
   @Override
-  public TimeValuePair next() throws IOException {
-    TimeValuePair ret;
+  public Element next() throws IOException {
+    Element ret;
     if (cacheIdx < cacheLimit) {
       ret = timeValuePairCache[cacheIdx++];
     } else {
@@ -85,7 +83,7 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
   }
 
   @Override
-  public TimeValuePair current() throws IOException {
+  public Element current() throws IOException {
     if (0 <= cacheIdx && cacheIdx < cacheLimit) {
       return timeValuePairCache[cacheIdx];
     } else {

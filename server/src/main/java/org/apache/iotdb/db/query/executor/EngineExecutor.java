@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 /**
  * IoTDB query executor.
@@ -61,7 +62,7 @@ public class EngineExecutor {
       timeFilter = ((GlobalTimeExpression) queryExpression.getExpression()).getFilter();
     }
 
-    List<IPointReader> readersOfSelectedSeries = new ArrayList<>();
+    List<IBatchReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Path path : queryExpression.getSelectedSeries()) {
       try {
@@ -71,7 +72,7 @@ public class EngineExecutor {
         throw new StorageEngineException(e);
       }
 
-      IPointReader reader = new SeriesReaderWithoutValueFilter(path, timeFilter, context, true);
+      IBatchReader reader = new SeriesReaderWithoutValueFilter(path, timeFilter, context, true);
       readersOfSelectedSeries.add(reader);
     }
 

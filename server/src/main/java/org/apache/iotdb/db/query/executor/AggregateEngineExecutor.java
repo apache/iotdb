@@ -114,9 +114,10 @@ public class AggregateEngineExecutor {
       }
 
       // unseq reader for all chunk groups in unSeqFile, memory
-      IPointReader unseqResourceMergeReader = new UnseqResourceMergeReader(
-          queryDataSource.getSeriesPath(),
-          queryDataSource.getUnseqResources(), context, timeFilter);
+      IPointReader unseqResourceMergeReader = null;
+//      new UnseqResourceMergeReader(
+//          queryDataSource.getSeriesPath(),
+//          queryDataSource.getUnseqResources(), context, timeFilter);
 
       readersOfSequenceData.add(seqResourceIterateReader);
       readersOfUnSequenceData.add(unseqResourceMergeReader);
@@ -148,22 +149,22 @@ public class AggregateEngineExecutor {
           filter);
     }
 
-    while (sequenceReader.hasNext()) {
-      PageHeader pageHeader = sequenceReader.nextPageHeader();
-      // judge if overlap with unsequence data
-      if (canUseHeader(function, pageHeader, unSequenceReader, filter)) {
-        // cal by pageHeader
-        function.calculateValueFromPageHeader(pageHeader);
-        sequenceReader.skipPageData();
-      } else {
-        // cal by pageData
-        function.calculateValueFromPageData(sequenceReader.nextBatch(), unSequenceReader);
-      }
-
-      if (function.isCalculatedAggregationResult()) {
-        return function.getResult();
-      }
-    }
+//    while (sequenceReader.hasNext()) {
+//      PageHeader pageHeader = sequenceReader.nextPageHeader();
+//      // judge if overlap with unsequence data
+//      if (canUseHeader(function, pageHeader, unSequenceReader, filter)) {
+//        // cal by pageHeader
+//        function.calculateValueFromPageHeader(pageHeader);
+//        sequenceReader.skipPageData();
+//      } else {
+//        // cal by pageData
+//        function.calculateValueFromPageData(sequenceReader.nextBatch(), unSequenceReader);
+//      }
+//
+//      if (function.isCalculatedAggregationResult()) {
+//        return function.getResult();
+//      }
+//    }
 
     // cal with unsequence data
     if (unSequenceReader.hasNext()) {
@@ -212,39 +213,39 @@ public class AggregateEngineExecutor {
       throws IOException, QueryProcessException {
     long lastBatchTimeStamp = Long.MIN_VALUE;
     boolean isChunkEnd = false;
-    while (sequenceReader.hasNext()) {
-      PageHeader pageHeader = sequenceReader.nextPageHeader();
-      // judge if overlap with unsequence data
-      if (canUseHeader(function, pageHeader, unSequenceReader, timeFilter)) {
-        // cal by pageHeader
-        function.calculateValueFromPageHeader(pageHeader);
-        sequenceReader.skipPageData();
-
-        if (lastBatchTimeStamp > pageHeader.getStartTime()) {
-          // the chunk is end.
-          isChunkEnd = true;
-        } else {
-          // current page and last page are in the same chunk.
-          lastBatchTimeStamp = pageHeader.getStartTime();
-        }
-      } else {
-        // cal by pageData
-        BatchData batchData = sequenceReader.nextBatch();
-        if (batchData.length() > 0) {
-          if (lastBatchTimeStamp > batchData.currentTime()) {
-            // the chunk is end.
-            isChunkEnd = true;
-          } else {
-            // current page and last page are in the same chunk.
-            lastBatchTimeStamp = batchData.currentTime();
-          }
-          function.calculateValueFromPageData(batchData, unSequenceReader);
-        }
-      }
-      if (isChunkEnd) {
-        break;
-      }
-    }
+//    while (sequenceReader.hasNext()) {
+//      PageHeader pageHeader = sequenceReader.nextPageHeader();
+//      // judge if overlap with unsequence data
+//      if (canUseHeader(function, pageHeader, unSequenceReader, timeFilter)) {
+//        // cal by pageHeader
+//        function.calculateValueFromPageHeader(pageHeader);
+//        sequenceReader.skipPageData();
+//
+//        if (lastBatchTimeStamp > pageHeader.getStartTime()) {
+//          // the chunk is end.
+//          isChunkEnd = true;
+//        } else {
+//          // current page and last page are in the same chunk.
+//          lastBatchTimeStamp = pageHeader.getStartTime();
+//        }
+//      } else {
+//        // cal by pageData
+//        BatchData batchData = sequenceReader.nextBatch();
+//        if (batchData.length() > 0) {
+//          if (lastBatchTimeStamp > batchData.currentTime()) {
+//            // the chunk is end.
+//            isChunkEnd = true;
+//          } else {
+//            // current page and last page are in the same chunk.
+//            lastBatchTimeStamp = batchData.currentTime();
+//          }
+//          function.calculateValueFromPageData(batchData, unSequenceReader);
+//        }
+//      }
+//      if (isChunkEnd) {
+//        break;
+//      }
+//    }
 
     // cal with unsequence data
     if (unSequenceReader.hasNext()) {
@@ -325,11 +326,11 @@ public class AggregateEngineExecutor {
   private QueryDataSet constructDataSet(List<AggreResultData> aggreResultDataList)
       throws IOException {
     List<TSDataType> dataTypes = new ArrayList<>();
-    List<IPointReader> resultDataPointReaders = new ArrayList<>();
-    for (AggreResultData resultData : aggreResultDataList) {
-      dataTypes.add(resultData.getDataType());
-      resultDataPointReaders.add(new AggreResultDataPointReader(resultData));
-    }
+    List<IBatchReader> resultDataPointReaders = new ArrayList<>();
+//    for (AggreResultData resultData : aggreResultDataList) {
+//      dataTypes.add(resultData.getDataType());
+//      resultDataPointReaders.add(new AggreResultDataPointReader(resultData));
+//    }
     return new EngineDataSetWithoutValueFilter(selectedSeries, dataTypes, resultDataPointReaders);
   }
 }

@@ -58,8 +58,8 @@ public class PreviousFill extends IFill {
   public IPointReader getFillResult() throws IOException {
     TimeValuePair beforePair = null;
     TimeValuePair cachedPair = null;
-    while (allDataReader.hasNext()) {
-      cachedPair = allDataReader.next();
+    while (allDataReader.hasNextBatch()) {
+//      cachedPair = allDataReader.next();
       if (cachedPair.getTimestamp() <= queryTime) {
         beforePair = cachedPair;
       } else {
