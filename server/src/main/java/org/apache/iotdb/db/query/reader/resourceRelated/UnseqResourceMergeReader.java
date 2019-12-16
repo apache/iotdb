@@ -57,7 +57,7 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
   public UnseqResourceMergeReader(Path seriesPath, List<TsFileResource> unseqResources,
       QueryContext context, Filter filter) throws IOException {
     this.seriesPath = seriesPath;
-    this.queryId = context.getJobId();
+    this.queryId = context.getQueryId();
 
     List<ChunkReaderWrap> readerWrapList = new ArrayList<>();
     for (TsFileResource tsFileResource : unseqResources) {

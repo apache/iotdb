@@ -69,7 +69,7 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.JobFileManager;
+import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -714,7 +714,7 @@ public class StorageGroupProcessor {
 
   // TODO need a read lock, please consider the concurrency with flush manager threads.
   public QueryDataSource query(String deviceId, String measurementId, QueryContext context,
-      JobFileManager filePathsManager) {
+      QueryFileManager filePathsManager) {
     insertLock.readLock().lock();
     mergeLock.readLock().lock();
     synchronized (lruForSensorUsedInQuery) {
@@ -734,7 +734,7 @@ public class StorageGroupProcessor {
       // running merge
       // is null only in tests
       if (filePathsManager != null) {
-        filePathsManager.addUsedFilesForGivenJob(context.getJobId(), dataSource);
+        filePathsManager.addUsedFilesForQuery(context.getQueryId(), dataSource);
       }
       dataSource.setDataTTL(dataTTL);
       return dataSource;
