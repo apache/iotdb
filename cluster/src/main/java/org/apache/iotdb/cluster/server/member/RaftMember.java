@@ -729,7 +729,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
     AsyncClient client = connectNode(leader);
     if (client == null) {
-      resultHandler.onError(new LeaderUnknownException());
+      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
       return;
     }
     try {

@@ -7,6 +7,7 @@ package org.apache.iotdb.cluster;
 import java.sql.SQLException;
 import java.util.Collections;
 import org.apache.iotdb.rpc.IoTDBRPCException;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
@@ -57,18 +58,32 @@ public class ClientMain {
   private static void testQuery(Client client, long sessionId)
       throws TException, SQLException, IoTDBRPCException {
     long statementId = client.requestStatementId(sessionId);
-    String statement = "SELECT * FROM root";
+    executeQuery(client, sessionId,"SELECT * FROM root", statementId);
+    executeQuery(client, sessionId, "SELECT * FROM root WHERE time <= 432000000", statementId);
+
+    TSCloseOperationReq tsCloseOperationReq = new TSCloseOperationReq(sessionId);
+    tsCloseOperationReq.setStatementId(statementId);
+    client.closeOperation(tsCloseOperationReq);
+  }
+
+  private static void executeQuery(Client client, long sessionId, String query, long statementId)
+      throws TException, SQLException, IoTDBRPCException {
+    System.out.println(query);
     TSExecuteStatementResp resp = client
-        .executeQueryStatement(new TSExecuteStatementReq(sessionId, statement, statementId));
+        .executeQueryStatement(new TSExecuteStatementReq(sessionId, query, statementId));
     long queryId = resp.getQueryId();
     System.out.println(resp.columns);
 
-    SessionDataSet dataSet = new SessionDataSet(statement, resp.getColumns(),
+    SessionDataSet dataSet = new SessionDataSet(query, resp.getColumns(),
         resp.getDataTypeList(), queryId, client, sessionId);
 
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
     }
+
+    TSCloseOperationReq tsCloseOperationReq = new TSCloseOperationReq(sessionId);
+    tsCloseOperationReq.setQueryId(queryId);
+    client.closeOperation(tsCloseOperationReq);
   }
 
 

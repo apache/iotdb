@@ -4,6 +4,7 @@
 
 package org.apache.iotdb.cluster.utils;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -15,6 +16,7 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public class SerializeUtils {
 
@@ -179,6 +181,13 @@ public class SerializeUtils {
         break;
     }
     return ret;
+  }
+
+  public static ByteBuffer serializeFilter(Filter filter) {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    filter.serialize(dataOutputStream);
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
 }

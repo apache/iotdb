@@ -17,6 +17,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -40,6 +41,12 @@ class ClusterQueryExecutor extends QueryProcessExecutor {
 
   @Override
   public TSDataType getSeriesType(Path path) throws MetadataException {
+    if (path.equals(SQLConstant.RESERVED_TIME)) {
+      return TSDataType.INT64;
+    }
+    if (path.equals(SQLConstant.RESERVED_FREQ)) {
+      return TSDataType.FLOAT;
+    }
     return metaGroupMember.getSeriesType(path.getFullPath());
   }
 

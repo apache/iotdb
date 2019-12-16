@@ -77,6 +77,7 @@ import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardAddNodeHandler;
 import org.apache.iotdb.cluster.server.heartbeat.MetaHeartBeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
+import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -509,7 +510,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         return;
       }
     }
-    resultHandler.onError(new LeaderUnknownException());
+    resultHandler.onError(new LeaderUnknownException(getAllNodes()));
   }
 
   private boolean processAddNodeLocally(Node node, AddNodeResponse response,
@@ -986,7 +987,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       AtomicReference<Long> result = new AtomicReference<>();
       SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
       if (timeFilter != null) {
-        request.setFilterBytes(timeFilter.serialize());
+        request.setFilterBytes(SerializeUtils.serializeFilter(timeFilter));
       }
       request.setPath(path.getFullPath());
       request.setHeader(partitionGroup.getHeader());

@@ -75,6 +75,7 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -448,7 +449,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
           resultHandler.onError(e);
         }
       } else {
-        resultHandler.onError(new LeaderUnknownException());
+        resultHandler.onError(new LeaderUnknownException(getAllNodes()));
       }
       return;
     }
@@ -555,7 +556,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       // request to the leader
       AsyncClient client = connectNode(leader);
       if (client == null) {
-        resultHandler.onError(new LeaderUnknownException());
+        resultHandler.onError(new LeaderUnknownException(getAllNodes()));
         return;
       }
       try {
@@ -593,7 +594,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     if (syncLeader()) {
       return new SeriesReaderWithoutValueFilter(path, timeFilter, context, pushdownUnseq);
     } else {
-      throw new StorageEngineException(new LeaderUnknownException());
+      throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
     }
   }
 
@@ -603,7 +604,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     logger.debug("{}: {} is querying {}, queryId: {}", name, request.getRequester(),
         request.getPath(), request.getQueryId());
     if (!syncLeader()) {
-      resultHandler.onError(new LeaderUnknownException());
+      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
       return;
     }
 
@@ -611,6 +612,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     Filter timeFilter = null;
     if (request.isSetFilterBytes()) {
       // TODO-Cluster: deserialize the filters
+      timeFilter = FilterFactory.deserialize(request.filterBytes);
     }
     RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequester(),
         request.getQueryId());
