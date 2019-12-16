@@ -82,7 +82,7 @@ public class IoTDBStatement implements Statement {
    * Constructor of IoTDBStatement.
    */
   IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
-      Long sessionId, int fetchSize, ZoneId zoneId) throws SQLException {
+      long sessionId, int fetchSize, ZoneId zoneId) throws SQLException {
     this.connection = connection;
     this.client = client;
     this.sessionId = sessionId;
@@ -94,7 +94,7 @@ public class IoTDBStatement implements Statement {
 
   // only for test
   IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
-      Long sessionId, ZoneId zoneId, long statementId) {
+      long sessionId, ZoneId zoneId, long statementId) {
     this.connection = connection;
     this.client = client;
     this.sessionId = sessionId;
@@ -105,8 +105,7 @@ public class IoTDBStatement implements Statement {
   }
 
   IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
-      Long sessionId,
-      ZoneId zoneId) throws SQLException {
+      long sessionId, ZoneId zoneId) throws SQLException {
     this(connection, client, sessionId, Config.fetchSize, zoneId);
   }
 

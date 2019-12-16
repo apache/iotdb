@@ -52,7 +52,6 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   private String sql;
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
-  private long queryId;
 
   /**
    * save the SQL parameters as (paramLoc,paramValue) pairs.
