@@ -104,7 +104,7 @@ public class MemTableFlushTask {
 
 
   private Runnable encodingTask = new Runnable() {
-    private void writeOneSeries(TVList tvPairs, IChunkWriter seriesWriterImpl,
+    private void writeOneSeries(AbstractTVList tvPairs, IChunkWriter seriesWriterImpl,
         TSDataType dataType){
       for (int i = 0; i < tvPairs.size(); i++) {
         long time = tvPairs.getTime(i);
