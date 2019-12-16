@@ -21,20 +21,20 @@
 
  public class ExternalSortJobScheduler {
 
-  private long jobId = 0;
+  private long queryId = 0;
 
   private ExternalSortJobScheduler() {
 
   }
 
-  public synchronized long genJobId() {
-   jobId++;
-   return jobId;
+  synchronized long genQueryId() {
+   queryId++;
+   return queryId;
   }
 
   private static class ExternalSortJobSchedulerHelper {
 
-   private static ExternalSortJobScheduler INSTANCE = new ExternalSortJobScheduler();
+   private static final ExternalSortJobScheduler INSTANCE = new ExternalSortJobScheduler();
   }
 
   public static ExternalSortJobScheduler getInstance() {

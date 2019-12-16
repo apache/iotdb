@@ -175,7 +175,7 @@ public class IoTDBSequenceDataQueryIT {
     queryExpression.addSelectedPath(new Path(Constant.d1s1));
     queryExpression.setExpression(null);
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
     QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
 
@@ -187,7 +187,7 @@ public class IoTDBSequenceDataQueryIT {
     }
     assertEquals(1000, cnt);
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
   @Test
@@ -200,7 +200,7 @@ public class IoTDBSequenceDataQueryIT {
 
     GlobalTimeExpression globalTimeExpression = new GlobalTimeExpression(TimeFilter.gtEq(800L));
     queryExpression.setExpression(globalTimeExpression);
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
     QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
 
@@ -215,7 +215,7 @@ public class IoTDBSequenceDataQueryIT {
     }
     assertEquals(350, cnt);
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
   @Test
@@ -236,7 +236,7 @@ public class IoTDBSequenceDataQueryIT {
         ValueFilter.gtEq(14));
     queryExpression.setExpression(singleSeriesExpression);
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
     QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
 
@@ -248,7 +248,7 @@ public class IoTDBSequenceDataQueryIT {
     }
     assertEquals(count, cnt);
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
 }
