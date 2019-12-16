@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.flush;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -27,14 +28,14 @@ import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
-import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.datastructure.TVSkipListMap;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,34 +106,30 @@ public class MemTableFlushTask {
 
 
   private Runnable encodingTask = new Runnable() {
-    private void writeOneSeries(TVList tvPairs, IChunkWriter seriesWriterImpl,
+    private void writeOneSeries(TVSkipListMap<Long, TimeValuePair> tvPairs,
+        IChunkWriter seriesWriterImpl,
         TSDataType dataType) {
-      for (int i = 0; i < tvPairs.size(); i++) {
-        long time = tvPairs.getTime(i);
-
-        // skip duplicated data
-        if ((i + 1 < tvPairs.size() && (time == tvPairs.getTime(i + 1)))) {
-          continue;
-        }
-
+      Iterator<Long> iterator = tvPairs.keySet().iterator();
+      for (; iterator.hasNext(); ) {
+        long time = iterator.next();
         switch (dataType) {
           case BOOLEAN:
-            seriesWriterImpl.write(time, tvPairs.getBoolean(i));
+            seriesWriterImpl.write(time, tvPairs.get(time).getValue().getBoolean());
             break;
           case INT32:
-            seriesWriterImpl.write(time, tvPairs.getInt(i));
+            seriesWriterImpl.write(time, tvPairs.get(time).getValue().getInt());
             break;
           case INT64:
-            seriesWriterImpl.write(time, tvPairs.getLong(i));
+            seriesWriterImpl.write(time, tvPairs.get(time).getValue().getLong());
             break;
           case FLOAT:
-            seriesWriterImpl.write(time, tvPairs.getFloat(i));
+            seriesWriterImpl.write(time, tvPairs.get(time).getValue().getFloat());
             break;
           case DOUBLE:
-            seriesWriterImpl.write(time, tvPairs.getDouble(i));
+            seriesWriterImpl.write(time, tvPairs.get(time).getValue().getDouble());
             break;
           case TEXT:
-            seriesWriterImpl.write(time, tvPairs.getBinary(i));
+            seriesWriterImpl.write(time, tvPairs.get(time).getValue().getBinary());
             break;
           default:
             logger.error("Storage group {} does not support data type: {}", storageGroup,
@@ -171,7 +168,7 @@ public class MemTableFlushTask {
             ioTaskQueue.add(task);
           } else {
             long starTime = System.currentTimeMillis();
-            Pair<TVList, MeasurementSchema> encodingMessage = (Pair<TVList, MeasurementSchema>) task;
+            Pair<TVSkipListMap<Long, TimeValuePair>, MeasurementSchema> encodingMessage = (Pair<TVSkipListMap<Long, TimeValuePair>, MeasurementSchema>) task;
             IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right);
             writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
             ioTaskQueue.add(seriesWriter);
