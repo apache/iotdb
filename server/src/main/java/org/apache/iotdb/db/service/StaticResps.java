@@ -1,0 +1,89 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.service;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VERSION;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+/**
+ * Static responses that won't change for all requests.
+ */
+class StaticResps {
+
+  private StaticResps() {
+    // enum-like class
+  }
+
+  static final TSExecuteStatementResp TTL_RESP = getNoTimeExecuteResp(
+      Arrays.asList(COLUMN_STORAGE_GROUP, COLUMN_TTL),
+      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.INT64.toString()));
+
+  static final TSExecuteStatementResp FLUSH_INFO_RESP = getNoTimeExecuteResp(
+      Arrays.asList(COLUMN_ITEM, COLUMN_VALUE),
+      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
+
+  static final TSExecuteStatementResp DYNAMIC_PARAMETER_RESP = getNoTimeExecuteResp(
+      Arrays.asList(COLUMN_PARAMETER, COLUMN_VALUE),
+      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
+
+  static final TSExecuteStatementResp SHOW_VERSION_RESP = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_VERSION),
+      Collections.singletonList(TSDataType.TEXT.toString()));
+
+  static final TSExecuteStatementResp LIST_ROLE_RESP = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_ROLE),
+      Collections.singletonList(TSDataType.TEXT.toString()));
+
+  static final TSExecuteStatementResp LIST_USER_RESP = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_USER),
+      Collections.singletonList(TSDataType.TEXT.toString()));
+
+  static final TSExecuteStatementResp LIST_USER_PRIVILEGE_RESP = getNoTimeExecuteResp(
+      Arrays.asList(COLUMN_ROLE, COLUMN_PRIVILEGE),
+      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
+
+  static final TSExecuteStatementResp LIST_ROLE_PRIVILEGE_RESP = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_PRIVILEGE),
+      Collections.singletonList(TSDataType.TEXT.toString()));
+
+  private static TSExecuteStatementResp getNoTimeExecuteResp(List<String> columns,
+      List<String> dataTypes) {
+    TSExecuteStatementResp resp =
+        TSServiceImpl.getTSExecuteStatementResp(TSServiceImpl.getStatus(TSStatusCode.SUCCESS_STATUS));
+    resp.setIgnoreTimeStamp(true);
+    resp.setColumns(columns);
+    resp.setDataTypeList(dataTypes);
+    return resp;
+  }
+}

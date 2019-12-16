@@ -60,7 +60,7 @@ public class ExternalSortEngineTest {
     engine.setQueryDir(preBaseDir);
     engine.setMinExternalSortSourceCount(preMinExternalSortSourceCount);
     EnvironmentUtils.cleanAllDir();
-    QueryResourceManager.getInstance().endQueryForGivenJob(queryId);
+    QueryResourceManager.getInstance().endQuery(queryId);
     deleteExternalTempDir();
   }
 

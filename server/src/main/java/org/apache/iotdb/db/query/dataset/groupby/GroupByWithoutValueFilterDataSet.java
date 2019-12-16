@@ -56,9 +56,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * constructor.
    */
-  public GroupByWithoutValueFilterDataSet(long jobId, List<Path> paths, long unit,
+  public GroupByWithoutValueFilterDataSet(long queryId, List<Path> paths, long unit,
                                           long slidingStep, long startTime, long endTime) {
-    super(jobId, paths, unit, slidingStep, startTime, endTime);
+    super(queryId, paths, unit, slidingStep, startTime, endTime);
 
     this.unSequenceReaderList = new ArrayList<>();
     this.sequenceReaderList = new ArrayList<>();

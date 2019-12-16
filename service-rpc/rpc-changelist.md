@@ -85,4 +85,25 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add optional i32 fetchSize in TSExecuteStatementReq,<br />Add optional TSQueryDataSet in TSExecuteStatementResp| liutaohua |
 
 
+# 0.10.0 (version-1) -> version-2
 
+Last Updated on November 12th, 2019 by Tian Jiang.
+
+
+## 1. Delete Old
+
+| Latest Changes                     | Related Committers |
+| ---------------------------------- | ------------------ |
+| Remove TS_SessionHandle,TSHandleIdentifier            | Tian Jiang         |
+
+## 2. Add New
+
+| Latest Changes                                               | Related Committers                 |
+| ------------------------------------------------------------ | ---------------------------------- |
+| Add parameter sessionId in getTimeZone, getProperties, setStorageGroup, createTimeseries... | Tian Jiang|
+
+## 3. Update
+
+| Latest Changes                                               | Related Committers     |
+| ------------------------------------------------------------ | ---------------------- |
+| Replace TS_SessionHandles with SessionIds, TSOperationHandle with queryIds  | Tian Jiang  |

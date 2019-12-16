@@ -38,9 +38,6 @@ public interface ExternalSortJobEngine {
   List<IPointReader> executeForIPointReader(long queryId, List<ChunkReaderWrap>
       chunkReaderWraps) throws IOException;
 
-  List<IBatchReader> executeForIBatchReader(long queryId, List<IBatchReader> batchReaders)
-      throws IOException;
-
   /**
    * Receive a list of chunkReaderWraps and judge whether it should be processed using external
    * sort. If needed, do the merge sort for all ChunkReaderWraps using specific strategy.

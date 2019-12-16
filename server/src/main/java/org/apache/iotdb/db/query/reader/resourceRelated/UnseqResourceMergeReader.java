@@ -58,9 +58,9 @@ public class UnseqResourceMergeReader implements IBatchReader {
    * prepare metaDataList
    */
   public UnseqResourceMergeReader(Path seriesPath, List<TsFileResource> unseqResources,
-      QueryContext context, Filter timeFilter) throws IOException {
+      QueryContext context, Filter filter) throws IOException {
 
-    this.timeFilter = timeFilter;
+    this.timeFilter = filter;
     int priority = 1;
 
     // get all ChunkMetadata

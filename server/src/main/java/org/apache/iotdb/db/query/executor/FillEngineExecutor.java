@@ -37,14 +37,12 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 public class FillEngineExecutor {
 
-  private long jobId;
   private List<Path> selectedSeries;
   private long queryTime;
   private Map<TSDataType, IFill> typeIFillMap;
 
-  public FillEngineExecutor(long jobId, List<Path> selectedSeries, long queryTime,
+  public FillEngineExecutor(List<Path> selectedSeries, long queryTime,
       Map<TSDataType, IFill> typeIFillMap) {
-    this.jobId = jobId;
     this.selectedSeries = selectedSeries;
     this.queryTime = queryTime;
     this.typeIFillMap = typeIFillMap;

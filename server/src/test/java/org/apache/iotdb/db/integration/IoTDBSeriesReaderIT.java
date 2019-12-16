@@ -256,7 +256,7 @@ public class IoTDBSeriesReaderIT {
     queryExpression.addSelectedPath(new Path(Constant.d1s1));
     queryExpression.setExpression(null);
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
     QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
 
@@ -267,7 +267,7 @@ public class IoTDBSeriesReaderIT {
     }
     assertEquals(23400, cnt);
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
   @Test
@@ -284,7 +284,7 @@ public class IoTDBSeriesReaderIT {
         ValueFilter.gtEq(20));
     queryExpression.setExpression(singleSeriesExpression);
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
     QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
 
@@ -297,7 +297,7 @@ public class IoTDBSeriesReaderIT {
     }
     assertEquals(16940, cnt);
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
   @Test
@@ -312,7 +312,7 @@ public class IoTDBSeriesReaderIT {
     SingleSeriesExpression expression = new SingleSeriesExpression(path, TimeFilter.gt(22987L));
     queryExpression.setExpression(expression);
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
     QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
 
@@ -325,7 +325,7 @@ public class IoTDBSeriesReaderIT {
     }
     assertEquals(3012, cnt);
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
   @Test
@@ -341,7 +341,7 @@ public class IoTDBSeriesReaderIT {
         ValueFilter.lt(111));
     queryExpression.setExpression(singleSeriesExpression);
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
     QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
 
@@ -354,7 +354,7 @@ public class IoTDBSeriesReaderIT {
     }
     assertEquals(22800, cnt);
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
   @Test
