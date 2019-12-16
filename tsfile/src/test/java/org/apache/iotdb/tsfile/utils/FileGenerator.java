@@ -26,6 +26,7 @@ import java.util.Scanner;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -42,7 +43,7 @@ public class FileGenerator {
   private static int ROW_COUNT = 1000;
   private static TsFileWriter innerWriter;
   private static String inputDataFile;
-  public static String outputDataFile = "target/perTestOutputData.tsfile";
+  public static String outputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestOutputData.tsfile");
   private static String errorOutputDataFile;
   public static Schema schema;
 
@@ -64,8 +65,8 @@ public class FileGenerator {
   }
 
   public static void prepare() throws IOException {
-    inputDataFile = "target/perTestInputData";
-    errorOutputDataFile = "target/perTestErrorOutputData.tsfile";
+    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestInputData");
+    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestErrorOutputData.tsfile");
     generateTestSchema();
     generateSampleInputDataFile();
   }

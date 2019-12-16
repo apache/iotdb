@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -38,14 +37,12 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public class FillEngineExecutor {
 
-  private long jobId;
   private List<Path> selectedSeries;
   private long queryTime;
   private Map<TSDataType, IFill> typeIFillMap;
 
-  public FillEngineExecutor(long jobId, List<Path> selectedSeries, long queryTime,
+  public FillEngineExecutor(List<Path> selectedSeries, long queryTime,
       Map<TSDataType, IFill> typeIFillMap) {
-    this.jobId = jobId;
     this.selectedSeries = selectedSeries;
     this.queryTime = queryTime;
     this.typeIFillMap = typeIFillMap;

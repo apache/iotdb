@@ -32,8 +32,6 @@ PLAIN encoding, the default encoding mode, i.e, no encoding, supports multiple d
 
 Second-order differential encoding is more suitable for encoding monotonically increasing or decreasing sequence data, and is not recommended for sequence data with large fluctuations.
 
-Second-order differential encoding can also be used to encode floating-point numbers, but it is necessary to specify reserved decimal digits (MAX\_POINT\_NUMBER, see [this page](/#/Documents/progress/chap5/sec4) for more information on how to specify) when creating time series. It is more suitable for storing sequence data where floating-point values appear continuously, monotonously increase or decrease, and it is not suitable for storing sequence data with high precision requirements after the decimal point or with large fluctuations.
-
 * RLE
 
 Run-length encoding is more suitable for storing sequence with continuous integer values, and is not recommended for sequence data with most of the time different values.

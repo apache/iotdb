@@ -28,6 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.service.MetricsService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.junit.Assert;
 import org.slf4j.Logger;
@@ -58,7 +60,7 @@ public class EnvironmentUtils {
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static DirectoryManager directoryManager = DirectoryManager.getInstance();
 
-  public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+  public static long TEST_QUERY_JOB_ID = 1;
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
   private static long oldTsFileThreshold = config.getTsFileSizeThreshold();
@@ -70,7 +72,7 @@ public class EnvironmentUtils {
   public static void cleanEnv() throws IOException, StorageEngineException {
     NVMSpaceManager.close();
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
 
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
@@ -95,7 +97,7 @@ public class EnvironmentUtils {
     MManager.getInstance().clear();
 
     MergeManager.getINSTANCE().stop();
-
+    MetricsService.getInstance().stop();
     // delete all directory
     cleanAllDir();
 
@@ -118,8 +120,6 @@ public class EnvironmentUtils {
     cleanDir(config.getSystemDir());
     // delete wal
     cleanDir(config.getWalFolder());
-    // delete index
-    cleanDir(config.getIndexFileDir());
     // delete query
     cleanDir(config.getQueryDir());
     cleanDir(config.getBaseDir());
@@ -145,7 +145,7 @@ public class EnvironmentUtils {
   /**
    * disable memory control</br> this function should be called before all code in the setup
    */
-  public static void envSetUp() throws StartupException, IOException {
+  public static void envSetUp() throws StartupException {
     config.setEnableParameterAdapter(false);
     MManager.getInstance().init();
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
@@ -168,7 +168,7 @@ public class EnvironmentUtils {
     MultiFileLogNodeManager.getInstance().start();
     FlushManager.getInstance().start();
     MergeManager.getINSTANCE().start();
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+    TEST_QUERY_JOB_ID  = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
     NVMSpaceManager.init(config.getNvmDir());
@@ -191,6 +191,7 @@ public class EnvironmentUtils {
     createDir(config.getIndexFileDir());
     // create query
     createDir(config.getQueryDir());
+    createDir(TestConstant.OUTPUT_DATA_DIR);
     // create data
     for (String dataDir : config.getDataDirs()) {
       createDir(dataDir);

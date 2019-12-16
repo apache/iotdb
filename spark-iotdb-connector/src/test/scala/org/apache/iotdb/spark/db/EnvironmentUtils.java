@@ -30,6 +30,7 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -44,6 +45,7 @@ import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.service.MetricsService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.Assert;
@@ -91,7 +93,7 @@ public class EnvironmentUtils {
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static DirectoryManager directoryManager = DirectoryManager.getInstance();
 
-  public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+  public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
   private static long oldTsFileThreshold = config.getTsFileSizeThreshold();
@@ -102,7 +104,7 @@ public class EnvironmentUtils {
 
   public static void cleanEnv() throws IOException, StorageEngineException {
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
 
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
@@ -125,6 +127,7 @@ public class EnvironmentUtils {
     }
     // close metadata
     MManager.getInstance().clear();
+    MetricsService.getInstance().stop();
     // delete all directory
     cleanAllDir();
 
@@ -147,8 +150,6 @@ public class EnvironmentUtils {
     cleanDir(config.getSystemDir());
     // delete wal
     cleanDir(config.getWalFolder());
-    // delete index
-    cleanDir(config.getIndexFileDir());
     cleanDir(config.getBaseDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
@@ -194,7 +195,7 @@ public class EnvironmentUtils {
     StorageEngine.getInstance().reset();
     MultiFileLogNodeManager.getInstance().start();
     FlushManager.getInstance().start();
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 
@@ -211,8 +212,6 @@ public class EnvironmentUtils {
     createDir(config.getSystemDir());
     // create wal
     createDir(config.getWalFolder());
-    // create index
-    createDir(config.getIndexFileDir());
     // create data
     for (String dataDir: config.getDataDirs()) {
       createDir(dataDir);

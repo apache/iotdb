@@ -20,7 +20,6 @@ package org.apache.iotdb.db.sync.receiver.load;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -31,12 +30,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -139,10 +133,10 @@ public class FileLoader implements IFileLoader {
       return;
     }
     TsFileResource tsFileResource = new TsFileResource(newTsFile);
-    checkTsFileResource(tsFileResource);
+    FileLoaderUtils.checkTsFileResource(tsFileResource);
     try {
       FileLoaderManager.getInstance().checkAndUpdateDeviceOwner(tsFileResource);
-      StorageEngine.getInstance().loadNewTsFile(tsFileResource);
+      StorageEngine.getInstance().loadNewTsFileForSync(tsFileResource);
     } catch (SyncDeviceOwnerConflictException e) {
       LOGGER.error("Device owner has conflicts, so skip the loading file", e);
     } catch (TsFileProcessorException | StorageEngineException e) {
@@ -152,40 +146,15 @@ public class FileLoader implements IFileLoader {
     loadLog.finishLoadTsfile(newTsFile);
   }
 
-  private void checkTsFileResource(TsFileResource tsFileResource) throws IOException {
-    if (!tsFileResource.fileExists()) {
-      // .resource file does not exist, read file metadata and recover tsfile resource
-      try (TsFileSequenceReader reader = new TsFileSequenceReader(
-          tsFileResource.getFile().getAbsolutePath())) {
-        TsFileMetaData metaData = reader.readFileMetadata();
-        for (TsDeviceMetadataIndex index : metaData.getDeviceMap().values()) {
-          TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
-          List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata
-              .getChunkGroupMetaDataList();
-          for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
-            for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-              tsFileResource.updateStartTime(chunkGroupMetaData.getDeviceID(),
-                  chunkMetaData.getStartTime());
-              tsFileResource
-                  .updateEndTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
-            }
-          }
-        }
-      }
-      // write .resource file
-      tsFileResource.serialize();
-    } else {
-      tsFileResource.deSerialize();
-    }
-  }
-
   private void loadDeletedFile(File deletedTsFile) throws IOException {
     if (curType != LoadType.DELETE) {
       loadLog.startLoadDeletedFiles();
       curType = LoadType.DELETE;
     }
     try {
-      StorageEngine.getInstance().deleteTsfile(deletedTsFile);
+      if (!StorageEngine.getInstance().deleteTsfile(deletedTsFile)) {
+        LOGGER.info("The file {} to be deleted doesn't exist.", deletedTsFile.getAbsolutePath());
+      }
     } catch (StorageEngineException e) {
       LOGGER.error("Can not load deleted tsfile {}", deletedTsFile.getAbsolutePath(), e);
       throw new IOException(e);

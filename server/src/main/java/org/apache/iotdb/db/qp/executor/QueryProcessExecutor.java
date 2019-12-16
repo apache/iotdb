@@ -18,13 +18,16 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PRIVILEGE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.ROLE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.USER;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,8 +41,9 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
@@ -59,6 +63,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
@@ -66,14 +71,19 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -81,6 +91,8 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
@@ -140,9 +152,133 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       case LOAD_CONFIGURATION:
         IoTDBDescriptor.getInstance().loadHotModifiedProps();
         return true;
+      case LOAD_FILES:
+        operateLoadFiles((OperateFilePlan) plan);
+        return true;
+      case REMOVE_FILE:
+        operateRemoveFile((OperateFilePlan) plan);
+        return true;
+      case MOVE_FILE:
+        operateMoveFile((OperateFilePlan) plan);
+        return true;
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
+    }
+  }
+
+  private void operateLoadFiles(OperateFilePlan plan) throws QueryProcessException {
+    File file = plan.getFile();
+    if (!file.exists()) {
+      throw new QueryProcessException(
+          String.format("File path %s doesn't exists.", file.getPath()));
+    }
+    if (file.isDirectory()) {
+      recursionFileDir(file, plan);
+    } else {
+      loadFile(file, plan);
+    }
+  }
+
+  private void recursionFileDir(File curFile, OperateFilePlan plan) throws QueryProcessException {
+    File[] files = curFile.listFiles();
+    for (File file : files) {
+      if (file.isDirectory()) {
+        recursionFileDir(file, plan);
+      } else {
+        loadFile(file, plan);
+      }
+    }
+  }
+
+  private void loadFile(File file, OperateFilePlan plan) throws QueryProcessException {
+    if (!file.getName().endsWith(TSFILE_SUFFIX)) {
+      return;
+    }
+    TsFileResource tsFileResource = new TsFileResource(file);
+    try {
+      // check file
+      RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);
+      if (restorableTsFileIOWriter.hasCrashed()){
+        restorableTsFileIOWriter.close();
+        throw new QueryProcessException(
+            String.format("Cannot load file %s because the file has crashed.", file.getAbsolutePath()));
+      }
+      Map<String, MeasurementSchema> schemaMap = new HashMap<>();
+      List<ChunkGroupMetaData> chunkGroupMetaData = new ArrayList<>();
+      try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
+        reader.selfCheck(schemaMap, chunkGroupMetaData, false);
+      }
+
+      FileLoaderUtils.checkTsFileResource(tsFileResource);
+      if (UpgradeUtils.isNeedUpgrade(tsFileResource)) {
+        throw new QueryProcessException(
+            String.format(
+                "Cannot load file %s because the file's version is old which needs to be upgraded.",
+                file.getAbsolutePath()));
+      }
+
+      //create schemas if they doesn't exist
+      if(plan.isAutoCreateSchema()) {
+        createSchemaAutomatically(chunkGroupMetaData, schemaMap, plan.getSgLevel());
+      }
+
+      StorageEngine.getInstance().loadNewTsFile(tsFileResource);
+    } catch (Exception e) {
+      throw new QueryProcessException(
+          String.format("Cannot load file %s because %s", file.getAbsolutePath(), e.getMessage()));
+    }
+  }
+
+  private void createSchemaAutomatically(List<ChunkGroupMetaData> chunkGroupMetaDatas,
+      Map<String, MeasurementSchema> knownSchemas, int sgLevel)
+      throws CacheException, QueryProcessException, MetadataException, StorageEngineException {
+    if (chunkGroupMetaDatas.isEmpty()) {
+      return;
+    }
+    for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDatas) {
+      String device = chunkGroupMetaData.getDeviceID();
+      MNode node = mManager.getNodeByPathFromCache(device, true, sgLevel);
+      for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+        String fullPath =
+            device + IoTDBConstant.PATH_SEPARATOR + chunkMetaData.getMeasurementUid();
+        MeasurementSchema schema = knownSchemas.get(chunkMetaData.getMeasurementUid());
+        if (schema == null) {
+          throw new MetadataException(String
+              .format("Can not get the schema of measurement [%s]",
+                  chunkMetaData.getMeasurementUid()));
+        }
+        checkPathExists(node, fullPath, schema, true);
+      }
+    }
+  }
+
+  private void operateRemoveFile(OperateFilePlan plan) throws QueryProcessException {
+    try {
+      if (!StorageEngine.getInstance().deleteTsfile(plan.getFile())) {
+        throw new QueryProcessException(
+            String.format("File %s doesn't exist.", plan.getFile().getName()));
+      }
+    } catch (StorageEngineException e) {
+      throw new QueryProcessException(
+          String.format("Cannot remove file because %s", e.getMessage()));
+    }
+  }
+
+  private void operateMoveFile(OperateFilePlan plan) throws QueryProcessException {
+    if (!plan.getTargetDir().exists() || !plan.getTargetDir().isDirectory()) {
+      throw new QueryProcessException(
+          String.format("Target dir %s is invalid.", plan.getTargetDir().getPath()));
+    }
+    try {
+      if (!StorageEngine.getInstance().moveTsfile(plan.getFile(), plan.getTargetDir())) {
+        throw new QueryProcessException(
+            String.format("File %s doesn't exist.", plan.getFile().getName()));
+      }
+    } catch (StorageEngineException | IOException e) {
+      throw new QueryProcessException(
+          String.format("Cannot move file %s to target directory %s because %s",
+              plan.getFile().getPath(), plan.getTargetDir().getPath(), e.getMessage()));
     }
   }
 
@@ -192,14 +328,15 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
   @Override
   public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
-      long unit, long origin, List<Pair<Long, Long>> intervals, QueryContext context)
-      throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
-    return queryRouter.groupBy(paths, aggres, expression, unit, origin, intervals, context);
+                              long unit, long slidingStep, long startTime, long endTime,
+                              QueryContext context)
+          throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
+    return queryRouter.groupBy(paths, aggres, expression, unit, slidingStep, startTime, endTime, context);
+
   }
 
   @Override
-  public void update(Path path, long startTime, long endTime, String value)
-      throws QueryProcessException {
+  public void update(Path path, long startTime, long endTime, String value) {
   }
 
   @Override
@@ -224,35 +361,12 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
-      MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
+      MNode node = mManager.getNodeByPathFromCache(deviceId);
       String[] strValues = insertPlan.getValues();
       TSDataType[] dataTypes = new TSDataType[measurementList.length];
-      IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
       for (int i = 0; i < measurementList.length; i++) {
-
-        // check if timeseries exists
-        if (!node.hasChild(measurementList[i])) {
-          if (!conf.isAutoCreateSchemaEnabled()) {
-            throw new QueryProcessException(
-                String.format("Current deviceId[%s] does not contain measurement:%s",
-                    deviceId, measurementList[i]));
-          }
-          try {
-            addPathToMTree(deviceId, measurementList[i], strValues[i]);
-          } catch (MetadataException e) {
-            if (!e.getMessage().contains("already exist")) {
-              throw e;
-            }
-          }
-        }
-        MNode measurementNode = node.getChild(measurementList[i]);
-        if (!measurementNode.isLeaf()) {
-          throw new QueryProcessException(
-              String.format("Current Path is not leaf node. %s.%s", deviceId,
-                  measurementList[i]));
-        }
-
+        MNode measurementNode = checkPathExists(node, deviceId, measurementList[i], strValues[i]);
         dataTypes[i] = measurementNode.getSchema().getType();
       }
       insertPlan.setDataTypes(dataTypes);
@@ -264,12 +378,60 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
   }
 
+  private MNode checkPathExists(MNode node, String deviceId, String measurement, String strValue)
+      throws MetadataException, QueryProcessException, StorageEngineException {
+    // check if timeseries exists
+    if (!node.hasChild(measurement)) {
+      if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+        throw new QueryProcessException(
+            String.format("Current deviceId[%s] does not contain measurement:%s", deviceId, measurement));
+      }
+      try {
+        addPathToMTree(deviceId, measurement, strValue);
+      } catch (MetadataException e) {
+        if (!e.getMessage().contains("already exist")) {
+          throw e;
+        }
+      }
+    }
+    MNode measurementNode = node.getChild(measurement);
+    if (!measurementNode.isLeaf()) {
+      throw new QueryProcessException(
+          String.format("Current Path is not leaf node. %s.%s", deviceId, measurement));
+    }
+    return measurementNode;
+  }
+
+  private void checkPathExists(MNode node, String fullPath, MeasurementSchema schema, boolean autoCreateSchema)
+      throws QueryProcessException, StorageEngineException, MetadataException {
+    // check if timeseries exists
+    String measurement = schema.getMeasurementId();
+    if (!node.hasChild(measurement)) {
+      if (!autoCreateSchema) {
+        throw new QueryProcessException(
+            String.format("Path[%s] does not exist", fullPath));
+      }
+      try {
+        addPathToMTree(fullPath, schema.getType(), schema.getEncodingType(), schema.getCompressor());
+      } catch (MetadataException e) {
+        if (!e.getMessage().contains("already exist")) {
+          throw e;
+        }
+      }
+    }
+    MNode measurementNode = node.getChild(measurement);
+    if (!measurementNode.isLeaf()) {
+      throw new QueryProcessException(
+          String.format("Current Path is not leaf node. %s", fullPath));
+    }
+  }
+
   @Override
   public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
     try {
       String[] measurementList = batchInsertPlan.getMeasurements();
       String deviceId = batchInsertPlan.getDeviceId();
-      MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
+      MNode node = mManager.getNodeByPathFromCache(deviceId);
       TSDataType[] dataTypes = batchInsertPlan.getDataTypes();
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
@@ -543,7 +705,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     int index = 0;
     List<Path> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
-    headerList.add(new Path(ROLE));
+    headerList.add(new Path(COLUMN_ROLE));
     typeList.add(TSDataType.TEXT);
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
     List<String> roleList = authorizer.listAllRoles();
@@ -561,7 +723,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     List<String> userList = authorizer.listAllUsers();
     List<Path> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
-    headerList.add(new Path(USER));
+    headerList.add(new Path(COLUMN_USER));
     typeList.add(TSDataType.TEXT);
     int index = 0;
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
@@ -583,7 +745,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
     List<Path> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
-    headerList.add(new Path(USER));
+    headerList.add(new Path(COLUMN_USER));
     typeList.add(TSDataType.TEXT);
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
     List<String> userList = authorizer.listAllUsers();
@@ -607,7 +769,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     if (user != null) {
       List<Path> headerList = new ArrayList<>();
       List<TSDataType> typeList = new ArrayList<>();
-      headerList.add(new Path(ROLE));
+      headerList.add(new Path(COLUMN_ROLE));
       typeList.add(TSDataType.TEXT);
       ListDataSet dataSet = new ListDataSet(headerList, typeList);
       int index = 0;
@@ -630,7 +792,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     if (role != null) {
       List<Path> headerList = new ArrayList<>();
       List<TSDataType> typeList = new ArrayList<>();
-      headerList.add(new Path(PRIVILEGE));
+      headerList.add(new Path(COLUMN_PRIVILEGE));
       typeList.add(TSDataType.TEXT);
       ListDataSet dataSet = new ListDataSet(headerList, typeList);
       int index = 0;
@@ -658,8 +820,8 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
     List<Path> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
-    headerList.add(new Path(ROLE));
-    headerList.add(new Path(PRIVILEGE));
+    headerList.add(new Path(COLUMN_ROLE));
+    headerList.add(new Path(COLUMN_PRIVILEGE));
     typeList.add(TSDataType.TEXT);
     typeList.add(TSDataType.TEXT);
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
@@ -700,24 +862,25 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   /**
    * Add a seriesPath to MTree
    */
-  private void addPathToMTree(String deviceId, String measurementId, TSDataType dataType)
+  private void addPathToMTree(String fullPath, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressionType)
       throws PathException, MetadataException, StorageEngineException {
-    String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
-    TSEncoding defaultEncoding = getDefaultEncoding(dataType);
-    CompressionType defaultCompressor =
-        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
     boolean result = mManager.addPathToMTree(
-        fullPath, dataType, defaultEncoding, defaultCompressor, Collections.emptyMap());
+        fullPath, dataType, encoding, compressionType, Collections.emptyMap());
     if (result) {
       storageEngine.addTimeSeries(
-          new Path(fullPath), dataType, defaultEncoding, defaultCompressor, Collections.emptyMap());
+          new Path(fullPath), dataType, encoding, compressionType, Collections.emptyMap());
     }
   }
 
   private void addPathToMTree(String deviceId, String measurementId, Object value)
       throws PathException, MetadataException, StorageEngineException {
     TSDataType predictedDataType = TypeInferenceUtils.getPredictedDataType(value);
-    addPathToMTree(deviceId, measurementId, predictedDataType);
+    String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
+    TSEncoding encoding = getDefaultEncoding(predictedDataType);
+    CompressionType compressionType =
+        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
+    addPathToMTree(fullPath, predictedDataType, encoding, compressionType);
   }
 
   /**

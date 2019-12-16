@@ -28,7 +28,7 @@
     </parent>
     <groupId>org.apache.iotdb</groupId>
     <artifactId>iotdb-parent</artifactId>
-    <version>0.9.0-SNAPSHOT</version>
+    <version>0.10.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Apache IoTDB (incubating) Project Parent POM</name>
     <description>This is the top level project that builds, packages the tsfile, iotdb engine, jdbc, and integration libs.</description>
@@ -42,7 +42,7 @@
         <connection>scm:git:ssh://git@github.com/apache/incubator-iotdb.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/apache/incubator-iotdb.git</developerConnection>
         <url>ssh://git@github.com:apache/incubator-iotdb.git</url>
-        <tag>rel/0.8</tag>
+        <tag>rel/0.10</tag>
     </scm>
     <modules>
         <module>tsfile</module>
@@ -74,10 +74,10 @@
         <spark.version>2.4.3</spark.version>
         <common.io.version>2.5</common.io.version>
         <commons.collections4>4.0</commons.collections4>
-        <thrift.version>0.12.0</thrift.version>
+        <thrift.version>0.13.0</thrift.version>
         <airline.version>0.8</airline.version>
         <jackson.version>2.10.0</jackson.version>
-        <antlr3.version>3.5.2</antlr3.version>
+        <antlr4.version>4.7.1</antlr4.version>
         <common.cli.version>1.3.1</common.cli.version>
         <common.codec.version>1.13</common.codec.version>
         <common.collections.version>3.2.2</common.collections.version>
@@ -85,7 +85,7 @@
         <common.lang3.version>3.8.1</common.lang3.version>
         <common.logging.version>1.1.3</common.logging.version>
         <jline.version>2.14.5</jline.version>
-        <jetty.version>9.4.22.v20191022</jetty.version>
+        <jetty.version>9.4.24.v20191120</jetty.version>
         <metrics.version>3.2.6</metrics.version>
         <!-- URL of the ASF SonarQube server -->
         <sonar.host.url>https://builds.apache.org/analysis</sonar.host.url>
@@ -262,8 +262,8 @@
             </dependency>
             <dependency>
                 <groupId>org.antlr</groupId>
-                <artifactId>antlr-runtime</artifactId>
-                <version>${antlr3.version}</version>
+                <artifactId>antlr4-runtime</artifactId>
+                <version>${antlr4.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.commons</groupId>
@@ -763,6 +763,9 @@
                 <!-- This needs to be updated as soon as Java 20 is shipped -->
                 <jdk>[11,20)</jdk>
             </activation>
+            <properties>
+                <maven.compiler.release>8</maven.compiler.release>
+            </properties>
             <dependencies>
                 <!-- for jdk-11 -->
                 <dependency>
@@ -865,7 +868,7 @@
                                     <generator>py</generator>
                                     <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
-                                    <outputDirectory>${project.build.directory}/generated-sources-python</outputDirectory>
+                                    <outputDirectory>${project.build.directory}/generated-sources-python/iotdb</outputDirectory>
                                 </configuration>
                             </execution>
                             <execution>

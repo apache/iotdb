@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -34,7 +31,10 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -57,11 +57,11 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * constructor.
    */
-  public GroupByWithValueFilterDataSet(long jobId, List<Path> paths, long unit, long origin,
-      List<Pair<Long, Long>> mergedIntervals) {
-    super(jobId, paths, unit, origin, mergedIntervals);
+  public GroupByWithValueFilterDataSet(long queryId, List<Path> paths, long unit,
+                                       long slidingStep, long startTime, long endTime) {
+    super(queryId, paths, unit, slidingStep, startTime, endTime);
     this.allDataReaderList = new ArrayList<>();
-    this.timeStampFetchSize = 10 * IoTDBDescriptor.getInstance().getConfig().getFetchSize();
+    this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getAggregateFetchSize();
   }
 
   /**
@@ -73,14 +73,14 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
     this.timestampGenerator = new EngineTimeGenerator(expression, context);
     this.allDataReaderList = new ArrayList<>();
-    for (Path path : selectedSeries) {
+    for (Path path : paths) {
       SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path, context);
       allDataReaderList.add(seriesReaderByTimestamp);
     }
   }
 
   @Override
-  public RowRecord next() throws IOException {
+  protected RowRecord nextWithoutConstraint() throws IOException {
     if (!hasCachedTimeInterval) {
       throw new IOException("need to call hasNext() before calling next()"
           + " in GroupByWithoutValueFilterDataSet.");
@@ -94,8 +94,10 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     int timeArrayLength = 0;
     if (hasCachedTimestamp) {
       if (timestamp < endTime) {
-        hasCachedTimestamp = false;
-        timestampArray[timeArrayLength++] = timestamp;
+        if (timestamp >= startTime) {
+          hasCachedTimestamp = false;
+          timestampArray[timeArrayLength++] = timestamp;
+        }
       } else {
         return constructRowRecord();
       }
@@ -106,7 +108,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       timeArrayLength = constructTimeArrayForOneCal(timestampArray, timeArrayLength);
 
       // cal result using timestamp array
-      for (int i = 0; i < selectedSeries.size(); i++) {
+      for (int i = 0; i < paths.size(); i++) {
         functions.get(i).calcAggregationUsingTimestamps(
             timestampArray, timeArrayLength, allDataReaderList.get(i));
       }
@@ -121,7 +123,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
     if (timeArrayLength > 0) {
       // cal result using timestamp array
-      for (int i = 0; i < selectedSeries.size(); i++) {
+      for (int i = 0; i < paths.size(); i++) {
         functions.get(i).calcAggregationUsingTimestamps(
             timestampArray, timeArrayLength, allDataReaderList.get(i));
       }
