@@ -203,7 +203,7 @@ public abstract class AbstractMemTable implements IMemTable {
     } else {
       long undeletedTime = findUndeletedTime(deviceId, measurement, timeLowerBound);
       IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
-      IWritableMemChunk chunkCopy = new WritableMemChunk(dataType, memChunk.getTVList().clone());
+      IWritableMemChunk chunkCopy = new WritableMemChunk(dataType, memChunk.getDataList());
       chunkCopy.setTimeOffset(undeletedTime);
       sorter = chunkCopy;
     }
@@ -254,7 +254,7 @@ public abstract class AbstractMemTable implements IMemTable {
   public void release() {
     for (Entry<String, Map<String, IWritableMemChunk>> entry: memTableMap.entrySet()) {
       for (Entry<String, IWritableMemChunk> subEntry: entry.getValue().entrySet()) {
-        TVListAllocator.getInstance().release(subEntry.getValue().getTVList());
+        TVListAllocator.getInstance().release(subEntry.getValue().getDataList());
       }
     }
   }

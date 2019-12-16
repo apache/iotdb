@@ -21,8 +21,9 @@ package org.apache.iotdb.db.engine.memtable;
 
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.iotdb.db.rescon.TVListAllocator;
+import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.utils.datastructure.TVSkipListMap;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class PrimitiveMemTable extends AbstractMemTable {
@@ -52,7 +53,9 @@ public class PrimitiveMemTable extends AbstractMemTable {
   }
 
   @Override
-  public int hashCode() {return (int) getVersion();}
+  public int hashCode() {
+    return (int) getVersion();
+  }
 
   @Override
   public boolean equals(Object obj) {

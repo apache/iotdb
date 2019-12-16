@@ -26,6 +26,7 @@ import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.utils.datastructure.TVSkipListMap;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -47,7 +48,8 @@ public class PrimitiveMemTableTest {
   @Test
   public void memSeriesCloneTest() {
     TSDataType dataType = TSDataType.INT32;
-    WritableMemChunk series = new WritableMemChunk(dataType, TVList.newList(dataType));
+    WritableMemChunk series = new WritableMemChunk(dataType,
+        new TVSkipListMap<Long, TimeValuePair>(Long::compareTo));
     int count = 1000;
     for (int i = 0; i < count; i++) {
       series.write(i, i);
@@ -120,7 +122,7 @@ public class PrimitiveMemTableTest {
       } else if (dataType == TSDataType.FLOAT) {
         float expected = pair.getValue().getFloat();
         float actual = MathUtils.roundWithGivenPrecision(next.getValue().getFloat());
-        Assert.assertEquals(expected, actual, delta+ Float.MIN_NORMAL);
+        Assert.assertEquals(expected, actual, delta + Float.MIN_NORMAL);
       } else {
         Assert.assertEquals(pair.getValue(), next.getValue());
       }

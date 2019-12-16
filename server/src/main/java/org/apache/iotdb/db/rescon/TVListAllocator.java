@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.datastructure.BinaryTVList;
 import org.apache.iotdb.db.utils.datastructure.BooleanTVList;
 import org.apache.iotdb.db.utils.datastructure.DoubleTVList;
@@ -35,11 +36,13 @@ import org.apache.iotdb.db.utils.datastructure.FloatTVList;
 import org.apache.iotdb.db.utils.datastructure.IntTVList;
 import org.apache.iotdb.db.utils.datastructure.LongTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.utils.datastructure.TVSkipListMap;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class TVListAllocator implements TVListAllocatorMBean, IService {
 
-  private Map<TSDataType, Queue<TVList>> tvListCache = new EnumMap<>(TSDataType.class);
+  private Map<TSDataType, Queue<TVSkipListMap<Long, TimeValuePair>>> tvListCache = new EnumMap<>(
+      TSDataType.class);
   private String mbeanName = String
       .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
           getID().getJmxName());
@@ -50,39 +53,26 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
     return INSTANCE;
   }
 
-  public synchronized TVList allocate(TSDataType dataType) {
-    Queue<TVList> tvLists = tvListCache.computeIfAbsent(dataType,
+  public synchronized TVSkipListMap allocate(TSDataType dataType) {
+    Queue<TVSkipListMap<Long, TimeValuePair>> tvLists = tvListCache.computeIfAbsent(dataType,
         k -> new ArrayDeque<>());
-    TVList list = tvLists.poll();
-    return list != null ? list : TVList.newList(dataType);
+    TVSkipListMap list = tvLists.poll();
+    return list != null ? list : new TVSkipListMap<Long, TimeValuePair>(Long::compare);
   }
 
-  public synchronized void release(TSDataType dataType, TVList list) {
+  public synchronized void release(TSDataType dataType, TVSkipListMap list) {
     list.clear();
     tvListCache.get(dataType).add(list);
   }
 
-  public synchronized void release(TVList list) {
+  public synchronized void release(TVSkipListMap list) {
     list.clear();
-    if (list instanceof BinaryTVList) {
-      tvListCache.get(TSDataType.TEXT).add(list);
-    } else if (list instanceof BooleanTVList) {
-      tvListCache.get(TSDataType.BOOLEAN).add(list);
-    } else if (list instanceof DoubleTVList) {
-      tvListCache.get(TSDataType.DOUBLE).add(list);
-    } else if (list instanceof FloatTVList) {
-      tvListCache.get(TSDataType.FLOAT).add(list);
-    } else if (list instanceof IntTVList) {
-      tvListCache.get(TSDataType.INT32).add(list);
-    } else if (list instanceof LongTVList) {
-      tvListCache.get(TSDataType.INT64).add(list);
-    }
   }
 
   @Override
   public int getNumberOfTVLists() {
     int number = 0;
-    for (Queue<TVList> queue : tvListCache.values()) {
+    for (Queue<TVSkipListMap<Long, TimeValuePair>> queue : tvListCache.values()) {
       number += queue.size();
     }
     return number;

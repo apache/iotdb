@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.querycontext;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -40,7 +41,7 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
 
   private TSDataType dataType;
   private TimeValuePairSorter memSeries;
-  private List<TimeValuePair> sortedTimeValuePairList;
+  private Collection<TimeValuePair> sortedTimeValuePairList;
 
   Map<String, String> props;
   private int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
@@ -48,7 +49,8 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
   /**
    * init by TSDataType and TimeValuePairSorter.
    */
-  public ReadOnlyMemChunk(TSDataType dataType, TimeValuePairSorter memSeries, Map<String, String> props) {
+  public ReadOnlyMemChunk(TSDataType dataType, TimeValuePairSorter memSeries,
+      Map<String, String> props) {
     this.dataType = dataType;
     this.memSeries = memSeries;
     this.initialized = false;
@@ -69,12 +71,12 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
     if (!(memSeries instanceof MemSeriesLazyMerger)) {
       switch (dataType) {
         case FLOAT:
-          sortedTimeValuePairList.replaceAll(x -> new TimeValuePair(x.getTimestamp(),
+          sortedTimeValuePairList.forEach(x -> new TimeValuePair(x.getTimestamp(),
               new TsFloat(
                   MathUtils.roundWithGivenPrecision(x.getValue().getFloat(), floatPrecision))));
           break;
         case DOUBLE:
-          sortedTimeValuePairList.replaceAll(x -> new TimeValuePair(x.getTimestamp(),
+          sortedTimeValuePairList.forEach(x -> new TimeValuePair(x.getTimestamp(),
               new TsDouble(
                   MathUtils.roundWithGivenPrecision(x.getValue().getDouble(), floatPrecision))));
           break;
@@ -92,9 +94,9 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
   }
 
   @Override
-  public List<TimeValuePair> getSortedTimeValuePairList() {
+  public Collection<TimeValuePair> getSortedTimeValuePairList() {
     checkInitialized();
-    return Collections.unmodifiableList(sortedTimeValuePairList);
+    return sortedTimeValuePairList;
   }
 
   @Override

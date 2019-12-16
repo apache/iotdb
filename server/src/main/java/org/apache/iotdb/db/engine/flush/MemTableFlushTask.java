@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.utils.datastructure.TVSkipListMap;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
@@ -56,7 +57,8 @@ public class MemTableFlushTask {
   private volatile boolean noMoreEncodingTask = false;
   private volatile boolean noMoreIOTask = false;
 
-  public MemTableFlushTask(IMemTable memTable, Schema schema, RestorableTsFileIOWriter writer, String storageGroup) {
+  public MemTableFlushTask(IMemTable memTable, Schema schema, RestorableTsFileIOWriter writer,
+      String storageGroup) {
     this.memTable = memTable;
     this.schema = schema;
     this.writer = writer;
@@ -80,7 +82,7 @@ public class MemTableFlushTask {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = memTable.getMemTableMap().get(deviceId).get(measurementId);
         MeasurementSchema desc = schema.getMeasurementSchema(measurementId);
-        TVList tvList = series.getSortedTVList();
+        TVSkipListMap tvList = series.getDataList();
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.add(new Pair<>(tvList, desc));
         // register active time series to the ActiveTimeSeriesCounter
@@ -104,12 +106,12 @@ public class MemTableFlushTask {
 
   private Runnable encodingTask = new Runnable() {
     private void writeOneSeries(TVList tvPairs, IChunkWriter seriesWriterImpl,
-        TSDataType dataType){
+        TSDataType dataType) {
       for (int i = 0; i < tvPairs.size(); i++) {
         long time = tvPairs.getTime(i);
 
         // skip duplicated data
-        if ((i+1 < tvPairs.size() && (time == tvPairs.getTime(i+1)))) {
+        if ((i + 1 < tvPairs.size() && (time == tvPairs.getTime(i + 1)))) {
           continue;
         }
 
@@ -185,50 +187,51 @@ public class MemTableFlushTask {
   };
 
   private Runnable ioTask = () -> {
-      long ioTime = 0;
-      boolean returnWhenNoTask = false;
-      logger.debug("Storage group {} memtable {}, start io.", storageGroup, memTable.getVersion());
-      while (true) {
-        if (noMoreIOTask) {
-          returnWhenNoTask = true;
-        }
-        Object ioMessage = ioTaskQueue.poll();
-        if (ioMessage == null) {
-          if (returnWhenNoTask) {
-            break;
-          }
-          try {
-            Thread.sleep(10);
-          } catch (InterruptedException e) {
-            logger.error("Storage group {} memtable, io task is interrupted.", storageGroup
-                , memTable.getVersion(), e);
-            Thread.currentThread().interrupt();
-          }
-        } else {
-          long starTime = System.currentTimeMillis();
-          try {
-            if (ioMessage instanceof StartFlushGroupIOTask) {
-              writer.startChunkGroup(((StartFlushGroupIOTask) ioMessage).deviceId);
-            } else if (ioMessage instanceof IChunkWriter) {
-              ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
-              chunkWriter.writeToFileWriter(MemTableFlushTask.this.writer);
-            } else {
-              EndChunkGroupIoTask endGroupTask = (EndChunkGroupIoTask) ioMessage;
-              writer.endChunkGroup(endGroupTask.version);
-            }
-          } catch (IOException e) {
-            logger.error("Storage group {} memtable {}, io task meets error.", storageGroup,
-                memTable.getVersion(), e);
-            throw new FlushRunTimeException(e);
-          }
-          ioTime += System.currentTimeMillis() - starTime;
-        }
+    long ioTime = 0;
+    boolean returnWhenNoTask = false;
+    logger.debug("Storage group {} memtable {}, start io.", storageGroup, memTable.getVersion());
+    while (true) {
+      if (noMoreIOTask) {
+        returnWhenNoTask = true;
       }
-      logger.debug("flushing a memtable {} in storage group {}, io cost {}ms", memTable.getVersion(),
-          storageGroup, ioTime);
-    };
+      Object ioMessage = ioTaskQueue.poll();
+      if (ioMessage == null) {
+        if (returnWhenNoTask) {
+          break;
+        }
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
+          logger.error("Storage group {} memtable, io task is interrupted.", storageGroup
+              , memTable.getVersion(), e);
+          Thread.currentThread().interrupt();
+        }
+      } else {
+        long starTime = System.currentTimeMillis();
+        try {
+          if (ioMessage instanceof StartFlushGroupIOTask) {
+            writer.startChunkGroup(((StartFlushGroupIOTask) ioMessage).deviceId);
+          } else if (ioMessage instanceof IChunkWriter) {
+            ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
+            chunkWriter.writeToFileWriter(MemTableFlushTask.this.writer);
+          } else {
+            EndChunkGroupIoTask endGroupTask = (EndChunkGroupIoTask) ioMessage;
+            writer.endChunkGroup(endGroupTask.version);
+          }
+        } catch (IOException e) {
+          logger.error("Storage group {} memtable {}, io task meets error.", storageGroup,
+              memTable.getVersion(), e);
+          throw new FlushRunTimeException(e);
+        }
+        ioTime += System.currentTimeMillis() - starTime;
+      }
+    }
+    logger.debug("flushing a memtable {} in storage group {}, io cost {}ms", memTable.getVersion(),
+        storageGroup, ioTime);
+  };
 
   static class EndChunkGroupIoTask {
+
     private long version;
 
     EndChunkGroupIoTask(long version) {
@@ -237,6 +240,7 @@ public class MemTableFlushTask {
   }
 
   static class StartFlushGroupIOTask {
+
     private String deviceId;
 
     StartFlushGroupIOTask(String deviceId) {
