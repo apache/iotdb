@@ -313,13 +313,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       if (storageGroupDir.exists()) {
         File[] tsFiles =
             storageGroupDir.listFiles(f -> f.getName().endsWith(TsFileConstant.TSFILE_SUFFIX));
-        if (tsFiles != null) {
-          for (File tsFile : tsFiles) {
-            fileName = tsFile.getName();
-            fileNameSplit = fileName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
-            if (fileVersion.equals(fileNameSplit[1]) && mergeNum.equals(fileNameSplit[2])) {
-              return true;
-            }
+        if (tsFiles == null) {
+          continue;
+        }
+        for (File tsFile : tsFiles) {
+          fileName = tsFile.getName();
+          fileNameSplit = fileName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
+          if (fileVersion.equals(fileNameSplit[1]) && mergeNum.equals(fileNameSplit[2])) {
+            return true;
           }
         }
       }
