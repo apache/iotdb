@@ -137,6 +137,11 @@ public class IoTDBConfig {
   private String[] dataDirs = {"data/data"};
 
   /**
+   * Is NVM enable.
+   */
+  private boolean enableNVM = false;
+
+  /**
    * NVM directory.
    */
   private String nvmDir = "data/nvm";
@@ -650,8 +655,20 @@ public class IoTDBConfig {
     this.dataDirs = dataDirs;
   }
 
+  public boolean isEnableNVM() {
+    return enableNVM;
+  }
+
+  public void setEnableNVM(boolean enableNVM) {
+    this.enableNVM = enableNVM;
+  }
+
   public String getNvmDir() {
     return nvmDir;
+  }
+
+  public void setNvmDir(String nvmDir) {
+    this.nvmDir = nvmDir;
   }
 
   public String getMultiDirStrategyClassName() {

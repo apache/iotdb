@@ -138,6 +138,8 @@ public class IoTDBDescriptor {
 
       loadWALProps(properties);
 
+      loadNVMProps(properties);
+
       conf.setBaseDir(properties.getProperty("base_dir", conf.getBaseDir()));
 
       conf.setSystemDir(FilePathUtils.regularizePath(conf.getBaseDir()) + "system");
@@ -346,6 +348,13 @@ public class IoTDBDescriptor {
         .parseLong(properties.getProperty("force_wal_period_in_ms",
             Long.toString(conf.getForceWalPeriodInMs()))));
 
+  }
+
+  private void loadNVMProps(Properties properties){
+    conf.setEnableNVM(Boolean.parseBoolean(properties.getProperty("enable_nvm",
+        Boolean.toString(conf.isEnableNVM()))));
+
+    conf.setNvmDir(properties.getProperty("nvm_dir", conf.getNvmDir()));
   }
 
   private void loadAutoCreateSchemaProps(Properties properties){

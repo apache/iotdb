@@ -69,7 +69,7 @@ public class TsFileProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileProcessor.class);
 
-  private boolean useNVM = true;
+  private boolean useNVM = IoTDBDescriptor.getInstance().getConfig().isEnableNVM();
 
   private RestorableTsFileIOWriter writer;
 
