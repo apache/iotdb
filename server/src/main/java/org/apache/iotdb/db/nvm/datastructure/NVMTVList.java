@@ -112,7 +112,7 @@ public abstract class NVMTVList extends AbstractTVList {
       case INT32:
         return new NVMIntTVList();
       case INT64:
-//        return new LongTVList();
+        return new NVMLongTVList();
       case DOUBLE:
 //        return new DoubleTVList();
       case BOOLEAN:

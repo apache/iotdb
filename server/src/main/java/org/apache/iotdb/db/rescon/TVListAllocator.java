@@ -27,6 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.nvm.datastructure.AbstractTVList;
 import org.apache.iotdb.db.nvm.datastructure.NVMIntTVList;
+import org.apache.iotdb.db.nvm.datastructure.NVMLongTVList;
 import org.apache.iotdb.db.nvm.datastructure.NVMTVList;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
@@ -82,6 +83,8 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
     list.clear();
     if (list instanceof NVMIntTVList) {
       nvmTVListCache.get(TSDataType.INT32).add((NVMTVList) list);
+    } else if (list instanceof NVMLongTVList) {
+      nvmTVListCache.get(TSDataType.INT64).add((NVMTVList) list);
     } else {
       TVList tvList = (TVList) list;
 
