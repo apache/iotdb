@@ -73,7 +73,7 @@ public class MManagerBasicTest {
       manager.setStorageGroupToMTree("root.laptop");
     } catch (MetadataException e) {
       Assert.assertEquals(
-          "The seriesPath of [root.laptop] already exist, it can't be set to the storage group",
+          "Path [root.laptop] already exist",
           e.getMessage());
     }
 
@@ -378,7 +378,7 @@ public class MManagerBasicTest {
       manager.getStorageGroupNameByAutoLevel("root1.laptop.d1.s1", level);
     } catch(MetadataException e) {
       caughtException = true;
-      assertEquals("Timeseries [root1.laptop.d1.s1] is not correct. ", e.getMessage());
+      assertEquals("root1.laptop.d1.s1 is not a legal path", e.getMessage());
     }
     assertTrue(caughtException);
 
@@ -387,7 +387,7 @@ public class MManagerBasicTest {
       manager.getStorageGroupNameByAutoLevel("root", level);
     } catch(MetadataException e) {
       caughtException = true;
-      assertEquals("Timeseries [root] is not correct. ", e.getMessage());
+      assertEquals("root is not a legal path", e.getMessage());
     }
     assertTrue(caughtException);
   }
