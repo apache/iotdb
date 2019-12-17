@@ -56,9 +56,8 @@ public interface IWritableMemChunk extends TimeValuePairSorter {
    * @return
    */
   TVSkipListMap<Long, TimeValuePair> getDataList();
-//  default TVList getSortedTVList(){return null;}
-//
-//  default TVList getTVList(){return null;}
+
+  TVSkipListMap<Long, TimeValuePair> getCloneList();
 
   default long getMinTime() {
     return Long.MIN_VALUE;

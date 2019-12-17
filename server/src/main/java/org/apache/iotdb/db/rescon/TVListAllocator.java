@@ -41,8 +41,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class TVListAllocator implements TVListAllocatorMBean, IService {
 
-  private Map<TSDataType, Queue<TVSkipListMap<Long, TimeValuePair>>> tvListCache = new EnumMap<>(
-      TSDataType.class);
+  private Queue<TVSkipListMap<Long, TimeValuePair>> tvListCache = new ArrayDeque<>();
   private String mbeanName = String
       .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
           getID().getJmxName());
@@ -53,29 +52,19 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
     return INSTANCE;
   }
 
-  public synchronized TVSkipListMap allocate(TSDataType dataType) {
-    Queue<TVSkipListMap<Long, TimeValuePair>> tvLists = tvListCache.computeIfAbsent(dataType,
-        k -> new ArrayDeque<>());
-    TVSkipListMap list = tvLists.poll();
+  public synchronized TVSkipListMap allocate() {
+    TVSkipListMap list = tvListCache.poll();
     return list != null ? list : new TVSkipListMap<Long, TimeValuePair>(Long::compare);
-  }
-
-  public synchronized void release(TSDataType dataType, TVSkipListMap list) {
-    list.clear();
-    tvListCache.get(dataType).add(list);
   }
 
   public synchronized void release(TVSkipListMap list) {
     list.clear();
+    tvListCache.add(list);
   }
 
   @Override
   public int getNumberOfTVLists() {
-    int number = 0;
-    for (Queue<TVSkipListMap<Long, TimeValuePair>> queue : tvListCache.values()) {
-      number += queue.size();
-    }
-    return number;
+    return tvListCache.size();
   }
 
   @Override

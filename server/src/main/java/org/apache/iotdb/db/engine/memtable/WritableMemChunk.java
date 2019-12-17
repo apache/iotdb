@@ -35,7 +35,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   private TSDataType dataType;
   private TVSkipListMap<Long, TimeValuePair> list;
 
-  public WritableMemChunk(TSDataType dataType, TVSkipListMap list) {
+  public WritableMemChunk(TSDataType dataType, TVSkipListMap<Long, TimeValuePair> list) {
     this.dataType = dataType;
     this.list = list;
   }
@@ -87,6 +87,14 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public TVSkipListMap<Long, TimeValuePair> getDataList() {
     return list;
+  }
+
+  @Override
+  public TVSkipListMap<Long, TimeValuePair> getCloneList() {
+    TVSkipListMap<Long, TimeValuePair> clone = new TVSkipListMap<>(
+        list.comparator());
+    clone.putAll(list);
+    return clone;
   }
 
   @Override
