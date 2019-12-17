@@ -25,7 +25,9 @@ import java.util.concurrent.ConcurrentNavigableMap;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.db.utils.datastructure.TVSkipListMap;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,12 +49,69 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void write(long[] times, Object valueList, TSDataType dataType, List<Integer> indexes) {
-    Object[] objects = (Object[]) valueList;
-    if (times.length == indexes.size()) {
-      puts(times, objects);
-    }
-    for (Integer index : indexes) {
-      put(times[index], objects[index]);
+    switch (dataType) {
+      case BOOLEAN:
+        boolean[] boolValues = (boolean[]) valueList;
+        if (times.length == indexes.size()) {
+          putBooleans(times, boolValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          put(times[index], boolValues[index]);
+        }
+        break;
+      case INT32:
+        int[] intValues = (int[]) valueList;
+        if (times.length == indexes.size()) {
+          putInts(times, intValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          put(times[index], intValues[index]);
+        }
+        break;
+      case INT64:
+        long[] longValues = (long[]) valueList;
+        if (times.length == indexes.size()) {
+          putLongs(times, longValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          put(times[index], longValues[index]);
+        }
+        break;
+      case FLOAT:
+        float[] floatValues = (float[]) valueList;
+        if (times.length == indexes.size()) {
+          putFloats(times, floatValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          put(times[index], floatValues[index]);
+        }
+        break;
+      case DOUBLE:
+        double[] doubleValues = (double[]) valueList;
+        if (times.length == indexes.size()) {
+          putDoubles(times, doubleValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          put(times[index], doubleValues[index]);
+        }
+        break;
+      case TEXT:
+        Binary[] binaryValues = (Binary[]) valueList;
+        if (times.length == indexes.size()) {
+          putBinaries(times, binaryValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          put(times[index], binaryValues[index]);
+        }
+        break;
+      default:
+        throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }
   }
 
@@ -62,8 +121,44 @@ public class WritableMemChunk implements IWritableMemChunk {
     list.put(t, new TimeValuePair(t, TsPrimitiveType.getByType(dataType, v)));
   }
 
+
   @Override
-  public void puts(long[] t, Object[] v) {
+  public void putLongs(long[] t, long[] v) {
+    for (int i = 0; i < t.length; i++) {
+      put(t[i], v[i]);
+    }
+  }
+
+  @Override
+  public void putInts(long[] t, int[] v) {
+    for (int i = 0; i < t.length; i++) {
+      put(t[i], v[i]);
+    }
+  }
+
+  @Override
+  public void putFloats(long[] t, float[] v) {
+    for (int i = 0; i < t.length; i++) {
+      put(t[i], v[i]);
+    }
+  }
+
+  @Override
+  public void putDoubles(long[] t, double[] v) {
+    for (int i = 0; i < t.length; i++) {
+      put(t[i], v[i]);
+    }
+  }
+
+  @Override
+  public void putBinaries(long[] t, Binary[] v) {
+    for (int i = 0; i < t.length; i++) {
+      put(t[i], v[i]);
+    }
+  }
+
+  @Override
+  public void putBooleans(long[] t, boolean[] v) {
     for (int i = 0; i < t.length; i++) {
       put(t[i], v[i]);
     }
