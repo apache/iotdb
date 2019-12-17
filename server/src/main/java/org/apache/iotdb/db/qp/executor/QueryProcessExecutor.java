@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PRIVILEGE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.ROLE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.USER;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
@@ -705,7 +705,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     int index = 0;
     List<Path> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
-    headerList.add(new Path(ROLE));
+    headerList.add(new Path(COLUMN_ROLE));
     typeList.add(TSDataType.TEXT);
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
     List<String> roleList = authorizer.listAllRoles();
@@ -723,7 +723,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     List<String> userList = authorizer.listAllUsers();
     List<Path> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
-    headerList.add(new Path(USER));
+    headerList.add(new Path(COLUMN_USER));
     typeList.add(TSDataType.TEXT);
     int index = 0;
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
@@ -745,7 +745,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
     List<Path> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
-    headerList.add(new Path(USER));
+    headerList.add(new Path(COLUMN_USER));
     typeList.add(TSDataType.TEXT);
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
     List<String> userList = authorizer.listAllUsers();
@@ -769,7 +769,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     if (user != null) {
       List<Path> headerList = new ArrayList<>();
       List<TSDataType> typeList = new ArrayList<>();
-      headerList.add(new Path(ROLE));
+      headerList.add(new Path(COLUMN_ROLE));
       typeList.add(TSDataType.TEXT);
       ListDataSet dataSet = new ListDataSet(headerList, typeList);
       int index = 0;
@@ -792,7 +792,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     if (role != null) {
       List<Path> headerList = new ArrayList<>();
       List<TSDataType> typeList = new ArrayList<>();
-      headerList.add(new Path(PRIVILEGE));
+      headerList.add(new Path(COLUMN_PRIVILEGE));
       typeList.add(TSDataType.TEXT);
       ListDataSet dataSet = new ListDataSet(headerList, typeList);
       int index = 0;
@@ -820,8 +820,8 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     }
     List<Path> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
-    headerList.add(new Path(ROLE));
-    headerList.add(new Path(PRIVILEGE));
+    headerList.add(new Path(COLUMN_ROLE));
+    headerList.add(new Path(COLUMN_PRIVILEGE));
     typeList.add(TSDataType.TEXT);
     typeList.add(TSDataType.TEXT);
     ListDataSet dataSet = new ListDataSet(headerList, typeList);

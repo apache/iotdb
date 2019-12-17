@@ -45,7 +45,6 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -68,7 +67,7 @@ public class Session {
   private String username;
   private String password;
   private TSIService.Iface client = null;
-  private TS_SessionHandle sessionHandle = null;
+  private long sessionId;
   private TSocket transport;
   private boolean isClosed = true;
   private ZoneId zoneId;
@@ -129,9 +128,9 @@ public class Session {
                 protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
       }
 
-      sessionHandle = openResp.getSessionHandle();
+      sessionId = openResp.getSessionId();
 
-      statementId = client.requestStatementId();
+      statementId = client.requestStatementId(sessionId);
 
       if (zoneId != null) {
         setTimeZone(zoneId.toString());
@@ -154,7 +153,7 @@ public class Session {
     if (isClosed) {
       return;
     }
-    TSCloseSessionReq req = new TSCloseSessionReq(sessionHandle);
+    TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
     try {
       client.closeSession(req);
     } catch (TException e) {
@@ -176,6 +175,7 @@ public class Session {
   public TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch)
       throws IoTDBSessionException {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
+    request.setSessionId(sessionId);
     request.deviceId = rowBatch.deviceId;
     for (MeasurementSchema measurementSchema : rowBatch.measurements) {
       request.addToMeasurements(measurementSchema.getMeasurementId());
@@ -211,6 +211,7 @@ public class Session {
     }
 
     TSInsertInBatchReq request = new TSInsertInBatchReq();
+    request.setSessionId(sessionId);
     request.setDeviceIds(deviceIds);
     request.setTimestamps(times);
     request.setMeasurementsList(measurementsList);
@@ -238,6 +239,7 @@ public class Session {
       List<String> values)
       throws IoTDBSessionException {
     TSInsertReq request = new TSInsertReq();
+    request.setSessionId(sessionId);
     request.setDeviceId(deviceId);
     request.setTimestamp(time);
     request.setMeasurements(measurements);
@@ -257,6 +259,7 @@ public class Session {
   public TSExecuteBatchStatementResp testInsertBatch(RowBatch rowBatch)
       throws IoTDBSessionException {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
+    request.setSessionId(sessionId);
     request.deviceId = rowBatch.deviceId;
     for (MeasurementSchema measurementSchema : rowBatch.measurements) {
       request.addToMeasurements(measurementSchema.getMeasurementId());
@@ -289,6 +292,7 @@ public class Session {
     }
 
     TSInsertInBatchReq request = new TSInsertInBatchReq();
+    request.setSessionId(sessionId);
     request.setDeviceIds(deviceIds);
     request.setTimestamps(times);
     request.setMeasurementsList(measurementsList);
@@ -310,6 +314,7 @@ public class Session {
       List<String> values)
       throws IoTDBSessionException {
     TSInsertReq request = new TSInsertReq();
+    request.setSessionId(sessionId);
     request.setDeviceId(deviceId);
     request.setTimestamp(time);
     request.setMeasurements(measurements);
@@ -340,7 +345,7 @@ public class Session {
    */
   public TSStatus deleteTimeseries(List<String> paths) throws IoTDBSessionException {
     try {
-      return checkAndReturn(client.deleteTimeseries(paths));
+      return checkAndReturn(client.deleteTimeseries(sessionId, paths));
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }
@@ -367,6 +372,7 @@ public class Session {
   public TSStatus deleteData(List<String> paths, long time)
       throws IoTDBSessionException {
     TSDeleteDataReq request = new TSDeleteDataReq();
+    request.setSessionId(sessionId);
     request.setPaths(paths);
     request.setTimestamp(time);
 
@@ -380,7 +386,7 @@ public class Session {
   public TSStatus setStorageGroup(String storageGroupId) throws IoTDBSessionException {
     checkPathValidity(storageGroupId);
     try {
-      return checkAndReturn(client.setStorageGroup(storageGroupId));
+      return checkAndReturn(client.setStorageGroup(sessionId, storageGroupId));
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }
@@ -397,7 +403,7 @@ public class Session {
   public TSStatus deleteStorageGroups(List<String> storageGroup)
       throws IoTDBSessionException {
     try {
-      return checkAndReturn(client.deleteStorageGroups(storageGroup));
+      return checkAndReturn(client.deleteStorageGroups(sessionId, storageGroup));
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }
@@ -407,6 +413,7 @@ public class Session {
       TSEncoding encoding, CompressionType compressor) throws IoTDBSessionException {
     checkPathValidity(path);
     TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
+    request.setSessionId(sessionId);
     request.setPath(path);
     request.setDataType(dataType.ordinal());
     request.setEncoding(encoding.ordinal());
@@ -438,13 +445,13 @@ public class Session {
       return zoneId.toString();
     }
 
-    TSGetTimeZoneResp resp = client.getTimeZone();
+    TSGetTimeZoneResp resp = client.getTimeZone(sessionId);
     RpcUtils.verifySuccess(resp.getStatus());
     return resp.getTimeZone();
   }
 
   private synchronized void setTimeZone(String zoneId) throws TException, IoTDBRPCException {
-    TSSetTimeZoneReq req = new TSSetTimeZoneReq(zoneId);
+    TSSetTimeZoneReq req = new TSSetTimeZoneReq(sessionId, zoneId);
     TSStatus resp = client.setTimeZone(req);
     RpcUtils.verifySuccess(resp);
     this.zoneId = ZoneId.of(zoneId);
@@ -474,13 +481,12 @@ public class Session {
           + "\" is not a query statement, you should use executeNonQueryStatement method instead.");
     }
 
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, statementId);
+    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
     TSExecuteStatementResp execResp = client.executeStatement(execReq);
 
     RpcUtils.verifySuccess(execResp.getStatus());
     return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
-        execResp.getOperationHandle().getOperationId().getQueryId(), client,
-        execResp.getOperationHandle());
+        execResp.getQueryId(), client, sessionId);
   }
 
   /**
@@ -494,7 +500,7 @@ public class Session {
           + "\" is a query statement, you should use executeQueryStatement method instead.");
     }
 
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql, statementId);
+    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
     TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
     RpcUtils.verifySuccess(execResp.getStatus());
   }

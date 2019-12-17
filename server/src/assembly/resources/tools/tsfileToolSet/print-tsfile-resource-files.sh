@@ -24,7 +24,7 @@ echo Starting Printing the TsFileResources
 echo ---------------------
 
 if [ -z "${IOTDB_HOME}" ]; then
-  export IOTDB_HOME="`dirname "$0"`/.."
+  export IOTDB_HOME="`dirname "$0"`/../.."
 fi
 
 IOTDB_CONF=${IOTDB_HOME}/conf
