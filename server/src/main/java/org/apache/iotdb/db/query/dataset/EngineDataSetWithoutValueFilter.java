@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.dataset;
 
+import java.util.ArrayList;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -35,6 +36,9 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.TreeSet;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 
 public class EngineDataSetWithoutValueFilter extends QueryDataSet {
@@ -82,81 +86,79 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
    * fill time buffer, value buffers and bitmap buffers
    */
   public TSQueryDataSet fillBuffer(int fetchSize) throws IOException {
-    int columnNum = seriesReaderWithoutValueFilterList.size();
+    int seriesNum = seriesReaderWithoutValueFilterList.size();
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
-    // one time column and each value column has a actual value buffer and a bitmap value to indicate whether it is a null
-    int columnNumWithTime = columnNum * 2 + 1;
-    DataOutputStream[] dataOutputStreams = new DataOutputStream[columnNumWithTime];
-    ByteArrayOutputStream[] byteArrayOutputStreams = new ByteArrayOutputStream[columnNumWithTime];
-    for (int i = 0; i < columnNumWithTime; i++) {
-      byteArrayOutputStreams[i] = new ByteArrayOutputStream();
-      dataOutputStreams[i] = new DataOutputStream(byteArrayOutputStreams[i]);
+
+    PublicBAOS timeBAOS = new PublicBAOS();
+    PublicBAOS[] valueBAOSList = new PublicBAOS[seriesNum];
+    PublicBAOS[] bitmapBAOSList = new PublicBAOS[seriesNum];
+
+    for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+      valueBAOSList[seriesIndex] = new PublicBAOS();
+      bitmapBAOSList[seriesIndex] = new PublicBAOS();
     }
 
     int rowCount = 0;
-    int[] valueOccupation = new int[columnNum];
+
     // used to record a bitmap for every 8 row record
-    int[] bitmap = new int[columnNum];
+    int[] currentBitmapList = new int[seriesNum];
     for (int i = 0; i < fetchSize; i++) {
       if (!timeHeap.isEmpty()) {
         long minTime = timeHeapGet();
         // use columnOutput to write byte array
-        dataOutputStreams[0].writeLong(minTime);
-        for (int k = 0; k < cachedBatchDataArray.length; k++) {
-          if (cachedBatchDataArray[k] != null && !cachedBatchDataArray[k].hasNext()) {
-            if (seriesReaderWithoutValueFilterList.get(k).hasNextBatch())
-              cachedBatchDataArray[k] = seriesReaderWithoutValueFilterList.get(k).nextBatch();
-            else
-              cachedBatchDataArray[k] = null;
+
+        timeBAOS.write(BytesUtils.longToBytes(minTime));
+
+        for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+          // if current batch is empty, try to cache next batch
+          if (!cachedBatchDataArray[seriesIndex].hasCurrent()) {
+            if (seriesReaderWithoutValueFilterList.get(seriesIndex).hasNextBatch()) {
+              cachedBatchDataArray[seriesIndex] = seriesReaderWithoutValueFilterList
+                  .get(seriesIndex).nextBatch();
+            }
           }
-          BatchData batchData = cachedBatchDataArray[k];
-          DataOutputStream dataOutputStream = dataOutputStreams[2*k + 1]; // DO NOT FORGET +1
-          if (batchData == null || batchData.currentTime() != minTime) {
-            bitmap[k] =  (bitmap[k] << 1);
-            if (batchData != null)
-              timeHeapPut(batchData.currentTime());
+          BatchData batchData = cachedBatchDataArray[seriesIndex];
+          if (!batchData.hasCurrent() || batchData.currentTime() != minTime) {
+            currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1);
           } else {
-            bitmap[k] =  (bitmap[k] << 1) | flag;
+            currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1) | flag;
             TSDataType type = batchData.getDataType();
             switch (type) {
               case INT32:
-                dataOutputStream.writeInt(batchData.getInt());
-                valueOccupation[k] += 4;
+                ReadWriteIOUtils.write(batchData.getInt(), valueBAOSList[seriesIndex]);
                 break;
               case INT64:
-                dataOutputStream.writeLong(batchData.getLong());
-                valueOccupation[k] += 8;
+                ReadWriteIOUtils.write(batchData.getLong(), valueBAOSList[seriesIndex]);
                 break;
               case FLOAT:
-                dataOutputStream.writeFloat(batchData.getFloat());
-                valueOccupation[k] += 4;
+                ReadWriteIOUtils.write(batchData.getFloat(), valueBAOSList[seriesIndex]);
                 break;
               case DOUBLE:
-                dataOutputStream.writeDouble(batchData.getDouble());
-                valueOccupation[k] += 8;
+                ReadWriteIOUtils.write(batchData.getDouble(), valueBAOSList[seriesIndex]);
                 break;
               case BOOLEAN:
-                dataOutputStream.writeBoolean(batchData.getBoolean());
-                valueOccupation[k] += 1;
+                ReadWriteIOUtils.write(batchData.getBoolean(), valueBAOSList[seriesIndex]);
                 break;
               case TEXT:
-                dataOutputStream.writeInt(batchData.getBinary().getLength());
-                dataOutputStream.write(batchData.getBinary().getValues());
-                valueOccupation[k] = valueOccupation[k] + 4 + batchData.getBinary().getLength();
+                ReadWriteIOUtils.write(batchData.getBinary(), valueBAOSList[seriesIndex]);
                 break;
               default:
                 throw new UnSupportedDataTypeException(
                         String.format("Data type %s is not supported.", type));
             }
+            batchData.next();
+            if(batchData.hasCurrent()) {
+              timeHeapPut(batchData.currentTime());
+            }
           }
         }
+
         rowCount++;
         if (rowCount % 8 == 0) {
-          for (int j = 0; j < bitmap.length; j++) {
-            DataOutputStream dataBitmapOutputStream = dataOutputStreams[2*(j+1)];
-            dataBitmapOutputStream.writeByte(bitmap[j]);
+          for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+            ReadWriteIOUtils.write((byte) currentBitmapList[seriesIndex], bitmapBAOSList[seriesIndex]);
             // we should clear the bitmap every 8 row record
-            bitmap[j] = 0;
+            currentBitmapList[seriesIndex] = 0;
           }
         }
       } else {
@@ -164,40 +166,46 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
       }
     }
 
-    // feed the remaining bitmap
+    /*
+     * feed the bitmap with remaining 0 in the right
+     * if current bitmap is 00011111 and remaining is 3, after feeding the bitmap is 11111000
+     */
     int remaining = rowCount % 8;
     if (remaining != 0) {
-      for (int j = 0; j < bitmap.length; j++) {
-        DataOutputStream dataBitmapOutputStream = dataOutputStreams[2*(j+1)];
-        dataBitmapOutputStream.writeByte(bitmap[j] << (8-remaining));
+      for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+        ReadWriteIOUtils.write((byte) (currentBitmapList[seriesIndex] << (8 - remaining)),
+            bitmapBAOSList[seriesIndex]);
       }
     }
 
-    // calculate the time buffer size
-    int timeOccupation = rowCount * 8;
-    ByteBuffer timeBuffer = ByteBuffer.allocate(timeOccupation);
-    timeBuffer.put(byteArrayOutputStreams[0].toByteArray());
+    // set time buffer
+    ByteBuffer timeBuffer = ByteBuffer.allocate(timeBAOS.size());
+    timeBuffer.put(timeBAOS.toByteArray());
     timeBuffer.flip();
     tsQueryDataSet.setTime(timeBuffer);
 
-    // calculate the bitmap buffer size
-    int bitmapOccupation = rowCount / 8 + (rowCount % 8 == 0 ? 0 : 1);
+    List<ByteBuffer> valueBufferList = new ArrayList<>();
+    List<ByteBuffer> bitmapBufferList = new ArrayList<>();
 
-    List<ByteBuffer> bitmapList = new LinkedList<>();
-    List<ByteBuffer> valueList = new LinkedList<>();
-    for (int i = 1; i < byteArrayOutputStreams.length; i += 2) {
-      ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation[(i-1)/2]);
-      valueBuffer.put(byteArrayOutputStreams[i].toByteArray());
+    for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+
+      // add value buffer of current series
+      ByteBuffer valueBuffer = ByteBuffer.allocate(valueBAOSList[seriesIndex].size());
+      valueBuffer.put(valueBAOSList[seriesIndex].toByteArray());
       valueBuffer.flip();
-      valueList.add(valueBuffer);
+      valueBufferList.add(valueBuffer);
 
-      ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapOccupation);
-      bitmapBuffer.put(byteArrayOutputStreams[i+1].toByteArray());
+      // add bitmap buffer of current series
+      ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapBAOSList[seriesIndex].size());
+      bitmapBuffer.put(bitmapBAOSList[seriesIndex].toByteArray());
       bitmapBuffer.flip();
-      bitmapList.add(bitmapBuffer);
+      bitmapBufferList.add(bitmapBuffer);
     }
-    tsQueryDataSet.setBitmapList(bitmapList);
-    tsQueryDataSet.setValueList(valueList);
+
+    // set value buffers and bitmap buffers
+    tsQueryDataSet.setValueList(valueBufferList);
+    tsQueryDataSet.setBitmapList(bitmapBufferList);
+
     return tsQueryDataSet;
   }
 
