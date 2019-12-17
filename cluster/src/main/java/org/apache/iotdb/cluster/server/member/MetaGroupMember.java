@@ -859,6 +859,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         + "group newMember"));
   }
 
+  @Override
   public TSStatus executeNonQuery(PhysicalPlan plan) {
     if (!PartitionUtils.isPlanPartitioned(plan)) {
       return processNonPartitionedPlan(plan);

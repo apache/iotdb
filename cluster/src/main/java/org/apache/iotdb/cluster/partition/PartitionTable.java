@@ -78,4 +78,6 @@ public interface PartitionTable {
    * @return the slots held by the header.
    */
   List<Integer> getNodeSlots(Node header);
+
+  Map<Node, List<Integer>> getAllNodeSlots();
 }
