@@ -20,10 +20,13 @@
 package org.apache.iotdb.db.query.dataset;
 
 import java.util.ArrayList;
+import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -80,6 +83,7 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
 
 
   /**
+   * for RPC in RawData query between client and server
    * fill time buffer, value buffers and bitmap buffers
    */
   public TSQueryDataSet fillBuffer(int fetchSize) throws IOException {
@@ -110,7 +114,7 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
       timeBAOS.write(BytesUtils.longToBytes(minTime));
 
       for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-        if (!cachedBatchDataArray[seriesIndex].hasCurrent()
+        if (cachedBatchDataArray == null || !cachedBatchDataArray[seriesIndex].hasCurrent()
             || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
           // current batch is empty or does not have value at minTime
           currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1);
@@ -220,14 +224,51 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
     return tsQueryDataSet;
   }
 
-  @Override
-  protected boolean hasNextWithoutConstraint() throws IOException {
-    throw new IOException("The method can't be invoked, please try to use fillBuffer method directly!");
+
+  /**
+   * for test
+   */
+  @Override protected boolean hasNextWithoutConstraint() {
+    return !timeHeap.isEmpty();
   }
 
-  @Override
-  protected RowRecord nextWithoutConstraint() throws IOException {
-    throw new IOException("The method can't be invoked, please try to use fillBuffer method directly!");
+  /**
+   * for test
+   */
+  @Override protected RowRecord nextWithoutConstraint() throws IOException {
+    int seriesNum = seriesReaderWithoutValueFilterList.size();
+
+    long minTime = timeHeap.pollFirst();
+
+    RowRecord record = new RowRecord(minTime);
+
+    for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+      if (cachedBatchDataArray == null || !cachedBatchDataArray[seriesIndex].hasCurrent()
+          || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
+        record.addField(new Field(null));
+      } else {
+
+        record.addField(getField(cachedBatchDataArray[seriesIndex].currentValue(), dataTypes.get(seriesIndex)));
+
+        // move next
+        cachedBatchDataArray[seriesIndex].next();
+
+        // get next batch if current batch is empty
+        if (!cachedBatchDataArray[seriesIndex].hasCurrent()) {
+          if (seriesReaderWithoutValueFilterList.get(seriesIndex).hasNextBatch()) {
+            cachedBatchDataArray[seriesIndex] = seriesReaderWithoutValueFilterList
+                .get(seriesIndex).nextBatch();
+          }
+        }
+
+        // try to put the next timestamp into the heap
+        if (cachedBatchDataArray[seriesIndex].hasCurrent()) {
+          timeHeap.add(cachedBatchDataArray[seriesIndex].currentTime());
+        }
+      }
+    }
+
+    return record;
   }
 
 }
