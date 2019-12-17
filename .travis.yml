@@ -134,6 +134,7 @@ matrix:
       script:
         - java -version
         - mvn -version
+        - mvn -B apache-rat:check
         # Output something every 10 minutes or Travis kills the job
         - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
         - travis_wait 40 mvn -B clean integration-test
@@ -152,6 +153,7 @@ matrix:
         - export PATH=$JAVA_HOME/bin:$PATH
       script:
         - java -version
+        - mvn -B apache-rat:check
         # Output something every 10 minutes or Travis kills the job
         - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
         - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
