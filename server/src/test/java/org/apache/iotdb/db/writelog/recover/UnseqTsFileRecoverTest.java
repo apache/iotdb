@@ -82,7 +82,7 @@ public class UnseqTsFileRecoverTest {
 
   @Before
   public void setup() throws IOException, WriteProcessException {
-    tsF = SystemFileFactory.INSTANCE.getFile("temp", "test.ts");
+    tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "test.ts");
     tsF.getParentFile().mkdirs();
 
     schema = new Schema();

@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -87,15 +87,15 @@ TsFile文件的内容可以划分为两个部分: 数据和元数据。数据和
 
 ##### ChunkHeader
 
-|成员|类型|
-|:---:|:---:|
-|传感器名称(measurementID)|String|
-|chunk大小(dataSize)|int|
-|chunk的数据类型(dataType)|short|
-|包含的page数量(numOfPages)|int|
-|压缩类型(compressionType)|short|
-|编码类型(encodingType)|short|
-|Max Tombstone Time(暂时没用)|long|
+|             成员             |  类型  |
+| :--------------------------: | :----: |
+|  传感器名称(measurementID)   | String |
+|     chunk大小(dataSize)      |  int   |
+|  chunk的数据类型(dataType)   | short  |
+|  包含的page数量(numOfPages)  |  int   |
+|  压缩类型(compressionType)   | short  |
+|    编码类型(encodingType)    | short  |
+| Max Tombstone Time(暂时没用) |  long  |
 
 ##### Page
 
@@ -103,26 +103,26 @@ TsFile文件的内容可以划分为两个部分: 数据和元数据。数据和
 
 PageHeader 结构
 
-|成员|类型|
-|:---:|:---:|
-|压缩前数据大小(uncompressedSize)|int|
-|SNAPPY压缩后数据大小(compressedSize)|int|
-|包含的values的数量(numOfValues)|int|
-|最大时间戳(maxTimestamp)|long|
-|最小时间戳(minTimestamp)|long|
-|该页最大值(max)|Type of the page|
-|该页最小值(min)|Type of the page|
-|该页第一个值(first)|Type of the page|
-|该页值的和(sum)|double|
-|该页最后一个值(last)|Type of the page|
+|                 成员                 |       类型       |
+| :----------------------------------: | :--------------: |
+|   压缩前数据大小(uncompressedSize)   |       int        |
+| SNAPPY压缩后数据大小(compressedSize) |       int        |
+|   包含的values的数量(numOfValues)    |       int        |
+|       最大时间戳(maxTimestamp)       |       long       |
+|       最小时间戳(minTimestamp)       |       long       |
+|           该页最大值(max)            | Type of the page |
+|           该页最小值(min)            | Type of the page |
+|         该页第一个值(first)          | Type of the page |
+|           该页值的和(sum)            |      double      |
+|         该页最后一个值(last)         | Type of the page |
 
 ##### ChunkGroupFooter
 
-|成员|类型|
-|:---:|:---:|
-|设备Id(deviceID)|String|
-|ChunkGroup大小(dataSize)|long|
-|包含的chunks的数量(numberOfChunks)|int|
+|                成员                |  类型  |
+| :--------------------------------: | :----: |
+|          设备Id(deviceID)          | String |
+|      ChunkGroup大小(dataSize)      |  long  |
+| 包含的chunks的数量(numberOfChunks) |  int   |
 
 #### 1.2.3  元数据
 
@@ -130,35 +130,35 @@ PageHeader 结构
 
 第一部分的元数据是 `TsDeviceMetaData` 
 
-|成员|类型|
-|:---:|:---:|
-|开始时间(startTime)|long|
-|结束时间(endTime)|long|
-|包含的ChunkGroup的数量|int|
-|所有的ChunkGroupMetaData(chunkGroupMetadataList)|list|
+|                       成员                       | 类型 |
+| :----------------------------------------------: | :--: |
+|               开始时间(startTime)                | long |
+|                结束时间(endTime)                 | long |
+|              包含的ChunkGroup的数量              | int  |
+| 所有的ChunkGroupMetaData(chunkGroupMetadataList) | list |
 
 ###### ChunkGroupMetaData
 
-|成员|类型|
-|:---:|:---:|
-|设备Id(deviceID)|String|
-|在文件中ChunkGroup开始的偏移量(startOffsetOfChunkGroup)|long|
-|在文件中ChunkGroup结束的偏移量(endOffsetOfChunkGroup)|long|
-|版本(version)|long|
-|包含的ChunkMetaData的数量|int|
-|所有的ChunkMetaData(chunkMetaDataList)|list|
+|                          成员                           |  类型  |
+| :-----------------------------------------------------: | :----: |
+|                    设备Id(deviceID)                     | String |
+| 在文件中ChunkGroup开始的偏移量(startOffsetOfChunkGroup) |  long  |
+|  在文件中ChunkGroup结束的偏移量(endOffsetOfChunkGroup)  |  long  |
+|                      版本(version)                      |  long  |
+|                包含的ChunkMetaData的数量                |  int   |
+|         所有的ChunkMetaData(chunkMetaDataList)          |  list  |
 
 ###### ChunkMetaData
 
-|成员|类型|
-|:---:|:---:|
-|传感器名称(measurementUid)|String|
-|文件中ChunkHeader开始的偏移量(offsetOfChunkHeader)|long|
-|数据的总数(numOfPoints)|long|
-|开始时间(startTime)|long|
-|结束时间(endTime)|long|
-|数据类型(tsDataType)|short|
-|chunk的统计信息|TsDigest|
+|                        成员                        |   类型   |
+| :------------------------------------------------: | :------: |
+|             传感器名称(measurementUid)             |  String  |
+| 文件中ChunkHeader开始的偏移量(offsetOfChunkHeader) |   long   |
+|              数据的总数(numOfPoints)               |   long   |
+|                开始时间(startTime)                 |   long   |
+|                 结束时间(endTime)                  |   long   |
+|                数据类型(tsDataType)                |  short   |
+|                  chunk的统计信息                   | TsDigest |
 
 ###### TsDigest
 
@@ -177,6 +177,7 @@ Map<String, ByteBuffer> statistics = {
     "max_value" -> ByteBuffer of int value 99
 }
 ```
+
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/63765352-664a4280-c8fb-11e9-869e-859edf6d00bb.png">
 
 在 v0.9.0 版本中, 为了提高空间和时间的效率，存储的结构被修改为数组的形式。也就是 `ByteBuffer[] statistics`。用固定的位置代表某一个具体的统计信息, 在 StatisticType 中定义的顺序如下:
@@ -218,40 +219,41 @@ ByteBuffer[] statistics = [
 
 上节讲到的是 `TsDeviceMetadatas` 紧跟其后的数据是 `TsFileMetaData`。
 
-|成员|类型|
-|:---:|:---:|
-|包含的设备个数|int|
-|设备名称和设备元数据索引的键值对(deviceIndexMap)|String, TsDeviceMetadataIndex pair|
-|包含的传感器个数|int|
-|传感器名称和传感器元数据的键值对(measurementSchema)|String, MeasurementSchema pair|
-|水印标识|byte|
-|当标识为0x01时的水印信息(createdBy)|String|
-|包含的Chunk总数(totalChunkNum)|int|
-|失效的Chunk总数(invalidChunkNum)|int|
-|布隆过滤器序列化大小|int|
-|布隆过滤器所有数据|byte[Bloom filter size]|
-|布隆过滤器容量|int|
-|布隆过滤器容量包含的HashFunction数量|int|
+|                        成员                         |                类型                |
+| :-------------------------------------------------: | :--------------------------------: |
+|                   包含的设备个数                    |                int                 |
+|  设备名称和设备元数据索引的键值对(deviceIndexMap)   | String, TsDeviceMetadataIndex pair |
+|                  包含的传感器个数                   |                int                 |
+| 传感器名称和传感器元数据的键值对(measurementSchema) |   String, MeasurementSchema pair   |
+|                      水印标识                       |                byte                |
+|         当标识为0x01时的水印信息(createdBy)         |               String               |
+|           包含的Chunk总数(totalChunkNum)            |                int                 |
+|          失效的Chunk总数(invalidChunkNum)           |                int                 |
+|                布隆过滤器序列化大小                 |                int                 |
+|                 布隆过滤器所有数据                  |      byte[Bloom filter size]       |
+|                   布隆过滤器容量                    |                int                 |
+|        布隆过滤器容量包含的HashFunction数量         |                int                 |
 
 ###### TsDeviceMetadataIndex
 
-|成员|类型|
-|:---:|:---:|
-|设备名|String|
-|文件中TsDeviceMetaData的偏移量(offset)|long|
-|序列化后数据大小(len)|int|
-|存储的设备最小时间(startTime)|long|
-|存储的设备最大时间(endTime)|long|
+|                  成员                  |  类型  |
+| :------------------------------------: | :----: |
+|                 设备名                 | String |
+| 文件中TsDeviceMetaData的偏移量(offset) |  long  |
+|         序列化后数据大小(len)          |  int   |
+|     存储的设备最小时间(startTime)      |  long  |
+|      存储的设备最大时间(endTime)       |  long  |
 
 ###### MeasurementSchema
-|成员|类型|
-|:---:|:---:|
-|传感器名称(measurementId)|String|
-|数据类型(type)|short|
-|编码方式(encoding)|short|
-|压缩方式(compressor)|short|
-|附带参数的数量|int|
-|所有附带的参数(props)|String, String pair|
+
+|           成员            |        类型         |
+| :-----------------------: | :-----------------: |
+| 传感器名称(measurementId) |       String        |
+|      数据类型(type)       |        short        |
+|    编码方式(encoding)     |        short        |
+|   压缩方式(compressor)    |        short        |
+|      附带参数的数量       |         int         |
+|   所有附带的参数(props)   | String, String pair |
 
 如果附带的参数数量大于 0, 传感器的附带参数会以一个数组形式的 <String, String> 键值对存储。
 
@@ -263,35 +265,85 @@ ByteBuffer[] statistics = [
 
 
 #### 1.2.4 Magic String
+
 TsFile 是以6个字节的magic string (`TsFile`) 作为结束.
 
 
 恭喜您, 至此您已经完成了 TsFile 的探秘之旅，祝您玩儿的开心!
 
-### 1.3 工具集
+### 1.3 TsFile工具集
 
-#### 1.3.1 TsFileResource 打印工具
+#### 1.3.1 IoTDB Data Directory 快速概览工具
 
-该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.10.0\tools` 目录中。
+该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.10.0\tools\tsfileToolSet` 目录中。
+
+使用方式:
+
+For Windows:
+
+```
+.\print-iotdb-data-dir.bat <IoTDB数据文件夹路径，如果是多个文件夹用逗号分隔> (<输出结果的存储路径>) 
+```
+
+For Linux or MacOs:
+
+```
+./print-iotdb-data-dir.sh <IoTDB数据文件夹路径，如果是多个文件夹用逗号分隔> (<输出结果的存储路径>) 
+```
+
+在Windows系统中的示例:
+
+```
+D:\incubator-iotdb\server\target\iotdb-server-0.10.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
+​````````````````````````
+Starting Printing the IoTDB Data Directory Overview
+​````````````````````````
+output save path:IoTDB_data_dir_overview.txt
+TsFile data dir num:1
+21:17:38.841 [main] WARN org.apache.iotdb.tsfile.common.conf.TSFileDescriptor - Failed to find config file iotdb-engine.properties at classpath, use default configuration
+|==============================================================
+|D:\\data\data
+|--sequence
+|  |--root.ln.wf01.wt01
+|  |  |--1575813520203-101-0.tsfile
+|  |  |--1575813520203-101-0.tsfile.resource
+|  |  |  |--device root.ln.wf01.wt01, start time 1 (1970-01-01T08:00:00.001+08:00[GMT+08:00]), end time 5 (1970-01-01T08:00:00.005+08:00[GMT+08:00])
+|  |  |--1575813520669-103-0.tsfile
+|  |  |--1575813520669-103-0.tsfile.resource
+|  |  |  |--device root.ln.wf01.wt01, start time 100 (1970-01-01T08:00:00.100+08:00[GMT+08:00]), end time 300 (1970-01-01T08:00:00.300+08:00[GMT+08:00])
+|  |  |--1575813521372-107-0.tsfile
+|  |  |--1575813521372-107-0.tsfile.resource
+|  |  |  |--device root.ln.wf01.wt01, start time 500 (1970-01-01T08:00:00.500+08:00[GMT+08:00]), end time 540 (1970-01-01T08:00:00.540+08:00[GMT+08:00])
+|--unsequence
+|  |--root.ln.wf01.wt01
+|  |  |--1575813521063-105-0.tsfile
+|  |  |--1575813521063-105-0.tsfile.resource
+|  |  |  |--device root.ln.wf01.wt01, start time 10 (1970-01-01T08:00:00.010+08:00[GMT+08:00]), end time 50 (1970-01-01T08:00:00.050+08:00[GMT+08:00])
+|==============================================================
+````````````````````````
+
+#### 1.3.2 TsFileResource 打印工具
+
+该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.10.0\tools\tsfileToolSet` 目录中。
 
 使用方式:
 
 Windows:
 
 ```
-.\print-tsfile-sketch.bat <TsFileResource 文件夹路径>
+.\print-tsfile-sketch.bat <TsFileResource文件夹路径>
 ```
 
 Linux or MacOs:
 
 ```
-./print-tsfile-sketch.sh <TsFileResource 文件夹路径>
+./print-tsfile-sketch.sh <TsFileResource文件夹路径>
 ```
 
 在Windows系统中的示例:
 
 ```
-D:\incubator-iotdb\server\target\iotdb-server-0.10.0\tools>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
+D:\incubator-iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
 ​````````````````````````
 Starting Printing the TsFileResources
 ​````````````````````````
@@ -299,18 +351,18 @@ Starting Printing the TsFileResources
 analyzing D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile ...
 device root.vehicle.d0, start time 3000 (1970-01-01T08:00:03+08:00[GMT+08:00]), end time 100999 (1970-01-01T08:01:40.999+08:00[GMT+08:00])
 analyzing the resource file finished.
-```
+````````````````````````
 
-#### 1.3.2 TsFile 描述工具
+#### 1.3.3 TsFile 描述工具
 
-该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.10.0\tools` 目录中。
+该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.10.0\tools\tsfileToolSet` 目录中。
 
 使用方式:
 
 Windows:
 
 ```
-.\print-tsfile-sketch.bat <TsFile文件路径> (<输出文件的存储路径>) 
+.\print-tsfile-sketch.bat <TsFile文件路径> (<输出结果的存储路径>) 
 ```
 
 - 注意: 如果没有设置输出文件的存储路径, 将使用 "TsFile_sketch_view.txt" 做为默认值。
@@ -318,7 +370,7 @@ Windows:
 Linux or MacOs:
 
 ```
-./print-tsfile-sketch.sh <TsFile文件路径> (<输出文件的存储路径>) 
+./print-tsfile-sketch.sh <TsFile文件路径> (<输出结果的存储路径>) 
 ```
 
 - 注意: 如果没有设置输出文件的存储路径, 将使用 "TsFile_sketch_view.txt" 做为默认值。 
@@ -326,7 +378,7 @@ Linux or MacOs:
 在Windows系统中的示例:
 
 ```$xslt
-D:\incubator-iotdb\server\target\iotdb-server-0.10.0\tools>.\print-tsfile-sketch.bat D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
+D:\incubator-iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-sketch.bat D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
 ​````````````````````````
 Starting Printing the TsFile Sketch
 ​````````````````````````
@@ -400,15 +452,18 @@ file length: 187382
               187382|   END of TsFile
 
 ---------------------------------- TsFile Sketch End ----------------------------------
-```
+````````````````````````
 
-#### 1.3.3 TsFileSequenceRead
+#### 1.3.4 TsFileSequenceRead
+
 您可以使用示例中的类 `example/tsfile/org/apache/iotdb/tsfile/TsFileSequenceRead` 顺序打印 TsFile 中的内容.
 
 ### 1.4 TsFile 的总览图
 
 #### v0.8.0
+
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/65209576-2bd36000-dacb-11e9-9e43-49e0dd01274e.png">
 
 #### v0.9.0
+
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/69341240-26012300-0ca4-11ea-91a1-d516810cad44.png">
