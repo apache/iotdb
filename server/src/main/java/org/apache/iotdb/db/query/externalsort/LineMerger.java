@@ -46,9 +46,7 @@ public class LineMerger {
     IExternalSortFileSerializer serializer = new FixLengthTimeValuePairSerializer(tmpFilePath);
     PriorityMergeReader reader = new PriorityMergeReader(prioritySeriesReaders, 1);
     while (reader.hasNext()) {
-      Element e = reader.next();
-      serializer.write(
-          new TimeValuePair(e.getTime(), e.getValue()));
+      serializer.write(reader.next());
     }
     reader.close();
     serializer.close();

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -33,18 +34,9 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import java.io.IOException;
 
 /**
- * To read series data without value filter, this class implements {@link IPointReader} for the
- * data.
- * <p>
- * Note that filters include value filter and time filter. "without value filter" is equivalent to
- * "with global time filter or simply without any filter".
- */
-
-
-/**
- * merge seqResourceIterateReader and unseqResourceMergeReader
+ * To read series data without value filter
  *
- * return batch data
+ * "without value filter" is equivalent to "with global time filter or without any filter".
  */
 public class SeriesReaderWithoutValueFilter implements IBatchReader {
 
@@ -69,13 +61,8 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader {
    * @param pushdownUnseq True to push down the filter on the unsequence TsFile resource; False not
    * to. We do not push down value filter to unsequence readers
    */
-  public SeriesReaderWithoutValueFilter(Path seriesPath, Filter timeFilter, QueryContext context,
-      boolean pushdownUnseq) throws StorageEngineException, IOException {
-    this(seriesPath, timeFilter, context, pushdownUnseq, DEFAULT_BATCH_DATA_SIZE);
-  }
-
-  public SeriesReaderWithoutValueFilter(Path seriesPath, Filter timeFilter, QueryContext context,
-                                        boolean pushdownUnseq, int batchDataSize) throws StorageEngineException, IOException {
+  public SeriesReaderWithoutValueFilter(Path seriesPath, TSDataType dataType, Filter timeFilter,
+      QueryContext context, boolean pushdownUnseq) throws StorageEngineException, IOException {
     QueryDataSource queryDataSource = QueryResourceManager.getInstance()
             .getQueryDataSource(seriesPath, context);
     timeFilter = queryDataSource.updateTimeFilter(timeFilter);
@@ -86,13 +73,13 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader {
 
     // reader for unsequence resources, we only push down time filter on unseq reader
     if (pushdownUnseq) {
-      this.unseqResourceMergeReader = new UnseqResourceMergeReader(seriesPath,
+      this.unseqResourceMergeReader = new UnseqResourceMergeReader(seriesPath, dataType,
               queryDataSource.getUnseqResources(), context, timeFilter);
     } else {
-      this.unseqResourceMergeReader = new UnseqResourceMergeReader(seriesPath,
+      this.unseqResourceMergeReader = new UnseqResourceMergeReader(seriesPath, dataType,
               queryDataSource.getUnseqResources(), context, null);
     }
-    this.batchDataSize = batchDataSize;
+    this.batchDataSize = DEFAULT_BATCH_DATA_SIZE;
   }
 
   /**
@@ -100,19 +87,14 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader {
    */
   SeriesReaderWithoutValueFilter(IBatchReader seqResourceIterateReader,
       IBatchReader unseqResourceMergeReader) {
-    this(seqResourceIterateReader, unseqResourceMergeReader, DEFAULT_BATCH_DATA_SIZE);
-  }
-
-  SeriesReaderWithoutValueFilter(IBatchReader seqResourceIterateReader,
-                                 IBatchReader unseqResourceMergeReader, int batchDataSize) {
     this.seqResourceIterateReader = seqResourceIterateReader;
     this.unseqResourceMergeReader = unseqResourceMergeReader;
-    this.batchDataSize = batchDataSize;
+    this.batchDataSize = DEFAULT_BATCH_DATA_SIZE;
   }
+
 
   @Override
   public boolean hasNextBatch() throws IOException {
-
     return hasNextInSeq() || hasNextInUnSeq();
   }
 

@@ -218,17 +218,17 @@ public class MergeTaskTest extends MergeTest {
         Collections.singletonList(seqResources.get(0)),
         null, context);
     int count = 0;
-//    while (tsFilesReader.hasNext()) {
-//      BatchData batchData = tsFilesReader.nextBatch();
-//      for (int i = 0; i < batchData.length(); i++) {
-//        if (batchData.getTimeByIndex(i) <= 20) {
-//          assertEquals(batchData.getTimeByIndex(i) + 10000.0, batchData.getDoubleByIndex(i), 0.001);
-//        } else {
-//          assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
-//        }
-//        count ++;
-//      }
-//    }
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        if (batchData.getTimeByIndex(i) <= 20) {
+          assertEquals(batchData.getTimeByIndex(i) + 10000.0, batchData.getDoubleByIndex(i), 0.001);
+        } else {
+          assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+        }
+        count ++;
+      }
+    }
     assertEquals(70, count);
     tsFilesReader.close();
   }

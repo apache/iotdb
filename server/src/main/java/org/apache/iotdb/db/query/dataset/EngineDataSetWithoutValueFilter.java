@@ -29,11 +29,8 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.TreeSet;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -49,7 +46,7 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
 
   private BatchData[] cachedBatchDataArray;
 
-  private static final int flag = 0x01;
+  private static final int FLAG = 0x01;
 
   /**
    * constructor of EngineDataSetWithoutValueFilter.
@@ -113,31 +110,38 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
       timeBAOS.write(BytesUtils.longToBytes(minTime));
 
       for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-        if (!cachedBatchDataArray[seriesIndex].hasCurrent() || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
+        if (!cachedBatchDataArray[seriesIndex].hasCurrent()
+            || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
           // current batch is empty or does not have value at minTime
           currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1);
         } else {
           // current batch has value at minTime, consume current value
-          currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1) | flag;
+          currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1) | FLAG;
           TSDataType type = cachedBatchDataArray[seriesIndex].getDataType();
           switch (type) {
             case INT32:
-              ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getInt(), valueBAOSList[seriesIndex]);
+              ReadWriteIOUtils
+                  .write(cachedBatchDataArray[seriesIndex].getInt(), valueBAOSList[seriesIndex]);
               break;
             case INT64:
-              ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getLong(), valueBAOSList[seriesIndex]);
+              ReadWriteIOUtils
+                  .write(cachedBatchDataArray[seriesIndex].getLong(), valueBAOSList[seriesIndex]);
               break;
             case FLOAT:
-              ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getFloat(), valueBAOSList[seriesIndex]);
+              ReadWriteIOUtils
+                  .write(cachedBatchDataArray[seriesIndex].getFloat(), valueBAOSList[seriesIndex]);
               break;
             case DOUBLE:
-              ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getDouble(), valueBAOSList[seriesIndex]);
+              ReadWriteIOUtils
+                  .write(cachedBatchDataArray[seriesIndex].getDouble(), valueBAOSList[seriesIndex]);
               break;
             case BOOLEAN:
-              ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getBoolean(), valueBAOSList[seriesIndex]);
+              ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getBoolean(),
+                  valueBAOSList[seriesIndex]);
               break;
             case TEXT:
-              ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getBinary(), valueBAOSList[seriesIndex]);
+              ReadWriteIOUtils
+                  .write(cachedBatchDataArray[seriesIndex].getBinary(), valueBAOSList[seriesIndex]);
               break;
             default:
               throw new UnSupportedDataTypeException(

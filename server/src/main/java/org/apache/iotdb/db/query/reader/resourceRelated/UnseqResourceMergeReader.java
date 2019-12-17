@@ -33,7 +33,9 @@ import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.Element;
 import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -54,55 +56,68 @@ public class UnseqResourceMergeReader implements IBatchReader {
   private Filter timeFilter;
   private int index = 0; // used to index current metadata in metaDataList
 
+  private static final int DEFAULT_BATCH_DATA_SIZE = 10000;
+
+  private long nextChunkStartTime = Long.MAX_VALUE;
+  private BatchData batchData;
+  private TSDataType dataType;
+
   /**
    * prepare metaDataList
    */
-  public UnseqResourceMergeReader(Path seriesPath, List<TsFileResource> unseqResources,
-      QueryContext context, Filter filter) throws IOException {
+  public UnseqResourceMergeReader(Path seriesPath, TSDataType dataType,
+      List<TsFileResource> unseqResources, QueryContext context, Filter filter) throws IOException {
 
+    this.dataType = dataType;
     this.timeFilter = filter;
     int priority = 1;
 
     // get all ChunkMetadata
     for (TsFileResource tsFileResource : unseqResources) {
-      List<ChunkMetaData> tsFileMetaDataList;
-      if (tsFileResource.isClosed()) {
+
+      // if unseq tsfile is closed or has flushed chunk groups, then endtime map is not empty
+      if (!tsFileResource.getEndTimeMap().isEmpty()) {
         if (!ResourceRelatedUtil.isTsFileSatisfied(tsFileResource, timeFilter, seriesPath)) {
           continue;
         }
+      }
 
-        tsFileMetaDataList = DeviceMetaDataCache.getInstance().get(tsFileResource, seriesPath);
+      /*
+       * handle disk chunks of closed or unclosed file
+       */
+      List<ChunkMetaData> currentChunkMetaDataList;
+      if (tsFileResource.isClosed()) {
+        // get chunk metadata list of current closed tsfile
+        currentChunkMetaDataList = DeviceMetaDataCache.getInstance().get(tsFileResource, seriesPath);
         List<Modification> pathModifications = context
             .getPathModifications(tsFileResource.getModFile(), seriesPath.getFullPath());
         if (!pathModifications.isEmpty()) {
-          QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
+          QueryUtils.modifyChunkMetaData(currentChunkMetaDataList, pathModifications);
         }
       } else {
-        if (tsFileResource.getEndTimeMap().size() != 0) {
-          if (!ResourceRelatedUtil.isTsFileSatisfied(tsFileResource, timeFilter, seriesPath)) {
-            continue;
-          }
-        }
-        tsFileMetaDataList = tsFileResource.getChunkMetaDataList();
+        // metadata list of already flushed chunk groups
+        currentChunkMetaDataList = tsFileResource.getChunkMetaDataList();
       }
 
-      if (!tsFileMetaDataList.isEmpty()) {
+      if (!currentChunkMetaDataList.isEmpty()) {
         TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
             .get(tsFileResource, tsFileResource.isClosed());
         ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileReader);
 
-        for (ChunkMetaData chunkMetaData : tsFileMetaDataList) {
+        for (ChunkMetaData chunkMetaData : currentChunkMetaDataList) {
           if (timeFilter != null && !timeFilter.satisfy(chunkMetaData.getStatistics())) {
-            tsFileMetaDataList.remove(chunkMetaData);
+            currentChunkMetaDataList.remove(chunkMetaData);
             continue;
           }
           chunkMetaData.setPriority(priority++);
           chunkMetaData.setChunkLoader(chunkLoader);
         }
-        metaDataList.addAll(tsFileMetaDataList);
+        metaDataList.addAll(currentChunkMetaDataList);
       }
 
-      // create and add MemChunkReader
+      /*
+       * handle mem chunks of unclosed file
+       */
       if (!tsFileResource.isClosed()) {
         ChunkReaderWrap memChunkReaderWrap = new ChunkReaderWrap(
             tsFileResource.getReadOnlyMemChunk(), timeFilter);
@@ -113,55 +128,59 @@ public class UnseqResourceMergeReader implements IBatchReader {
     // sort All ChunkMetadata by start time
     metaDataList = metaDataList.stream().sorted(Comparator.comparing(ChunkMetaData::getStartTime))
         .collect(Collectors.toList());
+
+    // put the first chunk reader into PriorityMergeReader
+    if (index < metaDataList.size()) {
+      ChunkMetaData metaData = metaDataList.get(index++);
+      ChunkReaderWrap diskChunkReader = new ChunkReaderWrap(metaData, metaData.getChunkLoader(), timeFilter);
+      priorityMergeReader.addReaderWithPriority(diskChunkReader.getIPointReader(), metaData.getPriority());
+    }
+
+    // init next chunk start time
+    if (index < metaDataList.size()) {
+      nextChunkStartTime = metaDataList.get(index).getStartTime();
+    }
   }
+
 
   /**
    * Create a ChunkReader with priority for each ChunkMetadata and put the ChunkReader to
    * mergeReader one by one
    */
-  @Override
-  public boolean hasNextBatch() throws IOException {
-    ChunkMetaData metaData;
-    ChunkReaderWrap diskChunkReaderWrap;
-    if (priorityMergeReader.hasNext()) {
-      // create and add DiskChunkReader
-      while (index < metaDataList.size()) {
-        metaData = metaDataList.get(index);
-        if (priorityMergeReader.current().getTime() < metaData.getStartTime()) {
-          break;
+  @Override public boolean hasNextBatch() throws IOException {
+    batchData = new BatchData(dataType, true);
+
+    for (int rowCount = 0; rowCount < DEFAULT_BATCH_DATA_SIZE; rowCount++) {
+      if (priorityMergeReader.hasNext()) {
+
+        if (priorityMergeReader.current().getTimestamp() >= nextChunkStartTime && index < metaDataList.size()) {
+
+          // add next chunk into priority merge reader
+          ChunkMetaData metaData = metaDataList.get(index++);
+          ChunkReaderWrap diskChunkReader = new ChunkReaderWrap(metaData, metaData.getChunkLoader(), timeFilter);
+          priorityMergeReader.addReaderWithPriority(diskChunkReader.getIPointReader(), metaData.getPriority());
+
+          // update next chunk start time
+          if (index < metaDataList.size()) {
+            nextChunkStartTime = metaDataList.get(index).getStartTime();
+          } else {
+            nextChunkStartTime = Long.MAX_VALUE;
+          }
         }
-        diskChunkReaderWrap = new ChunkReaderWrap(metaData, metaData.getChunkLoader(), timeFilter);
-        priorityMergeReader
-            .addReaderWithPriority(diskChunkReaderWrap.getIPointReader(), metaData.getPriority());
-        index++;
+
+        TimeValuePair timeValuePair = priorityMergeReader.next();
+        batchData.putTime(timeValuePair.getTimestamp());
+        batchData.putAnObject(timeValuePair.getValue().getValue());
+
+      } else {
+        break;
       }
-      return true;
     }
-
-    if (index >= metaDataList.size()) {
-      return false;
-    }
-    metaData = metaDataList.get(index++);
-    diskChunkReaderWrap = new ChunkReaderWrap(metaData, metaData.getChunkLoader(), timeFilter);
-    priorityMergeReader
-        .addReaderWithPriority(diskChunkReaderWrap.getIPointReader(), metaData.getPriority());
-
-    return hasNextBatch();
+    return !batchData.isEmpty();
   }
 
   @Override
   public BatchData nextBatch() throws IOException {
-    BatchData batchData = new BatchData(priorityMergeReader.current().getValue().getDataType(),
-        true);
-    for (int i = 0; i < 4096; i++) {
-      Element e = priorityMergeReader.next();
-      batchData.putTime(e.getTime());
-      batchData.putAnObject(e.getValue().getValue());
-      if (!hasNextBatch()) {
-        break;
-      }
-    }
-
     return batchData;
   }
 

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -49,9 +50,9 @@ public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter 
   private boolean hasCachedValue;
   private TimeValuePair timeValuePair;
 
-  public SeriesReaderWithValueFilter(Path seriesPath, Filter filter, QueryContext context)
+  public SeriesReaderWithValueFilter(Path seriesPath, TSDataType dataType, Filter filter, QueryContext context)
       throws StorageEngineException, IOException {
-    super(seriesPath, filter, context, false);
+    super(seriesPath, dataType, filter, context, false);
     this.filter = filter;
   }
 
@@ -59,7 +60,7 @@ public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter 
    * for test
    */
   SeriesReaderWithValueFilter(IBatchReader seqResourceIterateReader,
-      IBatchReader unseqResourceMergeReader, Filter filter) {
+      IBatchReader unseqResourceMergeReader, Filter filter) throws IOException {
     super(seqResourceIterateReader, unseqResourceMergeReader);
     this.filter = filter;
   }

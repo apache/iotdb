@@ -29,10 +29,10 @@ import org.apache.iotdb.db.utils.TsPrimitiveType;
  * This class is for data sources with different priorities. It used to implement {@link
  * IPointReader}, but now, instead of returning TimeValuePair, it returns Element directly
  */
-public class PriorityMergeReader {
+public class PriorityMergeReader implements IPointReader{
 
   PriorityQueue<Element> heap = new PriorityQueue<>((o1, o2) -> {
-    int timeCompare = Long.compare(o1.time, o2.time);
+    int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(), o2.timeValuePair.getTimestamp());
     return timeCompare != 0 ? timeCompare : Integer.compare(o2.priority, o1.priority);
   });
 
@@ -49,8 +49,7 @@ public class PriorityMergeReader {
   public void addReaderWithPriority(IPointReader reader, int priority) throws IOException {
     if (reader.hasNext()) {
       TimeValuePair pair = reader.next();
-      heap.add(
-          new Element(reader, pair.getTimestamp(), pair.getValue(), priority));
+      heap.add(new Element(reader, pair.getTimestamp(), pair.getValue(), priority));
     } else {
       reader.close();
     }
@@ -60,27 +59,25 @@ public class PriorityMergeReader {
     return !heap.isEmpty();
   }
 
-  public Element next() throws IOException {
+  public TimeValuePair next() throws IOException {
     Element top = heap.poll();
-    long ret = top.time;
-    long topNextTime = Long.MAX_VALUE;
-    TsPrimitiveType topNextValue = null;
+    TimeValuePair ret = top.timeValuePair;
+    TimeValuePair topNext = null;
     if (top.hasNext()) {
       top.next();
-      topNextTime = top.currTime();
-      topNextValue = top.currValue();
+      topNext = top.currPair();
     }
-    updateHeap(ret, topNextTime);
-    if (topNextValue != null) {
-      top.time = topNextTime;
-      top.value = topNextValue;
+    long topNextTime = topNext == null ? Long.MAX_VALUE : topNext.getTimestamp();
+    updateHeap(ret.getTimestamp(), topNextTime);
+    if (topNext != null) {
+      top.timeValuePair = topNext;
       heap.add(top);
     }
-    return top;
+    return ret;
   }
 
-  public Element current() throws IOException {
-    return heap.peek();
+  public TimeValuePair current() throws IOException {
+    return heap.peek().timeValuePair;
   }
 
   private void updateHeap(long topTime, long topNextTime) throws IOException {
@@ -120,31 +117,28 @@ public class PriorityMergeReader {
   public static class Element {
 
     IPointReader reader;
-    long time;
-    TsPrimitiveType value;
+    TimeValuePair timeValuePair;
     int priority;
 
     /**
      * This constructor is only used in "TimeValuePairUtils" to get empty Element
      */
     public Element(long time, TsPrimitiveType value) {
-      this.time = time;
-      this.value = value;
+      this.timeValuePair = new TimeValuePair(time, value);
     }
 
     Element(IPointReader reader, long time, TsPrimitiveType value, int priority) {
       this.reader = reader;
-      this.time = time;
-      this.value = value;
+      this.timeValuePair = new TimeValuePair(time, value);
       this.priority = priority;
     }
 
     long currTime() {
-      return time;
+      return timeValuePair.getTimestamp();
     }
 
-    TsPrimitiveType currValue() {
-      return value;
+    TimeValuePair currPair() {
+      return timeValuePair;
     }
 
     boolean hasNext() throws IOException {
@@ -152,29 +146,12 @@ public class PriorityMergeReader {
     }
 
     void next() throws IOException {
-      TimeValuePair timeValuePair = reader.next();
-      time = timeValuePair.getTimestamp();
-      value = timeValuePair.getValue();
+      timeValuePair = reader.next();
     }
 
     void close() throws IOException {
       reader.close();
     }
 
-    public long getTime() {
-      return time;
-    }
-
-    public TsPrimitiveType getValue() {
-      return value;
-    }
-
-    public void setTime(long time) {
-      this.time = time;
-    }
-
-    public void setValue(TsPrimitiveType value) {
-      this.value = value;
-    }
   }
 }

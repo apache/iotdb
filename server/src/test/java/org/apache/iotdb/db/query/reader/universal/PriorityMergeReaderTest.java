@@ -20,10 +20,7 @@
 package org.apache.iotdb.db.query.reader.universal;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.Element;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -60,9 +57,9 @@ public class PriorityMergeReaderTest {
 
     int i = 0;
     while (priorityMergeReader.hasNext()) {
-      Element e = priorityMergeReader.next();
-      Assert.assertEquals(retTimestamp[i], e.getTime());
-      Assert.assertEquals(retValue[i], e.getValue());
+      TimeValuePair e = priorityMergeReader.next();
+      Assert.assertEquals(retTimestamp[i], e.getTimestamp());
+      Assert.assertEquals(retValue[i], e.getValue().getValue());
       i++;
     }
   }

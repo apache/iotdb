@@ -65,14 +65,16 @@ public class EngineExecutor {
     List<IBatchReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Path path : queryExpression.getSelectedSeries()) {
+      TSDataType dataType;
       try {
         // add data type
-        dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
+        dataType = MManager.getInstance().getSeriesType(path.getFullPath());
+        dataTypes.add(dataType);
       } catch (PathException e) {
         throw new StorageEngineException(e);
       }
 
-      IBatchReader reader = new SeriesReaderWithoutValueFilter(path, timeFilter, context, true);
+      IBatchReader reader = new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context, true);
       readersOfSelectedSeries.add(reader);
     }
 

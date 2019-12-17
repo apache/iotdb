@@ -55,7 +55,7 @@ public abstract class IFill {
   void constructReaders(Path path, QueryContext context, long beforeRange)
       throws IOException, StorageEngineException {
     Filter timeFilter = constructFilter(beforeRange);
-    allDataReader = new SeriesReaderWithoutValueFilter(path, timeFilter, context, true);
+    allDataReader = new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context, true);
   }
 
   public abstract IPointReader getFillResult() throws IOException, UnSupportedFillTypeException;

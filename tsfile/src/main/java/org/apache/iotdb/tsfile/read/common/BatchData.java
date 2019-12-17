@@ -51,7 +51,7 @@ public class BatchData implements Serializable {
   /**
    * the insert timestamp number of timeRet
    **/
-  private int timeLength;
+  private int count;
 
   /**
    * the number of ArrayList in valueRet
@@ -97,12 +97,16 @@ public class BatchData implements Serializable {
     init(type, recordTime, hasEmptyTime);
   }
 
+  public boolean isEmpty() {
+    return count == 0;
+  }
+
   public boolean hasCurrent() {
-    return curIdx < timeLength;
+    return curIdx < count;
   }
 
   public boolean hasNext() {
-    return curIdx < timeLength - 1;
+    return curIdx < count - 1;
   }
 
   public void next() {
@@ -162,7 +166,7 @@ public class BatchData implements Serializable {
       timeRet.add(new long[timeCapacity]);
       timeArrayIdx = 0;
       curTimeIdx = 0;
-      timeLength = 0;
+      count = 0;
     }
 
     if (hasEmptyTime) {
@@ -219,7 +223,7 @@ public class BatchData implements Serializable {
       }
     }
     (timeRet.get(timeArrayIdx))[curTimeIdx++] = v;
-    timeLength++;
+    count++;
   }
 
   /**
@@ -386,9 +390,9 @@ public class BatchData implements Serializable {
     if (idx < 0) {
       throw new IndexOutOfBoundsException("BatchData time range check, Index is negative: " + idx);
     }
-    if (idx >= timeLength) {
+    if (idx >= count) {
       throw new IndexOutOfBoundsException(
-          "BatchData time range check, Index : " + idx + ". Length : " + timeLength);
+          "BatchData time range check, Index : " + idx + ". Length : " + count);
     }
   }
 
@@ -474,8 +478,8 @@ public class BatchData implements Serializable {
    * @return time array
    */
   public long[] getTimeAsArray() {
-    long[] res = new long[timeLength];
-    for (int i = 0; i < timeLength; i++) {
+    long[] res = new long[count];
+    for (int i = 0; i < count; i++) {
       res[i] = timeRet.get(i / timeCapacity)[i % timeCapacity];
     }
     return res;
@@ -543,7 +547,7 @@ public class BatchData implements Serializable {
   }
 
   public int length() {
-    return this.timeLength;
+    return this.count;
   }
 
   public int getCurIdx() {

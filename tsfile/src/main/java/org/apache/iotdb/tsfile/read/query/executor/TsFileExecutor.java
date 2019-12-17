@@ -162,11 +162,11 @@ public class TsFileExecutor implements QueryExecutor {
 
   /**
    * @param selectedPathList completed path
-   * @param timeFilter a GlobalTimeExpression or null
+   * @param timeExpression a GlobalTimeExpression or null
    * @return DataSetWithoutTimeGenerator
    */
   private QueryDataSet executeMayAttachTimeFiler(List<Path> selectedPathList,
-      GlobalTimeExpression timeFilter) throws IOException, NoMeasurementException {
+      GlobalTimeExpression timeExpression) throws IOException, NoMeasurementException {
     List<AbstractFileSeriesReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
@@ -177,7 +177,11 @@ public class TsFileExecutor implements QueryExecutor {
         seriesReader = new EmptyFileSeriesReader();
         dataTypes.add(metadataQuerier.getDataType(path.getMeasurement()));
       } else {
-        seriesReader = new FileSeriesReader(chunkLoader, chunkMetaDataList, timeFilter.getFilter());
+        if (timeExpression == null) {
+          seriesReader = new FileSeriesReader(chunkLoader, chunkMetaDataList, null);
+        } else {
+          seriesReader = new FileSeriesReader(chunkLoader, chunkMetaDataList, timeExpression.getFilter());
+        }
         dataTypes.add(chunkMetaDataList.get(0).getDataType());
       }
       readersOfSelectedSeries.add(seriesReader);

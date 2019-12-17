@@ -33,6 +33,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.Element;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -172,8 +173,8 @@ public class UnseqTsFileRecoverTest {
     }
 
     for (int i = 0; i < 10; i++) {
-      Element e = unSeqMergeReader.current();
-      assertEquals(i, e.getTime());
+      TimeValuePair e = unSeqMergeReader.current();
+      assertEquals(i, e.getTimestamp());
       assertEquals(11, (long) e.getValue().getValue());
       unSeqMergeReader.next();
     }

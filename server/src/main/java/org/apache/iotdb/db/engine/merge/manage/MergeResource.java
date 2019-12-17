@@ -159,7 +159,7 @@ public class MergeResource {
     IPointReader[] ret = new IPointReader[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
       TSDataType dataType = getSchema(paths.get(i).getMeasurement()).getType();
-//      ret[i] = new CachedUnseqResourceMergeReader(pathChunks[i], dataType);
+      ret[i] = new CachedUnseqResourceMergeReader(pathChunks[i], dataType);
     }
     return ret;
   }

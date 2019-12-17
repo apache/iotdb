@@ -21,9 +21,6 @@ package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import java.io.IOException;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class SeriesReaderWithoutValueFilterTest {
@@ -31,7 +28,7 @@ public class SeriesReaderWithoutValueFilterTest {
   private SeriesReaderWithoutValueFilter reader1;
   private SeriesReaderWithoutValueFilter reader2;
 
-  private void init() {
+  private void init() throws IOException {
     IBatchReader batchReader1 = new FakedIBatchPoint(100, 1000, 7, 11);
     IBatchReader pointReader = new FakedIBatchPoint(20, 500, 11, 19);
     reader1 = new SeriesReaderWithoutValueFilter(batchReader1, pointReader);

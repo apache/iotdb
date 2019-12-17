@@ -32,7 +32,7 @@ public class SeriesReaderWithValueFilterTest {
 
   private SeriesReaderWithoutValueFilter reader;
 
-  private void init() {
+  private void init() throws IOException {
     // (100,0),(105,1),(110,0),(115,1),(120,0),...
     IBatchReader batchReader = new FakedIBatchPoint(100, 1000, 5, 2);
     // (100,0),(105,1),(110,2),(115,3),(120,0),...
