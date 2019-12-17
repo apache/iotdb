@@ -52,6 +52,7 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterQueryParser;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
+import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.query.reader.RemoteSeriesReaderByTimestamp;
 import org.apache.iotdb.cluster.query.reader.RemoteSimpleSeriesReader;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
@@ -63,6 +64,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
 import org.apache.iotdb.cluster.server.ClientServer;
@@ -162,6 +164,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     super.start();
 
     queryProcessor = new ClusterQueryParser(this);
+    QueryCoordinator.getINSTANCE().setMetaGroupMember(this);
   }
 
   @Override
@@ -1059,7 +1062,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     request.setPushdownUnseq(pushDownUnseq);
     request.setWithValueFilter(withValueFilter);
 
-    for (Node node : partitionGroup) {
+    List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+    for (Node node : coordinatedNodes) {
       logger.debug("{}: querying {} from {}", name, path, node);
       GenericHandler<Long> handler = new GenericHandler<>(node, result);
       DataClient client = (DataClient) dataClientPool.getClient(node);
@@ -1103,7 +1107,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     } else {
       AtomicReference<List<String>> result = new AtomicReference<>();
 
-      for (Node node : partitionGroup) {
+      List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+      for (Node node : coordinatedNodes) {
         try {
           DataClient client = (DataClient) dataClientPool.getClient(node);
           GenericHandler<List<String>> handler = new GenericHandler<>(node, result);
@@ -1122,5 +1127,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
     }
     return Collections.emptyList();
+  }
+
+  @Override
+  public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
+    resultHandler.onComplete(new TNodeStatus());
   }
 }

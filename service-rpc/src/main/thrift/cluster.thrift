@@ -143,6 +143,11 @@ struct SingleSeriesQueryRequest {
   7: optional bool withValueFilter
 }
 
+// the spec and load of a node, for query coordinating
+struct TNodeStatus {
+
+}
+
 service RaftService {
   /**
   * Leader will call this method to all followers to ensure its authority.
@@ -264,4 +269,6 @@ service TSMetaService extends RaftService {
   * @param node a new node that needs to be added
   **/
   AddNodeResponse addNode(1: Node node)
+
+  TNodeStatus queryNodeStatus()
 }
