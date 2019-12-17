@@ -99,28 +99,28 @@ matrix:
         - wget --no-check-certificate https://www-eu.apache.org/dist/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.zip
         - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.3-bin.zip -o/c/mvn363
         - /C/Progra~1/7-Zip/7z.exe x openjdk-11.0.2_windows-x64_bin.zip -o/c/java
-        - mkdir C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.exe -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.dll -o C:\windows\system32
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.cmd -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.exp -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.lib -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.pdb -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.dll -o C:\windows\system32
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.cmd -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.exp -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.lib -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.pdb -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs_static.lib -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/libwinutils.lib -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/mapred -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/mapred.cmd -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/rcc -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.pdb -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -o C:\hadoop\bin
+        - mkdir C:\\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.exe -o /C/hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.dll -o /C/windows/system32
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop -o /C/hadoop/bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.cmd -o /C/hadoop/bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.exp -o /C/hadoop/bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.lib -o /C/hadoop/bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.pdb -o /C/hadoop/bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.dll -o /C/windows/system32
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs -o /C/hadoop/bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.cmd -o /C/hadoop/bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.exp -o /C/hadoop/bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.lib -o /C/hadoop/bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.pdb -o /C/hadoop/bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs_static.lib -o /C/hadoop/bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/libwinutils.lib -o /C/hadoop/bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/mapred -o /C/hadoop/bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/mapred.cmd -o /C/hadoop/bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/rcc -o /C/hadoop/bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.pdb -o /C/hadoop/bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn -o /C/hadoop/bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -o /C/hadoop/bin
 
       before_script:
         - export "JAVA_HOME=/c/java/jdk-11.0.2"
