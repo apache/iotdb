@@ -52,8 +52,8 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterQueryParser;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
-import org.apache.iotdb.cluster.query.RemoteSeriesReaderByTimestamp;
-import org.apache.iotdb.cluster.query.RemoteSimpleSeriesReader;
+import org.apache.iotdb.cluster.query.reader.RemoteSeriesReaderByTimestamp;
+import org.apache.iotdb.cluster.query.reader.RemoteSimpleSeriesReader;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
@@ -61,7 +61,6 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
-import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
@@ -823,12 +822,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     logManager.setLastLogTerm(snapshot.getLastLogTerm());
     logManager.setLastLogId(snapshot.getLastLogId());
-  }
-
-  @Override
-  public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
-    resultHandler.onError(new UnsupportedOperationException("Cannot pull snapshot from a meta "
-        + "group newMember"));
   }
 
   public TSStatus executeNonQuery(PhysicalPlan plan) {

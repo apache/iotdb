@@ -39,7 +39,7 @@ import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
 import org.apache.iotdb.cluster.log.snapshot.RemoteDataSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.query.ClusterQueryManager;
+import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
 import org.apache.iotdb.cluster.query.ClusterQueryParser;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -417,7 +417,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   private boolean pullRemoteFile(String remotePath, Node node, File dest) {
-    AsyncClient client = connectNode(node);
+    DataClient client = (DataClient) connectNode(node);
     if (client == null) {
       return false;
     }
@@ -464,7 +464,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       // forward the request to the leader
       if (leader != null) {
         logger.debug("{} forwarding a pull snapshot request to the leader {}", name, leader);
-        AsyncClient client = connectNode(leader);
+        DataClient client = (DataClient) connectNode(leader);
         try {
           client.pullSnapshot(request, new ForwardPullSnapshotHandler(resultHandler));
         } catch (TException e) {

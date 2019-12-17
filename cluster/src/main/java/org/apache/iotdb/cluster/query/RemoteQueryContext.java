@@ -33,7 +33,7 @@ public class RemoteQueryContext extends QueryContext {
     localReaderIds.add(readerId);
   }
 
-  Set<Long> getLocalReaderIds() {
+  public Set<Long> getLocalReaderIds() {
     return localReaderIds;
   }
 

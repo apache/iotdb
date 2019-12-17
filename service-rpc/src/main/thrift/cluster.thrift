@@ -189,8 +189,6 @@ service RaftService {
 
   void sendSnapshot(1:SendSnapshotRequest request)
 
-  PullSnapshotResp pullSnapshot(1:PullSnapshotRequest request)
-
   /**
   * Execute a binarized non-query PhysicalPlan
   **/
@@ -252,6 +250,8 @@ service TSDataService extends RaftService {
   * Given a path pattern (path with wildcard), return all paths it matches.
   **/
   list<string> getAllPaths(1:Node header, 2:string path)
+
+  PullSnapshotResp pullSnapshot(1:PullSnapshotRequest request)
 }
 
 service TSMetaService extends RaftService {

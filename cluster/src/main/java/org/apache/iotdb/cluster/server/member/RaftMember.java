@@ -211,7 +211,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return true;
   }
 
-  long appendEntry(Log log) throws QueryProcessException {
+  private long appendEntry(Log log) {
     long resp;
     synchronized (logManager) {
       Log lastLog = logManager.getLastLog();
@@ -260,7 +260,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     try {
       Log log = LogParser.getINSTANCE().parse(request.entry);
       resultHandler.onComplete(appendEntry(log));
-    } catch (UnknownLogTypeException | QueryProcessException e) {
+    } catch (UnknownLogTypeException e) {
       resultHandler.onError(e);
     }
   }
