@@ -24,6 +24,7 @@ import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
 import java.io.IOException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithValueFilter;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -52,7 +53,7 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
       try {
         Filter filter = ((SingleSeriesExpression) expression).getFilter();
         Path path = ((SingleSeriesExpression) expression).getSeriesPath();
-        return new EngineLeafNode(new SeriesReaderWithValueFilter(path, filter, context));
+        return new EngineLeafNode(getSeriesReader(path, filter, context));
       } catch (IOException e) {
         throw new StorageEngineException(e.getMessage());
       }
@@ -60,5 +61,10 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
     } else {
       return constructNotSeriesNode(expression, context);
     }
+  }
+
+  protected IPointReader getSeriesReader(Path path, Filter filter, QueryContext context)
+      throws IOException, StorageEngineException {
+    return new SeriesReaderWithValueFilter(path, filter, context);
   }
 }

@@ -52,6 +52,7 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterQueryParser;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
+import org.apache.iotdb.cluster.query.RemoteSeriesReaderByTimestamp;
 import org.apache.iotdb.cluster.query.RemoteSimpleSeriesReader;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -89,6 +90,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -961,17 +963,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
   }
 
-  public IPointReader getSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
-      QueryContext context, boolean pushDownUnseq)
+  public IReaderByTimestamp getReaderByTimestamp(Path path, QueryContext context)
       throws IOException, StorageEngineException {
     // make sure the partition table is new
     syncLeader();
-    String storageGroup;
     PartitionGroup partitionGroup;
     try {
-      storageGroup = MManager.getInstance().getStorageGroupNameByPath(path.getFullPath());
       // TODO-Cluster#350: use time in partitioning
-      partitionGroup = PartitionUtils.partitionByPathTime(storageGroup, 0,
+      partitionGroup = PartitionUtils.partitionByPathTime(path.getFullPath(), 0,
           partitionTable);
     } catch (StorageGroupNotSetException e) {
       throw new StorageEngineException(e);
@@ -979,44 +978,114 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
     if (partitionGroup.contains(thisNode)) {
       // the target storage group contains this node, perform a local query
-      return dataClusterServer.getDataMember(partitionGroup.getHeader(), null, String.format(
-          "Query: %s, time filter: %s", partitionGroup, timeFilter))
-          .getSeriesReaderWithoutValueFilter(path, timeFilter, context, true);
+      DataGroupMember dataGroupMember = dataClusterServer.getDataMember(partitionGroup.getHeader(),
+          null, String.format("Query: %s by time, queryId: %d", path, context.getQueryId()));
+      return dataGroupMember.getReaderByTimestamp(path, context);
     } else {
-      // query a remote node
-      AtomicReference<Long> result = new AtomicReference<>();
-      SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
-      if (timeFilter != null) {
-        request.setFilterBytes(SerializeUtils.serializeFilter(timeFilter));
-      }
-      request.setPath(path.getFullPath());
-      request.setHeader(partitionGroup.getHeader());
-      request.setQueryId(context.getQueryId());
-      request.setRequester(thisNode);
-      request.setPushdownUnseq(pushDownUnseq);
+      return getRemoteReaderByTimestamp(path, partitionGroup, context);
+    }
+  }
 
-      for (Node node : partitionGroup) {
-        logger.debug("{}: querying {} from {}", name, path, node);
-        GenericHandler<Long> handler = new GenericHandler<>(node, result);
-        DataClient client = (DataClient) dataClientPool.getClient(node);
-        try {
-          synchronized (result) {
-            result.set(null);
-            client.querySingleSeries(request, handler);
-            result.wait(CONNECTION_TIME_OUT_MS);
-          }
-          Long readerId = result.get();
-          if (readerId != null) {
-            ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
-            logger.debug("{}: get a readerId {} for {} from {}", name, readerId, path, node);
-            return new RemoteSimpleSeriesReader(readerId, node, partitionGroup.getHeader(), this);
-          }
-        } catch (TException | InterruptedException e) {
-          logger.error("{}: Cannot query {} from {}", name, path, node, e);
+  private IReaderByTimestamp getRemoteReaderByTimestamp(
+      Path path, PartitionGroup partitionGroup,
+      QueryContext context) throws StorageEngineException, IOException {
+    // query a remote node
+    AtomicReference<Long> result = new AtomicReference<>();
+    SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
+    request.setPath(path.getFullPath());
+    request.setHeader(partitionGroup.getHeader());
+    request.setQueryId(context.getQueryId());
+    request.setRequester(thisNode);
+
+    for (Node node : partitionGroup) {
+      logger.debug("{}: querying {} from {}", name, path, node);
+      GenericHandler<Long> handler = new GenericHandler<>(node, result);
+      DataClient client = (DataClient) dataClientPool.getClient(node);
+      try {
+        synchronized (result) {
+          result.set(null);
+          client.querySingleSeriesByTimestamp(request, handler);
+          result.wait(CONNECTION_TIME_OUT_MS);
         }
+        Long readerId = result.get();
+        if (readerId != null) {
+          ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
+          logger.debug("{}: get a readerId {} for {} from {}", name, readerId, path, node);
+          return new RemoteSeriesReaderByTimestamp(readerId, node, partitionGroup.getHeader(), this);
+        }
+      } catch (TException | InterruptedException e) {
+        logger.error("{}: Cannot query {} from {}", name, path, node, e);
       }
     }
+    throw new StorageEngineException(new RequestTimeOutException("Query " + path + " in " + partitionGroup));
+  }
 
+  public IPointReader getSeriesReader(Path path, Filter filter,
+      QueryContext context, boolean pushDownUnseq, boolean withValueFilter)
+      throws IOException, StorageEngineException {
+    // make sure the partition table is new
+    syncLeader();
+    PartitionGroup partitionGroup;
+    try {
+      // TODO-Cluster#350: use time in partitioning
+      partitionGroup = PartitionUtils.partitionByPathTime(path.getFullPath(), 0,
+          partitionTable);
+    } catch (StorageGroupNotSetException e) {
+      throw new StorageEngineException(e);
+    }
+
+    if (partitionGroup.contains(thisNode)) {
+      // the target storage group contains this node, perform a local query
+      DataGroupMember dataGroupMember = dataClusterServer.getDataMember(partitionGroup.getHeader(),
+          null, String.format("Query: %s, time filter: %s, queryId: %d", path, filter,
+              context.getQueryId()));
+      if (withValueFilter) {
+        return dataGroupMember.getSeriesReaderWithValueFilter(path, filter, context);
+      } else {
+        return dataGroupMember.getSeriesReaderWithoutValueFilter(path, filter, context, true);
+      }
+    } else {
+      return getRemoteSeriesReader(filter, path, partitionGroup, context,
+          pushDownUnseq, withValueFilter);
+    }
+  }
+
+  private IPointReader getRemoteSeriesReader(Filter filter, Path path, PartitionGroup partitionGroup,
+      QueryContext context, boolean pushDownUnseq, boolean withValueFilter)
+      throws IOException, StorageEngineException {
+    // query a remote node
+    AtomicReference<Long> result = new AtomicReference<>();
+    SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
+    if (filter != null) {
+      request.setFilterBytes(SerializeUtils.serializeFilter(filter));
+    }
+    request.setPath(path.getFullPath());
+    request.setHeader(partitionGroup.getHeader());
+    request.setQueryId(context.getQueryId());
+    request.setRequester(thisNode);
+    request.setPushdownUnseq(pushDownUnseq);
+    request.setWithValueFilter(withValueFilter);
+
+    for (Node node : partitionGroup) {
+      logger.debug("{}: querying {} from {}", name, path, node);
+      GenericHandler<Long> handler = new GenericHandler<>(node, result);
+      DataClient client = (DataClient) dataClientPool.getClient(node);
+      try {
+        synchronized (result) {
+          result.set(null);
+          client.querySingleSeries(request, handler);
+          result.wait(CONNECTION_TIME_OUT_MS);
+        }
+        Long readerId = result.get();
+        if (readerId != null) {
+          ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
+          logger.debug("{}: get a readerId {} for {} from {}", name, readerId, path, node);
+          return new RemoteSimpleSeriesReader(readerId, node, partitionGroup.getHeader(), this);
+        }
+      } catch (TException | InterruptedException e) {
+        logger.error("{}: Cannot query {} from {}", name, path, node, e);
+      }
+    }
     throw new StorageEngineException(new RequestTimeOutException("Query " + path + " in " + partitionGroup));
   }
 

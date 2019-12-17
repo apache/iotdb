@@ -70,6 +70,9 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithValueFilter;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -617,6 +620,26 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
+  IPointReader getSeriesReaderWithValueFilter(Path path, Filter timeFilter,
+      QueryContext context)
+      throws IOException, StorageEngineException {
+    // pull the newest data
+    if (syncLeader()) {
+      return new SeriesReaderWithValueFilter(path, timeFilter, context);
+    } else {
+      throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
+    }
+  }
+
+  IReaderByTimestamp getReaderByTimestamp(Path path, QueryContext context)
+      throws StorageEngineException, IOException {
+    if (syncLeader()) {
+      return new SeriesReaderByTimestamp(path, context);
+    } else {
+      throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
+    }
+  }
+
   @Override
   public void querySingleSeries(SingleSeriesQueryRequest request,
       AsyncMethodCallback<Long> resultHandler) {
@@ -638,12 +661,46 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
     try {
-      IPointReader pointReader = getSeriesReaderWithoutValueFilter(path, timeFilter, queryContext,
-          request.isPushdownUnseq());
+      IPointReader pointReader;
+      if (request.isWithValueFilter()) {
+        pointReader = getSeriesReaderWithValueFilter(path, timeFilter, queryContext);
+      } else {
+        pointReader = getSeriesReaderWithoutValueFilter(path, timeFilter, queryContext,
+            request.isPushdownUnseq());
+      }
+
       long readerId = queryManager.registerReader(pointReader);
       queryContext.registerLocalReader(readerId);
 
       logger.debug("{}: Build a reader of {} for {}, readerId: {}", name, path,
+          request.getRequester(), readerId);
+      resultHandler.onComplete(readerId);
+    } catch (IOException | StorageEngineException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request,
+      AsyncMethodCallback<Long> resultHandler) {
+    logger.debug("{}: {} is querying {} by timestamp, queryId: {}", name, request.getRequester(),
+        request.getPath(), request.getQueryId());
+    if (!syncLeader()) {
+      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+      return;
+    }
+
+    Path path = new Path(request.getPath());
+    RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequester(),
+        request.getQueryId());
+    logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
+        request.getPath(), queryContext.getQueryId());
+    try {
+      IReaderByTimestamp readerByTimestamp = getReaderByTimestamp(path, queryContext);
+      long readerId = queryManager.registerReaderByTime(readerByTimestamp);
+      queryContext.registerLocalReader(readerId);
+
+      logger.debug("{}: Build a readerByTimestamp of {} for {}, readerId: {}", name, path,
           request.getRequester(), readerId);
       resultHandler.onComplete(readerId);
     } catch (IOException | StorageEngineException e) {
@@ -658,6 +715,30 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       queryManager.endQuery(requester, queryId);
       resultHandler.onComplete(null);
     } catch (StorageEngineException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    IReaderByTimestamp reader = queryManager.getReaderByTimestamp(readerId);
+    if (reader == null) {
+      resultHandler.onError(new ReaderNotFoundException(readerId));
+      return;
+    }
+    try {
+      Object value = reader.getValueInTimestamp(timestamp);
+      if (value != null) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
+        SerializeUtils.serializeObject(value, dataOutputStream);
+        resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+      } else {
+        resultHandler.onComplete(ByteBuffer.allocate(0));
+      }
+    } catch (IOException e) {
       resultHandler.onError(e);
     }
   }

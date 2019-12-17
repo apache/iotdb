@@ -21,8 +21,8 @@ package org.apache.iotdb.db.query.executor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
@@ -34,6 +34,7 @@ import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFi
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -53,6 +54,11 @@ public class EngineExecutor implements DataQueryExecutor {
   protected IPointReader getSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
       QueryContext context, boolean pushdownUnseq) throws IOException, StorageEngineException {
     return new SeriesReaderWithoutValueFilter(path, timeFilter, context, true);
+  }
+
+  protected IReaderByTimestamp getReaderByTimestamp(Path path, QueryContext context)
+      throws IOException, StorageEngineException {
+    return new SeriesReaderByTimestamp(path, context);
   }
 
 
@@ -104,20 +110,19 @@ public class EngineExecutor implements DataQueryExecutor {
   @Override
   public QueryDataSet executeWithValueFilter(QueryContext context) throws StorageEngineException, IOException {
 
-    EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(
-        queryExpression.getExpression(), context);
+    EngineTimeGenerator timestampGenerator = getTimeGenerator(queryExpression.getExpression(), context) ;
 
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Path path : queryExpression.getSelectedSeries()) {
       try {
         // add data type
-        dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
+        dataTypes.add(getDataType(path.getFullPath()));
       } catch (MetadataException e) {
         throw new StorageEngineException(e);
       }
 
-      SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path, context);
+      IReaderByTimestamp seriesReaderByTimestamp = getReaderByTimestamp(path, context);
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
     return new EngineDataSetWithValueFilter(queryExpression.getSelectedSeries(), dataTypes,
@@ -125,4 +130,8 @@ public class EngineExecutor implements DataQueryExecutor {
         readersOfSelectedSeries);
   }
 
+  protected EngineTimeGenerator getTimeGenerator(IExpression expression,
+      QueryContext context) throws StorageEngineException {
+    return new EngineTimeGenerator(expression, context);
+  }
 }

@@ -60,6 +60,7 @@ public class ClientMain {
     long statementId = client.requestStatementId(sessionId);
     executeQuery(client, sessionId,"SELECT * FROM root", statementId);
     executeQuery(client, sessionId, "SELECT * FROM root WHERE time <= 432000000", statementId);
+    executeQuery(client, sessionId, "SELECT * FROM root.*.* WHERE s1 <= 0.5", statementId);
 
     TSCloseOperationReq tsCloseOperationReq = new TSCloseOperationReq(sessionId);
     tsCloseOperationReq.setStatementId(statementId);

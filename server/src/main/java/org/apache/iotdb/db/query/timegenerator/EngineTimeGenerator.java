@@ -32,8 +32,12 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
  */
 public class EngineTimeGenerator implements TimeGenerator {
 
-  private IExpression expression;
-  private Node operatorNode;
+  protected IExpression expression;
+  protected Node operatorNode;
+
+  public EngineTimeGenerator(IExpression expression) {
+    this.expression = expression;
+  }
 
   /**
    * Constructor of EngineTimeGenerator.
@@ -44,7 +48,7 @@ public class EngineTimeGenerator implements TimeGenerator {
     initNode(context);
   }
 
-  private void initNode(QueryContext context) throws StorageEngineException {
+  protected void initNode(QueryContext context) throws StorageEngineException {
     EngineNodeConstructor engineNodeConstructor = new EngineNodeConstructor();
     this.operatorNode = engineNodeConstructor.construct(expression, context);
   }

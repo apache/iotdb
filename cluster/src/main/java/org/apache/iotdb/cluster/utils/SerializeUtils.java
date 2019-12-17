@@ -17,6 +17,7 @@ import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class SerializeUtils {
 
@@ -190,4 +191,14 @@ public class SerializeUtils {
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
+  public static void serializeObject(Object object, DataOutputStream dataOutputStream) {
+    ReadWriteIOUtils.writeObject(object, dataOutputStream);
+  }
+
+  public static Object deserializeObject(ByteBuffer buffer) {
+    if (buffer == null || buffer.limit() == 0) {
+      return null;
+    }
+    return ReadWriteIOUtils.readObject(buffer);
+  }
 }
