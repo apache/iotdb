@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import java.util.Collection;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ConcurrentNavigableMap;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.db.utils.datastructure.TVSkipListMap;
@@ -88,8 +90,17 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized Collection<TimeValuePair> getSortedTimeValuePairList() {
-    return this.list.values();
+  public synchronized List<TimeValuePair> getSortedTimeValuePairList() {
+    List<TimeValuePair> sortedList = new ArrayList();
+    Iterator<Long> iterator = list.keySet().iterator();
+    while (iterator.hasNext()) {
+      long time = iterator.next();
+      if (time < list.getTimeOffset()) {
+        continue;
+      }
+      sortedList.add(list.get(time));
+    }
+    return sortedList;
   }
 
   @Override
@@ -104,6 +115,12 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void delete(long upperBound) {
-    list.remove(upperBound);
+    ConcurrentNavigableMap<Long, TimeValuePair> values = list
+        .headMap(upperBound, true);
+
+    Iterator<Long> iterator = values.keySet().iterator();
+    while (iterator.hasNext()) {
+      list.remove(iterator.next());
+    }
   }
 }

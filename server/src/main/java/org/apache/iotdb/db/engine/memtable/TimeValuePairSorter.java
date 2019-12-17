@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.memtable;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import org.apache.iotdb.db.utils.TimeValuePair;
 
 public interface TimeValuePairSorter {
@@ -30,7 +31,7 @@ public interface TimeValuePairSorter {
    * @return a List which contains all distinct {@link TimeValuePair}s in ascending order by
    * timestamp.
    */
-  Collection<TimeValuePair> getSortedTimeValuePairList();
+  List<TimeValuePair> getSortedTimeValuePairList();
 
   /**
    * notice, by default implementation, calling this method will cause calling

@@ -41,7 +41,7 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
 
   private TSDataType dataType;
   private TimeValuePairSorter memSeries;
-  private Collection<TimeValuePair> sortedTimeValuePairList;
+  private List<TimeValuePair> sortedTimeValuePairList;
 
   Map<String, String> props;
   private int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
@@ -71,12 +71,12 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
     if (!(memSeries instanceof MemSeriesLazyMerger)) {
       switch (dataType) {
         case FLOAT:
-          sortedTimeValuePairList.forEach(x -> new TimeValuePair(x.getTimestamp(),
+          sortedTimeValuePairList.replaceAll(x -> new TimeValuePair(x.getTimestamp(),
               new TsFloat(
                   MathUtils.roundWithGivenPrecision(x.getValue().getFloat(), floatPrecision))));
           break;
         case DOUBLE:
-          sortedTimeValuePairList.forEach(x -> new TimeValuePair(x.getTimestamp(),
+          sortedTimeValuePairList.replaceAll(x -> new TimeValuePair(x.getTimestamp(),
               new TsDouble(
                   MathUtils.roundWithGivenPrecision(x.getValue().getDouble(), floatPrecision))));
           break;
@@ -94,7 +94,7 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
   }
 
   @Override
-  public Collection<TimeValuePair> getSortedTimeValuePairList() {
+  public List<TimeValuePair> getSortedTimeValuePairList() {
     checkInitialized();
     return sortedTimeValuePairList;
   }
