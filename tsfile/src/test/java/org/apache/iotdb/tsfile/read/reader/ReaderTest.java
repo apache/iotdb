@@ -75,7 +75,7 @@ public class ReaderTest {
 
     while (seriesReader.hasNextBatch()) {
       data = seriesReader.nextBatch();
-      while (data.hasNext()) {
+      while (data.hasCurrent()) {
         Assert.assertEquals(startTime, data.currentTime());
         data.next();
         startTime++;
@@ -90,7 +90,7 @@ public class ReaderTest {
 
     while (seriesReader.hasNextBatch()) {
       data = seriesReader.nextBatch();
-      while (data.hasNext()) {
+      while (data.hasCurrent()) {
         data.next();
         startTime++;
         count++;
@@ -118,7 +118,7 @@ public class ReaderTest {
 
     while (seriesReader.hasNextBatch()) {
       data = seriesReader.nextBatch();
-      while (data.hasNext()) {
+      while (data.hasCurrent()) {
         Assert.assertEquals(aimedTimestamp++, data.currentTime());
         data.next();
       }

@@ -200,7 +200,7 @@ public class TTLTest {
     int cnt = 0;
     while (reader.hasNextBatch()) {
       BatchData batchData = reader.nextBatch();
-      while (batchData.hasNext()) {
+      while (batchData.hasCurrent()) {
         batchData.next();
         cnt++;
       }

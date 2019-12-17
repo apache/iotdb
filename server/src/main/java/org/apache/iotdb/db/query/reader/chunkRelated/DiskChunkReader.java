@@ -46,12 +46,12 @@ public class DiskChunkReader implements IPointReader, IBatchReader {
 
   @Override
   public boolean hasNext() throws IOException {
-    if (data != null && data.hasNext()) {
+    if (data != null && data.hasCurrent()) {
       return true;
     }
     while (AbstractChunkReader.hasNextBatch()) {
       data = AbstractChunkReader.nextBatch();
-      if (data.hasNext()) {
+      if (data.hasCurrent()) {
         return true;
       }
     }

@@ -201,11 +201,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     boolean hasCachedSequenceData = hasCachedSequenceDataList.get(idx);
     boolean finishCheckSequenceData = false;
     // there was unprocessed data in last batch
-    if (hasCachedSequenceData && batchData.hasNext()) {
+    if (hasCachedSequenceData && batchData.hasCurrent()) {
       function.calculateValueFromPageData(batchData, unsequenceReader, endTime);
     }
 
-    if (hasCachedSequenceData && batchData.hasNext()) {
+    if (hasCachedSequenceData && batchData.hasCurrent()) {
       finishCheckSequenceData = true;
     } else {
       hasCachedSequenceData = false;
@@ -291,11 +291,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     }
 
     // skip the cached batch data points with timestamp less than startTime
-    while (batchData.hasNext() && batchData.currentTime() < startTime) {
+    while (batchData.hasCurrent() && batchData.currentTime() < startTime) {
       batchData.next();
     }
     batchDataList.set(idx, batchData);
-    if (batchData.hasNext()) {
+    if (batchData.hasCurrent()) {
       return true;
     } else {
       hasCachedSequenceDataList.set(idx, false);

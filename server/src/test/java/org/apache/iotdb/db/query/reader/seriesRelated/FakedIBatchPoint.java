@@ -98,7 +98,7 @@ public class FakedIBatchPoint implements IBatchReader {
       num--;
     }
     if (!hasEmptyBatch) {
-      Assert.assertTrue(batchData.hasNext());
+      Assert.assertTrue(batchData.hasCurrent());
     }
   }
 

@@ -84,7 +84,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
     }
 
     for (BatchData data : batchDataList) {
-      if (data.hasNext()) {
+      if (data.hasCurrent()) {
         timeHeapPut(data.currentTime());
       }
     }
@@ -112,15 +112,15 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
 
       BatchData data = batchDataList.get(i);
 
-      if (data.hasNext() && data.currentTime() == minTime) {
+      if (data.hasCurrent() && data.currentTime() == minTime) {
         putValueToField(data, field);
         data.next();
 
-        if (!data.hasNext()) {
+        if (!data.hasCurrent()) {
           AbstractFileSeriesReader reader = readers.get(i);
           if (reader.hasNextBatch()) {
             data = reader.nextBatch();
-            if (data.hasNext()) {
+            if (data.hasCurrent()) {
               batchDataList.set(i, data);
               timeHeapPut(data.currentTime());
             } else {

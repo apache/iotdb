@@ -118,7 +118,7 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader {
 
   private boolean hasNextInSeq() throws IOException {
     // has next point in cached seqBatchData
-    if (seqBatchData != null && seqBatchData.hasNext())
+    if (seqBatchData != null && seqBatchData.hasCurrent())
       return true;
     // has next batch in seq reader
     if (seqResourceIterateReader.hasNextBatch()) {
@@ -130,7 +130,7 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader {
 
   private boolean hasNextInUnSeq() throws IOException {
     // has next point in cached unseqBatchData
-    if (unseqBatchData != null && unseqBatchData.hasNext())
+    if (unseqBatchData != null && unseqBatchData.hasCurrent())
       return true;
     // has next batch in unseq reader
     if (unseqResourceMergeReader != null && unseqResourceMergeReader.hasNextBatch()) {

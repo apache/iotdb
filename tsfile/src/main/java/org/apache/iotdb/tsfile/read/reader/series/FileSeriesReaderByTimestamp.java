@@ -77,7 +77,7 @@ public class FileSeriesReaderByTimestamp {
     }
 
     while (data != null) {
-      while (data.hasNext()) {
+      while (data.hasCurrent()) {
         if (data.currentTime() < timestamp) {
           data.next();
         } else {
@@ -85,7 +85,7 @@ public class FileSeriesReaderByTimestamp {
         }
       }
 
-      if (data.hasNext()) {
+      if (data.hasCurrent()) {
         if (data.currentTime() == timestamp) {
           Object value = data.currentValue();
           data.next();
@@ -112,12 +112,12 @@ public class FileSeriesReaderByTimestamp {
   public boolean hasNext() throws IOException {
 
     if (AbstractChunkReader != null) {
-      if (data != null && data.hasNext()) {
+      if (data != null && data.hasCurrent()) {
         return true;
       }
       while (AbstractChunkReader.hasNextBatch()) {
         data = AbstractChunkReader.nextBatch();
-        if (data != null && data.hasNext()) {
+        if (data != null && data.hasCurrent()) {
           return true;
         }
       }
@@ -125,7 +125,7 @@ public class FileSeriesReaderByTimestamp {
     while (constructNextSatisfiedChunkReader()) {
       while (AbstractChunkReader.hasNextBatch()) {
         data = AbstractChunkReader.nextBatch();
-        if (data != null && data.hasNext()) {
+        if (data != null && data.hasCurrent()) {
           return true;
         }
       }

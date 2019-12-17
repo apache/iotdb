@@ -101,9 +101,8 @@ public class BatchData implements Serializable {
     return curIdx < timeLength;
   }
 
-  // FIXME: this means hasCurrent actually
   public boolean hasNext() {
-    return curIdx < timeLength;
+    return curIdx < timeLength - 1;
   }
 
   public void next() {
@@ -606,7 +605,7 @@ public class BatchData implements Serializable {
   }
 
   public Object getValueInTimestamp(long time) {
-    while (hasNext()) {
+    while (hasCurrent()) {
       if (currentTime() < time) {
         next();
       } else if (currentTime() == time) {

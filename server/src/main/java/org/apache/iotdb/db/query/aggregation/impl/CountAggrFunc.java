@@ -77,7 +77,7 @@ public class CountAggrFunc extends AggregateFunction {
   private void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
       boolean hasBound, long bound) throws IOException {
     int cnt = 0;
-    while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
+    while (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
       long minTimestamp = Math
           .min(dataInThisPage.currentTime(), unsequenceReader.current().getTimestamp());
       if (hasBound && minTimestamp >= bound) {
@@ -94,7 +94,7 @@ public class CountAggrFunc extends AggregateFunction {
       cnt++;
     }
 
-    while (dataInThisPage.hasNext()) {
+    while (dataInThisPage.hasCurrent()) {
       if (hasBound && dataInThisPage.currentTime() >= bound) {
         break;
       }

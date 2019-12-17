@@ -76,7 +76,7 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
       if (reader.hasNextBatch()) {
         BatchData batchData = reader.nextBatch();
         cachedBatchDataArray[i] = batchData;
-        timeHeapPut(batchData.currentTime());
+        timeHeap.add(batchData.currentTime());
       }
     }
   }
@@ -103,66 +103,73 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
     // used to record a bitmap for every 8 row record
     int[] currentBitmapList = new int[seriesNum];
     for (int i = 0; i < fetchSize; i++) {
-      if (!timeHeap.isEmpty()) {
-        long minTime = timeHeapGet();
-        // use columnOutput to write byte array
 
-        timeBAOS.write(BytesUtils.longToBytes(minTime));
+      if (timeHeap.isEmpty()) {
+        break;
+      }
 
-        for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-          // if current batch is empty, try to cache next batch
+      long minTime = timeHeap.pollFirst();
+
+      timeBAOS.write(BytesUtils.longToBytes(minTime));
+
+      for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+        if (!cachedBatchDataArray[seriesIndex].hasCurrent() || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
+          // current batch is empty or does not have value at minTime
+          currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1);
+        } else {
+          // current batch has value at minTime, consume current value
+          currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1) | flag;
+          TSDataType type = cachedBatchDataArray[seriesIndex].getDataType();
+          switch (type) {
+            case INT32:
+              ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getInt(), valueBAOSList[seriesIndex]);
+              break;
+            case INT64:
+              ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getLong(), valueBAOSList[seriesIndex]);
+              break;
+            case FLOAT:
+              ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getFloat(), valueBAOSList[seriesIndex]);
+              break;
+            case DOUBLE:
+              ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getDouble(), valueBAOSList[seriesIndex]);
+              break;
+            case BOOLEAN:
+              ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getBoolean(), valueBAOSList[seriesIndex]);
+              break;
+            case TEXT:
+              ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getBinary(), valueBAOSList[seriesIndex]);
+              break;
+            default:
+              throw new UnSupportedDataTypeException(
+                  String.format("Data type %s is not supported.", type));
+          }
+
+          // move next
+          cachedBatchDataArray[seriesIndex].next();
+
+          // get next batch if current batch is empty
           if (!cachedBatchDataArray[seriesIndex].hasCurrent()) {
             if (seriesReaderWithoutValueFilterList.get(seriesIndex).hasNextBatch()) {
               cachedBatchDataArray[seriesIndex] = seriesReaderWithoutValueFilterList
                   .get(seriesIndex).nextBatch();
             }
           }
-          BatchData batchData = cachedBatchDataArray[seriesIndex];
-          if (!batchData.hasCurrent() || batchData.currentTime() != minTime) {
-            currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1);
-          } else {
-            currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1) | flag;
-            TSDataType type = batchData.getDataType();
-            switch (type) {
-              case INT32:
-                ReadWriteIOUtils.write(batchData.getInt(), valueBAOSList[seriesIndex]);
-                break;
-              case INT64:
-                ReadWriteIOUtils.write(batchData.getLong(), valueBAOSList[seriesIndex]);
-                break;
-              case FLOAT:
-                ReadWriteIOUtils.write(batchData.getFloat(), valueBAOSList[seriesIndex]);
-                break;
-              case DOUBLE:
-                ReadWriteIOUtils.write(batchData.getDouble(), valueBAOSList[seriesIndex]);
-                break;
-              case BOOLEAN:
-                ReadWriteIOUtils.write(batchData.getBoolean(), valueBAOSList[seriesIndex]);
-                break;
-              case TEXT:
-                ReadWriteIOUtils.write(batchData.getBinary(), valueBAOSList[seriesIndex]);
-                break;
-              default:
-                throw new UnSupportedDataTypeException(
-                        String.format("Data type %s is not supported.", type));
-            }
-            batchData.next();
-            if(batchData.hasCurrent()) {
-              timeHeapPut(batchData.currentTime());
-            }
-          }
-        }
 
-        rowCount++;
-        if (rowCount % 8 == 0) {
-          for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-            ReadWriteIOUtils.write((byte) currentBitmapList[seriesIndex], bitmapBAOSList[seriesIndex]);
-            // we should clear the bitmap every 8 row record
-            currentBitmapList[seriesIndex] = 0;
+          // try to put the next timestamp into the heap
+          if (cachedBatchDataArray[seriesIndex].hasCurrent()) {
+            timeHeap.add(cachedBatchDataArray[seriesIndex].currentTime());
           }
         }
-      } else {
-        break;
+      }
+
+      rowCount++;
+      if (rowCount % 8 == 0) {
+        for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+          ReadWriteIOUtils
+              .write((byte) currentBitmapList[seriesIndex], bitmapBAOSList[seriesIndex]);
+          // we should clear the bitmap every 8 row record
+          currentBitmapList[seriesIndex] = 0;
+        }
       }
     }
 
@@ -217,17 +224,6 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
   @Override
   protected RowRecord nextWithoutConstraint() throws IOException {
     throw new IOException("The method can't be invoked, please try to use fillBuffer method directly!");
-  }
-
-  /**
-   * keep heap from storing duplicate time.
-   */
-  private void timeHeapPut(long time) {
-    timeHeap.add(time);
-  }
-
-  private Long timeHeapGet() {
-    return timeHeap.pollFirst();
   }
 
 }

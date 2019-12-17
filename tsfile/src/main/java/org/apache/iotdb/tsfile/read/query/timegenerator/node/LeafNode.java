@@ -42,7 +42,7 @@ public class LeafNode implements Node {
       gotData = false;
     }
 
-    if (data == null || !data.hasNext()) {
+    if (data == null || !data.hasCurrent()) {
       if (reader.hasNextBatch()) {
         data = reader.nextBatch();
       } else {
@@ -50,7 +50,7 @@ public class LeafNode implements Node {
       }
     }
 
-    return data.hasNext();
+    return data.hasCurrent();
   }
 
   @Override
@@ -67,7 +67,7 @@ public class LeafNode implements Node {
    * @return True if the current time equals the given time. False if not.
    */
   public boolean currentTimeIs(long time) {
-    if (!reader.currentBatch().hasNext()) {
+    if (!reader.currentBatch().hasCurrent()) {
       return false;
     }
     return reader.currentBatch().currentTime() == time;

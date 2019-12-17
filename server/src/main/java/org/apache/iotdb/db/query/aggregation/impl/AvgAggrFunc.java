@@ -77,7 +77,7 @@ public class AvgAggrFunc extends AggregateFunction {
 
   private void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
       boolean hasBound, long bound) throws IOException {
-    while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
+    while (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
       Object sumVal = null;
       long time = Math.min(dataInThisPage.currentTime(), unsequenceReader.current().getTimestamp());
       if (hasBound && time >= bound) {
@@ -97,7 +97,7 @@ public class AvgAggrFunc extends AggregateFunction {
       updateMean(seriesDataType, sumVal);
     }
 
-    while (dataInThisPage.hasNext()) {
+    while (dataInThisPage.hasCurrent()) {
       if (hasBound && dataInThisPage.currentTime() >= bound) {
         break;
       }
