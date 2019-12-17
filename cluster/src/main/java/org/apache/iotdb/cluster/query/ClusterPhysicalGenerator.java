@@ -6,7 +6,6 @@ package org.apache.iotdb.cluster.query;
 
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -21,7 +20,7 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   }
 
   @Override
-  protected TSDataType getSeriesType(String path) throws QueryProcessException, MetadataException {
+  protected TSDataType getSeriesType(String path) throws MetadataException {
     return metaGroupMember.getSeriesType(path);
   }
 }
