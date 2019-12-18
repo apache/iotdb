@@ -1511,7 +1511,9 @@ public class StorageGroupProcessor {
       case LOAD_UNSEQUENCE:
         targetFile =
             new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(),
-                storageGroupName + File.separatorChar + tsFileResource.getFile().getName());
+                storageGroupName + File.separatorChar
+                    + tsFileResource.getFile().getParentFile().getName()
+                    + File.separator + tsFileResource.getFile().getName());
         tsFileResource.setFile(targetFile);
         unSequenceFileList.add(index, tsFileResource);
         logger
@@ -1522,7 +1524,9 @@ public class StorageGroupProcessor {
       case LOAD_SEQUENCE:
         targetFile =
             new File(DirectoryManager.getInstance().getNextFolderForSequenceFile(),
-                storageGroupName + File.separatorChar + tsFileResource.getFile().getName());
+                storageGroupName + File.separatorChar
+                    + tsFileResource.getFile().getParentFile().getName()
+                    + File.separator + tsFileResource.getFile().getName());
         tsFileResource.setFile(targetFile);
         sequenceFileList.add(tsFileResource);
         logger

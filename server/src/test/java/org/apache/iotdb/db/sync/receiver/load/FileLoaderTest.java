@@ -101,15 +101,18 @@ public class FileLoaderTest {
         correctSequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
         String rand = String.valueOf(r.nextInt(10000));
         String fileName =
-            getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + (time + i * 100
-                + j) + IoTDBConstant.TSFILE_NAME_SEPARATOR + rand
+            getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + "0"
+                + File.separator
+                + (time + i * 100 + j) + IoTDBConstant.TSFILE_NAME_SEPARATOR + rand
                 + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0.tsfile";
         File syncFile = new File(fileName);
         File dataFile = new File(
             syncFile.getParentFile().getParentFile().getParentFile().getParentFile()
-                .getParentFile(), IoTDBConstant.SEQUENCE_FLODER_NAME
-            + File.separatorChar + syncFile.getParentFile().getName() + File.separatorChar
-            + syncFile.getName());
+                .getParentFile().getParentFile(),
+            IoTDBConstant.SEQUENCE_FLODER_NAME + File.separatorChar + syncFile.getParentFile()
+                .getParentFile().getName()
+                + File.separatorChar + syncFile.getParentFile().getName() + File.separatorChar
+                + syncFile.getName());
         correctSequenceLoadedFileMap.get(SG_NAME + i).add(dataFile.getAbsolutePath());
         allFileList.get(SG_NAME + i).add(syncFile);
         if (!syncFile.getParentFile().exists()) {
@@ -194,12 +197,15 @@ public class FileLoaderTest {
         correctLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
         String rand = String.valueOf(r.nextInt(10000));
         String fileName =
-            getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + (time + i * 100
+            getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + "0"
+                + File.separator + (time + i * 100
                 + j) + IoTDBConstant.TSFILE_NAME_SEPARATOR + rand
                 + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0.tsfile";
+
         File syncFile = new File(fileName);
         File dataFile = new File(
-            DirectoryManager.getInstance().getNextFolderForSequenceFile(),
+            DirectoryManager.getInstance().getNextFolderForSequenceFile() + File.separator
+                + syncFile.getParentFile().getParentFile().getName(),
             syncFile.getParentFile().getName() + File.separatorChar + syncFile.getName());
         correctLoadedFileMap.get(SG_NAME + i).add(dataFile.getAbsolutePath());
         allFileList.get(SG_NAME + i).add(syncFile);
@@ -275,7 +281,8 @@ public class FileLoaderTest {
       for (File snapFile : files) {
         if (!snapFile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
           File dataFile = new File(
-              DirectoryManager.getInstance().getNextFolderForSequenceFile(),
+              DirectoryManager.getInstance().getNextFolderForSequenceFile() + File.separator
+                  + snapFile.getParentFile().getParentFile().getName(),
               snapFile.getParentFile().getName() + File.separatorChar + snapFile.getName());
           correctLoadedFileMap.get(sg).remove(dataFile.getAbsolutePath());
           snapFile.delete();
