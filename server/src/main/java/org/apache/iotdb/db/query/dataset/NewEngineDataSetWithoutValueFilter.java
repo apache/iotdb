@@ -112,7 +112,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       timeBAOS.write(BytesUtils.longToBytes(minTime));
 
       for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-        if (cachedBatchDataArray == null || cachedBatchDataArray[seriesIndex] == null
+        if (cachedBatchDataArray[seriesIndex] == null
             || !cachedBatchDataArray[seriesIndex].hasCurrent()
             || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
           // current batch is empty or does not have value at minTime
@@ -242,7 +242,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     RowRecord record = new RowRecord(minTime);
 
     for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-      if (cachedBatchDataArray == null
+      if (cachedBatchDataArray[seriesIndex] == null
           || !cachedBatchDataArray[seriesIndex].hasCurrent()
           || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
         record.addField(new Field(null));
