@@ -639,7 +639,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       } // else default ignoreTimeStamp is false
       resp.setOperationType(plan.getOperatorType().toString());
       // generate the queryId for the operation
-      long queryId = generateQueryId();
+      long queryId = generateQueryId(true);
       // put it into the corresponding Set
       statementId2QueryId.computeIfAbsent(statementId, k -> new HashSet<>()).add(queryId);
 
@@ -905,7 +905,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     status = executePlan(plan);
     TSExecuteStatementResp resp = getTSExecuteStatementResp(status);
-    long queryId = generateQueryId();
+    long queryId = generateQueryId(false);
     resp.setQueryId(queryId);
     return resp;
   }
@@ -1039,7 +1039,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       plan = (InsertPlan) queryId2Plan.get(req.getQueryId());
       queryId = req.getQueryId();
     } else {
-      queryId = generateQueryId();
+      queryId = generateQueryId(false);
       plan = new InsertPlan();
       queryId2Plan.put(queryId, plan);
     }
@@ -1313,8 +1313,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         : getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
-  private long generateQueryId() {
-    return QueryResourceManager.getInstance().assignQueryId();
+  private long generateQueryId(boolean isDataQuery) {
+    return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
   }
 }
 
