@@ -58,23 +58,24 @@ pipeline {
             }
         }
 
-        stage('Build (not master)') {
-            when {
-                expression {
-                    env.BRANCH_NAME != 'master'
-                }
-            }
-            steps {
-                echo 'Building'
-                sh 'mvn ${MVN_TEST_FAIL_IGNORE} ${MVN_LOCAL_REPO_OPT} clean install'
-            }
-            post {
-                always {
-                    junit(testResults: '**/surefire-reports/*.xml', allowEmptyResults: true)
-                    junit(testResults: '**/failsafe-reports/*.xml', allowEmptyResults: true)
-                }
-            }
-        }
+//disable temporary
+//        stage('Build (not master)') {
+//            when {
+//                expression {
+//                    env.BRANCH_NAME != 'master'
+//                }
+//            }
+//            steps {
+//                echo 'Building'
+//                sh 'mvn ${MVN_TEST_FAIL_IGNORE} ${MVN_LOCAL_REPO_OPT} clean install'
+//            }
+//            post {
+//                always {
+//                    junit(testResults: '**/surefire-reports/*.xml', allowEmptyResults: true)
+//                    junit(testResults: '**/failsafe-reports/*.xml', allowEmptyResults: true)
+//                }
+//            }
+//        }
 
         stage('Build') {
             when {
@@ -125,7 +126,7 @@ pipeline {
                     // Then run the analysis
                     // 'my-sonarcloud-token' needs to be defined for this job and contains the user token
                     withCredentials([string(credentialsId: 'xiangdong-iotdb-sonarcloud-token', variable: 'SONAR_TOKEN')]) {
-                        sh 'mvn clean verify sonar:sonar ${sonarcloudParams} -Dsonar.login=${SONAR_TOKEN} -DskipTests'
+                        sh 'mvn -e clean verify sonar:sonar ${sonarcloudParams} -Dsonar.login=${SONAR_TOKEN} -DskipTests'
                     }
                 }
             }
