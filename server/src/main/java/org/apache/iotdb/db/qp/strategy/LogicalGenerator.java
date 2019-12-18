@@ -1132,11 +1132,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         new StringContainer(path.toArray(new String[0]), TsFileConstant.PATH_SEPARATOR));
   }
 
-
-  void setZoneId(ZoneId zoneId) {
-    this.zoneId = zoneId;
-  }
-
   /**
    * parse time expression, which is addition and subtraction expression of duration time, now() or
    * DataTimeFormat time.

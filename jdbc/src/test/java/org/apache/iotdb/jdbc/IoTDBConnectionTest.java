@@ -42,6 +42,7 @@ public class IoTDBConnectionTest {
   private IoTDBConnection connection = new IoTDBConnection();
   private TSStatusType successStatus = new TSStatusType(TSStatusCode.SUCCESS_STATUS.getStatusCode(), "");
   private TSStatus Status_SUCCESS = new TSStatus(successStatus);
+  private long sessionId;
 
   @Before
   public void setUp() throws Exception {
@@ -57,7 +58,7 @@ public class IoTDBConnectionTest {
     String timeZone = "Asia/Shanghai";
     when(client.setTimeZone(any(TSSetTimeZoneReq.class)))
         .thenReturn(new TSStatus(Status_SUCCESS));
-    connection.client = client;
+    connection.setClient(client);
     connection.setTimeZone(timeZone);
     assertEquals(connection.getTimeZone(), timeZone);
   }
@@ -65,8 +66,9 @@ public class IoTDBConnectionTest {
   @Test
   public void testGetTimeZone() throws IoTDBSQLException, TException {
     String timeZone = "GMT+:08:00";
-    when(client.getTimeZone()).thenReturn(new TSGetTimeZoneResp(Status_SUCCESS, timeZone));
-    connection.client = client;
+    sessionId = connection.getSessionId();
+    when(client.getTimeZone(sessionId)).thenReturn(new TSGetTimeZoneResp(Status_SUCCESS, timeZone));
+    connection.setClient(client);
     assertEquals(connection.getTimeZone(), timeZone);
   }
 
@@ -82,7 +84,7 @@ public class IoTDBConnectionTest {
     final String timestampPrecision = "ms";
     when(client.getProperties())
         .thenReturn(new ServerProperties(version, supportedAggregationTime, timestampPrecision));
-    connection.client = client;
+    connection.setClient(client);
     assertEquals(connection.getServerProperties().getVersion(), version);
     for (int i = 0; i < supportedAggregationTime.size(); i++) {
       assertEquals(connection.getServerProperties().getSupportedTimeAggregationOperations().get(i),

@@ -69,7 +69,7 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.JobFileManager;
+import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -714,7 +714,7 @@ public class StorageGroupProcessor {
 
   // TODO need a read lock, please consider the concurrency with flush manager threads.
   public QueryDataSource query(String deviceId, String measurementId, QueryContext context,
-      JobFileManager filePathsManager) {
+      QueryFileManager filePathsManager) {
     insertLock.readLock().lock();
     mergeLock.readLock().lock();
     synchronized (lruForSensorUsedInQuery) {
@@ -734,7 +734,7 @@ public class StorageGroupProcessor {
       // running merge
       // is null only in tests
       if (filePathsManager != null) {
-        filePathsManager.addUsedFilesForGivenJob(context.getJobId(), dataSource);
+        filePathsManager.addUsedFilesForQuery(context.getQueryId(), dataSource);
       }
       dataSource.setDataTTL(dataTTL);
       return dataSource;
@@ -1245,7 +1245,7 @@ public class StorageGroupProcessor {
       } else {
 
         // check whether the file name needs to be renamed.
-        if (subsequentIndex != sequenceFileList.size() || preIndex == -1) {
+        if (subsequentIndex != sequenceFileList.size() || preIndex != -1) {
           String newFileName = getFileNameForLoadingFile(tsfileToBeInserted.getName(), preIndex,
               subsequentIndex);
           if (!newFileName.equals(tsfileToBeInserted.getName())) {
@@ -1255,7 +1255,7 @@ public class StorageGroupProcessor {
           }
         }
         loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource,
-            getBinarySearchIndex(newTsFileResource));
+            subsequentIndex);
       }
 
       // update latest time map
@@ -1389,7 +1389,7 @@ public class StorageGroupProcessor {
       case LOAD_UNSEQUENCE:
         targetFile =
             new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(),
-                storageGroupName + File.separatorChar + syncedTsFile.getName());
+                storageGroupName + File.separatorChar + tsFileResource.getFile().getName());
         tsFileResource.setFile(targetFile);
         unSequenceFileList.add(index, tsFileResource);
         logger
@@ -1400,7 +1400,7 @@ public class StorageGroupProcessor {
       case LOAD_SEQUENCE:
         targetFile =
             new File(DirectoryManager.getInstance().getNextFolderForSequenceFile(),
-                storageGroupName + File.separatorChar + syncedTsFile.getName());
+                storageGroupName + File.separatorChar + tsFileResource.getFile().getName());
         tsFileResource.setFile(targetFile);
         sequenceFileList.add(index, tsFileResource);
         logger
