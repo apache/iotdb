@@ -88,7 +88,8 @@
         <jetty.version>9.4.24.v20191120</jetty.version>
         <metrics.version>3.2.6</metrics.version>
         <!-- URL of the ASF SonarQube server -->
-        <sonar.host.url>https://builds.apache.org/analysis</sonar.host.url>
+        <!-- <sonar.host.url>https://builds.apache.org/analysis</sonar.host.url> -->
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
     </properties>
@@ -474,7 +475,7 @@
                 <plugin>
                     <groupId>org.sonarsource.scanner.maven</groupId>
                     <artifactId>sonar-maven-plugin</artifactId>
-                    <version>3.6.0.1398</version>
+                    <version>3.6.1.1688</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.rat</groupId>
