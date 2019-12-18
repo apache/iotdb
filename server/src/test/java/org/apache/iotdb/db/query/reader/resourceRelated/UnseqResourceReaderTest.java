@@ -24,12 +24,11 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.IPointReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -117,7 +116,7 @@ public class UnseqResourceReaderTest extends ReaderTestHelper {
     Path path = new Path(deviceId, measurementId);
     QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context,
         null);
-    IReaderByTimestamp reader = new UnseqResourceReaderByTimestamp(path,
+    IPointReaderByTimestamp reader = new UnseqResourceReaderByTimestamp(path,
         queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     for (long time = 0; time <= 25; time++) {

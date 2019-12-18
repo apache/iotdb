@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.reader.fileRelated;
 import java.io.IOException;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.IPointReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
@@ -30,14 +30,14 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 
 /**
  * To read an unsealed sequence TsFile by timestamp, this class implements an interface {@link
- * IReaderByTimestamp} for the TsFile.
+ * IPointReaderByTimestamp} for the TsFile.
  * <p>
  * Note that an unsealed sequence TsFile consists of two parts of data in chronological order: 1)
  * data that has been flushed to disk and 2) data in the flushing memtable list.
  * <p>
  * This class is used in {@link org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceReaderByTimestamp}.
  */
-public class UnSealedTsFileReaderByTimestamp implements IReaderByTimestamp {
+public class UnSealedTsFileReaderByTimestamp implements IPointReaderByTimestamp {
 
   /**
    * <code>FileSeriesReaderByTimestamp</code> for data which has been flushed to disk.
@@ -47,7 +47,7 @@ public class UnSealedTsFileReaderByTimestamp implements IReaderByTimestamp {
   /**
    * <code>IReaderByTimestamp</code> for data in the flushing memtable list.
    */
-  private IReaderByTimestamp unSealedTsFileMemReaderByTs;
+  private IPointReaderByTimestamp unSealedTsFileMemReaderByTs;
 
   /**
    * Whether unSealedTsFileDiskReaderByTs has been run out of.

@@ -20,18 +20,18 @@ package org.apache.iotdb.db.query.reader.chunkRelated;
 
 import java.util.Iterator;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.IPointReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileReaderByTimestamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
 
 /**
  * To read data in memory by timestamp, this class implements an interface {@link
- * IReaderByTimestamp} based on the data source {@link ReadOnlyMemChunk}.
+ * IPointReaderByTimestamp} based on the data source {@link ReadOnlyMemChunk}.
  * <p>
  * This class is used in {@link UnSealedTsFileReaderByTimestamp} and {@link
  * org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceReaderByTimestamp}.
  */
-public class MemChunkReaderByTimestamp implements IReaderByTimestamp {
+public class MemChunkReaderByTimestamp implements IPointReaderByTimestamp {
 
   private Iterator<TimeValuePair> timeValuePairIterator;
   private boolean hasCachedTimeValuePair;

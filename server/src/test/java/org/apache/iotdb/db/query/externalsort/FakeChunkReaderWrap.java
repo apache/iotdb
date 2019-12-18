@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.query.externalsort;
 
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.IPointReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 
 /**
@@ -38,7 +38,7 @@ public class FakeChunkReaderWrap extends ChunkReaderWrap {
   }
 
   @Override
-  public IReaderByTimestamp getIReaderByTimestamp() {
+  public IPointReaderByTimestamp getIReaderByTimestamp() {
     return null;
   }
 

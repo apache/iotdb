@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import java.io.Serializable;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class TimeValuePair implements Serializable, Comparable<TimeValuePair> {
 

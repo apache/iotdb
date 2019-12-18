@@ -20,7 +20,7 @@ package org.apache.iotdb.db.query.reader;
 
 import java.io.IOException;
 
-public interface IReaderByTimestamp {
+public interface IPointReaderByTimestamp {
 
   /**
    * Returns the corresponding value under this timestamp. Returns null if no value under this

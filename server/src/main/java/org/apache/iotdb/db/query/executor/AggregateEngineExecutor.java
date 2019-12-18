@@ -34,18 +34,15 @@ import org.apache.iotdb.db.query.aggregation.impl.LastValueAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrFunc;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.AggreResultDataPointReader;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.factory.AggreFuncFactory;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.IPointReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
-import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
@@ -264,7 +261,7 @@ public class AggregateEngineExecutor {
       throws StorageEngineException, PathException, IOException {
 
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(expression, context);
-    List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
+    List<IPointReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     for (Path path : selectedSeries) {
       SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path, context);
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
@@ -289,7 +286,7 @@ public class AggregateEngineExecutor {
   private List<AggreResultData> aggregateWithValueFilter(
       List<AggregateFunction> aggregateFunctions,
       EngineTimeGenerator timestampGenerator,
-      List<IReaderByTimestamp> readersOfSelectedSeries)
+      List<IPointReaderByTimestamp> readersOfSelectedSeries)
       throws IOException {
 
     while (timestampGenerator.hasNext()) {

@@ -20,7 +20,7 @@ package org.apache.iotdb.db.query.dataset;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.IPointReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -31,7 +31,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 public class EngineDataSetWithValueFilter extends QueryDataSet {
 
   private EngineTimeGenerator timeGenerator;
-  private List<IReaderByTimestamp> seriesReaderByTimestampList;
+  private List<IPointReaderByTimestamp> seriesReaderByTimestampList;
   private boolean hasCachedRowRecord;
   private RowRecord cachedRowRecord;
 
@@ -44,7 +44,7 @@ public class EngineDataSetWithValueFilter extends QueryDataSet {
    * @param readers readers in List(IReaderByTimeStamp) structure
    */
   public EngineDataSetWithValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-      EngineTimeGenerator timeGenerator, List<IReaderByTimestamp> readers) {
+      EngineTimeGenerator timeGenerator, List<IPointReaderByTimestamp> readers) {
     super(paths, dataTypes);
     this.timeGenerator = timeGenerator;
     this.seriesReaderByTimestampList = readers;
@@ -78,7 +78,7 @@ public class EngineDataSetWithValueFilter extends QueryDataSet {
       long timestamp = timeGenerator.next();
       RowRecord rowRecord = new RowRecord(timestamp);
       for (int i = 0; i < seriesReaderByTimestampList.size(); i++) {
-        IReaderByTimestamp reader = seriesReaderByTimestampList.get(i);
+        IPointReaderByTimestamp reader = seriesReaderByTimestampList.get(i);
         Object value = reader.getValueInTimestamp(timestamp);
         if (value == null) {
           rowRecord.addField(new Field(null));
@@ -100,7 +100,7 @@ public class EngineDataSetWithValueFilter extends QueryDataSet {
     return timeGenerator;
   }
 
-  public List<IReaderByTimestamp> getReaders() {
+  public List<IPointReaderByTimestamp> getReaders() {
     return seriesReaderByTimestampList;
   }
 }

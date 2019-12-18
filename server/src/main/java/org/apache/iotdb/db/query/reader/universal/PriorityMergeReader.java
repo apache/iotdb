@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.PriorityQueue;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 /**
  * This class is for data sources with different priorities. It used to implement {@link

@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.IPointReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.fileRelated.FileSeriesReaderByTimestampAdapter;
 import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileReaderByTimestamp;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -48,13 +48,13 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
  * This class is used in {@link org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp}.
  */
 
-public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
+public class SeqResourceReaderByTimestamp implements IPointReaderByTimestamp {
 
   protected Path seriesPath;
   private List<TsFileResource> seqResources;
   private QueryContext context;
   private int nextIntervalFileIndex;
-  private IReaderByTimestamp seriesReader;
+  private IPointReaderByTimestamp seriesReader;
 
   /**
    * Constructor function.
@@ -168,7 +168,7 @@ public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
     return tsFile.getEndTimeMap().get(seriesPath.getDevice()) < timestamp;
   }
 
-  private IReaderByTimestamp initSealedTsFileReaderByTimestamp(TsFileResource sealedTsFile,
+  private IPointReaderByTimestamp initSealedTsFileReaderByTimestamp(TsFileResource sealedTsFile,
       QueryContext context) throws IOException {
     // prepare metaDataList
     List<ChunkMetaData> metaDataList = DeviceMetaDataCache.getInstance()

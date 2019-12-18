@@ -25,9 +25,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.IPointReaderByTimestamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Test;
@@ -36,9 +36,9 @@ public class PriorityMergeReaderByTimestampTest {
 
   @Test
   public void test() throws IOException {
-    IReaderByTimestamp reader1 = new FakedReaderByTimestamp(100, 200, 5, 11);
-    IReaderByTimestamp reader2 = new FakedReaderByTimestamp(850, 200, 7, 19);
-    IReaderByTimestamp reader3 = new FakedReaderByTimestamp(1080, 200, 13, 31);
+    IPointReaderByTimestamp reader1 = new FakedReaderByTimestamp(100, 200, 5, 11);
+    IPointReaderByTimestamp reader2 = new FakedReaderByTimestamp(850, 200, 7, 19);
+    IPointReaderByTimestamp reader3 = new FakedReaderByTimestamp(1080, 200, 13, 31);
 
     PriorityMergeReaderByTimestamp priorityReader = new PriorityMergeReaderByTimestamp();
     priorityReader.addReaderWithPriority(reader1, 1);
@@ -91,7 +91,7 @@ public class PriorityMergeReaderByTimestampTest {
 
   }
 
-  public static class FakedReaderByTimestamp implements IReaderByTimestamp,
+  public static class FakedReaderByTimestamp implements IPointReaderByTimestamp,
       IPointReader {
 
     private Iterator<TimeValuePair> iterator;

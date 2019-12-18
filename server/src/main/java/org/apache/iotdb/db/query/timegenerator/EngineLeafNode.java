@@ -20,29 +20,29 @@
 package org.apache.iotdb.db.query.timegenerator;
 
 import java.io.IOException;
+import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.NodeType;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 public class EngineLeafNode implements Node {
 
-  private IBatchReader reader;
+  private IPointReader reader;
 
   private BatchData data = null;
 
-  public EngineLeafNode(IBatchReader reader) {
+  public EngineLeafNode(IPointReader reader) {
     this.reader = reader;
   }
 
   @Override
   public boolean hasNext() throws IOException {
-    return reader.hasNextBatch();
+    return reader.hasNext();
   }
 
   @Override
   public long next() throws IOException {
-    return reader.nextBatch().getTimeByIndex(0);
+    return reader.next().getTimestamp();
   }
 
   /**

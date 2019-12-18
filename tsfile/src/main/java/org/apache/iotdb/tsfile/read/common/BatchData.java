@@ -24,6 +24,13 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBinary;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBoolean;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 
 /**
  * <code>BatchData</code> is a self-defined data structure which is optimized for different type of
@@ -137,6 +144,25 @@ public class BatchData implements Serializable {
         return getBoolean();
       case TEXT:
         return getBinary();
+      default:
+        return null;
+    }
+  }
+
+  public TsPrimitiveType currentTsPrimitiveType() {
+    switch (dataType) {
+      case INT32:
+        return new TsInt(getInt());
+      case INT64:
+        return new TsLong(getLong());
+      case FLOAT:
+        return new TsFloat(getFloat());
+      case DOUBLE:
+        return new TsDouble(getDouble());
+      case BOOLEAN:
+        return new TsBoolean(getBoolean());
+      case TEXT:
+        return new TsBinary(getBinary());
       default:
         return null;
     }

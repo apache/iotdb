@@ -28,7 +28,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.externalsort.ExternalSortJobEngine;
 import org.apache.iotdb.db.query.externalsort.SimpleExternalSortEngine;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.IPointReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReaderByTimestamp;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -91,10 +91,10 @@ public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimesta
     //  whose start and end time do not satisfy can be skipped.
 
     ExternalSortJobEngine externalSortJobEngine = SimpleExternalSortEngine.getInstance();
-    List<IReaderByTimestamp> readerList = externalSortJobEngine
+    List<IPointReaderByTimestamp> readerList = externalSortJobEngine
         .executeForByTimestampReader(queryId, chunkReaderWrapList);
     int priorityValue = 1;
-    for (IReaderByTimestamp chunkReader : readerList) {
+    for (IPointReaderByTimestamp chunkReader : readerList) {
       addReaderWithPriority(chunkReader, priorityValue++);
     }
   }
