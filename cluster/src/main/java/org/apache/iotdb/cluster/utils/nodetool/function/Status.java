@@ -16,18 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.utils.nodetool;
+package org.apache.iotdb.cluster.utils.nodetool.function;
+
+import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
 
 import io.airlift.airline.Command;
 import java.util.Map;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 
-@Command(name = "status", description = "Print status of all hosts")
+@Command(name = "status", description = "Print status of all nodes")
 public class Status extends NodeToolCmd {
 
   @Override
-  public void execute(ClusterMonitorMBean proxy)
-  {
-    Map<String, Boolean> statusMap = proxy.getStatusMap();
-    statusMap.forEach((ip, status) -> System.out.println(ip + "\t->\t" + (status ? "on" : "off")));
+  public void execute(ClusterMonitorMBean proxy) {
+    Map<Node, Boolean> statusMap = proxy.getStatusMap();
+    statusMap.forEach(
+        (node, status) -> msgPrintln(nodeToString(node) + "\t->\t" + (status ? "on" : "off")));
   }
 }

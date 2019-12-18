@@ -21,30 +21,31 @@ package org.apache.iotdb.cluster.utils.nodetool;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.cluster.ClusterMain;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
+import org.apache.iotdb.cluster.utils.PartitionUtils;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ClusterMonitor implements ClusterMonitorMBean, IService {
 
-  /**
-   * Original format = String.format("%s:%s=%s",
-   * IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName()
-   */
-  public static final String MBEAN_NAME = "org.apache.iotdb.service:type=Cluster Monitor";
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterMonitor.class);
 
   public static final ClusterMonitor INSTANCE = new ClusterMonitor();
 
-  public String getMbeanName() {
-    return MBEAN_NAME;
-  }
+  private final String MBEAN_NAME = String
+      .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
+          getID().getJmxName());
 
   @Override
   public void start() throws StartupException {
@@ -59,37 +60,38 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   @Override
-  public void stop() {
-    JMXService.deregisterMBean(MBEAN_NAME);
-  }
-
-  @Override
-  public ServiceType getID() {
-    return ServiceType.CLUSTER_MONITOR_SERVICE;
-  }
-
-  @Override
   public List<Node> getRing() {
     PartitionTable partitionTable = getPartitionTable();
     return partitionTable != null ? partitionTable.getAllNodes() : null;
   }
 
   @Override
-  public String getDataPartitionOfSG(String sg) {
-//    PeerId[] nodes = RaftUtils.getDataPartitionOfSG(sg);
-//    StringBuilder builder = new StringBuilder();
-//    builder.append(nodes[0].getIp()).append(" (leader)");
-//    for (int i = 1; i < nodes.length; i++) {
-//      builder.append(", ").append(nodes[i].getIp());
-//    }
-//    return builder.toString();
-    throw new RuntimeException("Unsupport.");
+  public Map<Pair<Long, Long>, PartitionGroup> getDataPartition(String path, long startTime,
+      long endTime) {
+    PartitionTable partitionTable = getPartitionTable();
+    if(partitionTable == null){
+      return null;
+    }
+    try {
+      return PartitionUtils.partitionByPathRangeTime(path, startTime, endTime, partitionTable);
+    } catch (StorageGroupNotSetException e) {
+      LOGGER.error("The storage group of path {} doesn't exist.", path, e);
+      return new HashMap<>();
+    }
   }
 
   @Override
-  public Set<String> getAllStorageGroupsLocally() {
-//    return RaftUtils.getAllStorageGroupsLocally();
-    throw new RuntimeException("Unsupport.");
+  public PartitionGroup getMetaPartition(String path){
+    PartitionTable partitionTable = getPartitionTable();
+    if(partitionTable == null){
+      return null;
+    }
+    try {
+      return PartitionUtils.partitionByPathTime(path, 0, partitionTable);
+    } catch (StorageGroupNotSetException e) {
+      LOGGER.error("The storage group of path {} doesn't exist.", path, e);
+      return new PartitionGroup();
+    }
   }
 
   @Override
@@ -124,8 +126,8 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   @Override
-  public Map<String, Boolean> getStatusMap() {
-//    return RaftUtils.getStatusMapForCluster();
+  public Map<Node, Boolean> getStatusMap() {
+    // TODO
     throw new RuntimeException("Unsupport.");
   }
 
@@ -136,5 +138,19 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       return null;
     }
     return metaClusterServer.getMember().getPartitionTable();
+  }
+
+  @Override
+  public void stop() {
+    JMXService.deregisterMBean(MBEAN_NAME);
+  }
+
+  @Override
+  public ServiceType getID() {
+    return ServiceType.CLUSTER_MONITOR_SERVICE;
+  }
+
+  public String getMBEAN_NAME() {
+    return MBEAN_NAME;
   }
 }

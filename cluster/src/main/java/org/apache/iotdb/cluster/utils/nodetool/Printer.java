@@ -26,7 +26,6 @@ public class Printer {
   private static final PrintStream ERR_PRINTER = new PrintStream(System.err);
 
   private Printer(){
-
   }
 
   public static void msgPrintln(String s){

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.utils.nodetool;
+package org.apache.iotdb.cluster.utils.nodetool.function;
 
 import static java.lang.String.format;
 import static org.apache.iotdb.cluster.utils.nodetool.Printer.errPrintln;
@@ -32,7 +32,10 @@ import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
+import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 
 public abstract class NodeToolCmd implements Runnable {
 
@@ -46,13 +49,13 @@ public abstract class NodeToolCmd implements Runnable {
 
   private static final String JMX_URL_FORMAT = "service:jmx:rmi:///jndi/rmi://%s:%s/jmxrmi";
 
-  static final String BUILDING_CLUSTER_INFO = "The cluster is being created.";
+  public static final String BUILDING_CLUSTER_INFO = "The cluster is being created.";
 
   @Override
   public void run() {
     try {
       MBeanServerConnection mbsc = connect();
-      ObjectName name = new ObjectName(ClusterMonitor.MBEAN_NAME);
+      ObjectName name = new ObjectName(ClusterMonitor.INSTANCE.getMBEAN_NAME());
       ClusterMonitorMBean clusterMonitorProxy = JMX
           .newMBeanProxy(mbsc, name, ClusterMonitorMBean.class);
       execute(clusterMonitorProxy);
@@ -83,5 +86,17 @@ public abstract class NodeToolCmd implements Runnable {
 
   String nodeToString(Node node){
     return String.format("%s:%d:%d", node.getIp(), node.getMetaPort(), node.getDataPort());
+  }
+
+  String partitionGroupToString(PartitionGroup group) {
+    StringBuilder stringBuilder = new StringBuilder("[");
+    if (!group.isEmpty()) {
+      stringBuilder.append(nodeToString(group.get(0)));
+    }
+    for (int i = 1; i < group.size(); i++) {
+      stringBuilder.append(", ").append(nodeToString(group.get(i)));
+    }
+    stringBuilder.append("]");
+    return stringBuilder.toString();
   }
 }

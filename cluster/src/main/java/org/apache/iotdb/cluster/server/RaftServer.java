@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncProcessor;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
@@ -72,7 +73,7 @@ public abstract class RaftServer implements RaftService.AsyncIface {
     this.thisNode = thisNode;
   }
 
-  public void start() throws TTransportException {
+  public void start() throws TTransportException, StartupException {
     if (poolServer != null) {
       return;
     }

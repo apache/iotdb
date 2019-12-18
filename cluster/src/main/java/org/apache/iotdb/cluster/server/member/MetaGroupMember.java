@@ -78,6 +78,7 @@ import org.apache.iotdb.cluster.server.heartbeat.MetaHeartBeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -174,7 +175,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
   }
 
-  private void initSubServers() throws TTransportException {
+  private void initSubServers() throws TTransportException, StartupException {
     dataClusterServer.start();
     clientServer.start();
   }
@@ -290,7 +291,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         }
         // wait a heartbeat to start the next try
         Thread.sleep(ClusterConstant.HEART_BEAT_INTERVAL_MS);
-      } catch (TException e) {
+      } catch (TException | StartupException e) {
         logger.warn("Cannot join the cluster from {}, because:", node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -308,7 +309,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   private boolean joinCluster(Node node, AtomicReference<AddNodeResponse> response,
       JoinClusterHandler handler)
-      throws TException, InterruptedException {
+      throws TException, InterruptedException, StartupException {
     AsyncClient client = (AsyncClient) connectNode(node);
     if (client != null) {
       response.set(null);
@@ -505,7 +506,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       try {
         initSubServers();
         buildDataGroups();
-      } catch (TTransportException e) {
+      } catch (TTransportException | StartupException e) {
         logger.error("Build partition table failed: ", e);
         stop();
       }
@@ -982,7 +983,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     try {
       return SchemaUtils.getSeriesType(pathStr);
     } catch (PathNotExistException e) {
-      Path path = new Path(pathStr);
       List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStr);
       // TODO-Cluster: should we register the schemas locally?
       if (schemas.isEmpty()) {

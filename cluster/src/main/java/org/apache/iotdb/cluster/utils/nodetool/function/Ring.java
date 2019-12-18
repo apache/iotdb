@@ -16,13 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.utils.nodetool;
+package org.apache.iotdb.cluster.utils.nodetool.function;
 
 import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
 
 import io.airlift.airline.Command;
 import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 
 @Command(name = "ring", description = "Print information about the hash ring of nodes")
 public class Ring extends NodeToolCmd {
@@ -33,10 +34,9 @@ public class Ring extends NodeToolCmd {
     if (allNodes == null) {
       msgPrintln(BUILDING_CLUSTER_INFO);
     } else {
-      msgPrintln("Node Identifier\t  \tIP\t  \tMeta Port\t  \tData Port");
-      allNodes.forEach(node -> msgPrintln(
-          String.format("%d\t->\t%s\t  \t%d\t  \t%d", node.nodeIdentifier, node.ip, node.metaPort,
-              node.dataPort)));
+      msgPrintln("Node Identifier\t  \tNode");
+      allNodes.forEach(
+          node -> msgPrintln(String.format("%d\t->\t%s", node.nodeIdentifier, nodeToString(node))));
     }
   }
 }

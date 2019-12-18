@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.utils.nodetool;
+package org.apache.iotdb.cluster.utils.nodetool.function;
 
 import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
 
@@ -25,11 +25,12 @@ import io.airlift.airline.Option;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 
 @Command(name = "host", description = "Print partitions information which a specific host belongs to")
 public class Host extends NodeToolCmd {
 
-  @Option(title = "all nodes", name = {"-a", "--all"}, description = "Show all nodes info")
+  @Option(title = "all nodes", name = {"-a", "--all"}, description = "Show all nodes partition info")
   private boolean showAll = false;
 
   @Override

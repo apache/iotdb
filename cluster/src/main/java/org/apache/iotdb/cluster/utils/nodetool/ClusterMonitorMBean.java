@@ -20,49 +20,53 @@ package org.apache.iotdb.cluster.utils.nodetool;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public interface ClusterMonitorMBean {
 
   /**
    * Get physical hash ring
    *
-   * @return key: hash value, value: node ip
+   * @return Node list
    */
   List<Node> getRing();
 
   /**
-   * Get data partition information of input storage group in String format. The node ips are split
-   * by ',', and the first ip is the currnt leader.
+   * Get data partition information of input path and time range.
    *
-   * @param sg input storage group path
-   * @return data partition information in String format
+   * @param path input path
+   * @return data partition information
    */
-  String getDataPartitionOfSG(String sg);
+  Map<Pair<Long, Long>, PartitionGroup> getDataPartition(String path, long startTime, long endTime);
 
   /**
-   * Get all storage groups
+   * Get metadata partition information of input path
    *
-   * @return Set of all storage groups
+   * @param path input path
+   * @return metadata partition information
    */
-  Set<String> getAllStorageGroupsLocally();
+  PartitionGroup getMetaPartition(String path);
 
   /**
-   * Get data partitions that input node belongs to.
+   * Get data partition groups that input node belongs to and the slot number in each partition group.
    *
-   * @return key: node ips of one data partition, value: storage group paths that belong to this
-   * data partition
+   * @return key: the partition group, value: the slot number
    */
   Map<PartitionGroup, Integer> getSlotNumOfCurNode();
 
+  /**
+   * Get all data partition groups and the slot number in each partition group.
+   *
+   * @return key: the partition group, value: the slot number
+   */
   Map<PartitionGroup, Integer> getSlotNumOfAllNode();
 
   /**
    * Get status of all nodes
    *
-   * @return key: node ip, value: live or not
+   * @return key: node, value: live or not
    */
-  Map<String, Boolean> getStatusMap();
+  Map<Node, Boolean> getStatusMap();
 }
