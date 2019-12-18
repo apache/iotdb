@@ -206,6 +206,8 @@ service RaftService {
   **/
   PullSchemaResp pullTimeSeriesSchema(1: PullSchemaRequest request)
 
+  Node checkAlive()
+
   binary readFile(1:string filePath, 2:i64 offset, 3:i32 length, 4:Node header)
 }
 

@@ -30,7 +30,11 @@ public class Status extends NodeToolCmd {
 
   @Override
   public void execute(ClusterMonitorMBean proxy) {
-    Map<Node, Boolean> statusMap = proxy.getStatusMap();
+    Map<Node, Boolean> statusMap = proxy.getAllNodeStatus();
+    if(statusMap == null){
+      msgPrintln(BUILDING_CLUSTER_INFO);
+      return;
+    }
     statusMap.forEach(
         (node, status) -> msgPrintln(nodeToString(node) + "\t->\t" + (status ? "on" : "off")));
   }

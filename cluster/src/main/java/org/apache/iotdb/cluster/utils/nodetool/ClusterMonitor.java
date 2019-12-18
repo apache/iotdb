@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
+import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
@@ -69,7 +70,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   public Map<Pair<Long, Long>, PartitionGroup> getDataPartition(String path, long startTime,
       long endTime) {
     PartitionTable partitionTable = getPartitionTable();
-    if(partitionTable == null){
+    if (partitionTable == null) {
       return null;
     }
     try {
@@ -81,9 +82,9 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   @Override
-  public PartitionGroup getMetaPartition(String path){
+  public PartitionGroup getMetaPartition(String path) {
     PartitionTable partitionTable = getPartitionTable();
-    if(partitionTable == null){
+    if (partitionTable == null) {
       return null;
     }
     try {
@@ -126,18 +127,28 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   @Override
-  public Map<Node, Boolean> getStatusMap() {
-    // TODO
-    throw new RuntimeException("Unsupport.");
-  }
-
-  private PartitionTable getPartitionTable(){
-    MetaClusterServer metaClusterServer = ClusterMain.metaServer;
-    if (metaClusterServer == null || metaClusterServer.getMember() == null
-        || metaClusterServer.getMember().getPartitionTable() == null) {
+  public Map<Node, Boolean> getAllNodeStatus() {
+    MetaGroupMember metaGroupMember = getMetaGroupMember();
+    if (metaGroupMember == null) {
       return null;
     }
-    return metaClusterServer.getMember().getPartitionTable();
+    return metaGroupMember.getAllNodeStatus();
+  }
+
+  private MetaGroupMember getMetaGroupMember() {
+    MetaClusterServer metaClusterServer = ClusterMain.metaServer;
+    if (metaClusterServer == null) {
+      return null;
+    }
+    return metaClusterServer.getMember();
+  }
+
+  private PartitionTable getPartitionTable() {
+    MetaGroupMember metaGroupMember = getMetaGroupMember();
+    if (metaGroupMember == null) {
+      return null;
+    }
+    return metaGroupMember.getPartitionTable();
   }
 
   @Override

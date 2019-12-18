@@ -39,6 +39,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -49,8 +50,6 @@ import org.slf4j.LoggerFactory;
  * MetaCluster manages cluster metadata, such as what nodes are in the cluster and data partition.
  */
 public class MetaClusterServer extends RaftServer implements TSMetaService.AsyncIface {
-
-  private static final Logger logger = LoggerFactory.getLogger(MetaClusterServer.class);
 
   // each node only contains one MetaGroupMember
   private MetaGroupMember member;
@@ -161,6 +160,11 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   public void pullTimeSeriesSchema(PullSchemaRequest request,
       AsyncMethodCallback<PullSchemaResp> resultHandler) {
     member.pullTimeSeriesSchema(request, resultHandler);
+  }
+
+  @Override
+  public void checkAlive(AsyncMethodCallback<Node> resultHandler) throws TException {
+    member.checkAlive(resultHandler);
   }
 
   @Override

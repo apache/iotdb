@@ -759,4 +759,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       resultHandler.onError(e);
     }
   }
+
+  @Override
+  public void checkAlive(AsyncMethodCallback<Node> resultHandler) throws TException {
+    resultHandler.onComplete(thisNode);
+  }
 }
