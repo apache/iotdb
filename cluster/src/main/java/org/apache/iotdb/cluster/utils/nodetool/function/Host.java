@@ -49,19 +49,22 @@ public class Host extends NodeToolCmd {
   }
 
   private void showInfo(Map<PartitionGroup, Integer> raftGroupMapSlotNum) {
+    StringBuilder builder = new StringBuilder();
+    builder.append(String.format("%-50s  %20s", "Raft group", "Slot Number"));
+    msgPrintln(builder.toString());
     for (Entry<PartitionGroup, Integer> entry : raftGroupMapSlotNum.entrySet()) {
-      StringBuilder builder = new StringBuilder();
+      builder = new StringBuilder();
       PartitionGroup raftGroup = entry.getKey();
       Integer slotNum = entry.getValue();
       builder.append('(');
-      if (raftGroup.size() > 0) {
+      if (!raftGroup.isEmpty()) {
         builder.append(nodeToString(raftGroup.get(0)));
       }
       for (int i = 1; i < raftGroup.size(); i++) {
         builder.append(", ").append(nodeToString(raftGroup.get(i)));
       }
-      builder.append(')').append("\t->\t").append(slotNum);
-      msgPrintln(builder.toString());
+      builder.append(')');
+      msgPrintln(String.format("%-50s->%20s", builder.toString(), slotNum));
     }
   }
 }

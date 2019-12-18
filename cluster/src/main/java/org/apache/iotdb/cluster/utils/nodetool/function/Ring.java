@@ -34,9 +34,9 @@ public class Ring extends NodeToolCmd {
     if (allNodes == null) {
       msgPrintln(BUILDING_CLUSTER_INFO);
     } else {
-      msgPrintln("Node Identifier\t  \tNode");
+      msgPrintln(String.format("%-20s  %30s", "Node Identifier", "Node"));
       allNodes.forEach(
-          node -> msgPrintln(String.format("%d\t->\t%s", node.nodeIdentifier, nodeToString(node))));
+          node -> msgPrintln(String.format("%-20d->%30s", node.nodeIdentifier, nodeToString(node))));
     }
   }
 }

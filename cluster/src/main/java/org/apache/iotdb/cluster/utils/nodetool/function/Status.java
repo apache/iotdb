@@ -35,7 +35,8 @@ public class Status extends NodeToolCmd {
       msgPrintln(BUILDING_CLUSTER_INFO);
       return;
     }
+    msgPrintln(String.format("%-30s  %10s", "Node", "Status"));
     statusMap.forEach(
-        (node, status) -> msgPrintln(nodeToString(node) + "\t->\t" + (status ? "on" : "off")));
+        (node, status) -> msgPrintln(String.format("%-30s->%10s", nodeToString(node), (status ? "on" : "off"))));
   }
 }

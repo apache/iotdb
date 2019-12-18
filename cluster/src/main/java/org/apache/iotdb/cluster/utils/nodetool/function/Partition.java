@@ -28,7 +28,7 @@ import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 @Command(name = "partition", description = "Print the hosts information of specific storage group and time range")
-public class DataPartition extends NodeToolCmd {
+public class Partition extends NodeToolCmd {
 
   @Option(title = "path", required = true, name = {"-path",
       "--path"}, description = "Specify a path for accurate hosts information")
