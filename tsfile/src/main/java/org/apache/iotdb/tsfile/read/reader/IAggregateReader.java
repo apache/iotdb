@@ -16,25 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.reader;
+package org.apache.iotdb.tsfile.read.reader;
 
 import java.io.IOException;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 
-public interface IPointReaderByTimestamp {
+public interface IAggregateReader extends IBatchReader {
 
   /**
-   * Returns the corresponding value under this timestamp. Returns null if no value under this
-   * timestamp.
+   * Returns meta-information of batch data.
    * <p>
-   * Note that calling this method will change the status of this reader irreversibly just like
-   * <code>next</code>. The difference is that <code>next</code> moves one step forward while
-   * <code>getValueInTimestamp</code> advances towards the given timestamp.
-   * <p>
-   * Attention: DO call this method with monotonically increasing timestamps. There is no guarantee
-   * of correctness with any other way of calling. For example, DO NOT call this method twice with
-   * the same timestamp.
+   * Returns null if batch data comes from memory. Returns pageHeader if batch data comes from page
+   * data.
    */
-  Object getValueInTimestamp(long timestamp) throws IOException;
+  PageHeader nextPageHeader() throws IOException;
 
-  boolean hasNext() throws IOException;
+  void skipPageData() throws IOException;
 }

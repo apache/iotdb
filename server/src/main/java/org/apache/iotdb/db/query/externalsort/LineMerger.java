@@ -27,8 +27,6 @@ import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthIExternalS
 import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthTimeValuePairSerializer;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
-import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.Element;
-import org.apache.iotdb.db.utils.TimeValuePair;
 
 
 public class LineMerger {

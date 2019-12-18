@@ -34,21 +34,24 @@ import org.apache.iotdb.db.query.aggregation.impl.LastValueAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrFunc;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.dataset.AggreResultDataPointReader;
+import org.apache.iotdb.db.query.dataset.OldEngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.factory.AggreFuncFactory;
+import org.apache.iotdb.db.query.reader.resourceRelated.OldUnseqResourceMergeReader;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.IPointReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 public class AggregateEngineExecutor {
 
@@ -84,7 +87,7 @@ public class AggregateEngineExecutor {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
 
-    List<IBatchReader> readersOfSequenceData = new ArrayList<>();
+    List<IAggregateReader> readersOfSequenceData = new ArrayList<>();
     List<IPointReader> readersOfUnSequenceData = new ArrayList<>();
     List<AggregateFunction> aggregateFunctions = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
@@ -101,7 +104,7 @@ public class AggregateEngineExecutor {
       timeFilter = queryDataSource.updateTimeFilter(timeFilter);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
-      IBatchReader seqResourceIterateReader;
+      IAggregateReader seqResourceIterateReader;
       if (function instanceof MaxTimeAggrFunc || function instanceof LastValueAggrFunc) {
         seqResourceIterateReader = new SeqResourceIterateReader(queryDataSource.getSeriesPath(),
             queryDataSource.getSeqResources(), timeFilter, context, true);
@@ -111,10 +114,9 @@ public class AggregateEngineExecutor {
       }
 
       // unseq reader for all chunk groups in unSeqFile, memory
-      IPointReader unseqResourceMergeReader = null;
-//      new UnseqResourceMergeReader(
-//          queryDataSource.getSeriesPath(),
-//          queryDataSource.getUnseqResources(), context, timeFilter);
+      IPointReader unseqResourceMergeReader = new OldUnseqResourceMergeReader(
+          queryDataSource.getSeriesPath(),
+          queryDataSource.getUnseqResources(), context, timeFilter);
 
       readersOfSequenceData.add(seqResourceIterateReader);
       readersOfUnSequenceData.add(unseqResourceMergeReader);
@@ -139,29 +141,29 @@ public class AggregateEngineExecutor {
    * @return one series aggregate result data
    */
   private AggreResultData aggregateWithoutValueFilter(AggregateFunction function,
-      IBatchReader sequenceReader, IPointReader unSequenceReader, Filter filter)
+      IAggregateReader sequenceReader, IPointReader unSequenceReader, Filter filter)
       throws IOException, QueryProcessException {
     if (function instanceof MaxTimeAggrFunc || function instanceof LastValueAggrFunc) {
       return handleLastMaxTimeWithOutTimeGenerator(function, sequenceReader, unSequenceReader,
           filter);
     }
 
-//    while (sequenceReader.hasNext()) {
-//      PageHeader pageHeader = sequenceReader.nextPageHeader();
-//      // judge if overlap with unsequence data
-//      if (canUseHeader(function, pageHeader, unSequenceReader, filter)) {
-//        // cal by pageHeader
-//        function.calculateValueFromPageHeader(pageHeader);
-//        sequenceReader.skipPageData();
-//      } else {
-//        // cal by pageData
-//        function.calculateValueFromPageData(sequenceReader.nextBatch(), unSequenceReader);
-//      }
-//
-//      if (function.isCalculatedAggregationResult()) {
-//        return function.getResult();
-//      }
-//    }
+    while (sequenceReader.hasNextBatch()) {
+      PageHeader pageHeader = sequenceReader.nextPageHeader();
+      // judge if overlap with unsequence data
+      if (canUseHeader(function, pageHeader, unSequenceReader, filter)) {
+        // cal by pageHeader
+        function.calculateValueFromPageHeader(pageHeader);
+        sequenceReader.skipPageData();
+      } else {
+        // cal by pageData
+        function.calculateValueFromPageData(sequenceReader.nextBatch(), unSequenceReader);
+      }
+
+      if (function.isCalculatedAggregationResult()) {
+        return function.getResult();
+      }
+    }
 
     // cal with unsequence data
     if (unSequenceReader.hasNext()) {
@@ -206,43 +208,43 @@ public class AggregateEngineExecutor {
    * @return BatchData-aggregate result
    */
   private AggreResultData handleLastMaxTimeWithOutTimeGenerator(AggregateFunction function,
-      IBatchReader sequenceReader, IPointReader unSequenceReader, Filter timeFilter)
+      IAggregateReader sequenceReader, IPointReader unSequenceReader, Filter timeFilter)
       throws IOException, QueryProcessException {
     long lastBatchTimeStamp = Long.MIN_VALUE;
     boolean isChunkEnd = false;
-//    while (sequenceReader.hasNext()) {
-//      PageHeader pageHeader = sequenceReader.nextPageHeader();
-//      // judge if overlap with unsequence data
-//      if (canUseHeader(function, pageHeader, unSequenceReader, timeFilter)) {
-//        // cal by pageHeader
-//        function.calculateValueFromPageHeader(pageHeader);
-//        sequenceReader.skipPageData();
-//
-//        if (lastBatchTimeStamp > pageHeader.getStartTime()) {
-//          // the chunk is end.
-//          isChunkEnd = true;
-//        } else {
-//          // current page and last page are in the same chunk.
-//          lastBatchTimeStamp = pageHeader.getStartTime();
-//        }
-//      } else {
-//        // cal by pageData
-//        BatchData batchData = sequenceReader.nextBatch();
-//        if (batchData.length() > 0) {
-//          if (lastBatchTimeStamp > batchData.currentTime()) {
-//            // the chunk is end.
-//            isChunkEnd = true;
-//          } else {
-//            // current page and last page are in the same chunk.
-//            lastBatchTimeStamp = batchData.currentTime();
-//          }
-//          function.calculateValueFromPageData(batchData, unSequenceReader);
-//        }
-//      }
-//      if (isChunkEnd) {
-//        break;
-//      }
-//    }
+    while (sequenceReader.hasNextBatch()) {
+      PageHeader pageHeader = sequenceReader.nextPageHeader();
+      // judge if overlap with unsequence data
+      if (canUseHeader(function, pageHeader, unSequenceReader, timeFilter)) {
+        // cal by pageHeader
+        function.calculateValueFromPageHeader(pageHeader);
+        sequenceReader.skipPageData();
+
+        if (lastBatchTimeStamp > pageHeader.getStartTime()) {
+          // the chunk is end.
+          isChunkEnd = true;
+        } else {
+          // current page and last page are in the same chunk.
+          lastBatchTimeStamp = pageHeader.getStartTime();
+        }
+      } else {
+        // cal by pageData
+        BatchData batchData = sequenceReader.nextBatch();
+        if (batchData.length() > 0) {
+          if (lastBatchTimeStamp > batchData.currentTime()) {
+            // the chunk is end.
+            isChunkEnd = true;
+          } else {
+            // current page and last page are in the same chunk.
+            lastBatchTimeStamp = batchData.currentTime();
+          }
+          function.calculateValueFromPageData(batchData, unSequenceReader);
+        }
+      }
+      if (isChunkEnd) {
+        break;
+      }
+    }
 
     // cal with unsequence data
     if (unSequenceReader.hasNext()) {
@@ -261,7 +263,7 @@ public class AggregateEngineExecutor {
       throws StorageEngineException, PathException, IOException {
 
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(expression, context);
-    List<IPointReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
+    List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     for (Path path : selectedSeries) {
       SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path, context);
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
@@ -286,7 +288,7 @@ public class AggregateEngineExecutor {
   private List<AggreResultData> aggregateWithValueFilter(
       List<AggregateFunction> aggregateFunctions,
       EngineTimeGenerator timestampGenerator,
-      List<IPointReaderByTimestamp> readersOfSelectedSeries)
+      List<IReaderByTimestamp> readersOfSelectedSeries)
       throws IOException {
 
     while (timestampGenerator.hasNext()) {
@@ -323,11 +325,11 @@ public class AggregateEngineExecutor {
   private QueryDataSet constructDataSet(List<AggreResultData> aggreResultDataList)
       throws IOException {
     List<TSDataType> dataTypes = new ArrayList<>();
-    List<IBatchReader> resultDataPointReaders = new ArrayList<>();
-//    for (AggreResultData resultData : aggreResultDataList) {
-//      dataTypes.add(resultData.getDataType());
-//      resultDataPointReaders.add(new AggreResultDataPointReader(resultData));
-//    }
-    return new EngineDataSetWithoutValueFilter(selectedSeries, dataTypes, resultDataPointReaders);
+    List<IPointReader> resultDataPointReaders = new ArrayList<>();
+    for (AggreResultData resultData : aggreResultDataList) {
+      dataTypes.add(resultData.getDataType());
+      resultDataPointReaders.add(new AggreResultDataPointReader(resultData));
+    }
+    return new OldEngineDataSetWithoutValueFilter(selectedSeries, dataTypes, resultDataPointReaders);
   }
 }

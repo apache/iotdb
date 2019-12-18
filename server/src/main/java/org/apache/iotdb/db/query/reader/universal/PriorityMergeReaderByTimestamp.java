@@ -21,17 +21,17 @@ package org.apache.iotdb.db.query.reader.universal;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.query.reader.IPointReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 
 /**
- * This class implements {@link IPointReaderByTimestamp} for data sources with different priorities.
+ * This class implements {@link IReaderByTimestamp} for data sources with different priorities.
  */
-public class PriorityMergeReaderByTimestamp implements IPointReaderByTimestamp {
+public class PriorityMergeReaderByTimestamp implements IReaderByTimestamp {
 
-  private List<IPointReaderByTimestamp> readerList = new ArrayList<>();
+  private List<IReaderByTimestamp> readerList = new ArrayList<>();
   private List<Integer> priorityList = new ArrayList<>();
 
-  public void addReaderWithPriority(IPointReaderByTimestamp reader, int priority) {
+  public void addReaderWithPriority(IReaderByTimestamp reader, int priority) {
     readerList.add(reader);
     priorityList.add(priority);
   }

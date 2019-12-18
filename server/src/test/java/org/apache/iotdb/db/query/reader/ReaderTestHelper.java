@@ -39,6 +39,7 @@ public abstract class ReaderTestHelper {
   private String storageGroup = "storage_group1";
   protected String deviceId = "root.vehicle.d0";
   protected String measurementId = "s0";
+  protected TSDataType dataType = TSDataType.INT32;
   protected StorageGroupProcessor storageGroupProcessor;
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
 
@@ -66,7 +67,7 @@ public abstract class ReaderTestHelper {
 
   protected void insertOneRecord(long time, int num) throws QueryProcessException {
     TSRecord record = new TSRecord(time, deviceId);
-    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(num)));
+    record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(num)));
     storageGroupProcessor.insert(new InsertPlan(record));
   }
 

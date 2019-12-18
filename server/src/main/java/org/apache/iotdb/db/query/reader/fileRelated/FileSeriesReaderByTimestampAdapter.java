@@ -19,16 +19,16 @@
 package org.apache.iotdb.db.query.reader.fileRelated;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IPointReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 
 /**
  * To read a sequence TsFile's on-disk data by timestamp, this class implements an interface {@link
- * IPointReaderByTimestamp} based on the data reader {@link FileSeriesReaderByTimestamp}.
+ * IReaderByTimestamp} based on the data reader {@link FileSeriesReaderByTimestamp}.
  * <p>
  * This class is used in {@link org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceReaderByTimestamp}.
  */
-public class FileSeriesReaderByTimestampAdapter implements IPointReaderByTimestamp {
+public class FileSeriesReaderByTimestampAdapter implements IReaderByTimestamp {
 
   private FileSeriesReaderByTimestamp fileSeriesReaderByTimestamp;
 

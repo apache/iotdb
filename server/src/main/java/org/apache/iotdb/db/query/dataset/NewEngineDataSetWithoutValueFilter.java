@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.query.dataset;
 
 import java.util.ArrayList;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -41,7 +39,7 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 
-public class EngineDataSetWithoutValueFilter extends QueryDataSet {
+public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
   private List<IBatchReader> seriesReaderWithoutValueFilterList;
 
@@ -59,7 +57,7 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
    * @param readers readers in List(IPointReader) structure
    * @throws IOException IOException
    */
-  public EngineDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
+  public NewEngineDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
       List<IBatchReader> readers)
       throws IOException {
     super(paths, dataTypes);
@@ -114,7 +112,8 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
       timeBAOS.write(BytesUtils.longToBytes(minTime));
 
       for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-        if (cachedBatchDataArray == null || !cachedBatchDataArray[seriesIndex].hasCurrent()
+        if (cachedBatchDataArray == null || cachedBatchDataArray[seriesIndex] == null
+            || !cachedBatchDataArray[seriesIndex].hasCurrent()
             || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
           // current batch is empty or does not have value at minTime
           currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1);
@@ -243,7 +242,8 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
     RowRecord record = new RowRecord(minTime);
 
     for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-      if (cachedBatchDataArray == null || !cachedBatchDataArray[seriesIndex].hasCurrent()
+      if (cachedBatchDataArray == null
+          || !cachedBatchDataArray[seriesIndex].hasCurrent()
           || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
         record.addField(new Field(null));
       } else {

@@ -27,7 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.query.externalsort.adapter.ByTimestampReaderAdapter;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.IPointReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,7 +74,7 @@ public class SimpleExternalSortEngine implements ExternalSortJobEngine {
   }
 
   @Override
-  public List<IPointReaderByTimestamp> executeForByTimestampReader(long queryId,
+  public List<IReaderByTimestamp> executeForByTimestampReader(long queryId,
       List<ChunkReaderWrap> chunkReaderWraps) throws IOException {
     if (!enableExternalSort || chunkReaderWraps.size() < minExternalSortSourceCount) {
       return generateIReaderByTimestamp(chunkReaderWraps, 0, chunkReaderWraps.size());
@@ -145,9 +145,9 @@ public class SimpleExternalSortEngine implements ExternalSortJobEngine {
   /**
    * init IReaderByTimestamp with ChunkReaderWrap.
    */
-  private List<IPointReaderByTimestamp> generateIReaderByTimestamp(List<ChunkReaderWrap> readerWraps,
+  private List<IReaderByTimestamp> generateIReaderByTimestamp(List<ChunkReaderWrap> readerWraps,
       final int start, final int size) throws IOException {
-    List<IPointReaderByTimestamp> readerByTimestampList = new ArrayList<>();
+    List<IReaderByTimestamp> readerByTimestampList = new ArrayList<>();
     for (int i = start; i < start + size; i++) {
       readerByTimestampList.add(readerWraps.get(i).getIReaderByTimestamp());
     }
@@ -160,8 +160,8 @@ public class SimpleExternalSortEngine implements ExternalSortJobEngine {
    * @param pointReaderList reader list that implements IPointReader
    * @return reader list that implements IReaderByTimestamp
    */
-  private List<IPointReaderByTimestamp> convert(List<IPointReader> pointReaderList) {
-    List<IPointReaderByTimestamp> readerByTimestampList = new ArrayList<>();
+  private List<IReaderByTimestamp> convert(List<IPointReader> pointReaderList) {
+    List<IReaderByTimestamp> readerByTimestampList = new ArrayList<>();
     for (IPointReader pointReader : pointReaderList) {
       readerByTimestampList.add(new ByTimestampReaderAdapter(pointReader));
     }

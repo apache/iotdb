@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
@@ -28,37 +29,46 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.externalsort.ExternalSortJobEngine;
 import org.apache.iotdb.db.query.externalsort.SimpleExternalSortEngine;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
-import org.apache.iotdb.db.query.reader.universal.PriorityMergeReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 /**
- * To read a list of unsequence TsFiles by timestamp, this class extends {@link
- * PriorityMergeReaderByTimestamp} to implement <code>IReaderByTimestamp</code> for the TsFiles.
+ * To read a list of unsequence TsFiles, this class extends {@link PriorityMergeReader} to
+ * implement
+ * <code>IPointReader</code> for the TsFiles.
  * <p>
  * Note that an unsequence TsFile can be either closed or unclosed. An unclosed unsequence TsFile
  * consists of data on disk and data in memtables that will be flushed to this unclosed TsFile.
  * <p>
- * This class is used in {@link org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp}.
+ * This class is used in {@link org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter}.
  */
-public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimestamp {
+public class OldUnseqResourceMergeReader extends PriorityMergeReader {
 
+  private Path seriesPath;
   private long queryId;
 
-  public UnseqResourceReaderByTimestamp(Path seriesPath,
-      List<TsFileResource> unseqResources, QueryContext context) throws IOException {
+  public OldUnseqResourceMergeReader(Path seriesPath, List<TsFileResource> unseqResources,
+      QueryContext context, Filter filter) throws IOException {
+    this.seriesPath = seriesPath;
     this.queryId = context.getQueryId();
-    List<ChunkReaderWrap> chunkReaderWrapList = new ArrayList<>();
+
+    List<ChunkReaderWrap> readerWrapList = new ArrayList<>();
     for (TsFileResource tsFileResource : unseqResources) {
 
       // prepare metaDataList
       List<ChunkMetaData> metaDataList;
       if (tsFileResource.isClosed()) {
+        if (isTsFileNotSatisfied(tsFileResource, filter)) {
+          continue;
+        }
+
         metaDataList = DeviceMetaDataCache.getInstance()
             .get(tsFileResource, seriesPath);
         List<Modification> pathModifications = context
@@ -67,35 +77,64 @@ public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimesta
           QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
         }
       } else {
+        if (tsFileResource.getEndTimeMap().size() != 0) {
+          if (isTsFileNotSatisfied(tsFileResource, filter)) {
+            continue;
+          }
+        }
         metaDataList = tsFileResource.getChunkMetaDataList();
       }
 
       ChunkLoaderImpl chunkLoader = null;
       if (!metaDataList.isEmpty()) {
-        // create and add ChunkReader with priority
         TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
             .get(tsFileResource, tsFileResource.isClosed());
         chunkLoader = new ChunkLoaderImpl(tsFileReader);
       }
+
       for (ChunkMetaData chunkMetaData : metaDataList) {
-        chunkReaderWrapList.add(new ChunkReaderWrap(chunkMetaData, chunkLoader, null));
+
+        if (filter != null && !filter.satisfy(chunkMetaData.getStatistics())) {
+          continue;
+        }
+        // create and add DiskChunkReader
+        readerWrapList.add(new ChunkReaderWrap(chunkMetaData, chunkLoader, filter));
       }
 
       if (!tsFileResource.isClosed()) {
         // create and add MemChunkReader
-        chunkReaderWrapList.add(new ChunkReaderWrap(tsFileResource.getReadOnlyMemChunk(), null));
+        readerWrapList.add(new ChunkReaderWrap(tsFileResource.getReadOnlyMemChunk(), filter));
       }
     }
 
-    // TODO future work: create reader when getValueInTimestamp so that resources
-    //  whose start and end time do not satisfy can be skipped.
-
     ExternalSortJobEngine externalSortJobEngine = SimpleExternalSortEngine.getInstance();
-    List<IReaderByTimestamp> readerList = externalSortJobEngine
-        .executeForByTimestampReader(queryId, chunkReaderWrapList);
+    List<IPointReader> readerList = externalSortJobEngine
+        .executeForIPointReader(queryId, readerWrapList);
     int priorityValue = 1;
-    for (IReaderByTimestamp chunkReader : readerList) {
+    for (IPointReader chunkReader : readerList) {
       addReaderWithPriority(chunkReader, priorityValue++);
     }
+  }
+
+  /**
+   * Returns true if the start and end time of the series data in this unsequence TsFile do not
+   * satisfy the filter condition. Returns false if satisfy.
+   * <p>
+   * This method is used to in the constructor function to check whether this TsFile can be
+   * skipped.
+   *
+   * @param tsFile the TsFileResource corresponding to this TsFile
+   * @param filter filter condition. Null if no filter.
+   * @return True if the TsFile's start and end time do not satisfy the filter condition; False if
+   * satisfy.
+   */
+  // TODO future work: deduplicate code. See SeqResourceIterateReader.
+  private boolean isTsFileNotSatisfied(TsFileResource tsFile, Filter filter) {
+    if (filter == null) {
+      return false;
+    }
+    long startTime = tsFile.getStartTimeMap().get(seriesPath.getDevice());
+    long endTime = tsFile.getEndTimeMap().get(seriesPath.getDevice());
+    return !filter.satisfyStartEndTime(startTime, endTime);
   }
 }

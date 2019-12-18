@@ -20,13 +20,13 @@ package org.apache.iotdb.db.query.externalsort.adapter;
 
 import java.io.IOException;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.IPointReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
 
 /**
  * This class is an adapter which makes IPointReader implement IReaderByTimestamp interface.
  */
-public class ByTimestampReaderAdapter implements IPointReaderByTimestamp {
+public class ByTimestampReaderAdapter implements IReaderByTimestamp {
 
   private IPointReader pointReader;
   private boolean hasCached;

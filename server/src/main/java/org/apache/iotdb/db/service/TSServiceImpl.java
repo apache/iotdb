@@ -75,7 +75,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.dataset.NewEngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -859,8 +859,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     // optimize for query without value filter and
     // !!!!!!!!!!!!!!!!!!Attention !!!!!!!!!!!!!!!!!!!
     // !!!!!!!don't support watermark now!!!!!
-    if (queryDataSet instanceof EngineDataSetWithoutValueFilter) {
-      result = ((EngineDataSetWithoutValueFilter)queryDataSet).fillBuffer(fetchSize);
+    if (queryDataSet instanceof NewEngineDataSetWithoutValueFilter) {
+      result = ((NewEngineDataSetWithoutValueFilter)queryDataSet).fillBuffer(fetchSize);
     }
     // TODO need to refactor the other query in the future
     else {

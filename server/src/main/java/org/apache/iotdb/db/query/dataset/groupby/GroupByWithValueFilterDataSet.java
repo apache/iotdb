@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.IPointReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -38,7 +38,7 @@ import java.util.List;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
-  private List<IPointReaderByTimestamp> allDataReaderList;
+  private List<IReaderByTimestamp> allDataReaderList;
   private TimeGenerator timestampGenerator;
   /**
    * cached timestamp for next group by partition.
@@ -58,7 +58,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    * constructor.
    */
   public GroupByWithValueFilterDataSet(long queryId, List<Path> paths, long unit,
-                                       long slidingStep, long startTime, long endTime) {
+      long slidingStep, long startTime, long endTime) {
     super(queryId, paths, unit, slidingStep, startTime, endTime);
     this.allDataReaderList = new ArrayList<>();
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getAggregateFetchSize();

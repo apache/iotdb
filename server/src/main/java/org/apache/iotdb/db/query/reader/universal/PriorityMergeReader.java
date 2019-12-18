@@ -23,24 +23,22 @@ import java.util.List;
 import java.util.PriorityQueue;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 /**
- * This class is for data sources with different priorities. It used to implement {@link
- * IPointReader}, but now, instead of returning TimeValuePair, it returns Element directly
+ * This class implements {@link IPointReader} for data sources with different priorities.
  */
-public class PriorityMergeReader implements IPointReader{
+public class PriorityMergeReader implements IPointReader {
 
   PriorityQueue<Element> heap = new PriorityQueue<>((o1, o2) -> {
-    int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(), o2.timeValuePair.getTimestamp());
+    int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(),
+        o2.timeValuePair.getTimestamp());
     return timeCompare != 0 ? timeCompare : Integer.compare(o2.priority, o1.priority);
   });
 
   public PriorityMergeReader() {
   }
 
-  public PriorityMergeReader(List<IPointReader> prioritySeriesReaders, int startPriority)
-      throws IOException {
+  public PriorityMergeReader(List<IPointReader> prioritySeriesReaders, int startPriority) throws IOException {
     for (IPointReader reader : prioritySeriesReaders) {
       addReaderWithPriority(reader, startPriority++);
     }
@@ -48,17 +46,18 @@ public class PriorityMergeReader implements IPointReader{
 
   public void addReaderWithPriority(IPointReader reader, int priority) throws IOException {
     if (reader.hasNext()) {
-      TimeValuePair pair = reader.next();
-      heap.add(new Element(reader, pair.getTimestamp(), pair.getValue(), priority));
+      heap.add(new Element(reader, reader.next(), priority));
     } else {
       reader.close();
     }
   }
 
+  @Override
   public boolean hasNext() {
     return !heap.isEmpty();
   }
 
+  @Override
   public TimeValuePair next() throws IOException {
     Element top = heap.poll();
     TimeValuePair ret = top.timeValuePair;
@@ -76,6 +75,7 @@ public class PriorityMergeReader implements IPointReader{
     return ret;
   }
 
+  @Override
   public TimeValuePair current() throws IOException {
     return heap.peek().timeValuePair;
   }
@@ -104,6 +104,7 @@ public class PriorityMergeReader implements IPointReader{
     }
   }
 
+  @Override
   public void close() throws IOException {
     while (!heap.isEmpty()) {
       Element e = heap.poll();
@@ -111,25 +112,15 @@ public class PriorityMergeReader implements IPointReader{
     }
   }
 
-  /**
-   * This class is static because it is used in "TimeValuePairUtils"
-   */
-  public static class Element {
+  class Element {
 
     IPointReader reader;
     TimeValuePair timeValuePair;
     int priority;
 
-    /**
-     * This constructor is only used in "TimeValuePairUtils" to get empty Element
-     */
-    public Element(long time, TsPrimitiveType value) {
-      this.timeValuePair = new TimeValuePair(time, value);
-    }
-
-    Element(IPointReader reader, long time, TsPrimitiveType value, int priority) {
+    Element(IPointReader reader, TimeValuePair timeValuePair, int priority) {
       this.reader = reader;
-      this.timeValuePair = new TimeValuePair(time, value);
+      this.timeValuePair = timeValuePair;
       this.priority = priority;
     }
 
@@ -152,6 +143,5 @@ public class PriorityMergeReader implements IPointReader{
     void close() throws IOException {
       reader.close();
     }
-
   }
 }

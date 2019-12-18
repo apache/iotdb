@@ -26,8 +26,8 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
-import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
-import org.apache.iotdb.db.query.reader.IPointReaderByTimestamp;
+import org.apache.iotdb.db.query.dataset.NewEngineDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
@@ -78,7 +78,7 @@ public class EngineExecutor {
     }
 
     try {
-      return new EngineDataSetWithoutValueFilter(queryExpression.getSelectedSeries(), dataTypes,
+      return new NewEngineDataSetWithoutValueFilter(queryExpression.getSelectedSeries(), dataTypes,
           readersOfSelectedSeries);
     } catch (IOException e) {
       throw new StorageEngineException(e.getMessage());
@@ -96,7 +96,7 @@ public class EngineExecutor {
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(
         queryExpression.getExpression(), context);
 
-    List<IPointReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
+    List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Path path : queryExpression.getSelectedSeries()) {
       try {

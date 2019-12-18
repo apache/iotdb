@@ -31,7 +31,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
-import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.Element;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -49,7 +48,7 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
  * TsFile consists of data on disk and data in memtables that will be flushed to this unclosed
  * TsFile. This class is used in {@link org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter}.
  */
-public class UnseqResourceMergeReader implements IBatchReader {
+public class NewUnseqResourceMergeReader implements IBatchReader {
 
   private PriorityMergeReader priorityMergeReader = new PriorityMergeReader();
   private List<ChunkMetaData> metaDataList = new ArrayList<>();
@@ -65,7 +64,7 @@ public class UnseqResourceMergeReader implements IBatchReader {
   /**
    * prepare metaDataList
    */
-  public UnseqResourceMergeReader(Path seriesPath, TSDataType dataType,
+  public NewUnseqResourceMergeReader(Path seriesPath, TSDataType dataType,
       List<TsFileResource> unseqResources, QueryContext context, Filter filter) throws IOException {
 
     this.dataType = dataType;

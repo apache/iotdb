@@ -29,12 +29,14 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileIterateReader;
 import org.apache.iotdb.db.query.reader.universal.IterateReader;
 import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 
@@ -151,7 +153,7 @@ public class SeqResourceIterateReader extends IterateReader {
     return !filter.satisfyStartEndTime(startTime, endTime);
   }
 
-  private IBatchReader initSealedTsFileReader(TsFileResource sealedTsFile, Filter filter,
+  private IAggregateReader initSealedTsFileReader(TsFileResource sealedTsFile, Filter filter,
       QueryContext context) throws IOException {
     // prepare metaDataList
     List<ChunkMetaData> metaDataList = DeviceMetaDataCache.getInstance()

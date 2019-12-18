@@ -37,7 +37,7 @@ public abstract class IFill {
   long queryTime;
   TSDataType dataType;
 
-  IBatchReader allDataReader;
+  IPointReader allDataReader;
 
   public IFill(TSDataType dataType, long queryTime) {
     this.dataType = dataType;

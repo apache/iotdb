@@ -137,36 +137,9 @@ public class EngineQueryRouter implements IEngineQueryRouter {
       QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
 
-
-    long queryId = context.getQueryId();
-
     FillEngineExecutor fillEngineExecutor = new FillEngineExecutor(fillPaths, queryTime,
         fillType);
     return fillEngineExecutor.execute(context);
   }
-
-  /**
-   * sort intervals by start time and merge overlapping intervals.
-   *
-   * @param intervals time interval
-   */
-  private List<Pair<Long, Long>> mergeInterval(List<Pair<Long, Long>> intervals) {
-    // sort by interval start time.
-    intervals.sort(((o1, o2) -> (int) (o1.left - o2.left)));
-
-    LinkedList<Pair<Long, Long>> merged = new LinkedList<>();
-    for (Pair<Long, Long> interval : intervals) {
-      // if the list of merged intervals is empty or
-      // if the current interval does not overlap with the previous, simply append it.
-      if (merged.isEmpty() || merged.getLast().right < interval.left) {
-        merged.add(interval);
-      } else {
-        // otherwise, there is overlap, so we merge the current and previous intervals.
-        merged.getLast().right = Math.max(merged.getLast().right, interval.right);
-      }
-    }
-    return merged;
-  }
-
 
 }

@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.IterateReader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -101,7 +102,7 @@ public class UnSealedTsFileIterateReader extends IterateReader {
   /**
    * for an unsealed sequence TsFile's on-disk data.
    */
-  private IBatchReader initUnSealedTsFileDiskReader(TsFileResource unSealedTsFile, Filter filter)
+  private IAggregateReader initUnSealedTsFileDiskReader(TsFileResource unSealedTsFile, Filter filter)
       throws IOException {
     AbstractFileSeriesReader abstractFileSeriesReader;
     List<ChunkMetaData> metaDataList = unSealedTsFile.getChunkMetaDataList();

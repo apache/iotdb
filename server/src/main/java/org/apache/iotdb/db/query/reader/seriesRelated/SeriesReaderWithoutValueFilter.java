@@ -24,7 +24,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
-import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.NewUnseqResourceMergeReader;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -38,7 +39,7 @@ import java.io.IOException;
  *
  * "without value filter" is equivalent to "with global time filter or without any filter".
  */
-public class SeriesReaderWithoutValueFilter implements IBatchReader {
+public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReader {
 
   private IBatchReader seqResourceIterateReader;
   private IBatchReader unseqResourceMergeReader;
@@ -51,6 +52,13 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader {
   private static final int DEFAULT_BATCH_DATA_SIZE = 10000;
 
   private int batchDataSize;
+
+  /**
+   * will be removed after removing IPointReader
+   */
+  private boolean hasCachedTimeValuePair;
+  private TimeValuePair timeValuePair;
+  private BatchData batchData;
 
   /**
    * Constructor function.
@@ -73,10 +81,10 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader {
 
     // reader for unsequence resources, we only push down time filter on unseq reader
     if (pushdownUnseq) {
-      this.unseqResourceMergeReader = new UnseqResourceMergeReader(seriesPath, dataType,
+      this.unseqResourceMergeReader = new NewUnseqResourceMergeReader(seriesPath, dataType,
               queryDataSource.getUnseqResources(), context, timeFilter);
     } else {
-      this.unseqResourceMergeReader = new UnseqResourceMergeReader(seriesPath, dataType,
+      this.unseqResourceMergeReader = new NewUnseqResourceMergeReader(seriesPath, dataType,
               queryDataSource.getUnseqResources(), context, null);
     }
     this.batchDataSize = DEFAULT_BATCH_DATA_SIZE;
@@ -165,6 +173,49 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader {
       return unseqBatchData;
 
     return null;
+  }
+
+  @Override
+  public boolean hasNext() throws IOException {
+    if (hasCachedTimeValuePair) {
+      return true;
+    }
+
+    if (hasNextInCurrentBatch()) {
+      return true;
+    }
+
+    // has not cached timeValuePair
+    if (hasNextBatch()) {
+      batchData = nextBatch();
+      return hasNextInCurrentBatch();
+    }
+    return false;
+  }
+
+  private boolean hasNextInCurrentBatch() {
+    if (batchData != null && batchData.hasCurrent()) {
+      timeValuePair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
+      hasCachedTimeValuePair = true;
+      batchData.next();
+      return true;
+    }
+    return false;
+  }
+
+  @Override
+  public TimeValuePair next() throws IOException {
+    if (hasCachedTimeValuePair || hasNext()) {
+      hasCachedTimeValuePair = false;
+      return timeValuePair;
+    } else {
+      throw new IOException("no next data");
+    }
+  }
+
+  @Override
+  public TimeValuePair current() {
+    return timeValuePair;
   }
 
   @Override

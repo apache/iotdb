@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.reader.universal;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import org.apache.iotdb.db.query.reader.IPointReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 /**
  * This is a test utility class.
  */
-public class FakedSeriesReaderByTimestamp implements IPointReaderByTimestamp {
+public class FakedSeriesReaderByTimestamp implements IReaderByTimestamp {
 
   private Iterator<TimeValuePair> iterator;
   private boolean hasCachedTimeValuePair = false;

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.reader.chunkRelated;
 
 import java.io.IOException;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.NewUnseqResourceMergeReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -33,7 +34,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
  * Note that <code>ChunkReader</code> is an abstract class with three concrete classes, two of which
  * are used here: <code>ChunkReaderWithoutFilter</code> and <code>ChunkReaderWithFilter</code>.
  * <p>
- * This class is used in {@link org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader}.
+ * This class is used in {@link NewUnseqResourceMergeReader}.
  */
 public class DiskChunkReader implements IPointReader, IBatchReader {
 
