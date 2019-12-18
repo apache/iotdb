@@ -5,22 +5,26 @@
 package org.apache.iotdb.cluster.query;
 
 import java.io.IOException;
+import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.EngineExecutor;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public class ClusterDataQueryExecutor extends EngineExecutor {
 
   private QueryExpression queryExpression;
   private MetaGroupMember metaGroupMember;
+
 
   ClusterDataQueryExecutor(QueryExpression queryExpression, MetaGroupMember metaGroupMember) {
     super(queryExpression);
@@ -30,16 +34,23 @@ public class ClusterDataQueryExecutor extends EngineExecutor {
   @Override
   protected IPointReader getSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
       QueryContext context, boolean pushdownUnseq) throws IOException, StorageEngineException {
-    return metaGroupMember.getSeriesReaderWithoutValueFilter(path, timeFilter, context, pushdownUnseq);
+    return metaGroupMember.getSeriesReader(path, timeFilter, context, pushdownUnseq, false);
   }
 
   @Override
-  public QueryDataSet executeWithValueFilter(QueryContext context) {
-    throw new UnsupportedOperationException("Query with value filter not implemented");
+  protected IReaderByTimestamp getReaderByTimestamp(Path path, QueryContext context)
+      throws IOException, StorageEngineException {
+    return metaGroupMember.getReaderByTimestamp(path, context);
   }
 
   @Override
   protected TSDataType getDataType(String path) throws MetadataException {
     return metaGroupMember.getSeriesType(path);
+  }
+
+  @Override
+  protected EngineTimeGenerator getTimeGenerator(IExpression queryExpression,
+      QueryContext context) throws StorageEngineException {
+    return new ClusterTimeGenerator(queryExpression, context, metaGroupMember);
   }
 }

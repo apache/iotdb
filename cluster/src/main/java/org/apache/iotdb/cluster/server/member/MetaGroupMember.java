@@ -10,7 +10,6 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -53,7 +52,9 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterQueryParser;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
-import org.apache.iotdb.cluster.query.RemoteSimpleSeriesReader;
+import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
+import org.apache.iotdb.cluster.query.reader.RemoteSeriesReaderByTimestamp;
+import org.apache.iotdb.cluster.query.reader.RemoteSimpleSeriesReader;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
@@ -61,10 +62,10 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
-import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
 import org.apache.iotdb.cluster.server.ClientServer;
@@ -80,6 +81,7 @@ import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardAddNodeHandler;
 import org.apache.iotdb.cluster.server.heartbeat.MetaHeartBeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
+import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -89,10 +91,10 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -129,8 +131,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private DataClusterServer dataClusterServer;
   private ClientServer clientServer;
 
-  // all data servers in this node shares the same partitioned data log manager
-  QueryProcessExecutor queryExecutor;
   private LogApplier metaLogApplier = new MetaLogApplier(this);
   private LogApplier dataLogApplier = new DataLogApplier(this);
   private DataGroupMember.Factory dataMemberFactory;
@@ -168,6 +168,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     super.start();
 
     queryProcessor = new ClusterQueryParser(this);
+    QueryCoordinator.getINSTANCE().setMetaGroupMember(this);
   }
 
   @Override
@@ -208,29 +209,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       } catch (NumberFormatException e) {
         logger.warn("Bad seed url: {}", seedUrl);
       }
-    }
-  }
-
-  private void loadNode(String url) {
-    String[] split = url.split(":");
-    if (split.length != 4) {
-      logger.warn("Incorrect node url: {}", url);
-      return;
-    }
-    String ip = split[1];
-    try {
-      int identifier = Integer.parseInt(split[0]);
-      int metaPort = Integer.parseInt(split[2]);
-      int dataPort = Integer.parseInt(split[3]);
-      Node node = new Node();
-      node.setIp(ip);
-      node.setMetaPort(metaPort);
-      node.setNodeIdentifier(identifier);
-      node.setDataPort(dataPort);
-      allNodes.add(node);
-      idNodeMap.put(identifier, node);
-    } catch (NumberFormatException e) {
-      logger.warn("Incorrect node url: {}", url);
     }
   }
 
@@ -483,11 +461,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     return idNodeMap;
   }
 
-  public void setIdNodeMap(
-      Map<Integer, Node> idNodeMap) {
-    this.idNodeMap = idNodeMap;
-  }
-
   /**
    * @return Whether all nodes' identifier is known.
    */
@@ -539,7 +512,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         return;
       }
     }
-    resultHandler.onError(new LeaderUnknownException());
+    resultHandler.onError(new LeaderUnknownException(getAllNodes()));
   }
 
   private boolean processAddNodeLocally(Node node, AddNodeResponse response,
@@ -852,12 +825,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   @Override
-  public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
-    resultHandler.onError(new UnsupportedOperationException("Cannot pull snapshot from a meta "
-        + "group newMember"));
-  }
-
-  @Override
   public TSStatus executeNonQuery(PhysicalPlan plan) {
     if (!PartitionUtils.isPlanPartitioned(plan)) {
       return processNonPartitionedPlan(plan);
@@ -995,17 +962,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
   }
 
-  public IPointReader getSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
-      QueryContext context, boolean pushdownUnseq)
+  public IReaderByTimestamp getReaderByTimestamp(Path path, QueryContext context)
       throws IOException, StorageEngineException {
     // make sure the partition table is new
     syncLeader();
-    String storageGroup;
     PartitionGroup partitionGroup;
     try {
-      storageGroup = MManager.getInstance().getStorageGroupNameByPath(path.getFullPath());
       // TODO-Cluster#350: use time in partitioning
-      partitionGroup = PartitionUtils.partitionByPathTime(storageGroup, 0,
+      partitionGroup = PartitionUtils.partitionByPathTime(path.getFullPath(), 0,
           partitionTable);
     } catch (StorageGroupNotSetException e) {
       throw new StorageEngineException(e);
@@ -1013,46 +977,116 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
     if (partitionGroup.contains(thisNode)) {
       // the target storage group contains this node, perform a local query
-      return dataClusterServer.getDataMember(partitionGroup.getHeader(), null, String.format(
-          "Query: %s, time filter: %s", partitionGroup, timeFilter))
-          .getSeriesReaderWithoutValueFilter(path, timeFilter, context, true);
+      DataGroupMember dataGroupMember = dataClusterServer.getDataMember(partitionGroup.getHeader(),
+          null, String.format("Query: %s by time, queryId: %d", path, context.getQueryId()));
+      return dataGroupMember.getReaderByTimestamp(path, context);
     } else {
-      // query a remote node
-      AtomicReference<Long> result = new AtomicReference<>();
-      SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
-      if (timeFilter != null) {
-        request.setFilterBytes(timeFilter.serialize());
-      }
-      request.setPath(path.getFullPath());
-      request.setHeader(partitionGroup.getHeader());
-      request.setQueryId(context.getQueryId());
-      request.setRequester(thisNode);
-      request.setPushdownUnseq(pushdownUnseq);
+      return getRemoteReaderByTimestamp(path, partitionGroup, context);
+    }
+  }
 
-      for (Node node : partitionGroup) {
-        logger.debug("{}: querying {} from {}", name, path, node);
-        GenericHandler<Long> handler = new GenericHandler<>(node, result);
-        DataClient client = (DataClient) dataClientPool.getClient(node);
-        try {
-          synchronized (result) {
-            result.set(null);
-            client.querySingleSeries(request, handler);
-            result.wait(CONNECTION_TIME_OUT_MS);
-          }
-          Long readerId = result.get();
-          if (readerId != null) {
-            ((RemoteQueryContext) context).registerRemoteReader(node, readerId);
-            logger.debug("{}: get a readerId {} for {} from {}", name, readerId, path, node);
-            return new RemoteSimpleSeriesReader(readerId, node, partitionGroup.getHeader(), this);
-          }
-        } catch (TException | InterruptedException e) {
-          logger.error("{}: Cannot query {} from {}", name, path, node, e);
+  private IReaderByTimestamp getRemoteReaderByTimestamp(
+      Path path, PartitionGroup partitionGroup,
+      QueryContext context) throws StorageEngineException, IOException {
+    // query a remote node
+    AtomicReference<Long> result = new AtomicReference<>();
+    SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
+    request.setPath(path.getFullPath());
+    request.setHeader(partitionGroup.getHeader());
+    request.setQueryId(context.getQueryId());
+    request.setRequester(thisNode);
+
+    for (Node node : partitionGroup) {
+      logger.debug("{}: querying {} from {}", name, path, node);
+      GenericHandler<Long> handler = new GenericHandler<>(node, result);
+      DataClient client = (DataClient) dataClientPool.getClient(node);
+      try {
+        synchronized (result) {
+          result.set(null);
+          client.querySingleSeriesByTimestamp(request, handler);
+          result.wait(CONNECTION_TIME_OUT_MS);
         }
+        Long readerId = result.get();
+        if (readerId != null) {
+          ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
+          logger.debug("{}: get a readerId {} for {} from {}", name, readerId, path, node);
+          return new RemoteSeriesReaderByTimestamp(readerId, node, partitionGroup.getHeader(), this);
+        }
+      } catch (TException | InterruptedException e) {
+        logger.error("{}: Cannot query {} from {}", name, path, node, e);
       }
     }
+    throw new StorageEngineException(new RequestTimeOutException("Query " + path + " in " + partitionGroup));
+  }
 
-    throw new StorageEngineException(
-        new RequestTimeOutException("Query " + path + " in " + partitionGroup));
+  public IPointReader getSeriesReader(Path path, Filter filter,
+      QueryContext context, boolean pushDownUnseq, boolean withValueFilter)
+      throws IOException, StorageEngineException {
+    // make sure the partition table is new
+    syncLeader();
+    PartitionGroup partitionGroup;
+    try {
+      // TODO-Cluster#350: use time in partitioning
+      partitionGroup = PartitionUtils.partitionByPathTime(path.getFullPath(), 0,
+          partitionTable);
+    } catch (StorageGroupNotSetException e) {
+      throw new StorageEngineException(e);
+    }
+
+    if (partitionGroup.contains(thisNode)) {
+      // the target storage group contains this node, perform a local query
+      DataGroupMember dataGroupMember = dataClusterServer.getDataMember(partitionGroup.getHeader(),
+          null, String.format("Query: %s, time filter: %s, queryId: %d", path, filter,
+              context.getQueryId()));
+      if (withValueFilter) {
+        return dataGroupMember.getSeriesReaderWithValueFilter(path, filter, context);
+      } else {
+        return dataGroupMember.getSeriesReaderWithoutValueFilter(path, filter, context, true);
+      }
+    } else {
+      return getRemoteSeriesReader(filter, path, partitionGroup, context,
+          pushDownUnseq, withValueFilter);
+    }
+  }
+
+  private IPointReader getRemoteSeriesReader(Filter filter, Path path, PartitionGroup partitionGroup,
+      QueryContext context, boolean pushDownUnseq, boolean withValueFilter)
+      throws IOException, StorageEngineException {
+    // query a remote node
+    AtomicReference<Long> result = new AtomicReference<>();
+    SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
+    if (filter != null) {
+      request.setFilterBytes(SerializeUtils.serializeFilter(filter));
+    }
+    request.setPath(path.getFullPath());
+    request.setHeader(partitionGroup.getHeader());
+    request.setQueryId(context.getQueryId());
+    request.setRequester(thisNode);
+    request.setPushdownUnseq(pushDownUnseq);
+    request.setWithValueFilter(withValueFilter);
+
+    List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+    for (Node node : coordinatedNodes) {
+      logger.debug("{}: querying {} from {}", name, path, node);
+      GenericHandler<Long> handler = new GenericHandler<>(node, result);
+      DataClient client = (DataClient) dataClientPool.getClient(node);
+      try {
+        synchronized (result) {
+          result.set(null);
+          client.querySingleSeries(request, handler);
+          result.wait(CONNECTION_TIME_OUT_MS);
+        }
+        Long readerId = result.get();
+        if (readerId != null) {
+          ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
+          logger.debug("{}: get a readerId {} for {} from {}", name, readerId, path, node);
+          return new RemoteSimpleSeriesReader(readerId, node, partitionGroup.getHeader(), this);
+        }
+      } catch (TException | InterruptedException e) {
+        logger.error("{}: Cannot query {} from {}", name, path, node, e);
+      }
+    }
+    throw new StorageEngineException(new RequestTimeOutException("Query " + path + " in " + partitionGroup));
   }
 
   public ClientPool getDataClientPool() {
@@ -1078,7 +1112,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     } else {
       AtomicReference<List<String>> result = new AtomicReference<>();
 
-      for (Node node : partitionGroup) {
+      List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+      for (Node node : coordinatedNodes) {
         try {
           DataClient client = (DataClient) dataClientPool.getClient(node);
           GenericHandler<List<String>> handler = new GenericHandler<>(node, result);
@@ -1116,7 +1151,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     try {
       synchronized (nodeStatus) {
         for (Node node : allNodes) {
-          RaftService.AsyncClient client = connectNode(node);
+          TSMetaService.AsyncClient client = (AsyncClient) connectNode(node);
           if (node != thisNode && client != null) {
             client.checkAlive(nodeStatusHandler);
           }
@@ -1131,5 +1166,15 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   ClientServer getClientServer() {
     return clientServer;
+  }
+
+  @Override
+  public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
+    resultHandler.onComplete(new TNodeStatus());
+  }
+
+  @Override
+  public void checkAlive(AsyncMethodCallback<Node> resultHandler) throws TException {
+    resultHandler.onComplete(thisNode);
   }
 }

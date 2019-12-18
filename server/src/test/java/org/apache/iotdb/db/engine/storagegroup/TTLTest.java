@@ -216,7 +216,7 @@ public class TTLTest {
     assertEquals(0, seqResource.size());
     assertEquals(0, unseqResource.size());
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(EnvironmentUtils.TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(EnvironmentUtils.TEST_QUERY_JOB_ID);
   }
 
   @Test
@@ -283,12 +283,12 @@ public class TTLTest {
     QueryProcessExecutor executor = new QueryProcessExecutor();
     QueryDataSet queryDataSet = executor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     RowRecord rowRecord = queryDataSet.next();
-    assertEquals(sg2, rowRecord.getFields().get(0).getStringValue());
-    assertEquals("null", rowRecord.getFields().get(1).getStringValue());
-
-    rowRecord = queryDataSet.next();
     assertEquals(sg1, rowRecord.getFields().get(0).getStringValue());
     assertEquals(ttl, rowRecord.getFields().get(1).getLongV());
+
+    rowRecord = queryDataSet.next();
+    assertEquals(sg2, rowRecord.getFields().get(0).getStringValue());
+    assertEquals("null", rowRecord.getFields().get(1).getStringValue());
   }
 
   @Test

@@ -61,7 +61,6 @@ public class IoTDBConnection implements Connection {
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
   private TSocket transport;
-  private TSProtocolVersion protocol;
   private ZoneId zoneId;
   private boolean autoCommit;
 
@@ -441,6 +440,7 @@ public class IoTDBConnection implements Connection {
       }
 
     } catch (TException e) {
+      transport.close();
       throw new SQLException(String.format("Can not establish connection with %s.",
           params.getJdbcUriString()), e);
     } catch (IoTDBRPCException e) {
@@ -510,7 +510,6 @@ public class IoTDBConnection implements Connection {
   }
 
   private void setProtocol(TSProtocolVersion protocol) {
-    this.protocol = protocol;
   }
 
 }

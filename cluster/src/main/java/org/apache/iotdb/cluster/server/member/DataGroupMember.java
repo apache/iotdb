@@ -39,7 +39,7 @@ import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
 import org.apache.iotdb.cluster.log.snapshot.RemoteDataSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.query.ClusterQueryManager;
+import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
 import org.apache.iotdb.cluster.query.ClusterQueryParser;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -58,6 +58,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPullSnapshotHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -69,12 +70,17 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithValueFilter;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -130,6 +136,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * nodes in this may change, this node is unchangeable unless the data group is dismissed. It
    * is also the identifier of this data group.
    */
+  @Override
   public Node getHeader() {
     return allNodes.get(0);
   }
@@ -250,7 +257,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     if (snapshot instanceof DataSimpleSnapshot) {
       applySimpleSnapshot((DataSimpleSnapshot) snapshot, slot);
     } else if (snapshot instanceof FileSnapshot) {
-      applyFileSnapshot((FileSnapshot) snapshot, slot);
+      applyFileSnapshot((FileSnapshot) snapshot);
     } else {
       logger.error("Unrecognized snapshot {}", snapshot);
     }
@@ -273,7 +280,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
-  private void applyFileSnapshot(FileSnapshot snapshot, int slot) {
+  private void applyFileSnapshot(FileSnapshot snapshot) {
     synchronized (logManager) {
       for (MeasurementSchema schema : snapshot.getTimeseriesSchemas()) {
         SchemaUtils.registerTimeseries(schema);
@@ -295,14 +302,31 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     String[] pathSegments = resource.getFile().getAbsolutePath().split(File.separator);
     int segSize = pathSegments.length;
     // {storageGroupName}/{fileName}
-    String sgFileName = pathSegments[segSize - 2] + File.separator + pathSegments[segSize - 1];
+    String storageGroupName = pathSegments[segSize - 2];
+    // {createTime}-{version}-{mergeNum}.tsfile
+    String fileName = pathSegments[segSize - 1].replace(TsFileConstant.TSFILE_SUFFIX, "");
+    String[] fileNameSplit = fileName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
+    String fileVersion = fileNameSplit[1];
+    String mergeNum = fileNameSplit[2];
+
     boolean isSeq = pathSegments[segSize - 3].equals("sequence");
     List<String> dataFolders = isSeq ? DirectoryManager.getInstance()
         .getAllSequenceFileFolders() : DirectoryManager.getInstance().getAllUnSequenceFileFolders();
     for (String dataFolder : dataFolders) {
-      File localFile = new File(dataFolder, sgFileName);
-      if (localFile.exists()) {
-        return true;
+      File storageGroupDir = new File(dataFolder, storageGroupName);
+      if (storageGroupDir.exists()) {
+        File[] tsFiles =
+            storageGroupDir.listFiles(f -> f.getName().endsWith(TsFileConstant.TSFILE_SUFFIX));
+        if (tsFiles == null) {
+          continue;
+        }
+        for (File tsFile : tsFiles) {
+          fileName = tsFile.getName();
+          fileNameSplit = fileName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
+          if (fileVersion.equals(fileNameSplit[1]) && mergeNum.equals(fileNameSplit[2])) {
+            return true;
+          }
+        }
       }
     }
     return false;
@@ -394,7 +418,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   private boolean pullRemoteFile(String remotePath, Node node, File dest) {
-    AsyncClient client = connectNode(node);
+    DataClient client = (DataClient) connectNode(node);
     if (client == null) {
       return false;
     }
@@ -441,14 +465,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       // forward the request to the leader
       if (leader != null) {
         logger.debug("{} forwarding a pull snapshot request to the leader {}", name, leader);
-        AsyncClient client = connectNode(leader);
+        DataClient client = (DataClient) connectNode(leader);
         try {
           client.pullSnapshot(request, new ForwardPullSnapshotHandler(resultHandler));
         } catch (TException e) {
           resultHandler.onError(e);
         }
       } else {
-        resultHandler.onError(new LeaderUnknownException());
+        resultHandler.onError(new LeaderUnknownException(getAllNodes()));
       }
       return;
     }
@@ -555,7 +579,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       // request to the leader
       AsyncClient client = connectNode(leader);
       if (client == null) {
-        resultHandler.onError(new LeaderUnknownException());
+        resultHandler.onError(new LeaderUnknownException(getAllNodes()));
         return;
       }
       try {
@@ -591,18 +615,39 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       throws IOException, StorageEngineException {
     // pull the newest data
     if (syncLeader()) {
-      return new SeriesReaderWithoutValueFilter(path, timeFilter, context, true);
+      return new SeriesReaderWithoutValueFilter(path, timeFilter, context, pushdownUnseq);
     } else {
-      throw new StorageEngineException(new LeaderUnknownException());
+      throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
+    }
+  }
+
+  IPointReader getSeriesReaderWithValueFilter(Path path, Filter timeFilter,
+      QueryContext context)
+      throws IOException, StorageEngineException {
+    // pull the newest data
+    if (syncLeader()) {
+      return new SeriesReaderWithValueFilter(path, timeFilter, context);
+    } else {
+      throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
+    }
+  }
+
+  IReaderByTimestamp getReaderByTimestamp(Path path, QueryContext context)
+      throws StorageEngineException, IOException {
+    if (syncLeader()) {
+      return new SeriesReaderByTimestamp(path, context);
+    } else {
+      throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
     }
   }
 
   @Override
   public void querySingleSeries(SingleSeriesQueryRequest request,
       AsyncMethodCallback<Long> resultHandler) {
-    logger.debug("{}: {} is querying {}", name, request.getRequester(), request.getPath());
+    logger.debug("{}: {} is querying {}, queryId: {}", name, request.getRequester(),
+        request.getPath(), request.getQueryId());
     if (!syncLeader()) {
-      resultHandler.onError(new LeaderUnknownException());
+      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
       return;
     }
 
@@ -610,12 +655,21 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     Filter timeFilter = null;
     if (request.isSetFilterBytes()) {
       // TODO-Cluster: deserialize the filters
+      timeFilter = FilterFactory.deserialize(request.filterBytes);
     }
     RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequester(),
         request.getQueryId());
+    logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
+        request.getPath(), queryContext.getQueryId());
     try {
-      IPointReader pointReader = getSeriesReaderWithoutValueFilter(path, timeFilter, queryContext,
-          request.isPushdownUnseq());
+      IPointReader pointReader;
+      if (request.isWithValueFilter()) {
+        pointReader = getSeriesReaderWithValueFilter(path, timeFilter, queryContext);
+      } else {
+        pointReader = getSeriesReaderWithoutValueFilter(path, timeFilter, queryContext,
+            request.isPushdownUnseq());
+      }
+
       long readerId = queryManager.registerReader(pointReader);
       queryContext.registerLocalReader(readerId);
 
@@ -628,12 +682,64 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   @Override
-  public void endQuery(Node header, Node thisNode, long queryId,
+  public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request,
+      AsyncMethodCallback<Long> resultHandler) {
+    logger.debug("{}: {} is querying {} by timestamp, queryId: {}", name, request.getRequester(),
+        request.getPath(), request.getQueryId());
+    if (!syncLeader()) {
+      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+      return;
+    }
+
+    Path path = new Path(request.getPath());
+    RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequester(),
+        request.getQueryId());
+    logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
+        request.getPath(), queryContext.getQueryId());
+    try {
+      IReaderByTimestamp readerByTimestamp = getReaderByTimestamp(path, queryContext);
+      long readerId = queryManager.registerReaderByTime(readerByTimestamp);
+      queryContext.registerLocalReader(readerId);
+
+      logger.debug("{}: Build a readerByTimestamp of {} for {}, readerId: {}", name, path,
+          request.getRequester(), readerId);
+      resultHandler.onComplete(readerId);
+    } catch (IOException | StorageEngineException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void endQuery(Node header, Node requester, long queryId,
       AsyncMethodCallback<Void> resultHandler) {
     try {
-      queryManager.endQuery(thisNode, queryId);
+      queryManager.endQuery(requester, queryId);
       resultHandler.onComplete(null);
     } catch (StorageEngineException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    IReaderByTimestamp reader = queryManager.getReaderByTimestamp(readerId);
+    if (reader == null) {
+      resultHandler.onError(new ReaderNotFoundException(readerId));
+      return;
+    }
+    try {
+      Object value = reader.getValueInTimestamp(timestamp);
+      if (value != null) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
+        SerializeUtils.serializeObject(value, dataOutputStream);
+        resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+      } else {
+        resultHandler.onComplete(ByteBuffer.allocate(0));
+      }
+    } catch (IOException e) {
       resultHandler.onError(e);
     }
   }
@@ -659,7 +765,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
         dataOutputStream.write(timeValuePairs.get(0).getValue().getDataType().ordinal());
         SerializeUtils.serializeTVPairs(timeValuePairs, dataOutputStream);
-        logger.debug("{}: Send {} results of reader {}", name, timeValuePairs.size(), readerId);
+        logger.debug("{}: Send results of reader {}, {}", name, readerId, timeValuePairs);
         resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
       } else {
         resultHandler.onComplete(ByteBuffer.allocate(0));

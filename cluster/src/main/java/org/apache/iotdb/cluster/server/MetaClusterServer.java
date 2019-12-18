@@ -29,8 +29,8 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
-import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -141,11 +141,6 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
-  public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
-    member.pullSnapshot(request, resultHandler);
-  }
-
-  @Override
   public void executeNonQueryPlan(ExecutNonQueryReq request,
       AsyncMethodCallback<TSStatus> resultHandler) {
     member.executeNonQueryPlan(request, resultHandler);
@@ -171,6 +166,11 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   public void readFile(String filePath, long offset, int length, Node header,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     member.readFile(filePath, offset ,length, header, resultHandler);
+  }
+
+  @Override
+  public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) throws TException {
+    member.queryNodeStatus(resultHandler);
   }
 
   public MetaGroupMember getMember() {

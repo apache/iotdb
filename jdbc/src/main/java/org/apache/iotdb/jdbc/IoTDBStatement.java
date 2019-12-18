@@ -70,13 +70,6 @@ public class IoTDBStatement implements Statement {
   private boolean isCancelled = false;
 
   /**
-   * Sets the limit for the maximum number of rows that any ResultSet object produced by this
-   * Statement can contain to the given number. If the limit is exceeded, the excess rows are
-   * silently dropped. The value must be >= 0, and 0 means there is not limit.
-   */
-  private int maxRows = 0;
-
-  /**
    * Add SQLWarnings to the warningChain if needed.
    */
   private SQLWarning warningChain = null;
@@ -89,8 +82,7 @@ public class IoTDBStatement implements Statement {
    * Constructor of IoTDBStatement.
    */
   IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
-      Long sessionId,
-      int fetchSize, ZoneId zoneId) throws SQLException {
+      long sessionId, int fetchSize, ZoneId zoneId) throws SQLException {
     this.connection = connection;
     this.client = client;
     this.sessionId = sessionId;
@@ -102,7 +94,7 @@ public class IoTDBStatement implements Statement {
 
   // only for test
   IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
-      Long sessionId, ZoneId zoneId, long statementId) {
+      long sessionId, ZoneId zoneId, long statementId) {
     this.connection = connection;
     this.client = client;
     this.sessionId = sessionId;
@@ -113,8 +105,7 @@ public class IoTDBStatement implements Statement {
   }
 
   IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
-      Long sessionId,
-      ZoneId zoneId) throws SQLException {
+      long sessionId, ZoneId zoneId) throws SQLException {
     this(connection, client, sessionId, Config.fetchSize, zoneId);
   }
 

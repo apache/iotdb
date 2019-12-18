@@ -12,39 +12,32 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.query.context.QueryContext;
 
 public class RemoteQueryContext extends QueryContext {
-  private Node requester;
   /**
-   * The readers requested from remote nodes to serve a local query.
+   * The remote nodes that are queried in this query, grouped by the header nodes.
    */
-  private Map<Node, Set<Long>> remoteReaderIdMap = new HashMap<>();
-  private long remoteQueryId;
+  private Map<Node, Set<Node>> queriedNodesMap = new HashMap<>();
   /**
    * The readers constructed locally to respond a remote query.
    */
   private Set<Long> localReaderIds = new HashSet<>();
 
-  public RemoteQueryContext(long jobId, Node requester) {
+  public RemoteQueryContext(long jobId) {
     super(jobId);
-    this.requester = requester;
   }
 
-  public void registerRemoteReader(Node node, long readerId) {
-    remoteReaderIdMap.computeIfAbsent(node, n -> new HashSet<>()).add(readerId);
+  public void registerRemoteNode(Node node, Node header) {
+    queriedNodesMap.computeIfAbsent(header, n -> new HashSet<>()).add(node);
   }
 
   public void registerLocalReader(long readerId) {
     localReaderIds.add(readerId);
   }
 
-  public long getRemoteQueryId() {
-    return remoteQueryId;
-  }
-
-  void setRemoteQueryId(long remoteQueryId) {
-    this.remoteQueryId = remoteQueryId;
-  }
-
   public Set<Long> getLocalReaderIds() {
     return localReaderIds;
+  }
+
+  public Map<Node, Set<Node>> getQueriedNodesMap() {
+    return queriedNodesMap;
   }
 }

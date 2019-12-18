@@ -148,7 +148,7 @@ Generally, IoTDB uses JIRA to track logical issues, including bugs and improveme
         1. Fix Version. This is assigned by committers only when resolved.
         2. Target Version. This is assigned by committers to indicate a PR has been accepted for possible fix by the target version.
     5. Do not include a patch file; pull requests are used to propose the actual change.
-4. If the change is a large change, consider raising a discussion on it at dev@iotdb.apache.org first before proceeding to implement the change. Currently, we use https://cwiki.apache.org/confluence to store design proposals and release process. Users can also send them there.
+4. If the change is a large change, consider raising a discussion on it at dev@iotdb.apache.org first before proceeding to implement the change. Currently, we use https://cwiki.apache.org/confluence/display/IOTDB to store design proposals and release process. Users can also send them there.
 
 
 #### Pull Request

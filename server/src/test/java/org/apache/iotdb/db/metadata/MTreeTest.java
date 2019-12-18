@@ -67,8 +67,7 @@ public class MTreeTest {
               (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
     } catch (MetadataException e) {
       Assert.assertEquals(
-          String.format("Timeseries [%s] can't be created. node [%s] is left node",
-              "root.laptop.d1.s1.b", "s1"), e.getMessage());
+          "Path [root.laptop.d1.s1] already exist", e.getMessage());
     }
   }
 
@@ -92,7 +91,7 @@ public class MTreeTest {
       root.addTimeseriesPath("aa.bb.cc", TSDataType.INT32, TSEncoding.RLE, CompressionType.valueOf
           (TSFileDescriptor.getInstance().getConfig().getCompressor()), Collections.EMPTY_MAP);
     } catch (MetadataException e) {
-      Assert.assertEquals(String.format("Timeseries [%s] is not correct. ", "aa.bb.cc"), e.getMessage());
+      Assert.assertEquals("aa.bb.cc is not a legal path", e.getMessage());
     }
   }
 
@@ -232,7 +231,7 @@ public class MTreeTest {
       root.setStorageGroup("root.laptop");
     } catch (MetadataException e) {
       Assert.assertEquals(
-          "The seriesPath of [root.laptop] already exist, it can't be set to the storage group",
+          "Path [root.laptop] already exist",
           e.getMessage());
     }
     // check timeseries

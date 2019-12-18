@@ -24,7 +24,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 public class IllegalPathException extends MetadataException {
 
   public IllegalPathException(String path) {
-    super(String.format("%s in not a legal path", path));
+    super(String.format("%s is not a legal path", path));
     errorCode = TSStatusCode.PATH_ILLEGAL.getStatusCode();
   }
 }

@@ -56,7 +56,7 @@ import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.JobFileManager;
+import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -291,7 +291,7 @@ public class StorageEngine implements IService {
    * query data.
    */
   public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context,
-      JobFileManager filePathsManager)
+      QueryFileManager filePathsManager)
       throws StorageEngineException {
     //TODO use context.
     String deviceId = seriesExpression.getSeriesPath().getDevice();

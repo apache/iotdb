@@ -211,7 +211,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return true;
   }
 
-  long appendEntry(Log log) throws QueryProcessException {
+  private long appendEntry(Log log) {
     long resp;
     synchronized (logManager) {
       Log lastLog = logManager.getLastLog();
@@ -260,7 +260,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     try {
       Log log = LogParser.getINSTANCE().parse(request.entry);
       resultHandler.onComplete(appendEntry(log));
-    } catch (UnknownLogTypeException | QueryProcessException e) {
+    } catch (UnknownLogTypeException e) {
       resultHandler.onError(e);
     }
   }
@@ -729,7 +729,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
     AsyncClient client = connectNode(leader);
     if (client == null) {
-      resultHandler.onError(new LeaderUnknownException());
+      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
       return;
     }
     try {
@@ -758,10 +758,5 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     } catch (IOException e) {
       resultHandler.onError(e);
     }
-  }
-
-  @Override
-  public void checkAlive(AsyncMethodCallback<Node> resultHandler) throws TException {
-    resultHandler.onComplete(thisNode);
   }
 }

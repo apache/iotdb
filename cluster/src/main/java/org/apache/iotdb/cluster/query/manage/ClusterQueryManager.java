@@ -2,18 +2,19 @@
  * Licensed to the Apache Software Foundation (ASF) under one or more contributor license agreements.  See the NOTICE file distributed with this work for additional information regarding copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at      http://www.apache.org/licenses/LICENSE-2.0  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the specific language governing permissions and limitations under the License.
  */
 
-package org.apache.iotdb.cluster.query;
+package org.apache.iotdb.cluster.query.manage;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +25,7 @@ public class ClusterQueryManager {
   private AtomicLong readerIdAtom = new AtomicLong();
   private Map<Node, Map<Long, RemoteQueryContext>> queryContextMap = new ConcurrentHashMap<>();
   private Map<Long, IPointReader> seriesReaderMap = new ConcurrentHashMap<>();
+  private Map<Long, IReaderByTimestamp> seriesReaderByTimestampMap = new ConcurrentHashMap<>();
 
 
   public synchronized RemoteQueryContext getQueryContext(Node node, long queryId) {
@@ -31,8 +33,7 @@ public class ClusterQueryManager {
         n -> new HashMap<>());
     RemoteQueryContext remoteQueryContext = nodeContextMap.get(queryId);
     if (remoteQueryContext == null) {
-      remoteQueryContext = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(), node);
-      remoteQueryContext.setRemoteQueryId(queryId);
+      remoteQueryContext = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId());
       nodeContextMap.put(queryId, remoteQueryContext);
     }
     return remoteQueryContext;
@@ -41,6 +42,12 @@ public class ClusterQueryManager {
   public long registerReader(IPointReader pointReader) {
     long newReaderId = readerIdAtom.incrementAndGet();
     seriesReaderMap.put(newReaderId, pointReader);
+    return newReaderId;
+  }
+
+  public long registerReaderByTime(IReaderByTimestamp readerByTimestamp) {
+    long newReaderId = readerIdAtom.incrementAndGet();
+    seriesReaderByTimestampMap.put(newReaderId, readerByTimestamp);
     return newReaderId;
   }
 
@@ -54,23 +61,21 @@ public class ClusterQueryManager {
       return;
     }
     // release file resources
-    QueryResourceManager.getInstance().endQueryForGivenJob(remoteQueryContext.getQueryId());
+    QueryResourceManager.getInstance().endQuery(remoteQueryContext.getQueryId());
 
     // remove the readers from the cache
     Set<Long> readerIds = remoteQueryContext.getLocalReaderIds();
     for (long readerId : readerIds) {
       IPointReader pointReader = seriesReaderMap.remove(readerId);
-      if (pointReader != null) {
-        try {
-          pointReader.close();
-        } catch (IOException e) {
-          logger.error("Cannot close a reader for query {} of Node {}", queryId, node, e);
-        }
-      }
+      IReaderByTimestamp readerByTimestamp = seriesReaderByTimestampMap.remove(readerId);
     }
   }
 
   public IPointReader getReader(long readerId) {
     return seriesReaderMap.get(readerId);
+  }
+
+  public IReaderByTimestamp getReaderByTimestamp(long readerId) {
+    return seriesReaderByTimestampMap.get(readerId);
   }
 }

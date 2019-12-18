@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.service;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
-
 import java.io.IOException;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -157,7 +151,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // When the client abnormally exits, we can still know who to disconnect
   private ThreadLocal<Long> currSessionId = new ThreadLocal<>();
 
-  public TSServiceImpl() {
+  protected TSServiceImpl() {
     processor = new QueryProcessor(new QueryProcessExecutor());
   }
 
@@ -220,7 +214,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         queryId2DataSet.remove(queryId);
 
         try {
-          QueryResourceManager.getInstance().endQueryForGivenJob(queryId);
+          QueryResourceManager.getInstance().endQuery(queryId);
         } catch (StorageEngineException e) {
           // release as many as resources as possible, so do not break as soon as one exception is
           // raised
@@ -248,7 +242,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
     logger.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
-    TSStatus status;
     if (!checkLogin(req.getSessionId())) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getStatus(TSStatusCode.NOT_LOGIN_ERROR);
@@ -278,13 +271,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * release single operation resource
    */
-  private void releaseQueryResource(long queryId) throws StorageEngineException {
+  protected void releaseQueryResource(long queryId) throws StorageEngineException {
 
     // remove the corresponding Physical Plan
     queryId2DataSet.remove(queryId);
     queryId2Plan.remove(queryId);
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(queryId);
+    QueryResourceManager.getInstance().endQuery(queryId);
   }
 
   /**
@@ -303,7 +296,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @param statusType status type
    * @param appendMessage appending message
    */
-  protected TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
+  private TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
     TSStatusType statusCodeAndMessage = new TSStatusType(statusType.getStatusCode(), appendMessage);
     return new TSStatus(statusCodeAndMessage);
   }
@@ -642,15 +635,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return executeQueryStatement(req.statementId, physicalPlan, sessionIdUsernameMap.get(req.getSessionId()));
   }
 
-  private List<String> queryColumnsType(List<String> columns)
-      throws QueryProcessException, MetadataException {
-    List<String> columnTypes = new ArrayList<>();
-    for (String column : columns) {
-      columnTypes.add(getSeriesType(column).toString());
-    }
-    return columnTypes;
-  }
-
   private TSExecuteStatementResp getShowQueryColumnHeaders(ShowPlan showPlan) throws QueryProcessException {
     switch (showPlan.getShowContentType()) {
       case TTL:
@@ -712,14 +696,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } else {
       getWideQueryHeaders(plan, respColumns, columnsTypes);
       resp.setColumns(respColumns);
-      resp.setDataTypeList(queryColumnsType(respColumns));
+      resp.setDataTypeList(columnsTypes);
     }
     return resp;
   }
 
   // wide means not group by device
   private void getWideQueryHeaders(QueryPlan plan, List<String> respColumns,
-  List<String> columnTypes) throws TException {
+  List<String> columnTypes) throws TException, QueryProcessException, MetadataException {
     // Restore column header of aggregate to func(column_name), only
     // support single aggregate function for now
     List<Path> paths = plan.getPaths();
@@ -744,6 +728,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         break;
       default:
         throw new TException("unsupported query type: " + plan.getOperatorType());
+    }
+
+    for (String column : respColumns) {
+      columnTypes.add(getSeriesType(column).toString());
     }
   }
 
@@ -836,7 +824,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  protected QueryDataSet createNewDataSet(TSFetchResultsReq req)
+  private QueryDataSet createNewDataSet(TSFetchResultsReq req)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException {
     PhysicalPlan physicalPlan = queryId2Plan.get(req.queryId);
 
@@ -850,8 +838,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   protected QueryContext genQueryContext(long queryId) {
-    QueryContext context = new QueryContext(queryId);
-    return context;
+    return new QueryContext(queryId);
   }
 
   @Override
@@ -942,7 +929,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  protected TSFetchResultsResp getTSFetchResultsResp(TSStatus status) {
+  private TSFetchResultsResp getTSFetchResultsResp(TSStatus status) {
     TSFetchResultsResp resp = new TSFetchResultsResp();
     TSStatus tsStatus = new TSStatus(status);
     resp.setStatus(tsStatus);
@@ -950,8 +937,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   public void handleClientExit() {
-    TSCloseSessionReq req = new TSCloseSessionReq(currSessionId.get());
-    closeSession(req);
+    Long sessionId = currSessionId.get();
+    if (sessionId != null) {
+      TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
+      closeSession(req);
+    }
   }
 
   @Override
