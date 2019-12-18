@@ -123,7 +123,7 @@ public class DeletionFileNodeTest {
       count++;
     }
     assertEquals(50, count);
-    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
   @Test
@@ -217,7 +217,7 @@ public class DeletionFileNodeTest {
     }
     assertEquals(50, count);
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
   @Test

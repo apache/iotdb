@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.qp.executor;
 
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.ITEM;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PARAMETER;
-import static org.apache.iotdb.db.conf.IoTDBConstant.STORAGE_GROUP;
-import static org.apache.iotdb.db.conf.IoTDBConstant.TTL;
-import static org.apache.iotdb.db.conf.IoTDBConstant.VALUE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -99,8 +99,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
 
   private QueryDataSet processShowTTLQuery(ShowTTLPlan showTTLPlan) {
     List<Path> paths = new ArrayList<>();
-    paths.add(new Path(STORAGE_GROUP));
-    paths.add(new Path(TTL));
+    paths.add(new Path(COLUMN_STORAGE_GROUP));
+    paths.add(new Path(COLUMN_TTL));
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.TEXT);
     dataTypes.add(TSDataType.INT64);
@@ -149,8 +149,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
 
   private QueryDataSet processShowDynamicParameterQuery() {
     List<Path> paths = new ArrayList<>();
-    paths.add(new Path(PARAMETER));
-    paths.add(new Path(VALUE));
+    paths.add(new Path(COLUMN_PARAMETER));
+    paths.add(new Path(COLUMN_VALUE));
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.TEXT);
     dataTypes.add(TSDataType.TEXT);
@@ -177,8 +177,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
 
   private QueryDataSet processShowFlushTaskInfo() {
     List<Path> paths = new ArrayList<>();
-    paths.add(new Path(ITEM));
-    paths.add(new Path(VALUE));
+    paths.add(new Path(COLUMN_ITEM));
+    paths.add(new Path(COLUMN_VALUE));
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.TEXT);
     dataTypes.add(TSDataType.TEXT);

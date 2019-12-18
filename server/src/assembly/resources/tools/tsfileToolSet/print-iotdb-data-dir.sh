@@ -19,11 +19,11 @@
 #
 
 echo ---------------------
-echo Starting Printing the TsFile Sketch
+echo Starting Printing the IoTDB Data Directory Overview
 echo ---------------------
 
 if [ -z "${IOTDB_HOME}" ]; then
-  export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
+  export IOTDB_HOME="$(cd "`dirname "$0"`"/../..; pwd)"
 fi
 
 if [ -n "$JAVA_HOME" ]; then
@@ -42,7 +42,7 @@ for f in ${IOTDB_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 
-MAIN_CLASS=org.apache.iotdb.db.tools.TsFileSketchTool
+MAIN_CLASS=org.apache.iotdb.db.tools.IoTDBDataDirViewer
 
 "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

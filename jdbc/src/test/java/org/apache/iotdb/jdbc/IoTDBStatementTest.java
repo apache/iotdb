@@ -37,7 +37,6 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSStatusType;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -53,8 +52,7 @@ public class IoTDBStatementTest {
   @Mock
   private Iface client;
 
-  @Mock
-  private TS_SessionHandle sessHandle;
+  private long sessionId;
 
   @Mock
   private TSFetchMetadataResp fetchMetadataResp;
@@ -66,7 +64,7 @@ public class IoTDBStatementTest {
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
-    when(connection.getMetaData()).thenReturn(new IoTDBDatabaseMetadata(connection, client));
+    when(connection.getMetaData()).thenReturn(new IoTDBDatabaseMetadata(connection, client, sessionId));
     when(connection.isClosed()).thenReturn(false);
     when(client.fetchMetadata(any(TSFetchMetadataReq.class))).thenReturn(fetchMetadataResp);
     when(fetchMetadataResp.getStatus()).thenReturn(Status_SUCCESS);
@@ -79,7 +77,7 @@ public class IoTDBStatementTest {
   @SuppressWarnings({"resource", "serial"})
   @Test
   public void testExecuteSQL1() throws SQLException {
-    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
+    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessionId, zoneID);
     List<List<String>> tsList = new ArrayList<>();
     tsList.add(new ArrayList<String>(4) {
       {
@@ -136,7 +134,7 @@ public class IoTDBStatementTest {
   @SuppressWarnings({"resource", "serial"})
   @Test
   public void testExecuteSQL2() throws SQLException {
-    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
+    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessionId, zoneID);
     List<List<String>> tsList = new ArrayList<>();
     tsList.add(new ArrayList<String>(4) {
       {
@@ -192,7 +190,7 @@ public class IoTDBStatementTest {
   @SuppressWarnings({"resource"})
   @Test
   public void testExecuteSQL3() throws SQLException {
-    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
+    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessionId, zoneID);
     Set<String> sgSet = new HashSet<>();
     sgSet.add("root.vehicle");
     when(fetchMetadataResp.getStorageGroups()).thenReturn(sgSet);
@@ -223,7 +221,7 @@ public class IoTDBStatementTest {
   @SuppressWarnings("resource")
   @Test
   public void testSetFetchSize1() throws SQLException {
-    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
+    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessionId, zoneID);
     stmt.setFetchSize(123);
     assertEquals(123, stmt.getFetchSize());
   }
@@ -231,7 +229,7 @@ public class IoTDBStatementTest {
   @SuppressWarnings("resource")
   @Test
   public void testSetFetchSize2() throws SQLException {
-    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
+    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessionId, zoneID);
     int initial = stmt.getFetchSize();
     stmt.setFetchSize(0);
     assertEquals(initial, stmt.getFetchSize());
@@ -241,14 +239,14 @@ public class IoTDBStatementTest {
   @Test
   public void testSetFetchSize3() throws SQLException {
     final int fetchSize = 10000;
-    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, fetchSize, zoneID);
+    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessionId, fetchSize, zoneID);
     assertEquals(fetchSize, stmt.getFetchSize());
   }
 
   @SuppressWarnings("resource")
   @Test(expected = SQLException.class)
   public void testSetFetchSize4() throws SQLException {
-    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessHandle, zoneID);
+    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessionId, zoneID);
     stmt.setFetchSize(-1);
   }
 }

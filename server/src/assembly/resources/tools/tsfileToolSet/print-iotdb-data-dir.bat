@@ -20,16 +20,16 @@
 
 @echo off
 echo ````````````````````````
-echo Starting Printing the TsFile Sketch
+echo Starting Printing the IoTDB Data Directory Overview
 echo ````````````````````````
 
 if "%OS%" == "Windows_NT" setlocal
 
-pushd %~dp0..
+pushd %~dp0..\..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%CD%
 popd
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.tools.TsFileSketchTool
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.tools.IoTDBDataDirViewer
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------

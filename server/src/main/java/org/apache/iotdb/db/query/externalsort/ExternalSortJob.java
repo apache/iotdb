@@ -28,15 +28,15 @@ import org.apache.iotdb.db.query.reader.IPointReader;
  */
 public class ExternalSortJob {
 
-  private long jobId;
+  private long queryId;
   private List<ExternalSortJobPart> partList;
 
-  public ExternalSortJob(long jobId, List<ExternalSortJobPart> partList) {
-    this.jobId = jobId;
+  ExternalSortJob(long queryId, List<ExternalSortJobPart> partList) {
+    this.queryId = queryId;
     this.partList = partList;
   }
 
-  public List<IPointReader> executeForIPointReader() throws IOException {
+  List<IPointReader> executeForIPointReader() throws IOException {
     List<IPointReader> readers = new ArrayList<>();
     for (ExternalSortJobPart part : partList) {
       readers.add(part.executeForIPointReader());
@@ -44,7 +44,7 @@ public class ExternalSortJob {
     return readers;
   }
 
-  public long getJobId() {
-    return jobId;
+  public long getQueryId() {
+    return queryId;
   }
 }

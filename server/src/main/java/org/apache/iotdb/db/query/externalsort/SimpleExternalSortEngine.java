@@ -89,7 +89,7 @@
 
    @Override
    public ExternalSortJob createJob(long queryId, List<ChunkReaderWrap> readerWrapList) {
-     long jodId = scheduler.genJobId();
+     long jodId = scheduler.genQueryId();
      List<ExternalSortJobPart> ret = new ArrayList<>();
      for (ChunkReaderWrap readerWrap : readerWrapList) {
        ret.add(new SingleSourceExternalSortJobPart(readerWrap));
