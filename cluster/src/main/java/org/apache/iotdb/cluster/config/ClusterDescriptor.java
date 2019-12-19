@@ -104,6 +104,9 @@ public class ClusterDescriptor {
       config.setRpcThriftCompressionEnabled(Boolean.parseBoolean(properties.getProperty(
           "ENABLE_THRIFT_COMPRESSION", String.valueOf(config.isRpcThriftCompressionEnabled()))));
 
+      config.setConnectionTimeoutInMS(Integer.parseInt(properties.getProperty("CONNECTION_TIME_OUT_MS",
+          String.valueOf(config.getConnectionTimeoutInMS()))));
+
       String seedUrls = properties.getProperty("SEED_NODES");
       if (seedUrls != null) {
         List<String> urlList = new ArrayList<>();

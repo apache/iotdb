@@ -62,7 +62,6 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
@@ -110,7 +109,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIface {
-
   private static final String NODE_IDENTIFIER_FILE_NAME = "node_identifier";
   private static final String PARTITION_FILE_NAME = "partitions";
   private static final String TEMP_SUFFIX = ".tmp";

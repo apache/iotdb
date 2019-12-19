@@ -45,6 +45,8 @@ public class ClusterConfig {
   @ClusterConsistent
   private long partitionInterval = 24 * 3600 * 1000L;
 
+  private int connectionTimeoutInMS = 20 * 1000;
+
 
   public String getLocalIP() {
     return localIP;
@@ -116,5 +118,13 @@ public class ClusterConfig {
 
   public void setLocalClientPort(int localClientPort) {
     this.localClientPort = localClientPort;
+  }
+
+  public int getConnectionTimeoutInMS() {
+    return connectionTimeoutInMS;
+  }
+
+  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+    this.connectionTimeoutInMS = connectionTimeoutInMS;
   }
 }
