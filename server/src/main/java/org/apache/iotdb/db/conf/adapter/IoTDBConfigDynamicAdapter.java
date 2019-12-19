@@ -74,6 +74,10 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
+  public static final String CREATE_STORAGE_GROUP = "create storage group";
+
+  public static final String ADD_TIMESERIES = "add timeseries";
+
   // static parameter section
 
   /**
@@ -222,7 +226,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     if (!tryToAdaptParameters()) {
       totalStorageGroup -= diff;
       maxMemTableNum -= IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP * diff;
-      throw new ConfigAdjusterException("create storage group");
+      throw new ConfigAdjusterException(CREATE_STORAGE_GROUP);
     }
   }
 
@@ -236,7 +240,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     if (!tryToAdaptParameters()) {
       totalTimeseries -= diff;
       staticMemory -= diff * TIMESERIES_METADATA_SIZE_IN_BYTE;
-      throw new ConfigAdjusterException("add timeseries");
+      throw new ConfigAdjusterException(ADD_TIMESERIES);
     }
   }
 
