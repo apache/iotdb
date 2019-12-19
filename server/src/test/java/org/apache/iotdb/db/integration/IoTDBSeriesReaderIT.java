@@ -347,12 +347,10 @@ public class IoTDBSeriesReaderIT {
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
-      RowRecord rowRecord = queryDataSet.next();
-      // long time = rowRecord.getTimestamp();
-      // String value = rowRecord.getFields().get(1).getStringValue();
+      queryDataSet.next();
       cnt++;
     }
-    assertEquals(22800, cnt);
+    assertEquals(22300, cnt);
 
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
