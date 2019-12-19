@@ -25,7 +25,9 @@ public class ConfigAdjusterException extends ProcessException {
   private static final long serialVersionUID = 3502288856999147687L;
 
   public ConfigAdjusterException(String action) {
-    super(String.format("IoTDB system load is too large to %s", action));
+    super(String.format(
+        "IoTDB system load is too large to %s, please increase memory or disable the enable_parameter_adapter in iotdb-engine.properties",
+        action));
     errorCode = TSStatusCode.CONFIG_ADJUSTER.getStatusCode();
   }
 }
