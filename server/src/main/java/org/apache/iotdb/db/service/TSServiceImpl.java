@@ -746,7 +746,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   // wide means not group by device
   private void getWideQueryHeaders(QueryPlan plan, List<String> respColumns,
-  List<String> columnTypes) throws TException, QueryProcessException {
+      List<String> columnTypes) throws TException, QueryProcessException {
     // Restore column header of aggregate to func(column_name), only
     // support single aggregate function for now
     List<Path> paths = plan.getPaths();
@@ -870,10 +870,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           encoder = new GroupedLSBWatermarkEncoder(config);
         } else {
           throw new UnSupportedDataTypeException(String.format(
-                  "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
+              "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
         }
         result = QueryDataSetUtils
-                .convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
+            .convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
       } else {
         result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
       }
@@ -887,7 +887,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan) throws
       QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException {
 
-    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId());
+    QueryContext context = new QueryContext(queryId);
     QueryDataSet queryDataSet = processor.getExecutor().processQuery(physicalPlan, context);
     queryId2DataSet.put(queryId, queryDataSet);
     return queryDataSet;
