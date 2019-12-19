@@ -103,14 +103,12 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
         ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileReader);
 
         for (ChunkMetaData chunkMetaData : currentChunkMetaDataList) {
-          if (timeFilter != null && !timeFilter.satisfy(chunkMetaData.getStatistics())) {
-            currentChunkMetaDataList.remove(chunkMetaData);
-            continue;
+          if (timeFilter == null || timeFilter.satisfy(chunkMetaData.getStatistics())) {
+            chunkMetaData.setPriority(priority++);
+            chunkMetaData.setChunkLoader(chunkLoader);
+            chunkMetaDataList.add(chunkMetaData);
           }
-          chunkMetaData.setPriority(priority++);
-          chunkMetaData.setChunkLoader(chunkLoader);
         }
-        chunkMetaDataList.addAll(currentChunkMetaDataList);
       }
 
       /*
@@ -124,14 +122,13 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
     }
 
     // sort All ChunkMetadata by start time
-    chunkMetaDataList = chunkMetaDataList.stream().sorted(Comparator.comparing(ChunkMetaData::getStartTime))
-        .collect(Collectors.toList());
+    chunkMetaDataList = chunkMetaDataList.stream()
+        .sorted(Comparator.comparing(ChunkMetaData::getStartTime)).collect(Collectors.toList());
 
-    // put the first chunk reader into PriorityMergeReader
-    if (index < chunkMetaDataList.size()) {
-      ChunkMetaData metaData = chunkMetaDataList.get(index++);
-      ChunkReaderWrap diskChunkReader = new ChunkReaderWrap(metaData, metaData.getChunkLoader(), timeFilter);
-      priorityMergeReader.addReaderWithPriority(diskChunkReader.getIPointReader(), metaData.getPriority());
+    // put chunk readers in order into PriorityMergeReader until merge reader has valid point
+    // NOTE: chunk readers may not have next point because of the time filter
+    while (!priorityMergeReader.hasNext() && index < chunkMetaDataList.size()) {
+      addNextChunkIntoPriorityMergeReader();
     }
   }
 
@@ -145,22 +142,24 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
 
     for (int rowCount = 0; rowCount < DEFAULT_BATCH_DATA_SIZE; rowCount++) {
       if (priorityMergeReader.hasNext()) {
-        while (index < chunkMetaDataList.size()) {
-          // current time of priority merge reader >= next chunk start time
-          if (priorityMergeReader.current().getTimestamp() >= chunkMetaDataList.get(index).getStartTime()) {
-            addNextChunkIntoPriorityMergeReader();
-          } else {
-            break;
-          }
+
+        // current time of priority merge reader >= next chunks start time
+        // put all chunks into merge reader
+        while (index < chunkMetaDataList.size() && priorityMergeReader.current().getTimestamp()
+            >= chunkMetaDataList.get(index).getStartTime()) {
+          addNextChunkIntoPriorityMergeReader();
         }
+
         TimeValuePair timeValuePair = priorityMergeReader.next();
         batchData.putTime(timeValuePair.getTimestamp());
         batchData.putAnObject(timeValuePair.getValue().getValue());
 
         // largest time of priority merge reader < next chunk start time
-        if (!priorityMergeReader.hasNext() && index < chunkMetaDataList.size()) {
+        // put chunk readers until merge reader has a valid point
+        while (!priorityMergeReader.hasNext() && index < chunkMetaDataList.size()) {
           addNextChunkIntoPriorityMergeReader();
         }
+
       } else {
         break;
       }
