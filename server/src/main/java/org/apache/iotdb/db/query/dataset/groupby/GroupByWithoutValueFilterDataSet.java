@@ -31,19 +31,15 @@ import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.OldUnseqResourceMergeReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.*;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -200,11 +196,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     boolean hasCachedSequenceData = hasCachedSequenceDataList.get(idx);
     boolean finishCheckSequenceData = false;
     // there was unprocessed data in last batch
-    if (hasCachedSequenceData && batchData.hasNext()) {
+    if (hasCachedSequenceData && batchData.hasCurrent()) {
       function.calculateValueFromPageData(batchData, unsequenceReader, endTime);
     }
 
-    if (hasCachedSequenceData && batchData.hasNext()) {
+    if (hasCachedSequenceData && batchData.hasCurrent()) {
       finishCheckSequenceData = true;
     } else {
       hasCachedSequenceData = false;
@@ -290,11 +286,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     }
 
     // skip the cached batch data points with timestamp less than startTime
-    while (batchData.hasNext() && batchData.currentTime() < startTime) {
+    while (batchData.hasCurrent() && batchData.currentTime() < startTime) {
       batchData.next();
     }
     batchDataList.set(idx, batchData);
-    if (batchData.hasNext()) {
+    if (batchData.hasCurrent()) {
       return true;
     } else {
       hasCachedSequenceDataList.set(idx, false);

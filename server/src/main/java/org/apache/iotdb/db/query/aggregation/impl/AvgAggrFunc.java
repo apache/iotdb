@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
-import java.io.IOException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -28,6 +27,8 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+
+import java.io.IOException;
 
 public class AvgAggrFunc extends AggregateFunction {
 

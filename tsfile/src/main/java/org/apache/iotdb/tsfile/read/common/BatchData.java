@@ -18,23 +18,27 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import java.io.Serializable;
-import java.util.ArrayList;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBinary;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBoolean;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.*;
+
+import java.io.Serializable;
+import java.util.ArrayList;
 
 /**
  * <code>BatchData</code> is a self-defined data structure which is optimized for different type of
  * values. This class can be viewed as a collection which is more efficient than ArrayList.
+ *
+ * We don't return empty batch data. If you get a batch data, you can iterate the data as the following codes:
+ *
+ * while (batchData.hasCurrent()) {
+ *   long time = batchData.currentTime();
+ *   Object value = batchData.currentValue();
+ *   batchData.next();
+ * }
  */
 public class BatchData implements Serializable {
 
@@ -110,10 +114,6 @@ public class BatchData implements Serializable {
 
   public boolean hasCurrent() {
     return curIdx < count;
-  }
-
-  public boolean hasNext() {
-    return curIdx < count - 1;
   }
 
   public void next() {
