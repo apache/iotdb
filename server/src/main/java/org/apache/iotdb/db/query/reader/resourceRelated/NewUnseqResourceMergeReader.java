@@ -51,13 +51,12 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 public class NewUnseqResourceMergeReader implements IBatchReader {
 
   private PriorityMergeReader priorityMergeReader = new PriorityMergeReader();
-  private List<ChunkMetaData> metaDataList = new ArrayList<>();
+  private List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
   private Filter timeFilter;
   private int index = 0; // used to index current metadata in metaDataList
 
   private static final int DEFAULT_BATCH_DATA_SIZE = 10000;
 
-  private long nextChunkStartTime = Long.MAX_VALUE;
   private BatchData batchData;
   private TSDataType dataType;
 
@@ -111,7 +110,7 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
           chunkMetaData.setPriority(priority++);
           chunkMetaData.setChunkLoader(chunkLoader);
         }
-        metaDataList.addAll(currentChunkMetaDataList);
+        chunkMetaDataList.addAll(currentChunkMetaDataList);
       }
 
       /*
@@ -125,19 +124,14 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
     }
 
     // sort All ChunkMetadata by start time
-    metaDataList = metaDataList.stream().sorted(Comparator.comparing(ChunkMetaData::getStartTime))
+    chunkMetaDataList = chunkMetaDataList.stream().sorted(Comparator.comparing(ChunkMetaData::getStartTime))
         .collect(Collectors.toList());
 
     // put the first chunk reader into PriorityMergeReader
-    if (index < metaDataList.size()) {
-      ChunkMetaData metaData = metaDataList.get(index++);
+    if (index < chunkMetaDataList.size()) {
+      ChunkMetaData metaData = chunkMetaDataList.get(index++);
       ChunkReaderWrap diskChunkReader = new ChunkReaderWrap(metaData, metaData.getChunkLoader(), timeFilter);
       priorityMergeReader.addReaderWithPriority(diskChunkReader.getIPointReader(), metaData.getPriority());
-    }
-
-    // init next chunk start time
-    if (index < metaDataList.size()) {
-      nextChunkStartTime = metaDataList.get(index).getStartTime();
     }
   }
 
@@ -151,45 +145,34 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
 
     for (int rowCount = 0; rowCount < DEFAULT_BATCH_DATA_SIZE; rowCount++) {
       if (priorityMergeReader.hasNext()) {
-
-        while (index < metaDataList.size()) {
+        while (index < chunkMetaDataList.size()) {
           // current time of priority merge reader >= next chunk start time
-          if (priorityMergeReader.current().getTimestamp() >= nextChunkStartTime) {
+          if (priorityMergeReader.current().getTimestamp() >= chunkMetaDataList.get(index).getStartTime()) {
             addNextChunkIntoPriorityMergeReader();
           } else {
             break;
           }
         }
-
         TimeValuePair timeValuePair = priorityMergeReader.next();
         batchData.putTime(timeValuePair.getTimestamp());
         batchData.putAnObject(timeValuePair.getValue().getValue());
 
         // largest time of priority merge reader < next chunk start time
-        if (!priorityMergeReader.hasNext() && index < metaDataList.size()) {
+        if (!priorityMergeReader.hasNext() && index < chunkMetaDataList.size()) {
           addNextChunkIntoPriorityMergeReader();
         }
-
       } else {
         break;
       }
-
     }
     return !batchData.isEmpty();
   }
 
   private void addNextChunkIntoPriorityMergeReader() throws IOException {
     // add next chunk into priority merge reader
-    ChunkMetaData metaData = metaDataList.get(index++);
+    ChunkMetaData metaData = chunkMetaDataList.get(index++);
     ChunkReaderWrap diskChunkReader = new ChunkReaderWrap(metaData, metaData.getChunkLoader(), timeFilter);
     priorityMergeReader.addReaderWithPriority(diskChunkReader.getIPointReader(), metaData.getPriority());
-
-    // update next chunk start time
-    if (index < metaDataList.size()) {
-      nextChunkStartTime = metaDataList.get(index).getStartTime();
-    } else {
-      nextChunkStartTime = Long.MAX_VALUE;
-    }
   }
 
   @Override
