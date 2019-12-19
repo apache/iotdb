@@ -152,30 +152,40 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
     for (int rowCount = 0; rowCount < DEFAULT_BATCH_DATA_SIZE; rowCount++) {
       if (priorityMergeReader.hasNext()) {
 
+        // current time of priority merge reader >= next chunk start time
         if (priorityMergeReader.current().getTimestamp() >= nextChunkStartTime && index < metaDataList.size()) {
-
-          // add next chunk into priority merge reader
-          ChunkMetaData metaData = metaDataList.get(index++);
-          ChunkReaderWrap diskChunkReader = new ChunkReaderWrap(metaData, metaData.getChunkLoader(), timeFilter);
-          priorityMergeReader.addReaderWithPriority(diskChunkReader.getIPointReader(), metaData.getPriority());
-
-          // update next chunk start time
-          if (index < metaDataList.size()) {
-            nextChunkStartTime = metaDataList.get(index).getStartTime();
-          } else {
-            nextChunkStartTime = Long.MAX_VALUE;
-          }
+          addNextChunkIntoPriorityMergeReader();
         }
 
         TimeValuePair timeValuePair = priorityMergeReader.next();
         batchData.putTime(timeValuePair.getTimestamp());
         batchData.putAnObject(timeValuePair.getValue().getValue());
 
+        // largest time of priority merge reader < next chunk start time
+        if (!priorityMergeReader.hasNext() && index < metaDataList.size()) {
+          addNextChunkIntoPriorityMergeReader();
+        }
+
       } else {
         break;
       }
+
     }
     return !batchData.isEmpty();
+  }
+
+  private void addNextChunkIntoPriorityMergeReader() throws IOException {
+    // add next chunk into priority merge reader
+    ChunkMetaData metaData = metaDataList.get(index++);
+    ChunkReaderWrap diskChunkReader = new ChunkReaderWrap(metaData, metaData.getChunkLoader(), timeFilter);
+    priorityMergeReader.addReaderWithPriority(diskChunkReader.getIPointReader(), metaData.getPriority());
+
+    // update next chunk start time
+    if (index < metaDataList.size()) {
+      nextChunkStartTime = metaDataList.get(index).getStartTime();
+    } else {
+      nextChunkStartTime = Long.MAX_VALUE;
+    }
   }
 
   @Override
