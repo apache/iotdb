@@ -302,4 +302,9 @@ public class SlotPartitionTable implements PartitionTable {
   public List<Integer> getNodeSlots(Node header) {
     return nodeSlotMap.get(header);
   }
+
+  @Override
+  public Map<Node, List<Integer>> getAllNodeSlots() {
+    return nodeSlotMap;
+  }
 }

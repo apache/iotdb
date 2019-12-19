@@ -16,7 +16,7 @@ public class PartitionGroup extends ArrayList<Node> {
 
   private Node thisNode;
 
-  PartitionGroup() {
+  public PartitionGroup() {
   }
 
   public PartitionGroup(PartitionGroup other) {

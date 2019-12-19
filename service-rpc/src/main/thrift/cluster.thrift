@@ -271,4 +271,6 @@ service TSMetaService extends RaftService {
   AddNodeResponse addNode(1: Node node)
 
   TNodeStatus queryNodeStatus()
+
+  Node checkAlive()
 }

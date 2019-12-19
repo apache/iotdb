@@ -7,6 +7,8 @@ package org.apache.iotdb.cluster.utils;
 import static org.apache.iotdb.cluster.config.ClusterConstant.HASH_SALT;
 import static org.apache.iotdb.cluster.partition.SlotPartitionTable.PARTITION_INTERVAL;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
@@ -22,6 +24,7 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,6 +89,25 @@ public class PartitionUtils {
       throws StorageGroupNotSetException {
     String storageGroup = MManager.getInstance().getStorageGroupNameByPath(path);
     return partitionTable.route(storageGroup, timestamp);
+  }
+
+  /**
+   * Get partition info by path and range time
+   *
+   * @UsedBy NodeTool
+   */
+  public static Map<Pair<Long, Long>, PartitionGroup> partitionByPathRangeTime(String path,
+      long startTime, long endTime, PartitionTable partitionTable)
+      throws StorageGroupNotSetException {
+    Map<Pair<Long, Long>, PartitionGroup> timeRangeMapRaftGroup = new HashMap<>();
+    String storageGroup = MManager.getInstance().getStorageGroupNameByPath(path);
+    while (startTime <= endTime) {
+      long nextTime = (startTime / PARTITION_INTERVAL + 1) * PARTITION_INTERVAL;
+      timeRangeMapRaftGroup.put(new Pair<>(startTime, Math.min(nextTime - 1, endTime)),
+          partitionTable.route(storageGroup, startTime));
+      startTime = nextTime;
+    }
+    return timeRangeMapRaftGroup;
   }
 
   public static int calculateStorageGroupSlot(String storageGroupName, long timestamp) {

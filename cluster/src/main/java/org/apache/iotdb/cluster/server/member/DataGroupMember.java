@@ -136,6 +136,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * nodes in this may change, this node is unchangeable unless the data group is dismissed. It
    * is also the identifier of this data group.
    */
+  @Override
   public Node getHeader() {
     return allNodes.get(0);
   }

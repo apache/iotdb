@@ -34,7 +34,10 @@ import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -48,12 +51,10 @@ import org.slf4j.LoggerFactory;
  */
 public class MetaClusterServer extends RaftServer implements TSMetaService.AsyncIface {
 
-  private static final Logger logger = LoggerFactory.getLogger(MetaClusterServer.class);
-
   // each node only contains one MetaGroupMember
   private MetaGroupMember member;
   private IoTDB ioTDB;
-
+  private RegisterManager registerManager = new RegisterManager();
 
   public MetaClusterServer() throws IOException {
     super();
@@ -63,11 +64,12 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
-  public void start() throws TTransportException {
+  public void start() throws TTransportException, StartupException {
     super.start();
     ioTDB = new IoTDB();
     ioTDB.active();
     member.start();
+    registerManager.register(ClusterMonitor.INSTANCE);
   }
 
   @Override
@@ -76,6 +78,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     ioTDB.stop();
     ioTDB = null;
     member.stop();
+    registerManager.deregisterAll();
   }
 
   public void buildCluster() {
@@ -152,6 +155,11 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   public void pullTimeSeriesSchema(PullSchemaRequest request,
       AsyncMethodCallback<PullSchemaResp> resultHandler) {
     member.pullTimeSeriesSchema(request, resultHandler);
+  }
+
+  @Override
+  public void checkAlive(AsyncMethodCallback<Node> resultHandler) throws TException {
+    member.checkAlive(resultHandler);
   }
 
   @Override

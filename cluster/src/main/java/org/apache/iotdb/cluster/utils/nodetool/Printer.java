@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -16,24 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.config;
+package org.apache.iotdb.cluster.utils.nodetool;
 
-public class ClusterConstant {
+import java.io.PrintStream;
 
-  public static final long HEART_BEAT_INTERVAL_MS = 3000L;
-  // a failed election will restart in 2s~10s
-  public static final long ELECTION_LEAST_TIME_OUT_MS = 2 * 1000L;
-  public static final long ELECTION_RANDOM_TIME_OUT_MS = 8 * 1000L;
-  public static final int SLOT_NUM = 10000;
-  public static final int HASH_SALT = 2333;
-  public static final int CONNECTION_TIME_OUT_MS = 20 * 1000;
-  public static final int CHECK_ALIVE_TIME_OUT_MS = 1000;
-  public static final int SYNC_LEADER_MAX_WAIT_MS = 20 * 1000;
-  public static final int PULL_SNAPSHOT_RETRY_INTERVAL = 5 * 1000;
+public class Printer {
 
-  private ClusterConstant() {
-    // constant class
+  private static final PrintStream SCREEN_PRINTER = new PrintStream(System.out);
+  private static final PrintStream ERR_PRINTER = new PrintStream(System.err);
+
+  private Printer(){
   }
 
-  static final String CLUSTER_CONF = "CLUSTER_CONF";
+  public static void msgPrintln(String s){
+    SCREEN_PRINTER.println(s);
+  }
+
+  public static void errPrintln(String s){
+    ERR_PRINTER.println(s);
+  }
+
 }
