@@ -98,6 +98,9 @@ public class ClusterDescriptor {
       config.setMaxConcurrentClientNum(Integer.parseInt(properties.getProperty(
           "MAX_CONCURRENT_CLIENT_NUM", String.valueOf(config.getMaxConcurrentClientNum()))));
 
+      config.setReplicationNum(Integer.parseInt(properties.getProperty(
+          "REPLICA_NUM", String.valueOf(config.getReplicationNum()))));
+
       config.setRpcThriftCompressionEnabled(Boolean.parseBoolean(properties.getProperty(
           "ENABLE_THRIFT_COMPRESSION", String.valueOf(config.isRpcThriftCompressionEnabled()))));
 
