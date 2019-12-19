@@ -65,7 +65,7 @@ public class Partition extends NodeToolCmd {
     } else if (partitionGroup.isEmpty()) {
       msgPrintln(String.format("The storage group of path <%s> doesn't exist.", path));
     } else {
-      msgPrintln(path + "\t->\t" + partitionGroupToString(partitionGroup));
+      msgPrintln(String.format("META<%s>\t->\t%s", path, partitionGroupToString(partitionGroup)));
     }
   }
 
@@ -78,8 +78,8 @@ public class Partition extends NodeToolCmd {
       msgPrintln(String.format("The storage group of path <%s> doesn't exist.", path));
     } else {
       timeRangeMapRaftGroup.forEach(
-          (timeRange, raftGroup) -> msgPrintln(
-              timeRange + "\t->\t" + partitionGroupToString(raftGroup)));
+          (timeRange, raftGroup) -> msgPrintln(String.format("DATA<%s, %d, %d>\t->\t%s", path,
+              timeRange.left, timeRange.right, partitionGroupToString(raftGroup))));
     }
   }
 }
