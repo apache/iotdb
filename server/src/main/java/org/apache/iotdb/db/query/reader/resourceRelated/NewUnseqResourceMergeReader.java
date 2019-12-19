@@ -152,9 +152,13 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
     for (int rowCount = 0; rowCount < DEFAULT_BATCH_DATA_SIZE; rowCount++) {
       if (priorityMergeReader.hasNext()) {
 
-        // current time of priority merge reader >= next chunk start time
-        if (priorityMergeReader.current().getTimestamp() >= nextChunkStartTime && index < metaDataList.size()) {
-          addNextChunkIntoPriorityMergeReader();
+        while (index < metaDataList.size()) {
+          // current time of priority merge reader >= next chunk start time
+          if (priorityMergeReader.current().getTimestamp() >= nextChunkStartTime) {
+            addNextChunkIntoPriorityMergeReader();
+          } else {
+            break;
+          }
         }
 
         TimeValuePair timeValuePair = priorityMergeReader.next();

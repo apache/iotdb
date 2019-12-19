@@ -66,7 +66,7 @@ public class UnseqResourceReaderTest extends ReaderTestHelper {
   }
 
   @Test
-  public void testUnseqResourceMergeReaderWithGlobalTimeFilter() throws IOException {
+  public void testOldUnseqResourceMergeReaderWithGlobalTimeFilter() throws IOException {
     Path path = new Path(deviceId, measurementId);
     QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context,
         null);
@@ -88,7 +88,7 @@ public class UnseqResourceReaderTest extends ReaderTestHelper {
   }
 
   @Test
-  public void testUnseqResourceMergeReaderWithoutFilter() throws IOException {
+  public void testOldUnseqResourceMergeReaderWithoutFilter() throws IOException {
     Path path = new Path(deviceId, measurementId);
     QueryDataSource queryDataSource = storageGroupProcessor
         .query(deviceId, measurementId, context, null);

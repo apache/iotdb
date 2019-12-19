@@ -1552,6 +1552,10 @@ public class StorageGroupProcessor {
     return workSequenceTsFileProcessor;
   }
 
+  public TsFileProcessor getWorkUnSequenceTsFileProcessor() {
+    return workUnSequenceTsFileProcessor;
+  }
+
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
     checkFilesTTL();
