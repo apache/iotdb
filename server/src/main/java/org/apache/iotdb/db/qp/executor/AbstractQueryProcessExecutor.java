@@ -22,6 +22,10 @@ package org.apache.iotdb.db.qp.executor;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DataType;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_Encoding;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_STORAGE_GROUP;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
@@ -37,6 +41,7 @@ import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
@@ -92,9 +97,36 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
         return processShowFlushTaskInfo();
       case VERSION:
         return processShowVersion();
+      case TIMESERIES:
+        return processShowTimeseries();
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
+  }
+
+  private QueryDataSet processShowTimeseries() throws PathException {
+    List<Path> paths = new ArrayList<>();
+    paths.add(new Path(COLUMN_TIMESERIES));
+    paths.add(new Path(COLUMN_TIMESERIES_STORAGE_GROUP));
+    paths.add(new Path(COLUMN_TIMESERIES_DataType));
+    paths.add(new Path(COLUMN_TIMESERIES_Encoding));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.TEXT);
+    dataTypes.add(TSDataType.TEXT);
+    dataTypes.add(TSDataType.TEXT);
+    dataTypes.add(TSDataType.TEXT);
+    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+    List<List<String>> timeseriesList = MManager.getInstance().getShowTimeseriesPath("root");
+    for(List<String> list : timeseriesList) {
+      RowRecord record = new RowRecord(0);
+      for(String s : list) {
+        Field field = new Field(TSDataType.TEXT);
+        field.setBinaryV(new Binary(s));
+        record.addField(field);
+      }
+      listDataSet.putRecord(record);
+    }
+    return listDataSet;
   }
 
   private QueryDataSet processShowTTLQuery(ShowTTLPlan showTTLPlan) {
@@ -105,7 +137,6 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     dataTypes.add(TSDataType.TEXT);
     dataTypes.add(TSDataType.INT64);
     ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
-
     List<String> selectedSgs = showTTLPlan.getStorageGroups();
 
     List<MNode> storageGroups = MManager.getInstance().getAllStorageGroups();

@@ -360,12 +360,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSFetchMetadataResp resp = new TSFetchMetadataResp();
     try {
       switch (req.getType()) {
-        case "SHOW_TIMESERIES":
-          String path = req.getColumnPath();
-          List<List<String>> timeseriesList = getTimeSeriesForPath(path);
-          resp.setTimeseriesList(timeseriesList);
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
         case "SHOW_STORAGE_GROUP":
           Set<String> storageGroups = new HashSet<>(getAllStorageGroups());
           resp.setStorageGroups(storageGroups);
@@ -382,6 +376,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "SHOW_CHILD_PATHS":
+          String path;
           path = req.getColumnPath();
           Set<String> childPaths = getChildPaths(path);
           resp.setChildPaths(childPaths);
@@ -688,6 +683,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return StaticResps.DYNAMIC_PARAMETER_RESP;
       case VERSION:
         return StaticResps.SHOW_VERSION_RESP;
+      case TIMESERIES:
+        return StaticResps.SHOW_TIMESERIES_RESP;
       default:
         logger.error("Unsupported show content type: {}", showPlan.getShowContentType());
         throw new QueryProcessException("Unsupported show content type:" + showPlan.getShowContentType());

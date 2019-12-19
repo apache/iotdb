@@ -19,7 +19,6 @@
 package org.apache.iotdb.jdbc;
 
 import java.sql.*;
-import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.jdbc.IoTDBMetadataResultSet.MetadataType;
 import org.apache.iotdb.rpc.IoTDBRPCException;
@@ -133,21 +132,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           return new IoTDBMetadataResultSet(showStorageGroup, MetadataType.STORAGE_GROUP);
         } catch (TException e) {
           throw new TException("Connection error when fetching storage group metadata", e);
-        }
-      case Constant.CATALOG_TIMESERIES:
-        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_SHOW_TIMESERIES_REQ);
-        req.setColumnPath(schemaPattern);
-        try {
-          TSFetchMetadataResp resp = client.fetchMetadata(req);
-          try {
-            RpcUtils.verifySuccess(resp.getStatus());
-          } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-          }
-          List<List<String>> showTimeseriesList = resp.getTimeseriesList();
-          return new IoTDBMetadataResultSet(showTimeseriesList, MetadataType.TIMESERIES);
-        } catch (TException e) {
-          throw new TException("Connection error when fetching timeseries metadata", e);
         }
       case Constant.COUNT_TIMESERIES:
         req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_COUNT_TIMESERIES_REQ);

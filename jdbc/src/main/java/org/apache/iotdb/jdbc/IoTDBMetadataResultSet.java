@@ -88,13 +88,6 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         showLabels = new String[]{"Child Paths"};
         columnItr = childPathsSet.iterator();
         break;
-      case TIMESERIES:
-        List<List<String>> showTimeseriesList = (List<List<String>>) object;
-        colCount = 4;
-        showLabels = new String[]{GET_STRING_TIMESERIES_NAME, GET_STRING_TIMESERIES_STORAGE_GROUP,
-          GET_STRING_TIMESERIES_DATATYPE, GET_STRING_TIMESERIES_ENCODING};
-        columnItr = showTimeseriesList.iterator();
-        break;
       case COUNT_TIMESERIES:
         String tsNum = object.toString();
         timeseriesNumList = new ArrayList<>();
@@ -116,14 +109,6 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         colCount = 2;
         showLabels = new String[]{"column", "count"};
         columnItr = nodeTimeseriesNumMap.entrySet().iterator();
-        break;
-      case VERSION:
-        String version = (String) object;
-        colCount = 1;
-        showLabels = new String[]{version};
-        Set<String> versionSet = new HashSet<>();
-        versionSet.add(version);
-        columnItr = versionSet.iterator();
         break;
       default:
         throw new SQLException("TsfileMetadataResultSet constructor is wrongly used.");

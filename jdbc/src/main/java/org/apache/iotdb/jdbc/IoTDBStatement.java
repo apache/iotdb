@@ -44,7 +44,6 @@ import org.apache.thrift.TException;
 
 public class IoTDBStatement implements Statement {
 
-  private static final String SHOW_TIMESERIES_COMMAND_LOWERCASE = "show timeseries";
   private static final String SHOW_STORAGE_GROUP_COMMAND_LOWERCASE = "show storage group";
   private static final String SHOW_DEVICES_COMMAND_LOWERCASE = "show devices";
   private static final String SHOW_CHILD_PATHS_COMMAND_LOWERCASE = "show child paths";
@@ -234,23 +233,7 @@ public class IoTDBStatement implements Statement {
     isCancelled = false;
     String sqlToLowerCase = sql.toLowerCase().trim();
     // TODO: use normal query instead of metadata query
-    if (sqlToLowerCase.startsWith(SHOW_TIMESERIES_COMMAND_LOWERCASE)) {
-      if (sqlToLowerCase.equals(SHOW_TIMESERIES_COMMAND_LOWERCASE)) {
-        DatabaseMetaData databaseMetaData = connection.getMetaData();
-        resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, "root", null, null);
-        return true;
-      } else {
-        String[] cmdSplit = sql.split("\\s+");
-        if (cmdSplit.length != 3) {
-          throw new SQLException("Error format of \'SHOW TIMESERIES <PATH>\'");
-        } else {
-          String path = cmdSplit[2];
-          DatabaseMetaData databaseMetaData = connection.getMetaData();
-          resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, path, null, null);
-          return true;
-        }
-      }
-    } else if (sqlToLowerCase.equals(SHOW_STORAGE_GROUP_COMMAND_LOWERCASE)) {
+    if (sqlToLowerCase.equals(SHOW_STORAGE_GROUP_COMMAND_LOWERCASE)) {
       DatabaseMetaData databaseMetaData = connection.getMetaData();
       resultSet = databaseMetaData.getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null);
       return true;
