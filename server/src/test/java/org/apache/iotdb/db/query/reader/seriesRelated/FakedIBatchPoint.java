@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Random;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.junit.Assert;
@@ -98,7 +98,7 @@ public class FakedIBatchPoint implements IBatchReader {
       num--;
     }
     if (!hasEmptyBatch) {
-      Assert.assertTrue(batchData.hasNext());
+      Assert.assertTrue(batchData.hasCurrent());
     }
   }
 

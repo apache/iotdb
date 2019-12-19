@@ -26,8 +26,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
-import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.dataset.NewEngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
@@ -38,6 +37,7 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 /**
  * IoTDB query executor.
@@ -61,22 +61,24 @@ public class EngineExecutor {
       timeFilter = ((GlobalTimeExpression) queryExpression.getExpression()).getFilter();
     }
 
-    List<IPointReader> readersOfSelectedSeries = new ArrayList<>();
+    List<IBatchReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Path path : queryExpression.getSelectedSeries()) {
+      TSDataType dataType;
       try {
         // add data type
-        dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
+        dataType = MManager.getInstance().getSeriesType(path.getFullPath());
+        dataTypes.add(dataType);
       } catch (PathException e) {
         throw new StorageEngineException(e);
       }
 
-      IPointReader reader = new SeriesReaderWithoutValueFilter(path, timeFilter, context, true);
+      IBatchReader reader = new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context, true);
       readersOfSelectedSeries.add(reader);
     }
 
     try {
-      return new EngineDataSetWithoutValueFilter(queryExpression.getSelectedSeries(), dataTypes,
+      return new NewEngineDataSetWithoutValueFilter(queryExpression.getSelectedSeries(), dataTypes,
           readersOfSelectedSeries);
     } catch (IOException e) {
       throw new StorageEngineException(e.getMessage());
@@ -108,8 +110,7 @@ public class EngineExecutor {
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
     return new EngineDataSetWithValueFilter(queryExpression.getSelectedSeries(), dataTypes,
-        timestampGenerator,
-        readersOfSelectedSeries);
+        timestampGenerator, readersOfSelectedSeries);
   }
 
 }

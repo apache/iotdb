@@ -23,13 +23,11 @@ import java.util.List;
 import java.util.PriorityQueue;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 /**
  * This class implements {@link IPointReader} for data sources with different priorities.
  */
-public class PriorityMergeReader implements IBatchReader {
+public class PriorityMergeReader implements IPointReader {
 
   PriorityQueue<Element> heap = new PriorityQueue<>((o1, o2) -> {
     int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(),
@@ -54,66 +52,56 @@ public class PriorityMergeReader implements IBatchReader {
     }
   }
 
-//  @Override
-//  public boolean hasNext() {
-//    return !heap.isEmpty();
-//  }
-//
-//  @Override
-//  public TimeValuePair next() throws IOException {
-//    Element top = heap.poll();
-//    TimeValuePair ret = top.timeValuePair;
-//    TimeValuePair topNext = null;
-//    if (top.hasNext()) {
-//      top.next();
-//      topNext = top.currPair();
-//    }
-//    long topNextTime = topNext == null ? Long.MAX_VALUE : topNext.getTimestamp();
-//    updateHeap(ret.getTimestamp(), topNextTime);
-//    if (topNext != null) {
-//      top.timeValuePair = topNext;
-//      heap.add(top);
-//    }
-//    return ret;
-//  }
-//
-//  @Override
-//  public TimeValuePair current() throws IOException {
-//    return heap.peek().timeValuePair;
-//  }
-//
-//  private void updateHeap(long topTime, long topNextTime) throws IOException {
-//    while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
-//      Element e = heap.poll();
-//      if (!e.hasNext()) {
-//        e.reader.close();
-//        continue;
-//      }
-//
-//      e.next();
-//      if (e.currTime() == topNextTime) {
-//        // if the next value of the peek will be overwritten by the next of the top, skip it
-//        if (e.hasNext()) {
-//          e.next();
-//          heap.add(e);
-//        } else {
-//          // the chunk is end
-//          e.close();
-//        }
-//      } else {
-//        heap.add(e);
-//      }
-//    }
-//  }
-
   @Override
-  public boolean hasNextBatch() throws IOException {
-    return false;
+  public boolean hasNext() {
+    return !heap.isEmpty();
   }
 
   @Override
-  public BatchData nextBatch() throws IOException {
-    return null;
+  public TimeValuePair next() throws IOException {
+    Element top = heap.poll();
+    TimeValuePair ret = top.timeValuePair;
+    TimeValuePair topNext = null;
+    if (top.hasNext()) {
+      top.next();
+      topNext = top.currPair();
+    }
+    long topNextTime = topNext == null ? Long.MAX_VALUE : topNext.getTimestamp();
+    updateHeap(ret.getTimestamp(), topNextTime);
+    if (topNext != null) {
+      top.timeValuePair = topNext;
+      heap.add(top);
+    }
+    return ret;
+  }
+
+  @Override
+  public TimeValuePair current() throws IOException {
+    return heap.peek().timeValuePair;
+  }
+
+  private void updateHeap(long topTime, long topNextTime) throws IOException {
+    while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
+      Element e = heap.poll();
+      if (!e.hasNext()) {
+        e.reader.close();
+        continue;
+      }
+
+      e.next();
+      if (e.currTime() == topNextTime) {
+        // if the next value of the peek will be overwritten by the next of the top, skip it
+        if (e.hasNext()) {
+          e.next();
+          heap.add(e);
+        } else {
+          // the chunk is end
+          e.close();
+        }
+      } else {
+        heap.add(e);
+      }
+    }
   }
 
   @Override
@@ -129,12 +117,6 @@ public class PriorityMergeReader implements IBatchReader {
     IPointReader reader;
     TimeValuePair timeValuePair;
     int priority;
-
-    /**
-     * Zesong Sun !!!
-     */
-    BatchData batchData;
-    int index;
 
     Element(IPointReader reader, TimeValuePair timeValuePair, int priority) {
       this.reader = reader;

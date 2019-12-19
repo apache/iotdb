@@ -35,12 +35,13 @@ import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrFunc;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.AggreResultDataPointReader;
-import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.dataset.OldEngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.factory.AggreFuncFactory;
+import org.apache.iotdb.db.query.reader.resourceRelated.OldUnseqResourceMergeReader;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
-import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -51,7 +52,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 public class AggregateEngineExecutor {
 
@@ -87,7 +87,7 @@ public class AggregateEngineExecutor {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
 
-    List<IBatchReader> readersOfSequenceData = new ArrayList<>();
+    List<IAggregateReader> readersOfSequenceData = new ArrayList<>();
     List<IPointReader> readersOfUnSequenceData = new ArrayList<>();
     List<AggregateFunction> aggregateFunctions = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
@@ -104,7 +104,7 @@ public class AggregateEngineExecutor {
       timeFilter = queryDataSource.updateTimeFilter(timeFilter);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
-      IBatchReader seqResourceIterateReader;
+      IAggregateReader seqResourceIterateReader;
       if (function instanceof MaxTimeAggrFunc || function instanceof LastValueAggrFunc) {
         seqResourceIterateReader = new SeqResourceIterateReader(queryDataSource.getSeriesPath(),
             queryDataSource.getSeqResources(), timeFilter, context, true);
@@ -114,7 +114,7 @@ public class AggregateEngineExecutor {
       }
 
       // unseq reader for all chunk groups in unSeqFile, memory
-      IPointReader unseqResourceMergeReader = new UnseqResourceMergeReader(
+      IPointReader unseqResourceMergeReader = new OldUnseqResourceMergeReader(
           queryDataSource.getSeriesPath(),
           queryDataSource.getUnseqResources(), context, timeFilter);
 
@@ -141,14 +141,14 @@ public class AggregateEngineExecutor {
    * @return one series aggregate result data
    */
   private AggreResultData aggregateWithoutValueFilter(AggregateFunction function,
-      IBatchReader sequenceReader, IPointReader unSequenceReader, Filter filter)
+      IAggregateReader sequenceReader, IPointReader unSequenceReader, Filter filter)
       throws IOException, QueryProcessException {
     if (function instanceof MaxTimeAggrFunc || function instanceof LastValueAggrFunc) {
       return handleLastMaxTimeWithOutTimeGenerator(function, sequenceReader, unSequenceReader,
           filter);
     }
 
-    while (sequenceReader.hasNext()) {
+    while (sequenceReader.hasNextBatch()) {
       PageHeader pageHeader = sequenceReader.nextPageHeader();
       // judge if overlap with unsequence data
       if (canUseHeader(function, pageHeader, unSequenceReader, filter)) {
@@ -208,11 +208,11 @@ public class AggregateEngineExecutor {
    * @return BatchData-aggregate result
    */
   private AggreResultData handleLastMaxTimeWithOutTimeGenerator(AggregateFunction function,
-      IBatchReader sequenceReader, IPointReader unSequenceReader, Filter timeFilter)
+      IAggregateReader sequenceReader, IPointReader unSequenceReader, Filter timeFilter)
       throws IOException, QueryProcessException {
     long lastBatchTimeStamp = Long.MIN_VALUE;
     boolean isChunkEnd = false;
-    while (sequenceReader.hasNext()) {
+    while (sequenceReader.hasNextBatch()) {
       PageHeader pageHeader = sequenceReader.nextPageHeader();
       // judge if overlap with unsequence data
       if (canUseHeader(function, pageHeader, unSequenceReader, timeFilter)) {
@@ -330,6 +330,6 @@ public class AggregateEngineExecutor {
       dataTypes.add(resultData.getDataType());
       resultDataPointReaders.add(new AggreResultDataPointReader(resultData));
     }
-    return new EngineDataSetWithoutValueFilter(selectedSeries, dataTypes, resultDataPointReaders);
+    return new OldEngineDataSetWithoutValueFilter(selectedSeries, dataTypes, resultDataPointReaders);
   }
 }

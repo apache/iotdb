@@ -88,7 +88,7 @@ public class TsFileSequenceRead {
                 defaultTimeDecoder);
             while (reader1.hasNextBatch()) {
               BatchData batchData = reader1.nextBatch();
-              while (batchData.hasNext()) {
+              while (batchData.hasCurrent()) {
                 System.out.println(
                     "\t\t\ttime, value: " + batchData.currentTime() + ", " + batchData
                         .currentValue());

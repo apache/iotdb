@@ -74,7 +74,7 @@ public class ReaderByTimestampTest {
 
     while (seriesReader.hasNextBatch()) {
       data = seriesReader.nextBatch();
-      while (data.hasNext()) {
+      while (data.hasCurrent()) {
         timeList.add(data.currentTime() - 1);
         valueList.add(null);
         timeList.add(data.currentTime());

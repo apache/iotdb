@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.reader;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -39,6 +37,9 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.List;
 
 public class ReaderTest {
 
@@ -75,7 +76,7 @@ public class ReaderTest {
 
     while (seriesReader.hasNextBatch()) {
       data = seriesReader.nextBatch();
-      while (data.hasNext()) {
+      while (data.hasCurrent()) {
         Assert.assertEquals(startTime, data.currentTime());
         data.next();
         startTime++;
@@ -90,7 +91,7 @@ public class ReaderTest {
 
     while (seriesReader.hasNextBatch()) {
       data = seriesReader.nextBatch();
-      while (data.hasNext()) {
+      while (data.hasCurrent()) {
         data.next();
         startTime++;
         count++;
@@ -118,7 +119,7 @@ public class ReaderTest {
 
     while (seriesReader.hasNextBatch()) {
       data = seriesReader.nextBatch();
-      while (data.hasNext()) {
+      while (data.hasCurrent()) {
         Assert.assertEquals(aimedTimestamp++, data.currentTime());
         data.next();
       }

@@ -18,16 +18,27 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import java.io.Serializable;
-import java.util.ArrayList;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.*;
+
+import java.io.Serializable;
+import java.util.ArrayList;
 
 /**
  * <code>BatchData</code> is a self-defined data structure which is optimized for different type of
  * values. This class can be viewed as a collection which is more efficient than ArrayList.
+ *
+ * We don't return empty batch data. If you get a batch data, you can iterate the data as the following codes:
+ *
+ * while (batchData.hasCurrent()) {
+ *   long time = batchData.currentTime();
+ *   Object value = batchData.currentValue();
+ *   batchData.next();
+ * }
  */
 public class BatchData implements Serializable {
 
@@ -51,7 +62,7 @@ public class BatchData implements Serializable {
   /**
    * the insert timestamp number of timeRet
    **/
-  private int timeLength;
+  private int count;
 
   /**
    * the number of ArrayList in valueRet
@@ -97,9 +108,12 @@ public class BatchData implements Serializable {
     init(type, recordTime, hasEmptyTime);
   }
 
-  // FIXME: this means hasCurrent actually
-  public boolean hasNext() {
-    return curIdx < timeLength;
+  public boolean isEmpty() {
+    return count == 0;
+  }
+
+  public boolean hasCurrent() {
+    return curIdx < count;
   }
 
   public void next() {
@@ -135,6 +149,25 @@ public class BatchData implements Serializable {
     }
   }
 
+  public TsPrimitiveType currentTsPrimitiveType() {
+    switch (dataType) {
+      case INT32:
+        return new TsInt(getInt());
+      case INT64:
+        return new TsLong(getLong());
+      case FLOAT:
+        return new TsFloat(getFloat());
+      case DOUBLE:
+        return new TsDouble(getDouble());
+      case BOOLEAN:
+        return new TsBoolean(getBoolean());
+      case TEXT:
+        return new TsBinary(getBinary());
+      default:
+        return null;
+    }
+  }
+
   public TSDataType getDataType() {
     return dataType;
   }
@@ -159,7 +192,7 @@ public class BatchData implements Serializable {
       timeRet.add(new long[timeCapacity]);
       timeArrayIdx = 0;
       curTimeIdx = 0;
-      timeLength = 0;
+      count = 0;
     }
 
     if (hasEmptyTime) {
@@ -216,7 +249,7 @@ public class BatchData implements Serializable {
       }
     }
     (timeRet.get(timeArrayIdx))[curTimeIdx++] = v;
-    timeLength++;
+    count++;
   }
 
   /**
@@ -383,9 +416,9 @@ public class BatchData implements Serializable {
     if (idx < 0) {
       throw new IndexOutOfBoundsException("BatchData time range check, Index is negative: " + idx);
     }
-    if (idx >= timeLength) {
+    if (idx >= count) {
       throw new IndexOutOfBoundsException(
-          "BatchData time range check, Index : " + idx + ". Length : " + timeLength);
+          "BatchData time range check, Index : " + idx + ". Length : " + count);
     }
   }
 
@@ -471,8 +504,8 @@ public class BatchData implements Serializable {
    * @return time array
    */
   public long[] getTimeAsArray() {
-    long[] res = new long[timeLength];
-    for (int i = 0; i < timeLength; i++) {
+    long[] res = new long[count];
+    for (int i = 0; i < count; i++) {
       res[i] = timeRet.get(i / timeCapacity)[i % timeCapacity];
     }
     return res;
@@ -540,7 +573,7 @@ public class BatchData implements Serializable {
   }
 
   public int length() {
-    return this.timeLength;
+    return this.count;
   }
 
   public int getCurIdx() {
@@ -602,7 +635,7 @@ public class BatchData implements Serializable {
   }
 
   public Object getValueInTimestamp(long time) {
-    while (hasNext()) {
+    while (hasCurrent()) {
       if (currentTime() < time) {
         next();
       } else if (currentTime() == time) {

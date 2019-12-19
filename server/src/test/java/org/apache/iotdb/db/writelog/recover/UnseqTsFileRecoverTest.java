@@ -81,7 +81,7 @@ public class UnseqTsFileRecoverTest {
 
   @Before
   public void setup() throws IOException, WriteProcessException {
-    tsF = SystemFileFactory.INSTANCE.getFile("temp", "test.ts");
+    tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "test.ts");
     tsF.getParentFile().mkdirs();
 
     schema = new Schema();
@@ -166,14 +166,15 @@ public class UnseqTsFileRecoverTest {
     for (ChunkMetaData chunkMetaData : metadataQuerier.getChunkMetaDataList(path)) {
       Chunk chunk = chunkLoader.getChunk(chunkMetaData);
       AbstractChunkReader AbstractChunkReader = new ChunkReader(chunk, null);
-      unSeqMergeReader.addReaderWithPriority(new DiskChunkReader(AbstractChunkReader), priorityValue);
+      unSeqMergeReader
+          .addReaderWithPriority(new DiskChunkReader(AbstractChunkReader), priorityValue);
       priorityValue++;
     }
 
     for (int i = 0; i < 10; i++) {
-      TimeValuePair timeValuePair = unSeqMergeReader.current();
-      assertEquals(i, timeValuePair.getTimestamp());
-      assertEquals(11, timeValuePair.getValue().getLong());
+      TimeValuePair e = unSeqMergeReader.current();
+      assertEquals(i, e.getTimestamp());
+      assertEquals(11, (long) e.getValue().getValue());
       unSeqMergeReader.next();
     }
     unSeqMergeReader.close();

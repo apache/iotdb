@@ -101,7 +101,7 @@ public class MergeUtils {
   }
 
   public static int writeChunkWithoutUnseq(Chunk chunk, IChunkWriter chunkWriter) throws IOException {
-    AbstractChunkReader AbstractChunkReader = new ChunkReader(chunk);
+    AbstractChunkReader AbstractChunkReader = new ChunkReader(chunk, null);
     int ptWritten = 0;
     while (AbstractChunkReader.hasNextBatch()) {
       BatchData batchData = AbstractChunkReader.nextBatch();

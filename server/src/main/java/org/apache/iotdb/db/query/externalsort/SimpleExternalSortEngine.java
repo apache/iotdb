@@ -29,7 +29,6 @@ import org.apache.iotdb.db.query.externalsort.adapter.ByTimestampReaderAdapter;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,12 +74,6 @@ public class SimpleExternalSortEngine implements ExternalSortJobEngine {
   }
 
   @Override
-  public List<IBatchReader> executeForIBatchReader(long queryId, List<IBatchReader> batchReaders)
-      throws IOException {
-    return null;
-  }
-
-  @Override
   public List<IReaderByTimestamp> executeForByTimestampReader(long queryId,
       List<ChunkReaderWrap> chunkReaderWraps) throws IOException {
     if (!enableExternalSort || chunkReaderWraps.size() < minExternalSortSourceCount) {
@@ -96,7 +89,7 @@ public class SimpleExternalSortEngine implements ExternalSortJobEngine {
 
   @Override
   public ExternalSortJob createJob(long queryId, List<ChunkReaderWrap> readerWrapList) {
-    long jodId = scheduler.genJobId();
+    long taskId = scheduler.genTaskId();
     List<ExternalSortJobPart> ret = new ArrayList<>();
     for (ChunkReaderWrap readerWrap : readerWrapList) {
       ret.add(new SingleSourceExternalSortJobPart(readerWrap));
@@ -109,7 +102,7 @@ public class SimpleExternalSortEngine implements ExternalSortJobEngine {
         int toIndex = Math.min(i + minExternalSortSourceCount, ret.size());
         List<ExternalSortJobPart> partGroup = ret.subList(i, toIndex);
         i = toIndex;
-        StringBuilder tmpFilePath = new StringBuilder(queryDir).append(jodId).append("_")
+        StringBuilder tmpFilePath = new StringBuilder(queryDir).append(taskId).append("_")
             .append(partId);
         MultiSourceExternalSortJobPart part = new MultiSourceExternalSortJobPart(queryId,
             tmpFilePath.toString(), partGroup);
@@ -118,7 +111,7 @@ public class SimpleExternalSortEngine implements ExternalSortJobEngine {
       }
       ret = tmpPartList;
     }
-    return new ExternalSortJob(jodId, ret);
+    return new ExternalSortJob(ret);
   }
 
   public String getQueryDir() {

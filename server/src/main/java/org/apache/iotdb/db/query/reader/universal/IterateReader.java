@@ -19,15 +19,16 @@
 package org.apache.iotdb.db.query.reader.universal;
 
 import java.io.IOException;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 /**
  * This class is for sequential data sources.
  */
-public abstract class IterateReader implements IBatchReader {
+public abstract class IterateReader implements IAggregateReader {
 
-  protected IBatchReader currentSeriesReader;
+  protected IAggregateReader currentSeriesReader;
   private boolean curReaderInitialized;
   private int nextSeriesReaderIndex;
   private int readerSize;
@@ -75,5 +76,15 @@ public abstract class IterateReader implements IBatchReader {
   @Override
   public void close() {
     // file stream is managed in QueryResourceManager.
+  }
+
+  @Override
+  public PageHeader nextPageHeader() throws IOException {
+    return currentSeriesReader.nextPageHeader();
+  }
+
+  @Override
+  public void skipPageData() throws IOException {
+    currentSeriesReader.skipPageData();
   }
 }

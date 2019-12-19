@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 public abstract class IFill {
 
@@ -54,7 +55,7 @@ public abstract class IFill {
   void constructReaders(Path path, QueryContext context, long beforeRange)
       throws IOException, StorageEngineException {
     Filter timeFilter = constructFilter(beforeRange);
-    allDataReader = new SeriesReaderWithoutValueFilter(path, timeFilter, context, true);
+    allDataReader = new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context, true);
   }
 
   public abstract IPointReader getFillResult() throws IOException, UnSupportedFillTypeException;

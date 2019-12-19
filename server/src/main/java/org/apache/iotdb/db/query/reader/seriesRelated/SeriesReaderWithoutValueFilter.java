@@ -24,7 +24,9 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
-import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.NewUnseqResourceMergeReader;
+import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -33,20 +35,11 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import java.io.IOException;
 
 /**
- * To read series data without value filter, this class implements {@link IPointReader} for the
- * data.
- * <p>
- * Note that filters include value filter and time filter. "without value filter" is equivalent to
- * "with global time filter or simply without any filter".
- */
-
-
-/**
- * merge seqResourceIterateReader and unseqResourceMergeReader
+ * To read series data without value filter
  *
- * return batch data
+ * "without value filter" is equivalent to "with global time filter or without any filter".
  */
-public class SeriesReaderWithoutValueFilter implements IBatchReader {
+public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReader {
 
   private IBatchReader seqResourceIterateReader;
   private IBatchReader unseqResourceMergeReader;
@@ -61,6 +54,13 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader {
   private int batchDataSize;
 
   /**
+   * will be removed after removing IPointReader
+   */
+  private boolean hasCachedTimeValuePair;
+  private TimeValuePair timeValuePair;
+  private BatchData batchData;
+
+  /**
    * Constructor function.
    *
    * @param seriesPath the path of the series data
@@ -69,13 +69,8 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader {
    * @param pushdownUnseq True to push down the filter on the unsequence TsFile resource; False not
    * to. We do not push down value filter to unsequence readers
    */
-  public SeriesReaderWithoutValueFilter(Path seriesPath, Filter timeFilter, QueryContext context,
-      boolean pushdownUnseq) throws StorageEngineException, IOException {
-    this(seriesPath, timeFilter, context, pushdownUnseq, DEFAULT_BATCH_DATA_SIZE);
-  }
-
-  public SeriesReaderWithoutValueFilter(Path seriesPath, Filter timeFilter, QueryContext context,
-                                        boolean pushdownUnseq, int batchDataSize) throws StorageEngineException, IOException {
+  public SeriesReaderWithoutValueFilter(Path seriesPath, TSDataType dataType, Filter timeFilter,
+      QueryContext context, boolean pushdownUnseq) throws StorageEngineException, IOException {
     QueryDataSource queryDataSource = QueryResourceManager.getInstance()
             .getQueryDataSource(seriesPath, context);
     timeFilter = queryDataSource.updateTimeFilter(timeFilter);
@@ -86,13 +81,13 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader {
 
     // reader for unsequence resources, we only push down time filter on unseq reader
     if (pushdownUnseq) {
-      this.unseqResourceMergeReader = new UnseqResourceMergeReader(seriesPath,
+      this.unseqResourceMergeReader = new NewUnseqResourceMergeReader(seriesPath, dataType,
               queryDataSource.getUnseqResources(), context, timeFilter);
     } else {
-      this.unseqResourceMergeReader = new UnseqResourceMergeReader(seriesPath,
+      this.unseqResourceMergeReader = new NewUnseqResourceMergeReader(seriesPath, dataType,
               queryDataSource.getUnseqResources(), context, null);
     }
-    this.batchDataSize = batchDataSize;
+    this.batchDataSize = DEFAULT_BATCH_DATA_SIZE;
   }
 
   /**
@@ -100,25 +95,20 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader {
    */
   SeriesReaderWithoutValueFilter(IBatchReader seqResourceIterateReader,
       IBatchReader unseqResourceMergeReader) {
-    this(seqResourceIterateReader, unseqResourceMergeReader, DEFAULT_BATCH_DATA_SIZE);
-  }
-
-  SeriesReaderWithoutValueFilter(IBatchReader seqResourceIterateReader,
-                                 IBatchReader unseqResourceMergeReader, int batchDataSize) {
     this.seqResourceIterateReader = seqResourceIterateReader;
     this.unseqResourceMergeReader = unseqResourceMergeReader;
-    this.batchDataSize = batchDataSize;
+    this.batchDataSize = DEFAULT_BATCH_DATA_SIZE;
   }
+
 
   @Override
   public boolean hasNextBatch() throws IOException {
-
     return hasNextInSeq() || hasNextInUnSeq();
   }
 
   private boolean hasNextInSeq() throws IOException {
     // has next point in cached seqBatchData
-    if (seqBatchData != null && seqBatchData.hasNext())
+    if (seqBatchData != null && seqBatchData.hasCurrent())
       return true;
     // has next batch in seq reader
     if (seqResourceIterateReader.hasNextBatch()) {
@@ -130,7 +120,7 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader {
 
   private boolean hasNextInUnSeq() throws IOException {
     // has next point in cached unseqBatchData
-    if (unseqBatchData != null && unseqBatchData.hasNext())
+    if (unseqBatchData != null && unseqBatchData.hasCurrent())
       return true;
     // has next batch in unseq reader
     if (unseqResourceMergeReader != null && unseqResourceMergeReader.hasNextBatch()) {
@@ -183,6 +173,49 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader {
       return unseqBatchData;
 
     return null;
+  }
+
+  @Override
+  public boolean hasNext() throws IOException {
+    if (hasCachedTimeValuePair) {
+      return true;
+    }
+
+    if (hasNextInCurrentBatch()) {
+      return true;
+    }
+
+    // has not cached timeValuePair
+    if (hasNextBatch()) {
+      batchData = nextBatch();
+      return hasNextInCurrentBatch();
+    }
+    return false;
+  }
+
+  private boolean hasNextInCurrentBatch() {
+    if (batchData != null && batchData.hasCurrent()) {
+      timeValuePair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
+      hasCachedTimeValuePair = true;
+      batchData.next();
+      return true;
+    }
+    return false;
+  }
+
+  @Override
+  public TimeValuePair next() throws IOException {
+    if (hasCachedTimeValuePair || hasNext()) {
+      hasCachedTimeValuePair = false;
+      return timeValuePair;
+    } else {
+      throw new IOException("no next data");
+    }
+  }
+
+  @Override
+  public TimeValuePair current() {
+    return timeValuePair;
   }
 
   @Override

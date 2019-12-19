@@ -50,7 +50,7 @@ public class DiskChunkReaderByTimestamp implements IReaderByTimestamp {
       if (value != null) {
         return value;
       }
-      if (data.hasNext()) {
+      if (data.hasCurrent()) {
         return null;
       } else {
         chunkReaderByTimestamp.setCurrentTimestamp(timestamp);
@@ -67,7 +67,7 @@ public class DiskChunkReaderByTimestamp implements IReaderByTimestamp {
 
   @Override
   public boolean hasNext() throws IOException {
-    if (data != null && data.hasNext()) {
+    if (data != null && data.hasCurrent()) {
       return true;
     }
     if (chunkReaderByTimestamp != null && chunkReaderByTimestamp.hasNextBatch()) {

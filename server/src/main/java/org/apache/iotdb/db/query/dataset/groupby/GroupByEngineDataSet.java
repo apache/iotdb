@@ -35,7 +35,7 @@ import java.util.List;
 
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
-  protected long jobId;
+  protected long queryId;
   private long unit;
   private long slidingStep;
   private long intervalStartTime;
@@ -50,10 +50,10 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   /**
    * groupBy query.
    */
-  public GroupByEngineDataSet(long jobId, List<Path> paths, long unit,
-                              long slidingStep, long startTime, long endTime) {
+  public GroupByEngineDataSet(long queryId, List<Path> paths, long unit,
+      long slidingStep, long startTime, long endTime) {
     super(paths);
-    this.jobId = jobId;
+    this.queryId = queryId;
     this.unit = unit;
     this.slidingStep = slidingStep;
     this.intervalStartTime = startTime;
