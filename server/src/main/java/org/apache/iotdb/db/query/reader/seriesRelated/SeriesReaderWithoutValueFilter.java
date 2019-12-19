@@ -160,6 +160,7 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReade
         }
         batchData.putTime(currentTime);
         batchData.putAnObject(currentValue);
+        count++;
       }
       return batchData;
     }
