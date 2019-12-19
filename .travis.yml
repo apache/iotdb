@@ -99,7 +99,7 @@ matrix:
         - wget --no-check-certificate https://www-eu.apache.org/dist/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.zip
         - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.3-bin.zip -o/c/mvn363
         - /C/Progra~1/7-Zip/7z.exe x openjdk-11.0.2_windows-x64_bin.zip -o/c/java
-        - mkdir C:\\hadoop\bin
+        - mkdir /C/hadoop/bin
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.exe -o /c/hadoop/bin
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.dll -o /c/windows/system32
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop -o /c/hadoop/bin
@@ -147,10 +147,11 @@ matrix:
       sudo: required
       before_install:
         - wget https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_linux-x64_bin.tar.gz -O jdk11.tar.gz
-        - mkdir -p $PWD/../jdk-11.0.2/
-        - tar -xzf jdk11.tar.gz -C $PWD/../jdk-11.0.2/
+        - JAVA=$(dirname "$PWD")/jdk-11.0.2/
+        - mkdir -p $JAVA
+        - tar -xzf jdk11.tar.gz -C $JAVA
       before_script:
-        - export JAVA_HOME=$(dirname "$PWD")/jdk-11.0.2/
+        - export JAVA_HOME=$JAVA
         - export PATH=$JAVA_HOME/bin:$PATH
       script:
         - java -version
