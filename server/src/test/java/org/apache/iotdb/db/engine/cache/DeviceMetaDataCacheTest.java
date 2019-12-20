@@ -94,7 +94,7 @@ public class DeviceMetaDataCacheTest {
     for (int j = 1; j <= 100; j++) {
       insertOneRecord(j, j);
     }
-    for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessor()){
+    for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessors()){
       tsFileProcessor.syncFlush();
     }
 

@@ -90,19 +90,19 @@ public class UnSealedTsFileReaderTest extends ReaderTestHelper {
     for (int j = 1000; j <= 1009; j++) {
       insertOneRecord(j, j);
     }
-    for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessor()){
+    for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessors()){
       tsFileProcessor.syncFlush();
     }
     for (int j = 1010; j <= 1019; j++) {
       insertOneRecord(j, j);
     }
-    for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessor()){
+    for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessors()){
       tsFileProcessor.syncFlush();
     }
     for (int j = 1020; j <= 3019; j++) {
       insertOneRecord(j, j);
     }
-    for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessor()){
+    for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessors()){
       tsFileProcessor.syncFlush();
     }
     for (int j = 3020; j <= 3029; j = j + 1) {

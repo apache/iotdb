@@ -226,34 +226,6 @@ public class IoTDBMultiSeriesIT {
     }
   }
 
-//  @Test
-//  public void insertTest() throws ClassNotFoundException {
-//    String selectSql = "select * from root";
-//
-//    Class.forName(Config.JDBC_DRIVER_NAME);
-//    try (Connection connection = DriverManager
-//        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-//        Statement statement = connection.createStatement()) {
-//      boolean hasResultSet = statement.execute(selectSql);
-//      Assert.assertTrue(hasResultSet);
-//      try (ResultSet resultSet = statement.getResultSet()) {
-//        int cnt = 0;
-//        while (resultSet.next()) {
-//          String ans =
-//              resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet
-//                  .getString("root.fans.d0.s0")
-//                  + "," + resultSet.getString("root.fans.d0.s1");
-//          System.out.println(ans);
-//          cnt++;
-//        }
-//        assertEquals(23499, cnt);
-//      }
-//    } catch (Exception e) {
-//      e.printStackTrace();
-//      fail(e.getMessage());
-//    }
-//  }
-
   // "select * from root.vehicle" : test select wild data
   @Test
   public void selectAllTest() throws ClassNotFoundException {

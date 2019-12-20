@@ -132,9 +132,23 @@ public class StorageGroupProcessor {
    * avoid some tsfileResource is changed (e.g., from unsealed to sealed) when a query is executed.
    */
   private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
-  private final HashMap<Long, TsFileProcessor> workSequenceTsFileProcessor = new HashMap<>();
+  /**
+   * time range id for divide storage group -> tsFileProcessor for this storage group
+   */
+  private final HashMap<Long, TsFileProcessor> workSequenceTsFileProcessors = new HashMap<>();
+  /**
+   * time range id for divide storage group -> last used time of tsFileProcessor for this storage
+   * group
+   */
   private final HashMap<Long, Long> sequenceTsfileProcessorLastUseTime = new HashMap<>();
-  private final HashMap<Long, TsFileProcessor> workUnsequenceTsFileProcessor = new HashMap<>();
+  /**
+   * time range id for divide storage group -> tsFileProcessor for this storage group
+   */
+  private final HashMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new HashMap<>();
+  /**
+   * time range id for divide storage group -> last used time of tsFileProcessor for this storage
+   * group
+   */
   private final HashMap<Long, Long> unsequenceTsfileProcessorLastUseTime = new HashMap<>();
   // Time range for divide storage group, unit is second
   private final long timeRangeForStorageGroup = IoTDBDescriptor.getInstance().getConfig()
@@ -531,10 +545,10 @@ public class StorageGroupProcessor {
     TsFileProcessor tsFileProcessor = null;
     try {
       if (sequence) {
-        tsFileProcessor = getOrCreateTsFileProcessorIntern(time, workSequenceTsFileProcessor,
+        tsFileProcessor = getOrCreateTsFileProcessorIntern(time, workSequenceTsFileProcessors,
             sequenceTsfileProcessorLastUseTime, sequenceFileList, true);
       } else {
-        tsFileProcessor = getOrCreateTsFileProcessorIntern(time, workUnsequenceTsFileProcessor,
+        tsFileProcessor = getOrCreateTsFileProcessorIntern(time, workUnsequenceTsFileProcessors,
             unsequenceTsfileProcessorLastUseTime, unSequenceFileList, false);
       }
     } catch (DiskSpaceInsufficientException e) {
@@ -569,7 +583,7 @@ public class StorageGroupProcessor {
     // time partition range
     long timeRange = fromTimeToTimeRange(time);
     TsFileProcessor res = null;
-    // we have to ensure only one thread can change workSequenceTsFileProcessor
+    // we have to ensure only one thread can change workSequenceTsFileProcessors
     writeLock();
     try {
       if (!tsFileProcessorHashMap.containsKey(timeRange)) {
@@ -655,14 +669,14 @@ public class StorageGroupProcessor {
       updateEndTimeMap(tsFileProcessor);
       tsFileProcessor.asyncClose();
 
-      workSequenceTsFileProcessor.remove(tsFileProcessor.getTimeRange());
+      workSequenceTsFileProcessors.remove(tsFileProcessor.getTimeRange());
       sequenceTsfileProcessorLastUseTime.remove(tsFileProcessor.getTimeRange());
       logger.info("close a sequence tsfile processor {}", storageGroupName);
     } else {
       closingUnSequenceTsFileProcessor.add(tsFileProcessor);
       tsFileProcessor.asyncClose();
 
-      workUnsequenceTsFileProcessor.remove(tsFileProcessor.getTimeRange());
+      workUnsequenceTsFileProcessors.remove(tsFileProcessor.getTimeRange());
       unsequenceTsfileProcessorLastUseTime.remove(tsFileProcessor.getTimeRange());
       logger.info("close an unsequence tsfile processor {}", storageGroupName);
     }
@@ -700,8 +714,8 @@ public class StorageGroupProcessor {
       folder.addAll(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
       deleteAllSGFolders(folder);
 
-      this.workSequenceTsFileProcessor.clear();
-      this.workUnsequenceTsFileProcessor.clear();
+      this.workSequenceTsFileProcessors.clear();
+      this.workUnsequenceTsFileProcessors.clear();
       this.sequenceFileList.clear();
       this.unSequenceFileList.clear();
       this.latestFlushedTimeForEachDevice.clear();
@@ -810,17 +824,17 @@ public class StorageGroupProcessor {
     writeLock();
     try {
       logger.info("async force close all files in storage group: {}", storageGroupName);
-      if (workSequenceTsFileProcessor != null) {
+      if (workSequenceTsFileProcessors != null) {
         // to avoid concurrent modification problem, we need a new array list
         for (TsFileProcessor tsFileProcessor : new ArrayList<>(
-            workSequenceTsFileProcessor.values())) {
+            workSequenceTsFileProcessors.values())) {
           moveOneWorkProcessorToClosingList(true, tsFileProcessor);
         }
       }
-      if (workUnsequenceTsFileProcessor != null) {
+      if (workUnsequenceTsFileProcessors != null) {
         // to avoid concurrent modification problem, we need a new array list
         for (TsFileProcessor tsFileProcessor : new ArrayList<>(
-            workUnsequenceTsFileProcessor.values())) {
+            workUnsequenceTsFileProcessors.values())) {
           moveOneWorkProcessorToClosingList(false, tsFileProcessor);
         }
       }
@@ -974,16 +988,22 @@ public class StorageGroupProcessor {
         return;
       }
 
+      // time range to divide storage group
+      long timeRange = fromTimeToTimeRange(timestamp);
       // write log
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        for (TsFileProcessor tsFileProcessor : workSequenceTsFileProcessor.values()) {
-          tsFileProcessor.getLogNode()
-              .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
+        for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
+          if (entry.getKey() <= timeRange) {
+            entry.getValue().getLogNode()
+                .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
+          }
         }
 
-        for (TsFileProcessor tsFileProcessor : workUnsequenceTsFileProcessor.values()) {
-          tsFileProcessor.getLogNode()
-              .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
+        for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
+          if (entry.getKey() <= timeRange) {
+            entry.getValue().getLogNode()
+                .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
+          }
         }
       }
 
@@ -1622,8 +1642,8 @@ public class StorageGroupProcessor {
   }
 
 
-  public Collection<TsFileProcessor> getWorkSequenceTsFileProcessor() {
-    return workSequenceTsFileProcessor.values();
+  public Collection<TsFileProcessor> getWorkSequenceTsFileProcessors() {
+    return workSequenceTsFileProcessors.values();
   }
 
   /**

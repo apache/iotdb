@@ -86,7 +86,7 @@ public class SeqResourceReaderTest extends ReaderTestHelper {
     }
     for (int j = 1010; j <= 1019; j++) {
       insertOneRecord(j, j);
-      for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessor()){
+      for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessors()){
         tsFileProcessor.syncFlush();
       }
     }
@@ -97,7 +97,7 @@ public class SeqResourceReaderTest extends ReaderTestHelper {
     }
     storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
 
-    assert storageGroupProcessor.getWorkSequenceTsFileProcessor().isEmpty();
+    Assert.assertTrue(storageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
 
     for (int j = 3020; j <= 5029; j++) {
       insertOneRecord(j, j);

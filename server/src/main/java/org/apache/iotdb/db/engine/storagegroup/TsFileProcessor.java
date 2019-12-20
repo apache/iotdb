@@ -77,6 +77,7 @@ public class TsFileProcessor {
 
   private TsFileResource tsFileResource;
 
+  // time range index to indicate this processor belongs to which storage group
   private long timeRange;
 
   /**
