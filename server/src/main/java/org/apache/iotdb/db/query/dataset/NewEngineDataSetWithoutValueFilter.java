@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.query.dataset;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.TreeSet;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,12 +36,6 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.TreeSet;
 
 
 public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
@@ -75,6 +74,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
         BatchData batchData = reader.nextBatch();
         cachedBatchDataArray[i] = batchData;
         timeHeap.add(batchData.currentTime());
+        // TODO here bug batchData may be null because of hasNextBatch of seqReader
       }
     }
   }
@@ -97,58 +97,66 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       bitmapBAOSList[seriesIndex] = new PublicBAOS();
     }
 
-    int rowCount = 0;
-
     // used to record a bitmap for every 8 row record
     int[] currentBitmapList = new int[seriesNum];
-    for (int i = 0; i < fetchSize; i++) {
+    int rowCount = 0;
+    while (rowCount < fetchSize) {
 
-      if (timeHeap.isEmpty()) {
+      if ((rowLimit > 0 && alreadyReturnedRowNum >= rowLimit) || timeHeap.isEmpty()) {
         break;
       }
 
       long minTime = timeHeap.pollFirst();
 
-      timeBAOS.write(BytesUtils.longToBytes(minTime));
+      if (rowOffset == 0) {
+        timeBAOS.write(BytesUtils.longToBytes(minTime));
+      }
 
       for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
         if (cachedBatchDataArray[seriesIndex] == null
             || !cachedBatchDataArray[seriesIndex].hasCurrent()
             || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
           // current batch is empty or does not have value at minTime
-          currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1);
+          if (rowOffset == 0) {
+            currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1);
+          }
         } else {
           // current batch has value at minTime, consume current value
-          currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1) | FLAG;
-          TSDataType type = cachedBatchDataArray[seriesIndex].getDataType();
-          switch (type) {
-            case INT32:
-              ReadWriteIOUtils
-                  .write(cachedBatchDataArray[seriesIndex].getInt(), valueBAOSList[seriesIndex]);
-              break;
-            case INT64:
-              ReadWriteIOUtils
-                  .write(cachedBatchDataArray[seriesIndex].getLong(), valueBAOSList[seriesIndex]);
-              break;
-            case FLOAT:
-              ReadWriteIOUtils
-                  .write(cachedBatchDataArray[seriesIndex].getFloat(), valueBAOSList[seriesIndex]);
-              break;
-            case DOUBLE:
-              ReadWriteIOUtils
-                  .write(cachedBatchDataArray[seriesIndex].getDouble(), valueBAOSList[seriesIndex]);
-              break;
-            case BOOLEAN:
-              ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getBoolean(),
-                  valueBAOSList[seriesIndex]);
-              break;
-            case TEXT:
-              ReadWriteIOUtils
-                  .write(cachedBatchDataArray[seriesIndex].getBinary(), valueBAOSList[seriesIndex]);
-              break;
-            default:
-              throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", type));
+          if (rowOffset == 0) {
+            currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1) | FLAG;
+            TSDataType type = cachedBatchDataArray[seriesIndex].getDataType();
+            switch (type) {
+              case INT32:
+                ReadWriteIOUtils
+                    .write(cachedBatchDataArray[seriesIndex].getInt(), valueBAOSList[seriesIndex]);
+                break;
+              case INT64:
+                ReadWriteIOUtils
+                    .write(cachedBatchDataArray[seriesIndex].getLong(), valueBAOSList[seriesIndex]);
+                break;
+              case FLOAT:
+                ReadWriteIOUtils
+                    .write(cachedBatchDataArray[seriesIndex].getFloat(),
+                        valueBAOSList[seriesIndex]);
+                break;
+              case DOUBLE:
+                ReadWriteIOUtils
+                    .write(cachedBatchDataArray[seriesIndex].getDouble(),
+                        valueBAOSList[seriesIndex]);
+                break;
+              case BOOLEAN:
+                ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getBoolean(),
+                    valueBAOSList[seriesIndex]);
+                break;
+              case TEXT:
+                ReadWriteIOUtils
+                    .write(cachedBatchDataArray[seriesIndex].getBinary(),
+                        valueBAOSList[seriesIndex]);
+                break;
+              default:
+                throw new UnSupportedDataTypeException(
+                    String.format("Data type %s is not supported.", type));
+            }
           }
 
           // move next
@@ -169,14 +177,21 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
         }
       }
 
-      rowCount++;
-      if (rowCount % 8 == 0) {
-        for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-          ReadWriteIOUtils
-              .write((byte) currentBitmapList[seriesIndex], bitmapBAOSList[seriesIndex]);
-          // we should clear the bitmap every 8 row record
-          currentBitmapList[seriesIndex] = 0;
+      if (rowOffset == 0) {
+        rowCount++;
+        if (rowCount % 8 == 0) {
+          for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+            ReadWriteIOUtils
+                .write((byte) currentBitmapList[seriesIndex], bitmapBAOSList[seriesIndex]);
+            // we should clear the bitmap every 8 row record
+            currentBitmapList[seriesIndex] = 0;
+          }
         }
+        if (rowLimit > 0) {
+          alreadyReturnedRowNum++;
+        }
+      } else {
+        rowOffset--;
       }
     }
 
@@ -184,11 +199,13 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
      * feed the bitmap with remaining 0 in the right
      * if current bitmap is 00011111 and remaining is 3, after feeding the bitmap is 11111000
      */
-    int remaining = rowCount % 8;
-    if (remaining != 0) {
-      for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-        ReadWriteIOUtils.write((byte) (currentBitmapList[seriesIndex] << (8 - remaining)),
-            bitmapBAOSList[seriesIndex]);
+    if (rowCount > 0) {
+      int remaining = rowCount % 8;
+      if (remaining != 0) {
+        for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+          ReadWriteIOUtils.write((byte) (currentBitmapList[seriesIndex] << (8 - remaining)),
+              bitmapBAOSList[seriesIndex]);
+        }
       }
     }
 
@@ -201,7 +218,9 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     List<ByteBuffer> valueBufferList = new ArrayList<>();
     List<ByteBuffer> bitmapBufferList = new ArrayList<>();
 
-    for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+    for (
+        int seriesIndex = 0;
+        seriesIndex < seriesNum; seriesIndex++) {
 
       // add value buffer of current series
       ByteBuffer valueBuffer = ByteBuffer.allocate(valueBAOSList[seriesIndex].size());
@@ -227,14 +246,16 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
   /**
    * for test
    */
-  @Override protected boolean hasNextWithoutConstraint() {
+  @Override
+  protected boolean hasNextWithoutConstraint() {
     return !timeHeap.isEmpty();
   }
 
   /**
    * for test
    */
-  @Override protected RowRecord nextWithoutConstraint() throws IOException {
+  @Override
+  protected RowRecord nextWithoutConstraint() throws IOException {
     int seriesNum = seriesReaderWithoutValueFilterList.size();
 
     long minTime = timeHeap.pollFirst();
@@ -248,7 +269,8 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
         record.addField(new Field(null));
       } else {
 
-        record.addField(getField(cachedBatchDataArray[seriesIndex].currentValue(), dataTypes.get(seriesIndex)));
+        record.addField(
+            getField(cachedBatchDataArray[seriesIndex].currentValue(), dataTypes.get(seriesIndex)));
 
         // move next
         cachedBatchDataArray[seriesIndex].next();

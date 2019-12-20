@@ -47,7 +47,7 @@ public class NewUnseqResourceMergeReaderTest extends ReaderTestHelper{
     insertOneRecord(10, 10);
     storageGroupProcessor.getWorkUnSequenceTsFileProcessor().syncFlush();
 
-    insertOneRecord(10, 100);
+    insertOneRecord(4, 100);
     storageGroupProcessor.getWorkUnSequenceTsFileProcessor().syncFlush();
 
     insertOneRecord(10, 1000);
@@ -96,7 +96,7 @@ public class NewUnseqResourceMergeReaderTest extends ReaderTestHelper{
         batchData.next();
       }
     }
-    Assert.assertEquals(0, cnt);
+    Assert.assertEquals(1, cnt);
   }
 
 }

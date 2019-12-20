@@ -32,9 +32,9 @@ public abstract class QueryDataSet {
   protected List<Path> paths;
   protected List<TSDataType> dataTypes;
 
-  private int rowLimit = 0; // rowLimit > 0 means the LIMIT constraint exists
-  private int rowOffset = 0;
-  private int alreadyReturnedRowNum = 0;
+  protected int rowLimit = 0; // rowLimit > 0 means the LIMIT constraint exists
+  protected int rowOffset = 0;
+  protected int alreadyReturnedRowNum = 0;
 
   public QueryDataSet(List<Path> paths, List<TSDataType> dataTypes) {
     this.paths = paths;
