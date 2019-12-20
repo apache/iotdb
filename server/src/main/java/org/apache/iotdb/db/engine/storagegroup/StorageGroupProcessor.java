@@ -476,7 +476,7 @@ public class StorageGroupProcessor {
       List<Integer> indexes, boolean sequence, Integer[] results, long timeRange)
       throws QueryProcessException {
 
-    TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(fromTimeRangeToTime(timeRange),
+    TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timeRange,
         sequence);
     if (tsFileProcessor == null) {
       for (int index : indexes) {
@@ -512,7 +512,7 @@ public class StorageGroupProcessor {
     TsFileProcessor tsFileProcessor;
     boolean result;
 
-    tsFileProcessor = getOrCreateTsFileProcessor(insertPlan.getTime(),
+    tsFileProcessor = getOrCreateTsFileProcessor(fromTimeToTimeRange(insertPlan.getTime()),
         sequence);
 
     if (tsFileProcessor == null) {
@@ -541,14 +541,15 @@ public class StorageGroupProcessor {
     }
   }
 
-  private TsFileProcessor getOrCreateTsFileProcessor(long time, boolean sequence) {
+  private TsFileProcessor getOrCreateTsFileProcessor(long timeRange, boolean sequence) {
     TsFileProcessor tsFileProcessor = null;
     try {
       if (sequence) {
-        tsFileProcessor = getOrCreateTsFileProcessorIntern(time, workSequenceTsFileProcessors,
+        tsFileProcessor = getOrCreateTsFileProcessorIntern(timeRange, workSequenceTsFileProcessors,
             sequenceTsfileProcessorLastUseTime, sequenceFileList, true);
       } else {
-        tsFileProcessor = getOrCreateTsFileProcessorIntern(time, workUnsequenceTsFileProcessors,
+        tsFileProcessor = getOrCreateTsFileProcessorIntern(timeRange,
+            workUnsequenceTsFileProcessors,
             unsequenceTsfileProcessorLastUseTime, unSequenceFileList, false);
       }
     } catch (DiskSpaceInsufficientException e) {
@@ -568,20 +569,19 @@ public class StorageGroupProcessor {
   /**
    * get processor from hashmap, flush oldest processor is necessary
    *
-   * @param time insert time
+   * @param timeRange time partition range
    * @param tsFileProcessorHashMap tsFileProcessorHashMap
    * @param tsfileProcessorLastUseTime last use time of this processor map
    * @param fileList file list to add new processor
    * @param sequence whether is sequence or not
    */
-  private TsFileProcessor getOrCreateTsFileProcessorIntern(long time,
+  private TsFileProcessor getOrCreateTsFileProcessorIntern(long timeRange,
       HashMap<Long, TsFileProcessor> tsFileProcessorHashMap,
       HashMap<Long, Long> tsfileProcessorLastUseTime,
       Collection<TsFileResource> fileList,
       boolean sequence)
       throws IOException, DiskSpaceInsufficientException {
-    // time partition range
-    long timeRange = fromTimeToTimeRange(time);
+
     TsFileProcessor res = null;
     // we have to ensure only one thread can change workSequenceTsFileProcessors
     writeLock();
@@ -623,10 +623,6 @@ public class StorageGroupProcessor {
     }
 
     return res;
-  }
-
-  private long fromTimeRangeToTime(long timeRange) {
-    return timeRange * timeRangeForStorageGroup;
   }
 
   private long fromTimeToTimeRange(long time) {
