@@ -108,26 +108,29 @@ pipeline {
 //        }
 
         stage('Code Quality') {
+            when {
+                branch 'master'
+            }
             steps {
                 echo 'Checking Code Quality on SonarCloud'
                 // Main parameters
                 script {
-                    def sonarcloudParams = "-Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb"
-                    if (env.BRANCH_NAME.startsWith("PR-")) {
-                        // this is a pull request
-                        sonarcloudParams = "${sonarcloudParams} -Dsonar.pullrequest.branch=${CHANGE_BRANCH} -Dsonar.pullrequest.base=${CHANGE_TARGET} -Dsonar.pullrequest.key=${CHANGE_ID}"
-                    } else if (env.BRANCH_NAME == 'master') {
-                        // this is just a branch
-                        sonarcloudParams = "${sonarcloudParams} -Dsonar.branch.name=${BRANCH_NAME}"
-                    } else {
-                        //temporarily for test
-                        sonarcloudParams = "${sonarcloudParams} -Dsonar.branch.name=${BRANCH_NAME}"
-                    }
+                    def sonarcloudParams = "-Dsonar.branch.name=master -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb"
+//                    if (env.BRANCH_NAME.startsWith("PR-")) {
+//                        // this is a pull request
+//                        sonarcloudParams = "${sonarcloudParams} -Dsonar.pullrequest.branch=${CHANGE_BRANCH} -Dsonar.pullrequest.base=${CHANGE_TARGET} -Dsonar.pullrequest.key=${CHANGE_ID}"
+//                    } else if (env.BRANCH_NAME == 'master') {
+//                        // this is just a branch
+//                        sonarcloudParams = "${sonarcloudParams} -Dsonar.branch.name=${BRANCH_NAME}"
+//                    } else {
+//                        //temporarily for test
+//                        sonarcloudParams = "${sonarcloudParams} -Dsonar.branch.name=${BRANCH_NAME}"
+//                    }
                     // Then run the analysis
                     // 'my-sonarcloud-token' needs to be defined for this job and contains the user token
                     withCredentials([string(credentialsId: 'xiangdong-iotdb-sonarcloud-token', variable: 'SONAR_TOKEN')]) {
-                        echo 'mvn -e clean verify sonar:sonar ${sonarcloudParams} -Dsonar.login=${SONAR_TOKEN} -DskipTests'
-                        sh 'mvn -e clean verify sonar:sonar ${sonarcloudParams} -Dsonar.login=${SONAR_TOKEN} -DskipTests'
+                        echo 'mvn sonar:sonar ${sonarcloudParams} -Dsonar.login=${SONAR_TOKEN} -DskipTests'
+                        sh 'mvn sonar:sonar ${sonarcloudParams} -Dsonar.login=${SONAR_TOKEN} -DskipTests'
                     }
                 }
             }
