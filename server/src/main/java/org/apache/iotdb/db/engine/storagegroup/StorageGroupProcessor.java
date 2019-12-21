@@ -415,7 +415,13 @@ public class StorageGroupProcessor {
       Integer[] results = new Integer[batchInsertPlan.getRowCount()];
       long lastFlushTime = latestFlushedTimeForEachDevice.get(batchInsertPlan.getDeviceId());
 
+      /*
+       * sequence time range id -> indexes indicate which data should insert
+       */
       HashMap<Long, List<Integer>> sequenceTimeRangeIndexes = new HashMap<>();
+      /*
+       * unsequence time range id -> indexes indicate which data should insert
+       */
       HashMap<Long, List<Integer>> unsequenceTimeRangeIndexes = new HashMap<>();
       for (int i = 0; i < batchInsertPlan.getRowCount(); i++) {
         long currTime = batchInsertPlan.getTimes()[i];
@@ -644,10 +650,19 @@ public class StorageGroupProcessor {
             + System.currentTimeMillis() + IoTDBConstant.TSFILE_NAME_SEPARATOR + versionController
             .nextVersion() + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0" + TSFILE_SUFFIX;
 
-    TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName,
-        fsFactory.getFileWithParent(filePath),
-        schema, versionController, this::closeUnsealedTsFileProcessor,
-        this::updateLatestFlushTimeCallback, sequence);
+    TsFileProcessor tsFileProcessor;
+    if (sequence) {
+      tsFileProcessor = new TsFileProcessor(storageGroupName,
+          fsFactory.getFileWithParent(filePath),
+          schema, versionController, this::closeUnsealedTsFileProcessor,
+          this::updateLatestFlushTimeCallback, true);
+    } else {
+      tsFileProcessor = new TsFileProcessor(storageGroupName,
+          fsFactory.getFileWithParent(filePath),
+          schema, versionController, this::closeUnsealedTsFileProcessor,
+          this::unsequenceFlushCallback, false);
+    }
+
     tsFileProcessor.setTimeRange(timeRange);
     return tsFileProcessor;
   }
@@ -1063,6 +1078,9 @@ public class StorageGroupProcessor {
     }
   }
 
+  private boolean unsequenceFlushCallback() {
+    return true;
+  }
 
   private boolean updateLatestFlushTimeCallback() {
     // update the largest timestamp in the last flushing memtable
