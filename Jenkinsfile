@@ -129,7 +129,7 @@ pipeline {
                     // Then run the analysis
                     // 'my-sonarcloud-token' needs to be defined for this job and contains the user token
                     withCredentials([string(credentialsId: 'xiangdong-iotdb-sonarcloud-token', variable: 'SONAR_TOKEN')]) {
-                        echo 'mvn sonar:sonar ${sonarcloudParams} -Dsonar.login=${SONAR_TOKEN} -DskipTests'
+                        echo 'mvn verify sonar:sonar ${sonarcloudParams} -Dsonar.login=${SONAR_TOKEN} -DskipTests'
                         sh 'mvn sonar:sonar ${sonarcloudParams} -Dsonar.login=${SONAR_TOKEN} -DskipTests'
                     }
                 }
