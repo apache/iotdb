@@ -92,8 +92,6 @@
         <sonar.organization>apache</sonar.organization>
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
-        <!-- By default, the argLine is empty-->
-        <argLine></argLine>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -468,7 +466,7 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <configuration>
-                        <argLine>${argLine} -Xmx1024m</argLine>
+                        <argLine>-Xmx1024m</argLine>
                     </configuration>
                 </plugin>
                 <!--
@@ -1041,6 +1039,30 @@
                                 <configuration>
                                     <dataFile>${basedir}/target/coverage-reports/jacoco.exec</dataFile>
                                     <outputDirectory>${basedir}/target/coverage-reports</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- overwrite argLine-->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <argLine> ${argLine} -Xmx1024m</argLine>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>test</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                                <configuration>
+                                    <tasks>
+                                        <echo>${argLine}</echo>
+                                    </tasks>
                                 </configuration>
                             </execution>
                         </executions>
