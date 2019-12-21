@@ -115,12 +115,10 @@ pipeline {
                 echo 'Checking Code Quality on SonarCloud'
                 // Main parameters
                 script {
-                    def sonarcloudParams = "-Dsonar.branch.name=master -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb"
                     // Then run the analysis
                     // 'my-sonarcloud-token' needs to be defined for this job and contains the user token
                     withCredentials([string(credentialsId: 'xiangdong-iotdb-sonarcloud-token', variable: 'SONAR_TOKEN')]) {
-                        echo 'mvn verify sonar:sonar ${sonarcloudParams} -Dsonar.login=${SONAR_TOKEN} -DskipTests'
-                        sh 'mvn verify sonar:sonar ${sonarcloudParams} -Dsonar.login=${SONAR_TOKEN} -DskipTests'
+                        sh 'mvn verify sonar:sonar -Dsonar.branch.name=branch-${BRANCH_NAME} -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb -Dsonar.login=${SONAR_TOKEN} -DskipTests'
                     }
                 }
             }
