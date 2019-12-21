@@ -987,7 +987,6 @@
                         <version>0.8.5</version>
                         <configuration>
                             <skip>false</skip>
-                            <!--<destFile>${basedir}/target/coverage-reports/jacoco.exec</destFile>-->
                             <rules>
                                 <rule implementation="org.jacoco.maven.RuleConfiguration">
                                     <element>BUNDLE</element>
@@ -1029,10 +1028,6 @@
                                     <goal>report</goal>
                                     <goal>check</goal>
                                 </goals>
-                                <!--<configuration>-->
-                                    <!--<dataFile>${basedir}/target/coverage-reports/jacoco.exec</dataFile>-->
-                                    <!--<outputDirectory>${basedir}/target/coverage-reports</outputDirectory>-->
-                                <!--</configuration>-->
                             </execution>
                         </executions>
                     </plugin>
@@ -1041,7 +1036,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <argLine> ${argLine} -Xmx1024m</argLine>
+                            <argLine>${argLine} -Xmx1024m</argLine>
                         </configuration>
                     </plugin>
                     <plugin>
@@ -1072,8 +1067,6 @@
                                 <goals>
                                     <goal>report</goal>
                                 </goals>
-                                <configuration>
-                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
