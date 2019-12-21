@@ -93,6 +93,8 @@
         <sonar.organization>apache</sonar.organization>
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
+        <!-- By default, the argLine is empty-->
+        <argLine> </argLine>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
