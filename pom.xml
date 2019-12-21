@@ -980,6 +980,11 @@
             <id>code-coverage</id>
             <build>
                 <plugins>
+                    <plugin>
+                        <groupId>org.eluder.coveralls</groupId>
+                        <artifactId>coveralls-maven-plugin</artifactId>
+                        <version>4.3.0</version>
+                    </plugin>
                     <!-- Jacoco is a code coverage analysis plugin when tests run.
                     (not a static code analysis tool)-->
                     <plugin>
