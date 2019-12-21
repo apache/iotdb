@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
-import java.io.IOException;
 import java.util.Iterator;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
@@ -26,7 +25,6 @@ import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileIterateReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -111,21 +109,6 @@ public class MemChunkReader implements IPointReader, IAggregateReader {
   @Override
   public void close() {
     // Do nothing because mem chunk reader will not open files
-  }
-
-  @Override
-  public boolean hasNextChunk() throws IOException {
-    return hasNext();
-  }
-
-  @Override
-  public ChunkMetaData nextChunkMeta() {
-    return null;
-  }
-
-  @Override
-  public boolean hasNextPageInCurrentChunk() throws IOException {
-    return hasNext();
   }
 
   @Override
