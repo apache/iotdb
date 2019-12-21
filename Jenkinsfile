@@ -58,24 +58,23 @@ pipeline {
             }
         }
 
-//disable temporary
-//        stage('Build (not master)') {
-//            when {
-//                expression {
-//                    env.BRANCH_NAME != 'master'
-//                }
-//            }
-//            steps {
-//                echo 'Building'
-//                sh 'mvn ${MVN_TEST_FAIL_IGNORE} ${MVN_LOCAL_REPO_OPT} clean install'
-//            }
-//            post {
-//                always {
-//                    junit(testResults: '**/surefire-reports/*.xml', allowEmptyResults: true)
-//                    junit(testResults: '**/failsafe-reports/*.xml', allowEmptyResults: true)
-//                }
-//            }
-//        }
+        stage('Build (not master)') {
+            when {
+                expression {
+                    env.BRANCH_NAME != 'master'
+                }
+            }
+            steps {
+                echo 'Building'
+                sh 'mvn ${MVN_TEST_FAIL_IGNORE} ${MVN_LOCAL_REPO_OPT} clean install'
+            }
+            post {
+                always {
+                    junit(testResults: '**/surefire-reports/*.xml', allowEmptyResults: true)
+                    junit(testResults: '**/failsafe-reports/*.xml', allowEmptyResults: true)
+                }
+            }
+        }
 
         stage('Build') {
             when {
@@ -108,9 +107,9 @@ pipeline {
 //        }
 
         stage('Code Quality') {
-//            when {
-//                branch 'master'
-//            }
+            when {
+                branch 'master'
+            }
             steps {
                 echo 'Checking Code Quality on SonarCloud'
                 // Main parameters
@@ -118,7 +117,7 @@ pipeline {
                     // Then run the analysis
                     // 'my-sonarcloud-token' needs to be defined for this job and contains the user token
                     withCredentials([string(credentialsId: 'xiangdong-iotdb-sonarcloud-token', variable: 'SONAR_TOKEN')]) {
-                        sh 'mvn verify sonar:sonar -Dsonar.branch.name=branch-${BRANCH_NAME} -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb -Dsonar.login=${SONAR_TOKEN} -DskipTests'
+                        sh 'mvn verify sonar:sonar -Dsonar.branch.name=master -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb -Dsonar.login=${SONAR_TOKEN} -DskipTests'
                     }
                 }
             }
