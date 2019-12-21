@@ -90,6 +90,8 @@
         <!-- URL of the ASF SonarQube server -->
         <!-- <sonar.host.url>https://builds.apache.org/analysis</sonar.host.url> -->
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <sonar.projectKey>apache_incubator-iotdb</sonar.projectKey>
+        <sonar.organization>apache</sonar.organization>
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
     </properties>

@@ -174,6 +174,25 @@ matrix:
 #        - mvn -version
 #        - mvn -B apache-rat:check
 #        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
+    - os: linux
+      name: sonar-analysis
+      dist: xenial
+      jdk: openjdk8
+      addons:
+        sonarcloud:
+          organization: "apache"
+          projectKey: "apache_incubator-iotdb"
+          token:
+            secure: "a2n2+MFfuOb3hsrw5vjiIUZzjt6S0j4YmRVrms6NVKF+EpEAWU/zOjzfccLGRr3VFUAlkoM2p578c/0DMMGew2oj3Yl1iJe2n35BWIV6r/psUKRUMdgMAogdshQzZGMYmY1XL2xA3ATu8cf4F8WoRAafd/S58JGQdTfsQ5svh31BxK0iuh+nMIZb4dYxO717dSVD45D9hoF5ROxdtTRbyAaXFPs5djxWrdzKw0J3e6a8m82K9FGcpy4pY9ct3ttbyEzGqMnzE4fhd3KgopFJj+3QdAi/3Cmkf1voxorQdCSbktl4PtlzMY/nxF6XETI2E4T+GLUVMw4iHiXCabqwOiudGnEj5DjNz6X5MVCOyj7lrFBTlDirGzv9fNpvQ2I47WOL8DzBJPqFwQ0nRAlbvcWVtE4aAqj8YF1QwwLxEIi4abDfOwaxGG2TOixQf627pvhh1o0RdEf9R6aRyur7vbMt7H9+4tQaHGI2PY1KbCkjhppIrEsarI07uvfPic3By/yOWj6iqZ1QiVAgPTec/o1blNWlMeGwdcCPfCxMjy9iqzpzNIB9fld28CN1Yvzpg74iIKnMU5mL1wB5yT8Vo9Q28JNSEwKIBhuayZLloGbnl/PX8jvDDWSm7yYoZYEI42tgVOXAXX7R53rOcxJMEgCa5RsVDRmJn5n7o6hwhn8="
+      script:
+        - mvn sonar:sonar -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb -DskipTests
+    - os: linux
+      name: code-coverage
+      dist: xenial
+      jdk: openjdk8
+      script:
+        - mvn test -Pcode-coverage -pl '!distribution'
+
 
 cache:
   directories:
