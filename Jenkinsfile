@@ -108,9 +108,9 @@ pipeline {
 //        }
 
         stage('Code Quality') {
-            when {
-                branch 'master'
-            }
+//            when {
+//                branch 'master'
+//            }
             steps {
                 echo 'Checking Code Quality on SonarCloud'
                 // Main parameters
