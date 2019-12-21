@@ -984,6 +984,9 @@
                         <groupId>org.eluder.coveralls</groupId>
                         <artifactId>coveralls-maven-plugin</artifactId>
                         <version>4.3.0</version>
+                        <configuration>
+                            <jacocoReports>${basedir}/target/coverage-reports/jacoco.xml</jacocoReports>
+                        </configuration>
                     </plugin>
                     <!-- Jacoco is a code coverage analysis plugin when tests run.
                     (not a static code analysis tool)-->
