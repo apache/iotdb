@@ -977,10 +977,6 @@
         </profile>
         <profile>
             <id>code-coverage</id>
-            <properties>
-                <javax.xml.bind.version>2.2.3</javax.xml.bind.version>
-            </properties>
-
             <build>
                 <plugins>
                     <!-- Jacoco is a code coverage analysis plugin when tests run.

@@ -191,7 +191,7 @@ matrix:
       dist: xenial
       jdk: openjdk8
       script:
-        - mvn test coveralls:report -Pcode-coverage -pl hadoop -Dservice_name=travis_ci
+        - mvn test coveralls:report -Pcode-coverage -Dservice_name=travis_ci
 
 
 cache:
