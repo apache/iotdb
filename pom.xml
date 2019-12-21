@@ -87,6 +87,7 @@
         <jline.version>2.14.5</jline.version>
         <jetty.version>9.4.24.v20191120</jetty.version>
         <metrics.version>3.2.6</metrics.version>
+        <javax.xml.bind.version>2.4.0-b180725.0427</javax.xml.bind.version>
         <!-- URL of the ASF SonarQube server -->
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.organization>apache</sonar.organization>
@@ -207,7 +208,7 @@
             <dependency>
                 <groupId>javax.xml.bind</groupId>
                 <artifactId>jaxb-api</artifactId>
-                <version>2.4.0-b180725.0427</version>
+                <version>${javax.xml.bind.version}</version>
             </dependency>
             <dependency>
                 <groupId>jline</groupId>
@@ -976,6 +977,10 @@
         </profile>
         <profile>
             <id>code-coverage</id>
+            <properties>
+                <javax.xml.bind.version>2.2.3</javax.xml.bind.version>
+            </properties>
+
             <build>
                 <plugins>
                     <!-- Jacoco is a code coverage analysis plugin when tests run.
@@ -986,7 +991,7 @@
                         <version>0.8.5</version>
                         <configuration>
                             <skip>false</skip>
-                            <destFile>${basedir}/target/coverage-reports/jacoco.exec</destFile>
+                            <!--<destFile>${basedir}/target/coverage-reports/jacoco.exec</destFile>-->
                             <rules>
                                 <rule implementation="org.jacoco.maven.RuleConfiguration">
                                     <element>BUNDLE</element>
@@ -1028,10 +1033,10 @@
                                     <goal>report</goal>
                                     <goal>check</goal>
                                 </goals>
-                                <configuration>
-                                    <dataFile>${basedir}/target/coverage-reports/jacoco.exec</dataFile>
-                                    <outputDirectory>${basedir}/target/coverage-reports</outputDirectory>
-                                </configuration>
+                                <!--<configuration>-->
+                                    <!--<dataFile>${basedir}/target/coverage-reports/jacoco.exec</dataFile>-->
+                                    <!--<outputDirectory>${basedir}/target/coverage-reports</outputDirectory>-->
+                                <!--</configuration>-->
                             </execution>
                         </executions>
                     </plugin>
@@ -1072,7 +1077,6 @@
                                     <goal>report</goal>
                                 </goals>
                                 <configuration>
-                                    <jacocoReports>${basedir}/target/coverage-reports/jacoco.xml</jacocoReports>
                                 </configuration>
                             </execution>
                         </executions>
