@@ -433,7 +433,7 @@ public class StorageGroupProcessor {
         results[i] = TSStatusCode.SUCCESS_STATUS.getStatusCode();
         long timeRange = fromTimeToTimeRange(currTime);
         if (currTime > lastFlushTime) {
-          // sequence
+          // for sequence
           List<Integer> curIndex = sequenceTimeRangeIndexes.get(timeRange);
           if (curIndex == null) {
             // if map not contains this time range
@@ -443,7 +443,7 @@ public class StorageGroupProcessor {
 
           curIndex.add(i);
         } else {
-          // unsequence
+          // for unsequence
           List<Integer> curIndex = unsequenceTimeRangeIndexes.get(timeRange);
           if (curIndex == null) {
             // if map not contains this time range
