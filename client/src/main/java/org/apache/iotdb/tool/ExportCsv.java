@@ -30,9 +30,12 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import jline.console.ConsoleReader;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -73,6 +76,8 @@ public class ExportCsv extends AbstractCsvTool {
   private static final int EXPORT_PER_LINE_COUNT = 10000;
 
   private static String TIMESTAMP_PRECISION = "ms";
+
+  private static List<Integer> typeList = new ArrayList<>();
 
   /**
    * main function of export csv tool.
@@ -290,6 +295,7 @@ public class ExportCsv extends AbstractCsvTool {
       } else {
         bw.write(metadata.getColumnLabel(i) + "\n");
       }
+      typeList.add(metadata.getColumnType(i));
     }
   }
 
@@ -346,13 +352,21 @@ public class ExportCsv extends AbstractCsvTool {
         if ("null".equals(rs.getString(j))) {
           bw.write(",");
         } else {
-          bw.write(rs.getString(j) + ",");
+          if(typeList.get(j-1) == Types.VARCHAR) {
+            bw.write("\'" + rs.getString(j) + "\'"+ ",");
+          } else {
+            bw.write(rs.getString(j) + ",");
+          }
         }
       } else {
         if ("null".equals(rs.getString(j))) {
           bw.write("\n");
         } else {
-          bw.write(rs.getString(j) + "\n");
+          if(typeList.get(j-1) == Types.VARCHAR) {
+            bw.write("\'" + rs.getString(j) + "\'"+ "\n");
+          } else {
+            bw.write(rs.getString(j) + "\n");
+          }
         }
       }
     }

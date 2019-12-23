@@ -647,7 +647,8 @@ public class MManager {
           mNodeCache.clear();
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
           mgraph.deleteStorageGroup(delStorageGroup);
-          seriesNumberInStorageGroups.remove(delStorageGroup);
+          IoTDBConfigDynamicAdapter.getInstance()
+              .addOrDeleteTimeSeries(seriesNumberInStorageGroups.remove(delStorageGroup) * (-1));
           ActiveTimeSeriesCounter.getInstance().delete(delStorageGroup);
         } catch (PathException e) {
           try {
@@ -1162,18 +1163,26 @@ public class MManager {
   }
 
   /**
-   * function for getting node by deviceId from cache.
+   * function for getting node by path from cache.
    */
-  public MNode getNodeByDeviceIdFromCache(String deviceId) throws CacheException, PathException {
-    lock.readLock().lock();
+  public MNode getNodeByPathFromCache(String path) throws CacheException, PathException {
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    return getNodeByPathFromCache(path, conf.isAutoCreateSchemaEnabled(),
+        conf.getDefaultStorageGroupLevel());
+  }
+
+    /**
+     * function for getting node by deviceId from cache.
+     */
+  public MNode getNodeByPathFromCache(String deviceID, boolean autoCreateSchema, int sgLevel) throws CacheException, PathException {
+    lock.readLock().lock();
     MNode node = null;
     boolean createSchema = false;
     boolean setStorageGroup = false;
     try {
-      node = mNodeCache.get(deviceId);
+      node = mNodeCache.get(deviceID);
     } catch (CacheException e) {
-      if (!conf.isAutoCreateSchemaEnabled()) {
+      if (!autoCreateSchema) {
         throw e;
       } else {
         createSchema = true;
@@ -1184,14 +1193,13 @@ public class MManager {
       if (createSchema) {
         if (setStorageGroup) {
           try {
-            String storageGroupName = getStorageGroupNameByAutoLevel(
-                deviceId, conf.getDefaultStorageGroupLevel());
+            String storageGroupName = getStorageGroupNameByAutoLevel(deviceID, sgLevel);
             setStorageGroupToMTree(storageGroupName);
           } catch (MetadataException | PathException e1) {
             throw new CacheException(e1);
           }
         }
-        node = addDeviceIdToMTree(deviceId);
+        node = addDeviceIdToMTree(deviceID);
       }
     }
     return node;

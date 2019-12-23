@@ -161,8 +161,8 @@ public class IoTDBDescriptor {
       conf.setMultiDirStrategyClassName(properties.getProperty("multi_dir_strategy",
           conf.getMultiDirStrategyClassName()));
 
-      conf.setFetchSize(Integer.parseInt(properties.getProperty("fetch_size",
-          Integer.toString(conf.getFetchSize()))));
+      conf.setAggregateFetchSize(Integer.parseInt(properties.getProperty("aggregate_fetch_size",
+          Integer.toString(conf.getAggregateFetchSize()))));
 
       long tsfileSizeThreshold = Long.parseLong(properties
           .getProperty("tsfile_size_threshold",

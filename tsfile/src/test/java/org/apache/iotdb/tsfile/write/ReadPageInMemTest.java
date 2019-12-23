@@ -25,6 +25,7 @@ import java.io.IOException;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -38,7 +39,7 @@ import org.junit.Test;
 
 public class ReadPageInMemTest {
 
-  private String filePath = "TsFileReadPageInMem";
+  private String filePath = TestConstant.BASE_OUTPUT_PATH.concat("TsFileReadPageInMem");
   private File file = new File(filePath);
   private TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
   private TsFileWriter innerWriter;

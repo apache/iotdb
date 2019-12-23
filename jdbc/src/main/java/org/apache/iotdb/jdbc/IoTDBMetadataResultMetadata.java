@@ -24,7 +24,7 @@ import java.sql.SQLException;
 import java.sql.Types;
 
 /*
-    TsfileMetadataResultMetadata implements a similar api like TsFileQueryResultSet
+    IoTDBMetadataResultMetadata implements a similar api like IoTDBQueryResultSet
     to display column metadata.
  */
 

@@ -18,17 +18,19 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.ITEM;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PARAMETER;
-import static org.apache.iotdb.db.conf.IoTDBConstant.STORAGE_GROUP;
-import static org.apache.iotdb.db.conf.IoTDBConstant.TTL;
-import static org.apache.iotdb.db.conf.IoTDBConstant.VALUE;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
@@ -50,6 +52,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.DeviceIterateDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
+import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.executor.IEngineQueryRouter;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -87,6 +90,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
         return processShowDynamicParameterQuery();
       case FLUSH_TASK_INFO:
         return processShowFlushTaskInfo();
+      case VERSION:
+        return processShowVersion();
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
@@ -94,8 +99,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
 
   private QueryDataSet processShowTTLQuery(ShowTTLPlan showTTLPlan) {
     List<Path> paths = new ArrayList<>();
-    paths.add(new Path(STORAGE_GROUP));
-    paths.add(new Path(TTL));
+    paths.add(new Path(COLUMN_STORAGE_GROUP));
+    paths.add(new Path(COLUMN_TTL));
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.TEXT);
     dataTypes.add(TSDataType.INT64);
@@ -128,10 +133,24 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     return listDataSet;
   }
 
+  private QueryDataSet processShowVersion() {
+    List<Path> paths = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    paths.add(new Path("root"));
+    dataTypes.add(TSDataType.TEXT);
+    SingleDataSet singleDataSet = new SingleDataSet(paths, dataTypes);
+    Field field = new Field(TSDataType.TEXT);
+    field.setBinaryV(new Binary(IoTDBConstant.VERSION));
+    RowRecord rowRecord = new RowRecord(0);
+    rowRecord.addField(field);
+    singleDataSet.setRecord(rowRecord);
+    return singleDataSet;
+  }
+
   private QueryDataSet processShowDynamicParameterQuery() {
     List<Path> paths = new ArrayList<>();
-    paths.add(new Path(PARAMETER));
-    paths.add(new Path(VALUE));
+    paths.add(new Path(COLUMN_PARAMETER));
+    paths.add(new Path(COLUMN_VALUE));
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.TEXT);
     dataTypes.add(TSDataType.TEXT);
@@ -147,7 +166,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     addRowRecordForShowQuery(listDataSet, timestamp++, "compression ratio",
         Double.toString(CompressionRatio.getInstance().getRatio()));
     addRowRecordForShowQuery(listDataSet, timestamp++, "storage group number",
-        Integer.toString( MManager.getInstance().getAllStorageGroupNames().size()));
+        Integer.toString(MManager.getInstance().getAllStorageGroupNames().size()));
     addRowRecordForShowQuery(listDataSet, timestamp++, "timeseries number",
         Integer.toString(IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries()));
     addRowRecordForShowQuery(listDataSet, timestamp++,
@@ -158,8 +177,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
 
   private QueryDataSet processShowFlushTaskInfo() {
     List<Path> paths = new ArrayList<>();
-    paths.add(new Path(ITEM));
-    paths.add(new Path(VALUE));
+    paths.add(new Path(COLUMN_ITEM));
+    paths.add(new Path(COLUMN_VALUE));
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.TEXT);
     dataTypes.add(TSDataType.TEXT);
@@ -193,42 +212,44 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   private QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
       throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
       IOException {
+    QueryDataSet queryDataSet;
     if (queryPlan.isGroupByDevice()) {
-      return new DeviceIterateDataSet(queryPlan, context, queryRouter);
+      queryDataSet = new DeviceIterateDataSet(queryPlan, context, queryRouter);
+    } else {
+      // deduplicate executed paths and aggregations if exist
+      List<Path> deduplicatedPaths = new ArrayList<>();
+      if (queryPlan instanceof GroupByPlan) {
+        GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
+        List<String> deduplicatedAggregations = new ArrayList<>();
+        deduplicate(groupByPlan.getPaths(), groupByPlan.getAggregations(), deduplicatedPaths,
+                deduplicatedAggregations);
+        return groupBy(deduplicatedPaths, deduplicatedAggregations, groupByPlan.getExpression(),
+                groupByPlan.getUnit(),
+                groupByPlan.getSlidingStep(), groupByPlan.getStartTime(), groupByPlan.getEndTime(), context);
+      } else if (queryPlan instanceof AggregationPlan) {
+        List<String> deduplicatedAggregations = new ArrayList<>();
+        deduplicate(queryPlan.getPaths(), queryPlan.getAggregations(), deduplicatedPaths,
+            deduplicatedAggregations);
+        queryDataSet = aggregate(deduplicatedPaths, deduplicatedAggregations,
+            queryPlan.getExpression(),
+            context);
+      } else if (queryPlan instanceof FillQueryPlan) {
+        FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
+        deduplicate(queryPlan.getPaths(), deduplicatedPaths);
+        queryDataSet = fill(deduplicatedPaths, fillQueryPlan.getQueryTime(),
+            fillQueryPlan.getFillType(),
+            context);
+      } else {
+        deduplicate(queryPlan.getPaths(), deduplicatedPaths);
+        QueryExpression queryExpression = QueryExpression.create()
+            .setSelectSeries(deduplicatedPaths)
+            .setExpression(queryPlan.getExpression());
+        queryDataSet = queryRouter.query(queryExpression, context);
+      }
     }
-
-    // deduplicate executed paths and aggregations if exist
-    List<Path> deduplicatedPaths = new ArrayList<>();
-
-    if (queryPlan instanceof GroupByPlan) {
-      GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
-      List<String> deduplicatedAggregations = new ArrayList<>();
-      deduplicate(groupByPlan.getPaths(), groupByPlan.getAggregations(), deduplicatedPaths,
-          deduplicatedAggregations);
-      return groupBy(deduplicatedPaths, deduplicatedAggregations, groupByPlan.getExpression(),
-          groupByPlan.getUnit(),
-          groupByPlan.getOrigin(), groupByPlan.getIntervals(), context);
-    }
-
-    if (queryPlan instanceof AggregationPlan) {
-      List<String> deduplicatedAggregations = new ArrayList<>();
-      deduplicate(queryPlan.getPaths(), queryPlan.getAggregations(), deduplicatedPaths,
-          deduplicatedAggregations);
-      return aggregate(deduplicatedPaths, deduplicatedAggregations, queryPlan.getExpression(),
-          context);
-    }
-
-    if (queryPlan instanceof FillQueryPlan) {
-      FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
-      deduplicate(queryPlan.getPaths(), deduplicatedPaths);
-      return fill(deduplicatedPaths, fillQueryPlan.getQueryTime(), fillQueryPlan.getFillType(),
-          context);
-    }
-
-    deduplicate(queryPlan.getPaths(), deduplicatedPaths);
-    QueryExpression queryExpression = QueryExpression.create().setSelectSeries(deduplicatedPaths)
-        .setExpression(queryPlan.getExpression());
-    return queryRouter.query(queryExpression, context);
+    queryDataSet.setRowLimit(queryPlan.getRowLimit());
+    queryDataSet.setRowOffset(queryPlan.getRowOffset());
+    return queryDataSet;
   }
 
   /**

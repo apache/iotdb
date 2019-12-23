@@ -23,6 +23,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.junit.Test;
 
 public class LongStatisticsTest {
@@ -37,11 +38,11 @@ public class LongStatisticsTest {
     assertFalse(longStats.isEmpty());
     longStats.updateStats(secondValue);
     assertFalse(longStats.isEmpty());
-    assertEquals(secondValue, (long) longStats.getMax());
-    assertEquals(firstValue, (long) longStats.getMin());
-    assertEquals(firstValue, (long) longStats.getFirst());
-    assertEquals(firstValue + secondValue, (long) longStats.getSum());
-    assertEquals(secondValue, (long) longStats.getLast());
+    assertEquals(secondValue, (long) longStats.getMaxValue());
+    assertEquals(firstValue, (long) longStats.getMinValue());
+    assertEquals(firstValue, (long) longStats.getFirstValue());
+    assertEquals(firstValue + secondValue, (long) longStats.getSumValue());
+    assertEquals(secondValue, (long) longStats.getLastValue());
   }
 
   @Test
@@ -59,18 +60,18 @@ public class LongStatisticsTest {
     Statistics<Long> longStats3 = new LongStatistics();
     longStats3.mergeStatistics(longStats1);
     assertFalse(longStats3.isEmpty());
-    assertEquals(max1, (long) longStats3.getMax());
-    assertEquals(1, (long) longStats3.getMin());
-    assertEquals(max1 + 1, (long) longStats3.getSum());
-    assertEquals(1, (long) longStats3.getFirst());
-    assertEquals(max1, (long) longStats3.getLast());
+    assertEquals(max1, (long) longStats3.getMaxValue());
+    assertEquals(1, (long) longStats3.getMinValue());
+    assertEquals(max1 + 1, (long) longStats3.getSumValue());
+    assertEquals(1, (long) longStats3.getFirstValue());
+    assertEquals(max1, (long) longStats3.getLastValue());
 
     longStats3.mergeStatistics(longStats2);
-    assertEquals(max2, (long) longStats3.getMax());
-    assertEquals(1, (long) longStats3.getMin());
-    assertEquals(max2 + max1 + 1, (long) longStats3.getSum());
-    assertEquals(1, (long) longStats3.getFirst());
-    assertEquals(max2, (long) longStats3.getLast());
+    assertEquals(max2, (long) longStats3.getMaxValue());
+    assertEquals(1, (long) longStats3.getMinValue());
+    assertEquals(max2 + max1 + 1, (long) longStats3.getSumValue());
+    assertEquals(1, (long) longStats3.getFirstValue());
+    assertEquals(max2, (long) longStats3.getLastValue());
 
     // Test mismatch
     IntegerStatistics intStats5 = new IntegerStatistics();
@@ -83,13 +84,13 @@ public class LongStatisticsTest {
       fail();
     }
 
-    assertEquals(max2, (long) longStats3.getMax());
+    assertEquals(max2, (long) longStats3.getMaxValue());
     // if not merge, the min value will not be changed by smaller value in
     // intStats5
-    assertEquals(1, (long) longStats3.getMin());
-    assertEquals(max2 + max1 + 1, (long) longStats3.getSum());
-    assertEquals(1, (long) longStats3.getFirst());
-    assertEquals(max2, (long) longStats3.getLast());
+    assertEquals(1, (long) longStats3.getMinValue());
+    assertEquals(max2 + max1 + 1, (long) longStats3.getSumValue());
+    assertEquals(1, (long) longStats3.getFirstValue());
+    assertEquals(max2, (long) longStats3.getLastValue());
   }
 
 }

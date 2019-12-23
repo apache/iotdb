@@ -19,91 +19,52 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.rpc.IoTDBRPCException;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.thrift.TException;
+
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.net.URL;
-import java.sql.Array;
-import java.sql.Blob;
-import java.sql.Clob;
+import java.nio.ByteBuffer;
 import java.sql.Date;
-import java.sql.NClob;
-import java.sql.Ref;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.RowId;
-import java.sql.SQLException;
-import java.sql.SQLWarning;
-import java.sql.SQLXML;
-import java.sql.Statement;
-import java.sql.Time;
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import org.apache.iotdb.rpc.IoTDBRPCException;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.thrift.TException;
-import org.slf4j.LoggerFactory;
+import java.sql.*;
+import java.util.*;
 
 public class IoTDBQueryResultSet implements ResultSet {
 
-  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(IoTDBQueryResultSet.class);
-  private final String TIMESTAMP_STR = "Time";
-  private static final String limitStr = "LIMIT";
-  private static final String offsetStr = "OFFSET";
+  private static final String TIMESTAMP_STR = "Time";
+  private static final int START_INDEX = 2;
+  private static final String VALUE_IS_NULL = "The value got by %s (column name) is NULL.";
   private Statement statement = null;
   private String sql;
   private SQLWarning warningChain = null;
   private boolean isClosed = false;
   private TSIService.Iface client = null;
-  private TSOperationHandle operationHandle = null;
   private List<String> columnInfoList; // no deduplication
   private List<String> columnTypeList; // no deduplication
   private Map<String, Integer> columnInfoMap; // used because the server returns deduplicated columns
   private List<String> columnTypeDeduplicatedList; // deduplicated from columnTypeList
-  private RowRecord record;
-  private Iterator<RowRecord> recordItr;
-  private int rowsFetched = 0;
-  private int maxRows; // defined in TsfileStatement
+  private int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
   private int fetchSize;
   private boolean emptyResultSet = false;
 
-  // 0 means it is not constrained in sql
-  private int rowsLimit = 0;
+  private TSQueryDataSet tsQueryDataSet = null;
+  private byte[] time; // used to cache the current time value
+  private byte[][] values; // used to cache the current row record value
+  private byte[] currentBitmap; // used to cache the current bitmap for every column
+  private static final int FLAG = 0x80; // used to do `and` operation with bitmap to judge whether the value is null
 
-  // 0 means it is not constrained in sql, or the offset position has been reached
-  private int rowsOffset = 0;
-
+  private long sessionId;
   private long queryId;
   private boolean ignoreTimeStamp = false;
-
-  /*
-   * Combine maxRows and the LIMIT constraints. maxRowsOrRowsLimit = 0 means that neither maxRows
-   * nor LIMIT is constrained. maxRowsOrRowsLimit > 0 means that maxRows and/or
-   * LIMIT are constrained.
-   * 1) When neither maxRows nor LIMIT is constrained, i.e., maxRows=0 and rowsLimit=0,
-   * maxRowsOrRowsLimit = 0 2). When both maxRows and LIMIT are constrained, i.e., maxRows>0 and
-   * rowsLimit>0, maxRowsOrRowsLimit = min(maxRows, rowsLimit) 3) When maxRows is constrained and
-   * LIMIT is NOT constrained, i.e., maxRows>0 and rowsLimit=0, maxRowsOrRowsLimit = maxRows
-   * 4) When maxRows is NOT constrained and LIMIT is constrained, i.e., maxRows=0 and
-   * rowsLimit>0, maxRowsOrRowsLimit = rowsLimit
-   */
-  private int maxRowsOrRowsLimit;
 
   public IoTDBQueryResultSet() {
     // do nothing
@@ -111,12 +72,15 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   public IoTDBQueryResultSet(Statement statement, List<String> columnNameList,
       List<String> columnTypeList, boolean ignoreTimeStamp, TSIService.Iface client,
-      TSOperationHandle operationHandle, String sql, long queryId)
+      String sql, long queryId, long sessionId)
       throws SQLException {
     this.statement = statement;
-    this.maxRows = statement.getMaxRows();
     this.fetchSize = statement.getFetchSize();
     this.columnTypeList = columnTypeList;
+
+    time = new byte[Long.BYTES];
+    values = new byte[columnNameList.size()][];
+    currentBitmap = new byte[columnNameList.size()];
 
     this.columnInfoList = new ArrayList<>();
     this.columnInfoList.add(TIMESTAMP_STR);
@@ -124,7 +88,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     this.columnInfoMap = new HashMap<>();
     this.columnInfoMap.put(TIMESTAMP_STR, 1);
     this.columnTypeDeduplicatedList = new ArrayList<>();
-    int index = 2;
+    int index = START_INDEX;
     for (int i = 0; i < columnNameList.size(); i++) {
       String name = columnNameList.get(i);
       columnInfoList.add(name);
@@ -136,39 +100,9 @@ public class IoTDBQueryResultSet implements ResultSet {
 
     this.ignoreTimeStamp = ignoreTimeStamp;
     this.client = client;
-    this.operationHandle = operationHandle;
     this.sql = sql;
     this.queryId = queryId;
-
-    maxRowsOrRowsLimit = maxRows;
-    // parse the LIMIT&OFFSET parameters from sql
-    String[] splited = sql.toUpperCase().split("\\s+");
-    List<String> arraySplited = Arrays.asList(splited);
-    try {
-      int posLimit = arraySplited.indexOf(limitStr);
-      if (posLimit != -1) {
-        rowsLimit = Integer.parseInt(splited[posLimit + 1]);
-
-        // NOTE that maxRows=0 in TsfileStatement means it is not constrained
-        // NOTE that LIMIT <N>: N is ensured to be a positive integer by the server side
-        if (maxRows == 0) {
-          maxRowsOrRowsLimit = rowsLimit;
-        } else {
-          maxRowsOrRowsLimit = (rowsLimit < maxRows) ? rowsLimit : maxRows;
-        }
-
-        // check if OFFSET is constrained after LIMIT has been constrained
-        int posOffset = arraySplited.indexOf(offsetStr);
-        if (posOffset != -1) {
-          // NOTE that OFFSET <OFFSETValue>: OFFSETValue is ensured to be a non-negative
-          // integer by the server side
-          rowsOffset = Integer.parseInt(splited[posOffset + 1]);
-        }
-      }
-
-    } catch (NumberFormatException e) {
-      throw new IoTDBSQLException("Out of range: LIMIT&SLIMIT parameter should be Int32.");
-    }
+    this.sessionId = sessionId;
   }
 
   @Override
@@ -211,26 +145,23 @@ public class IoTDBQueryResultSet implements ResultSet {
     if (isClosed) {
       return;
     }
-
-    closeOperationHandle();
+    if (client != null) {
+      try {
+        TSCloseOperationReq closeReq = new TSCloseOperationReq(sessionId);
+        closeReq.setQueryId(queryId);
+        TSStatus closeResp = client.closeOperation(closeReq);
+        RpcUtils.verifySuccess(closeResp);
+      } catch (IoTDBRPCException e) {
+        throw new SQLException("Error occurs for close opeation in server side becasuse " + e);
+      } catch (TException e) {
+        throw new SQLException(
+            "Error occurs when connecting to server for close operation, becasue: " + e);
+      }
+    }
     client = null;
     isClosed = true;
   }
 
-  private void closeOperationHandle() throws SQLException {
-    try {
-      if (operationHandle != null) {
-        TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle, queryId);
-        TSStatus closeResp = client.closeOperation(closeReq);
-        RpcUtils.verifySuccess(closeResp);
-      }
-    } catch (IoTDBRPCException e) {
-      throw new SQLException("Error occurs for close opeation in server side becasuse " + e);
-    } catch (TException e) {
-      throw new SQLException(
-          "Error occurs when connecting to server for close operation, becasue: " + e);
-    }
-  }
 
   @Override
   public void deleteRow() throws SQLException {
@@ -315,18 +246,14 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public boolean getBoolean(String columnName) throws SQLException {
-    String b = getValueByName(columnName);
-    if (b == null) {
-      throw new SQLException(
-          String.format("The value got by %s (column name) is NULL.", columnName));
+    checkRecord();
+    int index = columnInfoMap.get(columnName) - START_INDEX;
+    if (values[index] != null) {
+      return BytesUtils.bytesToBool(values[index]);
     }
-    if ("0".equalsIgnoreCase(b.trim())) {
-      return false;
+    else {
+      throw new SQLException(String.format(VALUE_IS_NULL, columnName));
     }
-    if ("1".equalsIgnoreCase(b.trim())) {
-      return true;
-    }
-    return Boolean.parseBoolean(b);
   }
 
   @Override
@@ -406,7 +333,15 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public double getDouble(String columnName) throws SQLException {
-    return Double.parseDouble(getValueByName(columnName));
+    checkRecord();
+    int index = columnInfoMap.get(columnName) - START_INDEX;
+    if (values[index] != null) {
+      return BytesUtils.bytesToDouble(values[index]);
+    }
+    else {
+      throw new SQLException(
+              String.format(VALUE_IS_NULL, columnName));
+    }
   }
 
   @Override
@@ -436,7 +371,15 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public float getFloat(String columnName) throws SQLException {
-    return Float.parseFloat(getValueByName(columnName));
+    checkRecord();
+    int index = columnInfoMap.get(columnName) - START_INDEX;
+    if (values[index] != null) {
+      return BytesUtils.bytesToFloat(values[index]);
+    }
+    else {
+      throw new SQLException(
+              String.format(VALUE_IS_NULL, columnName));
+    }
   }
 
   @Override
@@ -451,7 +394,15 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public int getInt(String columnName) throws SQLException {
-    return Integer.parseInt(getValueByName(columnName));
+    checkRecord();
+    int index = columnInfoMap.get(columnName) - START_INDEX;
+    if (values[index] != null) {
+      return BytesUtils.bytesToInt(values[index]);
+    }
+    else {
+      throw new SQLException(
+              String.format(VALUE_IS_NULL, columnName));
+    }
   }
 
   @Override
@@ -461,11 +412,22 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public long getLong(String columnName) throws SQLException {
-    return Long.parseLong(getValueByName(columnName));
+    checkRecord();
+    if (columnName.equals(TIMESTAMP_STR)) {
+      return BytesUtils.bytesToLong(time);
+    }
+    int index = columnInfoMap.get(columnName) - START_INDEX;
+    if (values[index] != null) {
+      return BytesUtils.bytesToLong(values[index]);
+    }
+    else {
+      throw new SQLException(
+              String.format(VALUE_IS_NULL, columnName));
+    }
   }
 
   @Override
-  public ResultSetMetaData getMetaData() throws SQLException {
+  public ResultSetMetaData getMetaData() {
     return new IoTDBResultMetadata(columnInfoList, columnTypeList);
   }
 
@@ -630,7 +592,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   }
 
   @Override
-  public int getType() throws SQLException {
+  public int getType() {
     return ResultSet.TYPE_FORWARD_ONLY;
   }
 
@@ -704,12 +666,10 @@ public class IoTDBQueryResultSet implements ResultSet {
     throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
-  // the next record rule without constraints
-  private boolean nextWithoutConstraints(int limitFetchSize) throws SQLException {
-    if ((recordItr == null || !recordItr.hasNext()) && !emptyResultSet) {
-      int adaFetchSize = (limitFetchSize < fetchSize) ? limitFetchSize : fetchSize;
-      TSFetchResultsReq req = new TSFetchResultsReq(sql, adaFetchSize, queryId);
-
+  @Override
+  public boolean next() throws SQLException {
+    if ((tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining()) && !emptyResultSet) {
+      TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId);
       try {
         TSFetchResultsResp resp = client.fetchResults(req);
         try {
@@ -720,10 +680,8 @@ public class IoTDBQueryResultSet implements ResultSet {
         if (!resp.hasResultSet) {
           emptyResultSet = true;
         } else {
-          TSQueryDataSet tsQueryDataSet = resp.getQueryDataSet();
-          List<RowRecord> records = Utils
-              .convertRowRecords(tsQueryDataSet, columnTypeDeduplicatedList);
-          recordItr = records.iterator();
+          tsQueryDataSet = resp.getQueryDataSet();
+          rowsIndex = 0;
         }
       } catch (TException e) {
         throw new SQLException(
@@ -734,48 +692,70 @@ public class IoTDBQueryResultSet implements ResultSet {
     if (emptyResultSet) {
       return false;
     }
-
-    record = recordItr.next();
+    constructOneRow();
     return true;
   }
 
-  @Override
-  // the next record rule considering both the maxRows constraint and the LIMIT&OFFSET constraint
-  public boolean next() throws SQLException {
-    if (maxRowsOrRowsLimit > 0 && rowsFetched >= maxRowsOrRowsLimit) {
-      // The constraint of maxRows instead of rowsLimit is embodied
-      if (rowsLimit == 0 || (maxRows > 0 && maxRows < rowsLimit)) {
-        logger.debug("Reach max rows " + maxRows);
+  private void constructOneRow() {
+    tsQueryDataSet.time.get(time);
+    for (int i = 0; i < tsQueryDataSet.bitmapList.size(); i++) {
+      ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(i);
+      // another new 8 row, should move the bitmap buffer position to next byte
+      if (rowsIndex % 8 == 0) {
+        currentBitmap[i] = bitmapBuffer.get();
       }
-      return false;
-    }
-
-    // When rowsOffset is constrained and the offset position has NOT been reached
-    if (rowsOffset != 0) {
-      for (int i = 0; i < rowsOffset; i++) { // Try to move to the offset position
-        if (!nextWithoutConstraints(rowsOffset + maxRowsOrRowsLimit - i)) {
-          return false; // No next record, i.e, fail to move to the offset position
+      values[i] = null;
+      if (!isNull(i, rowsIndex)) {
+        ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(i);
+        TSDataType dataType = TSDataType.valueOf(columnTypeDeduplicatedList.get(i));
+        switch (dataType) {
+          case BOOLEAN:
+            if (values[i] == null)
+              values[i] = new byte[1];
+            valueBuffer.get(values[i]);
+            break;
+          case INT32:
+            if (values[i] == null)
+              values[i] = new byte[Integer.BYTES];
+            valueBuffer.get(values[i]);
+            break;
+          case INT64:
+            if (values[i] == null)
+              values[i] = new byte[Long.BYTES];
+            valueBuffer.get(values[i]);
+            break;
+          case FLOAT:
+            if (values[i] == null)
+              values[i] = new byte[Float.BYTES];
+            valueBuffer.get(values[i]);
+            break;
+          case DOUBLE:
+            if (values[i] == null)
+              values[i] = new byte[Double.BYTES];
+            valueBuffer.get(values[i]);
+            break;
+          case TEXT:
+            int length = valueBuffer.getInt();
+            values[i] = ReadWriteIOUtils.readBytes(valueBuffer, length);
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                    String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
         }
       }
-      rowsOffset = 0; // The offset position has been reached
     }
+    rowsIndex++;
+  }
 
-    boolean isNext;
-    if (maxRowsOrRowsLimit > 0) {
-      isNext = nextWithoutConstraints(maxRowsOrRowsLimit - rowsFetched);
-    } else { // maxRowsOrRowsLimit=0 means neither maxRows nor LIMIT is constrained.
-      isNext = nextWithoutConstraints(fetchSize);
-    }
-
-    if (isNext) {
-      /*
-       * Note that 'rowsFetched' is not increased in the nextWithoutConstraints(),
-       * because 'rowsFetched' should not count the rows fetched before the OFFSET position.
-       */
-      rowsFetched++;
-    }
-
-    return isNext;
+  /**
+   * judge whether the specified column value is null in the current position
+   * @param index column index
+   * @return
+   */
+  private boolean isNull(int index, int rowNum) {
+    byte bitmap = currentBitmap[index];
+    int shift = rowNum % 8;
+    return ((FLAG >>> shift) & bitmap) == 0;
   }
 
   @Override
@@ -1230,7 +1210,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   }
 
   private void checkRecord() throws SQLException {
-    if (record == null) {
+    if (Objects.isNull(tsQueryDataSet)) {
       throw new SQLException("No record remains");
     }
   }
@@ -1249,17 +1229,29 @@ public class IoTDBQueryResultSet implements ResultSet {
   private String getValueByName(String columnName) throws SQLException {
     checkRecord();
     if (columnName.equals(TIMESTAMP_STR)) {
-      return String.valueOf(record.getTimestamp());
+      return String.valueOf(BytesUtils.bytesToLong(time));
     }
-    int tmp = columnInfoMap.get(columnName);
-    int i = 0;
-    for (Field field : record.getFields()) {
-      i++;
-      if (i == tmp - 1) {
-        return field.getDataType() == null ? null : field.getStringValue();
-      }
+    int index = columnInfoMap.get(columnName) - START_INDEX;
+    if (index < 0 || index >= values.length || values[index] == null) {
+      return null;
     }
-    return null;
+    TSDataType dataType = TSDataType.valueOf(columnTypeDeduplicatedList.get(index));
+    switch (dataType) {
+      case BOOLEAN:
+        return String.valueOf(BytesUtils.bytesToBool(values[index]));
+      case INT32:
+        return String.valueOf(BytesUtils.bytesToInt(values[index]));
+      case INT64:
+        return String.valueOf(BytesUtils.bytesToLong(values[index]));
+      case FLOAT:
+        return String.valueOf(BytesUtils.bytesToFloat(values[index]));
+      case DOUBLE:
+        return String.valueOf(BytesUtils.bytesToDouble(values[index]));
+      case TEXT:
+        return new String(values[index]);
+      default:
+        return null;
+    }
   }
 
   public boolean isIgnoreTimeStamp() {

@@ -28,6 +28,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
@@ -54,7 +56,7 @@ public class TsFileProcessorTest {
 
   private TsFileProcessor processor;
   private String storageGroup = "storage_group1";
-  private String filePath = "data/testUnsealedTsFileProcessor.tsfile";
+  private String filePath = TestConstant.OUTPUT_DATA_DIR.concat("testUnsealedTsFileProcessor.tsfile");
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
   private TSDataType dataType = TSDataType.INT32;
@@ -71,7 +73,7 @@ public class TsFileProcessorTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    EnvironmentUtils.cleanDir("data");
+    EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
   }
 
   @Test
@@ -116,7 +118,7 @@ public class TsFileProcessorTest {
     assertTrue(left.isEmpty());
     assertEquals(1, right.size());
     assertEquals(measurementId, right.get(0).getMeasurementUid());
-    assertEquals(dataType, right.get(0).getTsDataType());
+    assertEquals(dataType, right.get(0).getDataType());
     processor.syncClose();
   }
 
@@ -162,7 +164,7 @@ public class TsFileProcessorTest {
     assertTrue(left.isEmpty());
     assertEquals(1, right.size());
     assertEquals(measurementId, right.get(0).getMeasurementUid());
-    assertEquals(dataType, right.get(0).getTsDataType());
+    assertEquals(dataType, right.get(0).getDataType());
 
     RestorableTsFileIOWriter tsFileIOWriter = processor.getWriter();
     List<ChunkGroupMetaData> chunkGroupMetaDataList = tsFileIOWriter.getChunkGroupMetaDatas();
@@ -216,7 +218,7 @@ public class TsFileProcessorTest {
     assertTrue(left.isEmpty());
     assertEquals(10, right.size());
     assertEquals(measurementId, right.get(0).getMeasurementUid());
-    assertEquals(dataType, right.get(0).getTsDataType());
+    assertEquals(dataType, right.get(0).getDataType());
     processor.syncClose();
   }
 

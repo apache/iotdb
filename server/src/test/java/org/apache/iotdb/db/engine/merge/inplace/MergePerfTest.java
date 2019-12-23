@@ -25,6 +25,7 @@ import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.MergeTest;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.tsfile.read.common.util.ChunkProviderExecutor;
@@ -37,7 +38,7 @@ public class MergePerfTest extends MergeTest {
 
   public void test() throws Exception {
     MManager.getInstance().init();
-    File tempSGDir = new File("tempSG");
+    File tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
     setUp();
     System.out.println("Files prepared.");
