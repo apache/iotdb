@@ -69,21 +69,21 @@ public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter 
       return true;
     }
 
-    if (hasNextInCurrentBatch()) {
+    if (hasNextSatisfiedInCurrentBatch()) {
       return true;
     }
 
     // has not cached timeValuePair
     while (super.hasNextBatch()) {
       batchData = super.nextBatch();
-      if (hasNextInCurrentBatch()) {
+      if (hasNextSatisfiedInCurrentBatch()) {
         return true;
       }
     }
     return false;
   }
 
-  private boolean hasNextInCurrentBatch() {
+  private boolean hasNextSatisfiedInCurrentBatch() {
     while (batchData != null && batchData.hasCurrent()) {
       if (filter.satisfy(batchData.currentTime(), batchData.currentValue())) {
         timeValuePair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
