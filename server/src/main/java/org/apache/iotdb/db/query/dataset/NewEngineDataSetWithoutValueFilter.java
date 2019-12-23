@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
+import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -84,7 +85,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
    * for RPC in RawData query between client and server
    * fill time buffer, value buffers and bitmap buffers
    */
-  public TSQueryDataSet fillBuffer(int fetchSize) throws IOException {
+  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder) throws IOException {
     int seriesNum = seriesReaderWithoutValueFilterList.size();
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
 
@@ -127,22 +128,32 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
             TSDataType type = cachedBatchDataArray[seriesIndex].getDataType();
             switch (type) {
               case INT32:
-                ReadWriteIOUtils
-                    .write(cachedBatchDataArray[seriesIndex].getInt(), valueBAOSList[seriesIndex]);
+                int intValue = cachedBatchDataArray[seriesIndex].getInt();
+                if (encoder != null) {
+                  intValue = encoder.encodeInt(intValue, minTime);
+                }
+                ReadWriteIOUtils.write(intValue, valueBAOSList[seriesIndex]);
                 break;
               case INT64:
-                ReadWriteIOUtils
-                    .write(cachedBatchDataArray[seriesIndex].getLong(), valueBAOSList[seriesIndex]);
+                long longValue = cachedBatchDataArray[seriesIndex].getLong();
+                if (encoder != null) {
+                  longValue = encoder.encodeLong(longValue, minTime);
+                }
+                ReadWriteIOUtils.write(longValue, valueBAOSList[seriesIndex]);
                 break;
               case FLOAT:
-                ReadWriteIOUtils
-                    .write(cachedBatchDataArray[seriesIndex].getFloat(),
-                        valueBAOSList[seriesIndex]);
+                float floatValue = cachedBatchDataArray[seriesIndex].getFloat();
+                if (encoder != null) {
+                  floatValue = encoder.encodeFloat(floatValue, minTime);
+                }
+                ReadWriteIOUtils.write(floatValue, valueBAOSList[seriesIndex]);
                 break;
               case DOUBLE:
-                ReadWriteIOUtils
-                    .write(cachedBatchDataArray[seriesIndex].getDouble(),
-                        valueBAOSList[seriesIndex]);
+                double doubleValue = cachedBatchDataArray[seriesIndex].getDouble();
+                if (encoder != null) {
+                  doubleValue = encoder.encodeDouble(doubleValue, minTime);
+                }
+                ReadWriteIOUtils.write(doubleValue, valueBAOSList[seriesIndex]);
                 break;
               case BOOLEAN:
                 ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getBoolean(),

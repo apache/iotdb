@@ -37,7 +37,7 @@ public class NewUnseqResourceMergeReaderTest extends ReaderTestHelper{
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
   /**
-   * chunk : [1,10], [1,10], [1,10], [10,20], [21,40]
+   * chunk : [1,10], [4,4], [10,10], [20,20]
    */
   @Override protected void insertData() throws IOException, QueryProcessException {
     insertOneRecord(1000, 1000);
@@ -74,7 +74,7 @@ public class NewUnseqResourceMergeReaderTest extends ReaderTestHelper{
         batchData.next();
       }
     }
-    Assert.assertEquals(3, cnt);
+    Assert.assertEquals(4, cnt);
   }
 
 

@@ -814,24 +814,25 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       throw new TException(e);
     }
     TSQueryDataSet result;
-    // optimize for query without value filter and
-    // !!!!!!!!!!!!!!!!!!Attention !!!!!!!!!!!!!!!!!!!
-    // !!!!!!!don't support watermark now!!!!!
-    if (queryDataSet instanceof NewEngineDataSetWithoutValueFilter) {
-      result = ((NewEngineDataSetWithoutValueFilter)queryDataSet).fillBuffer(fetchSize);
-    }
-    // TODO need to refactor the other query in the future
-    else {
-      if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(userName)) {
-        WatermarkEncoder encoder;
-        if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
-          encoder = new GroupedLSBWatermarkEncoder(config);
-        } else {
-          throw new UnSupportedDataTypeException(String.format(
-              "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
-        }
-        result = QueryDataSetUtils
-            .convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
+
+    if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(userName)) {
+      WatermarkEncoder encoder;
+      if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
+        encoder = new GroupedLSBWatermarkEncoder(config);
+      } else {
+        throw new UnSupportedDataTypeException(String.format(
+            "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
+      }
+      if (queryDataSet instanceof NewEngineDataSetWithoutValueFilter) {
+        // optimize for query without value filter
+        result = ((NewEngineDataSetWithoutValueFilter)queryDataSet).fillBuffer(fetchSize, encoder);
+      } else {
+        result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
+      }
+    } else {
+      if (queryDataSet instanceof NewEngineDataSetWithoutValueFilter) {
+        // optimize for query without value filter
+        result = ((NewEngineDataSetWithoutValueFilter)queryDataSet).fillBuffer(fetchSize, null);
       } else {
         result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
       }

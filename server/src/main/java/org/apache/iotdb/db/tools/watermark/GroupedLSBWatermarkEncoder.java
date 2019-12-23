@@ -84,24 +84,24 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
     return bitString.charAt(bitIndex) == '1';
   }
 
-  private int encodeInt(int value, long timestamp) {
+  public int encodeInt(int value, long timestamp) {
     int targetBitPosition = getBitPosition(timestamp);
     boolean targetBitValue = getBitValue(timestamp);
     return EncodingUtils.setBit(value, targetBitPosition, targetBitValue);
   }
 
-  private long encodeLong(long value, long timestamp) {
+  public long encodeLong(long value, long timestamp) {
     int targetBitPosition = getBitPosition(timestamp);
     boolean targetBitValue = getBitValue(timestamp);
     return EncodingUtils.setBit(value, targetBitPosition, targetBitValue);
   }
 
-  private float encodeFloat(float value, long timestamp) {
+  public float encodeFloat(float value, long timestamp) {
     int intBits = Float.floatToIntBits(value);
     return Float.intBitsToFloat(encodeInt(intBits, timestamp));
   }
 
-  private double encodeDouble(double value, long timestamp) {
+  public double encodeDouble(double value, long timestamp) {
     long longBits = Double.doubleToLongBits(value);
     return Double.longBitsToDouble(encodeLong(longBits, timestamp));
   }
