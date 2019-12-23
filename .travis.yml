@@ -191,7 +191,8 @@ matrix:
       dist: xenial
       jdk: openjdk8
       script:
-        - mvn post-integration-test -Pcode-coverage -Pcoveralls -Dservice_name=travis_ci -pl tsfile,client,jdbc,server,session,spark-iotdb-connector,spark-tsfile,hadoop,hive-connector
+        # now, grafana has no tests; spark-* tests are written by scala
+        - mvn post-integration-test -Pcode-coverage -Pcoveralls -Dservice_name=travis_ci -pl tsfile,client,jdbc,server,session,hadoop,hive-connector
 
 
 cache:
