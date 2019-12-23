@@ -133,7 +133,7 @@ public class StorageGroupProcessor {
    */
   private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
   /**
-   * time range id for divide storage group -> tsFileProcessor for this storage group
+   * time range id in the storage group -> tsFileProcessor for this time range
    */
   private final HashMap<Long, TsFileProcessor> workSequenceTsFileProcessors = new HashMap<>();
   /**
@@ -142,7 +142,7 @@ public class StorageGroupProcessor {
    */
   private final HashMap<Long, Long> sequenceTsfileProcessorLastUseTime = new HashMap<>();
   /**
-   * time range id for divide storage group -> tsFileProcessor for this storage group
+   * time range id in the storage group -> tsFileProcessor for this time range
    */
   private final HashMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new HashMap<>();
   /**
@@ -166,7 +166,7 @@ public class StorageGroupProcessor {
             return compareFileName(o1.getFile(), o2.getFile());
           }
           int rangeCompare = Long
-              .compare(o1.getProcessor().getTimeRange(), o2.getProcessor().getTimeRange());
+              .compare(o1.getProcessor().getTimeRangeId(), o2.getProcessor().getTimeRangeId());
           return rangeCompare == 0 ? compareFileName(o1.getFile(), o2.getFile()) : rangeCompare;
         }
       });
@@ -416,11 +416,11 @@ public class StorageGroupProcessor {
       long lastFlushTime = latestFlushedTimeForEachDevice.get(batchInsertPlan.getDeviceId());
 
       /*
-       * sequence time range id -> indexes indicate which data should insert
+       * sequence time range id -> indexes indicating which rows should be inserted
        */
       HashMap<Long, List<Integer>> sequenceTimeRangeIndexes = new HashMap<>();
       /*
-       * unsequence time range id -> indexes indicate which data should insert
+       * unsequence time range id -> indexes indicating which rows should be inserted
        */
       HashMap<Long, List<Integer>> unsequenceTimeRangeIndexes = new HashMap<>();
       for (int i = 0; i < batchInsertPlan.getRowCount(); i++) {
@@ -431,24 +431,24 @@ public class StorageGroupProcessor {
           continue;
         }
         results[i] = TSStatusCode.SUCCESS_STATUS.getStatusCode();
-        long timeRange = fromTimeToTimeRange(currTime);
+        long timeRangeId = fromTimeToTimeRange(currTime);
         if (currTime > lastFlushTime) {
           // for sequence
-          List<Integer> curIndex = sequenceTimeRangeIndexes.get(timeRange);
+          List<Integer> curIndex = sequenceTimeRangeIndexes.get(timeRangeId);
           if (curIndex == null) {
             // if map not contains this time range
             curIndex = new ArrayList<>();
-            sequenceTimeRangeIndexes.put(timeRange, curIndex);
+            sequenceTimeRangeIndexes.put(timeRangeId, curIndex);
           }
 
           curIndex.add(i);
         } else {
           // for unsequence
-          List<Integer> curIndex = unsequenceTimeRangeIndexes.get(timeRange);
+          List<Integer> curIndex = unsequenceTimeRangeIndexes.get(timeRangeId);
           if (curIndex == null) {
             // if map not contains this time range
             curIndex = new ArrayList<>();
-            unsequenceTimeRangeIndexes.put(timeRange, curIndex);
+            unsequenceTimeRangeIndexes.put(timeRangeId, curIndex);
           }
 
           curIndex.add(i);
@@ -479,10 +479,10 @@ public class StorageGroupProcessor {
   }
 
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
-      List<Integer> indexes, boolean sequence, Integer[] results, long timeRange)
+      List<Integer> indexes, boolean sequence, Integer[] results, long timeRangeId)
       throws QueryProcessException {
 
-    TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timeRange,
+    TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timeRangeId,
         sequence);
     if (tsFileProcessor == null) {
       for (int index : indexes) {
@@ -547,14 +547,14 @@ public class StorageGroupProcessor {
     }
   }
 
-  private TsFileProcessor getOrCreateTsFileProcessor(long timeRange, boolean sequence) {
+  private TsFileProcessor getOrCreateTsFileProcessor(long timeRangeId, boolean sequence) {
     TsFileProcessor tsFileProcessor = null;
     try {
       if (sequence) {
-        tsFileProcessor = getOrCreateTsFileProcessorIntern(timeRange, workSequenceTsFileProcessors,
+        tsFileProcessor = getOrCreateTsFileProcessorIntern(timeRangeId, workSequenceTsFileProcessors,
             sequenceTsfileProcessorLastUseTime, sequenceFileList, true);
       } else {
-        tsFileProcessor = getOrCreateTsFileProcessorIntern(timeRange,
+        tsFileProcessor = getOrCreateTsFileProcessorIntern(timeRangeId,
             workUnsequenceTsFileProcessors,
             unsequenceTsfileProcessorLastUseTime, unSequenceFileList, false);
       }
@@ -575,13 +575,13 @@ public class StorageGroupProcessor {
   /**
    * get processor from hashmap, flush oldest processor is necessary
    *
-   * @param timeRange time partition range
+   * @param timeRangeId time partition range
    * @param tsFileProcessorHashMap tsFileProcessorHashMap
    * @param tsfileProcessorLastUseTime last use time of this processor map
    * @param fileList file list to add new processor
    * @param sequence whether is sequence or not
    */
-  private TsFileProcessor getOrCreateTsFileProcessorIntern(long timeRange,
+  private TsFileProcessor getOrCreateTsFileProcessorIntern(long timeRangeId,
       HashMap<Long, TsFileProcessor> tsFileProcessorHashMap,
       HashMap<Long, Long> tsfileProcessorLastUseTime,
       Collection<TsFileResource> fileList,
@@ -592,7 +592,7 @@ public class StorageGroupProcessor {
     // we have to ensure only one thread can change workSequenceTsFileProcessors
     writeLock();
     try {
-      if (!tsFileProcessorHashMap.containsKey(timeRange)) {
+      if (!tsFileProcessorHashMap.containsKey(timeRangeId)) {
         // we have to remove oldest processor to control the num of the memtables
         if (tsFileProcessorHashMap.size()
             >= IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP / 2) {
@@ -614,15 +614,15 @@ public class StorageGroupProcessor {
         }
 
         // build new processor
-        TsFileProcessor newProcessor = createTsFileProcessor(sequence, timeRange);
-        tsFileProcessorHashMap.put(timeRange, newProcessor);
+        TsFileProcessor newProcessor = createTsFileProcessor(sequence, timeRangeId);
+        tsFileProcessorHashMap.put(timeRangeId, newProcessor);
         fileList.add(newProcessor.getTsFileResource());
         res = newProcessor;
       } else {
-        res = tsFileProcessorHashMap.get(timeRange);
+        res = tsFileProcessorHashMap.get(timeRangeId);
       }
 
-      tsfileProcessorLastUseTime.put(timeRange, System.currentTimeMillis());
+      tsfileProcessorLastUseTime.put(timeRangeId, System.currentTimeMillis());
     } finally {
       // unlock in finally
       writeUnlock();
@@ -635,7 +635,7 @@ public class StorageGroupProcessor {
     return time / timeRangeForStorageGroup;
   }
 
-  private TsFileProcessor createTsFileProcessor(boolean sequence, long timeRange)
+  private TsFileProcessor createTsFileProcessor(boolean sequence, long timeRangeId)
       throws IOException, DiskSpaceInsufficientException {
     String baseDir;
     if (sequence) {
@@ -646,7 +646,7 @@ public class StorageGroupProcessor {
     fsFactory.getFile(baseDir, storageGroupName).mkdirs();
 
     String filePath =
-        baseDir + File.separator + storageGroupName + File.separator + timeRange + File.separator
+        baseDir + File.separator + storageGroupName + File.separator + timeRangeId + File.separator
             + System.currentTimeMillis() + IoTDBConstant.TSFILE_NAME_SEPARATOR + versionController
             .nextVersion() + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0" + TSFILE_SUFFIX;
 
@@ -663,7 +663,7 @@ public class StorageGroupProcessor {
           this::unsequenceFlushCallback, false);
     }
 
-    tsFileProcessor.setTimeRange(timeRange);
+    tsFileProcessor.setTimeRangeId(timeRangeId);
     return tsFileProcessor;
   }
 
@@ -680,15 +680,15 @@ public class StorageGroupProcessor {
       updateEndTimeMap(tsFileProcessor);
       tsFileProcessor.asyncClose();
 
-      workSequenceTsFileProcessors.remove(tsFileProcessor.getTimeRange());
-      sequenceTsfileProcessorLastUseTime.remove(tsFileProcessor.getTimeRange());
+      workSequenceTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
+      sequenceTsfileProcessorLastUseTime.remove(tsFileProcessor.getTimeRangeId());
       logger.info("close a sequence tsfile processor {}", storageGroupName);
     } else {
       closingUnSequenceTsFileProcessor.add(tsFileProcessor);
       tsFileProcessor.asyncClose();
 
-      workUnsequenceTsFileProcessors.remove(tsFileProcessor.getTimeRange());
-      unsequenceTsfileProcessorLastUseTime.remove(tsFileProcessor.getTimeRange());
+      workUnsequenceTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
+      unsequenceTsfileProcessorLastUseTime.remove(tsFileProcessor.getTimeRangeId());
       logger.info("close an unsequence tsfile processor {}", storageGroupName);
     }
   }
@@ -1000,18 +1000,18 @@ public class StorageGroupProcessor {
       }
 
       // time range to divide storage group
-      long timeRange = fromTimeToTimeRange(timestamp);
+      long timeRangeId = fromTimeToTimeRange(timestamp);
       // write log
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
-          if (entry.getKey() <= timeRange) {
+          if (entry.getKey() <= timeRangeId) {
             entry.getValue().getLogNode()
                 .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
           }
         }
 
         for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
-          if (entry.getKey() <= timeRange) {
+          if (entry.getKey() <= timeRangeId) {
             entry.getValue().getLogNode()
                 .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
           }

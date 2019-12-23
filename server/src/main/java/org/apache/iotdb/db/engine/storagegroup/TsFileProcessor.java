@@ -77,8 +77,8 @@ public class TsFileProcessor {
 
   private TsFileResource tsFileResource;
 
-  // time range index to indicate this processor belongs to which storage group
-  private long timeRange;
+  // time range index to indicate this processor belongs to which time range
+  private long timeRangeId;
 
   /**
    * Whether the processor is in the queue of the FlushManager or being flushed by a flush thread.
@@ -609,11 +609,11 @@ public class TsFileProcessor {
     }
   }
 
-  public long getTimeRange() {
-    return timeRange;
+  public long getTimeRangeId() {
+    return timeRangeId;
   }
 
-  public void setTimeRange(long timeRange) {
-    this.timeRange = timeRange;
+  public void setTimeRangeId(long timeRangeId) {
+    this.timeRangeId = timeRangeId;
   }
 }
