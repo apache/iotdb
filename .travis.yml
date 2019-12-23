@@ -191,7 +191,7 @@ matrix:
       dist: xenial
       jdk: openjdk8
       script:
-        - mvn test coveralls:report -Pcode-coverage -Dservice_name=travis_ci -pl tsfile,client,jdbc,server,session,spark-iotdb-connector,spark-tsfile,grafana,hadoop,hive-connector
+        - mvn post-integration-test -Pcode-coverage -Pcoveralls -Dservice_name=travis_ci -pl tsfile,client,jdbc,server,session,spark-iotdb-connector,spark-tsfile,grafana,hadoop,hive-connector
 
 
 cache:

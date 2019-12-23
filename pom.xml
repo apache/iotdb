@@ -637,6 +637,43 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <!-- Separates the unit tests from the integration tests. -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>unit-tests</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <includes>
+                                <!-- Include unit tests within integration-test phase. -->
+                                <include>src/test/**/*Test.java</include>
+                            </includes>
+                            <excludes>
+                                <!-- Exclude integration tests within (unit) test phase. -->
+                                <exclude>src/test/**/*IT.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>integration-tests</id>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <includes>
+                                <!-- Include integration tests within integration-test phase. -->
+                                <include>src/test/**/*IT.java</include>
+                            </includes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
     <profiles>
@@ -975,6 +1012,7 @@
                 </plugins>
             </build>
         </profile>
+        <!-- code coverage for ut and it, and then merge them together.-->
         <profile>
             <id>code-coverage</id>
             <build>
@@ -986,7 +1024,6 @@
                         <artifactId>jacoco-maven-plugin</artifactId>
                         <version>0.8.5</version>
                         <configuration>
-                            <skip>false</skip>
                             <rules>
                                 <rule implementation="org.jacoco.maven.RuleConfiguration">
                                     <element>BUNDLE</element>
@@ -1015,19 +1052,84 @@
                             </rules>
                         </configuration>
                         <executions>
+                            <!-- see https://natritmeyer.com/howto/reporting-aggregated-unit-and-integration-test-coverage-with-jacoco/-->
+                            <!-- For UT-->
                             <execution>
+                                <id>prepare-ut</id>
                                 <goals>
                                     <goal>prepare-agent</goal>
                                 </goals>
+                                <configuration>
+                                    <destFile>${project.build.directory}/jacoco-unit-tests.exec</destFile>
+                                    <propertyName>surefire.jacoco.args</propertyName>
+                                </configuration>
                             </execution>
                             <!-- attached to Maven test phase -->
                             <execution>
-                                <id>report</id>
+                                <id>ut-report</id>
                                 <phase>test</phase>
                                 <goals>
                                     <goal>report</goal>
                                     <goal>check</goal>
                                 </goals>
+                                <configuration>
+                                    <dataFile>${project.build.directory}/jacoco-unit-tests.exec</dataFile>
+                                    <outputDirectory>${project.build.directory}/jacoco-unit-reports</outputDirectory>
+                                </configuration>
+                            </execution>
+                            <!-- For IT-->
+                            <execution>
+                                <id>before-integration-test-execution</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                                <configuration>
+                                    <destFile>${project.build.directory}/jacoco-integration-tests.exec</destFile>
+                                    <propertyName>failsafe.jacoco.args</propertyName>
+                                </configuration>
+                            </execution>
+
+                            <execution>
+                                <id>after-integration-test-execution</id>
+                                <phase>integration-test</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                    <goal>check</goal>
+                                </goals>
+                                <configuration>
+                                    <dataFile>${project.build.directory}/jacoco-integration-tests.exec</dataFile>
+                                    <outputDirectory>${project.build.directory}/jacoco-integration-reports</outputDirectory>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>merge-unit-and-integration</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>merge</goal>
+                                </goals>
+                                <configuration>
+                                    <fileSets>
+                                        <fileSet>
+                                            <directory>${project.build.directory}/</directory>
+                                            <includes>
+                                                <include>*.exec</include>
+                                            </includes>
+                                        </fileSet>
+                                    </fileSets>
+                                    <destFile>${project.build.directory}/merged.exec</destFile>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>create-merged-report</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                    <goal>check</goal>
+                                </goals>
+                                <configuration>
+                                    <dataFile>${project.build.directory}/merged.exec</dataFile>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
@@ -1036,34 +1138,43 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <argLine>${argLine} -Xmx1024m</argLine>
+                            <argLine>@{surefire.jacoco.args} -Xmx1024m</argLine>
                         </configuration>
                     </plugin>
+                    <!-- for IT-->
                     <plugin>
-                        <artifactId>maven-antrun-plugin</artifactId>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <argLine>@{failsafe.jacoco.args} -Xmx1024m</argLine>
+                        </configuration>
                         <executions>
                             <execution>
-                                <phase>test</phase>
                                 <goals>
-                                    <goal>run</goal>
+                                    <goal>integration-test</goal>
                                 </goals>
-                                <configuration>
-                                    <tasks>
-                                        <echo>${argLine}</echo>
-                                    </tasks>
-                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- upload code coverage report to coveralls.io-->
+        <!-- to enable coveralls locally, you need to get the repoToken from https://coveralls.io/github/apache/incubator-iotdb.
+             use `mvn post-integration-test -pl hadoop  -Pcode-coverage -Pcoveralls -DrepoToken=TOKEN`-->
+        <profile>
+            <id>coveralls</id>
+            <build>
+                <plugins>
                     <plugin>
                         <groupId>org.eluder.coveralls</groupId>
                         <artifactId>coveralls-maven-plugin</artifactId>
                         <version>4.3.0</version>
+
                         <executions>
-                            <!-- attached to Maven test phase -->
                             <execution>
-                                <id>coveralls-report</id>
-                                <phase>test</phase>
+                                <id>report to coveralls</id>
+                                <phase>post-integration-test</phase>
                                 <goals>
                                     <goal>report</goal>
                                 </goals>
