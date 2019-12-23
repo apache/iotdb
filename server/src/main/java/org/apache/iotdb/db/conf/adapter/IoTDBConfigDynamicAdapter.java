@@ -134,7 +134,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     long memTableSizeFloorThreshold = getMemTableSizeFloorThreshold();
     long tsFileSizeThreshold = CONFIG.getTsFileSizeThreshold();
     if (memtableSizeInByte < memTableSizeFloorThreshold) {
-      if(LOGGER.isDebugEnabled()) {
+      if(LOGGER.isDebugEnabled() && initialized) {
         LOGGER.debug("memtableSizeInByte {} is smaller than memTableSizeFloorThreshold {}",
             memtableSizeInByte, memTableSizeFloorThreshold);
       }
