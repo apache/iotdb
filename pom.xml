@@ -88,9 +88,12 @@
         <jetty.version>9.4.24.v20191120</jetty.version>
         <metrics.version>3.2.6</metrics.version>
         <!-- URL of the ASF SonarQube server -->
-        <sonar.host.url>https://builds.apache.org/analysis</sonar.host.url>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <sonar.organization>apache</sonar.organization>
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
+        <!-- By default, the argLine is empty-->
+        <argLine></argLine>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -465,7 +468,7 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <configuration>
-                        <argLine>-Xmx1024m</argLine>
+                        <argLine>${argLine} -Xmx1024m</argLine>
                     </configuration>
                 </plugin>
                 <!--
@@ -474,7 +477,7 @@
                 <plugin>
                     <groupId>org.sonarsource.scanner.maven</groupId>
                     <artifactId>sonar-maven-plugin</artifactId>
-                    <version>3.6.0.1398</version>
+                    <version>3.6.1.1688</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.rat</groupId>
@@ -575,48 +578,6 @@
                     <configLocation>checkstyle.xml</configLocation>
                 </configuration>
             </plugin>
-            <!-- use mvn license:remove to remove license header; mvn license:format -->
-            <!-- we do not recommend using the plugin because it maybe out of control
-            (adding headers in some files that you do not want) -->
-            <!--<plugin>
-                <groupId>com.mycila</groupId>
-                <artifactId>license-maven-plugin</artifactId>
-                <version>3.0</version>
-                <configuration>
-                    <header>asf.header</header>
-                    <properties>
-                        <owner>Apache IoTDB(incubating)</owner>
-                        <email>dev@iotdb.apache.org</email>
-                        <project.inceptionYear>2019</project.inceptionYear>
-                    </properties>
-                    <mapping>
-                        <g>DOUBLESLASH_STYLE</g>
-                        <thrift>SLASHSTAR_STYLE</thrift>
-                    </mapping>
-                    <excludes>
-                        <exclude>**/README.md</exclude>
-                        <exclude>**/src/test/resources/*.json</exclude>
-                        <exclude>**/src/main/resources/*.json</exclude>
-                        <exclude>jdbc/example/data/*.csv</exclude>
-                        <exclude>**/*.log</exclude>
-                        <exclude>licenses-binary/*</exclude>
-                        <exclude>.checkstyle</exclude>
-                        <exclude>NOTICE*</exclude>
-                        <exclude>LICENSE*</exclude>
-                        <exclude>License</exclude>
-                        <exclude>asf.header</exclude>
-                        <exclude>**/iotdb/data/</exclude>
-                        <exclude>local-snapshots-dir/**</exclude>
-                    </excludes>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin> -->
             <!--
               Check if all files contain Apache headers in them.
               Ignore this plugin, we use license-maven-plugin to check apache header.
@@ -630,32 +591,6 @@
                         <phase>verify</phase>
                         <goals>
                             <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <!--use `mvn cobertura:cobertura` -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>cobertura-maven-plugin</artifactId>
-                <version>2.7</version>
-                <configuration>
-                    <quiet>true</quiet>
-                    <formats>
-                        <format>xml</format>
-                    </formats>
-                    <instrumentation>
-                        <ignoreTrivial>true</ignoreTrivial>
-                    </instrumentation>
-                    <check/>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>check</id>
-                        <!-- skip when executing 'mvn clean test' -->
-                        <!-- <phase>test</phase> -->
-                        <goals>
-                            <goal>cobertura</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -1037,6 +972,70 @@
                                 <version>1.2</version>
                             </dependency>
                         </dependencies>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>code-coverage</id>
+            <build>
+                <plugins>
+                    <!-- Jacoco is a code coverage analysis plugin when tests run.
+                    (not a static code analysis tool)-->
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <version>0.8.5</version>
+                        <configuration>
+                            <skip>false</skip>
+                            <destFile>${basedir}/target/coverage-reports/jacoco.exec</destFile>
+                            <rules>
+                                <rule implementation="org.jacoco.maven.RuleConfiguration">
+                                    <element>BUNDLE</element>
+                                    <limits>　　
+                                        <!-- Cover methodes >=30%. (the plugin does not support
+                                        ignore getter and setter and toString etc..) -->
+                                        <limit implementation="org.jacoco.report.check.Limit">
+                                            <counter>METHOD</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.00</minimum>
+                                        </limit>
+                                        <!-- if-else, swtich etc.. >=70% -->
+                                        <limit implementation="org.jacoco.report.check.Limit">
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.00</minimum>
+                                        </limit>
+                                        <!-- class files >=95% -->
+                                        <limit implementation="org.jacoco.report.check.Limit">
+                                            <counter>CLASS</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.00</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                            </execution>
+                            <!-- attached to Maven test phase -->
+                            <execution>
+                                <id>report</id>
+                                <phase>test</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                    <goal>check</goal>
+                                </goals>
+                                <configuration>
+                                    <dataFile>${basedir}/target/coverage-reports/jacoco.exec</dataFile>
+                                    <outputDirectory>${basedir}/target/coverage-reports</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>
