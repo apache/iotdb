@@ -109,7 +109,7 @@ By default settings, the data files (including tsfile, metadata, and WAL files) 
 Use IoTDB's Command Line Interface:
 
 ```
-IoTDB> show timeseries root.*
+IoTDB> show timeseries root
 ```
 
 In the result, there will be a statement shows `Total timeseries number`, this number is the timeseries number in IoTDB.

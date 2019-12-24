@@ -109,7 +109,7 @@ Readme.md
 使用 IoTDB 的命令行接口:
 
 ```
-IoTDB> show timeseries root.*
+IoTDB> show timeseries root
 ```
 
 在返回的结果里，会展示`Total timeseries number`，这个数据就是 IoTDB 中 timeseries 的数量。
