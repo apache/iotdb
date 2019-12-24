@@ -58,6 +58,8 @@ public class ChunkWriterImpl implements IChunkWriter {
      */
     private PublicBAOS pageBuffer;
 
+    private long chunkPointCount;
+
     private int numOfPages;
     /**
      * value writer to encode data.
@@ -218,8 +220,9 @@ public class ChunkWriterImpl implements IChunkWriter {
             pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer);
 
             // update statistics of this chunk
-            Statistics statistics = pageWriter.getStatistics();
+            Statistics statistics=pageWriter.getStatistics();
             numOfPages++;
+            chunkPointCount += pageWriter.getPointNumber();
             this.chunkStatistics.mergeStatistics(statistics);
         } catch (IOException e) {
             logger.error("meet error in pageWriter.writePageHeaderAndDataIntoBuff,ignore this page:", e);
@@ -269,7 +272,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
     /**
      * write the page header and data into the PageWriter's output stream.
-     * <p>
+     *
      * NOTE: for upgrading 0.8.0 to 0.9.0
      */
     public void writePageHeaderAndDataIntoBuff(ByteBuffer data, PageHeader header)
@@ -288,6 +291,9 @@ public class ChunkWriterImpl implements IChunkWriter {
                     "IO Exception in writeDataPageHeader,ignore this page", e);
         }
 
+        // update data point num
+        this.chunkPointCount += header.getNumOfValues();
+
         // write page content to temp PBAOS
         try (WritableByteChannel channel = Channels.newChannel(pageBuffer)) {
             channel.write(data);
@@ -305,7 +311,10 @@ public class ChunkWriterImpl implements IChunkWriter {
      */
     public void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer, Statistics<?> statistics)
             throws IOException {
-        if (statistics.getCount() == 0) {
+        if (statistics.getCount() == 0){
+            return;
+        }
+        if (chunkPointCount == 0) {
             return;
         }
 
@@ -334,6 +343,7 @@ public class ChunkWriterImpl implements IChunkWriter {
      */
     public void reset() {
         pageBuffer.reset();
+        chunkPointCount = 0;
     }
 
     /**
@@ -360,6 +370,6 @@ public class ChunkWriterImpl implements IChunkWriter {
 
     @Override
     public long getPtNum() {
-        return chunkStatistics.getCount() + pageWriter.getPointNumber();
+        return chunkPointCount + pageWriter.getPointNumber();
     }
 }
