@@ -80,7 +80,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 /**
  * Thrift RPC implementation at server side.
  */
-
 public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);

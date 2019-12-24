@@ -37,7 +37,7 @@ public abstract class AbstractFileSeriesReader implements IAggregateReader {
 
   protected IChunkLoader chunkLoader;
   protected List<ChunkMetaData> chunkMetaDataList;
-  protected AbstractChunkReader AbstractChunkReader;
+  protected AbstractChunkReader chunkReader;
   private int chunkToRead;
 
   private BatchData data;
@@ -63,7 +63,7 @@ public abstract class AbstractFileSeriesReader implements IAggregateReader {
   public boolean hasNextBatch() throws IOException {
 
     // current chunk has additional batch
-    if (AbstractChunkReader != null && AbstractChunkReader.hasNextBatch()) {
+    if (chunkReader != null && chunkReader.hasNextBatch()) {
       return true;
     }
 
@@ -75,7 +75,7 @@ public abstract class AbstractFileSeriesReader implements IAggregateReader {
         // chunk metadata satisfy the condition
         initChunkReader(chunkMetaData);
 
-        if (AbstractChunkReader.hasNextBatch()) {
+        if (chunkReader.hasNextBatch()) {
           return true;
         }
       }
@@ -87,7 +87,7 @@ public abstract class AbstractFileSeriesReader implements IAggregateReader {
    * get next batch data.
    */
   public BatchData nextBatch() throws IOException {
-    data = AbstractChunkReader.nextBatch();
+    data = chunkReader.nextBatch();
     return data;
   }
 
@@ -96,11 +96,11 @@ public abstract class AbstractFileSeriesReader implements IAggregateReader {
   }
 
   public PageHeader nextPageHeader() {
-    return AbstractChunkReader.nextPageHeader();
+    return chunkReader.nextPageHeader();
   }
 
   public void skipPageData() {
-    AbstractChunkReader.skipPageData();
+    chunkReader.skipPageData();
   }
 
   protected abstract void initChunkReader(ChunkMetaData chunkMetaData) throws IOException;

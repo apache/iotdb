@@ -89,7 +89,7 @@ public class SimpleExternalSortEngine implements ExternalSortJobEngine {
 
   @Override
   public ExternalSortJob createJob(long queryId, List<ChunkReaderWrap> readerWrapList) {
-    long taskId = scheduler.genTaskId();
+    long jobId = scheduler.genJobId();
     List<ExternalSortJobPart> ret = new ArrayList<>();
     for (ChunkReaderWrap readerWrap : readerWrapList) {
       ret.add(new SingleSourceExternalSortJobPart(readerWrap));
@@ -102,7 +102,7 @@ public class SimpleExternalSortEngine implements ExternalSortJobEngine {
         int toIndex = Math.min(i + minExternalSortSourceCount, ret.size());
         List<ExternalSortJobPart> partGroup = ret.subList(i, toIndex);
         i = toIndex;
-        StringBuilder tmpFilePath = new StringBuilder(queryDir).append(taskId).append("_")
+        StringBuilder tmpFilePath = new StringBuilder(queryDir).append(jobId).append("_")
             .append(partId);
         MultiSourceExternalSortJobPart part = new MultiSourceExternalSortJobPart(queryId,
             tmpFilePath.toString(), partGroup);

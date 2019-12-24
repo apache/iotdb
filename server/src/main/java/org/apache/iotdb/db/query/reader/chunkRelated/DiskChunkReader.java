@@ -38,11 +38,11 @@ import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
  */
 public class DiskChunkReader implements IPointReader, IBatchReader {
 
-  private AbstractChunkReader AbstractChunkReader;
+  private AbstractChunkReader chunkReader;
   private BatchData data;
 
-  public DiskChunkReader(AbstractChunkReader AbstractChunkReader) {
-    this.AbstractChunkReader = AbstractChunkReader;
+  public DiskChunkReader(AbstractChunkReader chunkReader) {
+    this.chunkReader = chunkReader;
   }
 
   @Override
@@ -50,8 +50,8 @@ public class DiskChunkReader implements IPointReader, IBatchReader {
     if (data != null && data.hasCurrent()) {
       return true;
     }
-    while (AbstractChunkReader.hasNextBatch()) {
-      data = AbstractChunkReader.nextBatch();
+    while (chunkReader.hasNextBatch()) {
+      data = chunkReader.nextBatch();
       if (data.hasCurrent()) {
         return true;
       }
@@ -84,6 +84,6 @@ public class DiskChunkReader implements IPointReader, IBatchReader {
 
   @Override
   public void close() {
-    this.AbstractChunkReader.close();
+    this.chunkReader.close();
   }
 }

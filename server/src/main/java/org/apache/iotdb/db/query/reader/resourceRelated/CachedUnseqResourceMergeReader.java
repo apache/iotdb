@@ -35,8 +35,8 @@ public class CachedUnseqResourceMergeReader extends CachedPriorityMergeReader {
     super(dataType);
     int priorityValue = 1;
     for (Chunk chunk : chunks) {
-      AbstractChunkReader AbstractChunkReader = new ChunkReader(chunk, null);
-      addReaderWithPriority(new CachedDiskChunkReader(AbstractChunkReader), priorityValue++);
+      AbstractChunkReader chunkReader = new ChunkReader(chunk, null);
+      addReaderWithPriority(new CachedDiskChunkReader(chunkReader), priorityValue++);
     }
   }
 }

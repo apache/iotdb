@@ -401,9 +401,9 @@ class MergeMultiChunkTask {
   private int writeChunkWithUnseq(Chunk chunk, IChunkWriter chunkWriter, IPointReader unseqReader,
       long chunkLimitTime, int pathIdx) throws IOException {
     int cnt = 0;
-    AbstractChunkReader AbstractChunkReader = new ChunkReader(chunk, null);
-    while (AbstractChunkReader.hasNextBatch()) {
-      BatchData batchData = AbstractChunkReader.nextBatch();
+    AbstractChunkReader chunkReader = new ChunkReader(chunk, null);
+    while (chunkReader.hasNextBatch()) {
+      BatchData batchData = chunkReader.nextBatch();
       cnt += mergeWriteBatch(batchData, chunkWriter, unseqReader, pathIdx);
     }
     cnt += writeRemainingUnseq(chunkWriter, unseqReader, chunkLimitTime, pathIdx);

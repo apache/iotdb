@@ -41,7 +41,7 @@ public class FileSeriesReader extends AbstractFileSeriesReader {
   @Override
   protected void initChunkReader(ChunkMetaData chunkMetaData) throws IOException {
     Chunk chunk = chunkLoader.getChunk(chunkMetaData);
-    this.AbstractChunkReader = new ChunkReader(chunk, filter);
+    this.chunkReader = new ChunkReader(chunk, filter);
   }
 
   @Override

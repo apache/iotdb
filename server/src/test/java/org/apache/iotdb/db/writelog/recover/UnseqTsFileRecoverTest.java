@@ -165,9 +165,9 @@ public class UnseqTsFileRecoverTest {
     int priorityValue = 1;
     for (ChunkMetaData chunkMetaData : metadataQuerier.getChunkMetaDataList(path)) {
       Chunk chunk = chunkLoader.getChunk(chunkMetaData);
-      AbstractChunkReader AbstractChunkReader = new ChunkReader(chunk, null);
+      AbstractChunkReader chunkReader = new ChunkReader(chunk, null);
       unSeqMergeReader
-          .addReaderWithPriority(new DiskChunkReader(AbstractChunkReader), priorityValue);
+          .addReaderWithPriority(new DiskChunkReader(chunkReader), priorityValue);
       priorityValue++;
     }
 

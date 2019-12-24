@@ -129,8 +129,7 @@ public class IoTDBQueryResultSetTest {
 
     statement = new IoTDBStatement(connection, client, sessionId, zoneID);
 
-    TSQueryDataSet tsQueryDataSet = FakedFirstFetchResult();
-    execResp.queryDataSet = tsQueryDataSet;
+    execResp.queryDataSet = FakedFirstFetchResult();
 
     when(connection.isClosed()).thenReturn(false);
     when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execResp);
@@ -164,8 +163,6 @@ public class IoTDBQueryResultSetTest {
     columns.add("root.vehicle.d0.s2");
 
     List<String> dataTypeList = new ArrayList<>();
-//    //BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT
-//    dataTypeList.add(TSDataType.INT64.toString());
     dataTypeList.add("FLOAT");
     dataTypeList.add("INT64");
     dataTypeList.add("INT32");
@@ -240,8 +237,8 @@ public class IoTDBQueryResultSetTest {
       Assert.assertEquals(standard, resultStr.toString());
     }
 
-    // The client issues 2 fetchResultReq in total. The last fetchResultReq get empty resultSet.
-    verify(fetchResultsResp, times(1)).getStatus();
+    // The client get TSQueryDataSet at the first request
+    verify(fetchResultsResp, times(1));
   }
 
   // fake the first-time fetched result of 'testSql' from an IoTDB server

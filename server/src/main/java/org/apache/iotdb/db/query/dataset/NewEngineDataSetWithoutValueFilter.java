@@ -222,7 +222,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
     // set time buffer
     ByteBuffer timeBuffer = ByteBuffer.allocate(timeBAOS.size());
-    timeBuffer.put(timeBAOS.toByteArray());
+    timeBuffer.put(timeBAOS.getBuf(), 0, timeBAOS.size());
     timeBuffer.flip();
     tsQueryDataSet.setTime(timeBuffer);
 
@@ -230,20 +230,14 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     List<ByteBuffer> bitmapBufferList = new ArrayList<>();
 
     for (
-        int seriesIndex = 0;
-        seriesIndex < seriesNum; seriesIndex++) {
+        int tsIndex = 0;
+        tsIndex < seriesNum; tsIndex++) {
 
       // add value buffer of current series
-      ByteBuffer valueBuffer = ByteBuffer.allocate(valueBAOSList[seriesIndex].size());
-      valueBuffer.put(valueBAOSList[seriesIndex].toByteArray());
-      valueBuffer.flip();
-      valueBufferList.add(valueBuffer);
+      putPBOSToBuffer(valueBAOSList, valueBufferList, tsIndex);
 
       // add bitmap buffer of current series
-      ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapBAOSList[seriesIndex].size());
-      bitmapBuffer.put(bitmapBAOSList[seriesIndex].toByteArray());
-      bitmapBuffer.flip();
-      bitmapBufferList.add(bitmapBuffer);
+      putPBOSToBuffer(bitmapBAOSList, bitmapBufferList, tsIndex);
     }
 
     // set value buffers and bitmap buffers
@@ -253,9 +247,17 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     return tsQueryDataSet;
   }
 
+  private void putPBOSToBuffer(PublicBAOS[] bitmapBAOSList, List<ByteBuffer> bitmapBufferList,
+      int tsIndex) {
+    ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapBAOSList[tsIndex].size());
+    bitmapBuffer.put(bitmapBAOSList[tsIndex].getBuf(), 0, bitmapBAOSList[tsIndex].size());
+    bitmapBuffer.flip();
+    bitmapBufferList.add(bitmapBuffer);
+  }
+
 
   /**
-   * for test
+   * for spark/hadoop/hive integration and test
    */
   @Override
   protected boolean hasNextWithoutConstraint() {
@@ -263,7 +265,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
   }
 
   /**
-   * for test
+   * for spark/hadoop/hive integration and test
    */
   @Override
   protected RowRecord nextWithoutConstraint() throws IOException {
