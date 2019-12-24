@@ -18,10 +18,20 @@
  */
 package org.apache.iotdb.tsfile.read.filter.factory;
 
+import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.Eq;
+import org.apache.iotdb.tsfile.read.filter.operator.Gt;
+import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
+import org.apache.iotdb.tsfile.read.filter.operator.Lt;
+import org.apache.iotdb.tsfile.read.filter.operator.LtEq;
+import org.apache.iotdb.tsfile.read.filter.operator.NotEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FilterFactory {
 
@@ -35,6 +45,48 @@ public class FilterFactory {
 
   public static NotFilter not(Filter filter) {
     return new NotFilter(filter);
+  }
+
+  public static Filter deserialize(ByteBuffer buffer) {
+    FilterSerializeId id = FilterSerializeId.values()[buffer.get()];
+
+    Filter filter;
+    switch (id) {
+      case EQ:
+        filter = new Eq<>();
+        break;
+      case GT:
+        filter = new Gt<>();
+        break;
+      case LT:
+        filter = new Lt<>();
+        break;
+      case OR:
+        filter = new OrFilter();
+        break;
+      case AND:
+        filter = new AndFilter();
+        break;
+      case NEQ:
+        filter = new NotEq<>();
+        break;
+      case NOT:
+        filter = new NotFilter();
+        break;
+      case GTEQ:
+        filter = new GtEq<>();
+        break;
+      case LTEQ:
+        filter = new LtEq<>();
+        break;
+      case GROUP_BY:
+        filter = new GroupByFilter();
+        break;
+      default:
+        throw new UnsupportedOperationException("Unknown filter type " + id);
+    }
+    filter.deserialize(buffer);
+    return filter;
   }
 
 }
