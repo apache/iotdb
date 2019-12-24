@@ -38,7 +38,6 @@ import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-
 public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
   private List<IBatchReader> seriesReaderWithoutValueFilterList;
@@ -129,28 +128,28 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
             switch (type) {
               case INT32:
                 int intValue = cachedBatchDataArray[seriesIndex].getInt();
-                if (encoder != null) {
+                if (encoder != null && encoder.needEncode(minTime)) {
                   intValue = encoder.encodeInt(intValue, minTime);
                 }
                 ReadWriteIOUtils.write(intValue, valueBAOSList[seriesIndex]);
                 break;
               case INT64:
                 long longValue = cachedBatchDataArray[seriesIndex].getLong();
-                if (encoder != null) {
+                if (encoder != null && encoder.needEncode(minTime)) {
                   longValue = encoder.encodeLong(longValue, minTime);
                 }
                 ReadWriteIOUtils.write(longValue, valueBAOSList[seriesIndex]);
                 break;
               case FLOAT:
                 float floatValue = cachedBatchDataArray[seriesIndex].getFloat();
-                if (encoder != null) {
+                if (encoder != null && encoder.needEncode(minTime)) {
                   floatValue = encoder.encodeFloat(floatValue, minTime);
                 }
                 ReadWriteIOUtils.write(floatValue, valueBAOSList[seriesIndex]);
                 break;
               case DOUBLE:
                 double doubleValue = cachedBatchDataArray[seriesIndex].getDouble();
-                if (encoder != null) {
+                if (encoder != null && encoder.needEncode(minTime)) {
                   doubleValue = encoder.encodeDouble(doubleValue, minTime);
                 }
                 ReadWriteIOUtils.write(doubleValue, valueBAOSList[seriesIndex]);
@@ -229,15 +228,13 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     List<ByteBuffer> valueBufferList = new ArrayList<>();
     List<ByteBuffer> bitmapBufferList = new ArrayList<>();
 
-    for (
-        int tsIndex = 0;
-        tsIndex < seriesNum; tsIndex++) {
+    for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
 
       // add value buffer of current series
-      putPBOSToBuffer(valueBAOSList, valueBufferList, tsIndex);
+      putPBOSToBuffer(valueBAOSList, valueBufferList, seriesIndex);
 
       // add bitmap buffer of current series
-      putPBOSToBuffer(bitmapBAOSList, bitmapBufferList, tsIndex);
+      putPBOSToBuffer(bitmapBAOSList, bitmapBufferList, seriesIndex);
     }
 
     // set value buffers and bitmap buffers

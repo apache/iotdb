@@ -61,7 +61,7 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
     return resultInteger.mod(new BigInteger(base.toString())).intValue();
   }
 
-  private boolean getMarkFlag(long timestamp) {
+  public boolean needEncode(long timestamp) {
     return hashMod(String.format("%s%d", secretKey, timestamp), markRate) == 0;
   }
 
@@ -108,7 +108,7 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
 
   public RowRecord encodeRecord(RowRecord record) {
     long timestamp = record.getTimestamp();
-    if (!getMarkFlag(timestamp)) {
+    if (!needEncode(timestamp)) {
       return record;
     }
     List<Field> fields = record.getFields();
