@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -135,21 +136,11 @@ public class StorageGroupProcessor {
   /**
    * time range id in the storage group -> tsFileProcessor for this time range
    */
-  private final HashMap<Long, TsFileProcessor> workSequenceTsFileProcessors = new HashMap<>();
-  /**
-   * time range id for divide storage group -> last used time of tsFileProcessor for this storage
-   * group
-   */
-  private final HashMap<Long, Long> sequenceTsfileProcessorLastUseTime = new HashMap<>();
+  private final TreeMap<Long, TsFileProcessor> workSequenceTsFileProcessors = new TreeMap<>();
   /**
    * time range id in the storage group -> tsFileProcessor for this time range
    */
-  private final HashMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new HashMap<>();
-  /**
-   * time range id for divide storage group -> last used time of tsFileProcessor for this storage
-   * group
-   */
-  private final HashMap<Long, Long> unsequenceTsfileProcessorLastUseTime = new HashMap<>();
+  private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
   // Time range for divide storage group, unit is second
   private final long timeRangeForStorageGroup = IoTDBDescriptor.getInstance().getConfig()
       .getTimeRangeForStorageGroup();
@@ -418,11 +409,11 @@ public class StorageGroupProcessor {
       /*
        * sequence time range id -> indexes indicating which rows should be inserted
        */
-      HashMap<Long, List<Integer>> sequenceTimeRangeIndexes = new HashMap<>();
+      TreeMap<Long, List<Integer>> sequenceTimeRangeIndexes = new TreeMap<>();
       /*
        * unsequence time range id -> indexes indicating which rows should be inserted
        */
-      HashMap<Long, List<Integer>> unsequenceTimeRangeIndexes = new HashMap<>();
+      TreeMap<Long, List<Integer>> unsequenceTimeRangeIndexes = new TreeMap<>();
       for (int i = 0; i < batchInsertPlan.getRowCount(); i++) {
         long currTime = batchInsertPlan.getTimes()[i];
         // skip points that do not satisfy TTL
@@ -434,24 +425,10 @@ public class StorageGroupProcessor {
         long timeRangeId = fromTimeToTimeRange(currTime);
         if (currTime > lastFlushTime) {
           // for sequence
-          List<Integer> curIndex = sequenceTimeRangeIndexes.get(timeRangeId);
-          if (curIndex == null) {
-            // if map not contains this time range
-            curIndex = new ArrayList<>();
-            sequenceTimeRangeIndexes.put(timeRangeId, curIndex);
-          }
-
-          curIndex.add(i);
+          sequenceTimeRangeIndexes.putIfAbsent(timeRangeId, new ArrayList<>()).add(i);
         } else {
           // for unsequence
-          List<Integer> curIndex = unsequenceTimeRangeIndexes.get(timeRangeId);
-          if (curIndex == null) {
-            // if map not contains this time range
-            curIndex = new ArrayList<>();
-            unsequenceTimeRangeIndexes.put(timeRangeId, curIndex);
-          }
-
-          curIndex.add(i);
+          unsequenceTimeRangeIndexes.putIfAbsent(timeRangeId, new ArrayList<>()).add(i);
         }
       }
 
@@ -551,12 +528,10 @@ public class StorageGroupProcessor {
     TsFileProcessor tsFileProcessor = null;
     try {
       if (sequence) {
-        tsFileProcessor = getOrCreateTsFileProcessorIntern(timeRangeId, workSequenceTsFileProcessors,
-            sequenceTsfileProcessorLastUseTime, sequenceFileList, true);
+        tsFileProcessor = getOrCreateTsFileProcessorIntern(timeRangeId, workSequenceTsFileProcessors, sequenceFileList, true);
       } else {
         tsFileProcessor = getOrCreateTsFileProcessorIntern(timeRangeId,
-            workUnsequenceTsFileProcessors,
-            unsequenceTsfileProcessorLastUseTime, unSequenceFileList, false);
+            workUnsequenceTsFileProcessors, unSequenceFileList, false);
       }
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
@@ -576,14 +551,12 @@ public class StorageGroupProcessor {
    * get processor from hashmap, flush oldest processor is necessary
    *
    * @param timeRangeId time partition range
-   * @param tsFileProcessorHashMap tsFileProcessorHashMap
-   * @param tsfileProcessorLastUseTime last use time of this processor map
+   * @param tsFileProcessorTreeMap tsFileProcessorTreeMap
    * @param fileList file list to add new processor
    * @param sequence whether is sequence or not
    */
   private TsFileProcessor getOrCreateTsFileProcessorIntern(long timeRangeId,
-      HashMap<Long, TsFileProcessor> tsFileProcessorHashMap,
-      HashMap<Long, Long> tsfileProcessorLastUseTime,
+      TreeMap<Long, TsFileProcessor> tsFileProcessorTreeMap,
       Collection<TsFileResource> fileList,
       boolean sequence)
       throws IOException, DiskSpaceInsufficientException {
@@ -592,37 +565,24 @@ public class StorageGroupProcessor {
     // we have to ensure only one thread can change workSequenceTsFileProcessors
     writeLock();
     try {
-      if (!tsFileProcessorHashMap.containsKey(timeRangeId)) {
+      if (!tsFileProcessorTreeMap.containsKey(timeRangeId)) {
         // we have to remove oldest processor to control the num of the memtables
-        if (tsFileProcessorHashMap.size()
+        if (tsFileProcessorTreeMap.size()
             >= IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP / 2) {
-          long oldestTimeRange = -1;
-          long oldestUseTime = Long.MAX_VALUE;
-          for (long curTimeRange : tsFileProcessorHashMap.keySet()) {
-            long curUseTime = tsfileProcessorLastUseTime.get(curTimeRange);
-            if (oldestUseTime > curUseTime) {
-              oldestUseTime = curUseTime;
-              oldestTimeRange = curTimeRange;
-            }
-          }
-          if (oldestTimeRange == -1) {
-            throw new IllegalStateException("MEMTABLE_NUM_IN_EACH_STORAGE_GROUP size is too small: "
-                + IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP);
-          }
+          Map.Entry<Long, TsFileProcessor> processorEntry = tsFileProcessorTreeMap.firstEntry();
 
-          moveOneWorkProcessorToClosingList(sequence, tsFileProcessorHashMap.get(oldestTimeRange));
+          moveOneWorkProcessorToClosingList(sequence, processorEntry.getValue());
         }
 
         // build new processor
         TsFileProcessor newProcessor = createTsFileProcessor(sequence, timeRangeId);
-        tsFileProcessorHashMap.put(timeRangeId, newProcessor);
+        tsFileProcessorTreeMap.put(timeRangeId, newProcessor);
         fileList.add(newProcessor.getTsFileResource());
         res = newProcessor;
       } else {
-        res = tsFileProcessorHashMap.get(timeRangeId);
+        res = tsFileProcessorTreeMap.get(timeRangeId);
       }
 
-      tsfileProcessorLastUseTime.put(timeRangeId, System.currentTimeMillis());
     } finally {
       // unlock in finally
       writeUnlock();
@@ -681,14 +641,12 @@ public class StorageGroupProcessor {
       tsFileProcessor.asyncClose();
 
       workSequenceTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
-      sequenceTsfileProcessorLastUseTime.remove(tsFileProcessor.getTimeRangeId());
       logger.info("close a sequence tsfile processor {}", storageGroupName);
     } else {
       closingUnSequenceTsFileProcessor.add(tsFileProcessor);
       tsFileProcessor.asyncClose();
 
       workUnsequenceTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
-      unsequenceTsfileProcessorLastUseTime.remove(tsFileProcessor.getTimeRangeId());
       logger.info("close an unsequence tsfile processor {}", storageGroupName);
     }
   }

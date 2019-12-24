@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.modification;
 import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
 import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -151,6 +152,7 @@ public class DeletionFileNodeTest {
     File fileNodeDir = new File(DirectoryManager.getInstance().getSequenceFileFolder(0), processorName);
     List<File> modFiles = new ArrayList<>();
     for(File directory : fileNodeDir.listFiles()){
+      assertTrue(directory.isDirectory());
       if(directory.isDirectory()){
         for(File file : directory.listFiles()){
           if(file.getPath().endsWith(ModificationFile.FILE_SUFFIX)){
@@ -256,6 +258,7 @@ public class DeletionFileNodeTest {
     File fileNodeDir = new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(), processorName);
     List<File> modFiles = new ArrayList<>();
     for(File directory : fileNodeDir.listFiles()){
+      assertTrue(directory.isDirectory());
       if(directory.isDirectory()){
         for(File file : directory.listFiles()){
           if(file.getPath().endsWith(ModificationFile.FILE_SUFFIX)){
