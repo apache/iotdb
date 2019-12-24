@@ -24,7 +24,7 @@ public class NVMSpaceManager {
   private FileChannel nvmFileChannel;
   private final MapMode MAP_MODE = MapMode.READ_WRITE;
   private long nvmSize;
-  private AtomicLong curOffset = new AtomicLong(0L);
+  private long curOffset = 0L;
 
   private NVMSpaceManager() {
 //    init();
@@ -73,16 +73,17 @@ public class NVMSpaceManager {
     return size >> 3;
   }
 
-  public NVMSpace allocate(long size, TSDataType dataType) {
-    long offset = curOffset.getAndAdd(size);
-    if (offset + size > nvmSize) {
-      // TODO throw exception
-    }
+  public synchronized NVMSpace allocate(long size, TSDataType dataType) {
+    // TODO check if full
 
     try {
-      return new NVMSpace(offset, size, nvmFileChannel.map(MAP_MODE, offset, size), dataType);
+//      logger.debug("Try to allocate {} nvm space at {}.", size, curOffset);
+      NVMSpace nvmSpace = new NVMSpace(curOffset, size, nvmFileChannel.map(MAP_MODE, curOffset, size), dataType);
+      curOffset += size;
+      return nvmSpace;
     } catch (IOException e) {
       // TODO deal with error
+      logger.error("Fail to allocate {} nvm space at {}.", size, curOffset);
       e.printStackTrace();
       return null;
     }
@@ -157,19 +158,19 @@ public class NVMSpaceManager {
       index *= objectSize;
       switch (dataType) {
         case BOOLEAN:
-          object = byteBuffer.put(index, (byte) object);
+          byteBuffer.put(index, (byte) object);
           break;
         case INT32:
-          object = byteBuffer.putInt(index, (int) object);
+          byteBuffer.putInt(index, (int) object);
           break;
         case INT64:
-          object = byteBuffer.putLong(index, (long) object);
+          byteBuffer.putLong(index, (long) object);
           break;
         case FLOAT:
-          object = byteBuffer.putFloat(index, (float) object);
+          byteBuffer.putFloat(index, (float) object);
           break;
         case DOUBLE:
-          object = byteBuffer.putDouble(index, (double) object);
+          byteBuffer.putDouble(index, (double) object);
           break;
         case TEXT:
           // TODO

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.rescon;
 
 import java.util.ArrayDeque;
 import java.util.EnumMap;
+import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -55,6 +56,7 @@ public class PrimitiveArrayPool {
   private PrimitiveArrayPool() {}
 
   public synchronized Object getPrimitiveDataListByType(TSDataType dataType) {
+    long time = System.currentTimeMillis();
     ArrayDeque dataListQueue = primitiveArraysMap.computeIfAbsent(dataType, k ->new ArrayDeque<>());
     Object dataArray = dataListQueue.poll();
     switch (dataType) {
@@ -91,6 +93,8 @@ public class PrimitiveArrayPool {
       default:
         throw new UnSupportedDataTypeException("DataType: " + dataType);
     }
+
+    PerfMonitor.add("Normal.getDataList", System.currentTimeMillis() - time);
     return dataArray;
   }
 

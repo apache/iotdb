@@ -67,7 +67,6 @@ public class PerfTest {
     EnvironmentUtils.envSetUp();
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
     context2 = EnvironmentUtils.TEST_QUERY_CONTEXT;
-    NVMSpaceManager.init(nvmPath);
 
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
         SchemaUtils.constructSchema(deviceId), SysTimeVersionController.INSTANCE, x -> {

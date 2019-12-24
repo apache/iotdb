@@ -2,6 +2,7 @@ package org.apache.iotdb.db.nvm.rescon;
 
 import java.util.ArrayDeque;
 import java.util.EnumMap;
+import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
 import org.apache.iotdb.db.nvm.space.NVMSpaceManager.NVMSpace;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -35,6 +36,7 @@ public class NVMPrimitiveArrayPool {
   private NVMPrimitiveArrayPool() {}
 
   public synchronized NVMSpace getPrimitiveDataListByType(TSDataType dataType) {
+    long time = System.currentTimeMillis();
     ArrayDeque<NVMSpace> dataListQueue = primitiveArraysMap.computeIfAbsent(dataType, k ->new ArrayDeque<>());
     NVMSpace nvmSpace = dataListQueue.poll();
 
@@ -43,6 +45,7 @@ public class NVMPrimitiveArrayPool {
       nvmSpace = NVMSpaceManager.getInstance().allocate(size * ARRAY_SIZE, dataType);
     }
 
+    PerfMonitor.add("NVM.getDataList", System.currentTimeMillis() - time);
     return nvmSpace;
   }
 

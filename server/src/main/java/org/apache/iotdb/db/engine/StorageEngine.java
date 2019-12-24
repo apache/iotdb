@@ -51,6 +51,7 @@ import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
+import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -212,7 +213,7 @@ public class StorageEngine implements IService {
    */
   public void insert(InsertPlan insertPlan)
       throws StorageEngineException, QueryProcessException {
-
+    long time = System.currentTimeMillis();
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(insertPlan.getDeviceId());
@@ -225,6 +226,7 @@ public class StorageEngine implements IService {
     // TODO monitor: update statistics
     try {
       storageGroupProcessor.insert(insertPlan);
+      PerfMonitor.add("StorageEngine.insert", System.currentTimeMillis() - time);
     } catch (QueryProcessException e) {
       throw new QueryProcessException(e);
     }
@@ -236,6 +238,7 @@ public class StorageEngine implements IService {
    * @return result of each row
    */
   public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws StorageEngineException {
+    long time = System.currentTimeMillis();
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(batchInsertPlan.getDeviceId());
@@ -248,7 +251,9 @@ public class StorageEngine implements IService {
 
     // TODO monitor: update statistics
     try {
-      return storageGroupProcessor.insertBatch(batchInsertPlan);
+      Integer[] res = storageGroupProcessor.insertBatch(batchInsertPlan);
+      PerfMonitor.add("StorageEngine.insertBatch", System.currentTimeMillis() - time);
+      return res;
     } catch (QueryProcessException e) {
       throw new StorageEngineException(e);
     }
