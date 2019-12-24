@@ -55,13 +55,27 @@ There are several ways to identify the version of IoTDB that you are using:
 * Check pom.xml file:
 
 ```
-<version>0.10.0</version>
+<version>x.x.x</version>
 ```
 
 * Use JDBC API:
 
 ```
 String iotdbVersion = tsfileDatabaseMetadata.getDatabaseProductVersion();
+```
+
+* Use Command Line Interface:
+
+```
+IoTDB> show version
+show version
++---------------+
+|version        |
++---------------+
+|x.x.x          |
++---------------+
+Total line number = 1
+It costs 0.241s
 ```
 
 ## Where can I find IoTDB logs?
@@ -95,7 +109,7 @@ By default settings, the data files (including tsfile, metadata, and WAL files) 
 Use IoTDB's Command Line Interface:
 
 ```
-IoTDB> show timeseries root.*
+IoTDB> show timeseries root
 ```
 
 In the result, there will be a statement shows `Total timeseries number`, this number is the timeseries number in IoTDB.

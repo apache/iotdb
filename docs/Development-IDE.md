@@ -39,7 +39,7 @@ Once all UTs are passed after you modify codes, your modification basically work
 
 * "File" -> "Open" -> choose the root path of IoTDB source code. 
 * use `mvn clean compile -Dmaven.test.skip=true`to get target.
-* mark directory ***iotdb/target/generated-sources/antlr3*** as source code
+* mark directory ***server/target/generated-sources/antlr4*** as source code
 * mark directory ***service-rpc/target/generated-sources/thrift*** as source code 
 
 ## Eclipse
