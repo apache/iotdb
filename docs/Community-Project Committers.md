@@ -46,3 +46,4 @@
 |  Zesong Sun    |  Tsinghua University |
 |  Kaifeng Xue   |  Tsinghua University |
 |  Tianci Zhu    |                      |
+|  Jack Tsai     |                      | 
