@@ -145,7 +145,7 @@ IoTDB> count timeseries root
 IoTDB> show timeseries root
 ```
 
-如果您想查询一个指定的 sensor, 您可以修改 \<timeseries path> 为 sensor 的名字。比如:
+如果您想查询一个指定的时间序列, 您可以修改 \<timeseries path> 为时间序列的完整路径。比如:
 
 ```
 IoTDB> show timeseries root.fit.d1.s1
@@ -164,4 +164,3 @@ IoTDB 客户端默认显示的时间是人类可读的(比如：```1970-01-01T08
 ```
 > $IOTDB_CLI_HOME/sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableIS08601
 ```
-
