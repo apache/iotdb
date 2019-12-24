@@ -18,27 +18,32 @@
  */
 package org.apache.iotdb.tsfile.read.filter;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.util.Objects;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
-
-import java.io.Serializable;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
 public class GroupByFilter implements Filter, Serializable {
 
   private static final long serialVersionUID = -1211805021419281440L;
-  private final long unit;
-  private final long slidingStep;
-  private final long startTime;
-  private final long endTime;
-  private final FilterType filterType;
+  private long unit;
+  private long slidingStep;
+  private long startTime;
+  private long endTime;
 
-  public GroupByFilter(long unit, long slidingStep, long startTime, long endTime, FilterType filterType) {
+  public GroupByFilter(long unit, long slidingStep, long startTime, long endTime) {
     this.unit = unit;
     this.slidingStep = slidingStep;
     this.startTime = startTime;
     this.endTime = endTime;
-    this.filterType = filterType;
+  }
+
+  public GroupByFilter() {
+
   }
 
   @Override
@@ -91,11 +96,54 @@ public class GroupByFilter implements Filter, Serializable {
 
   @Override
   public Filter clone() {
-    return new GroupByFilter(unit, slidingStep, startTime, endTime, filterType);
+    return new GroupByFilter(unit, slidingStep, startTime, endTime);
   }
 
   @Override
   public String toString() {
     return "GroupByFilter{}";
+  }
+
+  @Override
+  public void serialize(DataOutputStream outputStream) {
+    try {
+      outputStream.write(getSerializeId().ordinal());
+      outputStream.writeLong(unit);
+      outputStream.writeLong(slidingStep);
+      outputStream.writeLong(startTime);
+      outputStream.writeLong(endTime);
+    } catch (IOException ignored) {
+      // ignored
+    }
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    unit = buffer.getLong();
+    slidingStep = buffer.getLong();
+    startTime = buffer.getLong();
+    endTime = buffer.getLong();
+  }
+
+  @Override
+  public FilterSerializeId getSerializeId() {
+    return FilterSerializeId.GROUP_BY;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof GroupByFilter)) {
+      return false;
+    }
+    GroupByFilter other = ((GroupByFilter) obj);
+    return this.unit == other.unit
+        && this.slidingStep == other.slidingStep
+        && this.startTime == other.startTime
+        && this.endTime == other.endTime;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(unit, slidingStep, startTime, endTime);
   }
 }

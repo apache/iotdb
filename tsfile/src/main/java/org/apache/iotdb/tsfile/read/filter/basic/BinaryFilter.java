@@ -18,7 +18,12 @@
  */
 package org.apache.iotdb.tsfile.read.filter.basic;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.util.Objects;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
 /**
  * Definition for binary filter operations.
@@ -27,8 +32,11 @@ public abstract class BinaryFilter implements Filter, Serializable {
 
   private static final long serialVersionUID = 1039585564327602465L;
 
-  protected final Filter left;
-  protected final Filter right;
+  protected Filter left;
+  protected Filter right;
+
+  public BinaryFilter() {
+  }
 
   protected BinaryFilter(Filter left, Filter right) {
     this.left = left;
@@ -50,4 +58,36 @@ public abstract class BinaryFilter implements Filter, Serializable {
 
   @Override
   public abstract Filter clone();
+
+  @Override
+  public void serialize(DataOutputStream outputStream) {
+    try {
+      outputStream.write(getSerializeId().ordinal());
+      left.serialize(outputStream);
+      right.serialize(outputStream);
+    } catch (IOException ignored) {
+      // ignore
+    }
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    left = FilterFactory.deserialize(buffer);
+    right = FilterFactory.deserialize(buffer);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof BinaryFilter)) {
+      return false;
+    }
+    BinaryFilter other = ((BinaryFilter) obj);
+    return this.left.equals(other.left) && this.right.equals(other.right)
+        && this.getSerializeId().equals(other.getSerializeId());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(left, right, getSerializeId());
+  }
 }
