@@ -134,16 +134,16 @@ public class StorageGroupProcessor {
    */
   private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
   /**
-   * time range id in the storage group -> tsFileProcessor for this time range
+   * time partition id in the storage group -> tsFileProcessor for this time partition
    */
   private final TreeMap<Long, TsFileProcessor> workSequenceTsFileProcessors = new TreeMap<>();
   /**
-   * time range id in the storage group -> tsFileProcessor for this time range
+   * time partition id in the storage group -> tsFileProcessor for this time partition
    */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
-  // Time range for divide storage group, unit is second
+  // Time range for dividing storage group, unit is second
   private final long timeRangeForStorageGroup = IoTDBDescriptor.getInstance().getConfig()
-      .getTimeRangeForStorageGroup();
+      .getPartitionInterval();
   /**
    * the schema of time series that belong this storage group
    */
@@ -407,11 +407,11 @@ public class StorageGroupProcessor {
       long lastFlushTime = latestFlushedTimeForEachDevice.get(batchInsertPlan.getDeviceId());
 
       /*
-       * sequence time range id -> indexes indicating which rows should be inserted
+       * sequence time partition id -> indexes indicating which rows in a batch should be inserted
        */
       TreeMap<Long, List<Integer>> sequenceTimeRangeIndexes = new TreeMap<>();
       /*
-       * unsequence time range id -> indexes indicating which rows should be inserted
+       * unsequence time partition id -> indexes indicating which rows in a batch should be inserted
        */
       TreeMap<Long, List<Integer>> unsequenceTimeRangeIndexes = new TreeMap<>();
       for (int i = 0; i < batchInsertPlan.getRowCount(); i++) {
@@ -422,13 +422,13 @@ public class StorageGroupProcessor {
           continue;
         }
         results[i] = TSStatusCode.SUCCESS_STATUS.getStatusCode();
-        long timeRangeId = fromTimeToTimeRange(currTime);
+        long timePartitionId = fromTimeToTimePartition(currTime);
         if (currTime > lastFlushTime) {
           // for sequence
-          sequenceTimeRangeIndexes.putIfAbsent(timeRangeId, new ArrayList<>()).add(i);
+          sequenceTimeRangeIndexes.computeIfAbsent(timePartitionId, k -> new ArrayList<>()).add(i);
         } else {
           // for unsequence
-          unsequenceTimeRangeIndexes.putIfAbsent(timeRangeId, new ArrayList<>()).add(i);
+          unsequenceTimeRangeIndexes.computeIfAbsent(timePartitionId, k -> new ArrayList<>()).add(i);
         }
       }
 
@@ -495,7 +495,7 @@ public class StorageGroupProcessor {
     TsFileProcessor tsFileProcessor;
     boolean result;
 
-    tsFileProcessor = getOrCreateTsFileProcessor(fromTimeToTimeRange(insertPlan.getTime()),
+    tsFileProcessor = getOrCreateTsFileProcessor(fromTimeToTimePartition(insertPlan.getTime()),
         sequence);
 
     if (tsFileProcessor == null) {
@@ -528,7 +528,8 @@ public class StorageGroupProcessor {
     TsFileProcessor tsFileProcessor = null;
     try {
       if (sequence) {
-        tsFileProcessor = getOrCreateTsFileProcessorIntern(timeRangeId, workSequenceTsFileProcessors, sequenceFileList, true);
+        tsFileProcessor = getOrCreateTsFileProcessorIntern(timeRangeId,
+            workSequenceTsFileProcessors, sequenceFileList, true);
       } else {
         tsFileProcessor = getOrCreateTsFileProcessorIntern(timeRangeId,
             workUnsequenceTsFileProcessors, unSequenceFileList, false);
@@ -591,7 +592,7 @@ public class StorageGroupProcessor {
     return res;
   }
 
-  private long fromTimeToTimeRange(long time) {
+  private long fromTimeToTimePartition(long time) {
     return time / timeRangeForStorageGroup;
   }
 
@@ -793,19 +794,15 @@ public class StorageGroupProcessor {
     writeLock();
     try {
       logger.info("async force close all files in storage group: {}", storageGroupName);
-      if (workSequenceTsFileProcessors != null) {
-        // to avoid concurrent modification problem, we need a new array list
-        for (TsFileProcessor tsFileProcessor : new ArrayList<>(
-            workSequenceTsFileProcessors.values())) {
-          moveOneWorkProcessorToClosingList(true, tsFileProcessor);
-        }
+      // to avoid concurrent modification problem, we need a new array list
+      for (TsFileProcessor tsFileProcessor : new ArrayList<>(
+          workSequenceTsFileProcessors.values())) {
+        moveOneWorkProcessorToClosingList(true, tsFileProcessor);
       }
-      if (workUnsequenceTsFileProcessors != null) {
-        // to avoid concurrent modification problem, we need a new array list
-        for (TsFileProcessor tsFileProcessor : new ArrayList<>(
-            workUnsequenceTsFileProcessors.values())) {
-          moveOneWorkProcessorToClosingList(false, tsFileProcessor);
-        }
+      // to avoid concurrent modification problem, we need a new array list
+      for (TsFileProcessor tsFileProcessor : new ArrayList<>(
+          workUnsequenceTsFileProcessors.values())) {
+        moveOneWorkProcessorToClosingList(false, tsFileProcessor);
       }
     } finally {
       writeUnlock();
@@ -824,9 +821,9 @@ public class StorageGroupProcessor {
       lruForSensorUsedInQuery.add(measurementId);
     }
     try {
-      List<TsFileResource> seqResources = getFileReSourceListForQuery(sequenceFileList,
+      List<TsFileResource> seqResources = getFileResourceListForQuery(sequenceFileList,
           deviceId, measurementId, context);
-      List<TsFileResource> unseqResources = getFileReSourceListForQuery(unSequenceFileList,
+      List<TsFileResource> unseqResources = getFileResourceListForQuery(unSequenceFileList,
           deviceId, measurementId, context);
       QueryDataSource dataSource = new QueryDataSource(new Path(deviceId, measurementId),
           seqResources, unseqResources);
@@ -878,7 +875,7 @@ public class StorageGroupProcessor {
    * @param tsFileResources includes sealed and unsealed tsfile resources
    * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
    */
-  private List<TsFileResource> getFileReSourceListForQuery(
+  private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources,
       String deviceId, String measurementId, QueryContext context) {
 
@@ -957,19 +954,19 @@ public class StorageGroupProcessor {
         return;
       }
 
-      // time range to divide storage group
-      long timeRangeId = fromTimeToTimeRange(timestamp);
+      // time partition to divide storage group
+      long timePartionId = fromTimeToTimePartition(timestamp);
       // write log
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
-          if (entry.getKey() <= timeRangeId) {
+          if (entry.getKey() <= timePartionId) {
             entry.getValue().getLogNode()
                 .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
           }
         }
 
         for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
-          if (entry.getKey() <= timeRangeId) {
+          if (entry.getKey() <= timePartionId) {
             entry.getValue().getLogNode()
                 .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
           }
@@ -1453,10 +1450,10 @@ public class StorageGroupProcessor {
         tsFileResource.getFile().getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0]);
     int s = 0;
     int e = sequenceFileList.size() - 1;
-    List<TsFileResource> l = new ArrayList<>(sequenceFileList);
+    List<TsFileResource> tsFileResources = new ArrayList<>(sequenceFileList);
     while (s <= e) {
       int m = s + ((e - s) >> 1);
-      long currentTsFileTime = Long.parseLong(l.get(m).getFile().getName()
+      long currentTsFileTime = Long.parseLong(tsFileResources.get(m).getFile().getName()
           .split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0]);
       if (currentTsFileTime >= targetTsFileTime) {
         e = m - 1;

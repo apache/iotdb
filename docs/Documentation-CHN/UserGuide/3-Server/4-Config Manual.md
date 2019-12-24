@@ -224,9 +224,9 @@
 |默认值| 0 |
 |改后生效方式|重启服务器生效|
 
-* storage\_group\_time\_range
+* partition\_interval
 
-|名字| storage\_group\_time\_range |
+|名字| partition\_interval |
 |:---:|:---|
 |描述| 用于存储组分区的时间段长度，用户指定的存储组下会使用该时间段进行分区，单位：秒 |
 |类型|Int64|

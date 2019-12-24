@@ -452,18 +452,18 @@ public class IoTDBConfig {
    */
   private long defaultTTL = Long.MAX_VALUE;
 
-  public long getTimeRangeForStorageGroup() {
-    return timeRangeForStorageGroup;
+  public long getPartitionInterval() {
+    return partitionInterval;
   }
 
-  public void setTimeRangeForStorageGroup(long timeRangeForStorageGroup) {
-    this.timeRangeForStorageGroup = timeRangeForStorageGroup;
+  public void setPartitionInterval(long partitionInterval) {
+    this.partitionInterval = partitionInterval;
   }
 
   /**
-   * Time range for divide storage group, unit is second
+   * Time range for partitioning data inside each storage group, the unit is second
    */
-  private long timeRangeForStorageGroup = 86400;
+  private long partitionInterval = 86400;
 
   public IoTDBConfig() {
     // empty constructor

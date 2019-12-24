@@ -41,7 +41,7 @@ public class IoTDBConfigCheck {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
   // this is a initial parameter.
   private static String TIMESTAMP_PRECISION = "ms";
-  private static long STORAGE_GROUP_TIME_RANGE = 86400;
+  private static long PARTITION_INTERVAL = 86400;
   private Properties properties = new Properties();
 
   public static final IoTDBConfigCheck getInstance() {
@@ -50,8 +50,8 @@ public class IoTDBConfigCheck {
 
   public void checkConfig() {
     TIMESTAMP_PRECISION = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    STORAGE_GROUP_TIME_RANGE = IoTDBDescriptor.getInstance().getConfig()
-        .getTimeRangeForStorageGroup();
+    PARTITION_INTERVAL = IoTDBDescriptor.getInstance().getConfig()
+        .getPartitionInterval();
     createDir(SCHEMA_DIR);
     checkFile(SCHEMA_DIR);
     logger.info("System configuration is ok.");
@@ -94,7 +94,7 @@ public class IoTDBConfigCheck {
         System.exit(-1);
       }
       if (!(Long.parseLong(properties.getProperty("storage_group_time_range"))
-          == STORAGE_GROUP_TIME_RANGE)) {
+          == PARTITION_INTERVAL)) {
         logger.error("Wrong storage group time range, please set as: " + properties
             .getProperty("storage_group_time_range") + " !");
         System.exit(-1);
