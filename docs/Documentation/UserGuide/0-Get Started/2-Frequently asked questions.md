@@ -100,6 +100,12 @@ IoTDB> show timeseries root.*
 
 In the result, there will be a statement shows `Total timeseries number`, this number is the timeseries number in IoTDB.
 
+In the current version, IoTDB supports querying the number of time series. Use IoTDB's Command Line Interface:
+
+```
+IoTDB> count timeseries root
+```
+
 If you are using Linux, you can use the following shell command:
 
 ```
