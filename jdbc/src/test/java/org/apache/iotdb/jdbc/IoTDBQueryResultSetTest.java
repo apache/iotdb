@@ -238,7 +238,7 @@ public class IoTDBQueryResultSetTest {
     }
 
     // The client get TSQueryDataSet at the first request
-    verify(fetchResultsResp, times(1));
+    verify(fetchResultsResp, times(1)).getStatus();
   }
 
   // fake the first-time fetched result of 'testSql' from an IoTDB server
