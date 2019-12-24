@@ -1175,6 +1175,10 @@ public class IoTDBConfig {
     return hdfsIp.split(",");
   }
 
+  public String getHdfsIpStr() {
+      return hdfsIp;
+  }
+
   public void setHdfsIp(String[] hdfsIp) {
     this.hdfsIp = String.join(",", hdfsIp);
   }
@@ -1205,6 +1209,10 @@ public class IoTDBConfig {
 
   public String[] getDfsHaNamenodes() {
     return dfsHaNamenodes.split(",");
+  }
+
+  public String getDfsHaNamenodesStr(){
+    return dfsHaNamenodes;
   }
 
   public void setDfsHaNamenodes(String[] dfsHaNamenodes) {
