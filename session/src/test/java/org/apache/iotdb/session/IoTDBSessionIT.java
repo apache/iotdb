@@ -18,6 +18,17 @@
  */
 package org.apache.iotdb.session;
 
+import static org.junit.Assert.assertEquals;
+
+import java.io.File;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -37,13 +48,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
 
 public class IoTDBSessionIT {
 
@@ -533,7 +537,8 @@ public class IoTDBSessionIT {
   private void queryForBatch() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     String standard =
-        "Time\n" + "root.sg1.d1.s1\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n";
+        "Time\n" + "root.sg1.d1.s1\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n" +
+            "root.sg1.d2.s1\n" + "root.sg1.d2.s2\n" + "root.sg1.d2.s3\n";
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -551,8 +556,9 @@ public class IoTDBSessionIT {
           count++;
         }
       }
-      Assert.assertEquals(resultStr.toString(), standard);
-      Assert.assertEquals(4000, count);
+      Assert.assertEquals(standard, resultStr.toString());
+      // d1 and d2 will align
+      Assert.assertEquals(7000, count);
     }
   }
 
