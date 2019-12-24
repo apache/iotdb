@@ -205,3 +205,7 @@ git rebase upstream/master
 #### Code Style
 
 For Java code, Apache IoTDB follows Google’s Java Style Guide.
+
+#### Unit Test
+
+When writing unit tests, note the path to generate the test file at test time, which we require to be generated in the `target` directory and placed under the `constant` package for each test project

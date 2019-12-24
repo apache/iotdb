@@ -69,8 +69,8 @@ public class PageWriter {
   }
 
   private PageWriter(Encoder timeEncoder, Encoder valueEncoder) {
-    this.timeOut = new PublicBAOS();
-    this.valueOut = new PublicBAOS();
+    this.timeOut = new PublicBAOS(70*1024);
+    this.valueOut = new PublicBAOS(70*1024);
     this.timeEncoder = timeEncoder;
     this.valueEncoder = valueEncoder;
   }
