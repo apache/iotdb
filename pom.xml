@@ -19,8 +19,7 @@
     under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache</groupId>
@@ -32,9 +31,7 @@
     <version>0.10.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Apache IoTDB (incubating) Project Parent POM</name>
-    <description>This is the top level project that builds, packages the tsfile, iotdb engine, jdbc, and integration
-        libs.
-    </description>
+    <description>This is the top level project that builds, packages the tsfile, iotdb engine, jdbc, and integration libs.</description>
     <licenses>
         <license>
             <name>The Apache License, Version 2.0</name>
@@ -91,9 +88,9 @@
         <jetty.version>9.4.24.v20191120</jetty.version>
         <metrics.version>3.2.6</metrics.version>
         <!-- URL of the ASF SonarQube server -->
-        <!--        <sonar.host.url>https://builds.apache.org/analysis</sonar.host.url>-->
+        <sonar.host.url>https://builds.apache.org/analysis</sonar.host.url>
         <!-- Exclude all generated code -->
-        <!--        <sonar.exclusions>**/generated-sources</sonar.exclusions>-->
+        <sonar.exclusions>**/generated-sources</sonar.exclusions>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -474,11 +471,11 @@
                 <!--
                     Plugin for doing the code analysis.
                 -->
-                <!--                <plugin>-->
-                <!--                    <groupId>org.sonarsource.scanner.maven</groupId>-->
-                <!--                    <artifactId>sonar-maven-plugin</artifactId>-->
-                <!--                    <version>3.6.0.1398</version>-->
-                <!--                </plugin>-->
+                <plugin>
+                    <groupId>org.sonarsource.scanner.maven</groupId>
+                    <artifactId>sonar-maven-plugin</artifactId>
+                    <version>3.6.0.1398</version>
+                </plugin>
                 <plugin>
                     <groupId>org.apache.rat</groupId>
                     <artifactId>apache-rat-plugin</artifactId>
@@ -698,8 +695,7 @@
                                 <!-- Will generate META-INF/{DEPENDENCIES,LICENSE,NOTICE} -->
                                 <resourceBundle>org.apache:apache-jar-resource-bundle:1.4</resourceBundle>
                                 <!-- Will generate META-INF/DISCLAIMER  -->
-                                <resourceBundle>org.apache:apache-incubator-disclaimer-resource-bundle:1.1
-                                </resourceBundle>
+                                <resourceBundle>org.apache:apache-incubator-disclaimer-resource-bundle:1.1</resourceBundle>
                             </resourceBundles>
                             <!-- Content in this directory will be appended to generated resources -->
                             <appendedResourcesDirectory>${basedir}/src/remote-resources</appendedResourcesDirectory>
@@ -722,9 +718,7 @@
                 </os>
             </activation>
             <properties>
-                <thrift.download-url>
-                    http://artfiles.org/apache.org/thrift/${thrift.version}/thrift-${thrift.version}.exe
-                </thrift.download-url>
+                <thrift.download-url>http://artfiles.org/apache.org/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
                 <thrift.executable>thrift-${thrift.version}-win-x86_64.exe</thrift.executable>
                 <thrift.skip-making-executable>true</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>echo</thrift.exec-cmd.executable>
@@ -740,9 +734,7 @@
                 </os>
             </activation>
             <properties>
-                <thrift.download-url>
-                    https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_linux.exe
-                </thrift.download-url>
+                <thrift.download-url>https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_linux.exe</thrift.download-url>
                 <thrift.executable>thrift_0.12.0_0.13.0_linux.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
@@ -757,9 +749,7 @@
                 </os>
             </activation>
             <properties>
-                <thrift.download-url>
-                    https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_mac.exe
-                </thrift.download-url>
+                <thrift.download-url>https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_mac.exe</thrift.download-url>
                 <thrift.executable>thrift_0.12.0_0.13.0_mac.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
@@ -809,8 +799,7 @@
                 </file>
             </activation>
             <properties>
-                <thrift.exec.absolute.path>${project.build.directory}/tools/${thrift.executable}
-                </thrift.exec.absolute.path>
+                <thrift.exec.absolute.path>${project.build.directory}/tools/${thrift.executable}</thrift.exec.absolute.path>
             </properties>
             <build>
                 <plugins>
@@ -879,8 +868,7 @@
                                     <generator>py</generator>
                                     <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
-                                    <outputDirectory>${project.build.directory}/generated-sources-python/iotdb
-                                    </outputDirectory>
+                                    <outputDirectory>${project.build.directory}/generated-sources-python/iotdb</outputDirectory>
                                 </configuration>
                             </execution>
                             <execution>
@@ -962,8 +950,7 @@
                                         <fileSet>
                                             <directory>${project.build.directory}</directory>
                                             <includes>
-                                                <include>apache-iotdb-${project.version}-incubating-source-release.zip
-                                                </include>
+                                                <include>apache-iotdb-${project.version}-incubating-source-release.zip</include>
                                             </includes>
                                         </fileSet>
                                     </fileSets>
@@ -1033,8 +1020,7 @@
                                         </requireJavaVersion>
                                         <!-- Disabled for now as it breaks the ability to build single modules -->
                                         <!--reactorModuleConvergence/-->
-                                        <banVulnerable
-                                                implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies"/>
+                                        <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies"/>
                                     </rules>
                                 </configuration>
                             </execution>
