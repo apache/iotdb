@@ -518,6 +518,11 @@
                         </excludes>
                     </configuration>
                 </plugin>
+                <plugin>
+                    <groupId>org.eluder.coveralls</groupId>
+                    <artifactId>coveralls-maven-plugin</artifactId>
+                    <version>4.3.0</version>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -1165,24 +1170,16 @@
              use `mvn post-integration-test -pl hadoop  -Pcode-coverage -Pcoveralls -DrepoToken=TOKEN`-->
         <profile>
             <id>coveralls</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.eluder.coveralls</groupId>
-                        <artifactId>coveralls-maven-plugin</artifactId>
-                        <version>4.3.0</version>
-                        <executions>
-                            <execution>
-                                <id>report to coveralls</id>
-                                <phase>post-integration-test</phase>
-                                <goals>
-                                    <goal>report</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
+            <modules>
+                <!-- make sure the modules are synced with profile code-coverage-->
+                <module>tsfile</module>
+                <module>client</module>
+                <module>session</module>
+                <module>server</module>
+                <module>jdbc</module>
+                <module>hadoop</module>
+                <module>hive-connector</module>
+            </modules>
         </profile>
     </profiles>
 </project>
