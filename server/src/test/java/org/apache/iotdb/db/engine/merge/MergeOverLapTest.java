@@ -135,28 +135,28 @@ public class MergeOverLapTest extends MergeTest {
 
   @Test
   public void testFullMerge() throws Exception {
-//    MergeTask mergeTask =
-//        new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(), (k, v, l) -> {}, "test",
-//            true, 1, MERGE_TEST_SG);
-//    mergeTask.call();
-//
-//    QueryContext context = new QueryContext();
-//    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
-//    SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
-//        Collections.singletonList(seqResources.get(0)),
-//        null, context);
-//    int cnt = 0;
-//    try {
-//      while (tsFilesReader.hasNext()) {
-//        BatchData batchData = tsFilesReader.nextBatch();
-//        for (int i = 0; i < batchData.length(); i++) {
-//          cnt ++;
-//          assertEquals(batchData.getTimeByIndex(i) + 20000.0, batchData.getDoubleByIndex(i), 0.001);
-//        }
-//      }
-//      assertEquals(1000, cnt);
-//    } finally {
-//      tsFilesReader.close();
-//    }
+    MergeTask mergeTask =
+        new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(), (k, v, l) -> {}, "test",
+            true, 1, MERGE_TEST_SG);
+    mergeTask.call();
+
+    QueryContext context = new QueryContext();
+    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
+        Collections.singletonList(seqResources.get(0)),
+        null, context);
+    int cnt = 0;
+    try {
+      while (tsFilesReader.hasNextBatch()) {
+        BatchData batchData = tsFilesReader.nextBatch();
+        for (int i = 0; i < batchData.length(); i++) {
+          cnt ++;
+          assertEquals(batchData.getTimeByIndex(i) + 20000.0, batchData.getDoubleByIndex(i), 0.001);
+        }
+      }
+      assertEquals(1000, cnt);
+    } finally {
+      tsFilesReader.close();
+    }
   }
 }

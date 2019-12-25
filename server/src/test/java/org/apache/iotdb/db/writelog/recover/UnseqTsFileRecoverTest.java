@@ -172,9 +172,9 @@ public class UnseqTsFileRecoverTest {
     }
 
     for (int i = 0; i < 10; i++) {
-      TimeValuePair e = unSeqMergeReader.current();
-      assertEquals(i, e.getTimestamp());
-      assertEquals(11, (long) e.getValue().getValue());
+      TimeValuePair timeValuePair = unSeqMergeReader.current();
+      assertEquals(i, timeValuePair.getTimestamp());
+      assertEquals(11, (long) timeValuePair.getValue().getValue());
       unSeqMergeReader.next();
     }
     unSeqMergeReader.close();

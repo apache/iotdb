@@ -40,9 +40,9 @@ public class PriorityMergeReaderTest2 {
 
     int cnt = 0;
     while (priorityMergeReader.hasNext()) {
-      TimeValuePair e = priorityMergeReader.next();
-      long time = e.getTimestamp();
-      long value = (long) e.getValue().getValue();
+      TimeValuePair timeValuePair = priorityMergeReader.next();
+      long time = timeValuePair.getTimestamp();
+      long value = (long) timeValuePair.getValue().getValue();
 
       // System.out.println(time + "," + value);
       if (time <= 500 && (time - 100) % 5 == 0) {

@@ -57,9 +57,9 @@ public class PriorityMergeReaderTest {
 
     int i = 0;
     while (priorityMergeReader.hasNext()) {
-      TimeValuePair e = priorityMergeReader.next();
-      Assert.assertEquals(retTimestamp[i], e.getTimestamp());
-      Assert.assertEquals(retValue[i], e.getValue().getValue());
+      TimeValuePair timeValuePair = priorityMergeReader.next();
+      Assert.assertEquals(retTimestamp[i], timeValuePair.getTimestamp());
+      Assert.assertEquals(retValue[i], timeValuePair.getValue().getValue());
       i++;
     }
   }
