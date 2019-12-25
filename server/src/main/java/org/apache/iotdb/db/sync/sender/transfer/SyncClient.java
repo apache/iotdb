@@ -40,9 +40,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
@@ -64,8 +67,8 @@ import org.apache.iotdb.db.sync.sender.recover.ISyncSenderLogger;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogger;
 import org.apache.iotdb.db.utils.SyncUtils;
-import org.apache.iotdb.service.sync.thrift.SyncStatus;
 import org.apache.iotdb.service.sync.thrift.SyncService;
+import org.apache.iotdb.service.sync.thrift.SyncStatus;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -96,13 +99,13 @@ public class SyncClient implements ISyncClient {
 
   private SyncService.Client serviceClient;
 
-  private Set<String> allSG;
+  private Map<String, Set<Long>> allSG;
 
-  private Map<String, Set<File>> toBeSyncedFilesMap;
+  private Map<String, Map<Long, Set<File>>> toBeSyncedFilesMap;
 
-  private Map<String, Set<File>> deletedFilesMap;
+  private Map<String, Map<Long, Set<File>>> deletedFilesMap;
 
-  private Map<String, Set<File>> lastLocalFilesMap;
+  private Map<String, Map<Long, Set<File>>> lastLocalFilesMap;
 
   /**
    * If true, sync is in execution.
@@ -449,11 +452,12 @@ public class SyncClient implements ISyncClient {
       syncStatus = true;
 
       List<String> storageGroups = config.getStorageGroupList();
-      for (String sgName : allSG) {
+      for (Entry<String, Set<Long>> entry : allSG.entrySet()) {
+        String sgName = entry.getKey();
         if (!storageGroups.isEmpty() && !storageGroups.contains(sgName)) {
           continue;
         }
-        lastLocalFilesMap.putIfAbsent(sgName, new HashSet<>());
+        lastLocalFilesMap.putIfAbsent(sgName, new HashMap<>());
         syncLog = new SyncSenderLogger(getSyncLogFile());
         try {
           SyncStatus status = serviceClient.init(sgName);
@@ -463,11 +467,19 @@ public class SyncClient implements ISyncClient {
         } catch (TException | SyncConnectionException e) {
           throw new SyncConnectionException("Unable to connect to receiver", e);
         }
-        logger.info("Sync process starts to transfer data of storage group {}", sgName);
-        syncDeletedFilesNameInOneGroup(sgName,
-            deletedFilesMap.getOrDefault(sgName, new HashSet<>()));
+        logger.info(
+            "Sync process starts to transfer data of storage group {}, it has {} time ranges.",
+            sgName, entry.getValue().size());
         try {
-          syncDataFilesInOneGroup(sgName, toBeSyncedFilesMap.getOrDefault(sgName, new HashSet<>()));
+          for (Long timeRangeId : entry.getValue()) {
+            lastLocalFilesMap.get(sgName).putIfAbsent(timeRangeId, new HashSet<>());
+            syncDeletedFilesNameInOneGroup(sgName, timeRangeId,
+                deletedFilesMap.getOrDefault(sgName, Collections.emptyMap())
+                    .getOrDefault(timeRangeId, Collections.emptySet()));
+            syncDataFilesInOneGroup(sgName, timeRangeId,
+                toBeSyncedFilesMap.getOrDefault(sgName, Collections.emptyMap())
+                    .getOrDefault(timeRangeId, Collections.emptySet()));
+          }
         } catch (SyncDeviceOwnerConflictException e) {
           deletedFilesMap.remove(sgName);
           toBeSyncedFilesMap.remove(sgName);
@@ -475,6 +487,8 @@ public class SyncClient implements ISyncClient {
           config.setStorageGroupList(storageGroups);
           logger.error("Skip the data files of the storage group {}", sgName, e);
         }
+        logger.info(
+            "Sync process finished the task to sync data of storage group {}.", sgName);
       }
 
     } catch (SyncConnectionException e) {
@@ -488,7 +502,7 @@ public class SyncClient implements ISyncClient {
   }
 
   @Override
-  public void syncDeletedFilesNameInOneGroup(String sgName, Set<File> deletedFilesName)
+  public void syncDeletedFilesNameInOneGroup(String sgName, Long timeRangeId, Set<File> deletedFilesName)
       throws IOException {
     if (deletedFilesName.isEmpty()) {
       logger.info("There has no deleted files to be synced in storage group {}", sgName);
@@ -500,7 +514,7 @@ public class SyncClient implements ISyncClient {
       try {
         if (serviceClient.syncDeletedFileName(file.getName()).code == SUCCESS_CODE) {
           logger.info("Receiver has received deleted file name {} successfully.", file.getName());
-          lastLocalFilesMap.get(sgName).remove(file);
+          lastLocalFilesMap.get(sgName).get(timeRangeId).remove(file);
           syncLog.finishSyncDeletedFileName(file);
         }
       } catch (TException e) {
@@ -511,7 +525,7 @@ public class SyncClient implements ISyncClient {
   }
 
   @Override
-  public void syncDataFilesInOneGroup(String sgName, Set<File> toBeSyncFiles)
+  public void syncDataFilesInOneGroup(String sgName, Long timeRangeId, Set<File> toBeSyncFiles)
       throws SyncConnectionException, IOException, SyncDeviceOwnerConflictException {
     if (toBeSyncFiles.isEmpty()) {
       logger.info("There has no new tsfiles to be synced in storage group {}", sgName);
@@ -527,7 +541,7 @@ public class SyncClient implements ISyncClient {
         // firstly sync .resource file, then sync tsfile
         syncSingleFile(new File(snapshotFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
         syncSingleFile(snapshotFile);
-        lastLocalFilesMap.get(sgName).add(tsfile);
+        lastLocalFilesMap.get(sgName).get(timeRangeId).add(tsfile);
         syncLog.finishSyncTsfile(tsfile);
         logger.info("Task of synchronization has completed {}/{}.", cnt, toBeSyncFiles.size());
       } catch (IOException e) {
@@ -620,12 +634,14 @@ public class SyncClient implements ISyncClient {
 
     // 1. Write file list to currentLocalFile
     try (BufferedWriter bw = new BufferedWriter(new FileWriter(currentLocalFile))) {
-      for (Set<File> currentLocalFiles : lastLocalFilesMap.values()) {
-        for (File file : currentLocalFiles) {
-          bw.write(file.getAbsolutePath());
-          bw.newLine();
+      for (Map<Long, Set<File>> currentLocalFiles : lastLocalFilesMap.values()) {
+        for (Set<File> files : currentLocalFiles.values()) {
+          for(File file: files) {
+            bw.write(file.getAbsolutePath());
+            bw.newLine();
+          }
+          bw.flush();
         }
-        bw.flush();
       }
     } catch (IOException e) {
       logger.error("Can not clear sync log {}", lastLocalFile.getAbsoluteFile(), e);

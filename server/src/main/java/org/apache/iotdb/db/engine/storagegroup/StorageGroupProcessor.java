@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -150,16 +149,13 @@ public class StorageGroupProcessor {
   private Schema schema;
   // includes sealed and unsealed sequence TsFiles
   private TreeSet<TsFileResource> sequenceFileList = new TreeSet<>(
-      new Comparator<TsFileResource>() {
-        @Override
-        public int compare(TsFileResource o1, TsFileResource o2) {
-          if (o1.getProcessor() == null || o2.getProcessor() == null) {
-            return compareFileName(o1.getFile(), o2.getFile());
-          }
-          int rangeCompare = Long
-              .compare(o1.getProcessor().getTimeRangeId(), o2.getProcessor().getTimeRangeId());
-          return rangeCompare == 0 ? compareFileName(o1.getFile(), o2.getFile()) : rangeCompare;
+      (o1, o2) -> {
+        if (o1.getProcessor() == null || o2.getProcessor() == null) {
+          return compareFileName(o1.getFile(), o2.getFile());
         }
+        int rangeCompare = Long
+            .compare(o1.getProcessor().getTimeRangeId(), o2.getProcessor().getTimeRangeId());
+        return rangeCompare == 0 ? compareFileName(o1.getFile(), o2.getFile()) : rangeCompare;
       });
   private CopyOnReadLinkedList<TsFileProcessor> closingSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
   // includes sealed and unsealed unSequence TsFiles
@@ -562,7 +558,7 @@ public class StorageGroupProcessor {
       boolean sequence)
       throws IOException, DiskSpaceInsufficientException {
 
-    TsFileProcessor res = null;
+    TsFileProcessor res;
     // we have to ensure only one thread can change workSequenceTsFileProcessors
     writeLock();
     try {
@@ -608,8 +604,7 @@ public class StorageGroupProcessor {
 
     String filePath =
         baseDir + File.separator + storageGroupName + File.separator + timeRangeId + File.separator
-            + System.currentTimeMillis() + IoTDBConstant.TSFILE_NAME_SEPARATOR + versionController
-            .nextVersion() + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0" + TSFILE_SUFFIX;
+            + getNewTsFileName();
 
     TsFileProcessor tsFileProcessor;
     if (sequence) {
@@ -626,6 +621,19 @@ public class StorageGroupProcessor {
 
     tsFileProcessor.setTimeRangeId(timeRangeId);
     return tsFileProcessor;
+  }
+
+  /**
+   * Create a new tsfile name
+   * @return file name
+   */
+  private String getNewTsFileName(){
+    return getNewTsFileName(System.currentTimeMillis(), versionController.nextVersion(), 0);
+  }
+
+  private String getNewTsFileName(long time, long version, int mergeCnt) {
+    return time + IoTDBConstant.TSFILE_NAME_SEPARATOR + version
+        + IoTDBConstant.TSFILE_NAME_SEPARATOR + mergeCnt + TSFILE_SUFFIX;
   }
 
 
@@ -1270,8 +1278,7 @@ public class StorageGroupProcessor {
     writeLock();
     mergeLock.writeLock().lock();
     try {
-      loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource,
-          getBinarySearchIndex(newTsFileResource));
+      loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource);
       updateLatestTimeMap(newTsFileResource);
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
@@ -1349,8 +1356,7 @@ public class StorageGroupProcessor {
 
       // loading tsfile by type
       if (isOverlap) {
-        loadTsFileByType(LoadTsFileType.LOAD_UNSEQUENCE, tsfileToBeInserted, newTsFileResource,
-            unSequenceFileList.size());
+        loadTsFileByType(LoadTsFileType.LOAD_UNSEQUENCE, tsfileToBeInserted, newTsFileResource);
       } else {
 
         // check whether the file name needs to be renamed.
@@ -1363,8 +1369,7 @@ public class StorageGroupProcessor {
             newTsFileResource.setFile(new File(tsfileToBeInserted.getParentFile(), newFileName));
           }
         }
-        loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource,
-            subsequentIndex);
+        loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource);
       }
 
       // update latest time map
@@ -1419,9 +1424,7 @@ public class StorageGroupProcessor {
       preTime = Long.parseLong(preName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0]);
     }
     if (subsequentIndex == sequenceFileList.size()) {
-      return preTime < currentTsFileTime ? tsfileName
-          : System.currentTimeMillis() + IoTDBConstant.TSFILE_NAME_SEPARATOR + versionController
-              .nextVersion() + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0" + TSFILE_SUFFIX;
+      return preTime < currentTsFileTime ? tsfileName: getNewTsFileName();
     } else {
       String subsequenceName = sequenceList.get(subsequentIndex).getFile().getName();
       long subsequenceTime = Long
@@ -1431,37 +1434,10 @@ public class StorageGroupProcessor {
       if (preTime < currentTsFileTime && currentTsFileTime < subsequenceTime) {
         return tsfileName;
       } else {
-        return (preTime + ((subsequenceTime - preTime) >> 1)) + IoTDBConstant.TSFILE_NAME_SEPARATOR
-            + subsequenceVersion + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0" + TSFILE_SUFFIX;
+        return getNewTsFileName(preTime + ((subsequenceTime - preTime) >> 1), subsequenceVersion,
+            0);
       }
     }
-  }
-
-  /**
-   * Get binary search index in @code{sequenceFileList}
-   *
-   * @return right index to insert
-   */
-  private int getBinarySearchIndex(TsFileResource tsFileResource) {
-    if (sequenceFileList.isEmpty()) {
-      return 0;
-    }
-    long targetTsFileTime = Long.parseLong(
-        tsFileResource.getFile().getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0]);
-    int s = 0;
-    int e = sequenceFileList.size() - 1;
-    List<TsFileResource> tsFileResources = new ArrayList<>(sequenceFileList);
-    while (s <= e) {
-      int m = s + ((e - s) >> 1);
-      long currentTsFileTime = Long.parseLong(tsFileResources.get(m).getFile().getName()
-          .split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0]);
-      if (currentTsFileTime >= targetTsFileTime) {
-        e = m - 1;
-      } else {
-        s = m + 1;
-      }
-    }
-    return s;
   }
 
   /**
@@ -1489,39 +1465,32 @@ public class StorageGroupProcessor {
    *
    * @param type load type
    * @param tsFileResource tsfile resource to be loaded
-   * @param index the index in sequenceFileList/unSequenceFileList
    * @UsedBy sync module, load external tsfile module.
    */
-  private void loadTsFileByType(LoadTsFileType type, File syncedTsFile,
-      TsFileResource tsFileResource, int index)
+  private void loadTsFileByType(LoadTsFileType type, File syncedTsFile, TsFileResource tsFileResource)
       throws TsFileProcessorException, DiskSpaceInsufficientException {
     File targetFile;
+    long timeRangeId = fromTimeToTimePartition(
+        tsFileResource.getStartTimeMap().entrySet().iterator().next().getValue());
     switch (type) {
       case LOAD_UNSEQUENCE:
-        targetFile =
-            new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(),
-                storageGroupName + File.separatorChar
-                    + tsFileResource.getFile().getParentFile().getName()
-                    + File.separator + tsFileResource.getFile().getName());
+        targetFile = new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(),
+            storageGroupName + File.separatorChar + timeRangeId + File.separator + tsFileResource
+                .getFile().getName());
         tsFileResource.setFile(targetFile);
-        unSequenceFileList.add(index, tsFileResource);
-        logger
-            .info("Load tsfile in unsequence list, move file from {} to {}",
-                syncedTsFile.getAbsolutePath(),
-                targetFile.getAbsolutePath());
+        unSequenceFileList.add(tsFileResource);
+        logger.info("Load tsfile in unsequence list, move file from {} to {}",
+            syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath());
         break;
       case LOAD_SEQUENCE:
         targetFile =
             new File(DirectoryManager.getInstance().getNextFolderForSequenceFile(),
-                storageGroupName + File.separatorChar
-                    + tsFileResource.getFile().getParentFile().getName()
-                    + File.separator + tsFileResource.getFile().getName());
+                storageGroupName + File.separatorChar + timeRangeId + File.separator
+                    + tsFileResource.getFile().getName());
         tsFileResource.setFile(targetFile);
         sequenceFileList.add(tsFileResource);
-        logger
-            .info("Load tsfile in sequence list, move file from {} to {}",
-                syncedTsFile.getAbsolutePath(),
-                targetFile.getAbsolutePath());
+        logger.info("Load tsfile in sequence list, move file from {} to {}",
+            syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath());
         break;
       default:
         throw new TsFileProcessorException(
@@ -1541,6 +1510,7 @@ public class StorageGroupProcessor {
           "File renaming failed when loading tsfile. Origin: %s, Target: %s, because %s",
           syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath(), e.getMessage()));
     }
+
     File syncedResourceFile = new File(
         syncedTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
     File targetResourceFile = new File(
