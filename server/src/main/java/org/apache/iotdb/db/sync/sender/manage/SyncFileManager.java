@@ -104,10 +104,10 @@ public class SyncFileManager implements ISyncFileManager {
       for (File timeRangeFolder : sgFolder.listFiles()) {
         Long timeRangeId = Long.parseLong(timeRangeFolder.getName());
         currentAllLocalFiles.get(sgFolder.getName()).putIfAbsent(timeRangeId, new HashSet<>());
-        File[] files = sgFolder.listFiles();
+        File[] files = timeRangeFolder.listFiles();
         Arrays.stream(files)
             .forEach(file -> currentAllLocalFiles.get(sgFolder.getName()).get(timeRangeId)
-                .add(new File(sgFolder.getAbsolutePath(), file.getName())));
+                .add(new File(timeRangeFolder.getAbsolutePath(), file.getName())));
       }
     }
 
@@ -152,8 +152,8 @@ public class SyncFileManager implements ISyncFileManager {
         Long timeRangeId = Long.parseLong(file.getParentFile().getName());
         String sgName = file.getParentFile().getParentFile().getName();
         allSGs.putIfAbsent(sgName, new HashSet<>());
-        lastLocalFilesMap.putIfAbsent(sgName, new HashMap<>())
-            .putIfAbsent(timeRangeId, new HashSet<>()).add(file);
+        lastLocalFilesMap.computeIfAbsent(sgName, k -> new HashMap<>())
+            .computeIfAbsent(timeRangeId, k -> new HashSet<>()).add(file);
       }
     }
   }
@@ -172,6 +172,7 @@ public class SyncFileManager implements ISyncFileManager {
       for(Entry<Long, Set<File>> entry: currentSealedLocalFilesMap
           .getOrDefault(sgName, Collections.emptyMap()).entrySet()) {
         Long timeRangeId = entry.getKey();
+        toBeSyncedFilesMap.get(sgName).putIfAbsent(timeRangeId, new HashSet<>());
         allSGs.get(sgName).add(timeRangeId);
         for (File newFile : entry.getValue()) {
           if (!lastLocalFilesMap.getOrDefault(sgName, Collections.emptyMap())
@@ -184,6 +185,7 @@ public class SyncFileManager implements ISyncFileManager {
       for (Entry<Long, Set<File>> entry : lastLocalFilesMap
           .getOrDefault(sgName, Collections.emptyMap()).entrySet()) {
         Long timeRangeId = entry.getKey();
+        deletedFilesMap.get(sgName).putIfAbsent(timeRangeId, new HashSet<>());
         allSGs.get(sgName).add(timeRangeId);
         for (File oldFile : entry.getValue()) {
           if (!currentSealedLocalFilesMap.getOrDefault(sgName, Collections.emptyMap())

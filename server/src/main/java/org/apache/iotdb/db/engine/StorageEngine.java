@@ -430,7 +430,7 @@ public class StorageEngine implements IService {
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
       throws TsFileProcessorException, StorageEngineException {
-    getProcessor(newTsFileResource.getFile().getParentFile().getParentFile().getName())
+    getProcessor(newTsFileResource.getFile().getParentFile().getName())
         .loadNewTsFileForSync(newTsFileResource);
   }
 
@@ -445,14 +445,29 @@ public class StorageEngine implements IService {
     getProcessor(storageGroupName).loadNewTsFile(newTsFileResource);
   }
 
+  public boolean deleteTsfileForSync(File deletedTsfile)
+      throws StorageEngineException {
+    return getProcessor(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
+  }
+
   public boolean deleteTsfile(File deletedTsfile) throws StorageEngineException {
-    return getProcessor(deletedTsfile.getParentFile().getParentFile().getName()).deleteTsfile(deletedTsfile);
+    return getProcessor(getSgByEngineFile(deletedTsfile)).deleteTsfile(deletedTsfile);
   }
 
   public boolean moveTsfile(File tsfileToBeMoved, File targetDir)
       throws StorageEngineException, IOException {
-    return getProcessor(tsfileToBeMoved.getParentFile().getParentFile().getName())
-        .moveTsfile(tsfileToBeMoved, targetDir);
+    return getProcessor(getSgByEngineFile(tsfileToBeMoved)).moveTsfile(tsfileToBeMoved, targetDir);
+  }
+
+  /**
+   * The engine file means that the file is in the engine, which is different from those external
+   * files which are not loaded.
+   *
+   * @param file engine file
+   * @return sg name
+   */
+  private String getSgByEngineFile(File file) {
+    return file.getParentFile().getParentFile().getName();
   }
 
 }
