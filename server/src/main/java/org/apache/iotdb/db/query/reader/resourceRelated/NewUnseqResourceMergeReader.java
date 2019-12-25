@@ -59,6 +59,7 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
 
   private BatchData batchData;
   private TSDataType dataType;
+  private boolean hasCachedBatch;
 
   /**
    * prepare metaDataList
@@ -122,8 +123,7 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
     }
 
     // sort All ChunkMetadata by start time
-    chunkMetaDataList = chunkMetaDataList.stream()
-        .sorted(Comparator.comparing(ChunkMetaData::getStartTime)).collect(Collectors.toList());
+    chunkMetaDataList.sort(Comparator.comparing(ChunkMetaData::getStartTime));
 
     // put chunk readers in order into PriorityMergeReader until merge reader has valid point
     // NOTE: chunk readers may not have next point because of the time filter
@@ -138,6 +138,10 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
    * mergeReader one by one
    */
   @Override public boolean hasNextBatch() throws IOException {
+    if (hasCachedBatch) {
+      return true;
+    }
+
     batchData = new BatchData(dataType, true);
 
     for (int rowCount = 0; rowCount < DEFAULT_BATCH_DATA_SIZE; rowCount++) {
@@ -164,7 +168,8 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
         break;
       }
     }
-    return !batchData.isEmpty();
+    hasCachedBatch = !batchData.isEmpty();
+    return hasCachedBatch;
   }
 
   private void addNextChunkIntoPriorityMergeReader() throws IOException {
@@ -176,7 +181,12 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
 
   @Override
   public BatchData nextBatch() throws IOException {
-    return batchData;
+    if (hasCachedBatch || hasNextBatch()) {
+      hasCachedBatch = false;
+      return batchData;
+    } else {
+      throw new IOException("no next batch");
+    }
   }
 
   @Override

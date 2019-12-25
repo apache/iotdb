@@ -74,17 +74,20 @@ public class Session {
   private long statementId;
   private int fetchSize;
 
-
   public Session(String host, int port) {
-    this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD, 10000);
+    this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
   }
 
   public Session(String host, String port, String username, String password) {
-    this(host, Integer.parseInt(port), username, password, 10000);
+    this(host, Integer.parseInt(port), username, password);
   }
 
   public Session(String host, int port, String username, String password) {
-    this(host, port, username, password, 10000);
+    this.host = host;
+    this.port = port;
+    this.username = username;
+    this.password = password;
+    this.fetchSize = Config.DEFAULT_FETCH_SIZE;
   }
 
   public Session(String host, int port, String username, String password, int fetchSize) {
@@ -96,7 +99,7 @@ public class Session {
   }
 
   public synchronized void open() throws IoTDBSessionException {
-    open(false, 0);
+    open(false, Config.DEFAULT_TIMEOUT_MS);
   }
 
   private synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
@@ -489,11 +492,11 @@ public class Session {
 
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
     execReq.setFetchSize(fetchSize);
-    TSExecuteStatementResp execResp = client.executeStatement(execReq);
+    TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
 
     RpcUtils.verifySuccess(execResp.getStatus());
     return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
-        execResp.getQueryId(), client, sessionId);
+        execResp.getQueryId(), client, sessionId, execResp.queryDataSet);
   }
 
   /**

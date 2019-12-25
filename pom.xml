@@ -94,7 +94,7 @@
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
         <!-- By default, the argLine is empty-->
-        <argLine></argLine>
+        <argLine/>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -1091,7 +1091,6 @@
                                     <propertyName>failsafe.jacoco.args</propertyName>
                                 </configuration>
                             </execution>
-
                             <execution>
                                 <id>after-integration-test-execution</id>
                                 <phase>integration-test</phase>
@@ -1172,7 +1171,6 @@
                         <groupId>org.eluder.coveralls</groupId>
                         <artifactId>coveralls-maven-plugin</artifactId>
                         <version>4.3.0</version>
-
                         <executions>
                             <execution>
                                 <id>report to coveralls</id>

@@ -25,6 +25,8 @@ public class Config {
 
   public static final String DEFAULT_USER = "user";
   public static final String DEFAULT_PASSWORD = "password";
+  public static final int DEFAULT_FETCH_SIZE = 10000;
+  public static final int DEFAULT_TIMEOUT_MS = 0;
 
   public static final String PATH_MATCHER =
       PATH_ROOT + "([" + PATH_SEPARATOR + "](([a-zA-Z_][a-zA-Z0-9_-]*)|([+-]?[0-9]+)))+";
