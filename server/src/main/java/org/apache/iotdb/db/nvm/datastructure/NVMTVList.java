@@ -12,9 +12,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 public abstract class NVMTVList extends AbstractTVList {
 
   protected List<NVMSpace> timestamps;
+  protected List<NVMSpace> values;
+  protected TSDataType dataType;
 
   public NVMTVList() {
     timestamps = new ArrayList<>();
+    values = new ArrayList<>();
     size = 0;
     minTime = Long.MIN_VALUE;
   }
@@ -29,9 +32,44 @@ public abstract class NVMTVList extends AbstractTVList {
     return (long) timestamps.get(arrayIndex).get(elementIndex);
   }
 
+  protected void set(int index, long timestamp, Object value) {
+    if (index >= size) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    }
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
+    timestamps.get(arrayIndex).set(elementIndex, timestamp);
+    values.get(arrayIndex).set(elementIndex, value);
+  }
+
+  protected NVMSpace cloneValue(NVMSpace valueSpace) {
+    return valueSpace.clone();
+  }
+
+  @Override
+  protected void clearValue() {
+    if (values != null) {
+      for (NVMSpace valueSpace : values) {
+        NVMPrimitiveArrayPool.getInstance().release(valueSpace, dataType);
+      }
+      values.clear();
+    }
+  }
+
+  @Override
+  protected void expandValues() {
+    values.add(NVMPrimitiveArrayPool
+        .getInstance().getPrimitiveDataListByType(dataType));
+  }
+
   @Override
   protected void releaseLastTimeArray() {
     NVMPrimitiveArrayPool.getInstance().release(timestamps.remove(timestamps.size() - 1), TSDataType.INT64);
+  }
+
+  @Override
+  protected void releaseLastValueArray() {
+    NVMPrimitiveArrayPool.getInstance().release(values.remove(values.size() - 1), dataType);
   }
 
   @Override

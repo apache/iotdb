@@ -2,25 +2,20 @@ package org.apache.iotdb.db.nvm.datastructure;
 
 import static org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool.ARRAY_SIZE;
 
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool;
 import org.apache.iotdb.db.nvm.space.NVMSpaceManager.NVMSpace;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class NVMIntTVList extends NVMTVList {
 
-  private List<NVMSpace> values;
-
   // TODO
   private int[][] sortedValues;
 
   private int pivotValue;
 
-  NVMIntTVList() {
+  public NVMIntTVList() {
     super();
-    values = new ArrayList<>();
+    dataType = TSDataType.INT32;
   }
 
   @Override
@@ -47,16 +42,6 @@ public class NVMIntTVList extends NVMTVList {
     return (int) values.get(arrayIndex).get(elementIndex);
   }
 
-  protected void set(int index, long timestamp, int value) {
-    if (index >= size) {
-      throw new ArrayIndexOutOfBoundsException(index);
-    }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
-    timestamps.get(arrayIndex).set(elementIndex, timestamp);
-    values.get(arrayIndex).set(elementIndex, value);
-  }
-
   @Override
   public NVMIntTVList clone() {
     NVMIntTVList cloneList = new NVMIntTVList();
@@ -67,10 +52,6 @@ public class NVMIntTVList extends NVMTVList {
     return cloneList;
   }
 
-  private NVMSpace cloneValue(NVMSpace valueSpace) {
-    return valueSpace.clone();
-  }
-
   @Override
   public void sort() {
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
@@ -79,22 +60,12 @@ public class NVMIntTVList extends NVMTVList {
     }
     if (sortedValues == null || sortedValues.length < size) {
       sortedValues = (int[][]) PrimitiveArrayPool
-          .getInstance().getDataListsByType(TSDataType.INT32, size);
+          .getInstance().getDataListsByType(dataType, size);
     }
     sort(0, size);
     clearSortedValue();
     clearSortedTime();
     sorted = true;
-  }
-
-  @Override
-  protected void clearValue() {
-    if (values != null) {
-      for (NVMSpace valueSpace : values) {
-        PrimitiveArrayPool.getInstance().release(valueSpace);
-      }
-      values.clear();
-    }
   }
 
   @Override
@@ -139,12 +110,6 @@ public class NVMIntTVList extends NVMTVList {
   }
 
   @Override
-  protected void expandValues() {
-    values.add(NVMPrimitiveArrayPool
-        .getInstance().getPrimitiveDataListByType(TSDataType.INT32));
-  }
-
-  @Override
   protected void saveAsPivot(int pos) {
     pivotTime = getTime(pos);
     pivotValue = getInt(pos);
@@ -153,11 +118,6 @@ public class NVMIntTVList extends NVMTVList {
   @Override
   protected void setPivotTo(int pos) {
     set(pos, pivotTime, pivotValue);
-  }
-
-  @Override
-  protected void releaseLastValueArray() {
-    PrimitiveArrayPool.getInstance().release(values.remove(values.size() - 1));
   }
 
   @Override

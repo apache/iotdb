@@ -2,16 +2,11 @@ package org.apache.iotdb.db.nvm.datastructure;
 
 import static org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool.ARRAY_SIZE;
 
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool;
 import org.apache.iotdb.db.nvm.space.NVMSpaceManager.NVMSpace;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class NVMBooleanTVList extends NVMTVList {
-
-  private List<NVMSpace> values;
 
   // TODO
   private boolean[][] sortedValues;
@@ -20,7 +15,7 @@ public class NVMBooleanTVList extends NVMTVList {
 
   NVMBooleanTVList() {
     super();
-    values = new ArrayList<>();
+    dataType = TSDataType.BOOLEAN;
   }
 
   @Override
@@ -47,16 +42,6 @@ public class NVMBooleanTVList extends NVMTVList {
     return (boolean) values.get(arrayIndex).get(elementIndex);
   }
 
-  protected void set(int index, long timestamp, boolean value) {
-    if (index >= size) {
-      throw new ArrayIndexOutOfBoundsException(index);
-    }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
-    timestamps.get(arrayIndex).set(elementIndex, timestamp);
-    values.get(arrayIndex).set(elementIndex, value);
-  }
-
   @Override
   public NVMBooleanTVList clone() {
     NVMBooleanTVList cloneList = new NVMBooleanTVList();
@@ -65,10 +50,6 @@ public class NVMBooleanTVList extends NVMTVList {
       cloneList.values.add(cloneValue(valueSpace));
     }
     return cloneList;
-  }
-
-  private NVMSpace cloneValue(NVMSpace valueSpace) {
-    return valueSpace.clone();
   }
 
   @Override
@@ -85,16 +66,6 @@ public class NVMBooleanTVList extends NVMTVList {
     clearSortedValue();
     clearSortedTime();
     sorted = true;
-  }
-
-  @Override
-  protected void clearValue() {
-    if (values != null) {
-      for (NVMSpace valueSpace : values) {
-        PrimitiveArrayPool.getInstance().release(valueSpace);
-      }
-      values.clear();
-    }
   }
 
   @Override
@@ -139,12 +110,6 @@ public class NVMBooleanTVList extends NVMTVList {
   }
 
   @Override
-  protected void expandValues() {
-    values.add(NVMPrimitiveArrayPool
-        .getInstance().getPrimitiveDataListByType(TSDataType.BOOLEAN));
-  }
-
-  @Override
   protected void saveAsPivot(int pos) {
     pivotTime = getTime(pos);
     pivotValue = getBoolean(pos);
@@ -153,11 +118,6 @@ public class NVMBooleanTVList extends NVMTVList {
   @Override
   protected void setPivotTo(int pos) {
     set(pos, pivotTime, pivotValue);
-  }
-
-  @Override
-  protected void releaseLastValueArray() {
-    PrimitiveArrayPool.getInstance().release(values.remove(values.size() - 1));
   }
 
   @Override

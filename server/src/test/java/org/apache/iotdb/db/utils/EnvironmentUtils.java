@@ -170,6 +170,8 @@ public class EnvironmentUtils {
     MergeManager.getINSTANCE().start();
     TEST_QUERY_JOB_ID  = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+
+    NVMSpaceManager.getInstance().init();
   }
 
   private static void createAllDir() {
