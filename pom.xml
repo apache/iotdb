@@ -1017,6 +1017,16 @@
         <!-- code coverage for ut and it, and then merge them together.-->
         <profile>
             <id>code-coverage</id>
+            <modules>
+                <!-- make sure the modules are synced with profile coveralls-->
+                <module>tsfile</module>
+                <module>client</module>
+                <module>session</module>
+                <module>server</module>
+                <module>jdbc</module>
+                <module>hadoop</module>
+                <module>hive-connector</module>
+            </modules>
             <build>
                 <plugins>
                     <!-- Jacoco is a code coverage analysis plugin when tests run.
@@ -1165,6 +1175,16 @@
              use `mvn post-integration-test -pl hadoop  -Pcode-coverage -Pcoveralls -DrepoToken=TOKEN`-->
         <profile>
             <id>coveralls</id>
+            <modules>
+                <!-- make sure the modules are synced with profile code-coverage-->
+                <module>tsfile</module>
+                <module>client</module>
+                <module>session</module>
+                <module>server</module>
+                <module>jdbc</module>
+                <module>hadoop</module>
+                <module>hive-connector</module>
+            </modules>
             <build>
                 <plugins>
                     <plugin>

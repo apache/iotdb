@@ -194,8 +194,7 @@ matrix:
       jdk: openjdk8
       script:
         # now, grafana has no tests; spark-* tests are written by scala
-        - mvn compile -DskipTests
-        - mvn generate-sources post-integration-test -Pcode-coverage -Pcoveralls -Dservice_name=travis_ci -pl tsfile,client,jdbc,server,session,hadoop,hive-connector
+        - mvn post-integration-test -Pcode-coverage -Pcoveralls -Dservice_name=travis_ci 
 
 cache:
   directories:
