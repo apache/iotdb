@@ -42,7 +42,7 @@ Storage groups are used to let users define how to organize and isolate differen
 Producers insert IoTDB insert statements into partitions according to devices, ensuring that the same device's data is inserted or updated in the same MessageQueue.
 ###Consumer 
 1. At startup, the consumer client first creates a IOTDB-Session connection and check whether the storage groups and timeseries are created in IoTDB. If not, create it.  
-2. Then consume client consume data from rocketmq using MessageListener Orderly to ensure orderly consumption, and insert the sql statement into IoTDB.
+2. Then consume client consume data from RocketMQ using MessageListener Orderly to ensure orderly consumption, and insert the sql statement into IoTDB.
 
 ## Usage
 ### Version usage
