@@ -39,13 +39,12 @@ public class QueryExpression {
     return new QueryExpression();
   }
 
-  public static QueryExpression create(List<Path> selectedSeries, List<TSDataType> dataTypes,
+  public static QueryExpression create(List<Path> selectedSeries,
       IExpression expression) {
     QueryExpression ret = new QueryExpression();
     ret.selectedSeries = selectedSeries;
     ret.expression = expression;
     ret.hasQueryFilter = expression != null;
-    ret.dataTypes = dataTypes;
     return ret;
   }
 
