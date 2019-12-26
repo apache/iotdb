@@ -88,14 +88,16 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
       if (tsFileResource.isClosed()) {
         // get chunk metadata list of current closed tsfile
         currentChunkMetaDataList = DeviceMetaDataCache.getInstance().get(tsFileResource, seriesPath);
-        List<Modification> pathModifications = context
-            .getPathModifications(tsFileResource.getModFile(), seriesPath.getFullPath());
-        if (!pathModifications.isEmpty()) {
-          QueryUtils.modifyChunkMetaData(currentChunkMetaDataList, pathModifications);
-        }
       } else {
-        // metadata list of already flushed chunk groups
+        // metadata list of already flushed chunks
         currentChunkMetaDataList = tsFileResource.getChunkMetaDataList();
+      }
+
+      // get modifications and apply to chunk metadatas
+      List<Modification> pathModifications = context
+          .getPathModifications(tsFileResource.getModFile(), seriesPath.getFullPath());
+      if (!pathModifications.isEmpty()) {
+        QueryUtils.modifyChunkMetaData(currentChunkMetaDataList, pathModifications);
       }
 
       if (!currentChunkMetaDataList.isEmpty()) {
