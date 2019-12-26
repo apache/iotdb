@@ -76,9 +76,12 @@ public class PageReader {
     valueBuffer.position(timeBufferLength);
   }
 
+  /**
+   * @return the returned BatchData may be empty, but never be null
+   */
   public BatchData getAllSatisfiedPageData() throws IOException {
 
-    BatchData pageData = new BatchData(dataType, true);
+    BatchData pageData = new BatchData(dataType);
 
     while (timeDecoder.hasNext(timeBuffer)) {
       long timestamp = timeDecoder.readLong(timeBuffer);

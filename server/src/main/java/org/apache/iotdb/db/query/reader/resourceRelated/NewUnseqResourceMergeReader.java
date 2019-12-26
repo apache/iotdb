@@ -145,7 +145,7 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
       return true;
     }
 
-    batchData = new BatchData(dataType, true);
+    batchData = new BatchData(dataType);
 
     for (int rowCount = 0; rowCount < batchSize; rowCount++) {
       if (priorityMergeReader.hasNext()) {
