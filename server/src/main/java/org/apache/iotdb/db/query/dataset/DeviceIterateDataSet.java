@@ -39,7 +39,6 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -163,20 +162,20 @@ public class DeviceIterateDataSet extends QueryDataSet {
         switch (dataSetType) {
           case GROUPBY:
             currentDataSet = queryRouter
-                .groupBy(executePaths, dataTypes, executeAggregations, expression, unit, slidingStep,
-                        startTime, endTime, context);
+                .groupBy(executePaths, dataTypes, executeAggregations, expression, unit,
+                    slidingStep,
+                    startTime, endTime, context);
             break;
           case AGGREGATE:
             currentDataSet = queryRouter
                 .aggregate(executePaths, dataTypes, executeAggregations, expression, context);
             break;
           case FILL:
-            currentDataSet = queryRouter.fill(executePaths, dataTypes, queryTime, fillType, context);
+            currentDataSet = queryRouter
+                .fill(executePaths, dataTypes, queryTime, fillType, context);
             break;
           case QUERY:
-            QueryExpression queryExpression = QueryExpression.create()
-                .setSelectSeries(executePaths).setExpression(expression);
-            currentDataSet = queryRouter.query(queryExpression, context);
+            currentDataSet = queryRouter.query(executePaths, dataTypes, expression, context);
             break;
           default:
             throw new IOException("unsupported DataSetType");

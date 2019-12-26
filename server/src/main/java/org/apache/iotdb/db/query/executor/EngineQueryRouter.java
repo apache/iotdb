@@ -48,15 +48,15 @@ import java.util.Map;
 public class EngineQueryRouter implements IEngineQueryRouter {
 
   @Override
-  public QueryDataSet query(QueryExpression queryExpression, QueryContext context)
-      throws StorageEngineException {
+  public QueryDataSet query(List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
+      IExpression expression, QueryContext context) throws StorageEngineException {
 
-    if (queryExpression.hasQueryFilter()) {
+    if (expression != null) {
       try {
         IExpression optimizedExpression = ExpressionOptimizer.getInstance()
-            .optimize(queryExpression.getExpression(), queryExpression.getSelectedSeries());
-        queryExpression.setExpression(optimizedExpression);
-        EngineExecutor engineExecutor = new EngineExecutor(queryExpression);
+            .optimize(expression, deduplicatedPaths);
+        EngineExecutor engineExecutor = new EngineExecutor(deduplicatedPaths, deduplicatedDataTypes,
+            optimizedExpression);
         if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
           return engineExecutor.executeWithoutValueFilter(context);
         } else {
@@ -67,7 +67,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
         throw new StorageEngineException(e.getMessage());
       }
     } else {
-      EngineExecutor engineExecutor = new EngineExecutor(queryExpression);
+      EngineExecutor engineExecutor = new EngineExecutor(deduplicatedPaths, deduplicatedDataTypes);
       try {
         return engineExecutor.executeWithoutValueFilter(context);
       } catch (IOException e) {

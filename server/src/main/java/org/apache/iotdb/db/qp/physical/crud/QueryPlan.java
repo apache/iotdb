@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,7 +33,11 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 public class QueryPlan extends PhysicalPlan {
 
   private List<Path> paths = null;
-  private List<TSDataType> dataTypes = null;
+  List<Path> deduplicatedPaths = null;
+  List<TSDataType> dataTypes = null;
+  List<TSDataType> deduplicatedDataTypes = null;
+  List<String> deduplicatedAggregations = null;
+
   private IExpression expression = null;
 
   private int rowLimit = 0;
@@ -86,6 +91,30 @@ public class QueryPlan extends PhysicalPlan {
 
   public void setDataTypes(List<TSDataType> dataTypes) {
     this.dataTypes = dataTypes;
+  }
+
+  public List<Path> getDeduplicatedPaths() {
+    return deduplicatedPaths;
+  }
+
+  public void setDeduplicatedPaths(List<Path> deduplicatedPaths) {
+    this.deduplicatedPaths = deduplicatedPaths;
+  }
+
+  public List<TSDataType> getDeduplicatedDataTypes() {
+    return deduplicatedDataTypes;
+  }
+
+  public void setDeduplicatedDataTypes(List<TSDataType> deduplicatedDataTypes) {
+    this.deduplicatedDataTypes = deduplicatedDataTypes;
+  }
+
+  public List<String> getDeduplicatedAggregations() {
+    return deduplicatedAggregations;
+  }
+
+  public void setDeduplicatedAggregations(List<String> deduplicatedAggregations) {
+    this.deduplicatedAggregations = deduplicatedAggregations;
   }
 
   public int getRowLimit() {
