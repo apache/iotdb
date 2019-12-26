@@ -31,6 +31,7 @@ import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.OldUnseqResourceMergeReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.*;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
@@ -70,9 +71,10 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * init reader and aggregate function.
    */
-  public void initGroupBy(QueryContext context, List<String> aggres, IExpression expression)
+  public void initGroupBy(QueryContext context, List<String> aggres, List<TSDataType> dataTypes,
+      IExpression expression)
       throws StorageEngineException, PathException, IOException {
-    initAggreFuction(aggres);
+    initAggreFuction(aggres, dataTypes);
     // init reader
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
@@ -184,8 +186,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * calculate groupBy's result in batch data.
    *
-   * @param idx series index
-   * @param function aggregate function of the series
+   * @param idx              series index
+   * @param function         aggregate function of the series
    * @param unsequenceReader unsequence reader of the series
    * @return if all sequential data been computed
    */
@@ -213,8 +215,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * skip the points with timestamp less than startTime.
    *
-   * @param idx the index of series
-   * @param sequenceReader sequence Reader
+   * @param idx              the index of series
+   * @param sequenceReader   sequence Reader
    * @param unsequenceReader unsequence Reader
    * @throws IOException exception when reading file
    */

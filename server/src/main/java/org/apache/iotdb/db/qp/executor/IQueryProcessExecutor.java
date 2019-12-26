@@ -60,31 +60,38 @@ public interface IQueryProcessExecutor {
   /**
    * process aggregate plan of qp layer, construct queryDataSet.
    */
-  QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression,
+  QueryDataSet aggregate(List<Path> paths,
+      List<TSDataType> dataTypes,
+      List<String> aggres, IExpression expression,
       QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException, QueryFilterOptimizationException;
 
   /**
    * process group by plan of qp layer, construct queryDataSet.
    */
-  QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
+  QueryDataSet groupBy(List<Path> paths,
+      List<TSDataType> dataTypes,
+      List<String> aggres,
+      IExpression expression,
       long unit, long slidingStep, long startTime, long endTime, QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException, QueryFilterOptimizationException;
 
   /**
    * process fill plan of qp layer, construct queryDataSet.
    */
-  QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
+  QueryDataSet fill(List<Path> fillPaths,
+      List<TSDataType> dataTypes,
+      long queryTime, Map<TSDataType, IFill> fillTypes,
       QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException;
 
   /**
    * execute update command and return whether the operator is successful.
    *
-   * @param path : update series seriesPath
+   * @param path      : update series seriesPath
    * @param startTime start time in update command
-   * @param endTime end time in update command
-   * @param value - in type of string
+   * @param endTime   end time in update command
+   * @param value     - in type of string
    */
   void update(Path path, long startTime, long endTime, String value)
       throws QueryProcessException;
@@ -99,7 +106,7 @@ public interface IQueryProcessExecutor {
   /**
    * execute delete command and return whether the operator is successful.
    *
-   * @param path : delete series seriesPath
+   * @param path       : delete series seriesPath
    * @param deleteTime end time in delete command
    */
   void delete(Path path, long deleteTime) throws QueryProcessException;

@@ -163,15 +163,15 @@ public class DeviceIterateDataSet extends QueryDataSet {
         switch (dataSetType) {
           case GROUPBY:
             currentDataSet = queryRouter
-                .groupBy(executePaths, executeAggregations, expression, unit, slidingStep,
+                .groupBy(executePaths, dataTypes, executeAggregations, expression, unit, slidingStep,
                         startTime, endTime, context);
             break;
           case AGGREGATE:
             currentDataSet = queryRouter
-                .aggregate(executePaths, executeAggregations, expression, context);
+                .aggregate(executePaths, dataTypes, executeAggregations, expression, context);
             break;
           case FILL:
-            currentDataSet = queryRouter.fill(executePaths, queryTime, fillType, context);
+            currentDataSet = queryRouter.fill(executePaths, dataTypes, queryTime, fillType, context);
             break;
           case QUERY:
             QueryExpression queryExpression = QueryExpression.create()

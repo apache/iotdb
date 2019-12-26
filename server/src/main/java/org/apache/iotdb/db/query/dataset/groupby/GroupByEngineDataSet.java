@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.exception.path.PathException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.factory.AggreFuncFactory;
@@ -29,9 +30,6 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
@@ -66,16 +64,15 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     this.endTime = -1;
   }
 
-  protected void initAggreFuction(List<String> aggres) throws PathException {
+  protected void initAggreFuction(List<String> aggres, List<TSDataType> dataTypes)
+      throws PathException {
     List<TSDataType> types = new ArrayList<>();
     // construct AggregateFunctions
     for (int i = 0; i < paths.size(); i++) {
-      TSDataType tsDataType = MManager.getInstance()
-          .getSeriesType(paths.get(i).getFullPath());
-      AggregateFunction function = AggreFuncFactory.getAggrFuncByName(aggres.get(i), tsDataType);
+      AggregateFunction function = AggreFuncFactory
+          .getAggrFuncByName(aggres.get(i), dataTypes.get(i));
       function.init();
       functions.add(function);
-      types.add(function.getResultDataType());
     }
     super.setDataTypes(types);
   }
@@ -91,7 +88,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     usedIndex++;
     if (startTime <= intervalEndTime) {
       hasCachedTimeInterval = true;
-      endTime = Math.min(startTime + unit, intervalEndTime+1);
+      endTime = Math.min(startTime + unit, intervalEndTime + 1);
       return true;
     } else {
       return false;

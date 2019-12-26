@@ -185,10 +185,11 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       // check file
       RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);
-      if (restorableTsFileIOWriter.hasCrashed()){
+      if (restorableTsFileIOWriter.hasCrashed()) {
         restorableTsFileIOWriter.close();
         throw new QueryProcessException(
-            String.format("Cannot load file %s because the file has crashed.", file.getAbsolutePath()));
+            String.format("Cannot load file %s because the file has crashed.",
+                file.getAbsolutePath()));
       }
       Map<String, MeasurementSchema> schemaMap = new HashMap<>();
       List<ChunkGroupMetaData> chunkGroupMetaData = new ArrayList<>();
@@ -205,7 +206,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       }
 
       //create schemas if they doesn't exist
-      if(plan.isAutoCreateSchema()) {
+      if (plan.isAutoCreateSchema()) {
         createSchemaAutomatically(chunkGroupMetaData, schemaMap, plan.getSgLevel());
       }
 
@@ -299,25 +300,33 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  public QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression,
+  public QueryDataSet aggregate(List<Path> paths,
+      List<TSDataType> dataTypes,
+      List<String> aggres, IExpression expression,
       QueryContext context) throws StorageEngineException, QueryFilterOptimizationException,
       QueryProcessException, IOException {
-    return queryRouter.aggregate(paths, aggres, expression, context);
+    return queryRouter.aggregate(paths, dataTypes, aggres, expression, context);
   }
 
   @Override
-  public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
+  public QueryDataSet fill(List<Path> fillPaths,
+      List<TSDataType> dataTypes,
+      long queryTime, Map<TSDataType, IFill> fillTypes,
       QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException {
-    return queryRouter.fill(fillPaths, queryTime, fillTypes, context);
+    return queryRouter.fill(fillPaths, dataTypes, queryTime, fillTypes, context);
   }
 
   @Override
-  public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
-                              long unit, long slidingStep, long startTime, long endTime,
-                              QueryContext context)
-          throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
-    return queryRouter.groupBy(paths, aggres, expression, unit, slidingStep, startTime, endTime, context);
+  public QueryDataSet groupBy(List<Path> paths,
+      List<TSDataType> dataTypes,
+      List<String> aggres, IExpression expression,
+      long unit, long slidingStep, long startTime, long endTime,
+      QueryContext context)
+      throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
+    return queryRouter
+        .groupBy(paths, dataTypes, aggres, expression, unit, slidingStep, startTime, endTime,
+            context);
 
   }
 
@@ -370,7 +379,8 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     if (!node.hasChild(measurement)) {
       if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
         throw new QueryProcessException(
-            String.format("Current deviceId[%s] does not contain measurement:%s", deviceId, measurement));
+            String.format("Current deviceId[%s] does not contain measurement:%s", deviceId,
+                measurement));
       }
       try {
         addPathToMTree(deviceId, measurement, strValue);
@@ -388,7 +398,8 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return measurementNode;
   }
 
-  private void checkPathExists(MNode node, String fullPath, MeasurementSchema schema, boolean autoCreateSchema)
+  private void checkPathExists(MNode node, String fullPath, MeasurementSchema schema,
+      boolean autoCreateSchema)
       throws QueryProcessException, StorageEngineException, MetadataException {
     // check if timeseries exists
     String measurement = schema.getMeasurementId();
@@ -398,7 +409,8 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
             String.format("Path[%s] does not exist", fullPath));
       }
       try {
-        addPathToMTree(fullPath, schema.getType(), schema.getEncodingType(), schema.getCompressor());
+        addPathToMTree(fullPath, schema.getType(), schema.getEncodingType(),
+            schema.getCompressor());
       } catch (MetadataException e) {
         if (!e.getMessage().contains("already exist")) {
           throw e;

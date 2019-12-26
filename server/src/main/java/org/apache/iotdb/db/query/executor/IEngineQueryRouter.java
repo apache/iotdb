@@ -46,20 +46,24 @@ public interface IEngineQueryRouter {
   /**
    * Execute aggregation query.
    */
-  QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
+  QueryDataSet aggregate(List<Path> selectedSeries,
+      List<TSDataType> dataTypes,
+      List<String> aggres,
       IExpression expression, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, IOException, QueryProcessException;
 
   /**
    * Execute groupBy query.
-   *
-   * @param selectedSeries select path list
+   *  @param selectedSeries select path list
+   * @param dataTypes
    * @param aggres aggregation name list
    * @param expression filter expression
    * @param unit time granularity for interval partitioning, unit is ms.
    * @param slidingStep  the time sliding step, unit is ms
    */
-  QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
+  QueryDataSet groupBy(List<Path> selectedSeries,
+      List<TSDataType> dataTypes,
+      List<String> aggres,
       IExpression expression, long unit, long slidingStep, long startTime, long endTime,
       QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException,
@@ -67,12 +71,14 @@ public interface IEngineQueryRouter {
 
   /**
    * Execute fill query.
-   *
-   * @param fillPaths select path list
+   *  @param fillPaths select path list
+   * @param dataTypes
    * @param queryTime timestamp
    * @param fillType type IFill map
    */
-  QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
+  QueryDataSet fill(List<Path> fillPaths,
+      List<TSDataType> dataTypes,
+      long queryTime, Map<TSDataType, IFill> fillType,
       QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException;
 

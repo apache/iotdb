@@ -21,12 +21,14 @@ package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -67,9 +69,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * init reader and aggregate function.
    */
-  public void initGroupBy(QueryContext context, List<String> aggres, IExpression expression)
-      throws StorageEngineException, QueryProcessException, IOException {
-    initAggreFuction(aggres);
+  public void initGroupBy(QueryContext context, List<String> aggres, List<TSDataType> dataTypes,
+      IExpression expression) throws StorageEngineException, PathException, IOException {
+    initAggreFuction(aggres, dataTypes);
 
     this.timestampGenerator = new EngineTimeGenerator(expression, context);
     this.allDataReaderList = new ArrayList<>();
@@ -134,7 +136,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * construct an array of timestamps for one batch of a group by partition calculating.
    *
-   * @param timestampArray timestamp array
+   * @param timestampArray  timestamp array
    * @param timeArrayLength the current size of timestamp array
    * @return time array size
    */

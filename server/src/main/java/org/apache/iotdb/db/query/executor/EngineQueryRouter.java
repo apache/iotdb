@@ -35,7 +35,6 @@ import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import java.io.IOException;
@@ -78,14 +77,16 @@ public class EngineQueryRouter implements IEngineQueryRouter {
   }
 
   @Override
-  public QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
+  public QueryDataSet aggregate(List<Path> selectedSeries,
+      List<TSDataType> dataTypes,
+      List<String> aggres,
       IExpression expression, QueryContext context) throws QueryFilterOptimizationException,
       StorageEngineException, QueryProcessException, IOException {
     if (expression != null) {
       IExpression optimizedExpression = ExpressionOptimizer.getInstance()
           .optimize(expression, selectedSeries);
       AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
-          selectedSeries, aggres, optimizedExpression);
+          selectedSeries, dataTypes, aggres, optimizedExpression);
       if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
         return engineExecutor.executeWithoutValueFilter(context);
       } else {
@@ -93,22 +94,23 @@ public class EngineQueryRouter implements IEngineQueryRouter {
       }
     } else {
       AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
-          selectedSeries, aggres, null);
+          selectedSeries, dataTypes, aggres, null);
       return engineExecutor.executeWithoutValueFilter(context);
     }
   }
 
 
   @Override
-  public QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
+  public QueryDataSet groupBy(List<Path> selectedSeries,
+      List<TSDataType> dataTypes, List<String> aggres,
       IExpression expression, long unit, long slidingStep, long startTime, long endTime,
-      QueryContext context)
-          throws QueryFilterOptimizationException, StorageEngineException,
-          QueryProcessException, IOException {
+      QueryContext context) throws QueryFilterOptimizationException, StorageEngineException,
+      QueryProcessException, IOException {
 
     long queryId = context.getQueryId();
 
-    GlobalTimeExpression timeExpression = new GlobalTimeExpression(new GroupByFilter(unit, slidingStep, startTime, endTime));
+    GlobalTimeExpression timeExpression = new GlobalTimeExpression(
+        new GroupByFilter(unit, slidingStep, startTime, endTime));
 
     if (expression == null) {
       expression = timeExpression;
@@ -121,22 +123,24 @@ public class EngineQueryRouter implements IEngineQueryRouter {
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
       GroupByWithoutValueFilterDataSet groupByEngine = new GroupByWithoutValueFilterDataSet(
           queryId, selectedSeries, unit, slidingStep, startTime, endTime);
-      groupByEngine.initGroupBy(context, aggres, optimizedExpression);
+      groupByEngine.initGroupBy(context, aggres, dataTypes, optimizedExpression);
       return groupByEngine;
     } else {
       GroupByWithValueFilterDataSet groupByEngine = new GroupByWithValueFilterDataSet(
           queryId, selectedSeries, unit, slidingStep, startTime, endTime);
-      groupByEngine.initGroupBy(context, aggres, optimizedExpression);
+      groupByEngine.initGroupBy(context, aggres, dataTypes, optimizedExpression);
       return groupByEngine;
     }
   }
 
   @Override
-  public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
+  public QueryDataSet fill(List<Path> fillPaths,
+      List<TSDataType> dataTypes,
+      long queryTime, Map<TSDataType, IFill> fillType,
       QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
 
-    FillEngineExecutor fillEngineExecutor = new FillEngineExecutor(fillPaths, queryTime,
+    FillEngineExecutor fillEngineExecutor = new FillEngineExecutor(fillPaths, dataTypes, queryTime,
         fillType);
     return fillEngineExecutor.execute(context);
   }

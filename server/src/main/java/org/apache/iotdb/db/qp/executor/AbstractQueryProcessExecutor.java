@@ -19,6 +19,17 @@
 package org.apache.iotdb.db.qp.executor;
 
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
@@ -30,7 +41,11 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
@@ -48,14 +63,6 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 
 public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecutor {
 
@@ -211,31 +218,32 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     } else {
       // deduplicate executed paths and aggregations if exist
       List<Path> deduplicatedPaths = new ArrayList<>();
+      List<TSDataType> deduplicatedDataTypes = new ArrayList<>();
       if (queryPlan instanceof GroupByPlan) {
         GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
         List<String> deduplicatedAggregations = new ArrayList<>();
-        deduplicate(groupByPlan.getPaths(), groupByPlan.getAggregations(), deduplicatedPaths,
-                deduplicatedAggregations);
-        return groupBy(deduplicatedPaths, deduplicatedAggregations, groupByPlan.getExpression(),
-                groupByPlan.getUnit(),
-                groupByPlan.getSlidingStep(), groupByPlan.getStartTime(), groupByPlan.getEndTime(), context);
+        deduplicate(groupByPlan, deduplicatedPaths, deduplicatedDataTypes,
+            deduplicatedAggregations);
+        return groupBy(deduplicatedPaths, deduplicatedDataTypes, deduplicatedAggregations,
+            groupByPlan.getExpression(), groupByPlan.getUnit(), groupByPlan.getSlidingStep(),
+            groupByPlan.getStartTime(), groupByPlan.getEndTime(),
+            context);
       } else if (queryPlan instanceof AggregationPlan) {
         List<String> deduplicatedAggregations = new ArrayList<>();
-        deduplicate(queryPlan.getPaths(), queryPlan.getAggregations(), deduplicatedPaths,
+        deduplicate(queryPlan, deduplicatedPaths, deduplicatedDataTypes,
             deduplicatedAggregations);
-        queryDataSet = aggregate(deduplicatedPaths, deduplicatedAggregations,
-            queryPlan.getExpression(),
-            context);
+        queryDataSet = aggregate(deduplicatedPaths, deduplicatedDataTypes, deduplicatedAggregations,
+            queryPlan.getExpression(), context);
       } else if (queryPlan instanceof FillQueryPlan) {
         FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
-        deduplicate(queryPlan.getPaths(), deduplicatedPaths);
-        queryDataSet = fill(deduplicatedPaths, fillQueryPlan.getQueryTime(),
-            fillQueryPlan.getFillType(),
-            context);
+        deduplicate(queryPlan, deduplicatedPaths, deduplicatedDataTypes);
+        queryDataSet = fill(deduplicatedPaths, deduplicatedDataTypes, fillQueryPlan.getQueryTime(),
+            fillQueryPlan.getFillType(), context);
       } else {
-        deduplicate(queryPlan.getPaths(), deduplicatedPaths);
+        deduplicate(queryPlan, deduplicatedPaths, deduplicatedDataTypes);
         QueryExpression queryExpression = QueryExpression.create()
             .setSelectSeries(deduplicatedPaths)
+            .setDataTypes(deduplicatedDataTypes)
             .setExpression(queryPlan.getExpression());
         queryDataSet = queryRouter.query(queryExpression, context);
       }
@@ -248,11 +256,14 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   /**
    * Note that the deduplication strategy must be consistent with that of IoTDBQueryResultSet.
    */
-  private void deduplicate(List<Path> paths, List<String> aggregations,
-      List<Path> deduplicatedPaths,
-      List<String> deduplicatedAggregations) throws QueryProcessException {
-    if (paths == null || aggregations == null || deduplicatedPaths == null
-        || deduplicatedAggregations == null) {
+  private void deduplicate(QueryPlan queryPlan, List<Path> deduplicatedPaths,
+      List<TSDataType> deduplicatedDataTypes, List<String> deduplicatedAggregations)
+      throws QueryProcessException {
+    List<Path> paths = queryPlan.getPaths();
+    List<TSDataType> dataTypes = queryPlan.getDataTypes();
+    List<String> aggregations = queryPlan.getAggregations();
+    if (paths == null || aggregations == null || dataTypes == null || deduplicatedPaths == null
+        || deduplicatedAggregations == null || deduplicatedDataTypes == null) {
       throw new QueryProcessException("Parameters should not be null.");
     }
     if (paths.size() != aggregations.size()) {
@@ -264,6 +275,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       String column = aggregations.get(i) + "(" + paths.get(i).toString() + ")";
       if (!columnSet.contains(column)) {
         deduplicatedPaths.add(paths.get(i));
+        deduplicatedDataTypes.add(dataTypes.get(i));
         deduplicatedAggregations.add(aggregations.get(i));
         columnSet.add(column);
       }
@@ -273,16 +285,22 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   /**
    * Note that the deduplication strategy must be consistent with that of IoTDBQueryResultSet.
    */
-  private void deduplicate(List<Path> paths, List<Path> deduplicatedPaths)
+  private void deduplicate(QueryPlan queryPlan, List<Path> deduplicatedPaths,
+      List<TSDataType> deduplicatedDataTypes)
       throws QueryProcessException {
-    if (paths == null || deduplicatedPaths == null) {
+    List<Path> paths = queryPlan.getPaths();
+    List<TSDataType> dataTypes = queryPlan.getDataTypes();
+    if (paths == null || deduplicatedPaths == null || dataTypes == null
+        || deduplicatedDataTypes == null) {
       throw new QueryProcessException("Parameters should not be null.");
     }
     Set<String> columnSet = new HashSet<>();
-    for (Path path : paths) {
+    for (int i = 0; i < paths.size(); i++) {
+      Path path = paths.get(i);
       String column = path.toString();
       if (!columnSet.contains(column)) {
         deduplicatedPaths.add(path);
+        deduplicatedDataTypes.add(dataTypes.get(i));
         columnSet.add(column);
       }
     }

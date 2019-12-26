@@ -100,7 +100,9 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  public QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression,
+  public QueryDataSet aggregate(List<Path> paths,
+      List<TSDataType> dataTypes,
+      List<String> aggres, IExpression expression,
       QueryContext context)
       throws PathException, IOException, StorageEngineException,
       QueryFilterOptimizationException {
@@ -108,16 +110,20 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
-                              long unit, long slidingStep, long startTime, long endTime,
-                              QueryContext context)
+  public QueryDataSet groupBy(List<Path> paths,
+      List<TSDataType> dataTypes,
+      List<String> aggres, IExpression expression,
+      long unit, long slidingStep, long startTime, long endTime,
+      QueryContext context)
           throws IOException, PathException,
           StorageEngineException, QueryFilterOptimizationException {
     return null;
   }
 
   @Override
-  public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
+  public QueryDataSet fill(List<Path> fillPaths,
+      List<TSDataType> dataTypes,
+      long queryTime, Map<TSDataType, IFill> fillTypes,
       QueryContext context)
       throws IOException, PathException, StorageEngineException {
     return null;
