@@ -47,7 +47,7 @@ Producers insert IoTDB insert statements into partitions according to devices, e
 ## Usage
 ### Version usage
 IoTDB: 0.10.0  
-Rocketmq: 4.4.0
+RocketMQ: 4.4.0
 ### Dependencies with Maven
 
 ```
