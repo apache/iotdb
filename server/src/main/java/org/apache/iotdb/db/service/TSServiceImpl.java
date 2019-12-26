@@ -805,7 +805,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private TSQueryDataSet fillRpcReturnData(int fetchSize, QueryDataSet queryDataSet, String userName)
-      throws TException, AuthException, IOException {
+          throws TException, AuthException, IOException, InterruptedException {
     IAuthorizer authorizer;
     try {
       authorizer = LocalFileAuthorizer.getInstance();

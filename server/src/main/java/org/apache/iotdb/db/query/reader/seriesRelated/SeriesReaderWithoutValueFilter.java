@@ -60,6 +60,22 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReade
   private BatchData batchData;
 
   /**
+   * whether to be in the thread pool
+   * its usage is to tell the consumer thread that
+   * runnable task linking to this reader is not manage by thread pool anymore.
+   * If it is set to be false,
+   * maybe it's because the corresponding queue has no more space
+   * or this reader has no more data.
+   */
+  private volatile boolean managed;
+
+  /**
+   * whether having remaining batch data
+   * its usage is to tell the consumer thread not to submit another read task for it.
+   */
+  private volatile boolean hasRemaining;
+
+  /**
    * Constructor function.
    *
    * @param seriesPath the path of the series data
@@ -97,6 +113,21 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReade
     this.unseqResourceMergeReader = unseqResourceMergeReader;
   }
 
+  public boolean isManaged() {
+    return managed;
+  }
+
+  public void setManaged(boolean managed) {
+    this.managed = managed;
+  }
+
+  public boolean hasRemaining() {
+    return hasRemaining;
+  }
+
+  public void setHasRemaining(boolean hasRemaining) {
+    this.hasRemaining = hasRemaining;
+  }
 
   @Override
   public boolean hasNextBatch() throws IOException {

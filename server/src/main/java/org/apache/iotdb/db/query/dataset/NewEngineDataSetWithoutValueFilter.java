@@ -19,34 +19,100 @@
 
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
+import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.*;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
-import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
-  private List<IBatchReader> seriesReaderWithoutValueFilterList;
+  private static class ReadTask implements Runnable {
+
+    private final SeriesReaderWithoutValueFilter reader;
+    private BlockingQueue<BatchData> blockingQueue;
+
+    public ReadTask(SeriesReaderWithoutValueFilter reader, BlockingQueue<BatchData> blockingQueue) {
+      this.reader = reader;
+      this.blockingQueue = blockingQueue;
+    }
+
+    @Override
+    public void run() {
+      try {
+        // if the task is submitted, there must be free space in the queue
+        // so here we don't need to check whether the queue has free space
+        if (reader.hasNextBatch()) {
+          BatchData batchData = reader.nextBatch();
+          blockingQueue.put(batchData);
+        }
+        // if the reader has more batch data and the queue also has free space
+        // just submit another itself
+        if (reader.hasNextBatch() && blockingQueue.remainingCapacity() > 0) {
+          pool.submit(this);
+        }
+        // the queue has no more space
+        else if (reader.hasNextBatch()) {
+          synchronized (reader) {
+            // remove itself from the QueryTaskPoolManager
+            reader.setManaged(false);
+          }
+        }
+        // no more data in this reader
+        else {
+          synchronized (reader) {
+            // put the signal batch data into queue
+            blockingQueue.put(SignalBatchData.getInstance());
+            // set the hasRemaining field in reader to false
+            // tell the Consumer not to submit another task for this reader any more
+            reader.setHasRemaining(false);
+            // remove itself from the QueryTaskPoolManager
+            reader.setManaged(false);
+          }
+        }
+      } catch (IOException | InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
+  private List<SeriesReaderWithoutValueFilter> seriesReaderWithoutValueFilterList;
 
   private TreeSet<Long> timeHeap;
+
+  // Blocking queue list for each batch reader
+  private List<BlockingQueue<BatchData>> blockingQueueList;
+
+  // indicate that there is no more batch data in the corresponding queue
+  // in case that the consumer thread is blocked on the queue and won't get runnable any more
+  // this field is not same as the `hasRemaining` in SeriesReaderWithoutValueFilter
+  // even though the `hasRemaining` in SeriesReaderWithoutValueFilter is false
+  // noMoreDataInQueue can still be true
+  // its usage is to tell the consumer thread not to call the take() method.
+  private boolean[] noMoreDataInQueueArray;
 
   private BatchData[] cachedBatchDataArray;
 
   private static final int FLAG = 0x01;
+
+  // capacity for blocking queue
+  private static final int BLOCKING_QUEUE_CAPACITY = 5;
+
+  private static final QueryTaskPoolManager pool = QueryTaskPoolManager.getInstance();
 
   /**
    * constructor of EngineDataSetWithoutValueFilter.
@@ -54,28 +120,28 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
    * @param paths paths in List structure
    * @param dataTypes time series data type
    * @param readers readers in List(IPointReader) structure
-   * @throws IOException IOException
    */
   public NewEngineDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-      List<IBatchReader> readers)
-      throws IOException {
+      List<SeriesReaderWithoutValueFilter> readers) throws InterruptedException {
     super(paths, dataTypes);
     this.seriesReaderWithoutValueFilterList = readers;
-    initHeap();
+    blockingQueueList = new ArrayList<>(readers.size());
+    cachedBatchDataArray = new BatchData[readers.size()];
+    noMoreDataInQueueArray = new boolean[readers.size()];
+    init();
   }
 
-  private void initHeap() throws IOException {
+  private void init() throws InterruptedException {
     timeHeap = new TreeSet<>();
-    cachedBatchDataArray = new BatchData[seriesReaderWithoutValueFilterList.size()];
-
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
-      IBatchReader reader = seriesReaderWithoutValueFilterList.get(i);
-      if (reader.hasNextBatch()) {
-        BatchData batchData = reader.nextBatch();
-        cachedBatchDataArray[i] = batchData;
-        timeHeap.add(batchData.currentTime());
-        // TODO here bug batchData may be null because of hasNextBatch of seqReader
-      }
+      blockingQueueList.add(new LinkedBlockingQueue<>(BLOCKING_QUEUE_CAPACITY));
+      SeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList.get(i);
+      reader.setHasRemaining(true);
+      reader.setManaged(true);
+      pool.submit(new ReadTask(reader, blockingQueueList.get(i)));
+    }
+    for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
+      fillCache(i, true);
     }
   }
 
@@ -84,7 +150,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
    * for RPC in RawData query between client and server
    * fill time buffer, value buffers and bitmap buffers
    */
-  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder) throws IOException {
+  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder) throws IOException, InterruptedException {
     int seriesNum = seriesReaderWithoutValueFilterList.size();
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
 
@@ -113,6 +179,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       }
 
       for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+
         if (cachedBatchDataArray[seriesIndex] == null
             || !cachedBatchDataArray[seriesIndex].hasCurrent()
             || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
@@ -174,16 +241,18 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
           // get next batch if current batch is empty
           if (!cachedBatchDataArray[seriesIndex].hasCurrent()) {
-            if (seriesReaderWithoutValueFilterList.get(seriesIndex).hasNextBatch()) {
-              cachedBatchDataArray[seriesIndex] = seriesReaderWithoutValueFilterList
-                  .get(seriesIndex).nextBatch();
+            // still have remaining batch data in queue
+            if (!noMoreDataInQueueArray[seriesIndex]) {
+              fillCache(seriesIndex, false);
             }
           }
 
           // try to put the next timestamp into the heap
           if (cachedBatchDataArray[seriesIndex].hasCurrent()) {
-            timeHeap.add(cachedBatchDataArray[seriesIndex].currentTime());
+            long time = cachedBatchDataArray[seriesIndex].currentTime();
+            timeHeap.add(time);
           }
+
         }
       }
 
@@ -244,6 +313,31 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     return tsQueryDataSet;
   }
 
+  private void fillCache(int seriesIndex, boolean addToTimeHeap) throws InterruptedException {
+    BatchData batchData = blockingQueueList.get(seriesIndex).take();
+    // no more batch data in this time series queue
+    if (batchData instanceof SignalBatchData) {
+      noMoreDataInQueueArray[seriesIndex] = true;
+    }
+    // there are more batch data in this time series queue
+    else {
+      cachedBatchDataArray[seriesIndex] = batchData;
+      if (addToTimeHeap)
+        timeHeap.add(batchData.currentTime());
+      // judge if we need to submit another read task
+      synchronized (seriesReaderWithoutValueFilterList.get(seriesIndex)) {
+        SeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList.get(seriesIndex);
+        // if the reader isn't being managed and still has more data,
+        // that means this read task leave the pool before because the queue has no more space
+        // now we should submit it again
+        if (!reader.isManaged() && reader.hasRemaining()) {
+          reader.setManaged(true);
+          pool.submit(new ReadTask(reader, blockingQueueList.get(seriesIndex)));
+        }
+      }
+    }
+  }
+
   private void putPBOSToBuffer(PublicBAOS[] bitmapBAOSList, List<ByteBuffer> bitmapBufferList,
       int tsIndex) {
     ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapBAOSList[tsIndex].size());
@@ -282,14 +376,19 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
         record.addField(
             getField(cachedBatchDataArray[seriesIndex].currentValue(), dataTypes.get(seriesIndex)));
 
+
         // move next
         cachedBatchDataArray[seriesIndex].next();
 
         // get next batch if current batch is empty
         if (!cachedBatchDataArray[seriesIndex].hasCurrent()) {
-          if (seriesReaderWithoutValueFilterList.get(seriesIndex).hasNextBatch()) {
-            cachedBatchDataArray[seriesIndex] = seriesReaderWithoutValueFilterList
-                .get(seriesIndex).nextBatch();
+          // still have remaining batch data in queue
+          if (!noMoreDataInQueueArray[seriesIndex]) {
+            try {
+              fillCache(seriesIndex, false);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
           }
         }
 
