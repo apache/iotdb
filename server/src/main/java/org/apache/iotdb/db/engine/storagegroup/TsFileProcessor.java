@@ -28,7 +28,6 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -45,6 +44,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseTsFileCallBack;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTimeCallBack;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -111,7 +111,7 @@ public class TsFileProcessor {
   /**
    * this callback is called before the workMemtable is added into the flushingMemTables.
    */
-  private Supplier updateLatestFlushTimeCallback;
+  private UpdateEndTimeCallBack updateLatestFlushTimeCallback;
 
   private WriteLogNode logNode;
 
@@ -122,7 +122,7 @@ public class TsFileProcessor {
   TsFileProcessor(String storageGroupName, File tsfile, Schema schema,
       VersionController versionController,
       CloseTsFileCallBack closeTsFileCallback,
-      Supplier updateLatestFlushTimeCallback, boolean sequence)
+      UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.schema = schema;
@@ -383,7 +383,7 @@ public class TsFileProcessor {
    * flushManager again.
    */
   private void addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
-    updateLatestFlushTimeCallback.get();
+    updateLatestFlushTimeCallback.call(this);
     flushingMemTables.addLast(tobeFlushed);
     tobeFlushed.setVersion(versionController.nextVersion());
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {

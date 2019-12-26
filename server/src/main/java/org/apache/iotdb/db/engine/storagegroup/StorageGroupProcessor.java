@@ -161,12 +161,13 @@ public class StorageGroupProcessor {
   // includes sealed and unsealed unSequence TsFiles
   private List<TsFileResource> unSequenceFileList = new ArrayList<>();
   private CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
-  /**
+  /*
+   * time partition id -> map, which contains
    * device -> global latest timestamp of each device latestTimeForEachDevice caches non-flushed
    * changes upon timestamps of each device, and is used to update latestFlushedTimeForEachDevice
    * when a flush is issued.
    */
-  private Map<String, Long> latestTimeForEachDevice = new HashMap<>();
+  private Map<Long, Map<String, Long>> latestTimeForEachDevice = new HashMap<>();
   /**
    * device -> largest timestamp of the latest memtable to be submitted to asyncTryToFlush
    * latestFlushedTimeForEachDevice determines whether a data point should be put into a sequential
@@ -262,8 +263,20 @@ public class StorageGroupProcessor {
     }
 
     for (TsFileResource resource : sequenceFileList) {
-      latestTimeForEachDevice.putAll(resource.getEndTimeMap());
-      latestFlushedTimeForEachDevice.putAll(resource.getEndTimeMap());
+      // device id -> start map
+      Map<String, Long> startTimeMap = resource.getStartTimeMap();
+      if (!startTimeMap.isEmpty()) {
+        // if start time map is empty, tsfile resource is empty
+        long timePartitionId = 0;
+        // just find any time of device
+        for (long time : startTimeMap.values()) {
+          timePartitionId = fromTimeToTimePartition(time);
+          break;
+        }
+        latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>())
+            .putAll(resource.getEndTimeMap());
+        latestFlushedTimeForEachDevice.putAll(resource.getEndTimeMap());
+      }
     }
   }
 
@@ -381,7 +394,9 @@ public class StorageGroupProcessor {
     writeLock();
     try {
       // init map
-      latestTimeForEachDevice.putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
+      long timePartitionId = fromTimeToTimePartition(insertPlan.getTime());
+      latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>())
+          .putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
       latestFlushedTimeForEachDevice.putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
 
       // insert to sequence or unSequence file
@@ -396,7 +411,6 @@ public class StorageGroupProcessor {
     writeLock();
     try {
       // init map
-      latestTimeForEachDevice.putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
       latestFlushedTimeForEachDevice.putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
 
       Integer[] results = new Integer[batchInsertPlan.getRowCount()];
@@ -424,13 +438,17 @@ public class StorageGroupProcessor {
           sequenceTimeRangeIndexes.computeIfAbsent(timePartitionId, k -> new ArrayList<>()).add(i);
         } else {
           // for unsequence
-          unsequenceTimeRangeIndexes.computeIfAbsent(timePartitionId, k -> new ArrayList<>()).add(i);
+          unsequenceTimeRangeIndexes.computeIfAbsent(timePartitionId, k -> new ArrayList<>())
+              .add(i);
         }
       }
 
       for (Map.Entry<Long, List<Integer>> entry : sequenceTimeRangeIndexes.entrySet()) {
+        long timePartitionId = entry.getKey();
+        latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>())
+            .putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
         insertBatchToTsFileProcessor(batchInsertPlan, entry.getValue(), true, results,
-            entry.getKey());
+            timePartitionId);
       }
 
       for (Map.Entry<Long, List<Integer>> entry : unsequenceTimeRangeIndexes.entrySet()) {
@@ -451,11 +469,21 @@ public class StorageGroupProcessor {
     return dataTTL == Long.MAX_VALUE || (System.currentTimeMillis() - time) <= dataTTL;
   }
 
+  /**
+   * insert batch to tsfile processor
+   * thread-safety that the caller need to guarantee
+   *
+   * @param batchInsertPlan batch insert plan
+   * @param indexes indexes of insert
+   * @param sequence whether is sequence
+   * @param results result array
+   * @param timePartitionId time partition id
+   */
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
-      List<Integer> indexes, boolean sequence, Integer[] results, long timeRangeId)
+      List<Integer> indexes, boolean sequence, Integer[] results, long timePartitionId)
       throws QueryProcessException {
 
-    TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timeRangeId,
+    TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId,
         sequence);
     if (tsFileProcessor == null) {
       for (int index : indexes) {
@@ -467,9 +495,11 @@ public class StorageGroupProcessor {
     boolean result = tsFileProcessor.insertBatch(batchInsertPlan, indexes, results);
 
     // try to update the latest time of the device of this tsRecord
-    if (result && latestTimeForEachDevice.get(batchInsertPlan.getDeviceId()) < batchInsertPlan
+    if (result && latestTimeForEachDevice.get(timePartitionId).get(batchInsertPlan.getDeviceId())
+        < batchInsertPlan
         .getMaxTime()) {
-      latestTimeForEachDevice.put(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
+      latestTimeForEachDevice.get(timePartitionId)
+          .put(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
     }
 
     // check memtable size and may asyncTryToFlush the work memtable
@@ -490,9 +520,9 @@ public class StorageGroupProcessor {
       throws QueryProcessException {
     TsFileProcessor tsFileProcessor;
     boolean result;
+    long timePartitionId = fromTimeToTimePartition(insertPlan.getTime());
 
-    tsFileProcessor = getOrCreateTsFileProcessor(fromTimeToTimePartition(insertPlan.getTime()),
-        sequence);
+    tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
 
     if (tsFileProcessor == null) {
       return;
@@ -502,8 +532,11 @@ public class StorageGroupProcessor {
     result = tsFileProcessor.insert(insertPlan);
 
     // try to update the latest time of the device of this tsRecord
-    if (result && latestTimeForEachDevice.get(insertPlan.getDeviceId()) < insertPlan.getTime()) {
-      latestTimeForEachDevice.put(insertPlan.getDeviceId(), insertPlan.getTime());
+    if (result
+        && latestTimeForEachDevice.get(timePartitionId).get(insertPlan.getDeviceId()) < insertPlan
+        .getTime()) {
+      latestTimeForEachDevice.get(timePartitionId)
+          .put(insertPlan.getDeviceId(), insertPlan.getTime());
     }
 
     // check memtable size and may asyncTryToFlush the work memtable
@@ -625,9 +658,10 @@ public class StorageGroupProcessor {
 
   /**
    * Create a new tsfile name
+   *
    * @return file name
    */
-  private String getNewTsFileName(){
+  private String getNewTsFileName() {
     return getNewTsFileName(System.currentTimeMillis(), versionController.nextVersion(), 0);
   }
 
@@ -955,7 +989,14 @@ public class StorageGroupProcessor {
     List<ModificationFile> updatedModFiles = new ArrayList<>();
 
     try {
-      Long lastUpdateTime = latestTimeForEachDevice.get(deviceId);
+      Long lastUpdateTime = null;
+      for (Map<String, Long> latestTimeMap : latestTimeForEachDevice.values()) {
+        Long curTime = latestTimeMap.get(deviceId);
+        if (curTime != null && (lastUpdateTime == null || lastUpdateTime < curTime)) {
+          lastUpdateTime = curTime;
+        }
+      }
+
       // no tsfile data, the delete operation is invalid
       if (lastUpdateTime == null) {
         logger.debug("No device {} in SG {}, deletion invalid", deviceId, storageGroupName);
@@ -1037,17 +1078,17 @@ public class StorageGroupProcessor {
     TsFileResource resource = tsFileProcessor.getTsFileResource();
     for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
       String deviceId = startTime.getKey();
-      resource.forceUpdateEndTime(deviceId, latestTimeForEachDevice.get(deviceId));
+      resource.forceUpdateEndTime(deviceId, latestTimeForEachDevice.get(tsFileProcessor.getTimeRangeId()).get(deviceId));
     }
   }
 
-  private boolean unsequenceFlushCallback() {
+  private boolean unsequenceFlushCallback(TsFileProcessor processor) {
     return true;
   }
 
-  private boolean updateLatestFlushTimeCallback() {
+  private boolean updateLatestFlushTimeCallback(TsFileProcessor processor) {
     // update the largest timestamp in the last flushing memtable
-    for (Entry<String, Long> entry : latestTimeForEachDevice.entrySet()) {
+    for (Entry<String, Long> entry : latestTimeForEachDevice.get(processor.getTimeRangeId()).entrySet()) {
       latestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
     }
     return true;
@@ -1424,7 +1465,7 @@ public class StorageGroupProcessor {
       preTime = Long.parseLong(preName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0]);
     }
     if (subsequentIndex == sequenceFileList.size()) {
-      return preTime < currentTsFileTime ? tsfileName: getNewTsFileName();
+      return preTime < currentTsFileTime ? tsfileName : getNewTsFileName();
     } else {
       String subsequenceName = sequenceList.get(subsequentIndex).getFile().getName();
       long subsequenceTime = Long
@@ -1449,9 +1490,10 @@ public class StorageGroupProcessor {
     for (Entry<String, Long> entry : newTsFileResource.getEndTimeMap().entrySet()) {
       String device = entry.getKey();
       long endTime = newTsFileResource.getEndTimeMap().get(device);
-      if (!latestTimeForEachDevice.containsKey(device)
-          || latestTimeForEachDevice.get(device) < endTime) {
-        latestTimeForEachDevice.put(device, endTime);
+      long timePartitionId = fromTimeToTimePartition(endTime);
+      if (!latestTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>()).containsKey(device)
+          || latestTimeForEachDevice.get(timePartitionId).get(device) < endTime) {
+        latestTimeForEachDevice.get(timePartitionId).put(device, endTime);
       }
       if (!latestFlushedTimeForEachDevice.containsKey(device)
           || latestFlushedTimeForEachDevice.get(device) < endTime) {
@@ -1467,7 +1509,8 @@ public class StorageGroupProcessor {
    * @param tsFileResource tsfile resource to be loaded
    * @UsedBy sync module, load external tsfile module.
    */
-  private void loadTsFileByType(LoadTsFileType type, File syncedTsFile, TsFileResource tsFileResource)
+  private void loadTsFileByType(LoadTsFileType type, File syncedTsFile,
+      TsFileResource tsFileResource)
       throws TsFileProcessorException, DiskSpaceInsufficientException {
     File targetFile;
     long timeRangeId = fromTimeToTimePartition(
@@ -1664,6 +1707,12 @@ public class StorageGroupProcessor {
   public interface CloseTsFileCallBack {
 
     void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
+  }
+
+  @FunctionalInterface
+  public interface UpdateEndTimeCallBack {
+
+    boolean call(TsFileProcessor caller);
   }
 
 }
