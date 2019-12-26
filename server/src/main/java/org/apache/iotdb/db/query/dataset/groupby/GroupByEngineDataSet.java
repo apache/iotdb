@@ -66,7 +66,6 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
 
   protected void initAggreFuction(List<String> aggres, List<TSDataType> dataTypes)
       throws PathException {
-    List<TSDataType> types = new ArrayList<>();
     // construct AggregateFunctions
     for (int i = 0; i < paths.size(); i++) {
       AggregateFunction function = AggreFuncFactory
@@ -74,7 +73,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       function.init();
       functions.add(function);
     }
-    super.setDataTypes(types);
+    super.setDataTypes(dataTypes);
   }
 
   @Override

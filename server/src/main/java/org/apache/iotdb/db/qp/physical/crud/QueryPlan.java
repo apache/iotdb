@@ -36,7 +36,7 @@ public class QueryPlan extends PhysicalPlan {
   List<Path> deduplicatedPaths = null;
   List<TSDataType> dataTypes = null;
   List<TSDataType> deduplicatedDataTypes = null;
-  List<String> deduplicatedAggregations = null;
+  List<String> deduplicatedAggregations = new ArrayList<>();
 
   private IExpression expression = null;
 

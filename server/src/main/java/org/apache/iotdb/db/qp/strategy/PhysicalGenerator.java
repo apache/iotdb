@@ -205,6 +205,17 @@ public class PhysicalGenerator {
       ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime());
       ((GroupByPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
+
+      queryPlan.setDeduplicatedAggregations(queryOperator.getSelectOperator().getAggregations());
+      queryPlan.setDeduplicatedPaths(queryOperator.getSelectedPaths());
+      List<Path> deduplicatedPaths = queryPlan.getDeduplicatedPaths();
+      List<TSDataType> deduplicatedDataTypes = new ArrayList<>();
+      for (int i = 0; i < deduplicatedPaths.size(); i++) {
+        Path path = deduplicatedPaths.get(i);
+        TSDataType seriesType = executor.getSeriesType(path);
+        deduplicatedDataTypes.add(i, seriesType);
+      }
+      queryPlan.setDeduplicatedDataTypes(deduplicatedDataTypes);
     } else if (queryOperator.isFill()) {
       queryPlan = new FillQueryPlan();
       FilterOperator timeFilter = queryOperator.getFilterOperator();
@@ -214,12 +225,16 @@ public class PhysicalGenerator {
       long time = Long.parseLong(((BasicFunctionOperator) timeFilter).getValue());
       ((FillQueryPlan) queryPlan).setQueryTime(time);
       ((FillQueryPlan) queryPlan).setFillType(queryOperator.getFillTypes());
+      deduplicate(queryPlan);
     } else if (queryOperator.hasAggregation()) { // ordinary query
       queryPlan = new AggregationPlan();
       ((AggregationPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
+      queryPlan.setDeduplicatedAggregations(queryOperator.getSelectOperator().getAggregations());
+      deduplicateAggregation(queryPlan);
     } else {
       queryPlan = new QueryPlan();
+      deduplicate(queryPlan);
     }
 
     if (queryOperator.isGroupByDevice()) {
@@ -330,11 +345,9 @@ public class PhysicalGenerator {
       queryPlan.setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
       List<Path> paths = new ArrayList<>(allSelectPaths);
       queryPlan.setPaths(paths);
-      deduplicateGroup(queryPlan);
     } else {
       List<Path> paths = queryOperator.getSelectedPaths();
       queryPlan.setPaths(paths);
-      deduplicate(queryPlan);
     }
 
     queryPlan.checkPaths(executor);
@@ -372,7 +385,7 @@ public class PhysicalGenerator {
   }
 
 
-  private void deduplicateGroup(QueryPlan queryPlan)
+  private void deduplicateAggregation(QueryPlan queryPlan)
       throws QueryProcessException {
     List<Path> paths = queryPlan.getPaths();
     List<String> aggregations = queryPlan.getAggregations();
