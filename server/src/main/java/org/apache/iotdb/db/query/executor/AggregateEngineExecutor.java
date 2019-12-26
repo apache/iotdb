@@ -72,7 +72,7 @@ public class AggregateEngineExecutor {
     this.selectedSeries = selectedSeries;
     this.aggres = aggres;
     this.expression = expression;
-    this.aggregateFetchSize = IoTDBDescriptor.getInstance().getConfig().getAggregateFetchSize();
+    this.aggregateFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
   }
 
   /**

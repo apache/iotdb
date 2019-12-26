@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
  * Note that <code>ChunkReader</code> is an abstract class with three concrete classes, two of which
  * are used here: <code>ChunkReaderWithoutFilter</code> and <code>ChunkReaderWithFilter</code>.
  * <p>
- * This class is used in {@link NewUnseqResourceMergeReader}.
  */
 public class DiskChunkReader implements IPointReader, IBatchReader {
 

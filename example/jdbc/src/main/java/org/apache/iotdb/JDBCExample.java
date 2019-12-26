@@ -24,7 +24,6 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.apache.iotdb.jdbc.IoTDBStatement;
 
 public class JDBCExample {
 

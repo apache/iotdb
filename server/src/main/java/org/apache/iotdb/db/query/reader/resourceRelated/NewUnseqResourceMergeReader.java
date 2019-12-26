@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -55,7 +55,7 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
   private Filter timeFilter;
   private int index = 0; // used to index current metadata in metaDataList
 
-  private static final int DEFAULT_BATCH_DATA_SIZE = 10000;
+  private int batchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
 
   private BatchData batchData;
   private TSDataType dataType;
@@ -137,14 +137,15 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
    * Create a ChunkReader with priority for each ChunkMetadata and put the ChunkReader to
    * mergeReader one by one
    */
-  @Override public boolean hasNextBatch() throws IOException {
+  @Override
+  public boolean hasNextBatch() throws IOException {
     if (hasCachedBatch) {
       return true;
     }
 
     batchData = new BatchData(dataType, true);
 
-    for (int rowCount = 0; rowCount < DEFAULT_BATCH_DATA_SIZE; rowCount++) {
+    for (int rowCount = 0; rowCount < batchSize; rowCount++) {
       if (priorityMergeReader.hasNext()) {
 
         // current time of priority merge reader >= next chunks start time

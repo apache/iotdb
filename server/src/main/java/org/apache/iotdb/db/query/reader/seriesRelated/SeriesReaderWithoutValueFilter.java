@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -49,9 +50,7 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReade
   // cache batch data for unsequence reader
   private BatchData unseqBatchData;
 
-  private static final int DEFAULT_BATCH_DATA_SIZE = 10000;
-
-  private int batchDataSize;
+  private int batchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
 
   /**
    * will be removed after removing IPointReader
@@ -87,7 +86,6 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReade
       this.unseqResourceMergeReader = new NewUnseqResourceMergeReader(seriesPath, dataType,
               queryDataSource.getUnseqResources(), context, null);
     }
-    this.batchDataSize = DEFAULT_BATCH_DATA_SIZE;
   }
 
   /**
@@ -97,7 +95,6 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReade
       IBatchReader unseqResourceMergeReader) {
     this.seqResourceIterateReader = seqResourceIterateReader;
     this.unseqResourceMergeReader = unseqResourceMergeReader;
-    this.batchDataSize = DEFAULT_BATCH_DATA_SIZE;
   }
 
 
@@ -137,7 +134,7 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReade
       // if the count reaches batch data size
       int count = 0;
       BatchData batchData = new BatchData(seqBatchData.getDataType(), true);
-      while (count < batchDataSize && hasNextInSeq() && hasNextInUnSeq()) {
+      while (count < batchSize && hasNextInSeq() && hasNextInUnSeq()) {
         long timeInSeq = seqBatchData.currentTime();
         long timeInUnseq = unseqBatchData.currentTime();
         Object currentValue;

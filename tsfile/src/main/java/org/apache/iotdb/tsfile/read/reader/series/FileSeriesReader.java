@@ -37,7 +37,6 @@ public class FileSeriesReader extends AbstractFileSeriesReader {
     super(chunkLoader, chunkMetaDataList, filter);
   }
 
-
   @Override
   protected void initChunkReader(ChunkMetaData chunkMetaData) throws IOException {
     Chunk chunk = chunkLoader.getChunk(chunkMetaData);
@@ -46,10 +45,7 @@ public class FileSeriesReader extends AbstractFileSeriesReader {
 
   @Override
   protected boolean chunkSatisfied(ChunkMetaData chunkMetaData) {
-    if (filter == null ) {
-      return true;
-    }
-    return filter.satisfy(chunkMetaData.getStatistics());
+    return filter == null || filter.satisfy(chunkMetaData.getStatistics());
   }
 
 }

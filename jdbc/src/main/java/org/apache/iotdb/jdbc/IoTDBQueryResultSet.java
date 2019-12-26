@@ -765,7 +765,8 @@ public class IoTDBQueryResultSet implements ResultSet {
   /**
    * judge whether the specified column value is null in the current position
    *
-   * @param index column index
+   * @param index series index
+   * @param rowNum current position
    */
   private boolean isNull(int index, int rowNum) {
     byte bitmap = currentBitmap[index];
