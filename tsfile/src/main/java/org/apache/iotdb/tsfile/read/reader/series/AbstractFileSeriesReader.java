@@ -95,7 +95,7 @@ public abstract class AbstractFileSeriesReader implements IAggregateReader {
     return data;
   }
 
-  public PageHeader nextPageHeader() {
+  public PageHeader nextPageHeader() throws IOException {
     return chunkReader.nextPageHeader();
   }
 

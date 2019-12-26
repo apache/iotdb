@@ -113,8 +113,13 @@ public class ChunkReader {
     }
   }
 
-  public PageHeader nextPageHeader() {
-    return pageHeader;
+  public PageHeader nextPageHeader() throws IOException {
+    if (hasCachedPageHeader || hasNextSatisfiedPage()) {
+      hasCachedPageHeader = false;
+      return pageHeader;
+    } else {
+     throw new IOException("no next satisfied page header");
+    }
   }
 
   public void skipPageData() {
