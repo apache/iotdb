@@ -47,8 +47,8 @@ According to the [sample data](https://raw.githubusercontent.com/apache/incubato
 We can create two users for ln and sgcc groups, named ln\_write\_user and sgcc\_write\_user, with both passwords being write\_pwd. The SQL statement is:
 
 ```
-CREATE USER ln_write_user write_pwd
-CREATE USER sgcc_write_user write_pwd
+CREATE USER ln_write_user 'write_pwd'
+CREATE USER sgcc_write_user 'write_pwd'
 ```
 Then use the following SQL statement to show the user:
 
