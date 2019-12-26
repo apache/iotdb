@@ -481,7 +481,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private boolean executeStatementInBatch(String statement, StringBuilder batchErrorMessage,
       List<Integer> result, long sessionId) {
     try {
-      PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId));
+      PhysicalPlan physicalPlan = processor
+          .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId));
       if (physicalPlan.isQuery()) {
         throw new QueryInBatchStatementException(statement);
       }
@@ -571,8 +572,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   /**
-   * @param plan      must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
-   *                  AuthorPlan
+   * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
+   *             AuthorPlan
    */
   private TSExecuteStatementResp executeQueryStatement(long statementId, PhysicalPlan plan,
       int fetchSize, String username) {
@@ -621,7 +622,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     String statement = req.getStatement();
     PhysicalPlan physicalPlan;
     try {
-      physicalPlan = processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
+      physicalPlan = processor
+          .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
     } catch (QueryProcessException | SQLParserException e) {
       logger.info(ERROR_PARSING_SQL, e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
@@ -631,10 +633,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getTSExecuteStatementResp(getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR,
           "Statement is not a query statement."));
     }
-    return executeQueryStatement(req.statementId, physicalPlan, req.fetchSize, sessionIdUsernameMap.get(req.getSessionId()));
+    return executeQueryStatement(req.statementId, physicalPlan, req.fetchSize,
+        sessionIdUsernameMap.get(req.getSessionId()));
   }
 
-  private TSExecuteStatementResp getShowQueryColumnHeaders(ShowPlan showPlan) throws QueryProcessException {
+  private TSExecuteStatementResp getShowQueryColumnHeaders(ShowPlan showPlan)
+      throws QueryProcessException {
     switch (showPlan.getShowContentType()) {
       case TTL:
         return StaticResps.TTL_RESP;
@@ -646,7 +650,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return StaticResps.SHOW_VERSION_RESP;
       default:
         logger.error("Unsupported show content type: {}", showPlan.getShowContentType());
-        throw new QueryProcessException("Unsupported show content type:" + showPlan.getShowContentType());
+        throw new QueryProcessException(
+            "Unsupported show content type:" + showPlan.getShowContentType());
     }
   }
 
@@ -804,7 +809,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private TSQueryDataSet fillRpcReturnData(int fetchSize, QueryDataSet queryDataSet, String userName)
+  private TSQueryDataSet fillRpcReturnData(int fetchSize, QueryDataSet queryDataSet,
+      String userName)
       throws TException, AuthException, IOException {
     IAuthorizer authorizer;
     try {
@@ -824,14 +830,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       if (queryDataSet instanceof NewEngineDataSetWithoutValueFilter) {
         // optimize for query without value filter
-        result = ((NewEngineDataSetWithoutValueFilter)queryDataSet).fillBuffer(fetchSize, encoder);
+        result = ((NewEngineDataSetWithoutValueFilter) queryDataSet).fillBuffer(fetchSize, encoder);
       } else {
         result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
       }
     } else {
       if (queryDataSet instanceof NewEngineDataSetWithoutValueFilter) {
         // optimize for query without value filter
-        result = ((NewEngineDataSetWithoutValueFilter)queryDataSet).fillBuffer(fetchSize, null);
+        result = ((NewEngineDataSetWithoutValueFilter) queryDataSet).fillBuffer(fetchSize, null);
       } else {
         result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
       }
@@ -915,7 +921,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return sessionIdUsernameMap.get(sessionId) != null;
   }
 
-  private boolean checkAuthorization(List<Path> paths, PhysicalPlan plan, String username) throws AuthException {
+  private boolean checkAuthorization(List<Path> paths, PhysicalPlan plan, String username)
+      throws AuthException {
     String targetUser = null;
     if (plan instanceof AuthorPlan) {
       targetUser = ((AuthorPlan) plan).getUserName();

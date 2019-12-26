@@ -216,7 +216,6 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     if (queryPlan.isGroupByDevice()) {
       queryDataSet = new DeviceIterateDataSet(queryPlan, context, queryRouter);
     } else {
-      // deduplicate executed paths and aggregations if exist
       if (queryPlan instanceof GroupByPlan) {
         GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
         return groupBy(groupByPlan.getDeduplicatedPaths(), groupByPlan.getDeduplicatedDataTypes(),
@@ -230,7 +229,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
             queryPlan.getExpression(), context);
       } else if (queryPlan instanceof FillQueryPlan) {
         FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
-        queryDataSet = fill(fillQueryPlan.getDeduplicatedPaths(), fillQueryPlan.getDataTypes(),
+        queryDataSet = fill(fillQueryPlan.getDeduplicatedPaths(), fillQueryPlan.getDeduplicatedDataTypes(),
             fillQueryPlan.getQueryTime(), fillQueryPlan.getFillType(), context);
       } else {
         queryDataSet = queryRouter
@@ -241,59 +240,6 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     queryDataSet.setRowLimit(queryPlan.getRowLimit());
     queryDataSet.setRowOffset(queryPlan.getRowOffset());
     return queryDataSet;
-  }
-
-  /**
-   * Note that the deduplication strategy must be consistent with that of IoTDBQueryResultSet.
-   */
-  private void deduplicate(QueryPlan queryPlan, List<Path> deduplicatedPaths,
-      List<TSDataType> deduplicatedDataTypes, List<String> deduplicatedAggregations)
-      throws QueryProcessException {
-    List<Path> paths = queryPlan.getPaths();
-    List<TSDataType> dataTypes = queryPlan.getDataTypes();
-    List<String> aggregations = queryPlan.getAggregations();
-    if (paths == null || aggregations == null || dataTypes == null || deduplicatedPaths == null
-        || deduplicatedAggregations == null || deduplicatedDataTypes == null) {
-      throw new QueryProcessException("Parameters should not be null.");
-    }
-    if (paths.size() != aggregations.size()) {
-      throw new QueryProcessException(
-          "The size of the path list does not equal that of the aggregation list.");
-    }
-    Set<String> columnSet = new HashSet<>();
-    for (int i = 0; i < paths.size(); i++) {
-      String column = aggregations.get(i) + "(" + paths.get(i).toString() + ")";
-      if (!columnSet.contains(column)) {
-        deduplicatedPaths.add(paths.get(i));
-        deduplicatedDataTypes.add(dataTypes.get(i));
-        deduplicatedAggregations.add(aggregations.get(i));
-        columnSet.add(column);
-      }
-    }
-  }
-
-  /**
-   * Note that the deduplication strategy must be consistent with that of IoTDBQueryResultSet.
-   */
-  private void deduplicate(QueryPlan queryPlan, List<Path> deduplicatedPaths,
-      List<TSDataType> deduplicatedDataTypes)
-      throws QueryProcessException {
-    List<Path> paths = queryPlan.getPaths();
-    List<TSDataType> dataTypes = queryPlan.getDataTypes();
-    if (paths == null || deduplicatedPaths == null || dataTypes == null
-        || deduplicatedDataTypes == null) {
-      throw new QueryProcessException("Parameters should not be null.");
-    }
-    Set<String> columnSet = new HashSet<>();
-    for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
-      String column = path.toString();
-      if (!columnSet.contains(column)) {
-        deduplicatedPaths.add(path);
-        deduplicatedDataTypes.add(dataTypes.get(i));
-        columnSet.add(column);
-      }
-    }
   }
 
   @Override

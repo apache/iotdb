@@ -25,7 +25,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
@@ -147,14 +149,27 @@ public class DeviceIterateDataSet extends QueryDataSet {
       }
       // extract paths and aggregations if exist from executeColumns
       List<Path> executePaths = new ArrayList<>();
+      List<TSDataType> tsDataTypes = new ArrayList<>();
       List<String> executeAggregations = new ArrayList<>();
       for (String column : executeColumns) {
         if (dataSetType == DataSetType.GROUPBY || dataSetType == DataSetType.AGGREGATE) {
-          executePaths.add(new Path(currentDevice,
-              column.substring(column.indexOf("(") + 1, column.indexOf(")"))));
+          Path path = new Path(currentDevice,
+              column.substring(column.indexOf("(") + 1, column.indexOf(")")));
+          try {
+            tsDataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
+          } catch (PathException e) {
+            System.out.println(e);
+          }
+          executePaths.add(path);
           executeAggregations.add(column.substring(0, column.indexOf("(")));
         } else {
-          executePaths.add(new Path(currentDevice, column));
+          Path path = new Path(currentDevice, column);
+          try {
+            tsDataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
+          } catch (PathException e) {
+            System.out.println(e);
+          }
+          executePaths.add(path);
         }
       }
 
@@ -162,20 +177,20 @@ public class DeviceIterateDataSet extends QueryDataSet {
         switch (dataSetType) {
           case GROUPBY:
             currentDataSet = queryRouter
-                .groupBy(executePaths, dataTypes, executeAggregations, expression, unit,
+                .groupBy(executePaths, tsDataTypes, executeAggregations, expression, unit,
                     slidingStep,
                     startTime, endTime, context);
             break;
           case AGGREGATE:
             currentDataSet = queryRouter
-                .aggregate(executePaths, dataTypes, executeAggregations, expression, context);
+                .aggregate(executePaths, tsDataTypes, executeAggregations, expression, context);
             break;
           case FILL:
             currentDataSet = queryRouter
-                .fill(executePaths, dataTypes, queryTime, fillType, context);
+                .fill(executePaths, tsDataTypes, queryTime, fillType, context);
             break;
           case QUERY:
-            currentDataSet = queryRouter.query(executePaths, dataTypes, expression, context);
+            currentDataSet = queryRouter.query(executePaths, tsDataTypes, expression, context);
             break;
           default:
             throw new IOException("unsupported DataSetType");
