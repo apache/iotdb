@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.query.reader.resourceRelated;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -41,6 +37,11 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * To read a list of unsequence TsFiles, this class implements <code>IBatchReader</code> for the
@@ -108,6 +109,7 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
             chunkMetaData.setPriority(priority++);
             chunkMetaData.setChunkLoader(chunkLoader);
             chunkMetaDataList.add(chunkMetaData);
+            System.out.println(chunkMetaData);
           }
         }
       }
@@ -156,6 +158,7 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
         }
 
         TimeValuePair timeValuePair = priorityMergeReader.next();
+        System.out.println(timeValuePair);
         batchData.putTime(timeValuePair.getTimestamp());
         batchData.putAnObject(timeValuePair.getValue().getValue());
 
