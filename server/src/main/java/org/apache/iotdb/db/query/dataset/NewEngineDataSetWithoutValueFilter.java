@@ -61,12 +61,14 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
         // so here we don't need to check whether the queue has free space
         if (reader.hasNextBatch()) {
           BatchData batchData = reader.nextBatch();
-//          System.out.println(index + Arrays.toString(batchData.getTimeAsArray()));
+          System.out.println(index + Arrays.toString(batchData.getTimeAsArray()));
           blockingQueue.put(batchData);
         }
         // if the reader has more batch data and the queue also has free space
         // just submit another itself
         if (reader.hasNextBatch() && blockingQueue.remainingCapacity() > 0) {
+          System.out.println(index + " submit itself");
+          System.out.println(index + " " + Arrays.toString(reader.nextBatch().getTimeAsArray()));
           pool.submit(this);
         }
         // the queue has no more space
@@ -328,7 +330,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     // there are more batch data in this time series queue
     else {
       cachedBatchDataArray[seriesIndex] = batchData;
-      System.out.println(seriesIndex + Arrays.toString(batchData.getTimeAsArray()));
+//      System.out.println(seriesIndex + Arrays.toString(batchData.getTimeAsArray()));
       if (addToTimeHeap)
         timeHeap.add(batchData.currentTime());
       // judge if we need to submit another read task
