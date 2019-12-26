@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.concurrent.BlockingQueue;
@@ -322,6 +323,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     // there are more batch data in this time series queue
     else {
       cachedBatchDataArray[seriesIndex] = batchData;
+      System.out.println(seriesIndex + Arrays.toString(batchData.getTimeAsArray()));
       if (addToTimeHeap)
         timeHeap.add(batchData.currentTime());
       // judge if we need to submit another read task

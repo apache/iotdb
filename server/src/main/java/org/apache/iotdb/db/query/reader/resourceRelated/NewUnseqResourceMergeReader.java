@@ -109,7 +109,6 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
             chunkMetaData.setPriority(priority++);
             chunkMetaData.setChunkLoader(chunkLoader);
             chunkMetaDataList.add(chunkMetaData);
-            System.out.println(chunkMetaData);
           }
         }
       }
@@ -158,7 +157,6 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
         }
 
         TimeValuePair timeValuePair = priorityMergeReader.next();
-        System.out.println(timeValuePair);
         batchData.putTime(timeValuePair.getTimestamp());
         batchData.putAnObject(timeValuePair.getValue().getValue());
 
