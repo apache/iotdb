@@ -225,15 +225,17 @@ public class PhysicalGenerator {
       long time = Long.parseLong(((BasicFunctionOperator) timeFilter).getValue());
       ((FillQueryPlan) queryPlan).setQueryTime(time);
       ((FillQueryPlan) queryPlan).setFillType(queryOperator.getFillTypes());
+      queryPlan.setPaths(queryOperator.getSelectedPaths());
       deduplicate(queryPlan);
     } else if (queryOperator.hasAggregation()) { // ordinary query
       queryPlan = new AggregationPlan();
       ((AggregationPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
-      queryPlan.setDeduplicatedAggregations(queryOperator.getSelectOperator().getAggregations());
+      queryPlan.setPaths(queryOperator.getSelectedPaths());
       deduplicateAggregation(queryPlan);
     } else {
       queryPlan = new QueryPlan();
+      queryPlan.setPaths(queryOperator.getSelectedPaths());
       deduplicate(queryPlan);
     }
 
