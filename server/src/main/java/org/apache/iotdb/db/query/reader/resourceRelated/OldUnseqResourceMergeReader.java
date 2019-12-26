@@ -49,12 +49,12 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  * <p>
  * This class is used in {@link org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter}.
  */
-public class UnseqResourceMergeReader extends PriorityMergeReader {
+public class OldUnseqResourceMergeReader extends PriorityMergeReader {
 
   private Path seriesPath;
   private long queryId;
 
-  public UnseqResourceMergeReader(Path seriesPath, List<TsFileResource> unseqResources,
+  public OldUnseqResourceMergeReader(Path seriesPath, List<TsFileResource> unseqResources,
       QueryContext context, Filter filter) throws IOException {
     this.seriesPath = seriesPath;
     this.queryId = context.getQueryId();

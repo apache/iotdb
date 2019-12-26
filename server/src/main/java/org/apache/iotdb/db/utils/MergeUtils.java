@@ -37,8 +37,8 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,7 +101,7 @@ public class MergeUtils {
   }
 
   public static int writeChunkWithoutUnseq(Chunk chunk, IChunkWriter chunkWriter) throws IOException {
-    ChunkReader chunkReader = new ChunkReaderWithoutFilter(chunk);
+    AbstractChunkReader chunkReader = new ChunkReader(chunk, null);
     int ptWritten = 0;
     while (chunkReader.hasNextBatch()) {
       BatchData batchData = chunkReader.nextBatch();

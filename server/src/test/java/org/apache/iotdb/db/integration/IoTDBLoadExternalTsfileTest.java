@@ -270,7 +270,7 @@ public class IoTDBLoadExternalTsfileTest {
         Statement statement = connection.createStatement()) {
 
       // check query result
-      boolean hasResultSet = statement.execute("select  * from root");
+      boolean hasResultSet = statement.execute("select * from root");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
@@ -361,7 +361,7 @@ public class IoTDBLoadExternalTsfileTest {
   }
 
   @Test
-  public void loadTsfileTestWithAutoCreateSchema() throws SQLException {
+  public void loadTsFileTestWithAutoCreateSchema() throws SQLException {
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -453,7 +453,7 @@ public class IoTDBLoadExternalTsfileTest {
   }
 
   @Test
-  public void removeTsfileTest() throws SQLException {
+  public void removeTsFileTest() throws SQLException {
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -481,7 +481,7 @@ public class IoTDBLoadExternalTsfileTest {
     }
   }
 
-  private void prepareData(String[] sqls) throws SQLException {
+  private void prepareData(String[] sqls) {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");

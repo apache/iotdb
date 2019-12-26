@@ -326,9 +326,6 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public PreparedStatement prepareStatement(String sql) throws SQLException {
-    if (sql.equalsIgnoreCase("INSERT")) {
-      return new IoTDBPreparedInsertionStatement(this, getClient(), sessionId, zoneId);
-    }
     return new IoTDBPreparedStatement(this, getClient(), sessionId, sql, zoneId);
   }
 

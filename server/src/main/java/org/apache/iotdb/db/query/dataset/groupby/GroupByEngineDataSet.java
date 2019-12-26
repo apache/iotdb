@@ -51,7 +51,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
    * groupBy query.
    */
   public GroupByEngineDataSet(long queryId, List<Path> paths, long unit,
-                              long slidingStep, long startTime, long endTime) {
+      long slidingStep, long startTime, long endTime) {
     super(paths);
     this.queryId = queryId;
     this.unit = unit;

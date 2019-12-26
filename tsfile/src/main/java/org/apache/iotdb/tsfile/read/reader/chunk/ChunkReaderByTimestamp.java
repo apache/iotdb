@@ -21,12 +21,12 @@ package org.apache.iotdb.tsfile.read.reader.chunk;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 
-public class ChunkReaderByTimestamp extends ChunkReader {
+public class ChunkReaderByTimestamp extends AbstractChunkReader {
 
   private long currentTimestamp;
 
   public ChunkReaderByTimestamp(Chunk chunk) {
-    super(chunk);
+    super(chunk, null);
   }
 
   @Override

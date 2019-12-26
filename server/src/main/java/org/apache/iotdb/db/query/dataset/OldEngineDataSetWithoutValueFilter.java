@@ -19,23 +19,25 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.TreeSet;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.TreeSet;
+
 
 /**
- * TODO implement this class as TsFile DataSetWithoutTimeGenerator.
+ * need to be replaced by EngineDataSetWithoutValueFilter
  */
-public class EngineDataSetWithoutValueFilter extends QueryDataSet {
+public class OldEngineDataSetWithoutValueFilter extends QueryDataSet {
 
   private List<IPointReader> seriesReaderWithoutValueFilterList;
 
@@ -51,7 +53,7 @@ public class EngineDataSetWithoutValueFilter extends QueryDataSet {
    * @param readers readers in List(IPointReader) structure
    * @throws IOException IOException
    */
-  public EngineDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
+  public OldEngineDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
       List<IPointReader> readers)
       throws IOException {
     super(paths, dataTypes);

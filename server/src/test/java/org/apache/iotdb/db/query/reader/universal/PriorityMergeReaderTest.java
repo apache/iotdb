@@ -20,9 +20,7 @@
 package org.apache.iotdb.db.query.reader.universal;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.junit.Assert;
 import org.junit.Test;
 

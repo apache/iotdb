@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 
 /**
@@ -40,7 +40,7 @@ public class FileSeriesReaderByTimestamp {
   protected List<ChunkMetaData> chunkMetaDataList;
   private int currentChunkIndex = 0;
 
-  private ChunkReader chunkReader;
+  private AbstractChunkReader chunkReader;
   private long currentTimestamp;
   private BatchData data = null; // current batch data
 
@@ -77,7 +77,7 @@ public class FileSeriesReaderByTimestamp {
     }
 
     while (data != null) {
-      while (data.hasNext()) {
+      while (data.hasCurrent()) {
         if (data.currentTime() < timestamp) {
           data.next();
         } else {
@@ -85,7 +85,7 @@ public class FileSeriesReaderByTimestamp {
         }
       }
 
-      if (data.hasNext()) {
+      if (data.hasCurrent()) {
         if (data.currentTime() == timestamp) {
           Object value = data.currentValue();
           data.next();
@@ -112,12 +112,12 @@ public class FileSeriesReaderByTimestamp {
   public boolean hasNext() throws IOException {
 
     if (chunkReader != null) {
-      if (data != null && data.hasNext()) {
+      if (data != null && data.hasCurrent()) {
         return true;
       }
       while (chunkReader.hasNextBatch()) {
         data = chunkReader.nextBatch();
-        if (data != null && data.hasNext()) {
+        if (data != null && data.hasCurrent()) {
           return true;
         }
       }
@@ -125,7 +125,7 @@ public class FileSeriesReaderByTimestamp {
     while (constructNextSatisfiedChunkReader()) {
       while (chunkReader.hasNextBatch()) {
         data = chunkReader.nextBatch();
-        if (data != null && data.hasNext()) {
+        if (data != null && data.hasCurrent()) {
           return true;
         }
       }

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -72,7 +72,7 @@ public class Session {
   private boolean isClosed = true;
   private ZoneId zoneId;
   private long statementId;
-
+  private int fetchSize;
 
   public Session(String host, int port) {
     this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
@@ -87,10 +87,19 @@ public class Session {
     this.port = port;
     this.username = username;
     this.password = password;
+    this.fetchSize = Config.DEFAULT_FETCH_SIZE;
+  }
+
+  public Session(String host, int port, String username, String password, int fetchSize) {
+    this.host = host;
+    this.port = port;
+    this.username = username;
+    this.password = password;
+    this.fetchSize = fetchSize;
   }
 
   public synchronized void open() throws IoTDBSessionException {
-    open(false, 0);
+    open(false, Config.DEFAULT_TIMEOUT_MS);
   }
 
   private synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
@@ -246,7 +255,7 @@ public class Session {
     request.setValues(values);
 
     try {
-      return checkAndReturn(client.insertRow(request));
+      return checkAndReturn(client.insert(request));
     } catch (TException e) {
       throw new IoTDBSessionException(e);
     }
@@ -367,7 +376,7 @@ public class Session {
    * delete data <= time in multiple timeseries
    *
    * @param paths data in which time series to delete
-   * @param time data with time stamp less than or equal to time will be deleted
+   * @param time  data with time stamp less than or equal to time will be deleted
    */
   public TSStatus deleteData(List<String> paths, long time)
       throws IoTDBSessionException {
@@ -482,11 +491,12 @@ public class Session {
     }
 
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
-    TSExecuteStatementResp execResp = client.executeStatement(execReq);
+    execReq.setFetchSize(fetchSize);
+    TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
 
     RpcUtils.verifySuccess(execResp.getStatus());
     return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
-        execResp.getQueryId(), client, sessionId);
+        execResp.getQueryId(), client, sessionId, execResp.queryDataSet);
   }
 
   /**

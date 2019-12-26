@@ -19,12 +19,13 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
-import org.apache.iotdb.db.utils.TsPrimitiveType.TsBinary;
-import org.apache.iotdb.db.utils.TsPrimitiveType.TsBoolean;
-import org.apache.iotdb.db.utils.TsPrimitiveType.TsDouble;
-import org.apache.iotdb.db.utils.TsPrimitiveType.TsFloat;
-import org.apache.iotdb.db.utils.TsPrimitiveType.TsInt;
-import org.apache.iotdb.db.utils.TsPrimitiveType.TsLong;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBinary;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBoolean;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;

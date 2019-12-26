@@ -58,10 +58,10 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    * constructor.
    */
   public GroupByWithValueFilterDataSet(long queryId, List<Path> paths, long unit,
-                                       long slidingStep, long startTime, long endTime) {
+      long slidingStep, long startTime, long endTime) {
     super(queryId, paths, unit, slidingStep, startTime, endTime);
     this.allDataReaderList = new ArrayList<>();
-    this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getAggregateFetchSize();
+    this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
   }
 
   /**

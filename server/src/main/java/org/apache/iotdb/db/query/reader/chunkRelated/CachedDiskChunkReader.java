@@ -24,16 +24,16 @@ import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
 
 public class CachedDiskChunkReader implements IPointReader {
 
-  private ChunkReader chunkReader;
+  private AbstractChunkReader chunkReader;
   private BatchData data;
   private TimeValuePair prev;
   private TimeValuePair current;
 
-  public CachedDiskChunkReader(ChunkReader chunkReader) {
+  public CachedDiskChunkReader(AbstractChunkReader chunkReader) {
     this.chunkReader = chunkReader;
     this.prev =
         TimeValuePairUtils.getEmptyTimeValuePair(chunkReader.getChunkHeader().getDataType());
@@ -41,12 +41,12 @@ public class CachedDiskChunkReader implements IPointReader {
 
   @Override
   public boolean hasNext() throws IOException {
-    if (data != null && data.hasNext()) {
+    if (data != null && data.hasCurrent()) {
       return true;
     }
     while (chunkReader.hasNextBatch()) {
       data = chunkReader.nextBatch();
-      if (data.hasNext()) {
+      if (data.hasCurrent()) {
         return true;
       }
     }
@@ -57,12 +57,12 @@ public class CachedDiskChunkReader implements IPointReader {
   public TimeValuePair next() throws IOException {
     TimeValuePairUtils.setCurrentTimeValuePair(data, prev);
     data.next();
-    if (data.hasNext()) {
+    if (data.hasCurrent()) {
       TimeValuePairUtils.setCurrentTimeValuePair(data, current());
     } else {
       while (chunkReader.hasNextBatch()) {
         data = chunkReader.nextBatch();
-        if (data.hasNext()) {
+        if (data.hasCurrent()) {
           TimeValuePairUtils.setCurrentTimeValuePair(data, current());
           break;
         }

@@ -181,7 +181,7 @@ public class PageReaderTest {
         }
         assert data != null;
 
-        while (data.hasNext()) {
+        while (data.hasCurrent()) {
           Assert.assertEquals(Long.valueOf(index), (Long) data.currentTime());
           Assert.assertEquals(generateValueByIndex(index), data.currentValue());
           data.next();

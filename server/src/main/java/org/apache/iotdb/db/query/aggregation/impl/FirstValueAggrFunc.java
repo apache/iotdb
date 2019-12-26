@@ -64,7 +64,7 @@ public class FirstValueAggrFunc extends AggregateFunction {
     if (resultData.isSetTime()) {
       return;
     }
-    if (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
+    if (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
       if (dataInThisPage.currentTime() >= unsequenceReader.current().getTimestamp()) {
         resultData.putTimeAndValue(0, unsequenceReader.current().getValue().getValue());
         unsequenceReader.next();
@@ -76,7 +76,7 @@ public class FirstValueAggrFunc extends AggregateFunction {
       }
     }
 
-    if (dataInThisPage.hasNext()) {
+    if (dataInThisPage.hasCurrent()) {
       resultData.putTimeAndValue(0, dataInThisPage.currentValue());
     }
   }
@@ -87,7 +87,7 @@ public class FirstValueAggrFunc extends AggregateFunction {
     if (resultData.isSetTime()) {
       return;
     }
-    if (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
+    if (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
       if (dataInThisPage.currentTime() >= unsequenceReader.current().getTimestamp()) {
         if (unsequenceReader.current().getTimestamp() < bound) {
           resultData.putTimeAndValue(0, unsequenceReader.current().getValue().getValue());
@@ -103,7 +103,7 @@ public class FirstValueAggrFunc extends AggregateFunction {
       }
     }
 
-    if (dataInThisPage.hasNext() && dataInThisPage.currentTime() < bound) {
+    if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
       resultData.putTimeAndValue(0, dataInThisPage.currentValue());
       dataInThisPage.next();
     }
