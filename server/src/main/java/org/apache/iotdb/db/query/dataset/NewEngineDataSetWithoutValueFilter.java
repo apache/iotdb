@@ -46,10 +46,12 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
     private final SeriesReaderWithoutValueFilter reader;
     private BlockingQueue<BatchData> blockingQueue;
+    private int index;
 
-    public ReadTask(SeriesReaderWithoutValueFilter reader, BlockingQueue<BatchData> blockingQueue) {
+    public ReadTask(SeriesReaderWithoutValueFilter reader, BlockingQueue<BatchData> blockingQueue, int index) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
+      this.index = index;
     }
 
     @Override
@@ -59,6 +61,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
         // so here we don't need to check whether the queue has free space
         if (reader.hasNextBatch()) {
           BatchData batchData = reader.nextBatch();
+//          System.out.println(index + Arrays.toString(batchData.getTimeAsArray()));
           blockingQueue.put(batchData);
         }
         // if the reader has more batch data and the queue also has free space
@@ -127,6 +130,9 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     super(paths, dataTypes);
     this.seriesReaderWithoutValueFilterList = readers;
     blockingQueueList = new ArrayList<>(readers.size());
+    for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
+      blockingQueueList.add(new LinkedBlockingQueue<>(BLOCKING_QUEUE_CAPACITY));
+    }
     cachedBatchDataArray = new BatchData[readers.size()];
     noMoreDataInQueueArray = new boolean[readers.size()];
     init();
@@ -135,11 +141,10 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
   private void init() throws InterruptedException {
     timeHeap = new TreeSet<>();
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
-      blockingQueueList.add(new LinkedBlockingQueue<>(BLOCKING_QUEUE_CAPACITY));
       SeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList.get(i);
       reader.setHasRemaining(true);
       reader.setManaged(true);
-      pool.submit(new ReadTask(reader, blockingQueueList.get(i)));
+      pool.submit(new ReadTask(reader, blockingQueueList.get(i), i));
     }
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
       fillCache(i, true);
@@ -334,7 +339,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
         // now we should submit it again
         if (!reader.isManaged() && reader.hasRemaining()) {
           reader.setManaged(true);
-          pool.submit(new ReadTask(reader, blockingQueueList.get(seriesIndex)));
+          pool.submit(new ReadTask(reader, blockingQueueList.get(seriesIndex), seriesIndex));
         }
       }
     }
