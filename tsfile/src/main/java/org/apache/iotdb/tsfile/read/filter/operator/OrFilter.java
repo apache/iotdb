@@ -22,6 +22,7 @@ import java.io.Serializable;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.BinaryFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
 /**
  * Either of the left and right operators of AndExpression must satisfy the condition.
@@ -29,6 +30,9 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 public class OrFilter extends BinaryFilter implements Serializable {
 
   private static final long serialVersionUID = -968055896528472694L;
+
+  public OrFilter() {
+  }
 
   public OrFilter(Filter left, Filter right) {
     super(left, right);
@@ -66,4 +70,8 @@ public class OrFilter extends BinaryFilter implements Serializable {
         .containStartEndTime(startTime, endTime);
   }
 
+  @Override
+  public FilterSerializeId getSerializeId() {
+    return FilterSerializeId.OR;
+  }
 }
