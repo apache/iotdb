@@ -33,7 +33,7 @@
 
     <groupId>org.apache.iotdb</groupId>
     <artifactId>iotdb-jenkins-tools</artifactId>
-    <version>0.9.0-SNAPSHOT</version>
+    <version>0.9.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>IoTDB: Jenkins Tools</name>

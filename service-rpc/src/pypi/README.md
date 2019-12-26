@@ -51,7 +51,7 @@ You have to install thrift (>=0.13) before using the package.
 
 ## How to use (Example)
 
-You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/incubator-iotdb/blob/release%2F0.9.0/client-py/src/client_example.py)
+You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/incubator-iotdb/blob/release%2F0.9.1/client-py/src/client_example.py)
 
 # DISCLAIMER
 

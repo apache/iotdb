@@ -172,7 +172,7 @@ The first part of metadata is `TsDeviceMetaData`
 
 Right now there are five statistics: `min_value, max_value, first_value, last_value, sum_value`.
 
-In v0.8.0, the storage format of statistics is a name-value pair. That is, `Map<String, ByteBuffer> statistics`. The name is a string (remember the length is before the literal). But for the value, there is also an integer byteLength acting as the self description length of the following value because the value may be of various type. For example, if the `min_value` is an integer 0, then it will be stored as [9 "min_value" 4 0] in the TsFile.
+In v0.8.x, the storage format of statistics is a name-value pair. That is, `Map<String, ByteBuffer> statistics`. The name is a string (remember the length is before the literal). But for the value, there is also an integer byteLength acting as the self description length of the following value because the value may be of various type. For example, if the `min_value` is an integer 0, then it will be stored as [9 "min_value" 4 0] in the TsFile.
 
 The figure below shows an example of `TsDigest.deserializeFrom(buffer)`. In v0.8.0, we will get 
 
@@ -187,7 +187,7 @@ Map<String, ByteBuffer> statistics = {
 ```
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/63765352-664a4280-c8fb-11e9-869e-859edf6d00bb.png">
 
-In v0.9.0, the storage format is changed to an array for space and time efficiency. That is, `ByteBuffer[] statistics`. Each position of the array has a fixed association with a specific type of statistic, following the order defined in StatisticType:
+In v0.9.x, the storage format is changed to an array for space and time efficiency. That is, `ByteBuffer[] statistics`. Each position of the array has a fixed association with a specific type of statistic, following the order defined in StatisticType:
 
 ```
 enum StatisticType {
@@ -207,7 +207,7 @@ ByteBuffer[] statistics = [
 ]
 ```
 
-As another example in v0.9.0, when deserializing a TsDigest from buffer [3, 0,4,0, 1,4,99, 3,4,19], we get 
+As another example in v0.9.x, when deserializing a TsDigest from buffer [3, 0,4,0, 1,4,99, 3,4,19], we get 
 
 ```
 ByteBuffer[] statistics = [
@@ -276,7 +276,7 @@ Congratulations! You have finished the journey of discovering TsFile.
 
 #### 1.3.1 TsFileResource Print Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.9.0\tools` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.9.1\tools` directory.
 
 Command:
 
@@ -295,7 +295,7 @@ For Linux or MacOs:
 An example on Windows:
 
 ```
-D:\incubator-iotdb\server\target\iotdb-server-0.9.0\tools>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
+D:\incubator-iotdb\server\target\iotdb-server-0.9.1\tools>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
 ​````````````````````````
 Starting Printing the TsFileResources
 ​````````````````````````
@@ -307,7 +307,7 @@ analyzing the resource file finished.
 
 #### 1.3.2 TsFile Sketch Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.9.0\tools` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.9.1\tools` directory.
 
 Command:
 
@@ -330,7 +330,7 @@ For Linux or MacOs:
 An example on Windows:
 
 ```$xslt
-D:\incubator-iotdb\server\target\iotdb-server-0.9.0\tools>.\print-tsfile-sketch.bat D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
+D:\incubator-iotdb\server\target\iotdb-server-0.9.1\tools>.\print-tsfile-sketch.bat D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
 ​````````````````````````
 Starting Printing the TsFile Sketch
 ​````````````````````````
@@ -411,8 +411,8 @@ You can also use `example/tsfile/org/apache/iotdb/tsfile/TsFileSequenceRead` to 
 
 ### 1.4 A TsFile Visualization Example
 
-#### v0.8.0
+#### v0.8.x
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/65209576-2bd36000-dacb-11e9-9e43-49e0dd01274e.png">
 
-#### v0.9.0
+#### v0.9.x
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/68128717-35b60300-ff53-11e9-919e-48d80536df88.png">

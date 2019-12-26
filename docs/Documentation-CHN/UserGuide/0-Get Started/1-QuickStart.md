@@ -41,7 +41,7 @@
 
 # 快速入门
 
-本文将介绍关于IoTDB使用的基本流程，如果需要更多信息，请浏览我们官网的[指引](https://iotdb.apache.org/#/Documents/progress/chap1/sec1).
+本文将介绍关于IoTDB使用的基本流程，如果需要更多信息，请浏览我们官网的[指引](https://iotdb.apache.org/#/Documents/0.9.x/chap1/sec1).
 
 ## 安装环境
 
@@ -71,7 +71,7 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
   * 系统配置模块 (`tsfile-format.properties`, `iotdb-engine.properties`)
   * 日志配置模块 (`logback.xml`). 
 
-想要了解更多，请浏览[Chapter3: Server](https://iotdb.apache.org/#/Documents/progress/chap3/sec1)
+想要了解更多，请浏览[Chapter3: Server](https://iotdb.apache.org/#/Documents/0.9.x/chap3/sec1)
 	
 
 ## IoTDB试用
@@ -264,7 +264,7 @@ IoTDB> quit
 IoTDB> exit
 ```
 
-想要浏览更多IoTDB数据库支持的命令，请浏览[SQL Reference](https://iotdb.apache.org/#/Documents/progress/chap5/sec4).
+想要浏览更多IoTDB数据库支持的命令，请浏览[SQL Reference](https://iotdb.apache.org/#/Documents/0.9.x/chap5/sec4).
 
 ### 停止IoTDB
 

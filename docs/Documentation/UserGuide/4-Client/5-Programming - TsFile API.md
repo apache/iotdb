@@ -37,7 +37,7 @@ There are two ways to use TsFile in your own project.
 		cd tsfile/
 		mvn clean package -Dmaven.test.skip=true
 		```
-		Then, all the jars can be get in folder named `target/`. Import `target/tsfile-0.9.0-jar-with-dependencies.jar` to your project.
+		Then, all the jars can be get in folder named `target/`. Import `target/tsfile-0.9.1-jar-with-dependencies.jar` to your project.
 	
 * Using as a maven dependency: 
 
@@ -60,7 +60,7 @@ There are two ways to use TsFile in your own project.
 		 <dependency>
 		   <groupId>org.apache.iotdb</groupId>
 		   <artifactId>tsfile</artifactId>
-		   <version>0.9.0</version>
+		   <version>0.9.1</version>
 		 </dependency>
 	  ```
 	  
@@ -93,7 +93,7 @@ There are two ways to use TsFile in your own project.
 		 <dependency>
 		   <groupId>org.apache.iotdb</groupId>
 		   <artifactId>tsfile</artifactId>
-		   <version>0.9.0</version>
+		   <version>0.9.1</version>
 		 </dependency>
 	  ```
 
