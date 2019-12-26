@@ -80,7 +80,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     for (Path path : paths) {
       QueryDataSource queryDataSource = QueryResourceManager.getInstance()
           .getQueryDataSource(path, context);
-      timeFilter = queryDataSource.updateTimeFilter(timeFilter);
+      timeFilter = queryDataSource.setTTL(timeFilter);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
       IAggregateReader seqResourceIterateReader = new SeqResourceIterateReader(

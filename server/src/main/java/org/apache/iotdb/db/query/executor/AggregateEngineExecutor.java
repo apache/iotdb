@@ -101,7 +101,7 @@ public class AggregateEngineExecutor {
       QueryDataSource queryDataSource = QueryResourceManager.getInstance()
           .getQueryDataSource(selectedSeries.get(i), context);
       // add additional time filter if TTL is set
-      timeFilter = queryDataSource.updateTimeFilter(timeFilter);
+      timeFilter = queryDataSource.setTTL(timeFilter);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
       IAggregateReader seqResourceIterateReader;

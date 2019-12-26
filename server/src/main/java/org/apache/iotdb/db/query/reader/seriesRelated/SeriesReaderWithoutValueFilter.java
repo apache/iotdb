@@ -72,7 +72,7 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReade
       QueryContext context, boolean pushdownUnseq) throws StorageEngineException, IOException {
     QueryDataSource queryDataSource = QueryResourceManager.getInstance()
             .getQueryDataSource(seriesPath, context);
-    timeFilter = queryDataSource.updateTimeFilter(timeFilter);
+    timeFilter = queryDataSource.setTTL(timeFilter);
 
     // reader for sequence resources
     this.seqResourceIterateReader = new SeqResourceIterateReader(
