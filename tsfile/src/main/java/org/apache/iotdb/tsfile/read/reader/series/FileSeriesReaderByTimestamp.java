@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
-import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 
 /**
@@ -40,7 +40,7 @@ public class FileSeriesReaderByTimestamp {
   protected List<ChunkMetaData> chunkMetaDataList;
   private int currentChunkIndex = 0;
 
-  private AbstractChunkReader chunkReader;
+  private ChunkReader chunkReader;
   private long currentTimestamp;
   private BatchData data = null; // current batch data
 
@@ -69,8 +69,8 @@ public class FileSeriesReaderByTimestamp {
         return null;
       }
 
-      if (chunkReader.hasNextBatch()) {
-        data = chunkReader.nextBatch();
+      if (chunkReader.hasNextSatisfiedPage()) {
+        data = chunkReader.nextPageData();
       } else {
         return null;
       }
@@ -93,8 +93,8 @@ public class FileSeriesReaderByTimestamp {
         }
         return null;
       } else {
-        if (chunkReader.hasNextBatch()) {
-          data = chunkReader.nextBatch();
+        if (chunkReader.hasNextSatisfiedPage()) {
+          data = chunkReader.nextPageData();
         } else if (!constructNextSatisfiedChunkReader()) {
           return null;
         }
@@ -115,16 +115,16 @@ public class FileSeriesReaderByTimestamp {
       if (data != null && data.hasCurrent()) {
         return true;
       }
-      while (chunkReader.hasNextBatch()) {
-        data = chunkReader.nextBatch();
+      while (chunkReader.hasNextSatisfiedPage()) {
+        data = chunkReader.nextPageData();
         if (data != null && data.hasCurrent()) {
           return true;
         }
       }
     }
     while (constructNextSatisfiedChunkReader()) {
-      while (chunkReader.hasNextBatch()) {
-        data = chunkReader.nextBatch();
+      while (chunkReader.hasNextSatisfiedPage()) {
+        data = chunkReader.nextPageData();
         if (data != null && data.hasCurrent()) {
           return true;
         }

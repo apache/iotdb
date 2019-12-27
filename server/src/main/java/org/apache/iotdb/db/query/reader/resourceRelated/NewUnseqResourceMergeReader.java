@@ -88,13 +88,15 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
       if (tsFileResource.isClosed()) {
         // get chunk metadata list of current closed tsfile
         currentChunkMetaDataList = DeviceMetaDataCache.getInstance().get(tsFileResource, seriesPath);
+
+        // get modifications and apply to chunk metadatas
         List<Modification> pathModifications = context
             .getPathModifications(tsFileResource.getModFile(), seriesPath.getFullPath());
         if (!pathModifications.isEmpty()) {
           QueryUtils.modifyChunkMetaData(currentChunkMetaDataList, pathModifications);
         }
       } else {
-        // metadata list of already flushed chunk groups
+        // metadata list of already flushed chunks in unsealed file, already applied modifications
         currentChunkMetaDataList = tsFileResource.getChunkMetaDataList();
       }
 
@@ -143,7 +145,7 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
       return true;
     }
 
-    batchData = new BatchData(dataType, true);
+    batchData = new BatchData(dataType);
 
     for (int rowCount = 0; rowCount < batchSize; rowCount++) {
       if (priorityMergeReader.hasNext()) {

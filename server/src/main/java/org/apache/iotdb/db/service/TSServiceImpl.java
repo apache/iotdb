@@ -18,6 +18,27 @@
  */
 package org.apache.iotdb.db.service;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
+
+import java.io.IOException;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -46,7 +67,12 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.*;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.NewEngineDataSetWithoutValueFilter;
@@ -54,7 +80,33 @@ import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteInsertRowInBatchResp;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSInsertInBatchReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TSStatusType;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -66,16 +118,6 @@ import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.time.ZoneId;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 
 /**
  * Thrift RPC implementation at server side.
@@ -292,7 +334,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * convert from TSStatusCode to TSStatus, which has message appending with existed status message
    *
-   * @param statusType    status type
+   * @param statusType status type
    * @param appendMessage appending message
    */
   private TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
@@ -573,7 +615,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   /**
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
-   *             AuthorPlan
+   * AuthorPlan
    */
   private TSExecuteStatementResp executeQueryStatement(long statementId, PhysicalPlan plan,
       int fetchSize, String username) {
@@ -686,7 +728,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     // check permissions
     if (!checkAuthorization(physicalPlan.getPaths(), physicalPlan, username)) {
-      return getTSExecuteStatementResp(getStatus(TSStatusCode.NO_PERMISSION_ERROR));
+      return getTSExecuteStatementResp(getStatus(TSStatusCode.NO_PERMISSION_ERROR,
+          "No permissions for this operation " + physicalPlan.getOperatorType()));
     }
 
     TSExecuteStatementResp resp = getTSExecuteStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS));
@@ -1223,7 +1266,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     List<Path> paths = plan.getPaths();
     try {
       if (!checkAuthorization(paths, plan, sessionIdUsernameMap.get(sessionId))) {
-        return getStatus(TSStatusCode.NO_PERMISSION_ERROR, plan.getOperatorType().toString());
+        return getStatus(TSStatusCode.NO_PERMISSION_ERROR,
+            "No permissions for this operation " + plan.getOperatorType().toString());
       }
     } catch (AuthException e) {
       logger.error("meet error while checking authorization.", e);
