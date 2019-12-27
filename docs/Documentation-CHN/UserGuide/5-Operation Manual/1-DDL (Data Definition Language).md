@@ -144,7 +144,7 @@ IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
 ```
 IoTDB> delete timeseries root.ln.wf01.wt01.status
 IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
-IoTDB> delete timeseries root.ln.wf02*
+IoTDB> delete timeseries root.ln.wf02.*
 ```
 
 ### 查看设备
@@ -168,7 +168,7 @@ IoTDB> set ttl to root.ln 3600000
 ### 取消 TTL
 取消TTL的SQL语句如下所示：
 ```
-IoTDB> unset ttl to root.ln 3600000。
+IoTDB> unset ttl to root.ln
 ```
 取消设置TTL后，存储组`root.ln`中所有的数据都会被保存。
 

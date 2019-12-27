@@ -164,7 +164,7 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReade
     if (hasNextInSeq() && hasNextInUnSeq()) {
       // if the count reaches batch data size
       int count = 0;
-      BatchData batchData = new BatchData(seqBatchData.getDataType(), true);
+      BatchData batchData = new BatchData(seqBatchData.getDataType());
       while (count < batchSize && hasNextInSeq() && hasNextInUnSeq()) {
         long timeInSeq = seqBatchData.currentTime();
         long timeInUnseq = unseqBatchData.currentTime();

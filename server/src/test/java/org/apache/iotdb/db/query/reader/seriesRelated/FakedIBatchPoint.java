@@ -90,7 +90,7 @@ public class FakedIBatchPoint implements IBatchReader {
     if (!hasEmptyBatch) {
       num += 1;
     }
-    batchData = new BatchData(TSDataType.INT64, true);
+    batchData = new BatchData(TSDataType.INT64);
     while (num > 0 && iterator.hasNext()) {
       TimeValuePair timeValuePair = iterator.next();
       batchData.putTime(timeValuePair.getTimestamp());
