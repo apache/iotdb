@@ -22,25 +22,25 @@
 # Chapter 5: Operation Manual
 
 ## Account Management Statements
-IoTDB provides users with account priviledge management operations, so as to ensure data security.
+IoTDB provides users with account privilege management operations, so as to ensure data security.
 
-We will show you basic user priviledge management operations through the following specific examples. Detailed SQL syntax and usage details can be found in [SQL Documentation](/#/Documents/progress/chap5/sec4). At the same time, in the JAVA programming environment, you can use the [Java JDBC](/#/Documents/progress/chap4/sec2) to execute priviledge management statements in a single or batch mode. 
+We will show you basic user privilege management operations through the following specific examples. Detailed SQL syntax and usage details can be found in [SQL Documentation](/#/Documents/progress/chap5/sec4). At the same time, in the JAVA programming environment, you can use the [Java JDBC](/#/Documents/progress/chap4/sec2) to execute privilege management statements in a single or batch mode. 
 
 ### Basic Concepts
 #### User
 The user is the legal user of the database. A user corresponds to a unique username and has a password as a means of authentication. Before using a database, a person must first provide a legitimate username and password to make himself/herself a user.
 
-#### Priviledge
-The database provides a variety of operations, and not all users can perform all operations. If a user can perform an operation, the user is said to have the priviledge to perform the operation. Priviledges can be divided into data management priviledge (such as adding, deleting and modifying data) and authority management priviledge (such as creation and deletion of users and roles, granting and revoking of priviledges, etc.). Data management priviledge often needs a path to limit its effective range, which is a subtree rooted at the path's corresponding node.
+#### Privilege
+The database provides a variety of operations, and not all users can perform all operations. If a user can perform an operation, the user is said to have the privilege to perform the operation. privileges can be divided into data management privilege (such as adding, deleting and modifying data) and authority management privilege (such as creation and deletion of users and roles, granting and revoking of privileges, etc.). Data management privilege often needs a path to limit its effective range, which is a subtree rooted at the path's corresponding node.
 
 #### Role
-A role is a set of priviledges and has a unique role name as an identifier. A user usually corresponds to a real identity (such as a traffic dispatcher), while a real identity may correspond to multiple users. These users with the same real identity tend to have the same priviledges. Roles are abstractions that can unify the management of such priviledges.
+A role is a set of privileges and has a unique role name as an identifier. A user usually corresponds to a real identity (such as a traffic dispatcher), while a real identity may correspond to multiple users. These users with the same real identity tend to have the same privileges. Roles are abstractions that can unify the management of such privileges.
 
 #### Default User
-There is a default user in IoTDB after the initial installation: root, and the default password is root. This user is an administrator user, who cannot be deleted and has all the priviledges. Neither can new priviledges be granted to the root user nor can priviledges owned by the root user be deleted.
+There is a default user in IoTDB after the initial installation: root, and the default password is root. This user is an administrator user, who cannot be deleted and has all the privileges. Neither can new privileges be granted to the root user nor can privileges owned by the root user be deleted.
 
-### Priviledge Management Operation Examples
-According to the [sample data](https://raw.githubusercontent.com/apache/incubator-iotdb/master/docs/Documentation/OtherMaterial-Sample%20Data.txt), the sample data of IoTDB may belong to different power generation groups such as ln, sgcc, etc. Different power generation groups do not want others to obtain their own database data, so we need to have data priviledge isolated at the group layer.
+### Privilege Management Operation Examples
+According to the [sample data](https://raw.githubusercontent.com/apache/incubator-iotdb/master/docs/Documentation/OtherMaterial-Sample%20Data.txt), the sample data of IoTDB may belong to different power generation groups such as ln, sgcc, etc. Different power generation groups do not want others to obtain their own database data, so we need to have data privilege isolated at the group layer.
 
 #### Create User
 
@@ -59,8 +59,8 @@ As can be seen from the result shown below, the two users have been created:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578263-e2a91d00-1ef7-11e9-94e8-28819b6fea87.jpg"></center>
 
-#### Grant User Priviledge
-At this point, although two users have been created, they do not have any priviledges, so they can not operate on the database. For example, we use ln_write_user to write data in the database, the SQL statement is:
+#### Grant User Privilege
+At this point, although two users have been created, they do not have any privileges, so they can not operate on the database. For example, we use ln_write_user to write data in the database, the SQL statement is:
 
 ```
 INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
@@ -69,7 +69,7 @@ The SQL statement will not be executed and the corresponding error prompt is giv
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51597609-9af5b600-1f36-11e9-9460-8ab185eb4735.png"></center>
 
-Now, we grant the two users write priviledges to the corresponding storage groups, and try to write data again. The SQL statement is:
+Now, we grant the two users write privileges to the corresponding storage groups, and try to write data again. The SQL statement is:
 
 ```
 GRANT USER ln_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.ln
@@ -80,21 +80,21 @@ The execution result is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578942-33ba1080-1efa-11e9-891c-09d69791aff1.jpg"></center>
 
 ### Other Instructions
-#### The Relationship among Users, Priviledges and Roles
+#### The Relationship among Users, Privileges and Roles
 
-A Role is a set of priviledges, and priviledges and roles are both attributes of users. That is, a role can have several priviledges and a user can have several roles and priviledges (called the user's own priviledges).
+A Role is a set of privileges, and privileges and roles are both attributes of users. That is, a role can have several privileges and a user can have several roles and privileges (called the user's own privileges).
 
-At present, there is no conflicting priviledge in IoTDB, so the real priviledges of a user is the union of the user's own priviledges and the priviledges of the user's roles. That is to say, to determine whether a user can perform an operation, it depends on whether one of the user's own priviledges or the priviledges of the user's roles permits the operation. The user's own priviledges and priviledges of the user's roles may overlap, but it does not matter.
+At present, there is no conflicting privilege in IoTDB, so the real privileges of a user is the union of the user's own privileges and the privileges of the user's roles. That is to say, to determine whether a user can perform an operation, it depends on whether one of the user's own privileges or the privileges of the user's roles permits the operation. The user's own privileges and privileges of the user's roles may overlap, but it does not matter.
 
-It should be noted that if users have a priviledge (corresponding to operation A) themselves and their roles contain the same priviledge, then revoking the priviledge from the users themselves alone can not prohibit the users from performing operation A, since it is necessary to revoke the priviledge from the role, or revoke the role from the user. Similarly, revoking the priviledge from the users's roles alone can not prohibit the users from performing operation A.
+It should be noted that if users have a privilege (corresponding to operation A) themselves and their roles contain the same privilege, then revoking the privilege from the users themselves alone can not prohibit the users from performing operation A, since it is necessary to revoke the privilege from the role, or revoke the role from the user. Similarly, revoking the privilege from the users's roles alone can not prohibit the users from performing operation A.
 
-At the same time, changes to roles are immediately reflected on all users who own the roles. For example, adding certain priviledges to roles will immediately give all users who own the roles corresponding priviledges, and deleting certain priviledges will also deprive the corresponding users of the priviledges (unless the users themselves have the priviledges).
+At the same time, changes to roles are immediately reflected on all users who own the roles. For example, adding certain privileges to roles will immediately give all users who own the roles corresponding privileges, and deleting certain privileges will also deprive the corresponding users of the privileges (unless the users themselves have the privileges).
 
-#### List of Priviledges Included in the System
+#### List of Privileges Included in the System
 
-<center>**List of Priviledges Included in the System**
+<center>**List of privileges Included in the System**
 
-|Priviledge Name|Interpretation|
+|privilege Name|Interpretation|
 |:---|:---|
 |SET\_STORAGE\_GROUP|create timeseries; set storage groups; path dependent|
 |INSERT\_TIMESERIES|insert data; path dependent|
@@ -103,17 +103,17 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |DELETE\_TIMESERIES|delete data or timeseries; path dependent|
 |CREATE\_USER|create users; path independent|
 |DELETE\_USER|delete users; path independent|
-|MODIFY\_PASSWORD|modify passwords for all users; path independent; (Those who do not have this priviledge can still change their own asswords. )|
-|LIST\_USER|list all users; list a user's priviledges; list a user's roles with three kinds of operation priviledges; path independent|
-|GRANT\_USER\_PRIVILEGE|grant user priviledges; path independent|
-|REVOKE\_USER\_PRIVILEGE|revoke user priviledges; path independent|
+|MODIFY\_PASSWORD|modify passwords for all users; path independent; (Those who do not have this privilege can still change their own asswords. )|
+|LIST\_USER|list all users; list a user's privileges; list a user's roles with three kinds of operation privileges; path independent|
+|GRANT\_USER\_PRIVILEGE|grant user privileges; path independent|
+|REVOKE\_USER\_PRIVILEGE|revoke user privileges; path independent|
 |GRANT\_USER\_ROLE|grant user roles; path independent|
 |REVOKE\_USER\_ROLE|revoke user roles; path independent|
 |CREATE\_ROLE|create roles; path independent|
 |DELETE\_ROLE|delete roles; path independent|
-|LIST\_ROLE|list all roles; list the priviledges of a role; list the three kinds of operation priviledges of all users owning a role; path independent|
-|GRANT\_ROLE\_PRIVILEGE|grant role priviledges; path independent|
-|REVOKE\_ROLE\_PRIVILEGE|revoke role priviledges; path independent|
+|LIST\_ROLE|list all roles; list the privileges of a role; list the three kinds of operation privileges of all users owning a role; path independent|
+|GRANT\_ROLE\_PRIVILEGE|grant role privileges; path independent|
+|REVOKE\_ROLE\_PRIVILEGE|revoke role privileges; path independent|
 </center>
 
 #### Username Restrictions
