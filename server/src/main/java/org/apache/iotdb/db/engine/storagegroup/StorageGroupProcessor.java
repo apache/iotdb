@@ -1718,8 +1718,8 @@ public class StorageGroupProcessor {
   }
 
 
-  public TsFileProcessor getWorkUnSequenceTsFileProcessor() {
-    return workUnSequenceTsFileProcessor;
+  public Collection<TsFileProcessor> getWorkUnsequenceTsFileProcessor() {
+    return workUnsequenceTsFileProcessors.values();
   }
 
   public void setDataTTL(long dataTTL) {

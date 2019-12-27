@@ -84,14 +84,15 @@ public class StorageGroupProcessorTest {
     processor.insert(new InsertPlan(record));
     processor.waitForAllCurrentTsFileProcessorsClosed();
 
-
     for (int j = 1; j <= 10; j++) {
       record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       processor.insert(new InsertPlan(record));
     }
 
-    processor.getWorkUnSequenceTsFileProcessor().syncFlush();
+    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+      tsfileProcessor.syncFlush();
+    }
 
     for (int j = 11; j <= 20; j++) {
       record = new TSRecord(j, deviceId);
@@ -101,8 +102,13 @@ public class StorageGroupProcessorTest {
 
     processor.delete(deviceId, measurementId, 15L);
 
-    Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor.getWorkUnSequenceTsFileProcessor()
-        .query(deviceId, measurementId, TSDataType.INT32, Collections.emptyMap(), new QueryContext());
+    Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = null;
+    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+      pair = tsfileProcessor
+          .query(deviceId, measurementId, TSDataType.INT32, Collections.emptyMap(),
+              new QueryContext());
+      break;
+    }
 
     List<TimeValuePair> timeValuePairs = pair.left.getSortedTimeValuePairList();
 
