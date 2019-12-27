@@ -101,13 +101,12 @@ public class GroupByEngineDataSetTest {
     long[] startTimeArray = {8, 11, 14, 17, 20, 23};
     long[] endTimeArray = {11, 14, 17, 20, 23, 24};
 
-    QueryContext context = new QueryContext(queryId);
     GroupByPlan groupByPlan = new GroupByPlan();
     groupByPlan.setUnit(unit);
     groupByPlan.setSlidingStep(slidingStep);
     groupByPlan.setStartTime(startTime);
     groupByPlan.setEndTime(endTime);
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(context, groupByPlan);
+    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByPlan);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
