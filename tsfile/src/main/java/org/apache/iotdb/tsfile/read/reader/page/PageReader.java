@@ -18,18 +18,16 @@
  */
 package org.apache.iotdb.tsfile.read.reader.page;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class PageReader {
 
@@ -90,43 +88,37 @@ public class PageReader {
         case BOOLEAN:
           boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
           if (timestamp > deletedAt && (filter == null || filter.satisfy(timestamp, aBoolean))) {
-            pageData.putTime(timestamp);
-            pageData.putBoolean(aBoolean);
+            pageData.putBoolean(timestamp, aBoolean);
           }
           break;
         case INT32:
           int anInt = valueDecoder.readInt(valueBuffer);
           if (timestamp > deletedAt && (filter == null || filter.satisfy(timestamp, anInt))) {
-            pageData.putTime(timestamp);
-            pageData.putInt(anInt);
+            pageData.putInt(timestamp, anInt);
           }
           break;
         case INT64:
           long aLong = valueDecoder.readLong(valueBuffer);
           if (timestamp > deletedAt && (filter == null || filter.satisfy(timestamp, aLong))) {
-            pageData.putTime(timestamp);
-            pageData.putLong(aLong);
+            pageData.putLong(timestamp, aLong);
           }
           break;
         case FLOAT:
           float aFloat = valueDecoder.readFloat(valueBuffer);
           if (timestamp > deletedAt && (filter == null || filter.satisfy(timestamp, aFloat))) {
-            pageData.putTime(timestamp);
-            pageData.putFloat(aFloat);
+            pageData.putFloat(timestamp, aFloat);
           }
           break;
         case DOUBLE:
           double aDouble = valueDecoder.readDouble(valueBuffer);
           if (timestamp > deletedAt && (filter == null || filter.satisfy(timestamp, aDouble))) {
-            pageData.putTime(timestamp);
-            pageData.putDouble(aDouble);
+            pageData.putDouble(timestamp, aDouble);
           }
           break;
         case TEXT:
           Binary aBinary = valueDecoder.readBinary(valueBuffer);
           if (timestamp > deletedAt && (filter == null || filter.satisfy(timestamp, aBinary))) {
-            pageData.putTime(timestamp);
-            pageData.putBinary(aBinary);
+            pageData.putBinary(timestamp, aBinary);
           }
           break;
         default:

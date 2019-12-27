@@ -48,38 +48,24 @@ import java.util.ArrayList;
 public class BatchData implements Serializable {
 
   private static final long serialVersionUID = -4620310601188394839L;
-  private int timeCapacity = 16;
-  private int valueCapacity = 16;
+  private int capacity = 16;
   private int capacityThreshold = 1024;
 
   private TSDataType dataType;
-  private int curIdx;
 
-  /**
-   * the number of ArrayList in timeRet
-   **/
-  private int timeArrayIdx;
-  /**
-   * the index of current ArrayList in timeRet
-   **/
-  private int curTimeIdx;
-  /**
-   * the insert timestamp number of timeRet
-   **/
+  // outer list index for read
+  private int readCurListIndex;
+  // inner array index for read
+  private int readCurArrayIndex;
+
+  // outer list index for write
+  private int writeCurListIndex;
+  // inner array index for write
+  private int writeCurArrayIndex;
+
+  // the insert timestamp number of timeRet
   private int count;
 
-  /**
-   * the number of ArrayList in valueRet
-   **/
-  private int valueArrayIdx;
-  /**
-   * the index of current ArrayList in valueRet
-   **/
-  private int curValueIdx;
-  /**
-   * the insert value number of valueRet
-   **/
-  private int valueLength;
 
   private ArrayList<long[]> timeRet;
   private ArrayList<boolean[]> booleanRet;
@@ -107,16 +93,27 @@ public class BatchData implements Serializable {
   }
 
   public boolean hasCurrent() {
-    return curIdx < count;
+    if (readCurListIndex < writeCurListIndex) {
+      return readCurArrayIndex < capacity;
+    }
+    else if (readCurListIndex == writeCurListIndex) {
+      return readCurArrayIndex < writeCurArrayIndex;
+    }
+    else {
+      return false;
+    }
   }
 
   public void next() {
-    curIdx++;
+    readCurArrayIndex++;
+    if (readCurArrayIndex == capacity) {
+      readCurArrayIndex = 0;
+      readCurListIndex++;
+    }
   }
 
   public long currentTime() {
-    rangeCheckForTime(curIdx);
-    return this.timeRet.get(curIdx / timeCapacity)[curIdx % timeCapacity];
+    return this.timeRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
   /**
@@ -173,42 +170,40 @@ public class BatchData implements Serializable {
    */
   public void init(TSDataType type) {
     this.dataType = type;
-    this.valueArrayIdx = 0;
-    this.curValueIdx = 0;
-    this.valueLength = 0;
-    this.curIdx = 0;
+    this.readCurListIndex = 0;
+    this.readCurArrayIndex = 0;
+    this.writeCurListIndex = 0;
+    this.writeCurArrayIndex = 0;
     capacityThreshold = TSFileConfig.DYNAMIC_DATA_SIZE;
 
     timeRet = new ArrayList<>();
-    timeRet.add(new long[timeCapacity]);
-    timeArrayIdx = 0;
-    curTimeIdx = 0;
+    timeRet.add(new long[capacity]);
     count = 0;
 
     switch (dataType) {
       case BOOLEAN:
         booleanRet = new ArrayList<>();
-        booleanRet.add(new boolean[valueCapacity]);
+        booleanRet.add(new boolean[capacity]);
         break;
       case INT32:
         intRet = new ArrayList<>();
-        intRet.add(new int[valueCapacity]);
+        intRet.add(new int[capacity]);
         break;
       case INT64:
         longRet = new ArrayList<>();
-        longRet.add(new long[valueCapacity]);
+        longRet.add(new long[capacity]);
         break;
       case FLOAT:
         floatRet = new ArrayList<>();
-        floatRet.add(new float[valueCapacity]);
+        floatRet.add(new float[capacity]);
         break;
       case DOUBLE:
         doubleRet = new ArrayList<>();
-        doubleRet.add(new double[valueCapacity]);
+        doubleRet.add(new double[capacity]);
         break;
       case TEXT:
         binaryRet = new ArrayList<>();
-        binaryRet.add(new Binary[valueCapacity]);
+        binaryRet.add(new Binary[capacity]);
         break;
       default:
         throw new UnSupportedDataTypeException(String.valueOf(dataType));
@@ -216,285 +211,258 @@ public class BatchData implements Serializable {
   }
 
   /**
-   * put timestamp.
-   *
-   * @param v timestamp
-   */
-  public void putTime(long v) {
-    if (curTimeIdx == timeCapacity) {
-      if (timeCapacity >= capacityThreshold) {
-        this.timeRet.add(new long[timeCapacity]);
-        timeArrayIdx++;
-        curTimeIdx = 0;
-      } else {
-        long[] newData = new long[timeCapacity * 2];
-        System.arraycopy(timeRet.get(0), 0, newData, 0, timeCapacity);
-        this.timeRet.set(0, newData);
-        timeCapacity = timeCapacity * 2;
-      }
-    }
-    (timeRet.get(timeArrayIdx))[curTimeIdx++] = v;
-    count++;
-  }
-
-  /**
    * put boolean data.
    *
+   * @param t timestamp
    * @param v boolean data
    */
-  public void putBoolean(boolean v) {
-    if (curValueIdx == valueCapacity) {
-      if (valueCapacity >= capacityThreshold) {
-        if (this.booleanRet.size() <= valueArrayIdx + 1) {
-          this.booleanRet.add(new boolean[valueCapacity]);
-        }
-        valueArrayIdx++;
-        curValueIdx = 0;
+  public void putBoolean(long t, boolean v) {
+    if (writeCurArrayIndex == capacity) {
+      if (capacity >= capacityThreshold) {
+        timeRet.add(new long[capacity]);
+        booleanRet.add(new boolean[capacity]);
+        writeCurListIndex++;
+        writeCurArrayIndex = 0;
       } else {
-        boolean[] newData = new boolean[valueCapacity * 2];
-        System.arraycopy(booleanRet.get(0), 0, newData, 0, valueCapacity);
-        this.booleanRet.set(0, newData);
-        valueCapacity = valueCapacity * 2;
+        long[] newTimeData = new long[capacity * 2];
+        System.arraycopy(timeRet.get(0), 0, newTimeData, 0, capacity);
+        timeRet.set(0, newTimeData);
+        boolean[] newValueData = new boolean[capacity * 2];
+        System.arraycopy(booleanRet.get(0), 0, newValueData, 0, capacity);
+        booleanRet.set(0, newValueData);
+        capacity = capacity * 2;
       }
     }
-    (this.booleanRet.get(valueArrayIdx))[curValueIdx++] = v;
-    valueLength++;
+    (timeRet.get(writeCurListIndex))[writeCurArrayIndex] = t;
+    (booleanRet.get(writeCurListIndex))[writeCurArrayIndex] = v;
+    writeCurArrayIndex++;
+    count++;
   }
 
   /**
    * put int data.
    *
+   * @param t timestamp
    * @param v int data
    */
-  public void putInt(int v) {
-    if (curValueIdx == valueCapacity) {
-      if (valueCapacity >= capacityThreshold) {
-        if (this.intRet.size() <= valueArrayIdx + 1) {
-          this.intRet.add(new int[valueCapacity]);
-        }
-        valueArrayIdx++;
-        curValueIdx = 0;
+  public void putInt(long t, int v) {
+    if (writeCurArrayIndex == capacity) {
+      if (capacity >= capacityThreshold) {
+        timeRet.add(new long[capacity]);
+        intRet.add(new int[capacity]);
+        writeCurListIndex++;
+        writeCurArrayIndex = 0;
       } else {
-        int[] newData = new int[valueCapacity * 2];
-        System.arraycopy(intRet.get(0), 0, newData, 0, valueCapacity);
-        this.intRet.set(0, newData);
-        valueCapacity = valueCapacity * 2;
+        long[] newTimeData = new long[capacity * 2];
+        System.arraycopy(timeRet.get(0), 0, newTimeData, 0, capacity);
+        timeRet.set(0, newTimeData);
+        int[] newValueData = new int[capacity * 2];
+        System.arraycopy(intRet.get(0), 0, newValueData, 0, capacity);
+        intRet.set(0, newValueData);
+        capacity = capacity * 2;
       }
     }
-    (this.intRet.get(valueArrayIdx))[curValueIdx++] = v;
-    valueLength++;
+    (timeRet.get(writeCurListIndex))[writeCurArrayIndex] = t;
+    (intRet.get(writeCurListIndex))[writeCurArrayIndex] = v;
+    writeCurArrayIndex++;
+    count++;
   }
 
   /**
    * put long data.
    *
+   * @param t timestamp
    * @param v long data
    */
-  public void putLong(long v) {
-    if (curValueIdx == valueCapacity) {
-      if (valueCapacity >= capacityThreshold) {
-        if (this.longRet.size() <= valueArrayIdx + 1) {
-          this.longRet.add(new long[valueCapacity]);
-        }
-        valueArrayIdx++;
-        curValueIdx = 0;
+  public void putLong(long t, long v) {
+    if (writeCurArrayIndex == capacity) {
+      if (capacity >= capacityThreshold) {
+        timeRet.add(new long[capacity]);
+        longRet.add(new long[capacity]);
+        writeCurListIndex++;
+        writeCurArrayIndex = 0;
       } else {
-        long[] newData = new long[valueCapacity * 2];
-        System.arraycopy(longRet.get(0), 0, newData, 0, valueCapacity);
-        this.longRet.set(0, newData);
-        valueCapacity = valueCapacity * 2;
+        long[] newTimeData = new long[capacity * 2];
+        System.arraycopy(timeRet.get(0), 0, newTimeData, 0, capacity);
+        timeRet.set(0, newTimeData);
+        long[] newValueData = new long[capacity * 2];
+        System.arraycopy(longRet.get(0), 0, newValueData, 0, capacity);
+        longRet.set(0, newValueData);
+        capacity = capacity * 2;
       }
     }
-    (this.longRet.get(valueArrayIdx))[curValueIdx++] = v;
-    valueLength++;
+    (timeRet.get(writeCurListIndex))[writeCurArrayIndex] = t;
+    (longRet.get(writeCurListIndex))[writeCurArrayIndex] = v;
+    writeCurArrayIndex++;
+    count++;
   }
 
   /**
    * put float data.
    *
+   * @param t timestamp
    * @param v float data
    */
-  public void putFloat(float v) {
-    if (curValueIdx == valueCapacity) {
-      if (valueCapacity >= capacityThreshold) {
-        if (this.floatRet.size() <= valueArrayIdx + 1) {
-          this.floatRet.add(new float[valueCapacity]);
-        }
-        valueArrayIdx++;
-        curValueIdx = 0;
+  public void putFloat(long t, float v) {
+    if (writeCurArrayIndex == capacity) {
+      if (capacity >= capacityThreshold) {
+        timeRet.add(new long[capacity]);
+        floatRet.add(new float[capacity]);
+        writeCurListIndex++;
+        writeCurArrayIndex = 0;
       } else {
-        float[] newData = new float[valueCapacity * 2];
-        System.arraycopy(floatRet.get(0), 0, newData, 0, valueCapacity);
-        this.floatRet.set(0, newData);
-        valueCapacity = valueCapacity * 2;
+        long[] newTimeData = new long[capacity * 2];
+        System.arraycopy(timeRet.get(0), 0, newTimeData, 0, capacity);
+        timeRet.set(0, newTimeData);
+        float[] newValueData = new float[capacity * 2];
+        System.arraycopy(floatRet.get(0), 0, newValueData, 0, capacity);
+        floatRet.set(0, newValueData);
+        capacity = capacity * 2;
       }
     }
-    (this.floatRet.get(valueArrayIdx))[curValueIdx++] = v;
-    valueLength++;
+    (timeRet.get(writeCurListIndex))[writeCurArrayIndex] = t;
+    (floatRet.get(writeCurListIndex))[writeCurArrayIndex] = v;
+    writeCurArrayIndex++;
+    count++;
   }
 
   /**
    * put double data.
    *
+   * @param t timestamp
    * @param v double data
    */
-  public void putDouble(double v) {
-    if (curValueIdx == valueCapacity) {
-      if (valueCapacity >= capacityThreshold) {
-        if (this.doubleRet.size() <= valueArrayIdx + 1) {
-          this.doubleRet.add(new double[valueCapacity]);
-        }
-        valueArrayIdx++;
-        curValueIdx = 0;
+  public void putDouble(long t, double v) {
+    if (writeCurArrayIndex == capacity) {
+      if (capacity >= capacityThreshold) {
+        timeRet.add(new long[capacity]);
+        doubleRet.add(new double[capacity]);
+        writeCurListIndex++;
+        writeCurArrayIndex = 0;
       } else {
-        double[] newData = new double[valueCapacity * 2];
-        System.arraycopy(doubleRet.get(0), 0, newData, 0, valueCapacity);
-        this.doubleRet.set(0, newData);
-        valueCapacity = valueCapacity * 2;
+        long[] newTimeData = new long[capacity * 2];
+        System.arraycopy(timeRet.get(0), 0, newTimeData, 0, capacity);
+        timeRet.set(0, newTimeData);
+        double[] newValueData = new double[capacity * 2];
+        System.arraycopy(doubleRet.get(0), 0, newValueData, 0, capacity);
+        doubleRet.set(0, newValueData);
+        capacity = capacity * 2;
       }
     }
-    (this.doubleRet.get(valueArrayIdx))[curValueIdx++] = v;
-    valueLength++;
+    (timeRet.get(writeCurListIndex))[writeCurArrayIndex] = t;
+    (doubleRet.get(writeCurListIndex))[writeCurArrayIndex] = v;
+    writeCurArrayIndex++;
+    count++;
   }
 
   /**
    * put binary data.
    *
+   * @param t timestamp
    * @param v binary data.
    */
-  public void putBinary(Binary v) {
-    if (curValueIdx == valueCapacity) {
-      if (valueCapacity >= capacityThreshold) {
-        if (this.binaryRet.size() <= valueArrayIdx + 1) {
-          this.binaryRet.add(new Binary[valueCapacity]);
-        }
-        valueArrayIdx++;
-        curValueIdx = 0;
+  public void putBinary(long t, Binary v) {
+    if (writeCurArrayIndex == capacity) {
+      if (capacity >= capacityThreshold) {
+        timeRet.add(new long[capacity]);
+        binaryRet.add(new Binary[capacity]);
+        writeCurListIndex++;
+        writeCurArrayIndex = 0;
       } else {
-        Binary[] newData = new Binary[valueCapacity * 2];
-        System.arraycopy(binaryRet.get(0), 0, newData, 0, valueCapacity);
-        this.binaryRet.set(0, newData);
-        valueCapacity = valueCapacity * 2;
+        long[] newTimeData = new long[capacity * 2];
+        System.arraycopy(timeRet.get(0), 0, newTimeData, 0, capacity);
+        timeRet.set(0, newTimeData);
+        Binary[] newValueData = new Binary[capacity * 2];
+        System.arraycopy(binaryRet.get(0), 0, newValueData, 0, capacity);
+        binaryRet.set(0, newValueData);
+        capacity = capacity * 2;
       }
     }
-    (this.binaryRet.get(valueArrayIdx))[curValueIdx++] = v;
-    valueLength++;
+    (timeRet.get(writeCurListIndex))[writeCurArrayIndex] = t;
+    (binaryRet.get(writeCurListIndex))[writeCurArrayIndex] = v;
+    writeCurArrayIndex++;
+    count++;
   }
 
-  /**
-   * Checks if the given index is in range. If not, throws an appropriate runtime exception.
-   */
-  private void rangeCheck(int idx) {
-    if (idx < 0) {
-      throw new IndexOutOfBoundsException("BatchData value range check, Index is negative: " + idx);
-    }
-    if (idx >= valueLength) {
-      throw new IndexOutOfBoundsException(
-          "BatchData value range check, Index : " + idx + ". Length : " + valueLength);
-    }
-  }
 
-  /**
-   * Checks if the given index is in range. If not, throws an appropriate runtime exception.
-   */
-  private void rangeCheckForTime(int idx) {
-    if (idx < 0) {
-      throw new IndexOutOfBoundsException("BatchData time range check, Index is negative: " + idx);
-    }
-    if (idx >= count) {
-      throw new IndexOutOfBoundsException(
-          "BatchData time range check, Index : " + idx + ". Length : " + count);
-    }
-  }
 
   public boolean getBoolean() {
-    rangeCheck(curIdx);
-    return this.booleanRet.get(curIdx / timeCapacity)[curIdx % timeCapacity];
+    return this.booleanRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
   public void setBoolean(int idx, boolean v) {
-    rangeCheck(idx);
-    this.booleanRet.get(idx / timeCapacity)[idx % timeCapacity] = v;
+    this.booleanRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
   public int getInt() {
-    rangeCheck(curIdx);
-    return this.intRet.get(curIdx / timeCapacity)[curIdx % timeCapacity];
+    return this.intRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
   public void setInt(int idx, int v) {
-    rangeCheck(idx);
-    this.intRet.get(idx / timeCapacity)[idx % timeCapacity] = v;
+    this.intRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
   public long getLong() {
-    rangeCheck(curIdx);
-    return this.longRet.get(curIdx / timeCapacity)[curIdx % timeCapacity];
+    return this.longRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
   public void setLong(int idx, long v) {
-    rangeCheck(idx);
-    this.longRet.get(idx / timeCapacity)[idx % timeCapacity] = v;
+    this.longRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
   public float getFloat() {
-    rangeCheck(curIdx);
-    return this.floatRet.get(curIdx / timeCapacity)[curIdx % timeCapacity];
+    return this.floatRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
   public void setFloat(int idx, float v) {
-    rangeCheck(idx);
-    this.floatRet.get(idx / timeCapacity)[idx % timeCapacity] = v;
+    this.floatRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
   public double getDouble() {
-    rangeCheck(curIdx);
-    return this.doubleRet.get(curIdx / timeCapacity)[curIdx % timeCapacity];
+    return this.doubleRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
   public void setDouble(int idx, double v) {
-    rangeCheck(idx);
-    this.doubleRet.get(idx / timeCapacity)[idx % timeCapacity] = v;
+    this.doubleRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
   public Binary getBinary() {
-    rangeCheck(curIdx);
-    return this.binaryRet.get(curIdx / timeCapacity)[curIdx % timeCapacity];
+    return this.binaryRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
   public void setBinary(int idx, Binary v) {
-    this.binaryRet.get(idx / timeCapacity)[idx % timeCapacity] = v;
+    this.binaryRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
   public void setTime(int idx, long v) {
-    rangeCheckForTime(idx);
-    this.timeRet.get(idx / timeCapacity)[idx % timeCapacity] = v;
+    this.timeRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
   /**
    * put an object.
    *
+   * @param t timestamp
    * @param v object
    */
-  public void putAnObject(Object v) {
+  public void putAnObject(long t, Object v) {
     switch (dataType) {
       case BOOLEAN:
-        putBoolean((boolean) v);
+        putBoolean(t, (boolean) v);
         break;
       case INT32:
-        putInt((int) v);
+        putInt(t, (int) v);
         break;
       case INT64:
-        putLong((long) v);
+        putLong(t, (long) v);
         break;
       case FLOAT:
-        putFloat((float) v);
+        putFloat(t, (float) v);
         break;
       case DOUBLE:
-        putDouble((double) v);
+        putDouble(t, (double) v);
         break;
       case TEXT:
-        putBinary((Binary) v);
+        putBinary(t, (Binary) v);
         break;
       default:
         throw new UnSupportedDataTypeException(String.valueOf(dataType));
@@ -506,38 +474,31 @@ public class BatchData implements Serializable {
   }
 
   public long getTimeByIndex(int idx) {
-    rangeCheckForTime(idx);
-    return this.timeRet.get(idx / timeCapacity)[idx % timeCapacity];
+    return this.timeRet.get(idx / capacity)[idx % capacity];
   }
 
   public long getLongByIndex(int idx) {
-    rangeCheck(idx);
-    return this.longRet.get(idx / timeCapacity)[idx % timeCapacity];
+    return this.longRet.get(idx / capacity)[idx % capacity];
   }
 
   public double getDoubleByIndex(int idx) {
-    rangeCheck(idx);
-    return this.doubleRet.get(idx / timeCapacity)[idx % timeCapacity];
+    return this.doubleRet.get(idx / capacity)[idx % capacity];
   }
 
   public int getIntByIndex(int idx) {
-    rangeCheck(idx);
-    return this.intRet.get(idx / timeCapacity)[idx % timeCapacity];
+    return this.intRet.get(idx / capacity)[idx % capacity];
   }
 
   public float getFloatByIndex(int idx) {
-    rangeCheck(idx);
-    return this.floatRet.get(idx / timeCapacity)[idx % timeCapacity];
+    return this.floatRet.get(idx / capacity)[idx % capacity];
   }
 
   public Binary getBinaryByIndex(int idx) {
-    rangeCheck(idx);
-    return binaryRet.get(idx / timeCapacity)[idx % timeCapacity];
+    return binaryRet.get(idx / capacity)[idx % capacity];
   }
 
   public boolean getBooleanByIndex(int idx) {
-    rangeCheck(idx);
-    return booleanRet.get(idx / timeCapacity)[idx % timeCapacity];
+    return booleanRet.get(idx / capacity)[idx % capacity];
   }
 
   public Object getValueInTimestamp(long time) {

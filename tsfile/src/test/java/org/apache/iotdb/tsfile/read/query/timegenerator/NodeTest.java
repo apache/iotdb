@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
-import java.io.IOException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -29,6 +28,8 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
 import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.io.IOException;
 
 public class NodeTest {
 
@@ -97,7 +98,7 @@ public class NodeTest {
       super(null, null, null);
       data = new BatchData(TSDataType.INT32);
       for (long time : timestamps) {
-        data.putTime(time);
+        data.putInt(time, 1);
       }
       hasCachedData = true;
     }

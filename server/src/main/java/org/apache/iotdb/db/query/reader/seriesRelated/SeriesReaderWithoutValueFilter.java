@@ -186,8 +186,7 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReade
           currentValue = unseqBatchData.currentValue();
           unseqBatchData.next();
         }
-        batchData.putTime(currentTime);
-        batchData.putAnObject(currentValue);
+        batchData.putAnObject(currentTime, currentValue);
         count++;
       }
       return batchData;
