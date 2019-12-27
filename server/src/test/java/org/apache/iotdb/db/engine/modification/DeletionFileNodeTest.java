@@ -144,9 +144,9 @@ public class DeletionFileNodeTest {
     StorageEngine.getInstance().delete(processorName, measurements[3], 30);
 
     Modification[] realModifications = new Modification[]{
-        new Deletion(new Path(processorName, measurements[5]), 103, 50),
-        new Deletion(new Path(processorName, measurements[4]), 104, 40),
-        new Deletion(new Path(processorName, measurements[3]), 105, 30),
+        new Deletion(new Path(processorName, measurements[5]), 201, 50),
+        new Deletion(new Path(processorName, measurements[4]), 202, 40),
+        new Deletion(new Path(processorName, measurements[3]), 203, 30),
     };
 
     File fileNodeDir = new File(DirectoryManager.getInstance().getSequenceFileFolder(0), processorName);
@@ -250,9 +250,9 @@ public class DeletionFileNodeTest {
     StorageEngine.getInstance().delete(processorName, measurements[3], 30);
 
     Modification[] realModifications = new Modification[]{
-        new Deletion(new Path(processorName, measurements[5]), 105, 50),
-        new Deletion(new Path(processorName, measurements[4]), 106, 40),
-        new Deletion(new Path(processorName, measurements[3]), 107, 30),
+        new Deletion(new Path(processorName, measurements[5]), 301, 50),
+        new Deletion(new Path(processorName, measurements[4]), 302, 40),
+        new Deletion(new Path(processorName, measurements[3]), 303, 30),
     };
 
     File fileNodeDir = new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(), processorName);
