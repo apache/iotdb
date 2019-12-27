@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.*;
+
+import com.sun.xml.internal.ws.wsdl.writer.document.OpenAtts;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.qp.logical.crud.FromOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,29 +89,33 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
     checkAggrOfSelectOperator(select);
 
+    boolean isGroupByDevice = false;
     if (operator instanceof QueryOperator) {
-      if (!((QueryOperator) operator).isGroupByDevice()) {
-        concatSelect(prefixPaths, select); // concat and remove star
-
-        if (((QueryOperator) operator).hasSlimit()) {
-          int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
-          int seriesOffset = ((QueryOperator) operator).getSeriesOffset();
-          slimitTrim(select, seriesLimit, seriesOffset);
-        }
-
-      } else {
-        for (Path path : initialSuffixPaths) {
-          String device = path.getDevice();
-          if (!device.isEmpty()) {
-            throw new LogicalOptimizeException(
-                "The paths of the SELECT clause can only be single level. In other words, "
-                    + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
-                    + " For more details please refer to the SQL document.");
-          }
-        }
-        // GROUP_BY_DEVICE leaves the 1) concat, 2) remove star, 3) slimit tasks to the next phase,
-        // i.e., PhysicalGenerator.transformQuery
+      if (((QueryOperator) operator).isGroupByDevice()) {
+        isGroupByDevice = true;
       }
+    }
+    if (!isGroupByDevice) {
+      concatSelect(prefixPaths, select); // concat and remove star
+
+      if (((QueryOperator) operator).hasSlimit()) {
+        int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
+        int seriesOffset = ((QueryOperator) operator).getSeriesOffset();
+        slimitTrim(select, seriesLimit, seriesOffset);
+      }
+
+    } else {
+      for (Path path : initialSuffixPaths) {
+        String device = path.getDevice();
+        if (!device.isEmpty()) {
+          throw new LogicalOptimizeException(
+              "The paths of the SELECT clause can only be single level. In other words, "
+                  + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
+                  + " For more details please refer to the SQL document.");
+        }
+      }
+      // GROUP_BY_DEVICE leaves the 1) concat, 2) remove star, 3) slimit tasks to the next phase,
+      // i.e., PhysicalGenerator.transformQuery
     }
 
     // concat filter
@@ -117,7 +123,12 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     if (filter == null) {
       return operator;
     }
-    sfwOperator.setFilterOperator(concatFilter(prefixPaths, filter));
+    if(isGroupByDevice){
+      sfwOperator.setFilterOperator(concatFilterByDivice(prefixPaths, filter));
+    } else {
+      sfwOperator.setFilterOperator(concatFilter(prefixPaths, filter));
+    }
+
     return sfwOperator;
   }
 
@@ -240,6 +251,97 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       // requirement.
       return constructTwoForkFilterTreeWithAnd(noStarPaths, operator);
     }
+  }
+
+  // e.g. translate "select * from root.ln.d1, root.ln.d2 where s1 < 20 AND s2 > 10"
+  // to "select * from root.ln.d1, root.ln.d2 where
+  // (root.ln.d1.s1 < 20 AND root.ln.d1.s2 > 10) OR (root.ln.d2.s1 < 20 AND root.ln.d2.s2 > 10)"
+  private FilterOperator concatFilterByDivice(List<Path> fromPaths, FilterOperator operator)
+          throws LogicalOptimizeException {
+    // remove stars in fromPaths and get deviceId
+    List<String> noStarDevices = removeStarsInDeviceWithUnique(fromPaths);
+
+    FilterOperator filterTwoFolkTree = new FilterOperator(SQLConstant.KW_OR);
+    FilterOperator currentNode = filterTwoFolkTree;
+    FilterOperator parentNode = currentNode;
+    // to check whether duplicate
+    // e.g. SELECT * FROM root.ln.d1, root.ln.d2 where time < 10
+    // brings two 'time < 10' filter operator
+    Set<FilterOperator> operatorSet = new HashSet<>();
+    for (int i = 0; i < noStarDevices.size(); i++) {
+      FilterOperator newOperator = operator.clone();
+      newOperator = concatFilterPath(noStarDevices.get(i), newOperator);
+
+      if (!operatorSet.contains(newOperator)) {
+        if(currentNode.getChildren().size() > 0){
+          FilterOperator newInnerNode = new FilterOperator(SQLConstant.KW_OR);
+          currentNode.addChildOperator(newInnerNode);
+          parentNode = currentNode;
+          currentNode = newInnerNode;
+        }
+        currentNode.addChildOperator(newOperator);
+        operatorSet.add(newOperator);
+      }
+    }
+
+    // if 'OR' has no enough operands due to duplication
+    if(currentNode.getChildren().size() == 1){
+      if(parentNode == currentNode){
+        filterTwoFolkTree = currentNode.getChildren().get(0);
+      } else {
+        parentNode.getChildren().set(1, currentNode.getChildren().get(0));
+      }
+    }
+
+    return filterTwoFolkTree;
+  }
+
+  private List<String> removeStarsInDeviceWithUnique(List<Path> paths)
+          throws LogicalOptimizeException {
+    List<String> retDevices;
+    HashSet<String> deviceSet = new HashSet<>();
+    try {
+      for (Path path : paths) {
+        List<String> all;
+        all = executor.getAllPaths(path.getFullPath());
+        if (all.isEmpty()) {
+          throw new LogicalOptimizeException(
+                  "Path: \"" + path + "\" doesn't correspond to any known time series");
+        }
+        for (String subPath : all) {
+          String deviceId = new Path(subPath).getDevice();
+          if (!deviceSet.contains(deviceId)) {
+            deviceSet.add(deviceId);
+          }
+        }
+      }
+
+      retDevices = new ArrayList<>(deviceSet);
+    } catch (MetadataException e) {
+      throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
+    }
+    return retDevices;
+  }
+
+  private FilterOperator concatFilterPath(String prefix, FilterOperator operator) {
+    if(!operator.isLeaf()){
+      for (FilterOperator child : operator.getChildren()) {
+        concatFilterPath(prefix, child);
+      }
+      return operator;
+    }
+    BasicFunctionOperator basicOperator = (BasicFunctionOperator) operator;
+    Path filterPath = basicOperator.getSinglePath();
+
+    // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
+    if (SQLConstant.isReservedPath(filterPath) || filterPath.startWith("ROOT")) {
+      return operator;
+    }
+
+    Path concatPath = filterPath.addPrefixPath(filterPath, prefix);
+    basicOperator.setSinglePath(concatPath);
+
+    return basicOperator;
   }
 
   private FilterOperator constructTwoForkFilterTreeWithAnd(List<Path> noStarPaths,

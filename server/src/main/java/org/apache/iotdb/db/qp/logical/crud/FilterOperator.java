@@ -208,8 +208,19 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     if (!(fil instanceof FilterOperator)) {
       return false;
     }
+    // if child is leaf, will execute BasicFunctionOperator.equals()
     FilterOperator operator = (FilterOperator) fil;
-    return compareTo(operator) == 0;
+    if(this.tokenIntType == operator.tokenIntType){
+      if(this.getChildren().size() == operator.getChildren().size()){
+          for(int i = 0; i < this.getChildren().size(); i++){
+            if(!this.getChildren().get(i).equals(operator.getChildren().get(i))){
+              return false;
+            }
+          }
+          return true;
+      }
+    }
+    return false;
   }
 
   @Override

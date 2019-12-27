@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
+
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public class MergeSingleFilterOptimizer implements IFilterOptimizer {
 
@@ -107,20 +107,23 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
         tempExtrNode.add(children.get(firstNonSingleIndex));
       } else if (childPath.equals(tempPath)) {
         // successive next single child with same seriesPath,merge it with previous children
-        tempExtrNode.add(children.get(firstNonSingleIndex));
+        // if not duplicate
+        FilterOperator child = children.get(firstNonSingleIndex);
+        if(!tempExtrNode.contains(child)){
+          tempExtrNode.add(child);
+        }
       } else {
         // not more same, add existing nodes in tempExtrNode into a new node
         // prevent make a node which has only one child.
         if (tempExtrNode.size() == 1) {
           ret.add(tempExtrNode.get(0));
-          // use exist Object directly for efficiency
           tempExtrNode.set(0, children.get(firstNonSingleIndex));
           childPath = tempPath;
         } else {
           // add a new inner node
           FilterOperator newFilter = new FilterOperator(filter.getTokenIntType(), true);
           newFilter.setSinglePath(childPath);
-          newFilter.setChildren(tempExtrNode);
+          newFilter.setChildren(new ArrayList<>(tempExtrNode));
           ret.add(newFilter);
           tempExtrNode = new ArrayList<>();
           tempExtrNode.add(children.get(firstNonSingleIndex));

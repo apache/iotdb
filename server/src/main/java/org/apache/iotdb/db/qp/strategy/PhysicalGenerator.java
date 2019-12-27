@@ -228,20 +228,21 @@ public class PhysicalGenerator {
       List<Path> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();
       List<String> originAggregations = queryOperator.getSelectOperator().getAggregations();
 
-      List<String> measurementColumnList = new ArrayList<>();
-      Map<String, Set<String>> measurementColumnsGroupByDevice = new LinkedHashMap<>();
+      List<String> measurements = new ArrayList<>();
+      Map<String, Set<String>> measurementsGroupByDevice = new LinkedHashMap<>();
       Map<String, TSDataType> dataTypeConsistencyChecker = new HashMap<>();
-      Set<Path> allSelectPaths = new HashSet<>();
+      List<Path> paths = new ArrayList<>();
 
       for (int i = 0; i < suffixPaths.size(); i++) { // per suffix
         Path suffixPath = suffixPaths.get(i);
         Set<String> deviceSetOfGivenSuffix = new HashSet<>();
         Set<String> measurementSetOfGivenSuffix = new TreeSet<>();
+
         for (Path prefixPath : prefixPaths) { // per prefix
           Path fullPath = Path.addPrefixPath(suffixPath, prefixPath);
           Set<String> tmpDeviceSet = new HashSet<>();
           try {
-            List<String> actualPaths = executor.getAllPaths(fullPath.getFullPath());
+            List<String> actualPaths = executor.getAllPaths(fullPath.getFullPath());  // remove stars to get actual paths
             for (String pathStr : actualPaths) {
               Path path = new Path(pathStr);
               String device = path.getDevice();
@@ -256,42 +257,22 @@ public class PhysicalGenerator {
                 continue;
               }
 
-              // get pathForDataType and measurementColumn
-              String measurement = path.getMeasurement();
-              String pathForDataType;
-              String measurementColumn;
+              // check datatype consistency
+              String originAggregation = null;
               if (originAggregations != null && !originAggregations.isEmpty()) {
-                pathForDataType = originAggregations.get(i) + "(" + path.getFullPath() + ")";
-                measurementColumn = originAggregations.get(i) + "(" + measurement + ")";
-              } else {
-                pathForDataType = path.getFullPath();
-                measurementColumn = measurement;
+                 originAggregation = originAggregations.get(i);
               }
-              // check the consistency of data types
-              // a example of inconsistency: select s0 from root.sg1.d1, root.sg2.d3 group by device,
-              // while root.sg1.d1.s0 is INT32 and root.sg2.d3.s0 is FLOAT.
-              TSDataType dataType = TSServiceImpl.getSeriesType(pathForDataType);
-              if (dataTypeConsistencyChecker.containsKey(measurementColumn)) {
-                if (!dataType.equals(dataTypeConsistencyChecker.get(measurementColumn))) {
-                  throw new QueryProcessException(
-                      "The data types of the same measurement column should be the same across "
-                          + "devices in GROUP_BY_DEVICE sql. For more details please refer to the "
-                          + "SQL document.");
-                }
-              } else {
-                dataTypeConsistencyChecker.put(measurementColumn, dataType);
-              }
+              String measurementChecked = checkDatatype(path, originAggregation, dataTypeConsistencyChecker);
+
               // update measurementSetOfGivenSuffix
-              measurementSetOfGivenSuffix.add(measurementColumn);
-
+              measurementSetOfGivenSuffix.add(measurementChecked);
               // update measurementColumnsGroupByDevice
-              if (!measurementColumnsGroupByDevice.containsKey(device)) {
-                measurementColumnsGroupByDevice.put(device, new HashSet<>());
+              if (!measurementsGroupByDevice.containsKey(device)) {
+                measurementsGroupByDevice.put(device, new HashSet<>());
               }
-              measurementColumnsGroupByDevice.get(device).add(measurementColumn);
-
-              // update allSelectedPaths
-              allSelectPaths.add(path);
+              measurementsGroupByDevice.get(device).add(measurementChecked);
+              // update paths
+              paths.add(path);
             }
             // update deviceSetOfGivenSuffix
             deviceSetOfGivenSuffix.addAll(tmpDeviceSet);
@@ -302,17 +283,17 @@ public class PhysicalGenerator {
                     fullPath.getFullPath()) + e.getMessage());
           }
         }
-        // update measurementColumnList
+        // update measurements
         // Note that in the loop of a suffix path, set is used.
         // And across the loops of suffix paths, list is used.
         // e.g. select *,s1 from root.sg.d0, root.sg.d1
         // for suffix *, measurementSetOfGivenSuffix = {s1,s2,s3}
         // for suffix s1, measurementSetOfGivenSuffix = {s1}
-        // therefore the final measurementColumnList is [s1,s2,s3,s1].
-        measurementColumnList.addAll(measurementSetOfGivenSuffix);
+        // therefore the final measurements is [s1,s2,s3,s1].
+        measurements.addAll(measurementSetOfGivenSuffix);
       }
 
-      if (measurementColumnList.isEmpty()) {
+      if (measurements.isEmpty()) {
         throw new QueryProcessException("do not select any existing series");
       }
 
@@ -320,15 +301,15 @@ public class PhysicalGenerator {
       if (queryOperator.hasSlimit()) {
         int seriesSlimit = queryOperator.getSeriesLimit();
         int seriesOffset = queryOperator.getSeriesOffset();
-        measurementColumnList = slimitTrimColumn(measurementColumnList, seriesSlimit, seriesOffset);
+        measurements = slimitTrimColumn(measurements, seriesSlimit, seriesOffset);
       }
 
       // assigns to queryPlan
       queryPlan.setGroupByDevice(true);
-      queryPlan.setMeasurementColumnList(measurementColumnList);
-      queryPlan.setMeasurementColumnsGroupByDevice(measurementColumnsGroupByDevice);
+      queryPlan.setMeasurements(measurements);
+      queryPlan.setMeasurementsGroupByDevice(measurementsGroupByDevice);
       queryPlan.setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
-      queryPlan.setPaths(new ArrayList<>(allSelectPaths));
+      queryPlan.setPaths(paths);
     } else {
       List<Path> paths = queryOperator.getSelectedPaths();
       queryPlan.setPaths(paths);
@@ -350,6 +331,35 @@ public class PhysicalGenerator {
     return queryPlan;
   }
 
+  private String checkDatatype(Path path, String originAggregation, Map<String, TSDataType> dataTypeConsistencyChecker)
+          throws QueryProcessException {
+    // get pathForDataType and measurementColumn
+    String measurement = path.getMeasurement();
+    String pathForDataType;
+    String measurementChecked;
+    if (originAggregation != null) {
+      pathForDataType = originAggregation + "(" + path.getFullPath() + ")";
+      measurementChecked = originAggregation + "(" + measurement + ")";
+    } else {
+      pathForDataType = path.getFullPath();
+      measurementChecked = measurement;
+    }
+    // check the consistency of data types
+    // a example of inconsistency: select s0 from root.sg1.d1, root.sg2.d3 group by device,
+    // while root.sg1.d1.s0 is INT32 and root.sg2.d3.s0 is FLOAT.
+    TSDataType dataType = TSServiceImpl.getSeriesType(pathForDataType);
+    if (dataTypeConsistencyChecker.containsKey(measurementChecked)) {
+      if (!dataType.equals(dataTypeConsistencyChecker.get(measurementChecked))) {
+        throw new QueryProcessException(
+                "The data types of the same measurement column should be the same across "
+                        + "devices in GROUP_BY_DEVICE sql. For more details please refer to the "
+                        + "SQL document.");
+      }
+    } else {
+      dataTypeConsistencyChecker.put(measurementChecked, dataType);
+    }
+    return measurementChecked;
+  }
 
   private List<String> slimitTrimColumn(List<String> columnList, int seriesLimit, int seriesOffset)
       throws QueryProcessException {
