@@ -117,13 +117,14 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
         // prevent make a node which has only one child.
         if (tempExtrNode.size() == 1) {
           ret.add(tempExtrNode.get(0));
+          // use exist Object directly for efficiency
           tempExtrNode.set(0, children.get(firstNonSingleIndex));
           childPath = tempPath;
         } else {
           // add a new inner node
           FilterOperator newFilter = new FilterOperator(filter.getTokenIntType(), true);
           newFilter.setSinglePath(childPath);
-          newFilter.setChildren(new ArrayList<>(tempExtrNode));
+          newFilter.setChildren(tempExtrNode);
           ret.add(newFilter);
           tempExtrNode = new ArrayList<>();
           tempExtrNode.add(children.get(firstNonSingleIndex));
