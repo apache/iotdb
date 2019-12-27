@@ -18,23 +18,38 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import java.io.Serializable;
-import java.util.ArrayList;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.*;
+
+import java.io.Serializable;
+import java.util.ArrayList;
 
 /**
  * <code>BatchData</code> is a self-defined data structure which is optimized for different type of
  * values. This class can be viewed as a collection which is more efficient than ArrayList.
+ *
+ * This class records a time list and a value list, which could be replaced by TVList in the future
+ *
+ * When you use BatchData in query process, it does not contain duplicated timestamps. The batch data
+ * may be empty.
+ *
+ * If you get a batch data, you can iterate the data as the following codes:
+ *
+ * while (batchData.hasCurrent()) {
+ *   long time = batchData.currentTime();
+ *   Object value = batchData.currentValue();
+ *   batchData.next();
+ * }
  */
 public class BatchData implements Serializable {
 
   private static final long serialVersionUID = -4620310601188394839L;
   private int timeCapacity = 16;
   private int valueCapacity = 16;
-  private int emptyTimeCapacity = 1;
   private int capacityThreshold = 1024;
 
   private TSDataType dataType;
@@ -51,7 +66,7 @@ public class BatchData implements Serializable {
   /**
    * the insert timestamp number of timeRet
    **/
-  private int timeLength;
+  private int count;
 
   /**
    * the number of ArrayList in valueRet
@@ -67,7 +82,6 @@ public class BatchData implements Serializable {
   private int valueLength;
 
   private ArrayList<long[]> timeRet;
-  private ArrayList<long[]> emptyTimeRet;
   private ArrayList<boolean[]> booleanRet;
   private ArrayList<int[]> intRet;
   private ArrayList<long[]> longRet;
@@ -79,27 +93,21 @@ public class BatchData implements Serializable {
     dataType = null;
   }
 
-  public BatchData(TSDataType type) {
-    dataType = type;
-  }
-
   /**
    * BatchData Constructor.
    *
    * @param type Data type to record for this BatchData
-   * @param recordTime whether to record time value for this BatchData
    */
-  public BatchData(TSDataType type, boolean recordTime) {
-    init(type, recordTime, false);
+  public BatchData(TSDataType type) {
+    init(type);
   }
 
-  public BatchData(TSDataType type, boolean recordTime, boolean hasEmptyTime) {
-    init(type, recordTime, hasEmptyTime);
+  public boolean isEmpty() {
+    return count == 0;
   }
 
-  // FIXME: this means hasCurrent actually
-  public boolean hasNext() {
-    return curIdx < timeLength;
+  public boolean hasCurrent() {
+    return curIdx < count;
   }
 
   public void next() {
@@ -135,6 +143,25 @@ public class BatchData implements Serializable {
     }
   }
 
+  public TsPrimitiveType currentTsPrimitiveType() {
+    switch (dataType) {
+      case INT32:
+        return new TsInt(getInt());
+      case INT64:
+        return new TsLong(getLong());
+      case FLOAT:
+        return new TsFloat(getFloat());
+      case DOUBLE:
+        return new TsDouble(getDouble());
+      case BOOLEAN:
+        return new TsBoolean(getBoolean());
+      case TEXT:
+        return new TsBinary(getBinary());
+      default:
+        return null;
+    }
+  }
+
   public TSDataType getDataType() {
     return dataType;
   }
@@ -143,10 +170,8 @@ public class BatchData implements Serializable {
    * initialize batch data.
    *
    * @param type TSDataType
-   * @param recordTime if record time
-   * @param hasEmptyTime if has empty time
    */
-  public void init(TSDataType type, boolean recordTime, boolean hasEmptyTime) {
+  public void init(TSDataType type) {
     this.dataType = type;
     this.valueArrayIdx = 0;
     this.curValueIdx = 0;
@@ -154,18 +179,11 @@ public class BatchData implements Serializable {
     this.curIdx = 0;
     capacityThreshold = TSFileConfig.DYNAMIC_DATA_SIZE;
 
-    if (recordTime) {
-      timeRet = new ArrayList<>();
-      timeRet.add(new long[timeCapacity]);
-      timeArrayIdx = 0;
-      curTimeIdx = 0;
-      timeLength = 0;
-    }
-
-    if (hasEmptyTime) {
-      emptyTimeRet = new ArrayList<>();
-      emptyTimeRet.add(new long[emptyTimeCapacity]);
-    }
+    timeRet = new ArrayList<>();
+    timeRet.add(new long[timeCapacity]);
+    timeArrayIdx = 0;
+    curTimeIdx = 0;
+    count = 0;
 
     switch (dataType) {
       case BOOLEAN:
@@ -216,7 +234,7 @@ public class BatchData implements Serializable {
       }
     }
     (timeRet.get(timeArrayIdx))[curTimeIdx++] = v;
-    timeLength++;
+    count++;
   }
 
   /**
@@ -383,16 +401,9 @@ public class BatchData implements Serializable {
     if (idx < 0) {
       throw new IndexOutOfBoundsException("BatchData time range check, Index is negative: " + idx);
     }
-    if (idx >= timeLength) {
+    if (idx >= count) {
       throw new IndexOutOfBoundsException(
-          "BatchData time range check, Index : " + idx + ". Length : " + timeLength);
-    }
-  }
-
-  private void rangeCheckForEmptyTime(int idx) {
-    if (idx < 0) {
-      throw new IndexOutOfBoundsException(
-          "BatchData empty time range check, Index is negative: " + idx);
+          "BatchData time range check, Index : " + idx + ". Length : " + count);
     }
   }
 
@@ -460,24 +471,6 @@ public class BatchData implements Serializable {
     this.timeRet.get(idx / timeCapacity)[idx % timeCapacity] = v;
   }
 
-  public long getEmptyTime(int idx) {
-    rangeCheckForEmptyTime(idx);
-    return this.emptyTimeRet.get(idx / emptyTimeCapacity)[idx % emptyTimeCapacity];
-  }
-
-  /**
-   * get time as array in long[] structure.
-   *
-   * @return time array
-   */
-  public long[] getTimeAsArray() {
-    long[] res = new long[timeLength];
-    for (int i = 0; i < timeLength; i++) {
-      res[i] = timeRet.get(i / timeCapacity)[i % timeCapacity];
-    }
-    return res;
-  }
-
   /**
    * put an object.
    *
@@ -508,43 +501,8 @@ public class BatchData implements Serializable {
     }
   }
 
-  /**
-   * set an object.
-   *
-   * @param idx object id
-   * @param v object value
-   */
-  public void setAnObject(int idx, Comparable<?> v) {
-    switch (dataType) {
-      case BOOLEAN:
-        setBoolean(idx, (Boolean) v);
-        break;
-      case DOUBLE:
-        setDouble(idx, (Double) v);
-        break;
-      case TEXT:
-        setBinary(idx, (Binary) v);
-        break;
-      case FLOAT:
-        setFloat(idx, (Float) v);
-        break;
-      case INT32:
-        setInt(idx, (Integer) v);
-        break;
-      case INT64:
-        setLong(idx, (Long) v);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.valueOf(dataType));
-    }
-  }
-
   public int length() {
-    return this.timeLength;
-  }
-
-  public int getCurIdx() {
-    return curIdx;
+    return this.count;
   }
 
   public long getTimeByIndex(int idx) {
@@ -582,27 +540,8 @@ public class BatchData implements Serializable {
     return booleanRet.get(idx / timeCapacity)[idx % timeCapacity];
   }
 
-  public Object getValueByIndex(int idx) {
-    switch (dataType) {
-      case INT32:
-        return getIntByIndex(idx);
-      case INT64:
-        return getLongByIndex(idx);
-      case FLOAT:
-        return getFloatByIndex(idx);
-      case DOUBLE:
-        return getDoubleByIndex(idx);
-      case BOOLEAN:
-        return getBooleanByIndex(idx);
-      case TEXT:
-        return getBinaryByIndex(idx);
-      default:
-        return null;
-    }
-  }
-
   public Object getValueInTimestamp(long time) {
-    while (hasNext()) {
+    while (hasCurrent()) {
       if (currentTime() < time) {
         next();
       } else if (currentTime() == time) {

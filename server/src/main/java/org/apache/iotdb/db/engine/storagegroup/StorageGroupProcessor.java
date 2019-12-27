@@ -975,14 +975,11 @@ public class StorageGroupProcessor {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
           // left: in-memory data, right: meta of disk data
-          Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair;
-          pair = tsFileResource
-              .getUnsealedFileProcessor()
+          Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = tsFileResource.getUnsealedFileProcessor()
               .query(deviceId, measurementId, dataType, mSchema.getProps(), context);
-          tsfileResourcesForQuery
-              .add(new TsFileResource(tsFileResource.getFile(),
-                  tsFileResource.getStartTimeMap(),
-                  tsFileResource.getEndTimeMap(), pair.left, pair.right));
+
+          tsfileResourcesForQuery.add(new TsFileResource(tsFileResource.getFile(),
+                  tsFileResource.getStartTimeMap(), tsFileResource.getEndTimeMap(), pair.left, pair.right));
         }
       } finally {
         closeQueryLock.readLock().unlock();
@@ -1720,6 +1717,10 @@ public class StorageGroupProcessor {
     return true;
   }
 
+
+  public TsFileProcessor getWorkUnSequenceTsFileProcessor() {
+    return workUnSequenceTsFileProcessor;
+  }
 
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;

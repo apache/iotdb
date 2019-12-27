@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * MetaData of one chunk.
@@ -57,6 +58,17 @@ public class ChunkMetaData {
    */
   private long deletedAt = Long.MIN_VALUE;
 
+  /**
+   * Priority of chunk metadata, used in unsequence resource merge reader to identify the priority
+   * of reader
+   */
+  private int priority;
+
+  /**
+   * ChunkLoader of metadata, used to create ChunkReaderWrap
+   */
+  private ChunkLoaderImpl chunkLoader;
+
   private Statistics statistics;
 
   private ChunkMetaData() {
@@ -71,7 +83,7 @@ public class ChunkMetaData {
    * @param statistics value statistics
    */
   public ChunkMetaData(String measurementUid, TSDataType tsDataType, long fileOffset,
-    Statistics statistics) {
+      Statistics statistics) {
     this.measurementUid = measurementUid;
     this.tsDataType = tsDataType;
     this.offsetOfChunkHeader = fileOffset;
@@ -166,6 +178,22 @@ public class ChunkMetaData {
 
   public void setDeletedAt(long deletedAt) {
     this.deletedAt = deletedAt;
+  }
+
+  public int getPriority() {
+    return priority;
+  }
+
+  public void setPriority(int priority) {
+    this.priority = priority;
+  }
+
+  public ChunkLoaderImpl getChunkLoader() {
+    return chunkLoader;
+  }
+
+  public void setChunkLoader(ChunkLoaderImpl chunkLoader) {
+    this.chunkLoader = chunkLoader;
   }
 
   @Override

@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.query.executor;
 
-import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -41,7 +37,10 @@ import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Query entrance class of IoTDB query process. All query clause will be transformed to physical
@@ -58,8 +57,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
         IExpression optimizedExpression = ExpressionOptimizer.getInstance()
             .optimize(queryExpression.getExpression(), queryExpression.getSelectedSeries());
         queryExpression.setExpression(optimizedExpression);
-        EngineExecutor engineExecutor =
-            new EngineExecutor(queryExpression);
+        EngineExecutor engineExecutor = new EngineExecutor(queryExpression);
         if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
           return engineExecutor.executeWithoutValueFilter(context);
         } else {
@@ -70,8 +68,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
         throw new StorageEngineException(e.getMessage());
       }
     } else {
-      EngineExecutor engineExecutor = new EngineExecutor(
-          queryExpression);
+      EngineExecutor engineExecutor = new EngineExecutor(queryExpression);
       try {
         return engineExecutor.executeWithoutValueFilter(context);
       } catch (IOException e) {
@@ -139,36 +136,9 @@ public class EngineQueryRouter implements IEngineQueryRouter {
       QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
 
-
-    long queryId = context.getQueryId();
-
     FillEngineExecutor fillEngineExecutor = new FillEngineExecutor(fillPaths, queryTime,
         fillType);
     return fillEngineExecutor.execute(context);
   }
-
-  /**
-   * sort intervals by start time and merge overlapping intervals.
-   *
-   * @param intervals time interval
-   */
-  private List<Pair<Long, Long>> mergeInterval(List<Pair<Long, Long>> intervals) {
-    // sort by interval start time.
-    intervals.sort(((o1, o2) -> (int) (o1.left - o2.left)));
-
-    LinkedList<Pair<Long, Long>> merged = new LinkedList<>();
-    for (Pair<Long, Long> interval : intervals) {
-      // if the list of merged intervals is empty or
-      // if the current interval does not overlap with the previous, simply append it.
-      if (merged.isEmpty() || merged.getLast().right < interval.left) {
-        merged.add(interval);
-      } else {
-        // otherwise, there is overlap, so we merge the current and previous intervals.
-        merged.getLast().right = Math.max(merged.getLast().right, interval.right);
-      }
-    }
-    return merged;
-  }
-
 
 }

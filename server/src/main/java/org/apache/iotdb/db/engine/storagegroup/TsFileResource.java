@@ -113,6 +113,9 @@ public class TsFileResource {
     this.closed = true;
   }
 
+  /**
+   * unsealed TsFile
+   */
   public TsFileResource(File file,
       Map<String, Long> startTimeMap,
       Map<String, Long> endTimeMap,

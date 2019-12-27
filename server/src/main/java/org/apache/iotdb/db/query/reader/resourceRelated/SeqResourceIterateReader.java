@@ -26,24 +26,22 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.IAggregateReader;
-import org.apache.iotdb.db.query.reader.fileRelated.FileSeriesReaderAdapter;
 import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileIterateReader;
 import org.apache.iotdb.db.query.reader.universal.IterateReader;
 import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 
 /**
- * To read a chronologically ordered list of sequence TsFiles, this class extends {@link
- * IterateReader} to implements <code>IAggregateReader</code> for the TsFiles.
+ * To read a chronologically ordered list of sequence TsFiles.
  * <p>
  * Notes: 1) The list of sequence TsFiles is in strict chronological order. 2) The data in a
  * sequence TsFile is also organized in chronological order. 3) A sequence TsFile can be either
@@ -104,7 +102,7 @@ public class SeqResourceIterateReader extends IterateReader {
 
   /**
    * If the idx-th TsFile in the <code>seqResources</code> might satisfy this <code>filter</code>,
-   * then construct <code>IAggregateReader</code> for it, assign to <code>currentSeriesReader</code>
+   * then construct a reader for it, assign to <code>currentSeriesReader</code>
    * and return true. Otherwise, return false.
    *
    * @param idx the index of the TsFile in the resource list
@@ -114,7 +112,7 @@ public class SeqResourceIterateReader extends IterateReader {
   public boolean constructNextReader(int idx) throws IOException {
     TsFileResource tsFileResource = seqResources.get(idx);
     if (tsFileResource.isClosed()) {
-      if (isTsFileNotSatisfied(tsFileResource, filter)) {
+      if (!ResourceRelatedUtil.isTsFileSatisfied(tsFileResource, filter, seriesPath)) {
         return false;
       }
       currentSeriesReader = initSealedTsFileReader(tsFileResource, filter, context);
@@ -124,7 +122,7 @@ public class SeqResourceIterateReader extends IterateReader {
       // If endTimeMap size is 0, conservatively assume that this TsFile might satisfy this filter.
       // If endTimeMap size is not 0, call isTsFileNotSatisfied to check.
       if (tsFileResource.getEndTimeMap().size() != 0) {
-        if (isTsFileNotSatisfied(tsFileResource, filter)) {
+        if (!ResourceRelatedUtil.isTsFileSatisfied(tsFileResource, filter, seriesPath)) {
           return false;
         }
       }
@@ -132,27 +130,6 @@ public class SeqResourceIterateReader extends IterateReader {
           enableReverse);
       return true;
     }
-  }
-
-  /**
-   * Returns true if the start and end time of the series data in this sequence TsFile do not
-   * satisfy the filter condition. Returns false if satisfy.
-   * <p>
-   * This method is used to in <code>constructNextReader</code> to check whether this TsFile can be
-   * skipped.
-   *
-   * @param tsFile the TsFileResource corresponding to this TsFile
-   * @param filter filter condition. Null if no filter.
-   * @return True if the TsFile's start and end time do not satisfy the filter condition; False if
-   * satisfy.
-   */
-  private boolean isTsFileNotSatisfied(TsFileResource tsFile, Filter filter) {
-    if (filter == null) {
-      return false;
-    }
-    long startTime = tsFile.getStartTimeMap().get(seriesPath.getDevice());
-    long endTime = tsFile.getEndTimeMap().get(seriesPath.getDevice());
-    return !filter.satisfyStartEndTime(startTime, endTime);
   }
 
   private IAggregateReader initSealedTsFileReader(TsFileResource sealedTsFile, Filter filter,
@@ -175,12 +152,6 @@ public class SeqResourceIterateReader extends IterateReader {
     IChunkLoader chunkLoader = new ChunkLoaderImpl(tsFileReader);
 
     // init fileSeriesReader
-    FileSeriesReader fileSeriesReader;
-    if (filter == null) {
-      fileSeriesReader = new FileSeriesReaderWithoutFilter(chunkLoader, metaDataList);
-    } else {
-      fileSeriesReader = new FileSeriesReaderWithFilter(chunkLoader, metaDataList, filter);
-    }
-    return new FileSeriesReaderAdapter(fileSeriesReader);
+    return new FileSeriesReader(chunkLoader, metaDataList, filter);
   }
 }

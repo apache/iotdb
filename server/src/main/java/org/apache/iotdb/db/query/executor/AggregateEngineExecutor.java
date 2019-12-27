@@ -35,13 +35,13 @@ import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrFunc;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.AggreResultDataPointReader;
-import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.dataset.OldEngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.factory.AggreFuncFactory;
-import org.apache.iotdb.db.query.reader.IAggregateReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.OldUnseqResourceMergeReader;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
-import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -72,7 +72,7 @@ public class AggregateEngineExecutor {
     this.selectedSeries = selectedSeries;
     this.aggres = aggres;
     this.expression = expression;
-    this.aggregateFetchSize = IoTDBDescriptor.getInstance().getConfig().getAggregateFetchSize();
+    this.aggregateFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
   }
 
   /**
@@ -114,7 +114,7 @@ public class AggregateEngineExecutor {
       }
 
       // unseq reader for all chunk groups in unSeqFile, memory
-      IPointReader unseqResourceMergeReader = new UnseqResourceMergeReader(
+      IPointReader unseqResourceMergeReader = new OldUnseqResourceMergeReader(
           queryDataSource.getSeriesPath(),
           queryDataSource.getUnseqResources(), context, timeFilter);
 
@@ -148,7 +148,7 @@ public class AggregateEngineExecutor {
           filter);
     }
 
-    while (sequenceReader.hasNext()) {
+    while (sequenceReader.hasNextBatch()) {
       PageHeader pageHeader = sequenceReader.nextPageHeader();
       // judge if overlap with unsequence data
       if (canUseHeader(function, pageHeader, unSequenceReader, filter)) {
@@ -212,7 +212,7 @@ public class AggregateEngineExecutor {
       throws IOException, QueryProcessException {
     long lastBatchTimeStamp = Long.MIN_VALUE;
     boolean isChunkEnd = false;
-    while (sequenceReader.hasNext()) {
+    while (sequenceReader.hasNextBatch()) {
       PageHeader pageHeader = sequenceReader.nextPageHeader();
       // judge if overlap with unsequence data
       if (canUseHeader(function, pageHeader, unSequenceReader, timeFilter)) {
@@ -330,6 +330,6 @@ public class AggregateEngineExecutor {
       dataTypes.add(resultData.getDataType());
       resultDataPointReaders.add(new AggreResultDataPointReader(resultData));
     }
-    return new EngineDataSetWithoutValueFilter(selectedSeries, dataTypes, resultDataPointReaders);
+    return new OldEngineDataSetWithoutValueFilter(selectedSeries, dataTypes, resultDataPointReaders);
   }
 }

@@ -19,28 +19,16 @@
 
 package org.apache.iotdb.jdbc;
 
-import java.sql.BatchUpdateException;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.SQLWarning;
-import java.sql.Statement;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
-import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
+
+import java.sql.*;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 
 public class IoTDBStatement implements Statement {
 
@@ -226,9 +214,9 @@ public class IoTDBStatement implements Statement {
   }
 
   /**
-   * There are four kinds of sql here: (1) show timeseries path/show timeseries (2) show storage group (3) query sql
-   * (4) update sql . <p></p> (1) and (2) return new TsfileMetadataResultSet (3) return new
-   * TsfileQueryResultSet (4) simply get executed
+   * There are four kinds of sql here: (1) show timeseries path/show timeseries (2) show storage
+   * group (3) query sql (4) update sql . <p></p> (1) and (2) return new TsfileMetadataResultSet (3)
+   * return new TsfileQueryResultSet (4) simply get executed
    */
   private boolean executeSQL(String sql) throws TException, SQLException {
     isCancelled = false;
@@ -308,6 +296,7 @@ public class IoTDBStatement implements Statement {
       }
     } else {
       TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
+      execReq.setFetchSize(fetchSize);
       TSExecuteStatementResp execResp = client.executeStatement(execReq);
       try {
         RpcUtils.verifySuccess(execResp.getStatus());
@@ -318,7 +307,7 @@ public class IoTDBStatement implements Statement {
         queryId = execResp.getQueryId();
         this.resultSet = new IoTDBQueryResultSet(this,
             execResp.getColumns(), execResp.getDataTypeList(),
-            execResp.ignoreTimeStamp, client, sql, queryId, sessionId);
+            execResp.ignoreTimeStamp, client, sql, queryId, sessionId, execResp.queryDataSet);
         return true;
       }
       return false;
@@ -408,6 +397,7 @@ public class IoTDBStatement implements Statement {
   private ResultSet executeQuerySQL(String sql) throws TException, SQLException {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
+    execReq.setFetchSize(fetchSize);
     TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
     queryId = execResp.getQueryId();
     try {
@@ -416,7 +406,8 @@ public class IoTDBStatement implements Statement {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
     this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
-        execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, sql, queryId, sessionId);
+        execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, sql, queryId,
+        sessionId, execResp.queryDataSet);
     return resultSet;
   }
 
