@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.impl.LastValueAggrFunc;
@@ -67,14 +68,11 @@ public class AggregateEngineExecutor {
   /**
    * constructor.
    */
-  public AggregateEngineExecutor(List<Path> selectedSeries,
-      List<TSDataType> dataTypes,
-      List<String> aggres,
-      IExpression expression) {
-    this.selectedSeries = selectedSeries;
-    this.dataTypes = dataTypes;
-    this.aggres = aggres;
-    this.expression = expression;
+  public AggregateEngineExecutor(AggregationPlan aggregationPlan) {
+    this.selectedSeries = aggregationPlan.getDeduplicatedPaths();
+    this.dataTypes = aggregationPlan.getDeduplicatedDataTypes();
+    this.aggres = aggregationPlan.getDeduplicatedAggregations();
+    this.expression = aggregationPlan.getExpression();
     this.aggregateFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
   }
 

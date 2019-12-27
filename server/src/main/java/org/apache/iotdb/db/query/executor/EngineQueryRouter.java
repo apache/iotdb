@@ -88,14 +88,12 @@ public class EngineQueryRouter implements IEngineQueryRouter {
       throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException, IOException {
     IExpression expression = aggregationPlan.getExpression();
     List<Path> selectedSeries = aggregationPlan.getDeduplicatedPaths();
-    List<TSDataType> dataTypes = aggregationPlan.getDeduplicatedDataTypes();
-    List<String> aggres = aggregationPlan.getAggregations();
 
     if (expression != null) {
       IExpression optimizedExpression = ExpressionOptimizer.getInstance()
           .optimize(expression, selectedSeries);
       AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
-          selectedSeries, dataTypes, aggres, optimizedExpression);
+          aggregationPlan);
       if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
         return engineExecutor.executeWithoutValueFilter(context);
       } else {
@@ -103,7 +101,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
       }
     } else {
       AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
-          selectedSeries, dataTypes, aggres, null);
+          aggregationPlan);
       return engineExecutor.executeWithoutValueFilter(context);
     }
   }
@@ -112,7 +110,6 @@ public class EngineQueryRouter implements IEngineQueryRouter {
   @Override
   public QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException, IOException {
-    long queryId = context.getQueryId();
     long unit = groupByPlan.getUnit();
     long slidingStep = groupByPlan.getSlidingStep();
     long startTime = groupByPlan.getStartTime();
@@ -120,8 +117,6 @@ public class EngineQueryRouter implements IEngineQueryRouter {
 
     IExpression expression = groupByPlan.getExpression();
     List<Path> selectedSeries = groupByPlan.getDeduplicatedPaths();
-    List<TSDataType> dataTypes = groupByPlan.getDeduplicatedDataTypes();
-    List<String> aggres = groupByPlan.getAggregations();
 
     GlobalTimeExpression timeExpression = new GlobalTimeExpression(
         new GroupByFilter(unit, slidingStep, startTime, endTime));
@@ -135,14 +130,12 @@ public class EngineQueryRouter implements IEngineQueryRouter {
     IExpression optimizedExpression = ExpressionOptimizer.getInstance()
         .optimize(expression, selectedSeries);
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-      GroupByWithoutValueFilterDataSet groupByEngine = new GroupByWithoutValueFilterDataSet(
-          queryId, selectedSeries, unit, slidingStep, startTime, endTime);
-      groupByEngine.initGroupBy(context, aggres, dataTypes, optimizedExpression);
+      GroupByWithoutValueFilterDataSet groupByEngine = new GroupByWithoutValueFilterDataSet(context,
+          groupByPlan);
       return groupByEngine;
     } else {
-      GroupByWithValueFilterDataSet groupByEngine = new GroupByWithValueFilterDataSet(
-          queryId, selectedSeries, unit, slidingStep, startTime, endTime);
-      groupByEngine.initGroupBy(context, aggres, dataTypes, optimizedExpression);
+      GroupByWithValueFilterDataSet groupByEngine = new GroupByWithValueFilterDataSet(context,
+          groupByPlan);
       return groupByEngine;
     }
   }

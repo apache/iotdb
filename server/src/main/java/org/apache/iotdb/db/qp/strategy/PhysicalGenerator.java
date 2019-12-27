@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -329,12 +330,13 @@ public class PhysicalGenerator {
       queryPlan.setMeasurementColumnsGroupByDevice(measurementColumnsGroupByDevice);
       queryPlan.setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
       queryPlan.setPaths(new ArrayList<>(allSelectPaths));
-      queryPlan.setDeduplicatedPaths(queryPlan.getPaths());
+      List<Path> paths = queryPlan.getPaths();
+      queryPlan.setDeduplicatedPaths(paths);
     } else {
       List<Path> paths = queryOperator.getSelectedPaths();
       queryPlan.setPaths(paths);
     }
-
+    generateDataTypes(queryPlan);
     deduplicate(queryPlan);
 
     // transform filter operator to expression
@@ -351,9 +353,20 @@ public class PhysicalGenerator {
     return queryPlan;
   }
 
-  private void deduplicate(QueryPlan queryPlan)
-      throws QueryProcessException {
-    if (queryPlan instanceof AggregationPlan || queryPlan instanceof GroupByPlan) {
+  private void generateDataTypes(QueryPlan queryPlan) throws PathException {
+    List<Path> paths = queryPlan.getPaths();
+    List<TSDataType> dataTypes = new ArrayList<>(paths.size());
+    for (int i = 0; i < paths.size(); i++) {
+      Path path = paths.get(i);
+      TSDataType seriesType = executor.getSeriesType(path);
+      dataTypes.add(seriesType);
+      queryPlan.addTypeMapping(path, seriesType);
+    }
+    queryPlan.setDataTypes(dataTypes);
+  }
+
+  private void deduplicate(QueryPlan queryPlan) {
+    if (queryPlan instanceof AggregationPlan) {
       if (!queryPlan.isGroupByDevice()) {
         AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
         deduplicateAggregation(aggregationPlan);
@@ -363,14 +376,14 @@ public class PhysicalGenerator {
     List<Path> paths = queryPlan.getPaths();
 
     Set<String> columnSet = new HashSet<>();
+    Map<Path, TSDataType> dataTypeMapping = queryPlan.getDataTypeMapping();
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
       String column = path.toString();
       if (!columnSet.contains(column)) {
-        TSDataType seriesType = executor.getSeriesType(path);
+        TSDataType seriesType = dataTypeMapping.get(path);
         queryPlan.addDeduplicatedPaths(path);
         queryPlan.addDeduplicatedDataTypes(seriesType);
-        queryPlan.addTypeMapping(path, seriesType);
         columnSet.add(column);
       }
     }
@@ -395,20 +408,19 @@ public class PhysicalGenerator {
   }
 
 
-  private void deduplicateAggregation(AggregationPlan queryPlan)
-      throws QueryProcessException {
+  private void deduplicateAggregation(AggregationPlan queryPlan) {
     List<Path> paths = queryPlan.getPaths();
     List<String> aggregations = queryPlan.getAggregations();
 
     Set<String> columnSet = new HashSet<>();
+    Map<Path, TSDataType> dataTypeMapping = queryPlan.getDataTypeMapping();
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
       String column = aggregations.get(i) + "(" + path.toString() + ")";
       if (!columnSet.contains(column)) {
         queryPlan.addDeduplicatedPaths(path);
-        TSDataType seriesType = executor.getSeriesType(path);
+        TSDataType seriesType = dataTypeMapping.get(path);
         queryPlan.addDeduplicatedDataTypes(seriesType);
-        queryPlan.addTypeMapping(path, seriesType);
         queryPlan.addDeduplicatedAggregations(aggregations.get(i));
         columnSet.add(column);
       }

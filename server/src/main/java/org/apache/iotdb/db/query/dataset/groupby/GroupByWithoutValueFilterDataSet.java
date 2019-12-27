@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -53,9 +54,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * constructor.
    */
-  public GroupByWithoutValueFilterDataSet(long queryId, List<Path> paths, long unit,
-      long slidingStep, long startTime, long endTime) {
-    super(queryId, paths, unit, slidingStep, startTime, endTime);
+  public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByPlan groupByPlan)
+      throws PathException, IOException, StorageEngineException {
+    super(context, groupByPlan);
 
     this.unSequenceReaderList = new ArrayList<>();
     this.sequenceReaderList = new ArrayList<>();
@@ -66,15 +67,16 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       hasCachedSequenceDataList.add(false);
       batchDataList.add(null);
     }
+    initGroupBy(context, groupByPlan);
   }
 
   /**
    * init reader and aggregate function.
    */
-  public void initGroupBy(QueryContext context, List<String> aggres, List<TSDataType> dataTypes,
-      IExpression expression)
-      throws StorageEngineException, PathException, IOException {
-    initAggreFuction(aggres, dataTypes);
+  private void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
+      throws StorageEngineException, IOException, PathException {
+    IExpression expression = groupByPlan.getExpression();
+    initAggreFuction(groupByPlan);
     // init reader
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();

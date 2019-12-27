@@ -19,24 +19,21 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -59,21 +56,21 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * constructor.
    */
-  public GroupByWithValueFilterDataSet(long queryId, List<Path> paths, long unit,
-      long slidingStep, long startTime, long endTime) {
-    super(queryId, paths, unit, slidingStep, startTime, endTime);
+  public GroupByWithValueFilterDataSet(QueryContext context, GroupByPlan groupByPlan)
+      throws PathException, IOException, StorageEngineException {
+    super(context, groupByPlan);
     this.allDataReaderList = new ArrayList<>();
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
+    initGroupBy(context, groupByPlan);
   }
 
   /**
    * init reader and aggregate function.
    */
-  public void initGroupBy(QueryContext context, List<String> aggres, List<TSDataType> dataTypes,
-      IExpression expression) throws StorageEngineException, PathException, IOException {
-    initAggreFuction(aggres, dataTypes);
-
-    this.timestampGenerator = new EngineTimeGenerator(expression, context);
+  private void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
+      throws StorageEngineException, IOException, PathException {
+    initAggreFuction(groupByPlan);
+    this.timestampGenerator = new EngineTimeGenerator(groupByPlan.getExpression(), context);
     this.allDataReaderList = new ArrayList<>();
     for (Path path : paths) {
       SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path, context);
