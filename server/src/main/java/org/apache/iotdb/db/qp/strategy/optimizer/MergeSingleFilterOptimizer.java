@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
-import java.util.*;
-
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 public class MergeSingleFilterOptimizer implements IFilterOptimizer {
 
