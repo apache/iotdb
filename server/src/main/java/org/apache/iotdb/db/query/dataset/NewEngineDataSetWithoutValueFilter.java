@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.concurrent.BlockingQueue;
@@ -46,12 +45,10 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
     private final SeriesReaderWithoutValueFilter reader;
     private BlockingQueue<BatchData> blockingQueue;
-    private int index;
 
-    public ReadTask(SeriesReaderWithoutValueFilter reader, BlockingQueue<BatchData> blockingQueue, int index) {
+    public ReadTask(SeriesReaderWithoutValueFilter reader, BlockingQueue<BatchData> blockingQueue) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
-      this.index = index;
     }
 
     @Override
@@ -61,14 +58,11 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
         // so here we don't need to check whether the queue has free space
         if (reader.hasNextBatch()) {
           BatchData batchData = reader.nextBatch();
-          System.out.println(index + Arrays.toString(batchData.getTimeAsArray()));
           blockingQueue.put(batchData);
         }
         // if the reader has more batch data and the queue also has free space
         // just submit another itself
         if (reader.hasNextBatch() && blockingQueue.remainingCapacity() > 0) {
-          System.out.println(index + " submit itself");
-          System.out.println(index + " " + Arrays.toString(reader.nextBatch().getTimeAsArray()));
           pool.submit(this);
         }
         // the queue has no more space
@@ -146,7 +140,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       SeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList.get(i);
       reader.setHasRemaining(true);
       reader.setManaged(true);
-      pool.submit(new ReadTask(reader, blockingQueueList.get(i), i));
+      pool.submit(new ReadTask(reader, blockingQueueList.get(i)));
     }
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
       fillCache(i, true);
@@ -330,7 +324,6 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     // there are more batch data in this time series queue
     else {
       cachedBatchDataArray[seriesIndex] = batchData;
-//      System.out.println(seriesIndex + Arrays.toString(batchData.getTimeAsArray()));
       if (addToTimeHeap)
         timeHeap.add(batchData.currentTime());
       // judge if we need to submit another read task
@@ -341,7 +334,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
         // now we should submit it again
         if (!reader.isManaged() && reader.hasRemaining()) {
           reader.setManaged(true);
-          pool.submit(new ReadTask(reader, blockingQueueList.get(seriesIndex), seriesIndex));
+          pool.submit(new ReadTask(reader, blockingQueueList.get(seriesIndex)));
         }
       }
     }

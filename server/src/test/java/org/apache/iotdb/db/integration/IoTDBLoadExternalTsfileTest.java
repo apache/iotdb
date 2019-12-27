@@ -277,7 +277,7 @@ public class IoTDBLoadExternalTsfileTest {
               + "," + resultSet.getString(TEST_D0_S0_STR) + "," + resultSet
               .getString(TEST_D0_S1_STR)
               + "," + resultSet.getString(TEST_D1_STR);
-//          Assert.assertEquals(queryRes[cnt++], queryString);
+          Assert.assertEquals(queryRes[cnt++], queryString);
         }
       }
 

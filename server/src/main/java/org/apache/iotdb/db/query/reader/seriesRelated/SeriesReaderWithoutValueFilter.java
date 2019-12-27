@@ -194,13 +194,18 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReade
     }
 
     // only has next in seq data
-    if (hasNextInSeq())
-      return seqBatchData;
+    if (hasNextInSeq()) {
+      BatchData res = seqBatchData;
+      seqBatchData = null;
+      return res;
+    }
 
     // only has next in unseq data
-    if (hasNextInUnSeq())
-      return unseqBatchData;
-
+    if (hasNextInUnSeq()) {
+      BatchData res = unseqBatchData;
+      unseqBatchData = null;
+      return res;
+    }
     return null;
   }
 
