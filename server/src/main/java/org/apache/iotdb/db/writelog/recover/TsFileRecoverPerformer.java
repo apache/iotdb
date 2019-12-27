@@ -24,8 +24,10 @@ import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SU
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -33,6 +35,7 @@ import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -107,23 +110,12 @@ public class TsFileRecoverPerformer {
           try (TsFileSequenceReader reader = new TsFileSequenceReader(
               tsFileResource.getFile().getAbsolutePath())) {
             TsFileMetaData metaData = reader.readFileMetadata();
-            List<TsDeviceMetadataIndex> deviceMetadataIndexList = new ArrayList<>(
-                metaData.getDeviceMap().values());
-            for (TsDeviceMetadataIndex index : deviceMetadataIndexList) {
-              TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
-              List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata
-                  .getChunkGroupMetaDataList();
-              for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
-                for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-                  tsFileResource.updateStartTime(chunkGroupMetaData.getDeviceID(),
-                      chunkMetaData.getStartTime());
-                  tsFileResource
-                      .updateEndTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
-                }
-              }
-            }
+            FileLoaderUtils.updateTsFileResource(metaData, reader, tsFileResource);
           }
           // write .resource file
+          long fileVersion =
+              Long.parseLong(tsFileResource.getFile().getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[1]);
+          tsFileResource.setHistoricalVersions(Collections.singleton(fileVersion));
           tsFileResource.serialize();
         }
         return;
