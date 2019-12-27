@@ -316,7 +316,6 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
   }
 
   private void fillCache(int seriesIndex, boolean addToTimeHeap) throws InterruptedException {
-    System.out.println(seriesIndex + " " + blockingQueueList.get(seriesIndex).size());
     BatchData batchData = blockingQueueList.get(seriesIndex).take();
     // no more batch data in this time series queue
     if (batchData instanceof SignalBatchData) {
