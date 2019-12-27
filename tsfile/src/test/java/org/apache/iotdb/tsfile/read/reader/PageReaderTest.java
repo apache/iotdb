@@ -176,7 +176,7 @@ public class PageReaderTest {
         int index = 0;
         long startTimestamp = System.currentTimeMillis();
         BatchData data = pageReader.getAllSatisfiedPageData();
-        assert data != null;
+        Assert.assertNotNull(data);
 
         while (data.hasCurrent()) {
           Assert.assertEquals(Long.valueOf(index), (Long) data.currentTime());
