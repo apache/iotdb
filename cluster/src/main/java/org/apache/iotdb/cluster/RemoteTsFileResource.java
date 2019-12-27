@@ -34,6 +34,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 public class RemoteTsFileResource extends TsFileResource {
 
   private Node source;
+  //TODO why it is false by default?
   private boolean isRemote = false;
   private byte[] md5;
   private boolean withModification = false;

@@ -226,9 +226,20 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         }
         resp = Response.RESPONSE_AGREE;
       } else if (lastLog != null && lastLog.getPreviousLogIndex() == previousLogIndex
-          && lastLog.getPreviousLogTerm() <= previousLogTerm) {
+          && lastLog.getCurrLogTerm() <= log.getCurrLogTerm()) {
+        /* <pre>
+                                       +------+
+                                     .'|      | new coming log
+                                   .'  +------+
+                                 .'
+        +--------+     +--------+      +------+
+        |        |-----|        |------|      | so called latest log   (local)
+        +--------+     +--------+      +------+
+        </pre>
+        */
         // the incoming log points to the previous log of the local last log, and its term is
         // bigger than or equals to the local last log's, replace the local last log with it
+        // because the local latest log is invalid.
         logManager.replaceLastLog(log);
         logger.debug("{} replaced the last log with {}", name, log);
         resp = Response.RESPONSE_AGREE;
@@ -275,11 +286,11 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * quorum.
    * @param log
    * @param requiredQuorum the number of votes needed to make the log valid, when requiredQuorum
-   *                       < 0, half of the cluster size will be used.
+   *                       <= 0, half of the cluster size will be used.
    * @return an AppendLogResult
    */
   private AppendLogResult sendLogToFollowers(Log log, int requiredQuorum) {
-    if (requiredQuorum < 0) {
+    if (requiredQuorum <= 0) {
       return sendLogToFollowers(log, new AtomicInteger(allNodes.size() / 2));
     } else {
       return sendLogToFollowers(log ,new AtomicInteger(requiredQuorum));
