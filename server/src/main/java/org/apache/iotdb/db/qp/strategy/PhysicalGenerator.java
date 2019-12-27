@@ -28,7 +28,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -355,7 +354,9 @@ public class PhysicalGenerator {
   private void deduplicate(QueryOperator queryOperator, QueryPlan queryPlan)
       throws QueryProcessException {
     if (queryPlan instanceof AggregationPlan || queryPlan instanceof GroupByPlan) {
-      deduplicateAggregation(queryPlan);
+      if (!queryPlan.isGroupByDevice()) {
+        deduplicateAggregation(queryPlan);
+      }
     } else {
       deduplicate(queryPlan);
     }
@@ -400,11 +401,14 @@ public class PhysicalGenerator {
       throws QueryProcessException {
     List<Path> paths = queryPlan.getPaths();
     List<String> aggregations = queryPlan.getAggregations();
+
+    Map<Path, TSDataType> dataTypeMapping = queryPlan.getDataTypeMapping();
     if (paths == null) {
       throw new QueryProcessException("Parameters should not be null.");
     }
     if (paths.size() != aggregations.size()) {
-      return;
+      throw new QueryProcessException(
+          "The size of the path list does not equal that of the aggregation list.");
     }
     Set<String> columnSet = new HashSet<>();
     List<Path> deduplicatedPaths = new ArrayList<>();
@@ -415,7 +419,9 @@ public class PhysicalGenerator {
       String column = aggregations.get(i) + "(" + path.toString() + ")";
       if (!columnSet.contains(column)) {
         deduplicatedPaths.add(path);
-        deduplicatedDataTypes.add(executor.getSeriesType(path));
+        TSDataType seriesType = executor.getSeriesType(path);
+        deduplicatedDataTypes.add(seriesType);
+        dataTypeMapping.put(path, seriesType);
         deduplicatedAggregations.add(aggregations.get(i));
         columnSet.add(column);
       }
@@ -432,6 +438,7 @@ public class PhysicalGenerator {
       throw new QueryProcessException("Parameters should not be null.");
     }
 
+    Map<Path, TSDataType> dataTypeMapping = queryPlan.getDataTypeMapping();
     Set<String> columnSet = new HashSet<>();
     List<Path> deduplicatedPaths = new ArrayList<>();
     List<TSDataType> deduplicatedDataTypes = new ArrayList<>();
@@ -439,8 +446,10 @@ public class PhysicalGenerator {
       Path path = paths.get(i);
       String column = path.toString();
       if (!columnSet.contains(column)) {
+        TSDataType seriesType = executor.getSeriesType(path);
         deduplicatedPaths.add(path);
-        deduplicatedDataTypes.add(executor.getSeriesType(path));
+        deduplicatedDataTypes.add(seriesType);
+        dataTypeMapping.put(path, seriesType);
         columnSet.add(column);
       }
     }

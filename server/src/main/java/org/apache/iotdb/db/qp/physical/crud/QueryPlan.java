@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,10 +34,12 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 public class QueryPlan extends PhysicalPlan {
 
   private List<Path> paths = null;
-  List<Path> deduplicatedPaths = null;
-  List<TSDataType> dataTypes = null;
-  List<TSDataType> deduplicatedDataTypes = null;
-  List<String> deduplicatedAggregations = new ArrayList<>();
+  private List<TSDataType> dataTypes = null;
+
+  private List<Path> deduplicatedPaths = null;
+  private List<TSDataType> deduplicatedDataTypes = null;
+  private List<String> deduplicatedAggregations = new ArrayList<>();
+  private Map<Path, TSDataType> dataTypeMapping = new HashMap<>();
 
   private IExpression expression = null;
 
@@ -169,5 +172,14 @@ public class QueryPlan extends PhysicalPlan {
 
   public Map<String, TSDataType> getDataTypeConsistencyChecker() {
     return dataTypeConsistencyChecker;
+  }
+
+  public void setDataTypeMapping(
+      Map<Path, TSDataType> dataTypeMapping) {
+    this.dataTypeMapping = dataTypeMapping;
+  }
+
+  public Map<Path, TSDataType> getDataTypeMapping() {
+    return dataTypeMapping;
   }
 }

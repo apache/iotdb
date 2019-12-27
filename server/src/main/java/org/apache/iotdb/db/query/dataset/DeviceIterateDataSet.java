@@ -73,6 +73,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
   private String currentDevice;
   private QueryDataSet currentDataSet;
   private int[] currentColumnMapRelation;
+  private Map<Path, TSDataType> tsDataTypeMap;
 
   public DeviceIterateDataSet(QueryPlan queryPlan, QueryContext context,
       IEngineQueryRouter queryRouter) {
@@ -80,7 +81,7 @@ public class DeviceIterateDataSet extends QueryDataSet {
 
     // get deduplicated measurement columns (already deduplicated in TSServiceImpl.executeDataQuery)
     this.deduplicatedMeasurementColumns = queryPlan.getMeasurementColumnList();
-
+    this.tsDataTypeMap = queryPlan.getDataTypeMapping();
     this.queryRouter = queryRouter;
     this.context = context;
     this.measurementColumnsGroupByDevice = queryPlan.getMeasurementColumnsGroupByDevice();
@@ -155,20 +156,12 @@ public class DeviceIterateDataSet extends QueryDataSet {
         if (dataSetType == DataSetType.GROUPBY || dataSetType == DataSetType.AGGREGATE) {
           Path path = new Path(currentDevice,
               column.substring(column.indexOf("(") + 1, column.indexOf(")")));
-          try {
-            tsDataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
-          } catch (PathException e) {
-            System.out.println(e);
-          }
+          tsDataTypes.add(tsDataTypeMap.get(path));
           executePaths.add(path);
           executeAggregations.add(column.substring(0, column.indexOf("(")));
         } else {
           Path path = new Path(currentDevice, column);
-          try {
-            tsDataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
-          } catch (PathException e) {
-            System.out.println(e);
-          }
+          tsDataTypes.add(tsDataTypeMap.get(path));
           executePaths.add(path);
         }
       }
