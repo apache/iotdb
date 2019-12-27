@@ -141,7 +141,7 @@ public class StorageGroupProcessor {
    */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
   // Time range for dividing storage group, unit is second
-  private final long timeRangeForStorageGroup = IoTDBDescriptor.getInstance().getConfig()
+  private final long partitionIntervalForStorageGroup = IoTDBDescriptor.getInstance().getConfig()
       .getPartitionInterval();
   /**
    * the schema of time series that belong this storage group
@@ -646,7 +646,7 @@ public class StorageGroupProcessor {
   }
 
   private long fromTimeToTimePartition(long time) {
-    return time / timeRangeForStorageGroup;
+    return time / partitionIntervalForStorageGroup;
   }
 
   private TsFileProcessor createTsFileProcessor(boolean sequence, long timePartitionId)
@@ -1038,18 +1038,18 @@ public class StorageGroupProcessor {
       }
 
       // time partition to divide storage group
-      long timePartionId = fromTimeToTimePartition(timestamp);
+      long timePartitionId = fromTimeToTimePartition(timestamp);
       // write log
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
-          if (entry.getKey() <= timePartionId) {
+          if (entry.getKey() <= timePartitionId) {
             entry.getValue().getLogNode()
                 .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
           }
         }
 
         for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
-          if (entry.getKey() <= timePartionId) {
+          if (entry.getKey() <= timePartitionId) {
             entry.getValue().getLogNode()
                 .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
           }
@@ -1057,7 +1057,7 @@ public class StorageGroupProcessor {
       }
 
       Path fullPath = new Path(deviceId, measurementId);
-      Deletion deletion = new Deletion(fullPath, getVersionControllerByTimePartitionId(timePartionId).nextVersion(), timestamp);
+      Deletion deletion = new Deletion(fullPath, getVersionControllerByTimePartitionId(timePartitionId).nextVersion(), timestamp);
       if (mergingModification != null) {
         mergingModification.write(deletion);
         updatedModFiles.add(mergingModification);

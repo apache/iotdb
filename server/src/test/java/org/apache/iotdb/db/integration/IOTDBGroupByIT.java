@@ -19,6 +19,23 @@
 
 package org.apache.iotdb.db.integration;
 
+import static org.apache.iotdb.db.integration.Constant.avg;
+import static org.apache.iotdb.db.integration.Constant.count;
+import static org.apache.iotdb.db.integration.Constant.first_value;
+import static org.apache.iotdb.db.integration.Constant.last_value;
+import static org.apache.iotdb.db.integration.Constant.max_time;
+import static org.apache.iotdb.db.integration.Constant.max_value;
+import static org.apache.iotdb.db.integration.Constant.min_time;
+import static org.apache.iotdb.db.integration.Constant.min_value;
+import static org.apache.iotdb.db.integration.Constant.sum;
+import static org.junit.Assert.fail;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -26,11 +43,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.sql.*;
-
-import static org.apache.iotdb.db.integration.Constant.*;
-import static org.junit.Assert.fail;
 
 public class IOTDBGroupByIT {
 
@@ -106,6 +118,7 @@ public class IOTDBGroupByIT {
     daemon = IoTDB.getInstance();
     daemon.active();
     EnvironmentUtils.envSetUp();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
   }

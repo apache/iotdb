@@ -68,6 +68,7 @@ public class IoTDBMultiSeriesIT {
     tsFileConfig.setPageSizeInByte(1024 * 150);
     tsFileConfig.setGroupSizeInByte(1024 * 1000);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1000);
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
 
     daemon = IoTDB.getInstance();
     daemon.active();
