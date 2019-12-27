@@ -335,21 +335,21 @@ public class IoTDBLoadExternalTsfileTest {
       assertEquals(0, new File(tmpDir, "root.test").listFiles().length);
 
       // check query result
-//      hasResultSet = statement.execute("select  * from root");
-//      Assert.assertTrue(hasResultSet);
-//      try (ResultSet resultSet = statement.getResultSet()) {
-//        int cnt = 0;
-//        while (resultSet.next()) {
-//          String queryString = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(
-//              VEHICLE_D0_S0_STR) + "," + resultSet.getString(VEHICLE_D0_S1_STR)
-//              + "," + resultSet.getString(VEHICLE_D0_S2_STR) + "," + resultSet
-//              .getString(VEHICLE_D0_S3_STR)
-//              + "," + resultSet.getString(TEST_D0_S0_STR) + "," + resultSet
-//              .getString(TEST_D0_S1_STR)
-//              + "," + resultSet.getString(TEST_D1_STR);
-//          Assert.assertEquals(queryRes[cnt++], queryString);
-//        }
-//      }
+      hasResultSet = statement.execute("select  * from root");
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String queryString = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(
+              VEHICLE_D0_S0_STR) + "," + resultSet.getString(VEHICLE_D0_S1_STR)
+              + "," + resultSet.getString(VEHICLE_D0_S2_STR) + "," + resultSet
+              .getString(VEHICLE_D0_S3_STR)
+              + "," + resultSet.getString(TEST_D0_S0_STR) + "," + resultSet
+              .getString(TEST_D0_S1_STR)
+              + "," + resultSet.getString(TEST_D1_STR);
+          Assert.assertEquals(queryRes[cnt++], queryString);
+        }
+      }
     } catch (StorageEngineException e) {
       Assert.fail();
     }
