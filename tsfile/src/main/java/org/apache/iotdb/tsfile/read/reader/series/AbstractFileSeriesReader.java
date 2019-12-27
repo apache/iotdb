@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
 import java.util.List;
@@ -37,7 +37,7 @@ public abstract class AbstractFileSeriesReader implements IAggregateReader {
 
   protected IChunkLoader chunkLoader;
   protected List<ChunkMetaData> chunkMetaDataList;
-  protected AbstractChunkReader chunkReader;
+  protected ChunkReader chunkReader;
   private int chunkToRead;
 
   private BatchData data;
@@ -63,7 +63,7 @@ public abstract class AbstractFileSeriesReader implements IAggregateReader {
   public boolean hasNextBatch() throws IOException {
 
     // current chunk has additional batch
-    if (chunkReader != null && chunkReader.hasNextBatch()) {
+    if (chunkReader != null && chunkReader.hasNextSatisfiedPage()) {
       return true;
     }
 
@@ -75,7 +75,7 @@ public abstract class AbstractFileSeriesReader implements IAggregateReader {
         // chunk metadata satisfy the condition
         initChunkReader(chunkMetaData);
 
-        if (chunkReader.hasNextBatch()) {
+        if (chunkReader.hasNextSatisfiedPage()) {
           return true;
         }
       }
@@ -87,7 +87,7 @@ public abstract class AbstractFileSeriesReader implements IAggregateReader {
    * get next batch data.
    */
   public BatchData nextBatch() throws IOException {
-    data = chunkReader.nextBatch();
+    data = chunkReader.nextPageData();
     return data;
   }
 

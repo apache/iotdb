@@ -92,7 +92,7 @@ public class MemChunkReader implements IPointReader, IAggregateReader {
 
   @Override
   public BatchData nextBatch() {
-    BatchData batchData = new BatchData(dataType, true);
+    BatchData batchData = new BatchData(dataType);
     if (hasCachedTimeValuePair) {
       hasCachedTimeValuePair = false;
       batchData.putTime(cachedTimeValuePair.getTimestamp());

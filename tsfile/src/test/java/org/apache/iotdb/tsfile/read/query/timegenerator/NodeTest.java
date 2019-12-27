@@ -95,7 +95,7 @@ public class NodeTest {
 
     public FakedFileSeriesReader(long[] timestamps) {
       super(null, null, null);
-      data = new BatchData(TSDataType.INT32, true);
+      data = new BatchData(TSDataType.INT32);
       for (long time : timestamps) {
         data.putTime(time);
       }
