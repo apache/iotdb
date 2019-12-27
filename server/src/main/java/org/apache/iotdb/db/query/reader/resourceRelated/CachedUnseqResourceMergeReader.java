@@ -25,7 +25,6 @@ import org.apache.iotdb.db.query.reader.chunkRelated.CachedDiskChunkReader;
 import org.apache.iotdb.db.query.reader.universal.CachedPriorityMergeReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 public class CachedUnseqResourceMergeReader extends CachedPriorityMergeReader {
@@ -35,7 +34,7 @@ public class CachedUnseqResourceMergeReader extends CachedPriorityMergeReader {
     super(dataType);
     int priorityValue = 1;
     for (Chunk chunk : chunks) {
-      AbstractChunkReader chunkReader = new ChunkReader(chunk, null);
+      ChunkReader chunkReader = new ChunkReader(chunk, null);
       addReaderWithPriority(new CachedDiskChunkReader(chunkReader), priorityValue++);
     }
   }
