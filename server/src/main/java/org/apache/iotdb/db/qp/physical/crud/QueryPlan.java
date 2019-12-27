@@ -36,10 +36,9 @@ public class QueryPlan extends PhysicalPlan {
   private List<Path> paths = null;
   private List<TSDataType> dataTypes = null;
 
-  private List<Path> deduplicatedPaths = null;
-  private List<TSDataType> deduplicatedDataTypes = null;
-  private List<String> deduplicatedAggregations = new ArrayList<>();
-  private Map<Path, TSDataType> dataTypeMapping = new HashMap<>();
+  private List<Path> deduplicatedPaths = new ArrayList<>();
+  private List<TSDataType> deduplicatedDataTypes = new ArrayList<>();
+
 
   private IExpression expression = null;
 
@@ -50,6 +49,7 @@ public class QueryPlan extends PhysicalPlan {
   private List<String> measurementColumnList; // for group by device sql
   private Map<String, Set<String>> measurementColumnsGroupByDevice; // for group by device sql
   private Map<String, TSDataType> dataTypeConsistencyChecker; // for group by device sql
+  private Map<Path, TSDataType> dataTypeMapping = new HashMap<>(); // for group by device sql
 
   public QueryPlan() {
     super(true);
@@ -100,24 +100,16 @@ public class QueryPlan extends PhysicalPlan {
     return deduplicatedPaths;
   }
 
-  public void setDeduplicatedPaths(List<Path> deduplicatedPaths) {
-    this.deduplicatedPaths = deduplicatedPaths;
+  public void addDeduplicatedPaths(Path path) {
+    this.deduplicatedPaths.add(path);
   }
 
   public List<TSDataType> getDeduplicatedDataTypes() {
     return deduplicatedDataTypes;
   }
 
-  public void setDeduplicatedDataTypes(List<TSDataType> deduplicatedDataTypes) {
-    this.deduplicatedDataTypes = deduplicatedDataTypes;
-  }
-
-  public List<String> getDeduplicatedAggregations() {
-    return deduplicatedAggregations;
-  }
-
-  public void setDeduplicatedAggregations(List<String> deduplicatedAggregations) {
-    this.deduplicatedAggregations = deduplicatedAggregations;
+  public void addDeduplicatedDataTypes(TSDataType dataType) {
+    this.deduplicatedDataTypes.add(dataType);
   }
 
   public int getRowLimit() {
@@ -174,12 +166,21 @@ public class QueryPlan extends PhysicalPlan {
     return dataTypeConsistencyChecker;
   }
 
-  public void setDataTypeMapping(
-      Map<Path, TSDataType> dataTypeMapping) {
-    this.dataTypeMapping = dataTypeMapping;
-  }
-
   public Map<Path, TSDataType> getDataTypeMapping() {
     return dataTypeMapping;
+  }
+
+  public void addTypeMapping(Path path, TSDataType dataType) {
+    dataTypeMapping.put(path, dataType);
+  }
+
+  public void setDeduplicatedPaths(
+      List<Path> deduplicatedPaths) {
+    this.deduplicatedPaths = deduplicatedPaths;
+  }
+
+  public void setDeduplicatedDataTypes(
+      List<TSDataType> deduplicatedDataTypes) {
+    this.deduplicatedDataTypes = deduplicatedDataTypes;
   }
 }

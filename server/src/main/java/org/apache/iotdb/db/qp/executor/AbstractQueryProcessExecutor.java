@@ -217,23 +217,15 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     } else {
       if (queryPlan instanceof GroupByPlan) {
         GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
-        return groupBy(groupByPlan.getDeduplicatedPaths(), groupByPlan.getDeduplicatedDataTypes(),
-            groupByPlan.getDeduplicatedAggregations(), groupByPlan.getExpression(),
-            groupByPlan.getUnit(), groupByPlan.getSlidingStep(),
-            groupByPlan.getStartTime(), groupByPlan.getEndTime(),
-            context);
+        return groupBy(groupByPlan, context);
       } else if (queryPlan instanceof AggregationPlan) {
-        queryDataSet = aggregate(queryPlan.getDeduplicatedPaths(),
-            queryPlan.getDeduplicatedDataTypes(), queryPlan.getDeduplicatedAggregations(),
-            queryPlan.getExpression(), context);
+        AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
+        queryDataSet = aggregate(aggregationPlan, context);
       } else if (queryPlan instanceof FillQueryPlan) {
         FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
-        queryDataSet = fill(fillQueryPlan.getDeduplicatedPaths(), fillQueryPlan.getDeduplicatedDataTypes(),
-            fillQueryPlan.getQueryTime(), fillQueryPlan.getFillType(), context);
+        queryDataSet = fill(fillQueryPlan, context);
       } else {
-        queryDataSet = queryRouter
-            .query(queryPlan.getDeduplicatedPaths(), queryPlan.getDeduplicatedDataTypes(),
-                queryPlan.getExpression(), context);
+        queryDataSet = queryRouter.query(queryPlan, context);
       }
     }
     queryDataSet.setRowLimit(queryPlan.getRowLimit());

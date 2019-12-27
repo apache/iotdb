@@ -26,8 +26,11 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -60,29 +63,19 @@ public interface IQueryProcessExecutor {
   /**
    * process aggregate plan of qp layer, construct queryDataSet.
    */
-  QueryDataSet aggregate(List<Path> paths,
-      List<TSDataType> dataTypes,
-      List<String> aggres, IExpression expression,
-      QueryContext context)
+  QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException, QueryFilterOptimizationException;
 
   /**
    * process group by plan of qp layer, construct queryDataSet.
    */
-  QueryDataSet groupBy(List<Path> paths,
-      List<TSDataType> dataTypes,
-      List<String> aggres,
-      IExpression expression,
-      long unit, long slidingStep, long startTime, long endTime, QueryContext context)
+  QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException, QueryFilterOptimizationException;
 
   /**
    * process fill plan of qp layer, construct queryDataSet.
    */
-  QueryDataSet fill(List<Path> fillPaths,
-      List<TSDataType> dataTypes,
-      long queryTime, Map<TSDataType, IFill> fillTypes,
-      QueryContext context)
+  QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException;
 
   /**

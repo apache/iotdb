@@ -41,8 +41,11 @@ import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.*;
@@ -300,33 +303,21 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  public QueryDataSet aggregate(List<Path> paths,
-      List<TSDataType> dataTypes,
-      List<String> aggres, IExpression expression,
-      QueryContext context) throws StorageEngineException, QueryFilterOptimizationException,
-      QueryProcessException, IOException {
-    return queryRouter.aggregate(paths, dataTypes, aggres, expression, context);
-  }
-
-  @Override
-  public QueryDataSet fill(List<Path> fillPaths,
-      List<TSDataType> dataTypes,
-      long queryTime, Map<TSDataType, IFill> fillTypes,
-      QueryContext context)
-      throws IOException, QueryProcessException, StorageEngineException {
-    return queryRouter.fill(fillPaths, dataTypes, queryTime, fillTypes, context);
-  }
-
-  @Override
-  public QueryDataSet groupBy(List<Path> paths,
-      List<TSDataType> dataTypes,
-      List<String> aggres, IExpression expression,
-      long unit, long slidingStep, long startTime, long endTime,
-      QueryContext context)
+  public QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
       throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
-    return queryRouter
-        .groupBy(paths, dataTypes, aggres, expression, unit, slidingStep, startTime, endTime,
-            context);
+    return queryRouter.aggregate(aggregationPlan, context);
+  }
+
+  @Override
+  public QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
+      throws IOException, QueryProcessException, StorageEngineException {
+    return queryRouter.fill(fillQueryPlan, context);
+  }
+
+  @Override
+  public QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
+      throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
+    return queryRouter.groupBy(groupByPlan, context);
 
   }
 

@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
@@ -187,7 +188,10 @@ public class IoTDBSequenceDataQueryIT {
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
-    QueryDataSet queryDataSet = engineExecutor.query(pathList, dataTypes, null, TEST_QUERY_CONTEXT);
+    QueryPlan queryPlan = new QueryPlan();
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setDeduplicatedPaths(pathList);
+    QueryDataSet queryDataSet = engineExecutor.query(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -215,8 +219,12 @@ public class IoTDBSequenceDataQueryIT {
     GlobalTimeExpression globalTimeExpression = new GlobalTimeExpression(TimeFilter.gtEq(800L));
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
-    QueryDataSet queryDataSet = engineExecutor
-        .query(pathList, dataTypes, globalTimeExpression, TEST_QUERY_CONTEXT);
+
+    QueryPlan queryPlan = new QueryPlan();
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setExpression(globalTimeExpression);
+    QueryDataSet queryDataSet = engineExecutor.query(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -259,8 +267,12 @@ public class IoTDBSequenceDataQueryIT {
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
-    QueryDataSet queryDataSet = engineExecutor
-        .query(pathList, dataTypes, singleSeriesExpression, TEST_QUERY_CONTEXT);
+
+    QueryPlan queryPlan = new QueryPlan();
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setExpression(singleSeriesExpression);
+    QueryDataSet queryDataSet = engineExecutor.query(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {

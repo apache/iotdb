@@ -329,13 +329,13 @@ public class PhysicalGenerator {
       queryPlan.setMeasurementColumnsGroupByDevice(measurementColumnsGroupByDevice);
       queryPlan.setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
       queryPlan.setPaths(new ArrayList<>(allSelectPaths));
+      queryPlan.setDeduplicatedPaths(queryPlan.getPaths());
     } else {
       List<Path> paths = queryOperator.getSelectedPaths();
       queryPlan.setPaths(paths);
     }
-    deduplicate(queryOperator, queryPlan);
 
-    queryPlan.checkPaths(executor);
+    deduplicate(queryPlan);
 
     // transform filter operator to expression
     FilterOperator filterOperator = queryOperator.getFilterOperator();
@@ -351,30 +351,28 @@ public class PhysicalGenerator {
     return queryPlan;
   }
 
-  private void deduplicate(QueryOperator queryOperator, QueryPlan queryPlan)
+  private void deduplicate(QueryPlan queryPlan)
       throws QueryProcessException {
     if (queryPlan instanceof AggregationPlan || queryPlan instanceof GroupByPlan) {
       if (!queryPlan.isGroupByDevice()) {
-        deduplicateAggregation(queryPlan);
+        AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
+        deduplicateAggregation(aggregationPlan);
       }
-    } else {
-      deduplicate(queryPlan);
+      return;
     }
-    if (queryPlan.getDeduplicatedPaths() == null) {
-      queryPlan.setDeduplicatedPaths(queryPlan.getPaths());
-    }
-    if (queryPlan.getDeduplicatedDataTypes() == null) {
-      List<Path> paths = queryPlan.getDeduplicatedPaths();
-      List<TSDataType> dataTypes = new ArrayList<>();
-      for (int i = 0; i < paths.size(); i++) {
-        Path path = paths.get(i);
+    List<Path> paths = queryPlan.getPaths();
+
+    Set<String> columnSet = new HashSet<>();
+    for (int i = 0; i < paths.size(); i++) {
+      Path path = paths.get(i);
+      String column = path.toString();
+      if (!columnSet.contains(column)) {
         TSDataType seriesType = executor.getSeriesType(path);
-        dataTypes.add(i, seriesType);
+        queryPlan.addDeduplicatedPaths(path);
+        queryPlan.addDeduplicatedDataTypes(seriesType);
+        queryPlan.addTypeMapping(path, seriesType);
+        columnSet.add(column);
       }
-      queryPlan.setDeduplicatedDataTypes(dataTypes);
-    }
-    if (queryPlan.getDeduplicatedAggregations() == null) {
-      queryPlan.setDeduplicatedAggregations(queryOperator.getSelectOperator().getAggregations());
     }
   }
 
@@ -397,65 +395,24 @@ public class PhysicalGenerator {
   }
 
 
-  private void deduplicateAggregation(QueryPlan queryPlan)
+  private void deduplicateAggregation(AggregationPlan queryPlan)
       throws QueryProcessException {
     List<Path> paths = queryPlan.getPaths();
     List<String> aggregations = queryPlan.getAggregations();
 
-    Map<Path, TSDataType> dataTypeMapping = queryPlan.getDataTypeMapping();
-    if (paths == null) {
-      throw new QueryProcessException("Parameters should not be null.");
-    }
-    if (paths.size() != aggregations.size()) {
-      throw new QueryProcessException(
-          "The size of the path list does not equal that of the aggregation list.");
-    }
     Set<String> columnSet = new HashSet<>();
-    List<Path> deduplicatedPaths = new ArrayList<>();
-    List<TSDataType> deduplicatedDataTypes = new ArrayList<>();
-    List<String> deduplicatedAggregations = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
       String column = aggregations.get(i) + "(" + path.toString() + ")";
       if (!columnSet.contains(column)) {
-        deduplicatedPaths.add(path);
+        queryPlan.addDeduplicatedPaths(path);
         TSDataType seriesType = executor.getSeriesType(path);
-        deduplicatedDataTypes.add(seriesType);
-        dataTypeMapping.put(path, seriesType);
-        deduplicatedAggregations.add(aggregations.get(i));
+        queryPlan.addDeduplicatedDataTypes(seriesType);
+        queryPlan.addTypeMapping(path, seriesType);
+        queryPlan.addDeduplicatedAggregations(aggregations.get(i));
         columnSet.add(column);
       }
     }
-    queryPlan.setDeduplicatedPaths(deduplicatedPaths);
-    queryPlan.setDeduplicatedDataTypes(deduplicatedDataTypes);
-    queryPlan.setDeduplicatedAggregations(deduplicatedAggregations);
   }
-
-  private void deduplicate(QueryPlan queryPlan)
-      throws QueryProcessException {
-    List<Path> paths = queryPlan.getPaths();
-    if (paths == null) {
-      throw new QueryProcessException("Parameters should not be null.");
-    }
-
-    Map<Path, TSDataType> dataTypeMapping = queryPlan.getDataTypeMapping();
-    Set<String> columnSet = new HashSet<>();
-    List<Path> deduplicatedPaths = new ArrayList<>();
-    List<TSDataType> deduplicatedDataTypes = new ArrayList<>();
-    for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
-      String column = path.toString();
-      if (!columnSet.contains(column)) {
-        TSDataType seriesType = executor.getSeriesType(path);
-        deduplicatedPaths.add(path);
-        deduplicatedDataTypes.add(seriesType);
-        dataTypeMapping.put(path, seriesType);
-        columnSet.add(column);
-      }
-    }
-    queryPlan.setDeduplicatedPaths(deduplicatedPaths);
-    queryPlan.setDeduplicatedDataTypes(deduplicatedDataTypes);
-  }
-
 }
 

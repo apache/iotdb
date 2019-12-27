@@ -169,21 +169,38 @@ public class DeviceIterateDataSet extends QueryDataSet {
       try {
         switch (dataSetType) {
           case GROUPBY:
-            currentDataSet = queryRouter
-                .groupBy(executePaths, tsDataTypes, executeAggregations, expression, unit,
-                    slidingStep,
-                    startTime, endTime, context);
+            GroupByPlan groupByPlan = new GroupByPlan();
+            groupByPlan.setEndTime(endTime);
+            groupByPlan.setStartTime(startTime);
+            groupByPlan.setSlidingStep(slidingStep);
+            groupByPlan.setUnit(unit);
+            groupByPlan.setDeduplicatedPaths(executePaths);
+            groupByPlan.setDeduplicatedDataTypes(dataTypes);
+            groupByPlan.setDeduplicatedAggregations(executeAggregations);
+            currentDataSet = queryRouter.groupBy(groupByPlan, context);
             break;
           case AGGREGATE:
-            currentDataSet = queryRouter
-                .aggregate(executePaths, tsDataTypes, executeAggregations, expression, context);
+            AggregationPlan aggregationPlan = new AggregationPlan();
+            aggregationPlan.setDeduplicatedPaths(executePaths);
+            aggregationPlan.setDeduplicatedAggregations(executeAggregations);
+            aggregationPlan.setDeduplicatedDataTypes(dataTypes);
+            aggregationPlan.setExpression(expression);
+            currentDataSet = queryRouter.aggregate(aggregationPlan, context);
             break;
           case FILL:
-            currentDataSet = queryRouter
-                .fill(executePaths, tsDataTypes, queryTime, fillType, context);
+            FillQueryPlan fillQueryPlan = new FillQueryPlan();
+            fillQueryPlan.setFillType(fillType);
+            fillQueryPlan.setQueryTime(queryTime);
+            fillQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
+            fillQueryPlan.setDeduplicatedPaths(executePaths);
+            currentDataSet = queryRouter.fill(fillQueryPlan, context);
             break;
           case QUERY:
-            currentDataSet = queryRouter.query(executePaths, tsDataTypes, expression, context);
+            QueryPlan queryPlan = new QueryPlan();
+            queryPlan.setDeduplicatedPaths(executePaths);
+            queryPlan.setDeduplicatedDataTypes(tsDataTypes);
+            queryPlan.setExpression(expression);
+            currentDataSet = queryRouter.query(queryPlan, context);
             break;
           default:
             throw new IOException("unsupported DataSetType");

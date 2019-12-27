@@ -21,6 +21,10 @@ package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
@@ -48,8 +52,11 @@ import java.util.Map;
 public class EngineQueryRouter implements IEngineQueryRouter {
 
   @Override
-  public QueryDataSet query(List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
-      IExpression expression, QueryContext context) throws StorageEngineException {
+  public QueryDataSet query(QueryPlan queryPlan, QueryContext context)
+      throws StorageEngineException {
+    IExpression expression = queryPlan.getExpression();
+    List<Path> deduplicatedPaths = queryPlan.getDeduplicatedPaths();
+    List<TSDataType> deduplicatedDataTypes = queryPlan.getDeduplicatedDataTypes();
 
     if (expression != null) {
       try {
@@ -77,11 +84,13 @@ public class EngineQueryRouter implements IEngineQueryRouter {
   }
 
   @Override
-  public QueryDataSet aggregate(List<Path> selectedSeries,
-      List<TSDataType> dataTypes,
-      List<String> aggres,
-      IExpression expression, QueryContext context) throws QueryFilterOptimizationException,
-      StorageEngineException, QueryProcessException, IOException {
+  public QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
+      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException, IOException {
+    IExpression expression = aggregationPlan.getExpression();
+    List<Path> selectedSeries = aggregationPlan.getDeduplicatedPaths();
+    List<TSDataType> dataTypes = aggregationPlan.getDeduplicatedDataTypes();
+    List<String> aggres = aggregationPlan.getAggregations();
+
     if (expression != null) {
       IExpression optimizedExpression = ExpressionOptimizer.getInstance()
           .optimize(expression, selectedSeries);
@@ -101,13 +110,18 @@ public class EngineQueryRouter implements IEngineQueryRouter {
 
 
   @Override
-  public QueryDataSet groupBy(List<Path> selectedSeries,
-      List<TSDataType> dataTypes, List<String> aggres,
-      IExpression expression, long unit, long slidingStep, long startTime, long endTime,
-      QueryContext context) throws QueryFilterOptimizationException, StorageEngineException,
-      QueryProcessException, IOException {
-
+  public QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
+      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException, IOException {
     long queryId = context.getQueryId();
+    long unit = groupByPlan.getUnit();
+    long slidingStep = groupByPlan.getSlidingStep();
+    long startTime = groupByPlan.getStartTime();
+    long endTime = groupByPlan.getEndTime();
+
+    IExpression expression = groupByPlan.getExpression();
+    List<Path> selectedSeries = groupByPlan.getDeduplicatedPaths();
+    List<TSDataType> dataTypes = groupByPlan.getDeduplicatedDataTypes();
+    List<String> aggres = groupByPlan.getAggregations();
 
     GlobalTimeExpression timeExpression = new GlobalTimeExpression(
         new GroupByFilter(unit, slidingStep, startTime, endTime));
@@ -134,11 +148,12 @@ public class EngineQueryRouter implements IEngineQueryRouter {
   }
 
   @Override
-  public QueryDataSet fill(List<Path> fillPaths,
-      List<TSDataType> dataTypes,
-      long queryTime, Map<TSDataType, IFill> fillType,
-      QueryContext context)
+  public QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
+    List<Path> fillPaths = fillQueryPlan.getDeduplicatedPaths();
+    List<TSDataType> dataTypes = fillQueryPlan.getDeduplicatedDataTypes();
+    long queryTime = fillQueryPlan.getQueryTime();
+    Map<TSDataType, IFill> fillType = fillQueryPlan.getFillType();
 
     FillEngineExecutor fillEngineExecutor = new FillEngineExecutor(fillPaths, dataTypes, queryTime,
         fillType);
