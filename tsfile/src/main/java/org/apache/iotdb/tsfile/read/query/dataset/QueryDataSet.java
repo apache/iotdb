@@ -41,10 +41,6 @@ public abstract class QueryDataSet {
     this.dataTypes = dataTypes;
   }
 
-  public QueryDataSet(List<Path> paths) {
-    this.paths = paths;
-  }
-
   public boolean hasNext() throws IOException {
     // proceed to the OFFSET row by skipping rows
     while (rowOffset > 0) {

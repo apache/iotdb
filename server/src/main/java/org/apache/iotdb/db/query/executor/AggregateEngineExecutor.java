@@ -27,7 +27,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.impl.LastValueAggrFunc;
@@ -37,10 +37,9 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.AggreResultDataPointReader;
 import org.apache.iotdb.db.query.dataset.OldEngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.factory.AggreFuncFactory;
-import org.apache.iotdb.db.query.reader.resourceRelated.OldUnseqResourceMergeReader;
-import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.resourceRelated.OldUnseqResourceMergeReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
@@ -52,10 +51,12 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 
 public class AggregateEngineExecutor {
 
   private List<Path> selectedSeries;
+  private List<TSDataType> dataTypes;
   private List<String> aggres;
   private IExpression expression;
 
@@ -67,11 +68,11 @@ public class AggregateEngineExecutor {
   /**
    * constructor.
    */
-  public AggregateEngineExecutor(List<Path> selectedSeries, List<String> aggres,
-      IExpression expression) {
-    this.selectedSeries = selectedSeries;
-    this.aggres = aggres;
-    this.expression = expression;
+  public AggregateEngineExecutor(AggregationPlan aggregationPlan) {
+    this.selectedSeries = aggregationPlan.getDeduplicatedPaths();
+    this.dataTypes = aggregationPlan.getDeduplicatedDataTypes();
+    this.aggres = aggregationPlan.getDeduplicatedAggregations();
+    this.expression = aggregationPlan.getExpression();
     this.aggregateFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
   }
 
@@ -92,8 +93,7 @@ public class AggregateEngineExecutor {
     List<AggregateFunction> aggregateFunctions = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       // construct AggregateFunction
-      TSDataType tsDataType = MManager.getInstance()
-          .getSeriesType(selectedSeries.get(i).getFullPath());
+      TSDataType tsDataType = dataTypes.get(i);
       AggregateFunction function = AggreFuncFactory.getAggrFuncByName(aggres.get(i), tsDataType);
       function.init();
       aggregateFunctions.add(function);
@@ -134,10 +134,10 @@ public class AggregateEngineExecutor {
   /**
    * calculation aggregate result with only time filter or no filter for one series.
    *
-   * @param function aggregate function
-   * @param sequenceReader sequence data reader
+   * @param function         aggregate function
+   * @param sequenceReader   sequence data reader
    * @param unSequenceReader unsequence data reader
-   * @param filter time filter or null
+   * @param filter           time filter or null
    * @return one series aggregate result data
    */
   private AggreResultData aggregateWithoutValueFilter(AggregateFunction function,
@@ -202,8 +202,8 @@ public class AggregateEngineExecutor {
   /**
    * handle last and max_time aggregate function with only time filter or no filter.
    *
-   * @param function aggregate function
-   * @param sequenceReader sequence data reader
+   * @param function         aggregate function
+   * @param sequenceReader   sequence data reader
    * @param unSequenceReader unsequence data reader
    * @return BatchData-aggregate result
    */
@@ -271,7 +271,7 @@ public class AggregateEngineExecutor {
 
     List<AggregateFunction> aggregateFunctions = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
-      TSDataType type = MManager.getInstance().getSeriesType(selectedSeries.get(i).getFullPath());
+      TSDataType type = dataTypes.get(i);
       AggregateFunction function = AggreFuncFactory.getAggrFuncByName(aggres.get(i), type);
       function.init();
       aggregateFunctions.add(function);
@@ -330,6 +330,7 @@ public class AggregateEngineExecutor {
       dataTypes.add(resultData.getDataType());
       resultDataPointReaders.add(new AggreResultDataPointReader(resultData));
     }
-    return new OldEngineDataSetWithoutValueFilter(selectedSeries, dataTypes, resultDataPointReaders);
+    return new OldEngineDataSetWithoutValueFilter(selectedSeries, dataTypes,
+        resultDataPointReaders);
   }
 }
