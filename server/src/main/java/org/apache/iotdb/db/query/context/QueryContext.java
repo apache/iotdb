@@ -44,15 +44,15 @@ public class QueryContext {
    */
   private Map<String, List<Modification>> fileModCache = new HashMap<>();
 
-  private long jobId;
+  private long queryId;
 
   private long queryTimeLowerBound = Long.MIN_VALUE;
 
   public QueryContext() {
   }
 
-  public QueryContext(long jobId) {
-    this.jobId = jobId;
+  public QueryContext(long queryId) {
+    this.queryId = queryId;
   }
 
   /**
@@ -86,8 +86,8 @@ public class QueryContext {
     return pathModifications;
   }
 
-  public long getJobId() {
-    return jobId;
+  public long getQueryId() {
+    return queryId;
   }
 
   public long getQueryTimeLowerBound() {

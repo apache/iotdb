@@ -20,11 +20,13 @@ package org.apache.iotdb.tsfile.read.expression;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class QueryExpression {
 
   private List<Path> selectedSeries;
+  private List<TSDataType> dataTypes;
   private IExpression expression;
   private boolean hasQueryFilter;
 
@@ -37,7 +39,8 @@ public class QueryExpression {
     return new QueryExpression();
   }
 
-  public static QueryExpression create(List<Path> selectedSeries, IExpression expression) {
+  public static QueryExpression create(List<Path> selectedSeries,
+      IExpression expression) {
     QueryExpression ret = new QueryExpression();
     ret.selectedSeries = selectedSeries;
     ret.expression = expression;
@@ -74,11 +77,21 @@ public class QueryExpression {
   @Override
   public String toString() {
     StringBuilder stringBuilder = new StringBuilder("\n\t[Selected Series]:").append(selectedSeries)
-        .append("\n\t[expression]:").append(expression);
+        .append("\n\t[TSDataType]:").append(dataTypes).append("\n\t[expression]:")
+        .append(expression);
     return stringBuilder.toString();
   }
 
   public boolean hasQueryFilter() {
     return hasQueryFilter;
+  }
+
+  public List<TSDataType> getDataTypes() {
+    return dataTypes;
+  }
+
+  public QueryExpression setDataTypes(List<TSDataType> dataTypes) {
+    this.dataTypes = dataTypes;
+    return this;
   }
 }

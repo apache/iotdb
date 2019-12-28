@@ -24,6 +24,7 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl;
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
+import org.apache.iotdb.hadoop.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.junit.After;
 import org.junit.Before;
@@ -38,7 +39,7 @@ public class TSFHadoopTest {
 
   private TSFInputFormat inputFormat = null;
 
-  private String tsfilePath = "example_mr.tsfile";
+  private String tsfilePath = TestConstant.BASE_OUTPUT_PATH.concat("example_mr.tsfile");
 
   @Before
   public void setUp() throws Exception {

@@ -21,33 +21,41 @@ package org.apache.iotdb.db.query.executor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
-import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.dataset.NewEngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 /**
  * IoTDB query executor.
  */
 public class EngineExecutor {
 
-  private QueryExpression queryExpression;
+  private List<Path> deduplicatedPaths;
+  private List<TSDataType> deduplicatedDataTypes;
+  private IExpression optimizedExpression;
 
-  public EngineExecutor(QueryExpression queryExpression) {
-    this.queryExpression = queryExpression;
+  public EngineExecutor(List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
+      IExpression optimizedExpression) {
+    this.deduplicatedPaths = deduplicatedPaths;
+    this.deduplicatedDataTypes = deduplicatedDataTypes;
+    this.optimizedExpression = optimizedExpression;
+  }
+
+  public EngineExecutor(List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes) {
+    this.deduplicatedPaths = deduplicatedPaths;
+    this.deduplicatedDataTypes = deduplicatedDataTypes;
   }
 
   /**
@@ -57,26 +65,22 @@ public class EngineExecutor {
       throws StorageEngineException, IOException {
 
     Filter timeFilter = null;
-    if (queryExpression.hasQueryFilter()) {
-      timeFilter = ((GlobalTimeExpression) queryExpression.getExpression()).getFilter();
+    if (optimizedExpression != null) {
+      timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
     }
 
-    List<IPointReader> readersOfSelectedSeries = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (Path path : queryExpression.getSelectedSeries()) {
-      try {
-        // add data type
-        dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
-      } catch (PathException e) {
-        throw new StorageEngineException(e);
-      }
+    List<IBatchReader> readersOfSelectedSeries = new ArrayList<>();
+    for (int i = 0; i < deduplicatedPaths.size(); i++) {
+      Path path = deduplicatedPaths.get(i);
+      TSDataType dataType = deduplicatedDataTypes.get(i);
 
-      IPointReader reader = new SeriesReaderWithoutValueFilter(path, timeFilter, context);
+      IBatchReader reader = new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context,
+          true);
       readersOfSelectedSeries.add(reader);
     }
 
     try {
-      return new EngineDataSetWithoutValueFilter(queryExpression.getSelectedSeries(), dataTypes,
+      return new NewEngineDataSetWithoutValueFilter(deduplicatedPaths, deduplicatedDataTypes,
           readersOfSelectedSeries);
     } catch (IOException e) {
       throw new StorageEngineException(e.getMessage());
@@ -89,27 +93,19 @@ public class EngineExecutor {
    * @return QueryDataSet object
    * @throws StorageEngineException StorageEngineException
    */
-  public QueryDataSet executeWithValueFilter(QueryContext context) throws StorageEngineException, IOException {
+  public QueryDataSet executeWithValueFilter(QueryContext context)
+      throws StorageEngineException, IOException {
 
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(
-        queryExpression.getExpression(), context);
+        optimizedExpression, context);
 
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (Path path : queryExpression.getSelectedSeries()) {
-      try {
-        // add data type
-        dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
-      } catch (PathException e) {
-        throw new StorageEngineException(e);
-      }
-
+    for (Path path : deduplicatedPaths) {
       SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path, context);
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
-    return new EngineDataSetWithValueFilter(queryExpression.getSelectedSeries(), dataTypes,
-        timestampGenerator,
-        readersOfSelectedSeries);
+    return new EngineDataSetWithValueFilter(deduplicatedPaths, deduplicatedDataTypes,
+        timestampGenerator, readersOfSelectedSeries);
   }
 
 }

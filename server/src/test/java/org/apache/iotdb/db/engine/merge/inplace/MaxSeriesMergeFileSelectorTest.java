@@ -27,7 +27,6 @@ import java.util.List;
 import org.apache.iotdb.db.engine.merge.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.MergeTest;
 import org.apache.iotdb.db.engine.merge.inplace.selector.InplaceMaxFileSelector;
-import org.apache.iotdb.db.engine.merge.squeeze.selector.SqueezeMaxFileSelector;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
@@ -106,7 +105,6 @@ public class MaxSeriesMergeFileSelectorTest extends MergeTest {
     List<TsFileResource> unseqSelected = mergeFileSelector.getSelectedUnseqFiles();
     assertEquals(seqResources.subList(0, 1), seqSelected);
     assertEquals(unseqResources.subList(0, 1), unseqSelected);
-    assertEquals(34, mergeFileSelector.getConcurrentMergeNum());
     resource.clear();
   }
 }

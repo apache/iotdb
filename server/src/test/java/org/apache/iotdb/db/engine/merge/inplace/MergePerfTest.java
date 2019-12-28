@@ -22,9 +22,11 @@ package org.apache.iotdb.db.engine.merge.inplace;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.MergeTest;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.tsfile.read.common.util.ChunkProviderExecutor;
@@ -33,49 +35,50 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 public class MergePerfTest extends MergeTest {
 
-  private boolean fullMerge;
+    private boolean fullMerge;
 
-  public void test() throws Exception {
-    MManager.getInstance().init();
-    File tempSGDir = new File("tempSG");
-    tempSGDir.mkdirs();
-    setUp();
-    System.out.println("Files prepared.");
-    Thread.sleep(3000);
+    public void test() throws Exception {
+        MManager.getInstance().init();
+        File tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
+        tempSGDir.mkdirs();
+        setUp();
+        System.out.println("Files prepared.");
+        Thread.sleep(3000);
 
-    long timeConsumption = System.currentTimeMillis();
-    MergeResource resource = new MergeResource(seqResources, unseqResources);
-    resource.setCacheDeviceMeta(true);
-    InplaceMergeTask mergeTask =
-        new InplaceMergeTask(resource, tempSGDir.getPath(), (k, v
-            , l, n) -> {}, "test", fullMerge, 100, MERGE_TEST_SG);
-    mergeTask.call();
-    timeConsumption = System.currentTimeMillis() - timeConsumption;
-    tearDown();
-    ChunkProviderExecutor.getINSTANCE().close();
-    FileUtils.deleteDirectory(tempSGDir);
-    System.out.println(timeConsumption);
-  }
-
-  public static void main(String[] args) throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(-1);
-
-    List<Long> timeConsumptions = new ArrayList<>();
-    MergePerfTest perfTest = new MergePerfTest();
-
-    perfTest.seqFileNum = 5;
-    perfTest.unseqFileNum = 5;
-    perfTest.measurementNum = 2000;
-    perfTest.deviceNum = 1;
-    perfTest.ptNum = 5000;
-    perfTest.flushInterval = 1000;
-    perfTest.fullMerge = true;
-    perfTest.encoding = TSEncoding.PLAIN;
-
-    for (int i = 0; i < 1; i++) {
-      // cache warm-up
-      perfTest.test();
+        long timeConsumption = System.currentTimeMillis();
+        MergeResource resource = new MergeResource(seqResources, unseqResources);
+        resource.setCacheDeviceMeta(true);
+        InplaceMergeTask mergeTask =
+                new InplaceMergeTask(resource, tempSGDir.getPath(), (k, v
+                        , l, n) -> {
+                }, "test", fullMerge, 100, MERGE_TEST_SG);
+        mergeTask.call();
+        timeConsumption = System.currentTimeMillis() - timeConsumption;
+        tearDown();
+        ChunkProviderExecutor.getINSTANCE().close();
+        FileUtils.deleteDirectory(tempSGDir);
+        System.out.println(timeConsumption);
     }
+
+    public static void main(String[] args) throws Exception {
+        IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(-1);
+
+        List<Long> timeConsumptions = new ArrayList<>();
+        MergePerfTest perfTest = new MergePerfTest();
+
+        perfTest.seqFileNum = 5;
+        perfTest.unseqFileNum = 5;
+        perfTest.measurementNum = 2000;
+        perfTest.deviceNum = 1;
+        perfTest.ptNum = 5000;
+        perfTest.flushInterval = 1000;
+        perfTest.fullMerge = true;
+        perfTest.encoding = TSEncoding.PLAIN;
+
+        for (int i = 0; i < 1; i++) {
+            // cache warm-up
+            perfTest.test();
+        }
 
 //    int[] intParameters = new int[10];
 //    for (int i = 1; i <= 10; i++) {
@@ -105,6 +108,6 @@ public class MergePerfTest extends MergeTest {
 //      timeConsumptions.add(perfTest.timeConsumption);
 //    }
 
-    System.out.println(timeConsumptions);
-  }
+        System.out.println(timeConsumptions);
+    }
 }

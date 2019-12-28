@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.read.query.dataset;
 
 import java.io.IOException;
 import java.util.List;
-
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -56,12 +55,12 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  protected boolean hasNextWithoutConstraint() throws IOException {
     return timeGenerator.hasNext();
   }
 
   @Override
-  public RowRecord next() throws IOException {
+  protected RowRecord nextWithoutConstraint() throws IOException {
     long timestamp = timeGenerator.next();
     RowRecord rowRecord = new RowRecord(timestamp);
 

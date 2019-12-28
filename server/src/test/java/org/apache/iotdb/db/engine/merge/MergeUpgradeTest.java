@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.merge.inplace.selector.InplaceMaxFileSelector;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
@@ -84,19 +85,19 @@ public class MergeUpgradeTest {
   private void prepareFiles() throws IOException, WriteProcessException {
     // prepare seqFiles
     for (int i = 0; i < seqFileNum; i++) {
-      File seqfile = FSFactoryProducer.getFSFactory().getFile(
-          "seq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
+      File seqfile = FSFactoryProducer.getFSFactory().getFile(TestConstant.BASE_OUTPUT_PATH.concat(
+              "seq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
               + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
-              + ".tsfile");
+              + ".tsfile"));
       TsFileResource seqTsFileResource = new TsFileResource(seqfile);
       seqResources.add(seqTsFileResource);
       prepareOldFile(seqTsFileResource, i * ptNum, ptNum, 0);
     }
     // prepare unseqFile
-    File unseqfile = FSFactoryProducer.getFSFactory().getFile(
-        "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0 + IoTDBConstant.TSFILE_NAME_SEPARATOR
+    File unseqfile = FSFactoryProducer.getFSFactory().getFile(TestConstant.BASE_OUTPUT_PATH.concat(
+            "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0 + IoTDBConstant.TSFILE_NAME_SEPARATOR
             + 0 + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
-            + ".tsfile");
+            + ".tsfile"));
     TsFileResource unseqTsFileResource = new TsFileResource(unseqfile);
     unseqResources.add(unseqTsFileResource);
     prepareFile(unseqTsFileResource, 0, 2 * ptNum, 10);

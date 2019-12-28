@@ -47,7 +47,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    long maxTimestamp = pageHeader.getMaxTimestamp();
+    long maxTimestamp = pageHeader.getEndTime();
     updateMaxTimeResult(0, maxTimestamp);
   }
 
@@ -66,7 +66,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
       long bound) {
     long time = -1;
-    while (dataInThisPage.hasNext()) {
+    while (dataInThisPage.hasCurrent()) {
       if (dataInThisPage.currentTime() < bound) {
         time = dataInThisPage.currentTime();
         dataInThisPage.next();

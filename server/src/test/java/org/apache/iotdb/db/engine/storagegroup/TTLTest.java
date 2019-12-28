@@ -198,9 +198,9 @@ public class TTLTest {
         seqResource, null, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     int cnt = 0;
-    while (reader.hasNext()) {
+    while (reader.hasNextBatch()) {
       BatchData batchData = reader.nextBatch();
-      while (batchData.hasNext()) {
+      while (batchData.hasCurrent()) {
         batchData.next();
         cnt++;
       }
@@ -217,7 +217,7 @@ public class TTLTest {
     assertEquals(0, seqResource.size());
     assertEquals(0, unseqResource.size());
 
-    QueryResourceManager.getInstance().endQueryForGivenJob(EnvironmentUtils.TEST_QUERY_JOB_ID);
+    QueryResourceManager.getInstance().endQuery(EnvironmentUtils.TEST_QUERY_JOB_ID);
   }
 
   @Test

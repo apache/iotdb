@@ -109,6 +109,12 @@ public abstract class BaseFileSelector implements IMergeFileSelector{
     totalCost = 0;
 
     int unseqIndex = 0;
+    long startTime = System.currentTimeMillis();
+    long timeConsumption = 0;
+    long timeLimit = IoTDBDescriptor.getInstance().getConfig().getMergeFileSelectionTimeBudget();
+    if (timeLimit < 0) {
+      timeLimit = Long.MAX_VALUE;
+    }
 
     while (unseqIndex < resource.getUnseqFiles().size() && timeConsumption < timeLimit) {
       // select next unseq files

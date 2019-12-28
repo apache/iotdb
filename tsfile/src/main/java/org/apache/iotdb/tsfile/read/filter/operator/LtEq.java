@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 
 /**
@@ -36,15 +38,19 @@ public class LtEq<T extends Comparable<T>> extends UnaryFilter<T> {
     super(value, filterType);
   }
 
+  public LtEq() {
+
+  }
+
   @Override
-  public boolean satisfy(DigestForFilter digest) {
+  public boolean satisfy(Statistics statistics) {
     if (filterType == FilterType.TIME_FILTER) {
-      return ((Long) value) >= digest.getMinTime();
+      return ((Long) value) >= statistics.getStartTime();
     } else {
-      if (digest.isMinValueNull()) {
+      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return true;
       }
-      return value.compareTo(digest.getMinValue()) >= 0;
+      return value.compareTo((T) statistics.getMinValue()) >= 0;
     }
   }
 
@@ -89,5 +95,10 @@ public class LtEq<T extends Comparable<T>> extends UnaryFilter<T> {
   @Override
   public String toString() {
     return getFilterType() + " <= " + value;
+  }
+
+  @Override
+  public FilterSerializeId getSerializeId() {
+    return FilterSerializeId.LTEQ;
   }
 }

@@ -171,17 +171,14 @@ public class PageReaderTest {
         ByteBuffer page = ByteBuffer.wrap(pageWriter.getUncompressedBytes().array());
 
         PageReader pageReader = new PageReader(page, dataType, decoder,
-            new DeltaBinaryDecoder.LongDeltaDecoder());
+            new DeltaBinaryDecoder.LongDeltaDecoder(), null);
 
         int index = 0;
         long startTimestamp = System.currentTimeMillis();
-        BatchData data = null;
-        if (pageReader.hasNextBatch()) {
-          data = pageReader.nextBatch();
-        }
-        assert data != null;
+        BatchData data = pageReader.getAllSatisfiedPageData();
+        Assert.assertNotNull(data);
 
-        while (data.hasNext()) {
+        while (data.hasCurrent()) {
           Assert.assertEquals(Long.valueOf(index), (Long) data.currentTime());
           Assert.assertEquals(generateValueByIndex(index), data.currentValue());
           data.next();

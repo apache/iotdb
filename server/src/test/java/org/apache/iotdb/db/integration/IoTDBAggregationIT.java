@@ -210,8 +210,9 @@ public class IoTDBAggregationIT {
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select first(s0),first(s1),first(s2),first(s3) " +
-          "from root.vehicle.d0 where time >= 1500 and time <= 9000");
+      boolean hasResultSet = statement
+          .execute("select first_value(s0),first_value(s1),first_value(s2),first_value(s3) " +
+              "from root.vehicle.d0 where time >= 1500 and time <= 9000");
 
       Assert.assertTrue(hasResultSet);
 
@@ -219,24 +220,29 @@ public class IoTDBAggregationIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first(d0s0))
-              + "," + resultSet.getString(first(d0s1)) + "," + resultSet.getString(first(d0s2))
-              + "," + resultSet.getString(first(d0s3));
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first_value(d0s0))
+                  + "," + resultSet.getString(first_value(d0s1)) + "," + resultSet
+                  .getString(first_value(d0s2))
+                  + "," + resultSet.getString(first_value(d0s3));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
       }
 
-      hasResultSet = statement.execute("select first(s0),first(s1),first(s2),first(s3) " +
-          "from root.vehicle.d0");
+      hasResultSet = statement
+          .execute("select first_value(s0),first_value(s1),first_value(s2),first_value(s3) " +
+              "from root.vehicle.d0");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first(d0s0))
-              + "," + resultSet.getString(first(d0s1)) + "," + resultSet.getString(first(d0s2))
-              + "," + resultSet.getString(first(d0s3));
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first_value(d0s0))
+                  + "," + resultSet.getString(first_value(d0s1)) + "," + resultSet
+                  .getString(first_value(d0s2))
+                  + "," + resultSet.getString(first_value(d0s3));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -259,7 +265,7 @@ public class IoTDBAggregationIT {
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select last(s0),last(s2) " +
+      boolean hasResultSet = statement.execute("select last_value(s0),last_value(s2) " +
           "from root.vehicle.d0 where time >= 1500 and time < 9000");
 
       Assert.assertTrue(hasResultSet);
@@ -267,36 +273,39 @@ public class IoTDBAggregationIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last(d0s0))
-              + "," + resultSet.getString(last(d0s2));
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last_value(d0s0))
+                  + "," + resultSet.getString(last_value(d0s2));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
       }
 
-      hasResultSet = statement.execute("select last(s0),last(s2) " +
+      hasResultSet = statement.execute("select last_value(s0),last_value(s2) " +
           "from root.vehicle.d0 where time <= 1600");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last(d0s0))
-              + "," + resultSet.getString(last(d0s2));
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last_value(d0s0))
+                  + "," + resultSet.getString(last_value(d0s2));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(2, cnt);
       }
 
-      hasResultSet = statement.execute("select last(s0),last(s2) " +
+      hasResultSet = statement.execute("select last_value(s0),last_value(s2) " +
           "from root.vehicle.d0 where time <= 2200");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last(d0s0))
-              + "," + resultSet.getString(last(d0s2));
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last_value(d0s0))
+                  + "," + resultSet.getString(last_value(d0s2));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -451,42 +460,37 @@ public class IoTDBAggregationIT {
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-
-      boolean hasResultSet = statement.execute("select avg(s3)" +
-          "from root.vehicle.d0 where time >= 6000 and time <= 9000");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try {
+        statement.execute("select avg(s3)" +
+            "from root.vehicle.d0 where time >= 6000 and time <= 9000");
+        ResultSet resultSet = statement.getResultSet();
         resultSet.next();
         fail();
       } catch (Exception e) {
         Assert.assertEquals("Unsupported data type in aggregation AVG : TEXT", e.getMessage());
       }
-
-      hasResultSet = statement.execute("select sum(s3)" +
-          "from root.vehicle.d0 where time >= 6000 and time <= 9000");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try {
+        statement.execute("select sum(s3)" +
+            "from root.vehicle.d0 where time >= 6000 and time <= 9000");
+        ResultSet resultSet = statement.getResultSet();
         resultSet.next();
         fail();
       } catch (Exception e) {
         Assert.assertEquals("Unsupported data type in aggregation SUM : TEXT", e.getMessage());
       }
-
-      hasResultSet = statement.execute("select avg(s4)" +
-          "from root.vehicle.d0 where time >= 6000 and time <= 9000");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try {
+        statement.execute("select avg(s4)" +
+            "from root.vehicle.d0 where time >= 6000 and time <= 9000");
+        ResultSet resultSet = statement.getResultSet();
         resultSet.next();
         fail();
       } catch (Exception e) {
         Assert.assertEquals("Unsupported data type in aggregation AVG : BOOLEAN", e.getMessage());
       }
-
-      hasResultSet = statement.execute("select sum(s4)" +
-          "from root.vehicle.d0 where time >= 6000 and time <= 9000");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try {
+        statement.execute("select sum(s4)" +
+            "from root.vehicle.d0 where time >= 6000 and time <= 9000");
+        ResultSet resultSet = statement.getResultSet();
         resultSet.next();
         fail();
       } catch (Exception e) {

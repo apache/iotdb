@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
@@ -48,7 +47,6 @@ import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.IMetadataQuerier;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -82,7 +80,7 @@ public class UnseqTsFileRecoverTest {
 
   @Before
   public void setup() throws IOException, WriteProcessException {
-    tsF = SystemFileFactory.INSTANCE.getFile("temp", "test.ts");
+    tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "test.ts");
     tsF.getParentFile().mkdirs();
 
     schema = new Schema();
@@ -166,16 +164,16 @@ public class UnseqTsFileRecoverTest {
     int priorityValue = 1;
     for (ChunkMetaData chunkMetaData : metadataQuerier.getChunkMetaDataList(path)) {
       Chunk chunk = chunkLoader.getChunk(chunkMetaData);
-      ChunkReader chunkReader = new ChunkReaderWithoutFilter(chunk);
-
-      unSeqMergeReader.addReaderWithPriority(new DiskChunkReader(chunkReader), priorityValue);
+      ChunkReader chunkReader = new ChunkReader(chunk, null);
+      unSeqMergeReader
+          .addReaderWithPriority(new DiskChunkReader(chunkReader), priorityValue);
       priorityValue++;
     }
 
     for (int i = 0; i < 10; i++) {
       TimeValuePair timeValuePair = unSeqMergeReader.current();
       assertEquals(i, timeValuePair.getTimestamp());
-      assertEquals(11, timeValuePair.getValue().getLong());
+      assertEquals(11, (long) timeValuePair.getValue().getValue());
       unSeqMergeReader.next();
     }
     unSeqMergeReader.close();

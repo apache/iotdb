@@ -26,7 +26,7 @@ public class IoTDBConstant {
   public static final String ENV_FILE_NAME = "iotdb-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
-  public static final String VERSION = "0.9.0-SNAPSHOT";
+  public static final String VERSION = "0.10.0-SNAPSHOT";
   public static final String REMOTE_JMX_PORT_NAME = "com.sun.management.jmxremote.port";
   public static final String IOTDB_LOCAL_JMX_PORT_NAME = "iotdb.jmx.local.port";
   public static final String IOTDB_REMOTE_JMX_PORT_NAME = "iotdb.jmx.remote.port";
@@ -55,16 +55,17 @@ public class IoTDBConstant {
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
 
   // show info
-  public static final String ITEM = "                             item";
-  public static final String PARAMETER = "                                          parameter";
-  public static final String VALUE = "value";
+  public static final String COLUMN_ITEM = "                             item";
+  public static final String COLUMN_PARAMETER = "                                          parameter";
+  public static final String COLUMN_VALUE = "value";
+  public static final String COLUMN_VERSION = "version        ";
 
-  public static final String ROLE = "role";
-  public static final String USER = "user";
-  public static final String PRIVILEGE = "privilege";
+  public static final String COLUMN_ROLE = "role";
+  public static final String COLUMN_USER = "user";
+  public static final String COLUMN_PRIVILEGE = "privilege";
 
-  public static final String STORAGE_GROUP = "storage group";
-  public static final String TTL = "ttl";
+  public static final String COLUMN_STORAGE_GROUP = "storage group";
+  public static final String COLUMN_TTL = "ttl";
 
   // data folder name
   public static final String SEQUENCE_FLODER_NAME = "sequence";

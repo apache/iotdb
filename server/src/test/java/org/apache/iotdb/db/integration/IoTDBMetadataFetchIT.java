@@ -208,8 +208,8 @@ public class IoTDBMetadataFetchIT {
         boolean hasResultSet = statement.execute(sql);
         if(hasResultSet) {
           try(ResultSet resultSet = statement.getResultSet()) {
-            ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-            Assert.assertEquals(resultSetMetaData.getColumnLabel(1), IoTDBConstant.VERSION);
+            resultSet.next();
+            Assert.assertEquals(resultSet.getString(2), IoTDBConstant.VERSION);
           }
         }
       } catch (Exception e) {

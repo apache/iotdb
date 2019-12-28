@@ -32,6 +32,7 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Delete struct TSSetStorageGroupReq | Jialin Qiao        |
 | Remove struct TSDataValue          | Lei Rui            |
 | Remove struct TSRowRecord          | Lei Rui            |
+| Remove optional string version in TSFetchMetadataResp | Genius_pig |
 
 
 
@@ -51,6 +52,11 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add method TSStatus deleteData(1:TSDeleteDataReq req)        | Jack Tsai, Jialin Qiao, qiaojialin |
 | Add method TSStatus deleteTimeseries(1:list\<string> path)   | qiaojialin                         |
 | Add method TSStatus deleteStorageGroups(1:list\<string> storageGroup) | Yi Tao                             |
+| Add Struct TSExecuteInsertRowInBatchResp                     | Kaifeng Xue |
+| Add method insertRowInBatch(1:TSInsertInBatchReq req);       | Kaifeng Xue |
+| Add method testInsertRowInBatch(1:TSInsertInBatchReq req);   | Kaifeng Xue |
+| Add method testInsertRow(1:TSInsertReq req);                 | Kaifeng Xue |
+| Add method testInsertBatch(1:TSBatchInsertionReq req);       | Kaifeng Xue |
 
 
 ## 3. Update
@@ -75,6 +81,28 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add optional set\<string> childPaths in TSFetchMetadataResp     | Haonan Hou             |
 | Add optional string version in TSFetchMetadataResp           | Genius_pig             |
 | Add required i64 statementId in TSExecuteStatementReq        | Yuan Tian |
+| Add required binary time, required list<binary> valueList, required list<binary> bitmapList and remove required binary values, required i32 rowCount in TSQueryDataSet| Yuan Tian |
 
 
+# 0.10.0 (version-1) -> version-2
 
+Last Updated on November 12th, 2019 by Tian Jiang.
+
+
+## 1. Delete Old
+
+| Latest Changes                     | Related Committers |
+| ---------------------------------- | ------------------ |
+| Remove TS_SessionHandle,TSHandleIdentifier            | Tian Jiang         |
+
+## 2. Add New
+
+| Latest Changes                                               | Related Committers                 |
+| ------------------------------------------------------------ | ---------------------------------- |
+| Add parameter sessionId in getTimeZone, getProperties, setStorageGroup, createTimeseries... | Tian Jiang|
+
+## 3. Update
+
+| Latest Changes                                               | Related Committers     |
+| ------------------------------------------------------------ | ---------------------- |
+| Replace TS_SessionHandles with SessionIds, TSOperationHandle with queryIds  | Tian Jiang  |

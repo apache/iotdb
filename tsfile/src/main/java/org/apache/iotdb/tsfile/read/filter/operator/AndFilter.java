@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.BinaryFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
 /**
  * Both the left and right operators of AndExpression must satisfy the condition.
@@ -29,13 +30,16 @@ public class AndFilter extends BinaryFilter {
 
   private static final long serialVersionUID = -8212850098906044102L;
 
+  public AndFilter() {
+  }
+
   public AndFilter(Filter left, Filter right) {
     super(left, right);
   }
 
   @Override
-  public boolean satisfy(DigestForFilter digest) {
-    return left.satisfy(digest) && right.satisfy(digest);
+  public boolean satisfy(Statistics statistics) {
+    return left.satisfy(statistics) && right.satisfy(statistics);
   }
 
   @Override
@@ -63,5 +67,10 @@ public class AndFilter extends BinaryFilter {
   @Override
   public Filter clone() {
     return new AndFilter(left.clone(), right.clone());
+  }
+
+  @Override
+  public FilterSerializeId getSerializeId() {
+    return FilterSerializeId.AND;
   }
 }

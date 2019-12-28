@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.merge.MergeTest;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -47,7 +48,7 @@ public class MergeLogTest extends MergeTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException, PathException {
     super.setUp();
-    tempSGDir = new File("tempSG");
+    tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
   }
 
