@@ -27,14 +27,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -108,9 +109,15 @@ public class DeletionQueryTest {
     pathList.add(new Path(processorName, measurements[3]));
     pathList.add(new Path(processorName, measurements[4]));
     pathList.add(new Path(processorName, measurements[5]));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.valueOf(dataType));
+    dataTypes.add(TSDataType.valueOf(dataType));
+    dataTypes.add(TSDataType.valueOf(dataType));
 
-    QueryExpression queryExpression = QueryExpression.create(pathList, null);
-    QueryDataSet dataSet = router.query(queryExpression, TEST_QUERY_CONTEXT);
+    QueryPlan queryPlan = new QueryPlan();
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setDeduplicatedPaths(pathList);
+    QueryDataSet dataSet = router.query(queryPlan, TEST_QUERY_CONTEXT);
 
     int count = 0;
     while (dataSet.hasNext()) {
@@ -141,8 +148,15 @@ public class DeletionQueryTest {
     pathList.add(new Path(processorName, measurements[4]));
     pathList.add(new Path(processorName, measurements[5]));
 
-    QueryExpression queryExpression = QueryExpression.create(pathList, null);
-    QueryDataSet dataSet = router.query(queryExpression, TEST_QUERY_CONTEXT);
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.valueOf(dataType));
+    dataTypes.add(TSDataType.valueOf(dataType));
+    dataTypes.add(TSDataType.valueOf(dataType));
+
+    QueryPlan queryPlan = new QueryPlan();
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setDeduplicatedPaths(pathList);
+    QueryDataSet dataSet = router.query(queryPlan, TEST_QUERY_CONTEXT);
 
     int count = 0;
     while (dataSet.hasNext()) {
@@ -183,9 +197,15 @@ public class DeletionQueryTest {
     pathList.add(new Path(processorName, measurements[3]));
     pathList.add(new Path(processorName, measurements[4]));
     pathList.add(new Path(processorName, measurements[5]));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.valueOf(dataType));
+    dataTypes.add(TSDataType.valueOf(dataType));
+    dataTypes.add(TSDataType.valueOf(dataType));
 
-    QueryExpression queryExpression = QueryExpression.create(pathList, null);
-    QueryDataSet dataSet = router.query(queryExpression, TEST_QUERY_CONTEXT);
+    QueryPlan queryPlan = new QueryPlan();
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setDeduplicatedPaths(pathList);
+    QueryDataSet dataSet = router.query(queryPlan, TEST_QUERY_CONTEXT);
 
     int count = 0;
     while (dataSet.hasNext()) {
@@ -227,8 +247,15 @@ public class DeletionQueryTest {
     pathList.add(new Path(processorName, measurements[4]));
     pathList.add(new Path(processorName, measurements[5]));
 
-    QueryExpression queryExpression = QueryExpression.create(pathList, null);
-    QueryDataSet dataSet = router.query(queryExpression, TEST_QUERY_CONTEXT);
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.valueOf(dataType));
+    dataTypes.add(TSDataType.valueOf(dataType));
+    dataTypes.add(TSDataType.valueOf(dataType));
+
+    QueryPlan queryPlan = new QueryPlan();
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setDeduplicatedPaths(pathList);
+    QueryDataSet dataSet = router.query(queryPlan, TEST_QUERY_CONTEXT);
 
     int count = 0;
     while (dataSet.hasNext()) {
@@ -290,9 +317,15 @@ public class DeletionQueryTest {
     pathList.add(new Path(processorName, measurements[3]));
     pathList.add(new Path(processorName, measurements[4]));
     pathList.add(new Path(processorName, measurements[5]));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.valueOf(dataType));
+    dataTypes.add(TSDataType.valueOf(dataType));
+    dataTypes.add(TSDataType.valueOf(dataType));
 
-    QueryExpression queryExpression = QueryExpression.create(pathList, null);
-    QueryDataSet dataSet = router.query(queryExpression, TEST_QUERY_CONTEXT);
+    QueryPlan queryPlan = new QueryPlan();
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setDeduplicatedPaths(pathList);
+    QueryDataSet dataSet = router.query(queryPlan, TEST_QUERY_CONTEXT);
 
     int count = 0;
     while (dataSet.hasNext()) {
