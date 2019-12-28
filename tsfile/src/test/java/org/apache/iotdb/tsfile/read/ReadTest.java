@@ -23,6 +23,8 @@ import static org.junit.Assert.assertEquals;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -44,11 +46,11 @@ import org.junit.Test;
 
 public class ReadTest {
 
-  private static String fileName = "target/perTestOutputData.tsfile";
+  private static String fileName = TestConstant.BASE_OUTPUT_PATH.concat("perTestOutputData.tsfile");
   private static ReadOnlyTsFile roTsFile = null;
 
   @Before
-  public void prepare() throws IOException, InterruptedException, WriteProcessException {
+  public void prepare() throws IOException {
     FileGenerator.generateFile(1000, 100);
     TsFileSequenceReader reader = new TsFileSequenceReader(fileName);
     roTsFile = new ReadOnlyTsFile(reader);
@@ -275,13 +277,10 @@ public class ReadTest {
   public void queryStringTest() throws IOException {
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path("d1.s4"));
-    IExpression valFilter = new SingleSeriesExpression(new Path("d1.s4"),
-        ValueFilter.gt(new Binary("dog97")));
     IExpression tFilter = BinaryExpression
         .and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
             new GlobalTimeExpression(TimeFilter.ltEq(1480562618981L)));
-    IExpression finalFilter = BinaryExpression.and(valFilter, tFilter);
-    QueryExpression queryExpression = QueryExpression.create(pathList, finalFilter);
+    QueryExpression queryExpression = QueryExpression.create(pathList, tFilter);
     QueryDataSet dataSet = roTsFile.query(queryExpression);
 
     int cnt = 0;
@@ -292,18 +291,16 @@ public class ReadTest {
         Field f1 = r.getFields().get(0);
         assertEquals("dog976", f1.toString());
       }
-      // System.out.println(r);
+       System.out.println(r);
       cnt++;
     }
     Assert.assertEquals(1, cnt);
 
     pathList = new ArrayList<>();
     pathList.add(new Path("d1.s4"));
-    valFilter = new SingleSeriesExpression(new Path("d1.s4"), ValueFilter.lt(new Binary("dog97")));
     tFilter = BinaryExpression.and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
         new GlobalTimeExpression(TimeFilter.ltEq(1480562618981L)));
-    finalFilter = BinaryExpression.and(valFilter, tFilter);
-    queryExpression = QueryExpression.create(pathList, finalFilter);
+    queryExpression = QueryExpression.create(pathList, tFilter);
     dataSet = roTsFile.query(queryExpression);
     cnt = 0;
     while (dataSet.hasNext()) {
@@ -313,10 +310,9 @@ public class ReadTest {
         Field f1 = r.getFields().get(0);
         assertEquals("dog976", f1.getBinaryV().getStringValue());
       }
-      // System.out.println(r);
       cnt++;
     }
-    Assert.assertEquals(0, cnt);
+    Assert.assertEquals(1, cnt);
 
   }
 

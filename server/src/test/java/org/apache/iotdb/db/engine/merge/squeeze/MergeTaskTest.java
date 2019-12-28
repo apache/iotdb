@@ -74,7 +74,7 @@ public class MergeTaskTest extends MergeTest {
         Collections.singletonList(newResource[0]),
         null, context);
     int cnt = 0;
-    while (tsFilesReader.hasNext()) {
+    while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
         assertEquals(batchData.getTimeByIndex(i) + 20000.0, batchData.getDoubleByIndex(i), 0.001);
@@ -101,7 +101,7 @@ public class MergeTaskTest extends MergeTest {
         Collections.singletonList(newResource[0]),
         null, context);
     int cnt = 0;
-    while (tsFilesReader.hasNext()) {
+    while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
         assertEquals(batchData.getTimeByIndex(i) + 20000.0, batchData.getDoubleByIndex(i), 0.001);
@@ -126,7 +126,7 @@ public class MergeTaskTest extends MergeTest {
     SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
         Collections.singletonList(newResource[0]), null, context);
     int cnt = 0;
-    while (tsFilesReader.hasNext()) {
+    while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
         if (batchData.getTimeByIndex(i) < 20) {
@@ -156,7 +156,7 @@ public class MergeTaskTest extends MergeTest {
         Collections.singletonList(newResource[0]),
         null, context);
     int cnt = 0;
-    while (tsFilesReader.hasNext()) {
+    while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
         assertEquals(batchData.getTimeByIndex(i) + 20000.0, batchData.getDoubleByIndex(i), 0.001);
@@ -182,7 +182,7 @@ public class MergeTaskTest extends MergeTest {
         Collections.singletonList(newResource[0]),
         null, context);
     int cnt = 0;
-    while (tsFilesReader.hasNext()) {
+    while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
         long time = batchData.getTimeByIndex(i);
@@ -226,7 +226,7 @@ public class MergeTaskTest extends MergeTest {
         Collections.singletonList(newResource[0]),
         null, context);
     int count = 0;
-    while (tsFilesReader.hasNext()) {
+    while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
         if (batchData.getTimeByIndex(i) <= 20) {

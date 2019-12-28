@@ -21,5 +21,16 @@ package org.apache.iotdb.db.tools.watermark;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 public interface WatermarkEncoder {
+
+  int encodeInt(int value, long time);
+
+  long encodeLong(long value, long time);
+
+  float encodeFloat(float value, long time);
+
+  double encodeDouble(double value, long time);
+
+  boolean needEncode(long timestamp);
+
   RowRecord encodeRecord(RowRecord record);
 }

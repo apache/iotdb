@@ -21,9 +21,11 @@ package org.apache.iotdb.db.integration;
 
 import static org.apache.iotdb.db.integration.Constant.avg;
 import static org.apache.iotdb.db.integration.Constant.count;
-import static org.apache.iotdb.db.integration.Constant.first;
+import static org.apache.iotdb.db.integration.Constant.first_value;
+import static org.apache.iotdb.db.integration.Constant.last_value;
 import static org.apache.iotdb.db.integration.Constant.max_time;
 import static org.apache.iotdb.db.integration.Constant.max_value;
+import static org.apache.iotdb.db.integration.Constant.min_time;
 import static org.apache.iotdb.db.integration.Constant.min_value;
 import static org.apache.iotdb.db.integration.Constant.sum;
 import static org.junit.Assert.fail;
@@ -131,7 +133,7 @@ public class IoTDBAggregationLargeDataIT {
 
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");) {
-      lastAggreWithSingleFilterTest();
+      lastValueAggreWithSingleFilterTest();
       avgAggreWithSingleFilterTest();
       sumAggreWithSingleFilterTest();
       firstAggreWithSingleFilterTest();
@@ -140,7 +142,7 @@ public class IoTDBAggregationLargeDataIT {
       minValueAggreWithSingleFilterTest();
       maxValueAggreWithSingleFilterTest();
 
-      lastAggreWithMultiFilterTest();
+      lastValueAggreWithMultiFilterTest();
       countAggreWithMultiFilterTest();
       minTimeAggreWithMultiFilterTest();
       maxTimeAggreWithMultiFilterTest();
@@ -152,7 +154,7 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void lastAggreWithMultiFilterTest() throws SQLException {
+  private void lastValueAggreWithMultiFilterTest() throws SQLException {
     String[] retArray = new String[]{
         "0,9,39,63.0,E,true"
     };
@@ -161,18 +163,18 @@ public class IoTDBAggregationLargeDataIT {
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select last(s0),last(s1),last(s2),last(s3),last(s4)" +
+          "select last_value(s0),last_value(s1),last_value(s2),last_value(s3),last_value(s4)" +
               " from root.vehicle.d0 where s1 >= 0");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," +
-              resultSet.getString(Constant.last(d0s0)) + "," + resultSet
-              .getString(Constant.last(d0s1))
-              + "," + resultSet.getString(Constant.last(d0s2)) + "," +
-              resultSet.getString(Constant.last(d0s3)) + "," + resultSet
-              .getString(Constant.last(d0s4));
+              resultSet.getString(last_value(d0s0)) + "," + resultSet
+              .getString(last_value(d0s1))
+              + "," + resultSet.getString(last_value(d0s2)) + "," +
+              resultSet.getString(last_value(d0s3)) + "," + resultSet
+              .getString(last_value(d0s4));
           // System.out.println("============ " + ans);
           Assert.assertEquals(ans, retArray[cnt]);
           cnt++;
@@ -185,7 +187,7 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void lastAggreWithSingleFilterTest() throws SQLException {
+  private void lastValueAggreWithSingleFilterTest() throws SQLException {
     String[] retArray = new String[]{
         "0,9,39,63.0"
     };
@@ -193,16 +195,16 @@ public class IoTDBAggregationLargeDataIT {
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select last(s0),last(s1),last(s2)" +
+      boolean hasResultSet = statement.execute("select last_value(s0),last_value(s1),last_value(s2)" +
           " from root.vehicle.d0 where s1 >= 0");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," +
-              resultSet.getString(Constant.last(d0s0)) + ","
-              + resultSet.getString(Constant.last(d0s1)) + "," +
-              resultSet.getString(Constant.last(d0s2));
+              resultSet.getString(last_value(d0s0)) + ","
+              + resultSet.getString(last_value(d0s1)) + "," +
+              resultSet.getString(last_value(d0s2));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -231,7 +233,7 @@ Statement statement = connection.createStatement()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(sum(d0s0)) + ","
               + resultSet.getString(sum(d0s1)) + "," + Math
-              .round(resultSet.getDouble(Constant.sum(d0s2)));
+              .round(resultSet.getDouble(sum(d0s2)));
           Assert.assertEquals(ans, retArray[cnt]);
           cnt++;
         }
@@ -252,18 +254,18 @@ Statement statement = connection.createStatement()) {
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select first(s0),first(s1),first(s2),first(s3),"
-          + "first(s4) from root.vehicle.d0 where s1 >= 0");
+      boolean hasResultSet = statement.execute("select first_value(s0),first_value(s1),first_value(s2),first_value(s3),"
+          + "first_value(s4) from root.vehicle.d0 where s1 >= 0");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," +
-              resultSet.getString(Constant.first(d0s0)) + ","
-              + resultSet.getString(Constant.first(d0s1)) + "," +
-              resultSet.getString(Constant.first(d0s2))
-              + "," + resultSet.getString(Constant.first(d0s3)) + "," +
-              resultSet.getString(Constant.first(d0s4));
+              resultSet.getString(first_value(d0s0)) + ","
+              + resultSet.getString(first_value(d0s1)) + "," +
+              resultSet.getString(first_value(d0s2))
+              + "," + resultSet.getString(first_value(d0s3)) + "," +
+              resultSet.getString(first_value(d0s4));
           Assert.assertEquals(ans, retArray[cnt]);
           cnt++;
         }
@@ -352,11 +354,11 @@ Statement statement = connection.createStatement()) {
       int cnt = 0;
       while (resultSet.next()) {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," +
-            resultSet.getString(Constant.min_time(d0s0)) + "," +
-            resultSet.getString(Constant.min_time(d0s1)) + "," +
-            resultSet.getString(Constant.min_time(d0s2)) +
-            "," + resultSet.getString(Constant.min_time(d0s3)) +
-            "," + resultSet.getString(Constant.min_time(d0s4));
+            resultSet.getString(min_time(d0s0)) + "," +
+            resultSet.getString(min_time(d0s1)) + "," +
+            resultSet.getString(min_time(d0s2)) +
+            "," + resultSet.getString(min_time(d0s3)) +
+            "," + resultSet.getString(min_time(d0s4));
         Assert.assertEquals(ans, retArray[cnt]);
         cnt++;
       }
@@ -532,16 +534,16 @@ Statement statement = connection.createStatement()) {
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
 Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select first(s0),first(s1),first(s2),first(s3),"
-          + "first(s4) from root.vehicle.d0 where s1 >= 0 or s2 < 10");
+      boolean hasResultSet = statement.execute("select first_value(s0),first_value(s1),first_value(s2),first_value(s3),"
+          + "first_value(s4) from root.vehicle.d0 where s1 >= 0 or s2 < 10");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
       while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first(d0s0))
-            + "," + resultSet.getString(first(d0s1)) + "," + resultSet.getString(first(d0s2))
-            + "," + resultSet.getString(first(d0s3)) + "," + resultSet.getString(first(d0s4));
-        //String ans = resultSet.getString(first(d0s3));
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first_value(d0s0))
+            + "," + resultSet.getString(first_value(d0s1)) + "," + resultSet.getString(first_value(d0s2))
+            + "," + resultSet.getString(first_value(d0s3)) + "," + resultSet.getString(first_value(d0s4));
+        //String ans = resultSet.getString(first_value(d0s3));
         //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
@@ -601,11 +603,11 @@ Statement statement = connection.createStatement()) {
       int cnt = 0;
       while (resultSet.next()) {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," +
-            resultSet.getString(Constant.min_time(d0s0)) + "," +
-            resultSet.getString(Constant.min_time(d0s1)) + "," +
-            resultSet.getString(Constant.min_time(d0s2)) + "," +
-            resultSet.getString(Constant.min_time(d0s3)) + "," +
-            resultSet.getString(Constant.min_time(d0s4));
+            resultSet.getString(min_time(d0s0)) + "," +
+            resultSet.getString(min_time(d0s1)) + "," +
+            resultSet.getString(min_time(d0s2)) + "," +
+            resultSet.getString(min_time(d0s3)) + "," +
+            resultSet.getString(min_time(d0s4));
         // System.out.println("============ " + ans);
         Assert.assertEquals(ans, retArray[cnt]);
         cnt++;

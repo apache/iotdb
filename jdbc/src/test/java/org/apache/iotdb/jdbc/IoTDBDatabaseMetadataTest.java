@@ -63,13 +63,15 @@ public class IoTDBDatabaseMetadataTest {
   private TSStatus Status_SUCCESS = new TSStatus(successStatus);
 
   private DatabaseMetaData databaseMetaData;
+  private long sessionId;
 
   @Before
   public void before() throws Exception {
     MockitoAnnotations.initMocks(this);
-    when(connection.getMetaData()).thenReturn(new IoTDBDatabaseMetadata(connection, client));
+    when(connection.getMetaData()).thenReturn(new IoTDBDatabaseMetadata(connection, client, sessionId));
 
     when(client.fetchMetadata(any(TSFetchMetadataReq.class))).thenReturn(fetchMetadataResp);
+    when(client.closeOperation(any(TSCloseOperationReq.class))).thenReturn(Status_SUCCESS);
     when(fetchMetadataResp.getStatus()).thenReturn(Status_SUCCESS);
 
     databaseMetaData = connection.getMetaData();

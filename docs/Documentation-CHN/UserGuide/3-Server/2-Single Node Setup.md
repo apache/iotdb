@@ -19,5 +19,14 @@
 
 -->
 # 第3章: 服务器端
+## 单节点安装
 
-Coming Soon.
+用户可以使用 sbin 文件夹下 start-server 脚本启动 IoTDB.
+
+```
+# Unix/OS X
+> sbin/start-server.sh
+
+# Windows
+> sbin\start-server.bat
+```

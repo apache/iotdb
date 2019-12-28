@@ -18,14 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import static org.junit.Assert.fail;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.Statement;
-import java.sql.Types;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -33,6 +25,10 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import java.sql.*;
+
+import static org.junit.Assert.fail;
 
 public class IoTDBGroupbyDeviceIT {
 
@@ -472,14 +468,14 @@ public class IoTDBGroupbyDeviceIT {
   }
 
   @Test
-  public void groupbyTimeTest() throws ClassNotFoundException {
+  public void groupByTimeTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
-        "2,root.vehicle.d0,1,1,3,0,0,",
-        "20,root.vehicle.d0,0,0,0,0,0,",
-        "40,root.vehicle.d0,1,1,0,0,0,",
-        "2,root.vehicle.d1,0,null,null,null,null,",
-        "20,root.vehicle.d1,0,null,null,null,null,",
-        "40,root.vehicle.d1,0,null,null,null,null,"
+            "2,root.vehicle.d0,1,1,3,0,0,",
+            "22,root.vehicle.d0,0,0,0,0,0,",
+            "42,root.vehicle.d0,1,1,0,0,0,",
+            "2,root.vehicle.d1,0,null,null,null,null,",
+            "22,root.vehicle.d1,0,null,null,null,null,",
+            "42,root.vehicle.d1,0,null,null,null,null,",
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -487,7 +483,7 @@ public class IoTDBGroupbyDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select count(*) from root.vehicle GROUP BY (20ms,0,[2,50]) group by device");
+          "select count(*) from root.vehicle GROUP BY ([2,50],20ms) group by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {

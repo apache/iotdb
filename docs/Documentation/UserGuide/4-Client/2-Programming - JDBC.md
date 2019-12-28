@@ -50,7 +50,7 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-jdbc</artifactId>
-      <version>0.8.0-SNAPSHOT</version>
+      <version>0.8.0</version>
     </dependency>
 </dependencies>
 ```
@@ -240,7 +240,6 @@ Here is a list of Status Code and related message:
 |301|TIMESERIES_NOT_EXIST_ERROR|Timeseries does not exist|
 |302|UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR|Unsupported fetch metadata operation|
 |303|METADATA_ERROR|Meet error when dealing with metadata|
-|304|CHECK_FILE_LEVEL_ERROR|Meet error while checking file level|
 |305|OUT_OF_TTL_ERROR|Insertion time is less than TTL time bound|
 |306|CONFIG_ADJUSTER|IoTDB system load is too large|
 |307|MERGE_ERROR|Meet error while merging|

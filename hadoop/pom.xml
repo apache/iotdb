@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.9.0-SNAPSHOT</version>
+        <version>0.10.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>hadoop-tsfile</artifactId>
@@ -40,7 +40,7 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>tsfile</artifactId>
-            <version>0.9.0-SNAPSHOT</version>
+            <version>0.10.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.hadoop</groupId>
@@ -98,4 +98,32 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>skipHadoopTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <hadoop.test.skip>true</hadoop.test.skip>
+                <hadoop.ut.skip>true</hadoop.ut.skip>
+                <hadoop.it.skip>true</hadoop.it.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>skipUT_HadoopTests</id>
+            <activation>
+                <property>
+                    <name>skipUTs</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <hadoop.ut.skip>true</hadoop.ut.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>

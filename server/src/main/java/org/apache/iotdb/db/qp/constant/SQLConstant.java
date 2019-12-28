@@ -18,8 +18,12 @@
  */
 package org.apache.iotdb.db.qp.constant;
 
+import org.apache.iotdb.tsfile.read.common.Path;
+
 import java.util.HashMap;
 import java.util.Map;
+
+import org.apache.iotdb.db.qp.strategy.SqlBaseLexer;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
@@ -36,7 +40,7 @@ public class SQLConstant {
   public static final String RESERVED_TIME = "time";
   public static final String RESERVED_FREQ = "freq";
   public static final String IS_AGGREGATION = "IS_AGGREGATION";
-  public static final String NOW_FUNC = "now";
+  public static final String NOW_FUNC = "now()";
   public static final String START_TIME_STR = "1970-1-01T00:00:00";
 
   public static final String LINE_FEED_SIGNAL = "\n";
@@ -49,17 +53,31 @@ public class SQLConstant {
   public static final String BOOLEAN_TRUE_NUM = "1";
   public static final String BOOLEAN_FALSE_NUM = "0";
 
+  // names of aggregations
+  public static final String MIN_TIME = "min_time";
+  public static final String MAX_TIME = "max_time";
+
+  public static final String MAX_VALUE = "max_value";
+  public static final String MIN_VALUE = "min_value";
+
+  public static final String FIRST_VALUE = "first_value";
+  public static final String LAST_VALUE = "last_value";
+
+  public static final String COUNT = "count";
+  public static final String AVG = "avg";
+  public static final String SUM = "sum";
+
   public static final int KW_AND = 1;
   public static final int KW_OR = 2;
   public static final int KW_NOT = 3;
 
-  public static final int EQUAL = 11;
-  public static final int NOTEQUAL = 12;
-  public static final int LESSTHANOREQUALTO = 13;
-  public static final int LESSTHAN = 14;
-  public static final int GREATERTHANOREQUALTO = 15;
-  public static final int GREATERTHAN = 16;
-  public static final int EQUAL_NS = 17;
+  public static final int EQUAL = SqlBaseLexer.OPERATOR_EQ;
+  public static final int NOTEQUAL = SqlBaseLexer.OPERATOR_NEQ;
+  public static final int LESSTHANOREQUALTO = SqlBaseLexer.OPERATOR_LTE;
+  public static final int LESSTHAN = SqlBaseLexer.OPERATOR_LT;
+  public static final int GREATERTHANOREQUALTO = SqlBaseLexer.OPERATOR_GTE;
+  public static final int GREATERTHAN = SqlBaseLexer.OPERATOR_GT;
+  public static final int EQUAL_NS = SqlBaseLexer.OPERATOR_NEQ;
 
   public static final int TOK_SELECT = 21;
   public static final int TOK_FROM = 22;
@@ -106,6 +124,11 @@ public class SQLConstant {
 
   public static final int TOK_FLUSH_TASK_INFO = 67;
   public static final int TOK_DYNAMIC_PARAMETER = 68;
+
+  public static final int TOK_LOAD_FILES = 69;
+  public static final int TOK_REMOVE_FILE = 70;
+  public static final int TOK_MOVE_FILE = 71;
+  public static final int TOK_VERSION = 72;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
@@ -169,6 +192,10 @@ public class SQLConstant {
     tokenNames.put(TOK_LOAD_CONFIGURATION, "TOK_LOAD_CONFIGURATION");
     tokenNames.put(TOK_FLUSH_TASK_INFO, "TOK_FLUSH_TASK_INFO");
     tokenNames.put(TOK_DYNAMIC_PARAMETER, "TOK_DYNAMIC_PARAMETER");
+
+    tokenNames.put(TOK_LOAD_FILES, "TOK_LOAD_FILES");
+    tokenNames.put(TOK_REMOVE_FILE, "TOK_REMOVE_FILE");
+    tokenNames.put(TOK_MOVE_FILE, "TOK_MOVE_FILE");
   }
 
   static {

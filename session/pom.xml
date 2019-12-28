@@ -23,21 +23,18 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.9.0-SNAPSHOT</version>
+        <version>0.10.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>iotdb-session</artifactId>
     <name>IoTDB Session</name>
+    <properties>
+        <session.test.skip>false</session.test.skip>
+        <session.it.skip>${session.test.skip}</session.it.skip>
+        <session.ut.skip>${session.test.skip}</session.ut.skip>
+    </properties>
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>8</source>
-                    <target>8</target>
-                </configuration>
-            </plugin>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>3.1.0</version>
@@ -58,13 +55,35 @@
                     </execution>
                 </executions>
             </plugin>
+            <!--using `mvn test` to run UT, `mvn verify` to run ITs
+            Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <skipTests>${session.ut.skip}</skipTests>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>run-integration-tests</id>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <skipTests>${session.test.skip}</skipTests>
+                    <skipITs>${session.it.skip}</skipITs>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>1.7</maven.compiler.source>
-        <maven.compiler.target>1.7</maven.compiler.target>
-    </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -93,4 +112,32 @@
             <artifactId>commons-lang</artifactId>
         </dependency>
     </dependencies>
+    <profiles>
+        <profile>
+            <id>skipSessionTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <session.test.skip>true</session.test.skip>
+                <session.ut.skip>true</session.ut.skip>
+                <session.it.skip>true</session.it.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>skipUT_SessionTests</id>
+            <activation>
+                <property>
+                    <name>skipUTs</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <session.ut.skip>true</session.ut.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>

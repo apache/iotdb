@@ -39,5 +39,5 @@ public interface MergeCallback {
    * null for inplace strategy
    */
   void call(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, File logFile,
-      TsFileResource newFile);
+            TsFileResource newFile);
 }

@@ -34,11 +34,11 @@ public class DoubleStatisticsTest {
     assertFalse(doubleStats.isEmpty());
     doubleStats.updateStats(2.32d);
     assertFalse(doubleStats.isEmpty());
-    assertEquals(2.32d, doubleStats.getMax(), maxError);
-    assertEquals(1.34d, doubleStats.getMin(), maxError);
-    assertEquals(2.32d + 1.34d, doubleStats.getSum(), maxError);
-    assertEquals(1.34d, doubleStats.getFirst(), maxError);
-    assertEquals(2.32d, doubleStats.getLast(), maxError);
+    assertEquals(2.32d, doubleStats.getMaxValue(), maxError);
+    assertEquals(1.34d, doubleStats.getMinValue(), maxError);
+    assertEquals(2.32d + 1.34d, doubleStats.getSumValue(), maxError);
+    assertEquals(1.34d, doubleStats.getFirstValue(), maxError);
+    assertEquals(2.32d, doubleStats.getLastValue(), maxError);
   }
 
   @Test
@@ -54,18 +54,18 @@ public class DoubleStatisticsTest {
     Statistics<Double> doubleStats3 = new DoubleStatistics();
     doubleStats3.mergeStatistics(doubleStats1);
     assertFalse(doubleStats3.isEmpty());
-    assertEquals(100.13453d, doubleStats3.getMax(), maxError);
-    assertEquals(1.34d, doubleStats3.getMin(), maxError);
-    assertEquals(100.13453d + 1.34d, doubleStats3.getSum(), maxError);
-    assertEquals(1.34d, doubleStats3.getFirst(), maxError);
-    assertEquals(100.13453d, doubleStats3.getLast(), maxError);
+    assertEquals(100.13453d, doubleStats3.getMaxValue(), maxError);
+    assertEquals(1.34d, doubleStats3.getMinValue(), maxError);
+    assertEquals(100.13453d + 1.34d, doubleStats3.getSumValue(), maxError);
+    assertEquals(1.34d, doubleStats3.getFirstValue(), maxError);
+    assertEquals(100.13453d, doubleStats3.getLastValue(), maxError);
 
     doubleStats3.mergeStatistics(doubleStats2);
-    assertEquals(200.435d, doubleStats3.getMax(), maxError);
-    assertEquals(1.34d, doubleStats3.getMin(), maxError);
-    assertEquals(100.13453d + 1.34d + 200.435d, doubleStats3.getSum(), maxError);
-    assertEquals(1.34d, doubleStats3.getFirst(), maxError);
-    assertEquals(200.435d, doubleStats3.getLast(), maxError);
+    assertEquals(200.435d, doubleStats3.getMaxValue(), maxError);
+    assertEquals(1.34d, doubleStats3.getMinValue(), maxError);
+    assertEquals(100.13453d + 1.34d + 200.435d, doubleStats3.getSumValue(), maxError);
+    assertEquals(1.34d, doubleStats3.getFirstValue(), maxError);
+    assertEquals(200.435d, doubleStats3.getLastValue(), maxError);
   }
 
 }

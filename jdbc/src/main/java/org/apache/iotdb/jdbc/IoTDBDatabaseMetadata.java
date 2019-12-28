@@ -38,10 +38,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   private static final Logger logger = LoggerFactory
           .getLogger(IoTDBDatabaseMetadata.class);
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
+  private long sessionId;
 
-  IoTDBDatabaseMetadata(IoTDBConnection connection, TSIService.Iface client) {
+  IoTDBDatabaseMetadata(IoTDBConnection connection, TSIService.Iface client, long sessionId) {
     this.connection = connection;
     this.client = client;
+    this.sessionId = sessionId;
   }
 
   @Override
@@ -52,7 +54,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       return getColumnsFunc(catalog, schemaPattern);
     } catch (TException e) {
       boolean flag = connection.reconnect();
-      this.client = connection.client;
+      this.client = connection.getClient();
       if (flag) {
         try {
           return getColumnsFunc(catalog, schemaPattern);
@@ -77,7 +79,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     TSFetchMetadataReq req;
     switch (catalog) {
       case Constant.CATALOG_COLUMN:
-        req = new TSFetchMetadataReq(Constant.GLOBAL_COLUMNS_REQ);
+        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_COLUMNS_REQ);
         req.setColumnPath(schemaPattern);
         try {
           TSFetchMetadataResp resp = client.fetchMetadata(req);
@@ -91,7 +93,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           throw new TException("Connection error when fetching column metadata", e);
         }
       case Constant.CATALOG_DEVICES:
-        req = new TSFetchMetadataReq(Constant.GLOBAL_SHOW_DEVICES_REQ);
+        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_SHOW_DEVICES_REQ);
         req.setColumnPath(schemaPattern);
         try {
           TSFetchMetadataResp resp = client.fetchMetadata(req);
@@ -105,7 +107,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           throw new TException("Connection error when fetching device metadata", e);
         }
       case Constant.CATALOG_CHILD_PATHS:
-        req = new TSFetchMetadataReq(Constant.GLOBAL_SHOW_CHILD_PATHS_REQ);
+        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_SHOW_CHILD_PATHS_REQ);
         req.setColumnPath(schemaPattern);
         try {
             TSFetchMetadataResp resp = client.fetchMetadata(req);
@@ -119,7 +121,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           throw new TException("Connection error when fetching child path metadata", e);
         }
       case Constant.CATALOG_STORAGE_GROUP:
-        req = new TSFetchMetadataReq(Constant.GLOBAL_SHOW_STORAGE_GROUP_REQ);
+        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_SHOW_STORAGE_GROUP_REQ);
         try {
           TSFetchMetadataResp resp = client.fetchMetadata(req);
           try {
@@ -133,7 +135,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           throw new TException("Connection error when fetching storage group metadata", e);
         }
       case Constant.CATALOG_TIMESERIES:
-        req = new TSFetchMetadataReq(Constant.GLOBAL_SHOW_TIMESERIES_REQ);
+        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_SHOW_TIMESERIES_REQ);
         req.setColumnPath(schemaPattern);
         try {
           TSFetchMetadataResp resp = client.fetchMetadata(req);
@@ -148,7 +150,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           throw new TException("Connection error when fetching timeseries metadata", e);
         }
       case Constant.COUNT_TIMESERIES:
-        req = new TSFetchMetadataReq(Constant.GLOBAL_COUNT_TIMESERIES_REQ);
+        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_COUNT_TIMESERIES_REQ);
         req.setColumnPath(schemaPattern);
         try {
           TSFetchMetadataResp resp = client.fetchMetadata(req);
@@ -158,20 +160,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
           }
           return new IoTDBMetadataResultSet(resp.getTimeseriesNum(), MetadataType.COUNT_TIMESERIES);
-        } catch (TException e) {
-          throw new TException("Connection error when fetching timeseries metadata", e);
-        }
-      case Constant.CATALOG_VERSION:
-        req = new TSFetchMetadataReq(Constant.GLOBAL_VERSION);
-        req.setColumnPath(schemaPattern);
-        try {
-          TSFetchMetadataResp resp = client.fetchMetadata(req);
-          try {
-            RpcUtils.verifySuccess(resp.getStatus());
-          } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-          }
-          return new IoTDBMetadataResultSet(resp.getVersion(), MetadataType.VERSION);
         } catch (TException e) {
           throw new TException("Connection error when fetching timeseries metadata", e);
         }
@@ -187,7 +175,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       return getNodesFunc(catalog, schemaPattern, nodeLevel);
     } catch (TException e) {
       boolean flag = connection.reconnect();
-      this.client = connection.client;
+      this.client = connection.getClient();
       if (flag) {
         try {
           return getNodesFunc(catalog, schemaPattern, nodeLevel);
@@ -211,7 +199,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     TSFetchMetadataReq req;
     switch (catalog) {
       case Constant.COUNT_NODES:
-        req = new TSFetchMetadataReq(Constant.GLOBAL_COUNT_NODES_REQ);
+        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_COUNT_NODES_REQ);
         req.setNodeLevel(nodeLevel);
         req.setColumnPath(schemaPattern);
         try {
@@ -226,7 +214,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           throw new TException("Connection error when fetching node metadata", e);
         }
       case Constant.COUNT_NODE_TIMESERIES:
-        req = new TSFetchMetadataReq(Constant.GLOBAL_COUNT_NODE_TIMESERIES_REQ);
+        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_COUNT_NODE_TIMESERIES_REQ);
         req.setNodeLevel(nodeLevel);
         req.setColumnPath(schemaPattern);
         try {
@@ -1153,7 +1141,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       logger.error("Failed to fetch metadata in json because: ", e);
     } catch (TException e) {
       boolean flag = connection.reconnect();
-      this.client = connection.client;
+      this.client = connection.getClient();
       if (flag) {
         try {
           return getMetadataInJsonFunc();
@@ -1179,7 +1167,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       return getMetadataInJsonFunc();
     } catch (TException e) {
       boolean flag = connection.reconnect();
-      this.client = connection.client;
+      this.client = connection.getClient();
       if (flag) {
         try {
           return getMetadataInJsonFunc();
@@ -1195,7 +1183,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   private String getMetadataInJsonFunc() throws TException, IoTDBSQLException {
-    TSFetchMetadataReq req = new TSFetchMetadataReq("METADATA_IN_JSON");
+    TSFetchMetadataReq req = new TSFetchMetadataReq(sessionId, "METADATA_IN_JSON");
     TSFetchMetadataResp resp;
     resp = client.fetchMetadata(req);
     try {

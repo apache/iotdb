@@ -22,6 +22,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.File;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.QueryProcessor;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
@@ -148,14 +150,16 @@ public class PhysicalPlanTest {
       throws QueryProcessException, MetadataException {
     String sqlStr =
         "select count(s1) " + "from root.vehicle.d1 " + "where s1 < 20 and time <= now() "
-            + "group by(10m, 44, [1,3], [4,5])";
+            + "group by([8,737], 3ms)";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     if (!plan.isQuery()) {
       fail();
     }
     GroupByPlan mergePlan = (GroupByPlan) plan;
-    assertEquals(10 * 60 * 1000L, mergePlan.getUnit());
-    assertEquals(44, mergePlan.getOrigin());
+    assertEquals(3L, mergePlan.getUnit());
+    assertEquals(3L, mergePlan.getSlidingStep());
+    assertEquals(8L, mergePlan.getStartTime());
+    assertEquals(737L, mergePlan.getEndTime());
   }
 
   @Test
@@ -163,13 +167,30 @@ public class PhysicalPlanTest {
       throws QueryProcessException, MetadataException {
     String sqlStr =
         "select count(s1) " + "from root.vehicle.d1 " + "where s1 < 20 and time <= now() "
-            + "group by(111ms, [123,2017-6-2T12:00:12+07:00], [55555, now()])";
+            + "group by([123,2017-6-2T12:00:12+07:00], 111ms)";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     if (!plan.isQuery()) {
       fail();
     }
     GroupByPlan mergePlan = (GroupByPlan) plan;
     assertEquals(111, mergePlan.getUnit());
+  }
+
+  @Test
+  public void testGroupBy3()
+          throws QueryProcessException, MetadataException {
+    String sqlStr =
+            "select count(s1) " + "from root.vehicle.d1 " + "where s1 < 20 and time <= now() "
+                    + "group by([2017-6-2T12:00:12+07:00,2017-6-12T12:00:12+07:00], 3h, 24h)";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    if (!plan.isQuery()) {
+      fail();
+    }
+    GroupByPlan mergePlan = (GroupByPlan) plan;
+    assertEquals(3 * 60 * 60 * 1000, mergePlan.getUnit());
+    assertEquals(24 * 60 * 60 * 1000, mergePlan.getSlidingStep());
+    assertEquals(1496379612000L, mergePlan.getStartTime());
+    assertEquals(1497243612000L, mergePlan.getEndTime());
   }
 
   @Test
@@ -311,7 +332,18 @@ public class PhysicalPlanTest {
     IExpression expect = new GlobalTimeExpression(
         FilterFactory.or(TimeFilter.gt(1571090340000L), TimeFilter.lt(10L)));
     assertEquals(expect.toString(), queryFilter.toString());
+  }
 
+  @Test
+  public void testLimitOffset()
+      throws QueryProcessException, MetadataException {
+    String sqlStr = "SELECT s1 FROM root.vehicle.d1,root.vehicle.d2 WHERE time < 10 "
+        + "limit 100 offset 10 slimit 1 soffset 1";
+    QueryPlan plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    assertEquals(100, plan.getRowLimit());
+    assertEquals(10, plan.getRowOffset());
+    // NOTE that the parameters of the SLIMIT clause is not stored in the physicalPlan,
+    // because the SLIMIT clause takes effect before the physicalPlan is finally generated.
   }
 
   @Test
@@ -510,5 +542,60 @@ public class PhysicalPlanTest {
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     ShowPlan plan = (ShowPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals("SHOW FLUSH_TASK_INFO", plan.toString());
+  }
+
+  @Test
+  public void testLoadFiles() throws QueryProcessException, MetadataException {
+    String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
+    String metadata = String.format("load %s", filePath);
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(String.format(
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=2, operatorType=LOAD_FILES}",
+        filePath), plan.toString());
+
+    metadata = String.format("load %s true", filePath);
+    processor = new QueryProcessor(new MemIntQpExecutor());
+    plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(String.format(
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=2, operatorType=LOAD_FILES}",
+        filePath), plan.toString());
+
+    metadata = String.format("load %s false", filePath);
+    processor = new QueryProcessor(new MemIntQpExecutor());
+    plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(String.format(
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=2, operatorType=LOAD_FILES}",
+        filePath), plan.toString());
+
+    metadata = String.format("load %s true 3", filePath);
+    processor = new QueryProcessor(new MemIntQpExecutor());
+    plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(String.format(
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=3, operatorType=LOAD_FILES}",
+        filePath), plan.toString());
+  }
+
+  @Test
+  public void testRemoveFile() throws QueryProcessException, MetadataException {
+    String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
+    String metadata = String.format("remove %s", filePath);
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(String.format(
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=0, operatorType=REMOVE_FILE}",
+        filePath), plan.toString());
+  }
+
+  @Test
+  public void testMoveFile() throws QueryProcessException, MetadataException {
+    String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
+    String targetDir = "user" + File.separator + "backup";
+    String metadata = String.format("move %s %s", filePath, targetDir);
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+    OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(
+        String.format("OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, operatorType=MOVE_FILE}", filePath,
+            targetDir), plan.toString());
   }
 }

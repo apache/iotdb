@@ -28,12 +28,14 @@ import java.util.Set;
 import java.util.TreeSet;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
@@ -45,7 +47,10 @@ import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
+import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
+import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
@@ -63,6 +68,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
@@ -158,15 +164,30 @@ public class PhysicalGenerator {
       case LOAD_CONFIGURATION:
         return new LoadConfigurationPlan();
       case SHOW:
-        switch (operator.getTokenIntType()){
+        switch (operator.getTokenIntType()) {
           case SQLConstant.TOK_DYNAMIC_PARAMETER:
             return new ShowPlan(ShowContentType.DYNAMIC_PARAMETER);
           case SQLConstant.TOK_FLUSH_TASK_INFO:
             return new ShowPlan(ShowContentType.FLUSH_TASK_INFO);
+          case SQLConstant.TOK_VERSION:
+            return new ShowPlan(ShowContentType.VERSION);
           default:
             throw new LogicalOperatorException(String
                 .format("not supported operator type %s in show operation.", operator.getType()));
         }
+      case LOAD_FILES:
+        if (((LoadFilesOperator) operator).isInvalid()) {
+          throw new LogicalOperatorException(((LoadFilesOperator) operator).getErrMsg());
+        }
+        return new OperateFilePlan(((LoadFilesOperator) operator).getFile(),
+            OperatorType.LOAD_FILES, ((LoadFilesOperator) operator).isAutoCreateSchema(),
+            ((LoadFilesOperator) operator).getSgLevel());
+      case REMOVE_FILE:
+        return new OperateFilePlan(((RemoveFileOperator) operator).getFile(),
+            OperatorType.REMOVE_FILE);
+      case MOVE_FILE:
+        return new OperateFilePlan(((MoveFileOperator) operator).getFile(),
+            ((MoveFileOperator) operator).getTargetDir(), OperatorType.MOVE_FILE);
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }
@@ -180,8 +201,9 @@ public class PhysicalGenerator {
     if (queryOperator.isGroupBy()) {
       queryPlan = new GroupByPlan();
       ((GroupByPlan) queryPlan).setUnit(queryOperator.getUnit());
-      ((GroupByPlan) queryPlan).setOrigin(queryOperator.getOrigin());
-      ((GroupByPlan) queryPlan).setIntervals(queryOperator.getIntervals());
+      ((GroupByPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
+      ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime());
+      ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime());
       ((GroupByPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
     } else if (queryOperator.isFill()) {
@@ -201,12 +223,8 @@ public class PhysicalGenerator {
       queryPlan = new QueryPlan();
     }
 
-    if (!queryOperator.isGroupByDevice()) {
-      List<Path> paths = queryOperator.getSelectedPaths();
-      queryPlan.setPaths(paths);
-
-    } else {
-      // below is the core realization of GROUP_BY_DEVICE sql
+    if (queryOperator.isGroupByDevice()) {
+      // below is the core realization of GROUP_BY_DEVICE sql logic
       List<Path> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
       List<Path> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();
       List<String> originAggregations = queryOperator.getSelectOperator().getAggregations();
@@ -312,9 +330,14 @@ public class PhysicalGenerator {
       queryPlan.setMeasurementColumnsGroupByDevice(measurementColumnsGroupByDevice);
       queryPlan.setDataTypeConsistencyChecker(dataTypeConsistencyChecker);
       queryPlan.setPaths(new ArrayList<>(allSelectPaths));
+      List<Path> paths = queryPlan.getPaths();
+      queryPlan.setDeduplicatedPaths(paths);
+    } else {
+      List<Path> paths = queryOperator.getSelectedPaths();
+      queryPlan.setPaths(paths);
     }
-
-    queryPlan.checkPaths(executor);
+    generateDataTypes(queryPlan);
+    deduplicate(queryPlan);
 
     // transform filter operator to expression
     FilterOperator filterOperator = queryOperator.getFilterOperator();
@@ -324,7 +347,46 @@ public class PhysicalGenerator {
       queryPlan.setExpression(expression);
     }
 
+    queryPlan.setRowLimit(queryOperator.getRowLimit());
+    queryPlan.setRowOffset(queryOperator.getRowOffset());
+
     return queryPlan;
+  }
+
+  private void generateDataTypes(QueryPlan queryPlan) throws PathException {
+    List<Path> paths = queryPlan.getPaths();
+    List<TSDataType> dataTypes = new ArrayList<>(paths.size());
+    for (int i = 0; i < paths.size(); i++) {
+      Path path = paths.get(i);
+      TSDataType seriesType = executor.getSeriesType(path);
+      dataTypes.add(seriesType);
+      queryPlan.addTypeMapping(path, seriesType);
+    }
+    queryPlan.setDataTypes(dataTypes);
+  }
+
+  private void deduplicate(QueryPlan queryPlan) {
+    if (queryPlan instanceof AggregationPlan) {
+      if (!queryPlan.isGroupByDevice()) {
+        AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
+        deduplicateAggregation(aggregationPlan);
+      }
+      return;
+    }
+    List<Path> paths = queryPlan.getPaths();
+
+    Set<String> columnSet = new HashSet<>();
+    Map<Path, TSDataType> dataTypeMapping = queryPlan.getDataTypeMapping();
+    for (int i = 0; i < paths.size(); i++) {
+      Path path = paths.get(i);
+      String column = path.toString();
+      if (!columnSet.contains(column)) {
+        TSDataType seriesType = dataTypeMapping.get(path);
+        queryPlan.addDeduplicatedPaths(path);
+        queryPlan.addDeduplicatedDataTypes(seriesType);
+        columnSet.add(column);
+      }
+    }
   }
 
 
@@ -345,5 +407,24 @@ public class PhysicalGenerator {
     return new ArrayList<>(columnList.subList(seriesOffset, endPosition));
   }
 
+
+  private void deduplicateAggregation(AggregationPlan queryPlan) {
+    List<Path> paths = queryPlan.getPaths();
+    List<String> aggregations = queryPlan.getAggregations();
+
+    Set<String> columnSet = new HashSet<>();
+    Map<Path, TSDataType> dataTypeMapping = queryPlan.getDataTypeMapping();
+    for (int i = 0; i < paths.size(); i++) {
+      Path path = paths.get(i);
+      String column = aggregations.get(i) + "(" + path.toString() + ")";
+      if (!columnSet.contains(column)) {
+        queryPlan.addDeduplicatedPaths(path);
+        TSDataType seriesType = dataTypeMapping.get(path);
+        queryPlan.addDeduplicatedDataTypes(seriesType);
+        queryPlan.addDeduplicatedAggregations(aggregations.get(i));
+        columnSet.add(column);
+      }
+    }
+  }
 }
 
