@@ -18,14 +18,6 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
@@ -36,49 +28,18 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
-import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
-import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
-import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
-import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
-import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
-import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
+import org.apache.iotdb.db.qp.logical.crud.*;
+import org.apache.iotdb.db.qp.logical.sys.*;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
-import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
-import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
-import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
-import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+
+import java.util.*;
 
 /**
  * Used to convert logical operator to physical plan
@@ -243,7 +204,7 @@ public class PhysicalGenerator {
           Path fullPath = Path.addPrefixPath(suffixPath, prefixPath);
           Set<String> tmpDeviceSet = new HashSet<>();
           try {
-            List<String> actualPaths = executor.getAllPaths(fullPath.getFullPath());  // remove stars to get actual paths
+            List<String> actualPaths = executor.matchPaths(fullPath.getFullPath());  // remove stars to get actual paths
             for (String pathStr : actualPaths) {
               Path path = new Path(pathStr);
               String device = path.getDevice();
@@ -258,12 +219,33 @@ public class PhysicalGenerator {
                 continue;
               }
 
+              // get pathForDataType and measurementColumn
+              String measurement = path.getMeasurement();
+              String pathForDataType;
+              String measurementChecked;
               // check datatype consistency
               String originAggregation = null;
               if (originAggregations != null && !originAggregations.isEmpty()) {
-                 originAggregation = originAggregations.get(i);
+                pathForDataType = originAggregations.get(i) + "(" + path.getFullPath() + ")";
+                measurementChecked = originAggregations.get(i) + "(" + measurement + ")";
+              } else {
+                pathForDataType = path.getFullPath();
+                measurementChecked = measurement;
               }
-              String measurementChecked = checkDatatype(path, originAggregation, dataTypeConsistencyChecker);
+              // check the consistency of data types
+              // a example of inconsistency: select s0 from root.sg1.d1, root.sg2.d3 group by device,
+              // while root.sg1.d1.s0 is INT32 and root.sg2.d3.s0 is FLOAT.
+              TSDataType dataType = TSServiceImpl.getSeriesType(pathForDataType);
+              if (dataTypeConsistencyChecker.containsKey(measurementChecked)) {
+                if (!dataType.equals(dataTypeConsistencyChecker.get(measurementChecked))) {
+                  throw new QueryProcessException(
+                          "The data types of the same measurement column should be the same across "
+                                  + "devices in GROUP_BY_DEVICE sql. For more details please refer to the "
+                                  + "SQL document.");
+                }
+              } else {
+                dataTypeConsistencyChecker.put(measurementChecked, dataType);
+              }
 
               // update measurementSetOfGivenSuffix
               measurementSetOfGivenSuffix.add(measurementChecked);
@@ -331,36 +313,6 @@ public class PhysicalGenerator {
     queryPlan.setRowOffset(queryOperator.getRowOffset());
 
     return queryPlan;
-  }
-
-  private String checkDatatype(Path path, String originAggregation, Map<String, TSDataType> dataTypeConsistencyChecker)
-          throws QueryProcessException {
-    // get pathForDataType and measurementColumn
-    String measurement = path.getMeasurement();
-    String pathForDataType;
-    String measurementChecked;
-    if (originAggregation != null) {
-      pathForDataType = originAggregation + "(" + path.getFullPath() + ")";
-      measurementChecked = originAggregation + "(" + measurement + ")";
-    } else {
-      pathForDataType = path.getFullPath();
-      measurementChecked = measurement;
-    }
-    // check the consistency of data types
-    // a example of inconsistency: select s0 from root.sg1.d1, root.sg2.d3 group by device,
-    // while root.sg1.d1.s0 is INT32 and root.sg2.d3.s0 is FLOAT.
-    TSDataType dataType = TSServiceImpl.getSeriesType(pathForDataType);
-    if (dataTypeConsistencyChecker.containsKey(measurementChecked)) {
-      if (!dataType.equals(dataTypeConsistencyChecker.get(measurementChecked))) {
-        throw new QueryProcessException(
-                "The data types of the same measurement column should be the same across "
-                        + "devices in GROUP_BY_DEVICE sql. For more details please refer to the "
-                        + "SQL document.");
-      }
-    } else {
-      dataTypeConsistencyChecker.put(measurementChecked, dataType);
-    }
-    return measurementChecked;
   }
 
   private void generateDataTypes(QueryPlan queryPlan) throws PathException {

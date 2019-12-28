@@ -240,7 +240,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       // Note that,
       // two fork tree has to be maintained while removing stars in paths for DnfFilterOptimizer
       // requirement.
-      return constructTwoForkFilterTreeWithAnd(noStarPaths, operator);
+      return constructBinaryFilterTreeWithAnd(noStarPaths, operator);
     }
   }
 
@@ -252,8 +252,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     // remove stars in fromPaths and get deviceId
     List<String> noStarDevices = removeStarsInDeviceWithUnique(fromPaths);
 
-    FilterOperator filterTwoFolkTree = new FilterOperator(SQLConstant.KW_OR);
-    FilterOperator currentNode = filterTwoFolkTree;
+    FilterOperator filterBinaryTree = new FilterOperator(SQLConstant.KW_OR);
+    FilterOperator currentNode = filterBinaryTree;
     FilterOperator parentNode = currentNode;
     // to check whether duplicate
     // e.g. SELECT * FROM root.ln.d1, root.ln.d2 where time < 10
@@ -278,23 +278,23 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     // if 'OR' has no enough operands due to duplication
     if(currentNode.getChildren().size() == 1){
       if(parentNode == currentNode){
-        filterTwoFolkTree = currentNode.getChildren().get(0);
+        filterBinaryTree = currentNode.getChildren().get(0);
       } else {
         parentNode.getChildren().set(1, currentNode.getChildren().get(0));
       }
     }
 
-    return filterTwoFolkTree;
+    return filterBinaryTree;
   }
 
   private List<String> removeStarsInDeviceWithUnique(List<Path> paths)
           throws LogicalOptimizeException {
     List<String> retDevices;
-    HashSet<String> deviceSet = new HashSet<>();
+    Set<String> deviceSet = new HashSet<>();
     try {
       for (Path path : paths) {
         List<String> all;
-        all = executor.getAllPaths(path.getFullPath());
+        all = executor.matchPaths(path.getFullPath());
         if (all.isEmpty()) {
           throw new LogicalOptimizeException(
                   "Path: \"" + path + "\" doesn't correspond to any known time series");
@@ -325,7 +325,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     Path filterPath = basicOperator.getSinglePath();
 
     // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
-    if (SQLConstant.isReservedPath(filterPath) || filterPath.startWith("ROOT")) {
+    if (SQLConstant.isReservedPath(filterPath) || filterPath.startWith(SQLConstant.ROOT)) {
       return operator;
     }
 
@@ -335,11 +335,11 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     return basicOperator;
   }
 
-  private FilterOperator constructTwoForkFilterTreeWithAnd(List<Path> noStarPaths,
+  private FilterOperator constructBinaryFilterTreeWithAnd(List<Path> noStarPaths,
       FilterOperator operator)
       throws LogicalOptimizeException {
-    FilterOperator filterTwoFolkTree = new FilterOperator(SQLConstant.KW_AND);
-    FilterOperator currentNode = filterTwoFolkTree;
+    FilterOperator filterBinaryTree = new FilterOperator(SQLConstant.KW_AND);
+    FilterOperator currentNode = filterBinaryTree;
     for (int i = 0; i < noStarPaths.size(); i++) {
       if (i > 0 && i < noStarPaths.size() - 1) {
         FilterOperator newInnerNode = new FilterOperator(SQLConstant.KW_AND);
@@ -354,7 +354,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         throw new LogicalOptimizeException(e.getMessage());
       }
     }
-    return filterTwoFolkTree;
+    return filterBinaryTree;
   }
 
   /**
@@ -369,7 +369,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     try {
       for (Path path : paths) {
         List<String> all;
-        all = executor.getAllPaths(path.getFullPath());
+        all = executor.matchPaths(path.getFullPath());
         if (all.isEmpty()) {
           throw new LogicalOptimizeException(
               "Path: \"" + path + "\" doesn't correspond to any known time series");
@@ -395,7 +395,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     List<String> newAggregations = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       try {
-        List<String> actualPaths = executor.getAllPaths(paths.get(i).getFullPath());
+        List<String> actualPaths = executor.matchPaths(paths.get(i).getFullPath());
         if (actualPaths.isEmpty()) {
           throw new LogicalOptimizeException(
               "Path: \"" + paths.get(i) + "\" doesn't correspond to any known time series");
