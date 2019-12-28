@@ -23,9 +23,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
-import org.apache.iotdb.db.query.reader.IBatchReader;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.junit.Assert;
@@ -61,7 +61,7 @@ public class FakedIBatchPoint implements IBatchReader {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNextBatch() {
     if (hasCachedBatchData) {
       return true;
     }
@@ -90,7 +90,7 @@ public class FakedIBatchPoint implements IBatchReader {
     if (!hasEmptyBatch) {
       num += 1;
     }
-    batchData = new BatchData(TSDataType.INT64, true);
+    batchData = new BatchData(TSDataType.INT64);
     while (num > 0 && iterator.hasNext()) {
       TimeValuePair timeValuePair = iterator.next();
       batchData.putTime(timeValuePair.getTimestamp());
@@ -98,7 +98,7 @@ public class FakedIBatchPoint implements IBatchReader {
       num--;
     }
     if (!hasEmptyBatch) {
-      Assert.assertTrue(batchData.hasNext());
+      Assert.assertTrue(batchData.hasCurrent());
     }
   }
 

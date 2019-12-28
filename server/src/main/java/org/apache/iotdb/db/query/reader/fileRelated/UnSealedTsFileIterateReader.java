@@ -23,7 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.IAggregateReader;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.IterateReader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -31,13 +31,13 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 
 /**
  * To read an unsealed sequence TsFile, this class extends {@link IterateReader} to implement {@link
- * IAggregateReader} for the TsFile.
+ * IBatchReader} for the TsFile.
  * <p>
  * Note that an unsealed sequence TsFile consists of two parts of data in chronological order: 1)
  * data that has been flushed to disk and 2) data in the flushing memtable list.
@@ -100,22 +100,17 @@ public class UnSealedTsFileIterateReader extends IterateReader {
   }
 
   /**
-   * Creates <code>IAggregateReader</code> for an unsealed sequence TsFile's on-disk data.
+   * for an unsealed sequence TsFile's on-disk data.
    */
-  private IAggregateReader initUnSealedTsFileDiskReader(TsFileResource unSealedTsFile,
-      Filter filter)
+  private IAggregateReader initUnSealedTsFileDiskReader(TsFileResource unSealedTsFile, Filter filter)
       throws IOException {
-    FileSeriesReader fileSeriesReader;
+    AbstractFileSeriesReader abstractFileSeriesReader;
     List<ChunkMetaData> metaDataList = unSealedTsFile.getChunkMetaDataList();
 
     if (metaDataList == null || metaDataList.isEmpty()) {
       // init fileSeriesReader
       // no need to construct a IChunkLoader since it will never be used in this case
-      if (filter == null) {
-        fileSeriesReader = new FileSeriesReaderWithoutFilter(null, metaDataList);
-      } else {
-        fileSeriesReader = new FileSeriesReaderWithFilter(null, metaDataList, filter);
-      }
+      abstractFileSeriesReader = new FileSeriesReader(null, metaDataList, filter);
 
     } else {
       // prepare metaDataList
@@ -127,13 +122,9 @@ public class UnSealedTsFileIterateReader extends IterateReader {
           .get(unSealedTsFile, false);
       IChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
       // init fileSeriesReader
-      if (filter == null) {
-        fileSeriesReader = new FileSeriesReaderWithoutFilter(chunkLoader, metaDataList);
-      } else {
-        fileSeriesReader = new FileSeriesReaderWithFilter(chunkLoader, metaDataList, filter);
-      }
+      abstractFileSeriesReader = new FileSeriesReader(chunkLoader, metaDataList, filter);
     }
 
-    return new FileSeriesReaderAdapter(fileSeriesReader);
+    return abstractFileSeriesReader;
   }
 }

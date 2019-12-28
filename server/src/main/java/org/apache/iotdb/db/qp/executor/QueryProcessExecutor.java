@@ -18,19 +18,6 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
@@ -54,19 +41,14 @@ import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
-import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -93,6 +75,13 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.*;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
@@ -199,10 +188,11 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       // check file
       RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);
-      if (restorableTsFileIOWriter.hasCrashed()){
+      if (restorableTsFileIOWriter.hasCrashed()) {
         restorableTsFileIOWriter.close();
         throw new QueryProcessException(
-            String.format("Cannot load file %s because the file has crashed.", file.getAbsolutePath()));
+            String.format("Cannot load file %s because the file has crashed.",
+                file.getAbsolutePath()));
       }
       Map<String, MeasurementSchema> schemaMap = new HashMap<>();
       List<ChunkGroupMetaData> chunkGroupMetaData = new ArrayList<>();
@@ -219,7 +209,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       }
 
       //create schemas if they doesn't exist
-      if(plan.isAutoCreateSchema()) {
+      if (plan.isAutoCreateSchema()) {
         createSchemaAutomatically(chunkGroupMetaData, schemaMap, plan.getSgLevel());
       }
 
@@ -313,25 +303,21 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  public QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression,
-      QueryContext context) throws StorageEngineException, QueryFilterOptimizationException,
-      QueryProcessException, IOException {
-    return queryRouter.aggregate(paths, aggres, expression, context);
+  public QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
+      throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
+    return queryRouter.aggregate(aggregationPlan, context);
   }
 
   @Override
-  public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
-      QueryContext context)
+  public QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException {
-    return queryRouter.fill(fillPaths, queryTime, fillTypes, context);
+    return queryRouter.fill(fillQueryPlan, context);
   }
 
   @Override
-  public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
-                              long unit, long slidingStep, long startTime, long endTime,
-                              QueryContext context)
-          throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
-    return queryRouter.groupBy(paths, aggres, expression, unit, slidingStep, startTime, endTime, context);
+  public QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
+      throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IOException {
+    return queryRouter.groupBy(groupByPlan, context);
 
   }
 
@@ -384,7 +370,8 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     if (!node.hasChild(measurement)) {
       if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
         throw new QueryProcessException(
-            String.format("Current deviceId[%s] does not contain measurement:%s", deviceId, measurement));
+            String.format("Current deviceId[%s] does not contain measurement:%s", deviceId,
+                measurement));
       }
       try {
         addPathToMTree(deviceId, measurement, strValue);
@@ -402,7 +389,8 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return measurementNode;
   }
 
-  private void checkPathExists(MNode node, String fullPath, MeasurementSchema schema, boolean autoCreateSchema)
+  private void checkPathExists(MNode node, String fullPath, MeasurementSchema schema,
+      boolean autoCreateSchema)
       throws QueryProcessException, StorageEngineException, MetadataException {
     // check if timeseries exists
     String measurement = schema.getMeasurementId();
@@ -412,7 +400,8 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
             String.format("Path[%s] does not exist", fullPath));
       }
       try {
-        addPathToMTree(fullPath, schema.getType(), schema.getEncodingType(), schema.getCompressor());
+        addPathToMTree(fullPath, schema.getType(), schema.getEncodingType(),
+            schema.getCompressor());
       } catch (MetadataException e) {
         if (!e.getMessage().contains("already exist")) {
           throw e;

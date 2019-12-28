@@ -25,6 +25,7 @@ import org.apache.iotdb.db.qp.logical.Operator;
 public class AggregationPlan extends QueryPlan {
 
   private List<String> aggregations = new ArrayList<>();
+  private List<String> deduplicatedAggregations = new ArrayList<>();
 
   public AggregationPlan() {
     super();
@@ -38,5 +39,17 @@ public class AggregationPlan extends QueryPlan {
 
   public void setAggregations(List<String> aggregations) {
     this.aggregations = aggregations;
+  }
+
+  public List<String> getDeduplicatedAggregations() {
+    return deduplicatedAggregations;
+  }
+
+  public void addDeduplicatedAggregations(String aggregations) {
+    this.deduplicatedAggregations.add(aggregations);
+  }
+
+  public void setDeduplicatedAggregations(List<String> deduplicatedAggregations) {
+    this.deduplicatedAggregations = deduplicatedAggregations;
   }
 }

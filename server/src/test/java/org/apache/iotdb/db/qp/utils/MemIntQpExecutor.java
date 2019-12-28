@@ -25,8 +25,11 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.AbstractQueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
@@ -100,25 +103,19 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  public QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression,
-      QueryContext context)
-      throws PathException, IOException, StorageEngineException,
-      QueryFilterOptimizationException {
+  public QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
+      throws PathException, IOException, StorageEngineException, QueryFilterOptimizationException {
     return null;
   }
 
   @Override
-  public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
-                              long unit, long slidingStep, long startTime, long endTime,
-                              QueryContext context)
-          throws IOException, PathException,
-          StorageEngineException, QueryFilterOptimizationException {
+  public QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
+      throws IOException, PathException, StorageEngineException, QueryFilterOptimizationException {
     return null;
   }
 
   @Override
-  public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
-      QueryContext context)
+  public QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
       throws IOException, PathException, StorageEngineException {
     return null;
   }

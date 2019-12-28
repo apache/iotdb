@@ -21,7 +21,9 @@ package org.apache.iotdb.db.query.reader.seriesRelated;
 import java.io.IOException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.IBatchReader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -39,46 +41,68 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  * <p>
  * This class is used by {@link org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator}.
  */
-public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter {
+public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter implements IPointReader {
 
   private Filter filter;
-  private boolean hasCachedValue;
+  private boolean hasCachedTimeValuePair;
   private TimeValuePair timeValuePair;
+  private BatchData batchData;
 
-  public SeriesReaderWithValueFilter(Path seriesPath, Filter filter, QueryContext context)
+  public SeriesReaderWithValueFilter(Path seriesPath, TSDataType dataType, Filter filter, QueryContext context)
       throws StorageEngineException, IOException {
-    super(seriesPath, filter, context, false);
+    super(seriesPath, dataType, filter, context, false);
     this.filter = filter;
   }
 
-  public SeriesReaderWithValueFilter(IBatchReader seqResourceIterateReader,
-      IPointReader unseqResourceMergeReader, Filter filter) {
+  /**
+   * for test
+   */
+  SeriesReaderWithValueFilter(IBatchReader seqResourceIterateReader,
+      IBatchReader unseqResourceMergeReader, Filter filter) {
     super(seqResourceIterateReader, unseqResourceMergeReader);
     this.filter = filter;
   }
 
   @Override
   public boolean hasNext() throws IOException {
-    if (hasCachedValue) {
+    if (hasCachedTimeValuePair) {
       return true;
     }
-    while (super.hasNext()) {
-      timeValuePair = super.next();
-      if (filter.satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
-        hasCachedValue = true;
+
+    if (hasNextSatisfiedInCurrentBatch()) {
+      return true;
+    }
+
+    // has not cached timeValuePair
+    while (super.hasNextBatch()) {
+      batchData = super.nextBatch();
+      if (hasNextSatisfiedInCurrentBatch()) {
         return true;
       }
     }
     return false;
   }
 
+  private boolean hasNextSatisfiedInCurrentBatch() {
+    while (batchData != null && batchData.hasCurrent()) {
+      if (filter.satisfy(batchData.currentTime(), batchData.currentValue())) {
+        timeValuePair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
+        hasCachedTimeValuePair = true;
+        batchData.next();
+        return true;
+      }
+      batchData.next();
+    }
+    return false;
+  }
+
   @Override
   public TimeValuePair next() throws IOException {
-    if (hasCachedValue || hasNext()) {
-      hasCachedValue = false;
+    if (hasCachedTimeValuePair || hasNext()) {
+      hasCachedTimeValuePair = false;
       return timeValuePair;
     } else {
-      throw new IOException("data reader is out of bound.");
+      throw new IOException("no next data");
     }
   }
 

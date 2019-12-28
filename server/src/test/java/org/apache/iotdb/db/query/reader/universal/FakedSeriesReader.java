@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.reader.universal;
 import java.io.IOException;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class FakedSeriesReader implements IPointReader {

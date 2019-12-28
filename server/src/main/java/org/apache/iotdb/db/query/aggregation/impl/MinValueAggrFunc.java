@@ -53,7 +53,7 @@ public class MinValueAggrFunc extends AggregateFunction {
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
       throws IOException {
-    while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
+    while (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
       if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
         updateResult((Comparable<Object>) dataInThisPage.currentValue());
         dataInThisPage.next();
@@ -68,7 +68,7 @@ public class MinValueAggrFunc extends AggregateFunction {
     }
 
     Comparable<Object> minVal = null;
-    while (dataInThisPage.hasNext()) {
+    while (dataInThisPage.hasCurrent()) {
       if (minVal == null
           || minVal.compareTo(dataInThisPage.currentValue()) > 0) {
         minVal = (Comparable<Object>) dataInThisPage.currentValue();
@@ -81,7 +81,7 @@ public class MinValueAggrFunc extends AggregateFunction {
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
       long bound) throws IOException {
-    while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
+    while (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
       long time = Math.min(dataInThisPage.currentTime(), unsequenceReader.current().getTimestamp());
       if (time >= bound) {
         break;
@@ -99,7 +99,7 @@ public class MinValueAggrFunc extends AggregateFunction {
 
     }
 
-    while (dataInThisPage.hasNext() && dataInThisPage.currentTime() < bound) {
+    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
       updateResult((Comparable<Object>) dataInThisPage.currentValue());
       dataInThisPage.next();
     }

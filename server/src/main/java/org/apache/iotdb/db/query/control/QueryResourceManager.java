@@ -64,9 +64,11 @@ public class QueryResourceManager {
    * Register a new query. When a query request is created firstly, this method must
    * be invoked.
    */
-  public long assignQueryId() {
+  public long assignQueryId(boolean isDataQuery) {
     long queryId = queryIdAtom.incrementAndGet();
-    filePathsManager.addQueryId(queryId);
+    if (isDataQuery) {
+      filePathsManager.addQueryId(queryId);
+    }
     return queryId;
   }
 

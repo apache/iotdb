@@ -53,8 +53,8 @@ IoTDB为用户提供了权限管理操作，从而为用户提供对于数据的
 我们可以为ln和sgcc集团创建两个用户角色，名为ln_write_user, sgcc_write_user，密码均为write_pwd。SQL语句为：
 
 ```
-CREATE USER ln_write_user write_pwd
-CREATE USER sgcc_write_user write_pwd
+CREATE USER ln_write_user 'write_pwd'
+CREATE USER sgcc_write_user 'write_pwd'
 ```
 此时使用展示用户的SQL语句：
 

@@ -268,7 +268,7 @@ IoTDB> exit
 
 ### 停止IoTDB
 
-用户可以使用$IOTDB_HOME/sbin文件夹下的stop-server脚本停止IoTDB（注意，此停止方式为强制停止，若希望安全停止IoTDB，请使用Jconsole工具的停止方法）。
+用户可以使用$IOTDB_HOME/sbin文件夹下的stop-server脚本停止IoTDB。
 
 Linux系统与MacOS系统停止命令如下：
 

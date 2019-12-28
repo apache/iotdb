@@ -16,20 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.reader;
+package org.apache.iotdb.tsfile.read.reader;
 
 import java.io.IOException;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public interface IAggregateReader extends IBatchReader {
+public interface IBatchReader {
 
-  /**
-   * Returns meta-information of batch data.
-   * <p>
-   * Returns null if batch data comes from memory. Returns pageHeader if batch data comes from page
-   * data.
-   */
-  PageHeader nextPageHeader() throws IOException;
+  boolean hasNextBatch() throws IOException;
 
-  void skipPageData() throws IOException;
+  BatchData nextBatch() throws IOException;
+
+  void close() throws IOException;
 }

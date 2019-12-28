@@ -16,27 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.reader.chunk;
 
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+package org.apache.iotdb.tsfile.read.filter.factory;
 
-public class ChunkReaderWithFilter extends ChunkReader {
-
-  private Filter filter;
-
-  public ChunkReaderWithFilter(Chunk chunk, Filter filter) {
-    super(chunk, filter);
-    this.filter = filter;
-  }
-
-  @Override
-  public boolean pageSatisfied(PageHeader pageHeader) {
-    if (pageHeader.getEndTime() < deletedAt) {
-      return false;
-    }
-    return filter.satisfy(pageHeader.getStatistics());
-  }
-
+public enum FilterSerializeId {
+  AND, EQ, GROUP_BY, GT, GTEQ, LT, LTEQ, NEQ, NOT, OR
 }
