@@ -46,7 +46,6 @@ import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.IMetadataQuerier;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
-import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -165,7 +164,7 @@ public class UnseqTsFileRecoverTest {
     int priorityValue = 1;
     for (ChunkMetaData chunkMetaData : metadataQuerier.getChunkMetaDataList(path)) {
       Chunk chunk = chunkLoader.getChunk(chunkMetaData);
-      AbstractChunkReader chunkReader = new ChunkReader(chunk, null);
+      ChunkReader chunkReader = new ChunkReader(chunk, null);
       unSeqMergeReader
           .addReaderWithPriority(new DiskChunkReader(chunkReader), priorityValue);
       priorityValue++;

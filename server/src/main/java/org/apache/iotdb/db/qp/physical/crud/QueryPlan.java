@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,6 +35,11 @@ public class QueryPlan extends PhysicalPlan {
 
   private List<Path> paths = null;
   private List<TSDataType> dataTypes = null;
+
+  private List<Path> deduplicatedPaths = new ArrayList<>();
+  private List<TSDataType> deduplicatedDataTypes = new ArrayList<>();
+
+
   private IExpression expression = null;
 
   private int rowLimit = 0;
@@ -42,6 +49,7 @@ public class QueryPlan extends PhysicalPlan {
   private List<String> measurements; // for group by device sql, e.g. temperature
   private Map<String, Set<String>> measurementsGroupByDevice; // for group by device sql, e.g. root.ln.d1 -> temperature
   private Map<String, TSDataType> dataTypeConsistencyChecker; // for group by device sql, e.g. root.ln.d1.temperature -> Float
+  private Map<Path, TSDataType> dataTypeMapping = new HashMap<>(); // for group by device sql
 
   public QueryPlan() {
     super(true);
@@ -86,6 +94,22 @@ public class QueryPlan extends PhysicalPlan {
 
   public void setDataTypes(List<TSDataType> dataTypes) {
     this.dataTypes = dataTypes;
+  }
+
+  public List<Path> getDeduplicatedPaths() {
+    return deduplicatedPaths;
+  }
+
+  public void addDeduplicatedPaths(Path path) {
+    this.deduplicatedPaths.add(path);
+  }
+
+  public List<TSDataType> getDeduplicatedDataTypes() {
+    return deduplicatedDataTypes;
+  }
+
+  public void addDeduplicatedDataTypes(TSDataType dataType) {
+    this.deduplicatedDataTypes.add(dataType);
   }
 
   public int getRowLimit() {
@@ -140,5 +164,23 @@ public class QueryPlan extends PhysicalPlan {
 
   public Map<String, TSDataType> getDataTypeConsistencyChecker() {
     return dataTypeConsistencyChecker;
+  }
+
+  public Map<Path, TSDataType> getDataTypeMapping() {
+    return dataTypeMapping;
+  }
+
+  public void addTypeMapping(Path path, TSDataType dataType) {
+    dataTypeMapping.put(path, dataType);
+  }
+
+  public void setDeduplicatedPaths(
+      List<Path> deduplicatedPaths) {
+    this.deduplicatedPaths = deduplicatedPaths;
+  }
+
+  public void setDeduplicatedDataTypes(
+      List<TSDataType> deduplicatedDataTypes) {
+    this.deduplicatedDataTypes = deduplicatedDataTypes;
   }
 }

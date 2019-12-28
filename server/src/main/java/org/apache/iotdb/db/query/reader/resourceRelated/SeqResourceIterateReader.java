@@ -132,27 +132,6 @@ public class SeqResourceIterateReader extends IterateReader {
     }
   }
 
-  /**
-   * Returns true if the start and end time of the series data in this sequence TsFile do not
-   * satisfy the filter condition. Returns false if satisfy.
-   * <p>
-   * This method is used to in <code>constructNextReader</code> to check whether this TsFile can be
-   * skipped.
-   *
-   * @param tsFile the TsFileResource corresponding to this TsFile
-   * @param filter filter condition. Null if no filter.
-   * @return True if the TsFile's start and end time do not satisfy the filter condition; False if
-   * satisfy.
-   */
-  private boolean isTsFileNotSatisfied(TsFileResource tsFile, Filter filter) {
-    if (filter == null) {
-      return false;
-    }
-    long startTime = tsFile.getStartTimeMap().get(seriesPath.getDevice());
-    long endTime = tsFile.getEndTimeMap().get(seriesPath.getDevice());
-    return !filter.satisfyStartEndTime(startTime, endTime);
-  }
-
   private IAggregateReader initSealedTsFileReader(TsFileResource sealedTsFile, Filter filter,
       QueryContext context) throws IOException {
     // prepare metaDataList
