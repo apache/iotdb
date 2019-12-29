@@ -61,15 +61,14 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
           if (reader.hasNextBatch()) {
             BatchData batchData = reader.nextBatch();
             blockingQueue.put(batchData);
-            // if the queue also has free space
-            // just submit another itself
+            // if the queue also has free space, just submit another itself
             if (blockingQueue.remainingCapacity() > 0) {
               pool.submit(this);
             }
             // the queue has no more space
             // remove itself from the QueryTaskPoolManager
             else {
-              reader.setManaged(false);
+              reader.setManagedByQueryManager(false);
             }
           }
           // there are no batch data left in this reader
@@ -80,7 +79,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
             // tell the Consumer not to submit another task for this reader any more
             reader.setHasRemaining(false);
             // remove itself from the QueryTaskPoolManager
-            reader.setManaged(false);
+            reader.setManagedByQueryManager(false);
           }
         }
       } catch (IOException | InterruptedException e) {
@@ -138,7 +137,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
       SeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList.get(i);
       reader.setHasRemaining(true);
-      reader.setManaged(true);
+      reader.setManagedByQueryManager(true);
       pool.submit(new ReadTask(reader, blockingQueueList.get(i)));
     }
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
@@ -333,8 +332,8 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
           // if the reader isn't being managed and still has more data,
           // that means this read task leave the pool before because the queue has no more space
           // now we should submit it again
-          if (!reader.isManaged() && reader.hasRemaining()) {
-            reader.setManaged(true);
+          if (!reader.isManagedByQueryManager() && reader.hasRemaining()) {
+            reader.setManagedByQueryManager(true);
             pool.submit(new ReadTask(reader, blockingQueueList.get(seriesIndex)));
           }
         }
