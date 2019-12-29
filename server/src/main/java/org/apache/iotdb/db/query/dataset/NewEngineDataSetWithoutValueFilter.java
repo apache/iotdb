@@ -113,6 +113,9 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
   // capacity for blocking queue
   private static final int BLOCKING_QUEUE_CAPACITY = 5;
 
+  // load factor for blocking queue
+  private static final float LOAD_FACTOR = 0.7f;
+
   private static final QueryTaskPoolManager pool = QueryTaskPoolManager.getInstance();
 
   /**
@@ -327,15 +330,19 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       cachedBatchDataArray[seriesIndex] = batchData;
       if (addToTimeHeap)
         timeHeap.add(batchData.currentTime());
-      // judge if we need to submit another read task
-      synchronized (seriesReaderWithoutValueFilterList.get(seriesIndex)) {
-        SeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList.get(seriesIndex);
-        // if the reader isn't being managed and still has more data,
-        // that means this read task leave the pool before because the queue has no more space
-        // now we should submit it again
-        if (!reader.isManaged() && reader.hasRemaining()) {
-          reader.setManaged(true);
-          pool.submit(new ReadTask(reader, blockingQueueList.get(seriesIndex)));
+
+      // only when the queue is not loaded as we expect should we check whether to submit another task
+      if (blockingQueueList.get(seriesIndex).size() <= BLOCKING_QUEUE_CAPACITY * LOAD_FACTOR) {
+        // judge if we need to submit another read task
+        synchronized (seriesReaderWithoutValueFilterList.get(seriesIndex)) {
+          SeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList.get(seriesIndex);
+          // if the reader isn't being managed and still has more data,
+          // that means this read task leave the pool before because the queue has no more space
+          // now we should submit it again
+          if (!reader.isManaged() && reader.hasRemaining()) {
+            reader.setManaged(true);
+            pool.submit(new ReadTask(reader, blockingQueueList.get(seriesIndex)));
+          }
         }
       }
     }
