@@ -327,7 +327,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
       synchronized (seriesReaderWithoutValueFilterList.get(seriesIndex)) {
         // we only need to judge whether to submit another task when the queue is not full
-        if (blockingQueueList.get(seriesIndex).size() < BLOCKING_QUEUE_CAPACITY) {
+        if (blockingQueueList.get(seriesIndex).remainingCapacity() > 0) {
           SeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList.get(seriesIndex);
           // if the reader isn't being managed and still has more data,
           // that means this read task leave the pool before because the queue has no more space
