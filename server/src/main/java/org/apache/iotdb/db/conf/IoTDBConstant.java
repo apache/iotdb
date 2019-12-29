@@ -58,7 +58,7 @@ public class IoTDBConstant {
   public static final String COLUMN_ITEM = "                             item";
   public static final String COLUMN_PARAMETER = "                                          parameter";
   public static final String COLUMN_VALUE = "value";
-  public static final String COLUMN_VERSION = "version        ";
+  public static final String COLUMN_VERSION = "        version";
   public static final String COLUMN_TIMESERIES = "Timeseries";
   public static final String COLUMN_TIMESERIES_STORAGE_GROUP = "Storage Group";
   public static final String COLUMN_TIMESERIES_DataType = "DataType";

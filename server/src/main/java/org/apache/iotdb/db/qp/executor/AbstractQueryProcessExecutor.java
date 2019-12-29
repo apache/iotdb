@@ -98,9 +98,28 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
         return processShowVersion();
       case TIMESERIES:
         return processShowTimeseries();
+      case STORAGE_GROUP:
+        return processShowStorageGroup();
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
+  }
+
+  private QueryDataSet processShowStorageGroup() {
+    List<Path> paths = new ArrayList<>();
+    paths.add(new Path(COLUMN_STORAGE_GROUP));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.TEXT);
+    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+    List<String> storageGroupList = MManager.getInstance().getAllStorageGroupNames();
+    for(String s: storageGroupList) {
+      RowRecord record = new RowRecord(0);
+      Field field = new Field(TSDataType.TEXT);
+      field.setBinaryV(new Binary(s));
+      record.addField(field);
+      listDataSet.putRecord(record);
+    }
+    return listDataSet;
   }
 
   private QueryDataSet processShowTimeseries() throws PathException {

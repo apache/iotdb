@@ -687,6 +687,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return StaticResps.SHOW_VERSION_RESP;
       case TIMESERIES:
         return StaticResps.SHOW_TIMESERIES_RESP;
+      case STORAGE_GROUP:
+        return StaticResps.SHOW_STORAGE_GROUP;
       default:
         logger.error("Unsupported show content type: {}", showPlan.getShowContentType());
         throw new QueryProcessException(

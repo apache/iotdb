@@ -71,6 +71,7 @@ statement
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
     | SHOW TIMESERIES #showTimeseries
+    | SHOW STORAGE GROUP #showStorageGroup
     | LOAD CONFIGURATION #loadConfigurationStatement
     | LOAD FILE autoCreateSchema? #loadFiles
     | REMOVE FILE #removeFile

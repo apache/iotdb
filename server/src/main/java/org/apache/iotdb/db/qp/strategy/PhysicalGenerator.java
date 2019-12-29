@@ -173,6 +173,8 @@ public class PhysicalGenerator {
             return new ShowPlan(ShowContentType.VERSION);
           case SQLConstant.TOK_TIMESERIES:
             return new ShowPlan(ShowContentType.TIMESERIES);
+          case SQLConstant.TOK_STORAGE_GROUP:
+            return new ShowPlan(ShowContentType.STORAGE_GROUP);
           default:
             throw new LogicalOperatorException(String
                 .format("not supported operator type %s in show operation.", operator.getType()));

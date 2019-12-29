@@ -119,6 +119,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetColContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetStorageGroupContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowAllTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowStorageGroupContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowTimeseriesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowVersionContext;
@@ -167,6 +168,12 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
   RootOperator getLogicalPlan() {
     return initializedOperator;
+  }
+
+  @Override
+  public void enterShowStorageGroup(ShowStorageGroupContext ctx) {
+    super.enterShowStorageGroup(ctx);
+    initializedOperator = new ShowOperator(SQLConstant.TOK_STORAGE_GROUP);
   }
 
   @Override

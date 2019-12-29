@@ -69,6 +69,10 @@ class StaticResps {
       Arrays.asList(COLUMN_TIMESERIES, COLUMN_TIMESERIES_STORAGE_GROUP, COLUMN_TIMESERIES_DataType, COLUMN_TIMESERIES_Encoding),
       Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString(), TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
 
+  static final TSExecuteStatementResp SHOW_STORAGE_GROUP = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_STORAGE_GROUP),
+      Collections.singletonList(TSDataType.TEXT.toString()));
+
   static final TSExecuteStatementResp LIST_ROLE_RESP = getNoTimeExecuteResp(
       Collections.singletonList(COLUMN_ROLE),
       Collections.singletonList(TSDataType.TEXT.toString()));

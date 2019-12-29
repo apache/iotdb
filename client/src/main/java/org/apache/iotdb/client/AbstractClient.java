@@ -462,8 +462,7 @@ public abstract class AbstractClient {
         // use java default SimpleDateFormat to check whether input time format is legal
         // if illegal, it will throw an exception
         new SimpleDateFormat(newTimeFormat.trim());
-        maxTimeLength = TIMESTAMP_STR.length() > newTimeFormat.length() ? TIMESTAMP_STR.length()
-            : newTimeFormat.length();
+        maxTimeLength = Math.max(TIMESTAMP_STR.length(), newTimeFormat.length());
         timeFormat = newTimeFormat;
         break;
     }
@@ -509,7 +508,7 @@ public abstract class AbstractClient {
         int tmp = Integer.MIN_VALUE;
         for (int i = 1; i <= colCount; i++) {
           int len = resultSetMetaData.getColumnLabel(i).length();
-          tmp = tmp > len ? tmp : len;
+          tmp = Math.max(tmp, len);
         }
         maxValueLength = tmp;
       }
