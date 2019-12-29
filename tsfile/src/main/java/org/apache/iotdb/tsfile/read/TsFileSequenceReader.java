@@ -646,7 +646,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             // complete.
             truncatedPosition = this.position() - 1;
         } catch (Exception e2) {
-            logger.info("TsFile {} self-check cannot proceed at position {} after {} chunk groups "
+            logger.debug("TsFile {} self-check cannot proceed at position {} after {} chunk groups "
                     + "recovered, because : {}", file, this.position(), newMetaData.size(), e2.getMessage());
         }
         // Despite the completeness of the data section, we will discard current FileMetadata

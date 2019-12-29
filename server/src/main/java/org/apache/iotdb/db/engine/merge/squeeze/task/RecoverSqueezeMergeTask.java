@@ -54,7 +54,7 @@ public class RecoverSqueezeMergeTask extends SqueezeMergeTask implements IRecove
   public void recoverMerge(boolean continueMerge) throws IOException {
     File logFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, SqueezeMergeLogger.MERGE_LOG_NAME);
     if (!logFile.exists()) {
-      logger.info("{} no merge.log, merge recovery ends", taskName);
+      logger.debug("{} no merge.log, merge recovery ends", taskName);
       return;
     }
     long startTime = System.currentTimeMillis();
@@ -62,7 +62,7 @@ public class RecoverSqueezeMergeTask extends SqueezeMergeTask implements IRecove
     LogAnalyzer analyzer = new LogAnalyzer(resource, taskName, logFile);
     Status status = analyzer.analyze();
     if (logger.isInfoEnabled()) {
-      logger.info("{} merge recovery status determined: {} after {}ms", taskName, status,
+      logger.debug("{} merge recovery status determined: {} after {}ms", taskName, status,
           (System.currentTimeMillis() - startTime));
     }
     switch (status) {
@@ -84,7 +84,7 @@ public class RecoverSqueezeMergeTask extends SqueezeMergeTask implements IRecove
         throw new UnsupportedOperationException(taskName + " found unrecognized status " + status);
     }
     if (logger.isInfoEnabled()) {
-      logger.info("{} merge recovery ends after {}ms", taskName,
+      logger.debug("{} merge recovery ends after {}ms", taskName,
           (System.currentTimeMillis() - startTime));
     }
   }

@@ -76,7 +76,7 @@ class MergeFileTask {
     // decide whether to write the unmerged chunks to the merge files or to move the merged chunks
     // back to the origin seqFile's
     if (logger.isInfoEnabled()) {
-      logger.info("{} starts to merge {} files", taskName, unmergedFiles.size());
+      logger.debug("{} starts to merge {} files", taskName, unmergedFiles.size());
     }
     long startTime = System.currentTimeMillis();
     int cnt = 0;
@@ -86,14 +86,14 @@ class MergeFileTask {
       if (mergedChunkNum >= unmergedChunkNum) {
         // move the unmerged data to the new file
         if (logger.isInfoEnabled()) {
-          logger.info("{} moving unmerged data of {} to the merged file, {} merged chunks, {} "
+          logger.debug("{} moving unmerged data of {} to the merged file, {} merged chunks, {} "
               + "unmerged chunks", taskName, seqFile.getFile().getName(), mergedChunkNum, unmergedChunkNum);
         }
         moveUnmergedToNew(seqFile);
       } else {
         // move the merged data to the old file
         if (logger.isInfoEnabled()) {
-          logger.info("{} moving merged data of {} to the old file {} merged chunks, {} "
+          logger.debug("{} moving merged data of {} to the old file {} merged chunks, {} "
               + "unmerged chunks", taskName, seqFile.getFile().getName(), mergedChunkNum, unmergedChunkNum);
         }
         moveMergedToOld(seqFile);
@@ -104,7 +104,7 @@ class MergeFileTask {
       }
     }
     if (logger.isInfoEnabled()) {
-      logger.info("{} has merged all files after {}ms", taskName, System.currentTimeMillis() - startTime);
+      logger.debug("{} has merged all files after {}ms", taskName, System.currentTimeMillis() - startTime);
     }
     mergeLogger.logMergeEnd();
   }

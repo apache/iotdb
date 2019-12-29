@@ -138,7 +138,7 @@ class MergeSeriesTask {
             double newProgress = 100 * mergedSeriesCnt / (double) (unmergedSeries.size());
             if (newProgress - progress >= 1.0) {
                 progress = newProgress;
-                logger.info("{} has merged {}% series", taskName, progress);
+                logger.debug("{} has merged {}% series", taskName, progress);
             }
         }
     }

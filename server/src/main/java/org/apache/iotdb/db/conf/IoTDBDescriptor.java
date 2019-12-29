@@ -299,7 +299,7 @@ public class IoTDBDescriptor {
 
             // At the same time, set TSFileConfig
             TSFileDescriptor.getInstance().getConfig()
-                    .setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
+                    .setTSFileStorageFs(properties.getProperty("tsfile_storage_fs", String.valueOf(conf.getTsFileStorageFs())));
             TSFileDescriptor.getInstance().getConfig().setKerberosKeytabFilePath(
                     properties.getProperty("core_site_path", conf.getCoreSitePath()));
             TSFileDescriptor.getInstance().getConfig().setKerberosPrincipal(

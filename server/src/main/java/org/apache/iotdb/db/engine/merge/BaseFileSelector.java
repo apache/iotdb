@@ -75,7 +75,7 @@ public abstract class BaseFileSelector implements IMergeFileSelector{
       timeLimit = Long.MAX_VALUE;
     }
     try {
-      logger.info("Selecting merge candidates from {} seqFile, {} unseqFiles",
+      logger.debug("Selecting merge candidates from {} seqFile, {} unseqFiles",
           resource.getSeqFiles().size(), resource.getUnseqFiles().size());
       select(false);
       if (selectedUnseqFiles.isEmpty()) {
@@ -92,7 +92,7 @@ public abstract class BaseFileSelector implements IMergeFileSelector{
       throw new MergeException(e);
     }
     if (logger.isInfoEnabled()) {
-      logger.info("Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}, "
+      logger.debug("Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}, "
               + "time consumption {}ms",
           selectedSeqFiles.size(), selectedUnseqFiles.size(), totalCost,
           System.currentTimeMillis() - startTime);

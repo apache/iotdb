@@ -214,7 +214,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
   @Override
   public void reset() {
     if (SystemFileFactory.INSTANCE.getFile(userDirPath).mkdirs()) {
-      logger.info("user info dir {} is created", userDirPath);
+      logger.debug("user info dir {} is created", userDirPath);
     } else if (!SystemFileFactory.INSTANCE.getFile(userDirPath).exists()) {
       logger.error("user info dir {} can not be created", userDirPath);
     }

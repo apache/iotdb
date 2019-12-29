@@ -86,7 +86,7 @@ public class SqueezeMergeTask implements Callable<Void> {
 
     private void doMerge() throws IOException, MetadataException {
         if (logger.isInfoEnabled()) {
-            logger.info("{} starts to merge {} seqFiles, {} unseqFiles", taskName,
+            logger.debug("{} starts to merge {} seqFiles, {} unseqFiles", taskName,
                     resource.getSeqFiles().size(), resource.getUnseqFiles().size());
         }
         long startTime = System.currentTimeMillis();
@@ -118,7 +118,7 @@ public class SqueezeMergeTask implements Callable<Void> {
             double fileRate =
                     (resource.getSeqFiles().size() + resource.getUnseqFiles().size()) / elapsedTime;
             double ptRate = mergeContext.getTotalPointWritten() / elapsedTime;
-            logger.info("{} ends after {}s, byteRate: {}MB/s, seriesRate {}/s, "
+            logger.debug("{} ends after {}s, byteRate: {}MB/s, seriesRate {}/s, "
                             + "fileRate: {}/s, ptRate: {}/s",
                     taskName, elapsedTime, byteRate, seriesRate, fileRate, ptRate);
         }

@@ -68,19 +68,19 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
     tmpFirstOverlapIdx = Integer.MAX_VALUE;
     tmpLastOverlapIdx = Integer.MIN_VALUE;
 
-    logger.info("Select using tight bound:{}", useTightBound);
+    logger.debug("Select using tight bound:{}", useTightBound);
     super.selectByUnseq(useTightBound);
-    logger.info("After selecting by unseq, first seq index:{}, last seq index:{}", firstOverlapIdx, lastOverlapIdx);
+    logger.debug("After selecting by unseq, first seq index:{}, last seq index:{}", firstOverlapIdx, lastOverlapIdx);
     if (firstOverlapIdx <= lastOverlapIdx) {
       // selectByUnseq has found candidates, check if we can extend the selection
-      logger.info("Try extending the seq files");
+      logger.debug("Try extending the seq files");
       extendCurrentSelection(useTightBound);
-      logger.info("After seq extension, first seq index:{}, last seq index:{}", firstOverlapIdx, lastOverlapIdx);
+      logger.debug("After seq extension, first seq index:{}, last seq index:{}", firstOverlapIdx, lastOverlapIdx);
     } else {
       // try selecting only seq files as candidates
-      logger.info("Try selecting only seq files");
+      logger.debug("Try selecting only seq files");
       selectBySeq(useTightBound);
-      logger.info("After seq selection, first seq index:{}, last seq index:{}", firstOverlapIdx, lastOverlapIdx);
+      logger.debug("After seq selection, first seq index:{}, last seq index:{}", firstOverlapIdx, lastOverlapIdx);
     }
     for (int i = firstOverlapIdx; i <= lastOverlapIdx; i++) {
       selectedSeqFiles.add(resource.getSeqFiles().get(i));

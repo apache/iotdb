@@ -66,7 +66,7 @@ public class MaxSeriesMergeFileSelector<T extends IMergeFileSelector> implements
     timeLimit = IoTDBDescriptor.getInstance().getConfig().getMergeFileSelectionTimeBudget();
     timeConsumption = 0;
     try {
-      logger.info("Selecting merge candidates from {} seqFile, {} unseqFiles",
+      logger.debug("Selecting merge candidates from {} seqFile, {} unseqFiles",
           resource.getSeqFiles().size(),
           resource.getUnseqFiles().size());
 
@@ -77,14 +77,14 @@ public class MaxSeriesMergeFileSelector<T extends IMergeFileSelector> implements
       resource.setUnseqFiles(selectedUnseqFiles);
       resource.removeOutdatedSeqReaders();
       if (selectedUnseqFiles.isEmpty() && selectedSeqFiles.isEmpty()) {
-        logger.info("No merge candidates are found");
+        logger.debug("No merge candidates are found");
         return;
       }
     } catch (IOException e) {
       throw new MergeException(e);
     }
     if (logger.isInfoEnabled()) {
-      logger.info("Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}, "
+      logger.debug("Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}, "
               + "concurrent merge num {}" + "time consumption {}ms",
           resource.getSeqFiles().size(), resource.getUnseqFiles().size(), baseSelector.getTotalCost(),
           baseSelector.getConcurrentMergeNum(),
