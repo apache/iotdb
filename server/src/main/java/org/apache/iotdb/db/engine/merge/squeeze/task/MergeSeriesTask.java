@@ -282,7 +282,7 @@ class MergeSeriesTask {
             futures.add(MergeManager.getINSTANCE().submitChunkSubTask(() -> mergeChunkHeap(chunkMetaHeaps[finalI], reader, unseqReaders)));
         }
         long maxTime = Long.MIN_VALUE;
-        for (int i = 0; i < futures.size(); i++) {
+        for (int i = 0; i < mergeChunkSubTaskNum; i++) {
             try {
                 Long heapMaxTimeStamp = futures.get(i).get();
                 maxTime = Math.max(maxTime, heapMaxTimeStamp);
