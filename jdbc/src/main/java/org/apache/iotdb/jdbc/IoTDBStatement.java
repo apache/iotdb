@@ -221,23 +221,7 @@ public class IoTDBStatement implements Statement {
     isCancelled = false;
     String sqlToLowerCase = sql.toLowerCase().trim();
     // TODO: use normal query instead of metadata query
-    if (sqlToLowerCase.startsWith(SHOW_CHILD_PATHS_COMMAND_LOWERCASE)) {
-      if (sqlToLowerCase.equals(SHOW_CHILD_PATHS_COMMAND_LOWERCASE)) {
-        DatabaseMetaData databaseMetaData = connection.getMetaData();
-        resultSet = databaseMetaData.getColumns(Constant.CATALOG_CHILD_PATHS, "root", null, null);
-        return true;
-      } else {
-        String[] cmdSplit = sql.split("\\s+");
-        if (cmdSplit.length != 4) {
-          throw new SQLException("Error format of \'SHOW CHILD PATHS <PATH>\'");
-        } else {
-          String path = cmdSplit[3];
-          DatabaseMetaData databaseMetaData = connection.getMetaData();
-          resultSet = databaseMetaData.getColumns(Constant.CATALOG_CHILD_PATHS, path, null, null);
-          return true;
-        }
-      }
-    } else if (sqlToLowerCase.equals(SHOW_DEVICES_COMMAND_LOWERCASE)) {
+    if (sqlToLowerCase.equals(SHOW_DEVICES_COMMAND_LOWERCASE)) {
       DatabaseMetaData databaseMetaData = connection.getMetaData();
       resultSet = databaseMetaData.getColumns(Constant.CATALOG_DEVICES, null, null, null);
       return true;

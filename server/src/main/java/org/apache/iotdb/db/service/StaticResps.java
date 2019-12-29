@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
@@ -71,6 +72,10 @@ class StaticResps {
 
   static final TSExecuteStatementResp SHOW_STORAGE_GROUP = getNoTimeExecuteResp(
       Collections.singletonList(COLUMN_STORAGE_GROUP),
+      Collections.singletonList(TSDataType.TEXT.toString()));
+
+  static final TSExecuteStatementResp SHOW_CHILD_PATHS = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_CHILD_PATHS),
       Collections.singletonList(TSDataType.TEXT.toString()));
 
   static final TSExecuteStatementResp LIST_ROLE_RESP = getNoTimeExecuteResp(

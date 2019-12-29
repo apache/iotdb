@@ -53,6 +53,7 @@ import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AddLabelContext;
@@ -119,6 +120,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetColContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetStorageGroupContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowAllTTLStatementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowChildPathsContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowStorageGroupContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowTimeseriesContext;
@@ -168,6 +170,16 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
   RootOperator getLogicalPlan() {
     return initializedOperator;
+  }
+
+  @Override
+  public void enterShowChildPaths(ShowChildPathsContext ctx) {
+    super.enterShowChildPaths(ctx);
+    if(ctx.prefixPath()!= null) {
+      initializedOperator = new ShowChildPathsOperator(SQLConstant.TOK_CHILD_PATHS, parsePrefixPath(ctx.prefixPath()));
+    } else {
+      initializedOperator = new ShowChildPathsOperator(SQLConstant.TOK_CHILD_PATHS, new Path("root"));
+    }
   }
 
   @Override

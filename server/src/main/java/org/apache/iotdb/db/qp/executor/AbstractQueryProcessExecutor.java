@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.executor;
 
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
@@ -52,6 +53,7 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -100,9 +102,30 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
         return processShowTimeseries();
       case STORAGE_GROUP:
         return processShowStorageGroup();
+      case CHILD_PATH:
+        return processShowChildPaths((ShowChildPathsPlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
+  }
+
+  private QueryDataSet processShowChildPaths(ShowChildPathsPlan showChildPathsPlan)
+      throws PathException {
+    Set<String> childPathsList = MManager.getInstance()
+        .getChildNodePathInNextLevel(showChildPathsPlan.getPath().toString());
+    List<Path> paths = new ArrayList<>();
+    paths.add(new Path(COLUMN_CHILD_PATHS));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.TEXT);
+    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+    for(String s: childPathsList) {
+      RowRecord record = new RowRecord(0);
+      Field field = new Field(TSDataType.TEXT);
+      field.setBinaryV(new Binary(s));
+      record.addField(field);
+      listDataSet.putRecord(record);
+    }
+    return listDataSet;
   }
 
   private QueryDataSet processShowStorageGroup() {

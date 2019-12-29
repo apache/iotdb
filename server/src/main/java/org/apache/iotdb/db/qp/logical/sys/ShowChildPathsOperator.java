@@ -17,39 +17,20 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.qp.physical.sys;
+package org.apache.iotdb.db.qp.logical.sys;
 
-import java.util.List;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-public class ShowPlan extends PhysicalPlan {
+public class ShowChildPathsOperator extends ShowOperator {
 
-  private ShowContentType showContentType;
+  private Path path;
 
-  public ShowPlan(ShowContentType showContentType){
-    super(true);
-    this.showContentType = showContentType;
-    setOperatorType(OperatorType.SHOW);
+  public ShowChildPathsOperator(int tokenIntType, Path path) {
+    super(tokenIntType);
+    this.path = path;
   }
 
-  @Override
-  public List<Path> getPaths() {
-    return null;
+  public Path getPath() {
+    return path;
   }
-
-  public ShowContentType getShowContentType() {
-    return showContentType;
-  }
-
-  @Override
-  public String toString() {
-    return String.format("%s %s", getOperatorType().toString(), showContentType);
-  }
-
-  public enum ShowContentType {
-    DYNAMIC_PARAMETER, FLUSH_TASK_INFO, TTL, VERSION, TIMESERIES, STORAGE_GROUP, CHILD_PATH
-  }
-
 }
