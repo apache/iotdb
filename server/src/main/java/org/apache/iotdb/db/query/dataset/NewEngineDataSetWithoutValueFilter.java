@@ -61,15 +61,14 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
           if (reader.hasNextBatch()) {
             BatchData batchData = reader.nextBatch();
             blockingQueue.put(batchData);
-            // if the queue also has free space
-            // just submit another itself
+            // if the queue also has free space, just submit another itself
             if (blockingQueue.remainingCapacity() > 0) {
               pool.submit(this);
             }
             // the queue has no more space
             // remove itself from the QueryTaskPoolManager
             else {
-              reader.setManaged(false);
+              reader.setManagedByQueryManager(false);
             }
           }
           // there are no batch data left in this reader
@@ -80,7 +79,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
             // tell the Consumer not to submit another task for this reader any more
             reader.setHasRemaining(false);
             // remove itself from the QueryTaskPoolManager
-            reader.setManaged(false);
+            reader.setManagedByQueryManager(false);
           }
         }
       } catch (IOException | InterruptedException e) {
@@ -121,7 +120,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
    * @param readers readers in List(IPointReader) structure
    */
   public NewEngineDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-      List<SeriesReaderWithoutValueFilter> readers) throws InterruptedException {
+                                            List<SeriesReaderWithoutValueFilter> readers) throws InterruptedException {
     super(paths, dataTypes);
     this.seriesReaderWithoutValueFilterList = readers;
     blockingQueueList = new ArrayList<>(readers.size());
@@ -138,7 +137,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
       SeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList.get(i);
       reader.setHasRemaining(true);
-      reader.setManaged(true);
+      reader.setManagedByQueryManager(true);
       pool.submit(new ReadTask(reader, blockingQueueList.get(i)));
     }
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
@@ -182,8 +181,8 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
 
         if (cachedBatchDataArray[seriesIndex] == null
-            || !cachedBatchDataArray[seriesIndex].hasCurrent()
-            || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
+                || !cachedBatchDataArray[seriesIndex].hasCurrent()
+                || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
           // current batch is empty or does not have value at minTime
           if (rowOffset == 0) {
             currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1);
@@ -224,16 +223,16 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
                 break;
               case BOOLEAN:
                 ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getBoolean(),
-                    valueBAOSList[seriesIndex]);
+                        valueBAOSList[seriesIndex]);
                 break;
               case TEXT:
                 ReadWriteIOUtils
-                    .write(cachedBatchDataArray[seriesIndex].getBinary(),
-                        valueBAOSList[seriesIndex]);
+                        .write(cachedBatchDataArray[seriesIndex].getBinary(),
+                                valueBAOSList[seriesIndex]);
                 break;
               default:
                 throw new UnSupportedDataTypeException(
-                    String.format("Data type %s is not supported.", type));
+                        String.format("Data type %s is not supported.", type));
             }
           }
 
@@ -262,7 +261,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
         if (rowCount % 8 == 0) {
           for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
             ReadWriteIOUtils
-                .write((byte) currentBitmapList[seriesIndex], bitmapBAOSList[seriesIndex]);
+                    .write((byte) currentBitmapList[seriesIndex], bitmapBAOSList[seriesIndex]);
             // we should clear the bitmap every 8 row record
             currentBitmapList[seriesIndex] = 0;
           }
@@ -284,7 +283,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       if (remaining != 0) {
         for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
           ReadWriteIOUtils.write((byte) (currentBitmapList[seriesIndex] << (8 - remaining)),
-              bitmapBAOSList[seriesIndex]);
+                  bitmapBAOSList[seriesIndex]);
         }
       }
     }
@@ -328,13 +327,13 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
       synchronized (seriesReaderWithoutValueFilterList.get(seriesIndex)) {
         // we only need to judge whether to submit another task when the queue is not full
-        if (blockingQueueList.get(seriesIndex).size() < BLOCKING_QUEUE_CAPACITY) {
+        if (blockingQueueList.get(seriesIndex).remainingCapacity() > 0) {
           SeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList.get(seriesIndex);
           // if the reader isn't being managed and still has more data,
           // that means this read task leave the pool before because the queue has no more space
           // now we should submit it again
-          if (!reader.isManaged() && reader.hasRemaining()) {
-            reader.setManaged(true);
+          if (!reader.isManagedByQueryManager() && reader.hasRemaining()) {
+            reader.setManagedByQueryManager(true);
             pool.submit(new ReadTask(reader, blockingQueueList.get(seriesIndex)));
           }
         }
@@ -343,7 +342,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
   }
 
   private void putPBOSToBuffer(PublicBAOS[] bitmapBAOSList, List<ByteBuffer> bitmapBufferList,
-      int tsIndex) {
+                               int tsIndex) {
     ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapBAOSList[tsIndex].size());
     bitmapBuffer.put(bitmapBAOSList[tsIndex].getBuf(), 0, bitmapBAOSList[tsIndex].size());
     bitmapBuffer.flip();
@@ -372,13 +371,13 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
     for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
       if (cachedBatchDataArray[seriesIndex] == null
-          || !cachedBatchDataArray[seriesIndex].hasCurrent()
-          || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
+              || !cachedBatchDataArray[seriesIndex].hasCurrent()
+              || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
         record.addField(new Field(null));
       } else {
 
         record.addField(
-            getField(cachedBatchDataArray[seriesIndex].currentValue(), dataTypes.get(seriesIndex)));
+                getField(cachedBatchDataArray[seriesIndex].currentValue(), dataTypes.get(seriesIndex)));
 
 
         // move next

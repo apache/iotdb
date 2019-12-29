@@ -60,14 +60,12 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReade
   private BatchData batchData;
 
   /**
-   * whether to be in the thread pool
-   * its usage is to tell the consumer thread that
-   * runnable task linking to this reader is not manage by thread pool anymore.
+   * This filed indicates whether the reader is managed by QueryTaskPoolManager
    * If it is set to be false,
    * maybe it's because the corresponding queue has no more space
    * or this reader has no more data.
    */
-  private volatile boolean managed;
+  private volatile boolean managedByQueryManager;
 
   /**
    * whether having remaining batch data
@@ -113,12 +111,12 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReade
     this.unseqResourceMergeReader = unseqResourceMergeReader;
   }
 
-  public boolean isManaged() {
-    return managed;
+  public boolean isManagedByQueryManager() {
+    return managedByQueryManager;
   }
 
-  public void setManaged(boolean managed) {
-    this.managed = managed;
+  public void setManagedByQueryManager(boolean managedByQueryManager) {
+    this.managedByQueryManager = managedByQueryManager;
   }
 
   public boolean hasRemaining() {
