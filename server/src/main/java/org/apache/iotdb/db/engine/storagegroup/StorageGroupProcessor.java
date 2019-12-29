@@ -1004,7 +1004,7 @@ public class StorageGroupProcessor {
 
 
   /**
-   * Delete data whose timestamp <= 'timestamp' and belongs to the timeseries
+   * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
    * @param deviceId the deviceId of the timeseries to be deleted.
