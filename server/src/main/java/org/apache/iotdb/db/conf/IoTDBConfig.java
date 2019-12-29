@@ -1171,6 +1171,10 @@ public class IoTDBConfig {
     this.hdfsSitePath = hdfsSitePath;
   }
 
+  public String getHdfsIpStr(){
+    return hdfsIp;
+  }
+
   public String[] getHdfsIp() {
     return hdfsIp.split(",");
   }
@@ -1201,6 +1205,10 @@ public class IoTDBConfig {
 
   public void setDfsNameServices(String dfsNameServices) {
     this.dfsNameServices = dfsNameServices;
+  }
+
+  public String getDfsHaNamenodesStr(){
+      return dfsHaNamenodes;
   }
 
   public String[] getDfsHaNamenodes() {

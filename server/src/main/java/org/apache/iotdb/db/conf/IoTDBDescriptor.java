@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.engine.merge.MergeFileStrategy;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -26,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.ZoneId;
 import java.util.Properties;
+
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -35,496 +37,496 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBDescriptor {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
-  private IoTDBConfig conf = new IoTDBConfig();
+    private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
+    private IoTDBConfig conf = new IoTDBConfig();
 
-  private IoTDBDescriptor() {
-    loadProps();
-  }
-
-  public static IoTDBDescriptor getInstance() {
-    return IoTDBDescriptorHolder.INSTANCE;
-  }
-
-  public IoTDBConfig getConfig() {
-    return conf;
-  }
-
-  private String getPropsUrl() {
-    String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
-    if (url == null) {
-      url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-      if (url != null) {
-        url = url + File.separatorChar + "conf" + File.separatorChar + IoTDBConfig.CONFIG_NAME;
-      } else {
-        logger.warn(
-            "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
-                + "config file {}, use default configuration",
-            IoTDBConfig.CONFIG_NAME);
-        // update all data seriesPath
-        conf.updatePath();
-        return null;
-      }
-    } else {
-      url += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
-    }
-    return url;
-  }
-
-  /**
-   * load an property file and set TsfileDBConfig variables.
-   */
-  private void loadProps() {
-    String url = getPropsUrl();
-    if (url == null) {
-      return;
+    private IoTDBDescriptor() {
+        loadProps();
     }
 
-    try (InputStream inputStream = new FileInputStream(new File(url))) {
-
-      logger.info("Start to read config file {}", url);
-      Properties properties = new Properties();
-      properties.load(inputStream);
-      conf.setEnableStatMonitor(Boolean
-          .parseBoolean(properties.getProperty("enable_stat_monitor",
-              Boolean.toString(conf.isEnableStatMonitor()))));
-      conf.setBackLoopPeriodSec(Integer
-          .parseInt(properties.getProperty("back_loop_period_in_second",
-              Integer.toString(conf.getBackLoopPeriodSec()))));
-      int statMonitorDetectFreqSec = Integer.parseInt(
-          properties.getProperty("stat_monitor_detect_freq_in_second",
-              Integer.toString(conf.getStatMonitorDetectFreqSec())));
-      int statMonitorRetainIntervalSec = Integer.parseInt(
-          properties.getProperty("stat_monitor_retain_interval_in_second",
-              Integer.toString(conf.getStatMonitorRetainIntervalSec())));
-      // the conf value must > default value, or may cause system unstable
-      if (conf.getStatMonitorDetectFreqSec() < statMonitorDetectFreqSec) {
-        conf.setStatMonitorDetectFreqSec(statMonitorDetectFreqSec);
-      } else {
-        logger.info("The stat_monitor_detect_freq_sec value is smaller than default,"
-            + " use default value");
-      }
-
-      if (conf.getStatMonitorRetainIntervalSec() < statMonitorRetainIntervalSec) {
-        conf.setStatMonitorRetainIntervalSec(statMonitorRetainIntervalSec);
-      } else {
-        logger.info("The stat_monitor_retain_interval_sec value is smaller than default,"
-            + " use default value");
-      }
-
-      conf.setMetricsPort(Integer.parseInt(properties.getProperty("metrics_port",
-          Integer.toString(conf.getMetricsPort()))));
-
-      conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
-
-      conf.setRpcThriftCompressionEnable(
-          Boolean.parseBoolean(properties.getProperty("rpc_thrift_compression_enable",
-              Boolean.toString(conf.isRpcThriftCompressionEnable()))));
-
-      conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
-          Integer.toString(conf.getRpcPort()))));
-
-      conf.setTimestampPrecision(properties.getProperty("timestamp_precision",
-          conf.getTimestampPrecision()));
-
-      conf.setEnableParameterAdapter(
-          Boolean.parseBoolean(properties.getProperty("enable_parameter_adapter",
-              Boolean.toString(conf.isEnableParameterAdapter()))));
-
-      conf.setMetaDataCacheEnable(
-          Boolean.parseBoolean(properties.getProperty("meta_data_cache_enable",
-              Boolean.toString(conf.isMetaDataCacheEnable()))));
-
-      initMemoryAllocate(properties);
-
-      loadWALProps(properties);
-
-      conf.setBaseDir(properties.getProperty("base_dir", conf.getBaseDir()));
-
-      conf.setSystemDir(FilePathUtils.regularizePath(conf.getBaseDir()) + "system");
-
-      conf.setSchemaDir(FilePathUtils.regularizePath(conf.getSystemDir()) + "schema");
-
-      conf.setQueryDir(FilePathUtils.regularizePath(conf.getBaseDir()) + "query");
-
-      conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
-          .split(","));
-
-      conf.setWalFolder(properties.getProperty("wal_dir", conf.getWalFolder()));
-
-      int walBufferSize = Integer.parseInt(properties.getProperty("wal_buffer_size",
-          Integer.toString(conf.getWalBufferSize())));
-      if (walBufferSize > 0) {
-        conf.setWalBufferSize(walBufferSize);
-      }
-
-      conf.setMultiDirStrategyClassName(properties.getProperty("multi_dir_strategy",
-          conf.getMultiDirStrategyClassName()));
-
-      conf.setBatchSize(Integer.parseInt(properties.getProperty("batch_size",
-          Integer.toString(conf.getBatchSize()))));
-
-      long tsfileSizeThreshold = Long.parseLong(properties
-          .getProperty("tsfile_size_threshold",
-              Long.toString(conf.getTsFileSizeThreshold())).trim());
-      if (tsfileSizeThreshold > 0) {
-        conf.setTsFileSizeThreshold(tsfileSizeThreshold);
-      }
-
-      long memTableSizeThreshold = Long.parseLong(properties
-          .getProperty("memtable_size_threshold",
-              Long.toString(conf.getMemtableSizeThreshold())).trim());
-      if (memTableSizeThreshold > 0) {
-        conf.setMemtableSizeThreshold(memTableSizeThreshold);
-      }
-
-      conf.setSyncEnable(Boolean
-          .parseBoolean(properties.getProperty("is_sync_enable",
-              Boolean.toString(conf.isSyncEnable()))));
-
-      conf.setSyncServerPort(Integer
-          .parseInt(properties.getProperty("sync_server_port",
-              Integer.toString(conf.getSyncServerPort())).trim()));
-
-      conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
-
-      conf.setConcurrentFlushThread(Integer
-          .parseInt(properties.getProperty("concurrent_flush_thread",
-              Integer.toString(conf.getConcurrentFlushThread()))));
-
-      if (conf.getConcurrentFlushThread() <= 0) {
-        conf.setConcurrentFlushThread(Runtime.getRuntime().availableProcessors());
-      }
-
-      conf.setmManagerCacheSize(Integer
-          .parseInt(properties.getProperty("schema_manager_cache_size",
-              Integer.toString(conf.getmManagerCacheSize())).trim()));
-
-      conf.setLanguageVersion(properties.getProperty("language_version",
-          conf.getLanguageVersion()).trim());
-
-      if (properties.containsKey("chunk_buffer_pool_enable")) {
-        conf.setChunkBufferPoolEnable(Boolean
-            .parseBoolean(properties.getProperty("chunk_buffer_pool_enable")));
-      }
-      conf.setZoneID(
-          ZoneId.of(properties.getProperty("time_zone", conf.getZoneID().toString().trim())));
-      logger.info("Time zone has been set to {}", conf.getZoneID());
-
-      conf.setEnableExternalSort(Boolean.parseBoolean(properties
-          .getProperty("enable_external_sort", Boolean.toString(conf.isEnableExternalSort()))));
-      conf.setExternalSortThreshold(Integer.parseInt(properties
-          .getProperty("external_sort_threshold",
-              Integer.toString(conf.getExternalSortThreshold()))));
-      conf.setUpgradeThreadNum(Integer.parseInt(properties.getProperty("upgrade_thread_num",
-          Integer.toString(conf.getUpgradeThreadNum()))));
-      conf.setMergeMemoryBudget(Long.parseLong(properties.getProperty("merge_memory_budget",
-          Long.toString(conf.getMergeMemoryBudget()))));
-      conf.setMergeThreadNum(Integer.parseInt(properties.getProperty("merge_thread_num",
-          Integer.toString(conf.getMergeThreadNum()))));
-      conf.setMergeChunkSubThreadNum(Integer.parseInt(properties.getProperty
-          ("merge_chunk_subthread_num",
-              Integer.toString(conf.getMergeChunkSubThreadNum()))));
-      conf.setContinueMergeAfterReboot(Boolean.parseBoolean(properties.getProperty(
-          "continue_merge_after_reboot", Boolean.toString(conf.isContinueMergeAfterReboot()))));
-      conf.setMergeFileSelectionTimeBudget(Long.parseLong(properties.getProperty
-          ("merge_fileSelection_time_budget",
-              Long.toString(conf.getMergeFileSelectionTimeBudget()))));
-      conf.setMergeIntervalSec(Long.parseLong(properties.getProperty("merge_interval_sec",
-          Long.toString(conf.getMergeIntervalSec()))));
-      conf.setForceFullMerge(Boolean.parseBoolean(properties.getProperty("force_full_merge",
-          Boolean.toString(conf.isForceFullMerge()))));
-      conf.setChunkMergePointThreshold(Integer.parseInt(properties.getProperty(
-          "chunk_merge_point_threshold", Integer.toString(conf.getChunkMergePointThreshold()))));
-
-      conf.setEnablePerformanceStat(Boolean
-          .parseBoolean(properties.getProperty("enable_performance_stat",
-              Boolean.toString(conf.isEnablePerformanceStat())).trim()));
-
-      conf.setPerformanceStatDisplayInterval(Long
-          .parseLong(properties.getProperty("performance_stat_display_interval",
-              Long.toString(conf.getPerformanceStatDisplayInterval())).trim()));
-      conf.setPerformanceStatMemoryInKB(Integer
-          .parseInt(properties.getProperty("performance_stat_memory_in_kb",
-              Integer.toString(conf.getPerformanceStatMemoryInKB())).trim()));
-
-      int maxConcurrentClientNum = Integer.parseInt(properties.
-          getProperty("rpc_max_concurrent_client_num",
-              Integer.toString(conf.getRpcMaxConcurrentClientNum()).trim()));
-      if (maxConcurrentClientNum <= 0) {
-        maxConcurrentClientNum = 65535;
-      }
-
-      conf.setEnableWatermark(Boolean.parseBoolean(properties.getProperty("watermark_module_opened",
-          Boolean.toString(conf.isEnableWatermark()).trim())));
-      conf.setWatermarkSecretKey(
-          properties.getProperty("watermark_secret_key", conf.getWatermarkSecretKey()));
-      conf.setWatermarkBitString(
-          properties.getProperty("watermark_bit_string", conf.getWatermarkBitString()));
-      conf.setWatermarkMethod(
-          properties.getProperty("watermark_method", conf.getWatermarkMethod()));
-
-      loadAutoCreateSchemaProps(properties);
-
-      conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
-
-      conf.setTsFileStorageFs(properties.getProperty("tsfile_storage_fs",
-          conf.getTsFileStorageFs().toString()));
-      conf.setCoreSitePath(
-          properties.getProperty("core_site_path", conf.getCoreSitePath()));
-      conf.setHdfsSitePath(
-          properties.getProperty("hdfs_site_path", conf.getHdfsSitePath()));
-      conf.setHdfsIp(properties.getProperty("hdfs_ip").split(","));
-      conf.setHdfsPort(properties.getProperty("hdfs_port", conf.getHdfsPort()));
-      conf.setDfsNameServices(
-          properties.getProperty("dfs_nameservices", conf.getDfsNameServices()));
-      conf.setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes").split(","));
-      conf.setDfsHaAutomaticFailoverEnabled(
-          Boolean.parseBoolean(properties.getProperty("dfs_ha_automatic_failover_enabled",
-              String.valueOf(conf.isDfsHaAutomaticFailoverEnabled()))));
-      conf.setDfsClientFailoverProxyProvider(
-          properties.getProperty("dfs_client_failover_proxy_provider",
-              conf.getDfsClientFailoverProxyProvider()));
-      conf.setUseKerberos(Boolean.parseBoolean(
-          properties.getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))));
-      conf.setKerberosKeytabFilePath(
-          properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
-      conf.setKerberosPrincipal(
-          properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
-
-      conf.setDefaultTTL(Long.parseLong(properties.getProperty("default_ttl",
-          String.valueOf(conf.getDefaultTTL()))));
-
-      // At the same time, set TSFileConfig
-      TSFileDescriptor.getInstance().getConfig()
-          .setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
-      TSFileDescriptor.getInstance().getConfig().setKerberosKeytabFilePath(
-          properties.getProperty("core_site_path", conf.getCoreSitePath()));
-      TSFileDescriptor.getInstance().getConfig().setKerberosPrincipal(
-          properties.getProperty("hdfs_site_path", conf.getHdfsSitePath()));
-      TSFileDescriptor.getInstance().getConfig()
-          .setHdfsIp(properties.getProperty("hdfs_ip").split(","));
-      TSFileDescriptor.getInstance().getConfig().setHdfsPort(properties.getProperty("hdfs_port"));
-      TSFileDescriptor.getInstance().getConfig()
-          .setDfsNameServices(properties.getProperty("dfs_nameservices"));
-      TSFileDescriptor.getInstance().getConfig()
-          .setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes").split(","));
-      TSFileDescriptor.getInstance().getConfig().setDfsHaAutomaticFailoverEnabled(
-          Boolean.parseBoolean(properties.getProperty("dfs_ha_automatic_failover_enabled")));
-      TSFileDescriptor.getInstance().getConfig().setDfsClientFailoverProxyProvider(
-          properties.getProperty("dfs_client_failover_proxy_provider"));
-      TSFileDescriptor.getInstance().getConfig().setUseKerberos(Boolean.parseBoolean(
-          properties.getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))));
-      TSFileDescriptor.getInstance().getConfig().setKerberosKeytabFilePath(
-          properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
-      TSFileDescriptor.getInstance().getConfig().setKerberosPrincipal(
-          properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
-
-      // set tsfile-format config
-      loadTsFileProps(properties);
-
-      conf.setMergeFileStrategy(MergeFileStrategy.valueOf(properties.getProperty(
-          "merge_file_strategy", conf.getMergeFileStrategy().name())));
-
-    } catch (FileNotFoundException e) {
-      logger.warn("Fail to find config file {}", url, e);
-    } catch (IOException e) {
-      logger.warn("Cannot load config file, use default configuration", e);
-    } catch (Exception e) {
-      logger.warn("Incorrect format in config file, use default configuration", e);
-    } finally {
-      // update all data seriesPath
-      conf.updatePath();
-    }
-  }
-
-  private void loadWALProps(Properties properties){
-    conf.setEnableWal(Boolean.parseBoolean(properties.getProperty("enable_wal",
-        Boolean.toString(conf.isEnableWal()))));
-
-    conf.setFlushWalThreshold(Integer
-        .parseInt(properties.getProperty("flush_wal_threshold",
-            Integer.toString(conf.getFlushWalThreshold()))));
-
-    conf.setForceWalPeriodInMs(Long
-        .parseLong(properties.getProperty("force_wal_period_in_ms",
-            Long.toString(conf.getForceWalPeriodInMs()))));
-
-  }
-
-  private void loadAutoCreateSchemaProps(Properties properties){
-    conf.setAutoCreateSchemaEnabled(
-        Boolean.parseBoolean(properties.getProperty("enable_auto_create_schema",
-            Boolean.toString(conf.isAutoCreateSchemaEnabled()).trim())));
-    conf.setDefaultStorageGroupLevel(
-        Integer.parseInt(properties.getProperty("default_storage_group_level",
-            Integer.toString(conf.getDefaultStorageGroupLevel()))));
-    conf.setDefaultBooleanEncoding(
-        properties.getProperty("default_boolean_encoding",
-            conf.getDefaultBooleanEncoding().toString()));
-    conf.setDefaultInt32Encoding(
-        properties.getProperty("default_int32_encoding",
-            conf.getDefaultInt32Encoding().toString()));
-    conf.setDefaultInt64Encoding(
-        properties.getProperty("default_int64_encoding",
-            conf.getDefaultInt64Encoding().toString()));
-    conf.setDefaultFloatEncoding(
-        properties.getProperty("default_float_encoding",
-            conf.getDefaultFloatEncoding().toString()));
-    conf.setDefaultDoubleEncoding(
-        properties.getProperty("default_double_encoding",
-            conf.getDefaultDoubleEncoding().toString()));
-    conf.setDefaultTextEncoding(
-        properties.getProperty("default_text_encoding",
-            conf.getDefaultTextEncoding().toString()));
-  }
-
-  private void loadTsFileProps(Properties properties){
-    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(Integer
-        .parseInt(properties.getProperty("group_size_in_byte",
-            Integer.toString(TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte()))));
-    TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(Integer
-        .parseInt(properties.getProperty("page_size_in_byte",
-            Integer.toString(TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()))));
-    if (TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() > TSFileDescriptor
-        .getInstance().getConfig().getGroupSizeInByte()) {
-      logger
-          .warn("page_size is greater than group size, will set it as the same with group size");
-      TSFileDescriptor.getInstance().getConfig()
-          .setPageSizeInByte(TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte());
-    }
-    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(Integer
-        .parseInt(properties.getProperty("max_number_of_points_in_page",
-            Integer.toString(
-                TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage()))));
-    TSFileDescriptor.getInstance().getConfig().setTimeSeriesDataType(properties
-        .getProperty("time_series_data_type",
-            TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType()));
-    TSFileDescriptor.getInstance().getConfig().setMaxStringLength(Integer
-        .parseInt(properties.getProperty("max_string_length",
-            Integer.toString(TSFileDescriptor.getInstance().getConfig().getMaxStringLength()))));
-    TSFileDescriptor.getInstance().getConfig().setBloomFilterErrorRate(Double
-        .parseDouble(properties.getProperty("bloom_filter_error_rate",
-            Double.toString(
-                TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate()))));
-    TSFileDescriptor.getInstance().getConfig().setFloatPrecision(Integer
-        .parseInt(properties
-            .getProperty("float_precision", Integer
-                .toString(TSFileDescriptor.getInstance().getConfig().getFloatPrecision()))));
-    TSFileDescriptor.getInstance().getConfig().setTimeEncoder(properties
-        .getProperty("time_encoder",
-            TSFileDescriptor.getInstance().getConfig().getTimeEncoder()));
-    TSFileDescriptor.getInstance().getConfig().setValueEncoder(properties
-        .getProperty("value_encoder",
-            TSFileDescriptor.getInstance().getConfig().getValueEncoder()));
-    TSFileDescriptor.getInstance().getConfig().setCompressor(properties
-        .getProperty("compressor", TSFileDescriptor.getInstance().getConfig().getCompressor()));
-  }
-
-  public void loadHotModifiedProps() throws QueryProcessException {
-    String url = getPropsUrl();
-    if (url == null) {
-      return;
+    public static IoTDBDescriptor getInstance() {
+        return IoTDBDescriptorHolder.INSTANCE;
     }
 
-    try (InputStream inputStream = new FileInputStream(new File(url))) {
-      logger.info("Start to reload config file {}", url);
-      Properties properties = new Properties();
-      properties.load(inputStream);
-
-      // update data dirs
-      String dataDirs = properties.getProperty("data_dirs", null);
-      if(dataDirs != null){
-        conf.reloadDataDirs(dataDirs.split(","));
-      }
-
-      // update dir strategy
-      String multiDirStrategyClassName = properties.getProperty("multi_dir_strategy", null);
-      if (multiDirStrategyClassName != null && !multiDirStrategyClassName
-          .equals(conf.getMultiDirStrategyClassName())) {
-        conf.setMultiDirStrategyClassName(multiDirStrategyClassName);
-        DirectoryManager.getInstance().updateDirectoryStrategy();
-      }
-
-      // update WAL conf
-      loadWALProps(properties);
-
-      // time zone
-      conf.setZoneID(
-          ZoneId.of(properties.getProperty("time_zone", conf.getZoneID().toString().trim())));
-
-      // dynamic parameters
-      long tsfileSizeThreshold = Long.parseLong(properties
-          .getProperty("tsfile_size_threshold",
-              Long.toString(conf.getTsFileSizeThreshold())).trim());
-      if (tsfileSizeThreshold > 0 && !conf.isEnableParameterAdapter()) {
-        conf.setTsFileSizeThreshold(tsfileSizeThreshold);
-      }
-
-      long memTableSizeThreshold = Long.parseLong(properties
-          .getProperty("memtable_size_threshold",
-              Long.toString(conf.getMemtableSizeThreshold())).trim());
-      if (memTableSizeThreshold > 0 && !conf.isEnableParameterAdapter()) {
-        conf.setMemtableSizeThreshold(memTableSizeThreshold);
-      }
-
-      // update params of creating schema automatically
-      loadAutoCreateSchemaProps(properties);
-
-      // update tsfile-format config
-      loadTsFileProps(properties);
-
-    } catch (Exception e) {
-      logger.warn("Fail to reload config file {}", url, e);
-      throw new QueryProcessException(String.format("Fail to reload config file %s because %s", url, e.getMessage()));
-    }
-  }
-
-  private void initMemoryAllocate(Properties properties) {
-    String memoryAllocateProportion = properties.getProperty("write_read_free_memory_proportion");
-    if (memoryAllocateProportion != null) {
-      String[] proportions = memoryAllocateProportion.split(":");
-      int proportionSum = 0;
-      for (String proportion : proportions) {
-        proportionSum += Integer.parseInt(proportion.trim());
-      }
-      long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
-      conf.setAllocateMemoryForWrite(
-          maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-      conf.setAllocateMemoryForRead(
-          maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+    public IoTDBConfig getConfig() {
+        return conf;
     }
 
-    if (!conf.isMetaDataCacheEnable()) {
-      return;
+    private String getPropsUrl() {
+        String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
+        if (url == null) {
+            url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+            if (url != null) {
+                url = url + File.separatorChar + "conf" + File.separatorChar + IoTDBConfig.CONFIG_NAME;
+            } else {
+                logger.warn(
+                        "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
+                                + "config file {}, use default configuration",
+                        IoTDBConfig.CONFIG_NAME);
+                // update all data seriesPath
+                conf.updatePath();
+                return null;
+            }
+        } else {
+            url += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
+        }
+        return url;
     }
 
-    String queryMemoryAllocateProportion = properties
-        .getProperty("filemeta_chunkmeta_free_memory_proportion");
-    if (queryMemoryAllocateProportion != null) {
-      String[] proportions = queryMemoryAllocateProportion.split(":");
-      int proportionSum = 0;
-      for (String proportion : proportions) {
-        proportionSum += Integer.parseInt(proportion.trim());
-      }
-      long maxMemoryAvailable = conf.getAllocateMemoryForRead();
-      try {
-        conf.setAllocateMemoryForFileMetaDataCache(
-            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-        conf.setAllocateMemoryForChumkMetaDataCache(
-            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
-      } catch (Exception e) {
-        throw new RuntimeException(
-            "Each subsection of configuration item filemeta_chunkmeta_free_memory_proportion should be an integer, which is "
-                + queryMemoryAllocateProportion);
-      }
+    /**
+     * load an property file and set TsfileDBConfig variables.
+     */
+    private void loadProps() {
+        String url = getPropsUrl();
+        if (url == null) {
+            return;
+        }
+
+        try (InputStream inputStream = new FileInputStream(new File(url))) {
+
+            logger.info("Start to read config file {}", url);
+            Properties properties = new Properties();
+            properties.load(inputStream);
+            conf.setEnableStatMonitor(Boolean
+                    .parseBoolean(properties.getProperty("enable_stat_monitor",
+                            Boolean.toString(conf.isEnableStatMonitor()))));
+            conf.setBackLoopPeriodSec(Integer
+                    .parseInt(properties.getProperty("back_loop_period_in_second",
+                            Integer.toString(conf.getBackLoopPeriodSec()))));
+            int statMonitorDetectFreqSec = Integer.parseInt(
+                    properties.getProperty("stat_monitor_detect_freq_in_second",
+                            Integer.toString(conf.getStatMonitorDetectFreqSec())));
+            int statMonitorRetainIntervalSec = Integer.parseInt(
+                    properties.getProperty("stat_monitor_retain_interval_in_second",
+                            Integer.toString(conf.getStatMonitorRetainIntervalSec())));
+            // the conf value must > default value, or may cause system unstable
+            if (conf.getStatMonitorDetectFreqSec() < statMonitorDetectFreqSec) {
+                conf.setStatMonitorDetectFreqSec(statMonitorDetectFreqSec);
+            } else {
+                logger.info("The stat_monitor_detect_freq_sec value is smaller than default,"
+                        + " use default value");
+            }
+
+            if (conf.getStatMonitorRetainIntervalSec() < statMonitorRetainIntervalSec) {
+                conf.setStatMonitorRetainIntervalSec(statMonitorRetainIntervalSec);
+            } else {
+                logger.info("The stat_monitor_retain_interval_sec value is smaller than default,"
+                        + " use default value");
+            }
+
+            conf.setMetricsPort(Integer.parseInt(properties.getProperty("metrics_port",
+                    Integer.toString(conf.getMetricsPort()))));
+
+            conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
+
+            conf.setRpcThriftCompressionEnable(
+                    Boolean.parseBoolean(properties.getProperty("rpc_thrift_compression_enable",
+                            Boolean.toString(conf.isRpcThriftCompressionEnable()))));
+
+            conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
+                    Integer.toString(conf.getRpcPort()))));
+
+            conf.setTimestampPrecision(properties.getProperty("timestamp_precision",
+                    conf.getTimestampPrecision()));
+
+            conf.setEnableParameterAdapter(
+                    Boolean.parseBoolean(properties.getProperty("enable_parameter_adapter",
+                            Boolean.toString(conf.isEnableParameterAdapter()))));
+
+            conf.setMetaDataCacheEnable(
+                    Boolean.parseBoolean(properties.getProperty("meta_data_cache_enable",
+                            Boolean.toString(conf.isMetaDataCacheEnable()))));
+
+            initMemoryAllocate(properties);
+
+            loadWALProps(properties);
+
+            conf.setBaseDir(properties.getProperty("base_dir", conf.getBaseDir()));
+
+            conf.setSystemDir(FilePathUtils.regularizePath(conf.getBaseDir()) + "system");
+
+            conf.setSchemaDir(FilePathUtils.regularizePath(conf.getSystemDir()) + "schema");
+
+            conf.setQueryDir(FilePathUtils.regularizePath(conf.getBaseDir()) + "query");
+
+            conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
+                    .split(","));
+
+            conf.setWalFolder(properties.getProperty("wal_dir", conf.getWalFolder()));
+
+            int walBufferSize = Integer.parseInt(properties.getProperty("wal_buffer_size",
+                    Integer.toString(conf.getWalBufferSize())));
+            if (walBufferSize > 0) {
+                conf.setWalBufferSize(walBufferSize);
+            }
+
+            conf.setMultiDirStrategyClassName(properties.getProperty("multi_dir_strategy",
+                    conf.getMultiDirStrategyClassName()));
+
+            conf.setBatchSize(Integer.parseInt(properties.getProperty("batch_size",
+                    Integer.toString(conf.getBatchSize()))));
+
+            long tsfileSizeThreshold = Long.parseLong(properties
+                    .getProperty("tsfile_size_threshold",
+                            Long.toString(conf.getTsFileSizeThreshold())).trim());
+            if (tsfileSizeThreshold > 0) {
+                conf.setTsFileSizeThreshold(tsfileSizeThreshold);
+            }
+
+            long memTableSizeThreshold = Long.parseLong(properties
+                    .getProperty("memtable_size_threshold",
+                            Long.toString(conf.getMemtableSizeThreshold())).trim());
+            if (memTableSizeThreshold > 0) {
+                conf.setMemtableSizeThreshold(memTableSizeThreshold);
+            }
+
+            conf.setSyncEnable(Boolean
+                    .parseBoolean(properties.getProperty("is_sync_enable",
+                            Boolean.toString(conf.isSyncEnable()))));
+
+            conf.setSyncServerPort(Integer
+                    .parseInt(properties.getProperty("sync_server_port",
+                            Integer.toString(conf.getSyncServerPort())).trim()));
+
+            conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
+
+            conf.setConcurrentFlushThread(Integer
+                    .parseInt(properties.getProperty("concurrent_flush_thread",
+                            Integer.toString(conf.getConcurrentFlushThread()))));
+
+            if (conf.getConcurrentFlushThread() <= 0) {
+                conf.setConcurrentFlushThread(Runtime.getRuntime().availableProcessors());
+            }
+
+            conf.setmManagerCacheSize(Integer
+                    .parseInt(properties.getProperty("schema_manager_cache_size",
+                            Integer.toString(conf.getmManagerCacheSize())).trim()));
+
+            conf.setLanguageVersion(properties.getProperty("language_version",
+                    conf.getLanguageVersion()).trim());
+
+            if (properties.containsKey("chunk_buffer_pool_enable")) {
+                conf.setChunkBufferPoolEnable(Boolean
+                        .parseBoolean(properties.getProperty("chunk_buffer_pool_enable")));
+            }
+            conf.setZoneID(
+                    ZoneId.of(properties.getProperty("time_zone", conf.getZoneID().toString().trim())));
+            logger.info("Time zone has been set to {}", conf.getZoneID());
+
+            conf.setEnableExternalSort(Boolean.parseBoolean(properties
+                    .getProperty("enable_external_sort", Boolean.toString(conf.isEnableExternalSort()))));
+            conf.setExternalSortThreshold(Integer.parseInt(properties
+                    .getProperty("external_sort_threshold",
+                            Integer.toString(conf.getExternalSortThreshold()))));
+            conf.setUpgradeThreadNum(Integer.parseInt(properties.getProperty("upgrade_thread_num",
+                    Integer.toString(conf.getUpgradeThreadNum()))));
+            conf.setMergeMemoryBudget(Long.parseLong(properties.getProperty("merge_memory_budget",
+                    Long.toString(conf.getMergeMemoryBudget()))));
+            conf.setMergeThreadNum(Integer.parseInt(properties.getProperty("merge_thread_num",
+                    Integer.toString(conf.getMergeThreadNum()))));
+            conf.setMergeChunkSubThreadNum(Integer.parseInt(properties.getProperty
+                    ("merge_chunk_subthread_num",
+                            Integer.toString(conf.getMergeChunkSubThreadNum()))));
+            conf.setContinueMergeAfterReboot(Boolean.parseBoolean(properties.getProperty(
+                    "continue_merge_after_reboot", Boolean.toString(conf.isContinueMergeAfterReboot()))));
+            conf.setMergeFileSelectionTimeBudget(Long.parseLong(properties.getProperty
+                    ("merge_fileSelection_time_budget",
+                            Long.toString(conf.getMergeFileSelectionTimeBudget()))));
+            conf.setMergeIntervalSec(Long.parseLong(properties.getProperty("merge_interval_sec",
+                    Long.toString(conf.getMergeIntervalSec()))));
+            conf.setForceFullMerge(Boolean.parseBoolean(properties.getProperty("force_full_merge",
+                    Boolean.toString(conf.isForceFullMerge()))));
+            conf.setChunkMergePointThreshold(Integer.parseInt(properties.getProperty(
+                    "chunk_merge_point_threshold", Integer.toString(conf.getChunkMergePointThreshold()))));
+
+            conf.setEnablePerformanceStat(Boolean
+                    .parseBoolean(properties.getProperty("enable_performance_stat",
+                            Boolean.toString(conf.isEnablePerformanceStat())).trim()));
+
+            conf.setPerformanceStatDisplayInterval(Long
+                    .parseLong(properties.getProperty("performance_stat_display_interval",
+                            Long.toString(conf.getPerformanceStatDisplayInterval())).trim()));
+            conf.setPerformanceStatMemoryInKB(Integer
+                    .parseInt(properties.getProperty("performance_stat_memory_in_kb",
+                            Integer.toString(conf.getPerformanceStatMemoryInKB())).trim()));
+
+            int maxConcurrentClientNum = Integer.parseInt(properties.
+                    getProperty("rpc_max_concurrent_client_num",
+                            Integer.toString(conf.getRpcMaxConcurrentClientNum()).trim()));
+            if (maxConcurrentClientNum <= 0) {
+                maxConcurrentClientNum = 65535;
+            }
+
+            conf.setEnableWatermark(Boolean.parseBoolean(properties.getProperty("watermark_module_opened",
+                    Boolean.toString(conf.isEnableWatermark()).trim())));
+            conf.setWatermarkSecretKey(
+                    properties.getProperty("watermark_secret_key", conf.getWatermarkSecretKey()));
+            conf.setWatermarkBitString(
+                    properties.getProperty("watermark_bit_string", conf.getWatermarkBitString()));
+            conf.setWatermarkMethod(
+                    properties.getProperty("watermark_method", conf.getWatermarkMethod()));
+
+            loadAutoCreateSchemaProps(properties);
+
+            conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
+
+            conf.setTsFileStorageFs(properties.getProperty("tsfile_storage_fs",
+                    conf.getTsFileStorageFs().toString()));
+            conf.setCoreSitePath(
+                    properties.getProperty("core_site_path", conf.getCoreSitePath()));
+            conf.setHdfsSitePath(
+                    properties.getProperty("hdfs_site_path", conf.getHdfsSitePath()));
+            conf.setHdfsIp(properties.getProperty("hdfs_ip", conf.getHdfsIpStr()).split(","));
+            conf.setHdfsPort(properties.getProperty("hdfs_port", conf.getHdfsPort()));
+            conf.setDfsNameServices(
+                    properties.getProperty("dfs_nameservices", conf.getDfsNameServices()));
+            conf.setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes", conf.getDfsHaNamenodesStr()).split(","));
+            conf.setDfsHaAutomaticFailoverEnabled(
+                    Boolean.parseBoolean(properties.getProperty("dfs_ha_automatic_failover_enabled",
+                            String.valueOf(conf.isDfsHaAutomaticFailoverEnabled()))));
+            conf.setDfsClientFailoverProxyProvider(
+                    properties.getProperty("dfs_client_failover_proxy_provider",
+                            conf.getDfsClientFailoverProxyProvider()));
+            conf.setUseKerberos(Boolean.parseBoolean(
+                    properties.getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))));
+            conf.setKerberosKeytabFilePath(
+                    properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
+            conf.setKerberosPrincipal(
+                    properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
+
+            conf.setDefaultTTL(Long.parseLong(properties.getProperty("default_ttl",
+                    String.valueOf(conf.getDefaultTTL()))));
+
+            // At the same time, set TSFileConfig
+            TSFileDescriptor.getInstance().getConfig()
+                    .setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
+            TSFileDescriptor.getInstance().getConfig().setKerberosKeytabFilePath(
+                    properties.getProperty("core_site_path", conf.getCoreSitePath()));
+            TSFileDescriptor.getInstance().getConfig().setKerberosPrincipal(
+                    properties.getProperty("hdfs_site_path", conf.getHdfsSitePath()));
+            TSFileDescriptor.getInstance().getConfig()
+                    .setHdfsIp(properties.getProperty("hdfs_ip", conf.getHdfsIpStr()).split(","));
+            TSFileDescriptor.getInstance().getConfig().setHdfsPort(properties.getProperty("hdfs_port", conf.getHdfsPort()));
+            TSFileDescriptor.getInstance().getConfig()
+                    .setDfsNameServices(properties.getProperty("dfs_nameservices", conf.getDfsNameServices()));
+            TSFileDescriptor.getInstance().getConfig()
+                    .setDfsHaNamenodes(properties.getProperty("dfs_ha_namenodes", conf.getDfsHaNamenodesStr()).split(","));
+            TSFileDescriptor.getInstance().getConfig().setDfsHaAutomaticFailoverEnabled(
+                    Boolean.parseBoolean(properties.getProperty("dfs_ha_automatic_failover_enabled", String.valueOf(conf.isDfsHaAutomaticFailoverEnabled()))));
+            TSFileDescriptor.getInstance().getConfig().setDfsClientFailoverProxyProvider(
+                    properties.getProperty("dfs_client_failover_proxy_provider", conf.getDfsClientFailoverProxyProvider()));
+            TSFileDescriptor.getInstance().getConfig().setUseKerberos(Boolean.parseBoolean(
+                    properties.getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))));
+            TSFileDescriptor.getInstance().getConfig().setKerberosKeytabFilePath(
+                    properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
+            TSFileDescriptor.getInstance().getConfig().setKerberosPrincipal(
+                    properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
+
+            // set tsfile-format config
+            loadTsFileProps(properties);
+
+            conf.setMergeFileStrategy(MergeFileStrategy.valueOf(properties.getProperty(
+                    "merge_file_strategy", conf.getMergeFileStrategy().name())));
+
+        } catch (FileNotFoundException e) {
+            logger.warn("Fail to find config file {}", url, e);
+        } catch (IOException e) {
+            logger.warn("Cannot load config file, use default configuration", e);
+        } catch (Exception e) {
+            logger.warn("Incorrect format in config file, use default configuration", e);
+        } finally {
+            // update all data seriesPath
+            conf.updatePath();
+        }
+    }
+
+    private void loadWALProps(Properties properties) {
+        conf.setEnableWal(Boolean.parseBoolean(properties.getProperty("enable_wal",
+                Boolean.toString(conf.isEnableWal()))));
+
+        conf.setFlushWalThreshold(Integer
+                .parseInt(properties.getProperty("flush_wal_threshold",
+                        Integer.toString(conf.getFlushWalThreshold()))));
+
+        conf.setForceWalPeriodInMs(Long
+                .parseLong(properties.getProperty("force_wal_period_in_ms",
+                        Long.toString(conf.getForceWalPeriodInMs()))));
 
     }
 
-  }
+    private void loadAutoCreateSchemaProps(Properties properties) {
+        conf.setAutoCreateSchemaEnabled(
+                Boolean.parseBoolean(properties.getProperty("enable_auto_create_schema",
+                        Boolean.toString(conf.isAutoCreateSchemaEnabled()).trim())));
+        conf.setDefaultStorageGroupLevel(
+                Integer.parseInt(properties.getProperty("default_storage_group_level",
+                        Integer.toString(conf.getDefaultStorageGroupLevel()))));
+        conf.setDefaultBooleanEncoding(
+                properties.getProperty("default_boolean_encoding",
+                        conf.getDefaultBooleanEncoding().toString()));
+        conf.setDefaultInt32Encoding(
+                properties.getProperty("default_int32_encoding",
+                        conf.getDefaultInt32Encoding().toString()));
+        conf.setDefaultInt64Encoding(
+                properties.getProperty("default_int64_encoding",
+                        conf.getDefaultInt64Encoding().toString()));
+        conf.setDefaultFloatEncoding(
+                properties.getProperty("default_float_encoding",
+                        conf.getDefaultFloatEncoding().toString()));
+        conf.setDefaultDoubleEncoding(
+                properties.getProperty("default_double_encoding",
+                        conf.getDefaultDoubleEncoding().toString()));
+        conf.setDefaultTextEncoding(
+                properties.getProperty("default_text_encoding",
+                        conf.getDefaultTextEncoding().toString()));
+    }
 
-  private static class IoTDBDescriptorHolder {
+    private void loadTsFileProps(Properties properties) {
+        TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(Integer
+                .parseInt(properties.getProperty("group_size_in_byte",
+                        Integer.toString(TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte()))));
+        TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(Integer
+                .parseInt(properties.getProperty("page_size_in_byte",
+                        Integer.toString(TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()))));
+        if (TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() > TSFileDescriptor
+                .getInstance().getConfig().getGroupSizeInByte()) {
+            logger
+                    .warn("page_size is greater than group size, will set it as the same with group size");
+            TSFileDescriptor.getInstance().getConfig()
+                    .setPageSizeInByte(TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte());
+        }
+        TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(Integer
+                .parseInt(properties.getProperty("max_number_of_points_in_page",
+                        Integer.toString(
+                                TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage()))));
+        TSFileDescriptor.getInstance().getConfig().setTimeSeriesDataType(properties
+                .getProperty("time_series_data_type",
+                        TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType()));
+        TSFileDescriptor.getInstance().getConfig().setMaxStringLength(Integer
+                .parseInt(properties.getProperty("max_string_length",
+                        Integer.toString(TSFileDescriptor.getInstance().getConfig().getMaxStringLength()))));
+        TSFileDescriptor.getInstance().getConfig().setBloomFilterErrorRate(Double
+                .parseDouble(properties.getProperty("bloom_filter_error_rate",
+                        Double.toString(
+                                TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate()))));
+        TSFileDescriptor.getInstance().getConfig().setFloatPrecision(Integer
+                .parseInt(properties
+                        .getProperty("float_precision", Integer
+                                .toString(TSFileDescriptor.getInstance().getConfig().getFloatPrecision()))));
+        TSFileDescriptor.getInstance().getConfig().setTimeEncoder(properties
+                .getProperty("time_encoder",
+                        TSFileDescriptor.getInstance().getConfig().getTimeEncoder()));
+        TSFileDescriptor.getInstance().getConfig().setValueEncoder(properties
+                .getProperty("value_encoder",
+                        TSFileDescriptor.getInstance().getConfig().getValueEncoder()));
+        TSFileDescriptor.getInstance().getConfig().setCompressor(properties
+                .getProperty("compressor", TSFileDescriptor.getInstance().getConfig().getCompressor()));
+    }
 
-    private static final IoTDBDescriptor INSTANCE = new IoTDBDescriptor();
-  }
+    public void loadHotModifiedProps() throws QueryProcessException {
+        String url = getPropsUrl();
+        if (url == null) {
+            return;
+        }
+
+        try (InputStream inputStream = new FileInputStream(new File(url))) {
+            logger.info("Start to reload config file {}", url);
+            Properties properties = new Properties();
+            properties.load(inputStream);
+
+            // update data dirs
+            String dataDirs = properties.getProperty("data_dirs", null);
+            if (dataDirs != null) {
+                conf.reloadDataDirs(dataDirs.split(","));
+            }
+
+            // update dir strategy
+            String multiDirStrategyClassName = properties.getProperty("multi_dir_strategy", null);
+            if (multiDirStrategyClassName != null && !multiDirStrategyClassName
+                    .equals(conf.getMultiDirStrategyClassName())) {
+                conf.setMultiDirStrategyClassName(multiDirStrategyClassName);
+                DirectoryManager.getInstance().updateDirectoryStrategy();
+            }
+
+            // update WAL conf
+            loadWALProps(properties);
+
+            // time zone
+            conf.setZoneID(
+                    ZoneId.of(properties.getProperty("time_zone", conf.getZoneID().toString().trim())));
+
+            // dynamic parameters
+            long tsfileSizeThreshold = Long.parseLong(properties
+                    .getProperty("tsfile_size_threshold",
+                            Long.toString(conf.getTsFileSizeThreshold())).trim());
+            if (tsfileSizeThreshold > 0 && !conf.isEnableParameterAdapter()) {
+                conf.setTsFileSizeThreshold(tsfileSizeThreshold);
+            }
+
+            long memTableSizeThreshold = Long.parseLong(properties
+                    .getProperty("memtable_size_threshold",
+                            Long.toString(conf.getMemtableSizeThreshold())).trim());
+            if (memTableSizeThreshold > 0 && !conf.isEnableParameterAdapter()) {
+                conf.setMemtableSizeThreshold(memTableSizeThreshold);
+            }
+
+            // update params of creating schema automatically
+            loadAutoCreateSchemaProps(properties);
+
+            // update tsfile-format config
+            loadTsFileProps(properties);
+
+        } catch (Exception e) {
+            logger.warn("Fail to reload config file {}", url, e);
+            throw new QueryProcessException(String.format("Fail to reload config file %s because %s", url, e.getMessage()));
+        }
+    }
+
+    private void initMemoryAllocate(Properties properties) {
+        String memoryAllocateProportion = properties.getProperty("write_read_free_memory_proportion");
+        if (memoryAllocateProportion != null) {
+            String[] proportions = memoryAllocateProportion.split(":");
+            int proportionSum = 0;
+            for (String proportion : proportions) {
+                proportionSum += Integer.parseInt(proportion.trim());
+            }
+            long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
+            conf.setAllocateMemoryForWrite(
+                    maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+            conf.setAllocateMemoryForRead(
+                    maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+        }
+
+        if (!conf.isMetaDataCacheEnable()) {
+            return;
+        }
+
+        String queryMemoryAllocateProportion = properties
+                .getProperty("filemeta_chunkmeta_free_memory_proportion");
+        if (queryMemoryAllocateProportion != null) {
+            String[] proportions = queryMemoryAllocateProportion.split(":");
+            int proportionSum = 0;
+            for (String proportion : proportions) {
+                proportionSum += Integer.parseInt(proportion.trim());
+            }
+            long maxMemoryAvailable = conf.getAllocateMemoryForRead();
+            try {
+                conf.setAllocateMemoryForFileMetaDataCache(
+                        maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+                conf.setAllocateMemoryForChumkMetaDataCache(
+                        maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+            } catch (Exception e) {
+                throw new RuntimeException(
+                        "Each subsection of configuration item filemeta_chunkmeta_free_memory_proportion should be an integer, which is "
+                                + queryMemoryAllocateProportion);
+            }
+
+        }
+
+    }
+
+    private static class IoTDBDescriptorHolder {
+
+        private static final IoTDBDescriptor INSTANCE = new IoTDBDescriptor();
+    }
 }

@@ -202,7 +202,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
-    logger.info("{}: receive open session request from username {}", IoTDBConstant.GLOBAL_DB_NAME,
+    logger.debug("{}: receive open session request from username {}", IoTDBConstant.GLOBAL_DB_NAME,
         req.getUsername());
 
     boolean status;
@@ -215,7 +215,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       status = authorizer.login(req.getUsername(), req.getPassword());
     } catch (AuthException e) {
-      logger.info("meet error while logging in.", e);
+      logger.debug("meet error while logging in.", e);
       status = false;
     }
     TSStatus tsStatus;
@@ -285,7 +285,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
-    logger.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
+    logger.debug("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
     if (!checkLogin(req.getSessionId())) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getStatus(TSStatusCode.NOT_LOGIN_ERROR);
