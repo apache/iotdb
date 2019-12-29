@@ -19,7 +19,6 @@
 package org.apache.iotdb.jdbc;
 
 import java.sql.*;
-import java.util.Set;
 import org.apache.iotdb.jdbc.IoTDBMetadataResultSet.MetadataType;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -104,20 +103,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           return new IoTDBMetadataResultSet(resp.getDevices(), MetadataType.DEVICES);
         } catch (TException e) {
           throw new TException("Connection error when fetching device metadata", e);
-        }
-      case Constant.CATALOG_CHILD_PATHS:
-        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_SHOW_CHILD_PATHS_REQ);
-        req.setColumnPath(schemaPattern);
-        try {
-            TSFetchMetadataResp resp = client.fetchMetadata(req);
-          try {
-            RpcUtils.verifySuccess(resp.getStatus());
-          } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-          }
-          return new IoTDBMetadataResultSet(resp.getChildPaths(), MetadataType.CHILD_PATHS);
-        } catch (TException e) {
-          throw new TException("Connection error when fetching child path metadata", e);
         }
       case Constant.COUNT_TIMESERIES:
         req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_COUNT_TIMESERIES_REQ);

@@ -364,13 +364,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setDevices(devices);
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
-        case "SHOW_CHILD_PATHS":
-          String path;
-          path = req.getColumnPath();
-          Set<String> childPaths = getChildPaths(path);
-          resp.setChildPaths(childPaths);
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
         case "COLUMN":
           resp.setDataType(getSeriesType(req.getColumnPath()).toString());
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
