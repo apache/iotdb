@@ -90,20 +90,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         } catch (TException e) {
           throw new TException("Connection error when fetching column metadata", e);
         }
-      case Constant.CATALOG_DEVICES:
-        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_SHOW_DEVICES_REQ);
-        req.setColumnPath(schemaPattern);
-        try {
-          TSFetchMetadataResp resp = client.fetchMetadata(req);
-          try {
-            RpcUtils.verifySuccess(resp.getStatus());
-          } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-          }
-          return new IoTDBMetadataResultSet(resp.getDevices(), MetadataType.DEVICES);
-        } catch (TException e) {
-          throw new TException("Connection error when fetching device metadata", e);
-        }
       case Constant.COUNT_TIMESERIES:
         req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_COUNT_TIMESERIES_REQ);
         req.setColumnPath(schemaPattern);

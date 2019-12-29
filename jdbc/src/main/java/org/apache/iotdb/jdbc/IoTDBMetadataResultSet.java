@@ -70,12 +70,6 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         showLabels = new String[]{"column"};
         columnItr = columns.iterator();
         break;
-      case DEVICES:
-        Set<String> devicesSet = (Set<String>) object;
-        colCount = 1;
-        showLabels = new String[]{"Device"};
-        columnItr = devicesSet.iterator();
-        break;
       case COUNT_TIMESERIES:
         String tsNum = object.toString();
         timeseriesNumList = new ArrayList<>();

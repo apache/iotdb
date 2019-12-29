@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.service;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
@@ -28,7 +29,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DataType;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_Encoding;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
@@ -67,8 +68,12 @@ class StaticResps {
       Collections.singletonList(TSDataType.TEXT.toString()));
 
   static final TSExecuteStatementResp SHOW_TIMESERIES_RESP = getNoTimeExecuteResp(
-      Arrays.asList(COLUMN_TIMESERIES, COLUMN_TIMESERIES_STORAGE_GROUP, COLUMN_TIMESERIES_DataType, COLUMN_TIMESERIES_Encoding),
+      Arrays.asList(COLUMN_TIMESERIES, COLUMN_STORAGE_GROUP, COLUMN_TIMESERIES_DataType, COLUMN_TIMESERIES_Encoding),
       Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString(), TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
+
+  static final TSExecuteStatementResp SHOW_DEVICES = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_DEVICES),
+      Collections.singletonList(TSDataType.TEXT.toString()));
 
   static final TSExecuteStatementResp SHOW_STORAGE_GROUP = getNoTimeExecuteResp(
       Collections.singletonList(COLUMN_STORAGE_GROUP),

@@ -178,6 +178,8 @@ public class PhysicalGenerator {
             return new ShowPlan(ShowContentType.TIMESERIES);
           case SQLConstant.TOK_STORAGE_GROUP:
             return new ShowPlan(ShowContentType.STORAGE_GROUP);
+          case SQLConstant.TOK_DEVICES:
+            return new ShowPlan(ShowContentType.DEVICES);
           case SQLConstant.TOK_CHILD_PATHS:
             ShowChildPathsOperator showChildPathsOperator = (ShowChildPathsOperator) operator;
             return new ShowChildPathsPlan(ShowContentType.CHILD_PATH,showChildPathsOperator.getPath());

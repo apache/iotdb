@@ -359,11 +359,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setMetadataInJson(metadataInJson);
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
-        case "SHOW_DEVICES":
-          Set<String> devices = getAllDevices();
-          resp.setDevices(devices);
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
         case "COLUMN":
           resp.setDataType(getSeriesType(req.getColumnPath()).toString());
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
@@ -411,23 +406,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private List<String> getNodesList(String schemaPattern, int level) throws SQLException {
     return MManager.getInstance().getNodesList(schemaPattern, level);
-  }
-
-  private List<String> getAllStorageGroups() {
-    return MManager.getInstance().getAllStorageGroupNames();
-  }
-
-  private Set<String> getAllDevices() throws SQLException {
-    return MManager.getInstance().getAllDevices();
-  }
-
-  private Set<String> getChildPaths(String path) throws PathException {
-    return MManager.getInstance().getChildNodePathInNextLevel(path);
-  }
-
-  private List<List<String>> getTimeSeriesForPath(String path)
-      throws PathException {
-    return MManager.getInstance().getShowTimeseriesPath(path);
   }
 
   private String getMetadataInString() {
@@ -679,6 +657,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return StaticResps.SHOW_STORAGE_GROUP;
       case CHILD_PATH:
         return StaticResps.SHOW_CHILD_PATHS;
+      case DEVICES:
+        return StaticResps.SHOW_DEVICES;
       default:
         logger.error("Unsupported show content type: {}", showPlan.getShowContentType());
         throw new QueryProcessException(

@@ -73,6 +73,7 @@ statement
     | SHOW TIMESERIES #showTimeseries
     | SHOW STORAGE GROUP #showStorageGroup
     | SHOW CHILD PATHS prefixPath? #showChildPaths
+    | SHOW DEVICES #showDevices
     | LOAD CONFIGURATION #loadConfigurationStatement
     | LOAD FILE autoCreateSchema? #loadFiles
     | REMOVE FILE #removeFile
@@ -642,6 +643,10 @@ CHILD
 
 PATHS
     : P A T H S
+    ;
+
+DEVICES
+    : D E V I C E S
     ;
 //============================
 // End of the keywords list

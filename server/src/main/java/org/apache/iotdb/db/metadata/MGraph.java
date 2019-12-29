@@ -269,7 +269,7 @@ public class MGraph implements Serializable {
     return mtree.getAllStorageGroupList();
   }
 
-  Set<String> getAllDevices() throws SQLException {
+  Set<String> getAllDevices() {
     return mtree.getAllDevices();
   }
 

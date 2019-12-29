@@ -20,17 +20,18 @@ package org.apache.iotdb.db.qp.executor;
 
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DataType;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_Encoding;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_STORAGE_GROUP;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -102,11 +103,31 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
         return processShowTimeseries();
       case STORAGE_GROUP:
         return processShowStorageGroup();
+      case DEVICES:
+        return processShowDevices();
       case CHILD_PATH:
         return processShowChildPaths((ShowChildPathsPlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
+  }
+
+  private QueryDataSet processShowDevices() {
+    List<Path> paths = new ArrayList<>();
+    paths.add(new Path(COLUMN_DEVICES));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.TEXT);
+    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+    Set<String> devices;
+    devices = MManager.getInstance().getAllDevices();
+    for(String s: devices) {
+      RowRecord record = new RowRecord(0);
+      Field field = new Field(TSDataType.TEXT);
+      field.setBinaryV(new Binary(s));
+      record.addField(field);
+      listDataSet.putRecord(record);
+    }
+    return listDataSet;
   }
 
   private QueryDataSet processShowChildPaths(ShowChildPathsPlan showChildPathsPlan)
@@ -148,7 +169,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   private QueryDataSet processShowTimeseries() throws PathException {
     List<Path> paths = new ArrayList<>();
     paths.add(new Path(COLUMN_TIMESERIES));
-    paths.add(new Path(COLUMN_TIMESERIES_STORAGE_GROUP));
+    paths.add(new Path(COLUMN_STORAGE_GROUP));
     paths.add(new Path(COLUMN_TIMESERIES_DataType));
     paths.add(new Path(COLUMN_TIMESERIES_Encoding));
     List<TSDataType> dataTypes = new ArrayList<>();

@@ -132,6 +132,7 @@ public class SQLConstant {
   public static final int TOK_TIMESERIES = 73;
   public static final int TOK_STORAGE_GROUP = 74;
   public static final int TOK_CHILD_PATHS = 75;
+  public static final int TOK_DEVICES = 76;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();

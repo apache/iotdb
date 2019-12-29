@@ -59,11 +59,11 @@ public class IoTDBConstant {
   public static final String COLUMN_PARAMETER = "                                          parameter";
   public static final String COLUMN_VALUE = "value";
   public static final String COLUMN_VERSION = "        version";
-  public static final String COLUMN_TIMESERIES = "Timeseries";
-  public static final String COLUMN_TIMESERIES_STORAGE_GROUP = "Storage Group";
-  public static final String COLUMN_TIMESERIES_DataType = "DataType";
-  public static final String COLUMN_TIMESERIES_Encoding = "Encoding";
-  public static final String COLUMN_CHILD_PATHS = "Child Paths";
+  public static final String COLUMN_TIMESERIES = "timeseries";
+  public static final String COLUMN_TIMESERIES_DataType = "dataType";
+  public static final String COLUMN_TIMESERIES_Encoding = "encoding";
+  public static final String COLUMN_CHILD_PATHS = "child paths";
+  public static final String COLUMN_DEVICES = "devices";
 
   public static final String COLUMN_ROLE = "role";
   public static final String COLUMN_USER = "user";

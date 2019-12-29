@@ -219,11 +219,7 @@ public class IoTDBStatement implements Statement {
     isCancelled = false;
     String sqlToLowerCase = sql.toLowerCase().trim();
     // TODO: use normal query instead of metadata query
-    if (sqlToLowerCase.equals(SHOW_DEVICES_COMMAND_LOWERCASE)) {
-      DatabaseMetaData databaseMetaData = connection.getMetaData();
-      resultSet = databaseMetaData.getColumns(Constant.CATALOG_DEVICES, null, null, null);
-      return true;
-    } else if (sqlToLowerCase.startsWith(COUNT_TIMESERIES_COMMAND_LOWERCASE)) {
+    if (sqlToLowerCase.startsWith(COUNT_TIMESERIES_COMMAND_LOWERCASE)) {
       String[] cmdSplit = sqlToLowerCase.split("\\s+", 4);
       if (cmdSplit.length != 3 && !(cmdSplit.length == 4 && cmdSplit[3]
           .startsWith("group by level"))) {
