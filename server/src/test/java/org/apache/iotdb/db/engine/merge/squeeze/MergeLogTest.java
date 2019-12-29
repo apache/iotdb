@@ -79,6 +79,11 @@ public class MergeLogTest extends MergeTest {
       fail(e.getMessage());
     }
     assertEquals(6, lineCnt);
+    try {
+      newFile.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     newFile.remove();
   }
 
