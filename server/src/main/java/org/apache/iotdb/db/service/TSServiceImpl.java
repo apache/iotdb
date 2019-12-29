@@ -354,11 +354,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSFetchMetadataResp resp = new TSFetchMetadataResp();
     try {
       switch (req.getType()) {
-        case "SHOW_STORAGE_GROUP":
-          Set<String> storageGroups = new HashSet<>(getAllStorageGroups());
-          resp.setStorageGroups(storageGroups);
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
         case "METADATA_IN_JSON":
           String metadataInJson = getMetadataInString();
           resp.setMetadataInJson(metadataInJson);

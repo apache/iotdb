@@ -119,20 +119,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         } catch (TException e) {
           throw new TException("Connection error when fetching child path metadata", e);
         }
-      case Constant.CATALOG_STORAGE_GROUP:
-        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_SHOW_STORAGE_GROUP_REQ);
-        try {
-          TSFetchMetadataResp resp = client.fetchMetadata(req);
-          try {
-            RpcUtils.verifySuccess(resp.getStatus());
-          } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-          }
-          Set<String> showStorageGroup = resp.getStorageGroups();
-          return new IoTDBMetadataResultSet(showStorageGroup, MetadataType.STORAGE_GROUP);
-        } catch (TException e) {
-          throw new TException("Connection error when fetching storage group metadata", e);
-        }
       case Constant.COUNT_TIMESERIES:
         req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_COUNT_TIMESERIES_REQ);
         req.setColumnPath(schemaPattern);
