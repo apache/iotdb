@@ -54,28 +54,26 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     @Override
     public void run() {
       try {
-        // if the task is submitted, there must be free space in the queue
-        // so here we don't need to check whether the queue has free space
-        // the reader has next batch
-        if (reader.hasNextBatch()) {
-          BatchData batchData = reader.nextBatch();
-          blockingQueue.put(batchData);
-          // if the queue also has free space
-          // just submit another itself
-          if (blockingQueue.remainingCapacity() > 0) {
-            pool.submit(this);
-          }
-          // the queue has no more space
-          // remove itself from the QueryTaskPoolManager
-          else {
-            synchronized (reader) {
+        synchronized (reader) {
+          // if the task is submitted, there must be free space in the queue
+          // so here we don't need to check whether the queue has free space
+          // the reader has next batch
+          if (reader.hasNextBatch()) {
+            BatchData batchData = reader.nextBatch();
+            blockingQueue.put(batchData);
+            // if the queue also has free space
+            // just submit another itself
+            if (blockingQueue.remainingCapacity() > 0) {
+              pool.submit(this);
+            }
+            // the queue has no more space
+            // remove itself from the QueryTaskPoolManager
+            else {
               reader.setManaged(false);
             }
           }
-        }
-        // there are no batch data left in this reader
-        else {
-          synchronized (reader) {
+          // there are no batch data left in this reader
+          else {
             // put the signal batch data into queue
             blockingQueue.put(SignalBatchData.getInstance());
             // set the hasRemaining field in reader to false
@@ -112,9 +110,6 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
   // capacity for blocking queue
   private static final int BLOCKING_QUEUE_CAPACITY = 5;
-
-  // load factor for blocking queue
-  private static final float LOAD_FACTOR = 0.7f;
 
   private static final QueryTaskPoolManager pool = QueryTaskPoolManager.getInstance();
 
@@ -331,10 +326,9 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       if (addToTimeHeap)
         timeHeap.add(batchData.currentTime());
 
-      // only when the queue is not loaded as we expect should we check whether to submit another task
-      if (blockingQueueList.get(seriesIndex).size() <= BLOCKING_QUEUE_CAPACITY * LOAD_FACTOR) {
-        // judge if we need to submit another read task
-        synchronized (seriesReaderWithoutValueFilterList.get(seriesIndex)) {
+      synchronized (seriesReaderWithoutValueFilterList.get(seriesIndex)) {
+        // we only need to judge whether to submit another task when the queue is not full
+        if (blockingQueueList.get(seriesIndex).size() < BLOCKING_QUEUE_CAPACITY) {
           SeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList.get(seriesIndex);
           // if the reader isn't being managed and still has more data,
           // that means this read task leave the pool before because the queue has no more space
