@@ -32,9 +32,7 @@ import java.util.List;
 
 public class IoTDBStatement implements Statement {
 
-  private static final String SHOW_STORAGE_GROUP_COMMAND_LOWERCASE = "show storage group";
   private static final String SHOW_DEVICES_COMMAND_LOWERCASE = "show devices";
-  private static final String SHOW_CHILD_PATHS_COMMAND_LOWERCASE = "show child paths";
   private static final String COUNT_TIMESERIES_COMMAND_LOWERCASE = "count timeseries";
   private static final String COUNT_NODES_COMMAND_LOWERCASE = "count nodes";
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
