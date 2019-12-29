@@ -74,11 +74,11 @@ public class IoTDB implements IoTDBMBean {
       logger.error("{} exit", IoTDBConstant.GLOBAL_DB_NAME);
       return;
     }
-    logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
+    logger.debug("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
   }
 
   private void setUp() throws StartupException {
-    logger.info("Setting up IoTDB...");
+    logger.debug("Setting up IoTDB...");
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
@@ -108,15 +108,15 @@ public class IoTDB implements IoTDBMBean {
       StatMonitor.getInstance().recovery();
     }
 
-    logger.info("IoTDB is set up.");
+    logger.debug("IoTDB is set up.");
   }
 
   private void deactivate() {
-    logger.info("Deactivating IoTDB...");
+    logger.debug("Deactivating IoTDB...");
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
     ChunkProviderExecutor.getINSTANCE().close();
-    logger.info("IoTDB is deactivated.");
+    logger.debug("IoTDB is deactivated.");
   }
 
   private void initMManager(){

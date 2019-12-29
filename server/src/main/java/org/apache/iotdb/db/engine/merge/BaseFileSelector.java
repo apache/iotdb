@@ -85,7 +85,7 @@ public abstract class BaseFileSelector implements IMergeFileSelector{
       resource.setUnseqFiles(selectedUnseqFiles);
       resource.removeOutdatedSeqReaders();
       if (selectedUnseqFiles.isEmpty() && selectedSeqFiles.isEmpty()) {
-        logger.info("No merge candidates are found");
+        logger.debug("No merge candidates are found");
         return;
       }
     } catch (IOException e) {

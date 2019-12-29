@@ -55,7 +55,7 @@ public class KafkaProducer {
     for (int i = 0; i < Constant.ALL_DATA.length; i++) {
       String key = Integer.toString(i);
       producer.send(new KeyedMessage<>(Constant.TOPIC, key, Constant.ALL_DATA[i]));
-      logger.info(Constant.ALL_DATA[i]);
+      logger.debug(Constant.ALL_DATA[i]);
     }
   }
 

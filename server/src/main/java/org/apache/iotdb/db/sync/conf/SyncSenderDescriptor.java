@@ -80,7 +80,7 @@ public class SyncSenderDescriptor {
       return;
     }
 
-    logger.info("Start to read sync config file {}", url);
+    logger.debug("Start to read sync config file {}", url);
     Properties properties = new Properties();
     try {
       properties.load(inputStream);

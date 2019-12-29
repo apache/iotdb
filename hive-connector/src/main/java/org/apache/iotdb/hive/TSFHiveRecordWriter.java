@@ -63,7 +63,7 @@ public class TSFHiveRecordWriter implements FileSinkOperator.RecordWriter {
 
   @Override
   public void close(boolean b) throws IOException {
-    logger.info("Close the record writer");
+    logger.debug("Close the record writer");
     writer.close();
   }
 }

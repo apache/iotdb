@@ -66,7 +66,7 @@ public class SimpleExternalSortEngine implements ExternalSortJobEngine {
       return generateIPointReader(chunkReaderWraps, 0, chunkReaderWraps.size());
     }
     if (logger.isInfoEnabled()) {
-      logger.info("query {} measurement {} uses external sort.", queryId,
+      logger.debug("query {} measurement {} uses external sort.", queryId,
           chunkReaderWraps.get(0).getMeasurementUid());
     }
     ExternalSortJob job = createJob(queryId, chunkReaderWraps);
@@ -80,7 +80,7 @@ public class SimpleExternalSortEngine implements ExternalSortJobEngine {
       return generateIReaderByTimestamp(chunkReaderWraps, 0, chunkReaderWraps.size());
     }
     if (logger.isInfoEnabled()) {
-      logger.info("query {} measurement {} uses external sort.", queryId,
+      logger.debug("query {} measurement {} uses external sort.", queryId,
           chunkReaderWraps.get(0).getMeasurementUid());
     }
     ExternalSortJob job = createJob(queryId, chunkReaderWraps);

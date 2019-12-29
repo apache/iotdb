@@ -196,7 +196,7 @@ public class SyncClient implements ISyncClient {
   public void startMonitor() {
     executorService.scheduleWithFixedDelay(() -> {
       if (syncStatus) {
-        logger.info("Sync process for receiver {} is in execution!", config.getSyncReceiverName());
+        logger.debug("Sync process for receiver {} is in execution!", config.getSyncReceiverName());
       }
     }, SyncConstant.SYNC_MONITOR_DELAY, SyncConstant.SYNC_MONITOR_PERIOD, TimeUnit.SECONDS);
   }
@@ -231,10 +231,10 @@ public class SyncClient implements ISyncClient {
 
     // 3. Sync all data
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    logger.info("There are {} data dirs to be synced.", dataDirs.length);
+    logger.debug("There are {} data dirs to be synced.", dataDirs.length);
     for (int i = 0 ; i < dataDirs.length; i++) {
       String dataDir = dataDirs[i];
-      logger.info("Start to sync data in data dir {}, the process is {}/{}", dataDir, i + 1,
+      logger.debug("Start to sync data in data dir {}, the process is {}/{}", dataDir, i + 1,
           dataDirs.length);
 
       config.update(dataDir);
@@ -245,12 +245,12 @@ public class SyncClient implements ISyncClient {
       toBeSyncedFilesMap = syncFileManager.getToBeSyncedFilesMap();
       checkRecovery();
       if (SyncUtils.isEmpty(deletedFilesMap) && SyncUtils.isEmpty(toBeSyncedFilesMap)) {
-        logger.info("There has no data to sync in data dir {}", dataDir);
+        logger.debug("There has no data to sync in data dir {}", dataDir);
         continue;
       }
       sync();
       endSync();
-      logger.info("Finish to sync data in data dir {}, the process is {}/{}", dataDir, i + 1,
+      logger.debug("Finish to sync data in data dir {}, the process is {}/{}", dataDir, i + 1,
           dataDirs.length);
     }
 
@@ -259,7 +259,7 @@ public class SyncClient implements ISyncClient {
     try {
       serviceClient.endSync();
       transport.close();
-      logger.info("Sync process has finished.");
+      logger.debug("Sync process has finished.");
     } catch (TException e) {
       logger.error("Unable to connect to receiver.", e);
     }
@@ -334,7 +334,7 @@ public class SyncClient implements ISyncClient {
   @Override
   public void syncSchema() throws SyncConnectionException, TException {
     if (!getSchemaLogFile().exists()) {
-      logger.info("Schema file {} doesn't exist.", getSchemaLogFile().getName());
+      logger.debug("Schema file {} doesn't exist.", getSchemaLogFile().getName());
       return;
     }
     int retryCount = 0;
@@ -408,7 +408,7 @@ public class SyncClient implements ISyncClient {
   private boolean checkMD5ForSchema(String md5OfSender) throws TException {
     SyncStatus status = serviceClient.checkDataMD5(md5OfSender);
     if (status.code == SUCCESS_CODE && md5OfSender.equals(status.msg)) {
-      logger.info("Receiver has received schema successfully.");
+      logger.debug("Receiver has received schema successfully.");
       return true;
     } else {
       logger
@@ -463,7 +463,7 @@ public class SyncClient implements ISyncClient {
         } catch (TException | SyncConnectionException e) {
           throw new SyncConnectionException("Unable to connect to receiver", e);
         }
-        logger.info("Sync process starts to transfer data of storage group {}", sgName);
+        logger.debug("Sync process starts to transfer data of storage group {}", sgName);
         syncDeletedFilesNameInOneGroup(sgName,
             deletedFilesMap.getOrDefault(sgName, new HashSet<>()));
         try {
@@ -491,15 +491,15 @@ public class SyncClient implements ISyncClient {
   public void syncDeletedFilesNameInOneGroup(String sgName, Set<File> deletedFilesName)
       throws IOException {
     if (deletedFilesName.isEmpty()) {
-      logger.info("There has no deleted files to be synced in storage group {}", sgName);
+      logger.debug("There has no deleted files to be synced in storage group {}", sgName);
       return;
     }
     syncLog.startSyncDeletedFilesName();
-    logger.info("Start to sync names of deleted files in storage group {}", sgName);
+    logger.debug("Start to sync names of deleted files in storage group {}", sgName);
     for (File file : deletedFilesName) {
       try {
         if (serviceClient.syncDeletedFileName(file.getName()).code == SUCCESS_CODE) {
-          logger.info("Receiver has received deleted file name {} successfully.", file.getName());
+          logger.debug("Receiver has received deleted file name {} successfully.", file.getName());
           lastLocalFilesMap.get(sgName).remove(file);
           syncLog.finishSyncDeletedFileName(file);
         }
@@ -507,18 +507,18 @@ public class SyncClient implements ISyncClient {
         logger.error("Can not sync deleted file name {}, skip it.", file);
       }
     }
-    logger.info("Finish to sync names of deleted files in storage group {}", sgName);
+    logger.debug("Finish to sync names of deleted files in storage group {}", sgName);
   }
 
   @Override
   public void syncDataFilesInOneGroup(String sgName, Set<File> toBeSyncFiles)
       throws SyncConnectionException, IOException, SyncDeviceOwnerConflictException {
     if (toBeSyncFiles.isEmpty()) {
-      logger.info("There has no new tsfiles to be synced in storage group {}", sgName);
+      logger.debug("There has no new tsfiles to be synced in storage group {}", sgName);
       return;
     }
     syncLog.startSyncTsFiles();
-    logger.info("Sync process starts to transfer data of storage group {}", sgName);
+    logger.debug("Sync process starts to transfer data of storage group {}", sgName);
     int cnt = 0;
     for (File tsfile : toBeSyncFiles) {
       cnt++;
@@ -529,14 +529,14 @@ public class SyncClient implements ISyncClient {
         syncSingleFile(snapshotFile);
         lastLocalFilesMap.get(sgName).add(tsfile);
         syncLog.finishSyncTsfile(tsfile);
-        logger.info("Task of synchronization has completed {}/{}.", cnt, toBeSyncFiles.size());
+        logger.debug("Task of synchronization has completed {}/{}.", cnt, toBeSyncFiles.size());
       } catch (IOException e) {
-        logger.info(
+        logger.debug(
             "Tsfile {} can not make snapshot, so skip the tsfile and continue to sync other tsfiles",
             tsfile, e);
       }
     }
-    logger.info("Sync process has finished storage group {}.", sgName);
+    logger.debug("Sync process has finished storage group {}.", sgName);
   }
 
   /**
@@ -592,7 +592,7 @@ public class SyncClient implements ISyncClient {
               throw new SyncDeviceOwnerConflictException(status.msg);
             }
             if (status.code != SUCCESS_CODE) {
-              logger.info("Receiver failed to receive data from {} because {}, retry.",
+              logger.debug("Receiver failed to receive data from {} because {}, retry.",
                   status.msg, snapshotFile.getAbsoluteFile());
               continue outer;
             }
@@ -603,7 +603,7 @@ public class SyncClient implements ISyncClient {
         String md5OfSender = (new BigInteger(1, md.digest())).toString(16);
         SyncStatus status = serviceClient.checkDataMD5(md5OfSender);
         if (status.code == SUCCESS_CODE && md5OfSender.equals(status.msg)) {
-          logger.info("Receiver has received {} successfully.", snapshotFile.getAbsoluteFile());
+          logger.debug("Receiver has received {} successfully.", snapshotFile.getAbsoluteFile());
           break;
         } else {
           logger.error("MD5 check of tsfile {} failed, retry", snapshotFile.getAbsoluteFile());

@@ -253,7 +253,7 @@ public class TsFileIOWriter {
     // close file
     out.close();
     canWrite = false;
-    logger.info("output stream is closed");
+    logger.debug("output stream is closed");
   }
 
   /**

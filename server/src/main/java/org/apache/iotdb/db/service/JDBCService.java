@@ -68,14 +68,14 @@ public class JDBCService implements JDBCServiceMBean, IService {
   public String getJDBCServiceStatus() {
     // TODO debug log, will be deleted in production env
     if(startLatch == null) {
-      logger.info("Start latch is null when getting status");
+      logger.debug("Start latch is null when getting status");
     } else {
-      logger.info("Start latch is {} when getting status", startLatch.getCount());
+      logger.debug("Start latch is {} when getting status", startLatch.getCount());
     }
     if(stopLatch == null) {
-      logger.info("Stop latch is null when getting status");
+      logger.debug("Stop latch is null when getting status");
     } else {
-      logger.info("Stop latch is {} when getting status", stopLatch.getCount());
+      logger.debug("Stop latch is {} when getting status", stopLatch.getCount());
     }	
     // debug log, will be deleted in production env
 
@@ -117,11 +117,11 @@ public class JDBCService implements JDBCServiceMBean, IService {
   @Override
   public synchronized void startService() throws StartupException {
     if (STATUS_UP.equals(getJDBCServiceStatus())) {
-      logger.info("{}: {} has been already running now", IoTDBConstant.GLOBAL_DB_NAME,
+      logger.debug("{}: {} has been already running now", IoTDBConstant.GLOBAL_DB_NAME,
           this.getID().getName());
       return;
     }
-    logger.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    logger.debug("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     try {
       reset();
       jdbcServiceThread = new JDBCServiceThread(startLatch, stopLatch);
@@ -134,7 +134,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
 
-    logger.info("{}: start {} successfully, listening on ip {} port {}", IoTDBConstant.GLOBAL_DB_NAME,
+    logger.debug("{}: start {} successfully, listening on ip {} port {}", IoTDBConstant.GLOBAL_DB_NAME,
         this.getID().getName(), IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
         IoTDBDescriptor.getInstance().getConfig().getRpcPort());
   }
@@ -153,17 +153,17 @@ public class JDBCService implements JDBCServiceMBean, IService {
   @Override
   public synchronized void stopService() {
     if (STATUS_DOWN.equals(getJDBCServiceStatus())) {
-      logger.info("{}: {} isn't running now", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+      logger.debug("{}: {} isn't running now", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
       return;
     }
-    logger.info("{}: closing {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    logger.debug("{}: closing {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     if (jdbcServiceThread != null) {
       ((JDBCServiceThread) jdbcServiceThread).close();
     }
     try {
       stopLatch.await();
       reset();
-      logger.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+      logger.debug("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     } catch (InterruptedException e) {
       logger.error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(), e);
       Thread.currentThread().interrupt();
@@ -225,16 +225,16 @@ public class JDBCService implements JDBCServiceMBean, IService {
         close();
         // TODO debug log, will be deleted in production env
         if(threadStopLatch == null) {
-          logger.info("Stop Count Down latch is null");
+          logger.debug("Stop Count Down latch is null");
         } else {
-          logger.info("Stop Count Down latch is {}", threadStopLatch.getCount());
+          logger.debug("Stop Count Down latch is {}", threadStopLatch.getCount());
         }
         // debug log, will be deleted in production env
 
         if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
           threadStopLatch.countDown();
         }
-        logger.info("{}: close TThreadPoolServer and TServerSocket for {}",
+        logger.debug("{}: close TThreadPoolServer and TServerSocket for {}",
             IoTDBConstant.GLOBAL_DB_NAME,
             getID().getName());
       }

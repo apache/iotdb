@@ -56,7 +56,7 @@ public class TSFRecordWriter extends RecordWriter<NullWritable, HDFSTSRecord> {
 
   @Override
   public void close(TaskAttemptContext context) throws IOException, InterruptedException {
-    logger.info("Close the record writer, the task attempt id is {}", context.getTaskAttemptID());
+    logger.debug("Close the record writer, the task attempt id is {}", context.getTaskAttemptID());
     writer.close();
   }
 

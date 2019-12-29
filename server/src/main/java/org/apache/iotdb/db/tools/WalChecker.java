@@ -55,21 +55,21 @@ public class WalChecker {
    */
   public List<File> doCheck() throws SystemCheckException {
     File walFolderFile = SystemFileFactory.INSTANCE.getFile(walFolder);
-    logger.info("Checking folder: {}", walFolderFile.getAbsolutePath());
+    logger.debug("Checking folder: {}", walFolderFile.getAbsolutePath());
     if(!walFolderFile.exists() || !walFolderFile.isDirectory()) {
       throw new SystemCheckException(walFolder);
     }
 
     File[] storageWalFolders = walFolderFile.listFiles();
     if (storageWalFolders == null || storageWalFolders.length == 0) {
-      logger.info("No sub-directories under the given directory, check ends");
+      logger.debug("No sub-directories under the given directory, check ends");
       return Collections.emptyList();
     }
 
     List<File> failedFiles = new ArrayList<>();
     for (int dirIndex = 0; dirIndex < storageWalFolders.length; dirIndex++) {
       File storageWalFolder = storageWalFolders[dirIndex];
-      logger.info("Checking the No.{} directory {}", dirIndex, storageWalFolder.getName());
+      logger.debug("Checking the No.{} directory {}", dirIndex, storageWalFolder.getName());
       File walFile = SystemFileFactory.INSTANCE.getFile(storageWalFolder, WAL_FILE_NAME);
       if (!checkFile(walFile)) {
         failedFiles.add(walFile);
@@ -115,7 +115,7 @@ public class WalChecker {
   // a temporary method which should be in the integrated self-check module in the future
   public static void report(List<File> failedFiles) {
     if (failedFiles.isEmpty()) {
-      logger.info("Check finished. There is no damaged file");
+      logger.debug("Check finished. There is no damaged file");
     } else {
       logger.error("There are {} failed files. They are {}", failedFiles.size(), failedFiles);
     }

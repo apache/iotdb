@@ -104,7 +104,7 @@ public class InplaceMergeTask implements Callable<Void> {
 
   private void doMerge() throws IOException, MetadataException {
     if (logger.isInfoEnabled()) {
-      logger.info("{} starts to merge {} seqFiles, {} unseqFiles", taskName,
+      logger.debug("{} starts to merge {} seqFiles, {} unseqFiles", taskName,
           resource.getSeqFiles().size(), resource.getUnseqFiles().size());
     }
     long startTime = System.currentTimeMillis();
@@ -143,14 +143,14 @@ public class InplaceMergeTask implements Callable<Void> {
       double fileRate =
           (resource.getSeqFiles().size() + resource.getUnseqFiles().size()) / elapsedTime;
       double ptRate = mergeContext.getTotalPointWritten() / elapsedTime;
-      logger.info("{} ends after {}s, byteRate: {}MB/s, seriesRate {}/s, chunkRate: {}/s, "
+      logger.debug("{} ends after {}s, byteRate: {}MB/s, seriesRate {}/s, chunkRate: {}/s, "
               + "fileRate: {}/s, ptRate: {}/s",
           taskName, elapsedTime, byteRate, seriesRate, chunkRate, fileRate, ptRate);
     }
   }
 
   void cleanUp(boolean executeCallback) throws IOException {
-    logger.info("{} is cleaning up", taskName);
+    logger.debug("{} is cleaning up", taskName);
 
     resource.clear();
     mergeContext.clear();

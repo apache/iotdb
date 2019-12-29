@@ -60,7 +60,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   protected void init() throws AuthException {
     userManager.reset();
     roleManager.reset();
-    logger.info("Initialization of Authorizer completes");
+    logger.debug("Initialization of Authorizer completes");
   }
 
   @Override

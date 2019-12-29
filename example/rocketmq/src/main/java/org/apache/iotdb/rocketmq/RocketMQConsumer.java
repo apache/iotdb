@@ -91,7 +91,7 @@ public class RocketMQConsumer {
      * Register callback to execute on arrival of messages fetched from brokers.
      */
     consumer.registerMessageListener((MessageListenerOrderly) (msgs, context) -> {
-      logger.info(String.format("%s Receive New Messages: %s %n", Thread.currentThread().getName(),
+      logger.debug(String.format("%s Receive New Messages: %s %n", Thread.currentThread().getName(),
           new String(msgs.get(0).getBody())));
       try {
         statement.execute(new String(msgs.get(0).getBody()));

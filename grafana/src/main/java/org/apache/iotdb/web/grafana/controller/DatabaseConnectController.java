@@ -61,7 +61,7 @@ public class DatabaseConnectController {
   @RequestMapping(value = "/", method = RequestMethod.GET)
   @ResponseStatus(value = HttpStatus.OK)
   public void testDataConnection(HttpServletResponse response) throws IOException {
-    logger.info("Connection is ok now!");
+    logger.debug("Connection is ok now!");
     response.getWriter().print("I have sent a message.");
   }
 
@@ -124,7 +124,7 @@ public class DatabaseConnectController {
         }
         result.add(i, obj);
       }
-      logger.info("query finished");
+      logger.debug("query finished");
       return result.toString();
     } catch (Exception e) {
       logger.error("/query failed", e);
@@ -169,7 +169,7 @@ public class DatabaseConnectController {
       Pair<ZonedDateTime, ZonedDateTime> timeRange)
       throws JSONException {
     List<TimeValues> timeValues = databaseConnectService.querySeries(target, timeRange);
-    logger.info("query size: {}", timeValues.size());
+    logger.debug("query size: {}", timeValues.size());
     JSONArray dataPoints = new JSONArray();
     for (TimeValues tv : timeValues) {
       long time = tv.getTime();

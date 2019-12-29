@@ -75,7 +75,7 @@ public abstract class BasicUserManager implements IUserManager {
       createUser(IoTDBConstant.ADMIN_NAME, IoTDBConstant.ADMIN_PW);
       setUserUseWaterMark(IoTDBConstant.ADMIN_NAME, false);
     }
-    logger.info("Admin initialized");
+    logger.debug("Admin initialized");
   }
 
   @Override

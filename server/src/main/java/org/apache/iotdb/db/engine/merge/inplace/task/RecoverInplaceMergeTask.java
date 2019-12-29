@@ -64,7 +64,7 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask implements IRecove
   public void recoverMerge(boolean continueMerge) throws IOException, MetadataException {
     File logFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, InplaceMergeLogger.MERGE_LOG_NAME);
     if (!logFile.exists()) {
-      logger.info("{} no merge.log, merge recovery ends", taskName);
+      logger.debug("{} no merge.log, merge recovery ends", taskName);
       return;
     }
     long startTime = System.currentTimeMillis();
@@ -72,7 +72,7 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask implements IRecove
     analyzer = new LogAnalyzer(resource, taskName, logFile, storageGroupName);
     Status status = analyzer.analyze();
     if (logger.isInfoEnabled()) {
-      logger.info("{} merge recovery status determined: {} after {}ms", taskName, status,
+      logger.debug("{} merge recovery status determined: {} after {}ms", taskName, status,
           (System.currentTimeMillis() - startTime));
     }
     switch (status) {
@@ -92,7 +92,7 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask implements IRecove
         throw new UnsupportedOperationException(taskName + " found unrecognized status " + status);
     }
     if (logger.isInfoEnabled()) {
-      logger.info("{} merge recovery ends after {}ms", taskName,
+      logger.debug("{} merge recovery ends after {}ms", taskName,
           (System.currentTimeMillis() - startTime));
     }
   }
@@ -187,10 +187,10 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask implements IRecove
   // scan the metadata to compute how many chunks are merged/unmerged so at last we can decide to
   // move the merged chunks or the unmerged chunks
   private void recoverChunkCounts() throws IOException {
-    logger.info("{} recovering chunk counts", taskName);
+    logger.debug("{} recovering chunk counts", taskName);
     int fileCnt = 1;
     for (TsFileResource tsFileResource : resource.getSeqFiles()) {
-      logger.info("{} recovering {}  {}/{}", taskName, tsFileResource.getFile().getName(),
+      logger.debug("{} recovering {}  {}/{}", taskName, tsFileResource.getFile().getName(),
           fileCnt, resource.getSeqFiles().size());
       RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(tsFileResource);
       mergeFileWriter.makeMetadataVisible();
@@ -205,7 +205,7 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask implements IRecove
           double newProgress = 100.0 * cnt / pathsToRecover.size();
           if (newProgress - progress >= 1.0) {
             progress = newProgress;
-            logger.info("{} {}% series count of {} are recovered", taskName, progress,
+            logger.debug("{} {}% series count of {} are recovered", taskName, progress,
                 tsFileResource.getFile().getName());
           }
         }
@@ -251,7 +251,7 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask implements IRecove
   }
 
   private void truncateFiles() throws IOException {
-    logger.info("{} truncating {} files", taskName, analyzer.getFileLastPositions().size());
+    logger.debug("{} truncating {} files", taskName, analyzer.getFileLastPositions().size());
     for (Entry<File, Long> entry : analyzer.getFileLastPositions().entrySet()) {
       File file = entry.getKey();
       Long lastPosition = entry.getValue();

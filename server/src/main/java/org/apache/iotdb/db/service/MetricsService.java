@@ -76,7 +76,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
   @Override
   public synchronized void startService() throws StartupException {
-    logger.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    logger.debug("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     executorService = Executors.newSingleThreadExecutor();
     int port = getMetricsPort();
     MetricsSystem metricsSystem = new MetricsSystem(new ServerArgument(port));
@@ -86,7 +86,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
     server = metricsWebUI.getServer(port);
     metricsSystem.start();
     executorService.execute(new MetricsServiceThread(server));
-    logger.info("{}: start {} successfully, listening on ip {} port {}",
+    logger.debug("{}: start {} successfully, listening on ip {} port {}",
         IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(),
         IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
         IoTDBDescriptor.getInstance().getConfig().getMetricsPort());
@@ -100,7 +100,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
   @Override
   public void stopService() {
-    logger.info("{}: closing {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    logger.debug("{}: closing {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     try {
       if (server != null) {
         server.stop();
@@ -116,7 +116,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
       executorService.shutdownNow();
       Thread.currentThread().interrupt();
     }
-    logger.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    logger.debug("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
   }
 
   private static class MetricsServiceHolder {

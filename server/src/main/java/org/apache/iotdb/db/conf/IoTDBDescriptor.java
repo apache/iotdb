@@ -84,7 +84,7 @@ public class IoTDBDescriptor {
 
         try (InputStream inputStream = new FileInputStream(new File(url))) {
 
-            logger.info("Start to read config file {}", url);
+            logger.debug("Start to read config file {}", url);
             Properties properties = new Properties();
             properties.load(inputStream);
             conf.setEnableStatMonitor(Boolean
@@ -103,14 +103,14 @@ public class IoTDBDescriptor {
             if (conf.getStatMonitorDetectFreqSec() < statMonitorDetectFreqSec) {
                 conf.setStatMonitorDetectFreqSec(statMonitorDetectFreqSec);
             } else {
-                logger.info("The stat_monitor_detect_freq_sec value is smaller than default,"
+                logger.debug("The stat_monitor_detect_freq_sec value is smaller than default,"
                         + " use default value");
             }
 
             if (conf.getStatMonitorRetainIntervalSec() < statMonitorRetainIntervalSec) {
                 conf.setStatMonitorRetainIntervalSec(statMonitorRetainIntervalSec);
             } else {
-                logger.info("The stat_monitor_retain_interval_sec value is smaller than default,"
+                logger.debug("The stat_monitor_retain_interval_sec value is smaller than default,"
                         + " use default value");
             }
 
@@ -211,7 +211,7 @@ public class IoTDBDescriptor {
             }
             conf.setZoneID(
                     ZoneId.of(properties.getProperty("time_zone", conf.getZoneID().toString().trim())));
-            logger.info("Time zone has been set to {}", conf.getZoneID());
+            logger.debug("Time zone has been set to {}", conf.getZoneID());
 
             conf.setEnableExternalSort(Boolean.parseBoolean(properties
                     .getProperty("enable_external_sort", Boolean.toString(conf.isEnableExternalSort()))));
@@ -430,7 +430,7 @@ public class IoTDBDescriptor {
         }
 
         try (InputStream inputStream = new FileInputStream(new File(url))) {
-            logger.info("Start to reload config file {}", url);
+            logger.debug("Start to reload config file {}", url);
             Properties properties = new Properties();
             properties.load(inputStream);
 

@@ -106,8 +106,8 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
         measurementIds = initSensorIdList(chunkGroupInfoList);
       }
       readerSet.setMeasurementIds(measurementIds);
-      logger.info("deviceIds:" + deviceIds);
-      logger.info("Sensors:" + measurementIds);
+      logger.debug("deviceIds:" + deviceIds);
+      logger.debug("Sensors:" + measurementIds);
 
 
       readerSet.setReadDeviceId(TSFInputFormat.getReadDeviceId(configuration));
@@ -198,7 +198,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
     int index = 0;
     for (Field field : fields) {
       if (field.getDataType() == null) {
-        logger.info("Current value is null");
+        logger.debug("Current value is null");
         mapWritable.put(new Text(measurementIds.get(index)), NullWritable.get());
       } else {
         switch (field.getDataType()) {

@@ -53,7 +53,7 @@ public class TSFOutputFormat extends FileOutputFormat<NullWritable, HDFSTSRecord
       throws IOException {
 
     Path outputPath = getDefaultWorkFile(job, extension);
-    logger.info("The task attempt id is {}, the output path is {}", job.getTaskAttemptID(),
+    logger.debug("The task attempt id is {}, the output path is {}", job.getTaskAttemptID(),
         outputPath);
     return new TSFRecordWriter(job, outputPath, Objects.requireNonNull(schema));
   }

@@ -44,7 +44,7 @@ public class StartupChecks {
             IoTDBConstant.ENV_FILE_NAME);
       }
     } else {
-      logger.info("JMX is enabled to receive remote connection on port {}", jmxPort);
+      logger.debug("JMX is enabled to receive remote connection on port {}", jmxPort);
     }
   };
   public static final StartupCheck checkJDK = () -> {
@@ -54,7 +54,7 @@ public class StartupChecks {
           String.format("Requires JDK version >= %d, current version is %d",
               IoTDBConstant.MIN_SUPPORTED_JDK_VERSION, version));
     } else {
-      logger.info("JDK veriosn is {}.", version);
+      logger.debug("JDK veriosn is {}.", version);
     }
   };
   private final List<StartupCheck> preChecks = new ArrayList<>();

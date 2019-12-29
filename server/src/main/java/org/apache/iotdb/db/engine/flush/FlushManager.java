@@ -99,7 +99,7 @@ public class FlushManager implements FlushManagerMBean, IService {
   public void registerTsFileProcessor(TsFileProcessor tsFileProcessor) {
     synchronized (tsFileProcessor) {
       if (!tsFileProcessor.isManagedByFlushManager() && tsFileProcessor.getFlushingMemTableSize() > 0) {
-        logger.info("storage group {} begin to submit a flush thread, flushing memtable size: {}",
+        logger.debug("storage group {} begin to submit a flush thread, flushing memtable size: {}",
             tsFileProcessor.getStorageGroupName(), tsFileProcessor.getFlushingMemTableSize());
         tsFileProcessorQueue.add(tsFileProcessor);
         tsFileProcessor.setManagedByFlushManager(true);

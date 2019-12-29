@@ -59,7 +59,7 @@ public class TsFileRestorableReader extends TsFileSequenceReader {
     // Check if file is damaged
     if (!isComplete()) {
       // Try to close it
-      logger.info("File {} has no correct tail magic, try to repair...", file);
+      logger.debug("File {} has no correct tail magic, try to repair...", file);
       RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(file));
       TsFileWriter writer = new TsFileWriter(rWriter);
       // This writes the right magic string

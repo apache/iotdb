@@ -73,7 +73,7 @@ public class BasicDaoImpl implements BasicDao {
         default:
           TIMESTAMP_RADIX = 1;
       }
-      logger.info("Use timestamp precision {}", tsPrecision);
+      logger.debug("Use timestamp precision {}", tsPrecision);
     } catch (IOException e) {
       logger.error("Can not find properties [timestamp_precision], use default value [ms]");
       TIMESTAMP_RADIX = 1;
@@ -87,7 +87,7 @@ public class BasicDaoImpl implements BasicDao {
         DatabaseMetaData databaseMetaData = connection.getMetaData();
         ResultSet resultSet = databaseMetaData
             .getColumns(Constant.CATALOG_TIMESERIES, "root.*", "root.*", null);
-        logger.info("Start to get timeseries");
+        logger.debug("Start to get timeseries");
         List<String> columnsName = new ArrayList<>();
         while (resultSet.next()) {
           String timeseries = resultSet.getString(1);
@@ -106,7 +106,7 @@ public class BasicDaoImpl implements BasicDao {
     String sql = "SELECT " + s.substring(s.lastIndexOf('.') + 1) + " FROM root."
         + s.substring(0, s.lastIndexOf('.')) + " WHERE time > " + from * TIMESTAMP_RADIX
         + " and time < " + to * TIMESTAMP_RADIX;
-    logger.info(sql);
+    logger.debug(sql);
     List<TimeValues> rows = null;
     try {
       rows = jdbcTemplate.query(sql, new TimeValuesRowMapper("root." + s));

@@ -100,7 +100,7 @@ public class TSFileDescriptor {
       return;
     }
 
-    logger.info("Start to read config file {}", url);
+    logger.debug("Start to read config file {}", url);
     Properties properties = new Properties();
     try {
       properties.load(inputStream);

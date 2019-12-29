@@ -130,7 +130,7 @@ public class TsFileProcessor {
     this.closeTsFileCallback = closeTsFileCallback;
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
-    logger.info("create a new tsfile processor {}", tsfile.getAbsolutePath());
+    logger.debug("create a new tsfile processor {}", tsfile.getAbsolutePath());
   }
 
   /**
@@ -258,7 +258,7 @@ public class TsFileProcessor {
   }
 
   void syncClose() {
-    logger.info("Sync close file: {}, will firstly async close it",
+    logger.debug("Sync close file: {}, will firstly async close it",
         tsFileResource.getFile().getAbsolutePath());
     if (shouldClose) {
       return;
@@ -272,14 +272,14 @@ public class TsFileProcessor {
         Thread.currentThread().interrupt();
       }
     }
-    logger.info("File {} is closed synchronously", tsFileResource.getFile().getAbsolutePath());
+    logger.debug("File {} is closed synchronously", tsFileResource.getFile().getAbsolutePath());
   }
 
 
   void asyncClose() {
     flushQueryLock.writeLock().lock();
     try {
-      logger.info("Async close the file: {}", tsFileResource.getFile().getAbsolutePath());
+      logger.debug("Async close the file: {}", tsFileResource.getFile().getAbsolutePath());
       if (shouldClose) {
         return;
       }
@@ -420,7 +420,7 @@ public class TsFileProcessor {
     IMemTable memTableToFlush;
     memTableToFlush = flushingMemTables.getFirst();
 
-    logger.info("storage group {} starts to flush a memtable in a flush thread", storageGroupName);
+    logger.debug("storage group {} starts to flush a memtable in a flush thread", storageGroupName);
 
     // signal memtable only may appear when calling asyncClose()
     if (!memTableToFlush.isSignalMemTable()) {
@@ -501,7 +501,7 @@ public class TsFileProcessor {
 
     if (logger.isInfoEnabled()) {
       long closeEndTime = System.currentTimeMillis();
-      logger.info("Storage group {} close the file {}, start time is {}, end time is {}, "
+      logger.debug("Storage group {} close the file {}, start time is {}, end time is {}, "
               + "time consumption of flushing metadata is {}ms",
           storageGroupName, tsFileResource.getFile().getAbsoluteFile(),
           DatetimeUtils.convertMillsecondToZonedDateTime(closeStartTime),

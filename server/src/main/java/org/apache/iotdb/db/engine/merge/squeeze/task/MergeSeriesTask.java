@@ -101,7 +101,7 @@ class MergeSeriesTask {
 
     TsFileResource mergeSeries() throws IOException {
         if (logger.isInfoEnabled()) {
-            logger.info("{} starts to merge {} series", taskName, unmergedSeries.size());
+            logger.debug("{} starts to merge {} series", taskName, unmergedSeries.size());
         }
         long startTime = System.currentTimeMillis();
 
@@ -126,7 +126,7 @@ class MergeSeriesTask {
         mergeLogger.logNewFile(newResource);
 
         if (logger.isInfoEnabled()) {
-            logger.info("{} all series are merged after {}ms", taskName,
+            logger.debug("{} all series are merged after {}ms", taskName,
                     System.currentTimeMillis() - startTime);
         }
 

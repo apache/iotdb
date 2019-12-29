@@ -46,7 +46,7 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
   @Override
   public void stop() {
     JMXService.deregisterMBean(ServiceType.CACHE_HIT_RATIO_DISPLAY_SERVICE.getJmxName());
-    logger.info("{}: stop {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    logger.debug("{}: stop {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
   }
 
   @Override

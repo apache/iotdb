@@ -39,11 +39,11 @@ public abstract class AbstractPoolManager {
     Logger logger = getLogger();
     pool.shutdownNow();
     long totalWaitTime = WAIT_TIMEOUT;
-    logger.info("Waiting for {} thread pool to shut down.", getName());
+    logger.debug("Waiting for {} thread pool to shut down.", getName());
     while (!pool.isTerminated()) {
       try {
         if (!pool.awaitTermination(WAIT_TIMEOUT, TimeUnit.MILLISECONDS)) {
-          logger.info("{} thread pool doesn't exit after {}ms.", getName(),
+          logger.debug("{} thread pool doesn't exit after {}ms.", getName(),
               + totalWaitTime);
         }
         totalWaitTime += WAIT_TIMEOUT;

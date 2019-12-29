@@ -51,14 +51,14 @@ public class IoTDBConfigCheck {
     TIMESTAMP_PRECISION = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
     createDir(SCHEMA_DIR);
     checkFile(SCHEMA_DIR);
-    logger.info("System configuration is ok.");
+    logger.debug("System configuration is ok.");
   }
 
   private void createDir(String filepath) {
     File dir = SystemFileFactory.INSTANCE.getFile(filepath);
     if (!dir.exists()) {
       dir.mkdirs();
-      logger.info(" {} dir has been created.", SCHEMA_DIR);
+      logger.debug(" {} dir has been created.", SCHEMA_DIR);
     }
   }
 
@@ -69,7 +69,7 @@ public class IoTDBConfigCheck {
     try {
       if (!file.exists()) {
         file.createNewFile();
-        logger.info(" {} has been created.", file.getAbsolutePath());
+        logger.debug(" {} has been created.", file.getAbsolutePath());
         try (FileOutputStream outputStream = new FileOutputStream(file.toString())) {
           properties.setProperty("timestamp_precision", TIMESTAMP_PRECISION);
           properties.store(outputStream, "System properties:");

@@ -79,7 +79,7 @@ public class SimpleFileVersionController implements VersionController {
     File oldFile = SystemFileFactory.INSTANCE.getFile(directoryPath, FILE_PREFIX + prevVersion);
     File newFile = SystemFileFactory.INSTANCE.getFile(directoryPath, FILE_PREFIX + currVersion);
     FileUtils.moveFile(oldFile, newFile);
-    logger.info("Version file updated, previous: {}, current: {}",
+    logger.debug("Version file updated, previous: {}, current: {}",
         oldFile.getAbsolutePath(), newFile.getAbsolutePath());
     prevVersion = currVersion;
   }

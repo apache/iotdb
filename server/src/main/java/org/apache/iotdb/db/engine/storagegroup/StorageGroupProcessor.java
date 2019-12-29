@@ -200,7 +200,7 @@ public class StorageGroupProcessor {
     try {
       storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemInfoDir, storageGroupName);
       if (storageGroupSysDir.mkdirs()) {
-        logger.info("Storage Group system Directory {} doesn't exist, create it",
+        logger.debug("Storage Group system Directory {} doesn't exist, create it",
             storageGroupSysDir.getPath());
       } else if (!storageGroupSysDir.exists()) {
         logger.error("create Storage Group system Directory {} failed",
@@ -216,7 +216,7 @@ public class StorageGroupProcessor {
   }
 
   private void recover() throws StorageGroupProcessorException {
-    logger.info("recover Storage Group {}", storageGroupName);
+    logger.debug("recover Storage Group {}", storageGroupName);
 
     try {
       // collect TsFiles from sequential and unsequential data directory
@@ -246,7 +246,7 @@ public class StorageGroupProcessor {
           recoverMergeTask = new RecoverSqueezeMergeTask(seqTsFiles, unseqTsFiles,
               storageGroupSysDir.getPath(), this::mergeEndAction, taskName, storageGroupName);
         }
-        logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
+        logger.debug("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
         recoverMergeTask.recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
       }
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
@@ -465,7 +465,7 @@ public class StorageGroupProcessor {
 
     // check memtable size and may asyncTryToFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
-      logger.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
+      logger.debug("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
           tsFileProcessor.getWorkMemTableMemory(),
           tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
 
@@ -498,7 +498,7 @@ public class StorageGroupProcessor {
 
     // check memtable size and may asyncTryToFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
-      logger.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
+      logger.debug("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
           tsFileProcessor.getWorkMemTableMemory(),
           tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
 
@@ -578,12 +578,12 @@ public class StorageGroupProcessor {
       updateEndTimeMap(workSequenceTsFileProcessor);
       workSequenceTsFileProcessor.asyncClose();
       workSequenceTsFileProcessor = null;
-      logger.info("close a sequence tsfile processor {}", storageGroupName);
+      logger.debug("close a sequence tsfile processor {}", storageGroupName);
     } else {
       closingUnSequenceTsFileProcessor.add(workUnSequenceTsFileProcessor);
       workUnSequenceTsFileProcessor.asyncClose();
       workUnSequenceTsFileProcessor = null;
-      logger.info("close an unsequence tsfile processor {}", storageGroupName);
+      logger.debug("close an unsequence tsfile processor {}", storageGroupName);
     }
   }
 
@@ -690,7 +690,7 @@ public class StorageGroupProcessor {
           // physical removal
           resource.remove();
           if (logger.isInfoEnabled()) {
-            logger.info("Removed a file {} before {} by ttl ({}ms)", resource.getFile().getPath(),
+            logger.debug("Removed a file {} before {} by ttl ({}ms)", resource.getFile().getPath(),
                 new Date(timeLowerBound), dataTTL);
           }
           if (isSeq) {
@@ -728,7 +728,7 @@ public class StorageGroupProcessor {
   public void putAllWorkingTsFileProcessorIntoClosingList() {
     writeLock();
     try {
-      logger.info("async force close all files in storage group: {}", storageGroupName);
+      logger.debug("async force close all files in storage group: {}", storageGroupName);
       if (workSequenceTsFileProcessor != null) {
         moveOneWorkProcessorToClosingList(true);
       }
@@ -979,7 +979,7 @@ public class StorageGroupProcessor {
     } else {
       closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
     }
-    logger.info("signal closing storage group condition in {}", storageGroupName);
+    logger.debug("signal closing storage group condition in {}", storageGroupName);
     synchronized (closeStorageGroupCondition) {
       closeStorageGroupCondition.notifyAll();
     }
@@ -1019,13 +1019,13 @@ public class StorageGroupProcessor {
     try {
       if (isMerging) {
         if (logger.isInfoEnabled()) {
-          logger.info("{} Last merge is ongoing, currently consumed time: {}ms", storageGroupName,
+          logger.debug("{} Last merge is ongoing, currently consumed time: {}ms", storageGroupName,
               (System.currentTimeMillis() - mergeStartTime));
         }
         return;
       }
       if (unSequenceFileList.isEmpty() && sequenceFileList.isEmpty()) {
-        logger.info("{} no files to be merged", storageGroupName);
+        logger.debug("{} no files to be merged", storageGroupName);
         return;
       }
 
@@ -1041,7 +1041,7 @@ public class StorageGroupProcessor {
       try {
         fileSelector.select();
         if (fileSelector.getSelectedSeqFiles().size() + fileSelector.getSelectedUnseqFiles().size() <= 1) {
-          logger.info("{} cannot select merge candidates under the budget {}", storageGroupName,
+          logger.debug("{} cannot select merge candidates under the budget {}", storageGroupName,
               budget);
           return;
         }
@@ -1065,7 +1065,7 @@ public class StorageGroupProcessor {
 
         MergeManager.getINSTANCE().submitMainTask(mergeTask);
         if (logger.isInfoEnabled()) {
-          logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
+          logger.debug("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
               storageGroupName, taskName, mergeResource.getSeqFiles().size(),
               mergeResource.getUnseqFiles().size());
         }
@@ -1127,7 +1127,7 @@ public class StorageGroupProcessor {
         mergeLock.writeLock().unlock();
       }
     }
-    logger.info("{} a merge task ends", storageGroupName);
+    logger.debug("{} a merge task ends", storageGroupName);
   }
 
   private void handleSqueezeMerge(
@@ -1182,7 +1182,7 @@ public class StorageGroupProcessor {
       isMerging = false;
       writeUnlock();
       mergeLock.writeLock().unlock();
-      logger.info("{} a merge task ends", storageGroupName);
+      logger.debug("{} a merge task ends", storageGroupName);
     }
   }
 
@@ -1205,7 +1205,7 @@ public class StorageGroupProcessor {
 
   void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
       File mergeLog, TsFileResource newFile) {
-    logger.info("{} a merge task is ending...", storageGroupName);
+    logger.debug("{} a merge task is ending...", storageGroupName);
 
     if (seqFiles.isEmpty() && unseqFiles.isEmpty()) {
       // merge runtime exception arose, just end this merge
@@ -1221,7 +1221,7 @@ public class StorageGroupProcessor {
             storageGroupName, e);
       } finally {
         isMerging = false;
-        logger.info("{} a merge task abnormally ends", storageGroupName);
+        logger.debug("{} a merge task abnormally ends", storageGroupName);
         mergeLock.writeLock().unlock();
       }
       return;
@@ -1341,7 +1341,7 @@ public class StorageGroupProcessor {
           String newFileName = getFileNameForLoadingFile(tsfileToBeInserted.getName(), preIndex,
               subsequentIndex);
           if (!newFileName.equals(tsfileToBeInserted.getName())) {
-            logger.info("Tsfile {} must be renamed to {} for loading into the sequence list.",
+            logger.debug("Tsfile {} must be renamed to {} for loading into the sequence list.",
                 tsfileToBeInserted.getName(), newFileName);
             newTsFileResource.setFile(new File(tsfileToBeInserted.getParentFile(), newFileName));
           }
@@ -1580,7 +1580,7 @@ public class StorageGroupProcessor {
     tsFileResourceToBeDeleted.getWriteQueryLock().writeLock().lock();
     try {
       tsFileResourceToBeDeleted.remove();
-      logger.info("Delete tsfile {} successfully.", tsFileResourceToBeDeleted.getFile());
+      logger.debug("Delete tsfile {} successfully.", tsFileResourceToBeDeleted.getFile());
     } finally {
       tsFileResourceToBeDeleted.getWriteQueryLock().writeLock().unlock();
     }

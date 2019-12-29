@@ -254,10 +254,10 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
     BlockLocation[] blockLocations;
     List<TSFInputSplit> splits = new ArrayList<>();
     // get the all file in the directory
-    logger.info("The number of this job file is {}", listFileStatus.size());
+    logger.debug("The number of this job file is {}", listFileStatus.size());
     // For each file
     for (FileStatus fileStatus : listFileStatus) {
-      logger.info("The file path is {}", fileStatus.getPath());
+      logger.debug("The file path is {}", fileStatus.getPath());
       // Get the file path
       Path path = fileStatus.getPath();
       // Get the file length
@@ -266,11 +266,11 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
       // empty splits
       if (length > 0) {
         FileSystem fileSystem = path.getFileSystem(configuration);
-        logger.info("The file status is {}", fileStatus.getClass().getName());
-        logger.info("The file system is " + fileSystem.getClass());
+        logger.debug("The file status is {}", fileStatus.getClass().getName());
+        logger.debug("The file system is " + fileSystem.getClass());
         blockLocations = fileSystem.getFileBlockLocations(fileStatus, 0, length);
 
-        logger.info("The block location information is {}", Arrays.toString(blockLocations));
+        logger.debug("The block location information is {}", Arrays.toString(blockLocations));
         try (TsFileSequenceReader fileReader = new TsFileSequenceReader(new HDFSInput(path, configuration))) {
           splits.addAll(generateSplits(path, fileReader, blockLocations, logger));
         }
@@ -279,7 +279,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
       }
     }
     configuration.setLong(NUM_INPUT_FILES, listFileStatus.size());
-    logger.info("The number of splits is " + splits.size());
+    logger.debug("The number of splits is " + splits.size());
 
     return splits;
   }
@@ -306,7 +306,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
     long splitSize = 0;
     List<String> hosts = new ArrayList<>();
     for (ChunkGroupMetaData chunkGroupMetaData : fileReader.getSortedChunkGroupMetaDataListByDeviceIds()) {
-      logger.info("The chunkGroupMetaData information is {}", chunkGroupMetaData);
+      logger.debug("The chunkGroupMetaData information is {}", chunkGroupMetaData);
 
       // middle offset point of the chunkGroup
       long middle = (chunkGroupMetaData.getStartOffsetOfChunkGroup() + chunkGroupMetaData.getEndOffsetOfChunkGroup()) / 2;
@@ -317,7 +317,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
 
       if (blkIndex != currentBlockIndex) {
         TSFInputSplit tsfInputSplit = makeSplit(path, chunkGroupMetaDataList, splitSize, hosts);
-        logger.info("The tsfile inputSplit information is {}", tsfInputSplit);
+        logger.debug("The tsfile inputSplit information is {}", tsfInputSplit);
         splits.add(tsfInputSplit);
 
         currentBlockIndex = blkIndex;
@@ -331,7 +331,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
       }
     }
     TSFInputSplit tsfInputSplit = makeSplit(path, chunkGroupMetaDataList, splitSize, hosts);
-    logger.info("The tsfile inputSplit information is {}", tsfInputSplit);
+    logger.debug("The tsfile inputSplit information is {}", tsfInputSplit);
     splits.add(tsfInputSplit);
     return splits;
   }

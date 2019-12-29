@@ -125,7 +125,7 @@ public class SqueezeMergeTask implements Callable<Void> {
     }
 
     void cleanUp(boolean executeCallback) throws IOException {
-        logger.info("{} is cleaning up", taskName);
+        logger.debug("{} is cleaning up", taskName);
 
         resource.clear();
         mergeContext.clear();

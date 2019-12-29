@@ -232,7 +232,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
         TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1);
     resp.setSessionId(sessionId);
-    logger.info("{}: Login status: {}. User : {}", IoTDBConstant.GLOBAL_DB_NAME,
+    logger.debug("{}: Login status: {}. User : {}", IoTDBConstant.GLOBAL_DB_NAME,
         tsStatus.getStatusType().getMessage(), req.getUsername());
 
     return resp;
@@ -240,7 +240,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSStatus closeSession(TSCloseSessionReq req) {
-    logger.info("{}: receive close session", IoTDBConstant.GLOBAL_DB_NAME);
+    logger.debug("{}: receive close session", IoTDBConstant.GLOBAL_DB_NAME);
     long sessionId = req.getSessionId();
     TSStatus tsStatus;
     if (sessionIdUsernameMap.remove(sessionId) == null) {
@@ -287,7 +287,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSStatus closeOperation(TSCloseOperationReq req) {
     logger.debug("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
     if (!checkLogin(req.getSessionId())) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      logger.debug(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
     try {
@@ -346,7 +346,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) {
     TSStatus status;
     if (!checkLogin(req.getSessionId())) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      logger.debug(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       status = getStatus(TSStatusCode.NOT_LOGIN_ERROR);
       return new TSFetchMetadataResp(status);
     }
@@ -491,7 +491,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     List<Integer> result = new ArrayList<>();
     try {
       if (!checkLogin(req.getSessionId())) {
-        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        logger.debug(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
         return getTSBatchExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR), null);
       }
       List<String> statements = req.getStatements();
@@ -548,14 +548,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       batchErrorMessage.append(TSStatusCode.METADATA_ERROR.getStatusCode()).append("\n");
       return false;
     } catch (QueryProcessException e) {
-      logger.info(
+      logger.debug(
           "Error occurred when executing {}, meet error while parsing SQL to physical plan: {}",
           statement, e.getMessage());
       result.add(Statement.EXECUTE_FAILED);
       batchErrorMessage.append(TSStatusCode.SQL_PARSE_ERROR.getStatusCode()).append("\n");
       return false;
     } catch (QueryInBatchStatementException e) {
-      logger.info("Error occurred when executing {}, query statement not allowed: ", statement, e);
+      logger.debug("Error occurred when executing {}, query statement not allowed: ", statement, e);
       result.add(Statement.EXECUTE_FAILED);
       batchErrorMessage.append(TSStatusCode.QUERY_NOT_ALLOWED.getStatusCode()).append("\n");
       return false;
@@ -571,7 +571,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     SqlArgument sqlArgument;
     try {
       if (!checkLogin(req.getSessionId())) {
-        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        logger.debug(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
         return getTSExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
       }
       String statement = req.getStatement();
@@ -603,11 +603,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getTSExecuteStatementResp(getStatus(TSStatusCode.METADATA_ERROR,
           "Check metadata error: " + e.getMessage()));
     } catch (QueryProcessException e) {
-      logger.info(ERROR_PARSING_SQL, e.getMessage());
+      logger.debug(ERROR_PARSING_SQL, e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR,
           "Statement format is not right: " + e.getMessage()));
     } catch (StorageEngineException e) {
-      logger.info(ERROR_PARSING_SQL, e.getMessage());
+      logger.debug(ERROR_PARSING_SQL, e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR,
           e.getMessage()));
     }
@@ -657,7 +657,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
     if (!checkLogin(req.getSessionId())) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      logger.debug(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getTSExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
     }
 
@@ -667,7 +667,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       physicalPlan = processor
           .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
     } catch (QueryProcessException | SQLParserException e) {
-      logger.info(ERROR_PARSING_SQL, e.getMessage());
+      logger.debug(ERROR_PARSING_SQL, e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     }
 
@@ -904,7 +904,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSExecuteStatementResp executeUpdateStatement(TSExecuteStatementReq req) {
     try {
       if (!checkLogin(req.getSessionId())) {
-        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        logger.debug(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
         return getTSExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
       }
       String statement = req.getStatement();
@@ -943,7 +943,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId));
     } catch (QueryProcessException | SQLParserException e) {
-      logger.info(ERROR_PARSING_SQL, e.getMessage());
+      logger.debug(ERROR_PARSING_SQL, e.getMessage());
       return getTSExecuteStatementResp(getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
     }
 
@@ -1049,7 +1049,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSExecuteInsertRowInBatchResp insertRowInBatch(TSInsertInBatchReq req) {
     TSExecuteInsertRowInBatchResp resp = new TSExecuteInsertRowInBatchResp();
     if (!checkLogin(req.getSessionId())) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      logger.debug(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       resp.addToStatusList(getStatus(TSStatusCode.NOT_LOGIN_ERROR));
       return resp;
     }
@@ -1099,7 +1099,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSStatus insert(TSInsertReq req) {
     if (!checkLogin(req.getSessionId())) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      logger.debug(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
 
@@ -1119,7 +1119,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSStatus deleteData(TSDeleteDataReq req) {
     if (!checkLogin(req.getSessionId())) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      logger.debug(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
 
@@ -1143,7 +1143,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     long t1 = System.currentTimeMillis();
     try {
       if (!checkLogin(req.getSessionId())) {
-        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        logger.debug(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
         return getTSBatchExecuteStatementResp(getStatus(TSStatusCode.NOT_LOGIN_ERROR), null);
       }
 
@@ -1180,7 +1180,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             Arrays.asList(results));
       }
     } catch (Exception e) {
-      logger.info("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.debug("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSBatchExecuteStatementResp(
           getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()), null);
     } finally {
@@ -1191,7 +1191,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSStatus setStorageGroup(long sessionId, String storageGroup) {
     if (!checkLogin(sessionId)) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      logger.debug(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
 
@@ -1206,7 +1206,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSStatus deleteStorageGroups(long sessionId, List<String> storageGroups) {
     if (!checkLogin(sessionId)) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      logger.debug(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
     List<Path> storageGroupList = new ArrayList<>();
@@ -1224,7 +1224,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSStatus createTimeseries(TSCreateTimeseriesReq req) {
     if (!checkLogin(req.getSessionId())) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      logger.debug(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
     CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.getPath()),
@@ -1240,7 +1240,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSStatus deleteTimeseries(long sessionId, List<String> paths) {
     if (!checkLogin(sessionId)) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      logger.debug(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
     List<Path> pathList = new ArrayList<>();

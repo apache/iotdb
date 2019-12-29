@@ -94,9 +94,9 @@ public class MManager {
     File systemFolder = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!systemFolder.exists()) {
       if (systemFolder.mkdirs()) {
-        logger.info("create system folder {}", systemFolder.getAbsolutePath());
+        logger.debug("create system folder {}", systemFolder.getAbsolutePath());
       } else {
-        logger.info("create system folder {} failed.", systemFolder.getAbsolutePath());
+        logger.debug("create system folder {} failed.", systemFolder.getAbsolutePath());
       }
     }
     logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
@@ -266,9 +266,9 @@ public class MManager {
       File metadataDir = SystemFileFactory.INSTANCE.getFile(schemaDir);
       if (!metadataDir.exists()) {
         if (metadataDir.mkdirs()) {
-          logger.info("create schema folder {}.", metadataDir);
+          logger.debug("create schema folder {}.", metadataDir);
         } else {
-          logger.info("create schema folder {} failed.", metadataDir);
+          logger.debug("create schema folder {} failed.", metadataDir);
         }
       }
       FileWriter fileWriter;

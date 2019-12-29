@@ -139,7 +139,7 @@ public class Measurement implements MeasurementMBean, IService {
         operationHistogram[operation.ordinal()][i] = 0;
       }
     }
-    logger.info("start measurement stats module...");
+    logger.debug("start measurement stats module...");
     service = IoTDBThreadPoolFactory.newScheduledThreadPool(
         2, ThreadName.TIME_COST_STATSTIC.getName());
   }
@@ -157,7 +157,7 @@ public class Measurement implements MeasurementMBean, IService {
     try {
       isEnableStat = true;
       if (consumeFuture != null && !consumeFuture.isCancelled()) {
-        logger.info("The consuming task in measurement stat module is already running...");
+        logger.debug("The consuming task in measurement stat module is already running...");
       } else {
         consumeFuture = service.scheduleWithFixedDelay(
             new Measurement.DisplayRunnable(), 20, displayIntervalInMs, TimeUnit.MILLISECONDS);
@@ -175,7 +175,7 @@ public class Measurement implements MeasurementMBean, IService {
     try {
       isEnableStat = true;
       if (displayFuture != null && !displayFuture.isCancelled()) {
-        logger.info("The display task in measurement stat module is already running...");
+        logger.debug("The display task in measurement stat module is already running...");
       } else {
         displayFuture = service.scheduleWithFixedDelay(
             new Measurement.DisplayRunnable(), 20, displayIntervalInMs, TimeUnit.MILLISECONDS);
@@ -247,7 +247,7 @@ public class Measurement implements MeasurementMBean, IService {
   @Override
   public void start() throws StartupException {
     // start display thread and consumer threads.
-    logger.info("start the consuming task in the measurement stats module...");
+    logger.debug("start the consuming task in the measurement stats module...");
     this.clearStatisticalState();
     if (service.isShutdown()) {
       service = IoTDBThreadPoolFactory.newScheduledThreadPool(
@@ -270,7 +270,7 @@ public class Measurement implements MeasurementMBean, IService {
    */
   @Override
   public void stop() {
-    logger.info("stop measurement stats module...");
+    logger.debug("stop measurement stats module...");
     JMXService.deregisterMBean(mbeanName);
     if (service == null || service.isShutdown()) {
       return;

@@ -109,7 +109,7 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
           logger.debug("The next file of {} cannot fit memory together, search the next file", seqFile);
         }
       } else {
-        logger.info("File {} cannot fie memory {}/{}", seqFile, fileCost, memoryBudget);
+        logger.debug("File {} cannot fie memory {}/{}", seqFile, fileCost, memoryBudget);
       }
       timeConsumption = System.currentTimeMillis() - startTime;
     }

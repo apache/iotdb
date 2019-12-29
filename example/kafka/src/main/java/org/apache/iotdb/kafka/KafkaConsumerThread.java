@@ -92,7 +92,7 @@ public class KafkaConsumerThread implements Runnable {
   public void run() {
     for (MessageAndMetadata<String, String> consumerIterator : stream) {
       String uploadMessage = consumerIterator.message();
-      logger.info(String.format("%s from partiton[%d]: %s", Thread.currentThread().getName(),
+      logger.debug(String.format("%s from partiton[%d]: %s", Thread.currentThread().getName(),
           consumerIterator.partition(), uploadMessage));
       writeData(uploadMessage);
     }

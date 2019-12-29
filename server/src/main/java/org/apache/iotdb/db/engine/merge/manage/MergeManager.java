@@ -90,7 +90,7 @@ public class MergeManager implements IService {
         timedMergeThreadPool.scheduleAtFixedRate(this::mergeAll, mergeInterval,
             mergeInterval, TimeUnit.SECONDS);
       }
-      logger.info("MergeManager started");
+      logger.debug("MergeManager started");
     }
   }
 
@@ -103,12 +103,12 @@ public class MergeManager implements IService {
       }
       mergeTaskPool.shutdownNow();
       mergeChunkSubTaskPool.shutdownNow();
-      logger.info("Waiting for task pool to shut down");
+      logger.debug("Waiting for task pool to shut down");
       while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated() ) {
         // wait
       }
       mergeTaskPool = null;
-      logger.info("MergeManager stopped");
+      logger.debug("MergeManager stopped");
     }
   }
 

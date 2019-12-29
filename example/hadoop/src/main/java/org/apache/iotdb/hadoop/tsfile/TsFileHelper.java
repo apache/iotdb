@@ -120,7 +120,7 @@ public class TsFileHelper {
     }
     writeTsFile(filePath);
     TsFileSequenceReader reader = new TsFileSequenceReader(filePath);
-    logger.info("Get file meta data: {}", reader.readFileMetadata());
+    logger.debug("Get file meta data: {}", reader.readFileMetadata());
     reader.close();
   }
 }

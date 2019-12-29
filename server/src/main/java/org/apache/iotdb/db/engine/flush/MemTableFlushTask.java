@@ -96,7 +96,7 @@ public class MemTableFlushTask {
 
     ioTaskFuture.get();
 
-    logger.info(
+    logger.debug(
         "Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ms",
         storageGroup, memTable, System.currentTimeMillis() - start);
   }

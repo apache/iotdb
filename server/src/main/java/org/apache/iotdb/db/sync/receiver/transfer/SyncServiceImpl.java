@@ -81,7 +81,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     if (SyncUtils.verifyIPSegment(config.getIpWhiteList(), ipAddress)) {
       senderName.set(ipAddress + SyncConstant.SYNC_DIR_NAME_SEPARATOR + uuid);
       if (checkRecovery()) {
-        logger.info("Start to sync with sender {}", senderName.get());
+        logger.debug("Start to sync with sender {}", senderName.get());
         return getSuccessResult();
       } else {
         return getErrorResult("Receiver is processing data from previous sync tasks");
@@ -138,7 +138,7 @@ public class SyncServiceImpl implements SyncService.Iface {
    */
   @Override
   public SyncStatus init(String storageGroup) {
-    logger.info("Sync process started to receive data of storage group {}", storageGroup);
+    logger.debug("Sync process started to receive data of storage group {}", storageGroup);
     currentSG.set(storageGroup);
     try {
       syncLog.get().startSyncDeletedFilesName();
@@ -226,7 +226,7 @@ public class SyncServiceImpl implements SyncService.Iface {
           loadMetadata();
         } else {
           if (!currentFile.get().getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
-            logger.info("Receiver has received {} successfully.", currentFile.get());
+            logger.debug("Receiver has received {} successfully.", currentFile.get());
             FileLoaderManager.getInstance().checkAndUpdateDeviceOwner(
                 new TsFileResource(new File(currentFile.get() + TsFileResource.RESOURCE_SUFFIX)));
             syncLog.get().finishSyncTsfile(currentFile.get());
@@ -251,7 +251,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   }
 
   private void loadMetadata() {
-    logger.info("Start to load metadata in sync process.");
+    logger.debug("Start to load metadata in sync process.");
     if (currentFile.get().exists()) {
       try (BufferedReader br = new BufferedReader(
           new java.io.FileReader(currentFile.get()))) {
@@ -282,7 +282,7 @@ public class SyncServiceImpl implements SyncService.Iface {
         return getErrorResult(
             String.format("File Loader of the storage group %s is null", currentSG.get()));
       }
-      logger.info("Sync process with sender {} finished.", senderName.get());
+      logger.debug("Sync process with sender {} finished.", senderName.get());
     } catch (IOException e) {
       logger.error("Can not end sync", e);
       return getErrorResult(String.format("Can not end sync because %s", e.getMessage()));

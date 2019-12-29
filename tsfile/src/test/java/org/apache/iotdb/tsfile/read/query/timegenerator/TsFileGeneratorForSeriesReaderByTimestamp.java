@@ -194,7 +194,7 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
     while (in.hasNextLine()) {
       if (lineCount % 1000000 == 0) {
         endTime = System.currentTimeMillis();
-        // logger.info("write line:{},inner space consumer:{},use
+        // logger.debug("write line:{},inner space consumer:{},use
         // time:{}",lineCount,innerWriter.calculateMemSizeForEachGroup(),endTime);
         LOG.info("write line:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
       }

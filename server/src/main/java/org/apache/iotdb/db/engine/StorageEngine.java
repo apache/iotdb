@@ -119,7 +119,7 @@ public class StorageEngine implements IService {
             storageGroup.getFullPath());
         processor.setDataTTL(storageGroup.getDataTTL());
         processorMap.put(storageGroup.getFullPath(), processor);
-        logger.info("Storage Group Processor {} is recovered successfully",
+        logger.debug("Storage Group Processor {} is recovered successfully",
             storageGroup.getFullPath());
         return null;
       }));
@@ -180,7 +180,7 @@ public class StorageEngine implements IService {
         synchronized (storageGroupName) {
           processor = processorMap.get(storageGroupName);
           if (processor == null) {
-            logger.info("construct a processor instance, the storage group is {}, Thread is {}",
+            logger.debug("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroupName, Thread.currentThread().getId());
             processor = new StorageGroupProcessor(systemDir, storageGroupName);
             processor.setDataTTL(
@@ -258,7 +258,7 @@ public class StorageEngine implements IService {
    * flush command Sync asyncCloseOneProcessor all file node processors.
    */
   public void syncCloseAllProcessor() {
-    logger.info("Start closing all storage group processor");
+    logger.debug("Start closing all storage group processor");
     for (StorageGroupProcessor processor : processorMap.values()) {
       processor.waitForAllCurrentTsFileProcessorsClosed();
     }
@@ -388,7 +388,7 @@ public class StorageEngine implements IService {
   }
 
   private void syncDeleteDataFiles(String storageGroupName) {
-    logger.info("Force to delete the data in storage group processor {}", storageGroupName);
+    logger.debug("Force to delete the data in storage group processor {}", storageGroupName);
     StorageGroupProcessor processor = processorMap.get(storageGroupName);
     processor.syncDeleteDataFiles();
   }
@@ -408,7 +408,7 @@ public class StorageEngine implements IService {
    * delete all data of storage groups' timeseries.
    */
   public synchronized boolean deleteAll() {
-    logger.info("Start deleting all storage groups' timeseries");
+    logger.debug("Start deleting all storage groups' timeseries");
     for (String storageGroup : MManager.getInstance().getAllStorageGroupNames()) {
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }

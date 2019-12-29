@@ -97,7 +97,7 @@ class MergeMultiChunkTask {
 
   void mergeSeries() throws IOException {
     if (logger.isInfoEnabled()) {
-      logger.info("{} starts to merge {} series", taskName, unmergedSeries.size());
+      logger.debug("{} starts to merge {} series", taskName, unmergedSeries.size());
     }
     long startTime = System.currentTimeMillis();
     for (TsFileResource seqFile : resource.getSeqFiles()) {
@@ -116,7 +116,7 @@ class MergeMultiChunkTask {
       }
     }
     if (logger.isInfoEnabled()) {
-      logger.info("{} all series are merged after {}ms", taskName,
+      logger.debug("{} all series are merged after {}ms", taskName,
           System.currentTimeMillis() - startTime);
     }
     mergeLogger.logAllTsEnd();
@@ -127,7 +127,7 @@ class MergeMultiChunkTask {
       double newProgress = 100 * mergedSeriesCnt / (double) (unmergedSeries.size());
       if (newProgress - progress >= 1.0) {
         progress = newProgress;
-        logger.info("{} has merged {}% series", taskName, progress);
+        logger.debug("{} has merged {}% series", taskName, progress);
       }
     }
   }

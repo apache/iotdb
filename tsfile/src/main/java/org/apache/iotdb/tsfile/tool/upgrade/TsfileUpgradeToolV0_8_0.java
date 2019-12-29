@@ -449,7 +449,7 @@ public class TsfileUpgradeToolV0_8_0 implements AutoCloseable {
       tsFileIOWriter.endFile(schema);
       return true;
     } catch (IOException | PageException e2) {
-      logger.info("TsFile upgrade process cannot proceed at position {} after {} chunk groups "
+      logger.debug("TsFile upgrade process cannot proceed at position {} after {} chunk groups "
           + "recovered, because : {}", this.position(), newMetaData.size(), e2.getMessage());
       return false;
     } finally {
