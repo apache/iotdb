@@ -126,6 +126,7 @@ public class IOTDBGroupByIT {
   @After
   public void tearDown() throws Exception {
     daemon.stop();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.cleanEnv();
   }
 

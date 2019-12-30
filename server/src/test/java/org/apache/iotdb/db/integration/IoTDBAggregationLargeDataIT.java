@@ -127,6 +127,7 @@ public class IoTDBAggregationLargeDataIT {
   @After
   public void tearDown() throws Exception {
     daemon.stop();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.cleanEnv();
   }
 
