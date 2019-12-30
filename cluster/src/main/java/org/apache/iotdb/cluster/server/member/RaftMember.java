@@ -298,6 +298,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   // synchronized: logs are serialized
+  //TODO why synchronized?
   private synchronized AppendLogResult sendLogToFollowers(Log log, AtomicInteger quorum) {
     if (allNodes.size() == 1) {
       // single node group, does not need the agreement of others
@@ -316,9 +317,13 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       request.setHeader(getHeader());
     }
 
-    synchronized (quorum) {
+    synchronized (quorum) {//this synchronized codes are just for calling quorum.wait.
+      //TODO As we have used synchronized (), do we really need to use AtomicInteger?
+
       // synchronized: avoid concurrent modification
       synchronized (allNodes) {
+        //TODO allNodes.sync is only used here. Is that needed?
+        //By the way, readLock is ok for this case.
         for (Node node : allNodes) {
           AsyncClient client = connectNode(node);
           if (client != null) {

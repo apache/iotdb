@@ -53,7 +53,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
       return;
     }
     long resp = response;
-    synchronized (quorum) {
+    synchronized (quorum) {//this synchronized codes are just for calling quorum.wait.
       if (resp == RESPONSE_AGREE) {
         int remaining = quorum.decrementAndGet();
         logger.debug("Received an agreement from {} for {}, remaining votes to succeed: {}",
@@ -73,6 +73,8 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
         leaderShipStale.set(true);
         quorum.notifyAll();
       } else {
+        //e.g., Response.RESPONSE_LOG_MISMATCH
+        //But it is impossible that more than quorum nodes return RESPONSE_LOG_MISMATCH.
         logger.debug("The log {} is rejected because: {}", log, resp);
       }
       // rejected because the receiver's logs are stale or the receiver has no cluster info, just
