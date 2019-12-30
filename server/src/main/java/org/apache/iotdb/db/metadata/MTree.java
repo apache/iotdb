@@ -771,6 +771,22 @@ public class MTree implements Serializable {
     return new LinkedHashSet<>(devices);
   }
 
+  /**
+   * Get all devices in current Metadata Tree with prefixPath.
+   *
+   * @return a list contains all distinct devices
+   */
+  Set<String> getDevices(String prefixPath) throws PathException {
+    if(prefixPath == null || prefixPath.equals(SQLConstant.ROOT))
+      return getAllDevices();
+    HashSet<String> devices = new HashSet<>();
+    MNode node;
+    if ((node = getNode(prefixPath)) != null) {
+      findDevices(node, prefixPath, devices);
+    }
+    return new LinkedHashSet<>(devices);
+  }
+
   private void findDevices(MNode node, String path, HashSet<String> res) {
     if (node == null) {
       return;

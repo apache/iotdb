@@ -393,4 +393,32 @@ public class MManagerBasicTest {
     }
     assertTrue(caughtException);
   }
+
+  @Test
+  public void testGetDevicesWithGivenPrefix() {
+    MManager manager = MManager.getInstance();
+
+    try {
+      manager.setStorageGroupToMTree("root.laptop");
+      manager.addPathToMTree("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+              CompressionType.GZIP, null);
+      manager.addPathToMTree("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.PLAIN,
+              CompressionType.GZIP, null);
+      Set<String> devices = new LinkedHashSet<>();
+      devices.add("root.laptop.d1");
+      devices.add("root.laptop.d2");
+      assertEquals(devices, manager.getDevices("root.laptop"));
+      manager.setStorageGroupToMTree("root.vehicle");
+      manager.addPathToMTree("root.vehicle.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+              CompressionType.GZIP, null);
+      devices.add("root.vehicle.d1");
+      assertEquals(devices, manager.getDevices("root"));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } catch (PathException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }

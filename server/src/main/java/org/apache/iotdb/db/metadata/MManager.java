@@ -881,6 +881,21 @@ public class MManager {
   }
 
   /**
+   * Get devices info with given prefixPath.
+   *
+   * @return A HashSet instance which stores devices info with given prefixPath.
+   */
+  public Set<String> getDevices(String prefixPath) throws PathException {
+
+    lock.readLock().lock();
+    try {
+      return mgraph.getDevices(prefixPath);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
    * Get all nodes from the given level
    *
    * @return A List instance which stores all node at given level
