@@ -47,12 +47,22 @@ public class MinTimeAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromChunkMetaData(ChunkMetaData chunkMetaData) {
-
+    if (resultData.isSetValue()) {
+      return;
+    }
+    long time = chunkMetaData.getStartTime();
+    resultData.putTimeAndValue(0, time);
   }
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage) throws IOException {
-
+    if (resultData.isSetValue()) {
+      return;
+    }
+    if (dataInThisPage.hasCurrent()) {
+      resultData.setTimestamp(0);
+      resultData.setLongRet(dataInThisPage.currentTime());
+    }
   }
 
   @Override

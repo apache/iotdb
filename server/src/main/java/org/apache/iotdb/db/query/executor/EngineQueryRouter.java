@@ -84,7 +84,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
     if (expression != null) {
       IExpression optimizedExpression = ExpressionOptimizer.getInstance()
           .optimize(expression, selectedSeries);
-      AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
+      NewAggregateEngineExecutor engineExecutor = new NewAggregateEngineExecutor(
           selectedSeries, aggres, optimizedExpression);
       if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
         return engineExecutor.executeWithoutValueFilter(context);
@@ -92,7 +92,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
         return engineExecutor.executeWithValueFilter(context);
       }
     } else {
-      AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
+      NewAggregateEngineExecutor engineExecutor = new NewAggregateEngineExecutor(
           selectedSeries, aggres, null);
       return engineExecutor.executeWithoutValueFilter(context);
     }

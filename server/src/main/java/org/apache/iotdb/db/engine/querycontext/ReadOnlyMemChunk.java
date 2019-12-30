@@ -115,44 +115,36 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
 
   public ChunkMetaData getChunkMetaData() {
     Statistics statsByType = Statistics.getStatsByType(dataType);
-    statsByType.setEmpty(isEmpty());
     ChunkMetaData metaData = new ChunkMetaData(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
       List<TimeValuePair> sortedTimeValuePairList = getSortedTimeValuePairList();
-      int size = sortedTimeValuePairList.size();
-      TimeValuePair firstValue = sortedTimeValuePairList.get(0);
-      TimeValuePair lastValue = sortedTimeValuePairList.get(size - 1);
-      switch (dataType) {
-        case BOOLEAN:
-          statsByType.update(firstValue.getTimestamp(), firstValue.getValue().getBoolean());
-          statsByType.update(lastValue.getTimestamp(), lastValue.getValue().getBoolean());
-          break;
-        case TEXT:
-          statsByType.update(firstValue.getTimestamp(), firstValue.getValue().getBinary());
-          statsByType.update(lastValue.getTimestamp(), lastValue.getValue().getBinary());
-          break;
-        case FLOAT:
-          statsByType.update(firstValue.getTimestamp(), firstValue.getValue().getFloat());
-          statsByType.update(lastValue.getTimestamp(), lastValue.getValue().getFloat());
-          break;
-        case INT32:
-          statsByType.update(firstValue.getTimestamp(), firstValue.getValue().getInt());
-          statsByType.update(lastValue.getTimestamp(), lastValue.getValue().getInt());
-          break;
-        case INT64:
-          statsByType.update(firstValue.getTimestamp(), firstValue.getValue().getLong());
-          statsByType.update(lastValue.getTimestamp(), lastValue.getValue().getLong());
-          break;
-        case DOUBLE:
-          statsByType.update(firstValue.getTimestamp(), firstValue.getValue().getDouble());
-          statsByType.update(lastValue.getTimestamp(), lastValue.getValue().getDouble());
-          break;
-        default:
-          throw new RuntimeException("Unsupported data types");
+      for (TimeValuePair timeValuePair : sortedTimeValuePairList) {
+        switch (dataType) {
+          case BOOLEAN:
+            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
+            break;
+          case TEXT:
+            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
+            break;
+          case FLOAT:
+            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
+            break;
+          case INT32:
+            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
+            break;
+          case INT64:
+            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
+            break;
+          case DOUBLE:
+            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
+            break;
+          default:
+            throw new RuntimeException("Unsupported data types");
+        }
       }
-      statsByType.setCount(size);
-      metaData.setChunkLoader(new MemChunkLoader(this));
     }
+    statsByType.setEmpty(isEmpty());
+    metaData.setChunkLoader(new MemChunkLoader(this));
     return metaData;
   }
 }

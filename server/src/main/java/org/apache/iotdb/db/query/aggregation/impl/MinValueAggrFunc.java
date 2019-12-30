@@ -59,16 +59,6 @@ public class MinValueAggrFunc extends AggregateFunction {
       updateResult((Comparable<Object>) dataInThisPage.currentValue());
       dataInThisPage.next();
     }
-
-    Comparable<Object> minVal = null;
-    while (dataInThisPage.hasCurrent()) {
-      if (minVal == null
-          || minVal.compareTo(dataInThisPage.currentValue()) > 0) {
-        minVal = (Comparable<Object>) dataInThisPage.currentValue();
-      }
-      dataInThisPage.next();
-    }
-    updateResult(minVal);
   }
 
   @Override

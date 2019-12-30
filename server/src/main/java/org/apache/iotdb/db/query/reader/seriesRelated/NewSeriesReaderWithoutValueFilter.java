@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -21,7 +21,6 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -30,8 +29,6 @@ import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 public class NewSeriesReaderWithoutValueFilter {
@@ -68,21 +65,11 @@ public class NewSeriesReaderWithoutValueFilter {
       Filter timeFilter, QueryContext context) throws IOException {
     Path seriesPath = queryDataSource.getSeriesPath();
     TreeSet<TsFileResource> unseqTsFilesSet = new TreeSet<>((o1, o2) -> {
-      String queryMeasurement = seriesPath.getMeasurement();
-      List<Long> o1StartTimeList = o1.getChunkMetaDataList().stream()
-          .filter(chunkMetaData -> chunkMetaData.getMeasurementUid().equals(queryMeasurement))
-          .map(ChunkMetaData::getStartTime).collect(Collectors.toList());
-      List<Long> o2StartTimeList = o2.getChunkMetaDataList().stream()
-          .filter(chunkMetaData -> chunkMetaData.getMeasurementUid().equals(queryMeasurement))
-          .map(ChunkMetaData::getStartTime).collect(Collectors.toList());
-      long minTimeOfO1 = Long.MAX_VALUE;
-      long minTimeOfO2 = Long.MAX_VALUE;
-      for (long startTime : o1StartTimeList) {
-        minTimeOfO1 = minTimeOfO1 > startTime ? startTime : minTimeOfO1;
-      }
-      for (long startTime : o2StartTimeList) {
-        minTimeOfO2 = minTimeOfO2 > startTime ? startTime : minTimeOfO2;
-      }
+      Map<String, Long> startTimeMap = o1.getStartTimeMap();
+      Long minTimeOfO1 = startTimeMap.get(seriesPath.getDevice());
+      Map<String, Long> startTimeMap2 = o2.getStartTimeMap();
+      Long minTimeOfO2 = startTimeMap2.get(seriesPath.getDevice());
+
       return Long.compare(minTimeOfO1, minTimeOfO2);
     });
     unseqTsFilesSet.addAll(queryDataSource.getUnseqResources());
@@ -164,16 +151,17 @@ public class NewSeriesReaderWithoutValueFilter {
     if (unseqChunkMetadatas.isEmpty() && !unseqTsFiles.isEmpty()) {
       unseqChunkMetadatas.addAll(loadChunkMetadatas(unseqTsFiles.pollFirst()));
     }
-
     /**
      * 拿顺序或乱序的第一个 ChunkMetadata，缓存起来
      */
     if (!seqChunkMetadatas.isEmpty() && unseqChunkMetadatas.isEmpty()) {
       cachedChunkMetaData = seqChunkMetadatas.remove(0);
       hasCachedNextChunk = true;
+      isCurrentChunkReaderInit = false;
     } else if (seqChunkMetadatas.isEmpty() && !unseqChunkMetadatas.isEmpty()) {
       cachedChunkMetaData = unseqChunkMetadatas.pollFirst();
       hasCachedNextChunk = true;
+      isCurrentChunkReaderInit = false;
     } else if (!seqChunkMetadatas.isEmpty()) {
       // seq 和 unseq 的 chunk metadata 都不为空
       if (seqChunkMetadatas.get(0).getStartTime() <= unseqChunkMetadatas.first().getStartTime()) {
@@ -182,6 +170,7 @@ public class NewSeriesReaderWithoutValueFilter {
         cachedChunkMetaData = unseqChunkMetadatas.pollFirst();
       }
       hasCachedNextChunk = true;
+      isCurrentChunkReaderInit = false;
     } else {
       // do not has chunk metadata in seq or unseq
       hasCachedNextChunk = false;
@@ -194,6 +183,9 @@ public class NewSeriesReaderWithoutValueFilter {
    */
   private List<ChunkMetaData> loadChunkMetadatas(TsFileResource resource) throws IOException {
     List<ChunkMetaData> currentChunkMetaDataList;
+    if (resource == null) {
+      return new ArrayList<>();
+    }
     if (resource.isClosed()) {
       currentChunkMetaDataList = DeviceMetaDataCache.getInstance().get(resource, path);
     } else {
@@ -228,7 +220,7 @@ public class NewSeriesReaderWithoutValueFilter {
     if (!unseqChunkMetadatas.isEmpty() && cachedChunkMetaData.getEndTime() >=
         unseqChunkMetadatas.first().getStartTime()) {
       isOverlapped = true;
-      overlappedChunkReader = initChunkReader(unseqChunkMetadatas.first());
+      overlappedChunkReader = initChunkReader(unseqChunkMetadatas.pollFirst());
     }
 
     /**

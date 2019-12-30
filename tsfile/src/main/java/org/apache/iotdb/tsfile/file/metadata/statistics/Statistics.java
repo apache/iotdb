@@ -32,9 +32,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This class is used for recording statistic information of each measurement in a delta file. While
- * writing processing, the processor records the statistics information. Statistics includes maximum,
- * minimum and null value count up to version 0.0.1.<br> Each data type extends this Statistic as
- * super class.<br>
+ * writing processing, the processor records the statistics information. Statistics includes
+ * maximum, minimum and null value count up to version 0.0.1.<br> Each data type extends this
+ * Statistic as super class.<br>
  *
  * @param <T> data type for Statistics
  */
@@ -82,13 +82,13 @@ public abstract class Statistics<T> {
   public abstract TSDataType getType();
 
   public int getSerializedSize() {
-   return 24 // count, startTime, endTime
-       + getStatsSize();
+    return 24 // count, startTime, endTime
+        + getStatsSize();
   }
 
   public abstract int getStatsSize();
 
-  public int serialize(OutputStream outputStream) throws IOException{
+  public int serialize(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(count, outputStream);
     byteLen += ReadWriteIOUtils.write(startTime, outputStream);
@@ -237,8 +237,8 @@ public abstract class Statistics<T> {
     if (time[0] < startTime) {
       startTime = time[0];
     }
-    if (time[batchSize-1] > this.endTime) {
-      endTime = time[batchSize-1];
+    if (time[batchSize - 1] > this.endTime) {
+      endTime = time[batchSize - 1];
     }
     count += batchSize;
     updateStats(values, batchSize);
@@ -248,8 +248,8 @@ public abstract class Statistics<T> {
     if (time[0] < startTime) {
       startTime = time[0];
     }
-    if (time[batchSize-1] > this.endTime) {
-      endTime = time[batchSize-1];
+    if (time[batchSize - 1] > this.endTime) {
+      endTime = time[batchSize - 1];
     }
     count += batchSize;
     updateStats(values, batchSize);
@@ -259,8 +259,8 @@ public abstract class Statistics<T> {
     if (time[0] < startTime) {
       startTime = time[0];
     }
-    if (time[batchSize-1] > this.endTime) {
-      endTime = time[batchSize-1];
+    if (time[batchSize - 1] > this.endTime) {
+      endTime = time[batchSize - 1];
     }
     count += batchSize;
     updateStats(values, batchSize);
@@ -270,8 +270,8 @@ public abstract class Statistics<T> {
     if (time[0] < startTime) {
       startTime = time[0];
     }
-    if (time[batchSize-1] > this.endTime) {
-      endTime = time[batchSize-1];
+    if (time[batchSize - 1] > this.endTime) {
+      endTime = time[batchSize - 1];
     }
     count += batchSize;
     updateStats(values, batchSize);
@@ -281,8 +281,8 @@ public abstract class Statistics<T> {
     if (time[0] < startTime) {
       startTime = time[0];
     }
-    if (time[batchSize-1] > this.endTime) {
-      endTime = time[batchSize-1];
+    if (time[batchSize - 1] > this.endTime) {
+      endTime = time[batchSize - 1];
     }
     count += batchSize;
     updateStats(values, batchSize);
@@ -292,8 +292,8 @@ public abstract class Statistics<T> {
     if (time[0] < startTime) {
       startTime = time[0];
     }
-    if (time[batchSize-1] > this.endTime) {
-      endTime = time[batchSize-1];
+    if (time[batchSize - 1] > this.endTime) {
+      endTime = time[batchSize - 1];
     }
     count += batchSize;
     updateStats(values, batchSize);

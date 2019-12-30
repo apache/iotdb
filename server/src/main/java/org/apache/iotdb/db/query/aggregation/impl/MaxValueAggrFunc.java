@@ -47,12 +47,21 @@ public class MaxValueAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromChunkMetaData(ChunkMetaData chunkMetaData) {
-
+    Comparable<Object> maxVal = (Comparable<Object>) chunkMetaData.getStatistics().getMaxValue();
+    updateResult(maxVal);
   }
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage) throws IOException {
+    Comparable<Object> maxVal = null;
 
+    while (dataInThisPage.hasCurrent()) {
+      if (maxVal == null || maxVal.compareTo(dataInThisPage.currentValue()) < 0) {
+        maxVal = (Comparable<Object>) dataInThisPage.currentValue();
+      }
+      dataInThisPage.next();
+    }
+    updateResult(maxVal);
   }
 
   @Override
