@@ -142,14 +142,14 @@ public class NewSeriesReaderWithoutValueFilter {
 
   public BatchData nextBatch() throws IOException {
 
-    if (overlappedChunkReader != null && overlappedChunkReader.hasNextBatch()) {
-      return overlappedChunkReader.nextBatch();
+    if (priorityMergeReader.hasNext()) {
+      return nextOverlappedPage();
     }
+
     if (currentChunkReader.hasNextBatch()) {
       return currentChunkReader.nextBatch();
     }
-
-    return nextOverlappedPage();
+    return null;
   }
 
 
