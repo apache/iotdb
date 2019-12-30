@@ -58,8 +58,12 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
           // if the task is submitted, there must be free space in the queue
           // so here we don't need to check whether the queue has free space
           // the reader has next batch
-          if (reader.hasNextBatch()) {
+          while (reader.hasNextBatch()) {
             BatchData batchData = reader.nextBatch();
+            // iterate until we get first batch data with valid value
+            if (batchData.isEmpty()) {
+              continue;
+            }
             blockingQueue.put(batchData);
             // if the queue also has free space, just submit another itself
             if (blockingQueue.remainingCapacity() > 0) {
@@ -70,17 +74,16 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
             else {
               reader.setManagedByQueryManager(false);
             }
+            return;
           }
           // there are no batch data left in this reader
-          else {
-            // put the signal batch data into queue
-            blockingQueue.put(SignalBatchData.getInstance());
-            // set the hasRemaining field in reader to false
-            // tell the Consumer not to submit another task for this reader any more
-            reader.setHasRemaining(false);
-            // remove itself from the QueryTaskPoolManager
-            reader.setManagedByQueryManager(false);
-          }
+          // put the signal batch data into queue
+          blockingQueue.put(SignalBatchData.getInstance());
+          // set the hasRemaining field in reader to false
+          // tell the Consumer not to submit another task for this reader any more
+          reader.setHasRemaining(false);
+          // remove itself from the QueryTaskPoolManager
+          reader.setManagedByQueryManager(false);
         }
       } catch (IOException | InterruptedException e) {
         e.printStackTrace();
@@ -141,7 +144,12 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       pool.submit(new ReadTask(reader, blockingQueueList.get(i)));
     }
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
-      fillCache(i, true);
+      fillCache(i);
+      // try to put the next timestamp into the heap
+      if (cachedBatchDataArray[i] != null && cachedBatchDataArray[i].hasCurrent()) {
+        long time = cachedBatchDataArray[i].currentTime();
+        timeHeap.add(time);
+      }
     }
   }
 
@@ -243,7 +251,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
           if (!cachedBatchDataArray[seriesIndex].hasCurrent()) {
             // still have remaining batch data in queue
             if (!noMoreDataInQueueArray[seriesIndex]) {
-              fillCache(seriesIndex, false);
+              fillCache(seriesIndex);
             }
           }
 
@@ -313,7 +321,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     return tsQueryDataSet;
   }
 
-  private void fillCache(int seriesIndex, boolean addToTimeHeap) throws InterruptedException {
+  private void fillCache(int seriesIndex) throws InterruptedException {
     BatchData batchData = blockingQueueList.get(seriesIndex).take();
     // no more batch data in this time series queue
     if (batchData instanceof SignalBatchData) {
@@ -322,8 +330,6 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     // there are more batch data in this time series queue
     else {
       cachedBatchDataArray[seriesIndex] = batchData;
-      if (addToTimeHeap)
-        timeHeap.add(batchData.currentTime());
 
       synchronized (seriesReaderWithoutValueFilterList.get(seriesIndex)) {
         // we only need to judge whether to submit another task when the queue is not full
@@ -388,7 +394,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
           // still have remaining batch data in queue
           if (!noMoreDataInQueueArray[seriesIndex]) {
             try {
-              fillCache(seriesIndex, false);
+              fillCache(seriesIndex);
             } catch (InterruptedException e) {
               e.printStackTrace();
             }
