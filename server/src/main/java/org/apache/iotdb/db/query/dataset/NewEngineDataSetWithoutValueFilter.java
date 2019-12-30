@@ -30,6 +30,8 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -86,7 +88,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
           reader.setManagedByQueryManager(false);
         }
       } catch (IOException | InterruptedException e) {
-        e.printStackTrace();
+        LOGGER.error(e.getMessage());
       }
     }
   }
@@ -96,7 +98,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
   private TreeSet<Long> timeHeap;
 
   // Blocking queue list for each batch reader
-  private List<BlockingQueue<BatchData>> blockingQueueList;
+  private BlockingQueue<BatchData>[] blockingQueueArray;
 
   // indicate that there is no more batch data in the corresponding queue
   // in case that the consumer thread is blocked on the queue and won't get runnable any more
@@ -115,6 +117,9 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
   private static final QueryTaskPoolManager pool = QueryTaskPoolManager.getInstance();
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(NewEngineDataSetWithoutValueFilter.class);
+
+
   /**
    * constructor of EngineDataSetWithoutValueFilter.
    *
@@ -126,9 +131,9 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
                                             List<SeriesReaderWithoutValueFilter> readers) throws InterruptedException {
     super(paths, dataTypes);
     this.seriesReaderWithoutValueFilterList = readers;
-    blockingQueueList = new ArrayList<>(readers.size());
+    blockingQueueArray = new BlockingQueue[readers.size()];
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
-      blockingQueueList.add(new LinkedBlockingQueue<>(BLOCKING_QUEUE_CAPACITY));
+      blockingQueueArray[i] = new LinkedBlockingQueue<>(BLOCKING_QUEUE_CAPACITY);
     }
     cachedBatchDataArray = new BatchData[readers.size()];
     noMoreDataInQueueArray = new boolean[readers.size()];
@@ -141,7 +146,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       SeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList.get(i);
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
-      pool.submit(new ReadTask(reader, blockingQueueList.get(i)));
+      pool.submit(new ReadTask(reader, blockingQueueArray[i]));
     }
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
       fillCache(i);
@@ -322,7 +327,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
   }
 
   private void fillCache(int seriesIndex) throws InterruptedException {
-    BatchData batchData = blockingQueueList.get(seriesIndex).take();
+    BatchData batchData = blockingQueueArray[seriesIndex].take();
     // no more batch data in this time series queue
     if (batchData instanceof SignalBatchData) {
       noMoreDataInQueueArray[seriesIndex] = true;
@@ -333,14 +338,14 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
       synchronized (seriesReaderWithoutValueFilterList.get(seriesIndex)) {
         // we only need to judge whether to submit another task when the queue is not full
-        if (blockingQueueList.get(seriesIndex).remainingCapacity() > 0) {
+        if (blockingQueueArray[seriesIndex].remainingCapacity() > 0) {
           SeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList.get(seriesIndex);
           // if the reader isn't being managed and still has more data,
           // that means this read task leave the pool before because the queue has no more space
           // now we should submit it again
           if (!reader.isManagedByQueryManager() && reader.hasRemaining()) {
             reader.setManagedByQueryManager(true);
-            pool.submit(new ReadTask(reader, blockingQueueList.get(seriesIndex)));
+            pool.submit(new ReadTask(reader, blockingQueueArray[seriesIndex]));
           }
         }
       }
@@ -396,7 +401,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
             try {
               fillCache(seriesIndex);
             } catch (InterruptedException e) {
-              e.printStackTrace();
+              LOGGER.error(e.getMessage());
             }
           }
         }
