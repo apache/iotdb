@@ -76,7 +76,7 @@ public class ClientMain {
     System.out.println(resp.columns);
 
     SessionDataSet dataSet = new SessionDataSet(query, resp.getColumns(),
-        resp.getDataTypeList(), queryId, client, sessionId);
+        resp.getDataTypeList(), queryId, client, sessionId, resp.queryDataSet);
 
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
@@ -124,16 +124,16 @@ public class ClientMain {
       insertReq.setValues(Collections.singletonList(Double.toString(i * 0.1)));
       insertReq.setDeviceId("root.beijing.d1");
       System.out.println(insertReq);
-      System.out.println(client.insertRow(insertReq));
+      System.out.println(client.insert(insertReq));
       insertReq.setDeviceId("root.shanghai.d1");
       System.out.println(insertReq);
-      System.out.println(client.insertRow(insertReq));
+      System.out.println(client.insert(insertReq));
       insertReq.setDeviceId("root.guangzhou.d1");
       System.out.println(insertReq);
-      System.out.println(client.insertRow(insertReq));
+      System.out.println(client.insert(insertReq));
       insertReq.setDeviceId("root.shenzhen.d1");
       System.out.println(insertReq);
-      System.out.println(client.insertRow(insertReq));
+      System.out.println(client.insert(insertReq));
     }
   }
 

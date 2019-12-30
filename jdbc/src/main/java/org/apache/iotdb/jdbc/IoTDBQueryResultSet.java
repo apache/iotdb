@@ -72,7 +72,7 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   public IoTDBQueryResultSet(Statement statement, List<String> columnNameList,
       List<String> columnTypeList, boolean ignoreTimeStamp, TSIService.Iface client,
-      String sql, long queryId, long sessionId)
+      String sql, long queryId, long sessionId, TSQueryDataSet dataset)
       throws SQLException {
     this.statement = statement;
     this.fetchSize = statement.getFetchSize();
@@ -102,6 +102,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     this.client = client;
     this.sql = sql;
     this.queryId = queryId;
+    this.tsQueryDataSet = dataset;
     this.sessionId = sessionId;
   }
 
@@ -337,10 +338,8 @@ public class IoTDBQueryResultSet implements ResultSet {
     int index = columnInfoMap.get(columnName) - START_INDEX;
     if (values[index] != null) {
       return BytesUtils.bytesToDouble(values[index]);
-    }
-    else {
-      throw new SQLException(
-              String.format(VALUE_IS_NULL, columnName));
+    } else {
+      throw new SQLException(String.format(VALUE_IS_NULL, columnName));
     }
   }
 
@@ -375,10 +374,8 @@ public class IoTDBQueryResultSet implements ResultSet {
     int index = columnInfoMap.get(columnName) - START_INDEX;
     if (values[index] != null) {
       return BytesUtils.bytesToFloat(values[index]);
-    }
-    else {
-      throw new SQLException(
-              String.format(VALUE_IS_NULL, columnName));
+    } else {
+      throw new SQLException(String.format(VALUE_IS_NULL, columnName));
     }
   }
 
@@ -398,10 +395,8 @@ public class IoTDBQueryResultSet implements ResultSet {
     int index = columnInfoMap.get(columnName) - START_INDEX;
     if (values[index] != null) {
       return BytesUtils.bytesToInt(values[index]);
-    }
-    else {
-      throw new SQLException(
-              String.format(VALUE_IS_NULL, columnName));
+    } else {
+      throw new SQLException(String.format(VALUE_IS_NULL, columnName));
     }
   }
 
@@ -419,10 +414,8 @@ public class IoTDBQueryResultSet implements ResultSet {
     int index = columnInfoMap.get(columnName) - START_INDEX;
     if (values[index] != null) {
       return BytesUtils.bytesToLong(values[index]);
-    }
-    else {
-      throw new SQLException(
-              String.format(VALUE_IS_NULL, columnName));
+    } else {
+      throw new SQLException(String.format(VALUE_IS_NULL, columnName));
     }
   }
 
@@ -668,32 +661,49 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public boolean next() throws SQLException {
-    if ((tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining()) && !emptyResultSet) {
-      TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId);
-      try {
-        TSFetchResultsResp resp = client.fetchResults(req);
-        try {
-          RpcUtils.verifySuccess(resp.getStatus());
-        } catch (IoTDBRPCException e) {
-          throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-        }
-        if (!resp.hasResultSet) {
-          emptyResultSet = true;
-        } else {
-          tsQueryDataSet = resp.getQueryDataSet();
-          rowsIndex = 0;
-        }
-      } catch (TException e) {
-        throw new SQLException(
-            "Cannot fetch result from server, because of network connection: {} ", e);
-      }
-
+    if (hasCachedResults()) {
+      constructOneRow();
+      return true;
     }
     if (emptyResultSet) {
       return false;
     }
-    constructOneRow();
-    return true;
+    if (fetchResults()) {
+      constructOneRow();
+      return true;
+    }
+    return false;
+  }
+
+
+  /**
+   * @return true means has results
+   */
+  private boolean fetchResults() throws SQLException {
+    rowsIndex = 0;
+    TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId);
+    try {
+      TSFetchResultsResp resp = client.fetchResults(req);
+
+      try {
+        RpcUtils.verifySuccess(resp.getStatus());
+      } catch (IoTDBRPCException e) {
+        throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
+      }
+      if (!resp.hasResultSet) {
+        emptyResultSet = true;
+      } else {
+        tsQueryDataSet = resp.getQueryDataSet();
+      }
+      return resp.hasResultSet;
+    } catch (TException e) {
+      throw new SQLException(
+          "Cannot fetch result from server, because of network connection: {} ", e);
+    }
+  }
+
+  private boolean hasCachedResults() {
+    return tsQueryDataSet != null && tsQueryDataSet.time.hasRemaining();
   }
 
   private void constructOneRow() {
@@ -710,28 +720,33 @@ public class IoTDBQueryResultSet implements ResultSet {
         TSDataType dataType = TSDataType.valueOf(columnTypeDeduplicatedList.get(i));
         switch (dataType) {
           case BOOLEAN:
-            if (values[i] == null)
+            if (values[i] == null) {
               values[i] = new byte[1];
+            }
             valueBuffer.get(values[i]);
             break;
           case INT32:
-            if (values[i] == null)
+            if (values[i] == null) {
               values[i] = new byte[Integer.BYTES];
+            }
             valueBuffer.get(values[i]);
             break;
           case INT64:
-            if (values[i] == null)
+            if (values[i] == null) {
               values[i] = new byte[Long.BYTES];
+            }
             valueBuffer.get(values[i]);
             break;
           case FLOAT:
-            if (values[i] == null)
+            if (values[i] == null) {
               values[i] = new byte[Float.BYTES];
+            }
             valueBuffer.get(values[i]);
             break;
           case DOUBLE:
-            if (values[i] == null)
+            if (values[i] == null) {
               values[i] = new byte[Double.BYTES];
+            }
             valueBuffer.get(values[i]);
             break;
           case TEXT:
@@ -740,7 +755,7 @@ public class IoTDBQueryResultSet implements ResultSet {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                    String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+                String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
         }
       }
     }
@@ -749,8 +764,9 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   /**
    * judge whether the specified column value is null in the current position
-   * @param index column index
-   * @return
+   *
+   * @param index series index
+   * @param rowNum current position
    */
   private boolean isNull(int index, int rowNum) {
     byte bitmap = currentBitmap[index];

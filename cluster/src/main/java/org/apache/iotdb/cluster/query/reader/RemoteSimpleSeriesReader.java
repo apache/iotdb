@@ -8,8 +8,6 @@ import static org.apache.iotdb.cluster.server.RaftServer.CONNECTION_TIME_OUT_MS;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.DataClient;
@@ -17,8 +15,8 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +24,7 @@ import org.slf4j.LoggerFactory;
 /**
  * RemoteSimpleSeriesReader is a reader without value filter that reads points from a remote side.
  */
-public class RemoteSimpleSeriesReader implements IPointReader {
+public class RemoteSimpleSeriesReader implements IBatchReader {
 
   private static final Logger logger = LoggerFactory.getLogger(RemoteSimpleSeriesReader.class);
   private long readerId;
@@ -34,9 +32,7 @@ public class RemoteSimpleSeriesReader implements IPointReader {
   private Node header;
   private MetaGroupMember metaGroupMember;
 
-  private int fetchSize = 1000;
-  private List<TimeValuePair> cache = Collections.emptyList();
-  private int cacheIndex = 0;
+  private BatchData cache;
 
   private AtomicReference<ByteBuffer> fetchResult = new AtomicReference<>();
   private GenericHandler<ByteBuffer> handler;
@@ -51,27 +47,24 @@ public class RemoteSimpleSeriesReader implements IPointReader {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
-    if (cacheIndex < cache.size()) {
+  public boolean hasNextBatch() throws IOException {
+    if (cache != null) {
       return true;
     }
     fetch();
-    return cacheIndex < cache.size();
+    return cache != null;
   }
 
   @Override
-  public TimeValuePair next() throws IOException {
-    if (!hasNext()) {
+  public BatchData nextBatch() throws IOException {
+    if (!hasNextBatch()) {
       throw new NoSuchElementException();
     }
-    return cache.get(cacheIndex++);
+    BatchData ret = cache;
+    cache = null;
+    return ret;
   }
 
-  @Override
-  public TimeValuePair current() throws IOException {
-    hasNext();
-    return cache.get(cacheIndex);
-  }
 
   @Override
   public void close() {
@@ -83,14 +76,13 @@ public class RemoteSimpleSeriesReader implements IPointReader {
     synchronized (fetchResult) {
       fetchResult.set(null);
       try {
-        client.fetchSingleSeries(header, readerId, fetchSize, handler);
+        client.fetchSingleSeries(header, readerId, handler);
         fetchResult.wait(CONNECTION_TIME_OUT_MS);
       } catch (TException | InterruptedException e) {
         throw new IOException(e);
       }
     }
-    cache = SerializeUtils.deserializeTVPairs(fetchResult.get());
-    logger.debug("Fetched tv pairs from {}, {}", source, cache);
-    cacheIndex = 0;
+    cache = SerializeUtils.deserializeBatchData(fetchResult.get());
+    logger.debug("Fetched a batch from {}, size:{}", source, cache.length());
   }
 }

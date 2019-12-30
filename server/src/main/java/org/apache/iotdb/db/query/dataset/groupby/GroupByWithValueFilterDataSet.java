@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
@@ -30,12 +33,7 @@ import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -58,25 +56,27 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * constructor.
    */
-  public GroupByWithValueFilterDataSet(long queryId, List<Path> paths, long unit,
-                                       long slidingStep, long startTime, long endTime) {
-    super(queryId, paths, unit, slidingStep, startTime, endTime);
+  public GroupByWithValueFilterDataSet(QueryContext context, GroupByPlan groupByPlan)
+      throws MetadataException, IOException, StorageEngineException {
+    super(context, groupByPlan);
     this.allDataReaderList = new ArrayList<>();
-    this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getAggregateFetchSize();
+    this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
+    initGroupBy(context, groupByPlan);
+  }
+
+  public GroupByWithValueFilterDataSet(long queryId, GroupByPlan groupByPlan) {
+    super(new QueryContext(queryId), groupByPlan);
+    this.allDataReaderList = new ArrayList<>();
+    this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
   }
 
   /**
    * init reader and aggregate function.
    */
-  public void initGroupBy(QueryContext context, List<String> aggres, IExpression expression)
-      throws StorageEngineException, IOException, QueryProcessException {
-    try {
-      initAggreFuction(aggres);
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
-
-    this.timestampGenerator = new EngineTimeGenerator(expression, context);
+  private void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
+      throws StorageEngineException, IOException, MetadataException {
+    initAggreFuction(groupByPlan);
+    this.timestampGenerator = new EngineTimeGenerator(groupByPlan.getExpression(), context);
     this.allDataReaderList = new ArrayList<>();
     for (Path path : paths) {
       SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path, context);
@@ -139,7 +139,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * construct an array of timestamps for one batch of a group by partition calculating.
    *
-   * @param timestampArray timestamp array
+   * @param timestampArray  timestamp array
    * @param timeArrayLength the current size of timestamp array
    * @return time array size
    */

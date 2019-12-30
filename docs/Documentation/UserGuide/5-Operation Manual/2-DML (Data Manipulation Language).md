@@ -69,7 +69,7 @@ IoTDB > insert into root.ln.wf02.wt02(timestamp, temperature) values(1,"v1")
 Because `root.ln.wf02.wt02. temperature` does not exist, the system will return the following ERROR information:
 
 ```
-Msg: Current deviceId[root.ln.wf02.wt02] does not contain measurement:temperature
+Msg: The resultDataType or encoding or compression of the last node temperature is conflicting in the storage group root.ln
 ```
 If the data type inserted by the user is inconsistent with the corresponding data type of the timeseries, for example, execute the following command:
 

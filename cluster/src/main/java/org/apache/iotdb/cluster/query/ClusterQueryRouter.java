@@ -4,17 +4,12 @@
 
 package org.apache.iotdb.cluster.query;
 
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
-import org.apache.iotdb.db.query.fill.IFill;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 public class ClusterQueryRouter extends EngineQueryRouter {
 
@@ -22,18 +17,17 @@ public class ClusterQueryRouter extends EngineQueryRouter {
 
   ClusterQueryRouter(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
-    executorFactory = expression -> new ClusterDataQueryExecutor(expression, this.metaGroupMember);
+    executorFactory = (paths, types, expr) -> new ClusterDataQueryExecutor(paths, types, expr,
+        this.metaGroupMember);
   }
 
   @Override
-  public QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
-      IExpression expression, QueryContext context) {
+  public QueryDataSet aggregate(AggregationPlan plan, QueryContext context) {
     throw new UnsupportedOperationException("Aggregate not implemented");
   }
 
   @Override
-  public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
-      QueryContext context) {
+  public QueryDataSet fill(FillQueryPlan plan, QueryContext context) {
     throw new UnsupportedOperationException("Fill not implemented");
   }
 }

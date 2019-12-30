@@ -19,31 +19,32 @@
 
 -->
 
-# Chapter4: Client
-# Programming - JDBC
+# 第4章: 客户端
 
-## Usage
+## 编程 - JDBC
 
-## Dependencies
+## 使用
+
+## 依赖项
 
 * JDK >= 1.8
 * Maven >= 3.1
 
-## How to package only jdbc project
+## 只打包 JDBC 工程
 
-In root directory:
+在根目录下执行下面的命令:
 ```
 mvn clean package -pl jdbc -am -Dmaven.test.skip=true
 ```
 
-## How to install in local maven repository
+## 如何到本地 MAVEN 仓库
 
-In root directory:
+在根目录下执行下面的命令:
 ```
 mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 ```
 
-## Using IoTDB JDBC with Maven
+## 如何在 MAVEN 中使用 IoTDB JDBC
 
 ```
 <dependencies>
@@ -56,13 +57,13 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 ```
 
 
-## Examples
+## 示例
 
-This chapter provides an example of how to open a database connection, execute a SQL query, and display the results.
+本章提供了如何建立数据库连接、执行 SQL 和显示查询结果的示例。
 
-Requires that you include the packages containing the JDBC classes needed for database programming.
+要求您已经在工程中包含了数据库编程所需引入的包和 JDBC class.
 
-**NOTE: For faster insertion, the insertBatch() in Session is recommended.**
+**注意:为了更快地插入，建议使用 insertBatch()**
 
 ```Java
 import java.sql.*;
@@ -208,9 +209,11 @@ public class JDBCExample {
   }
 }
 ```
+
+
 ## Status Code
 
-**Status Code** is introduced in the latest version. For example, as IoTDB requires registering the time series first before writing data, a kind of solution is:
+在最新版本中引入了**状态码**这一概念。例如，因为IoTDB需要在写入数据之前首先注册时间序列，一种可能的解决方案是：
 
 ```
 try {
@@ -227,48 +230,49 @@ try {
 
 ```
 
-With Status Code, instead of writing codes like `if (e.getErrorMessage().contains("exist"))`, we can simply use `e.getErrorCode() == TSStatusCode.TIME_SERIES_NOT_EXIST_ERROR.getStatusCode()`.
+利用状态码，我们就可以不必写诸如`if (e.getErrorMessage().contains("exist"))`的代码，只需要使用`e.getStatusType().getCode() == TSStatusCode.TIME_SERIES_NOT_EXIST_ERROR.getStatusCode()`。
 
-Here is a list of Status Code and related message:
+这里是状态码和相对应信息的列表：
 
-|Status Code|Status Type|Meanings|
+|状态码|状态类型|状态信息|
 |:---|:---|:---|
 |200|SUCCESS_STATUS||
 |201|STILL_EXECUTING_STATUS||
 |202|INVALID_HANDLE_STATUS||
-|300|TIMESERIES_ALREADY_EXIST_ERROR|Timeseries already exists|
-|301|TIMESERIES_NOT_EXIST_ERROR|Timeseries does not exist|
-|302|UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR|Unsupported fetch metadata operation|
-|303|METADATA_ERROR|Meet error when dealing with metadata|
-|305|OUT_OF_TTL_ERROR|Insertion time is less than TTL time bound|
-|306|CONFIG_ADJUSTER|IoTDB system load is too large|
-|307|MERGE_ERROR|Meet error while merging|
-|308|SYSTEM_CHECK_ERROR|Meet error while system checking|
-|309|SYNC_DEVICE_OWNER_CONFLICT_ERROR|Sync device owners conflict|
-|310|SYNC_CONNECTION_EXCEPTION|Meet error while sync connecting|
-|311|STORAGE_GROUP_PROCESSOR_ERROR|Storage group processor related error|
-|312|STORAGE_GROUP_ERROR|Storage group related error|
-|313|STORAGE_ENGINE_ERROR|Storage engine related error|
-|400|EXECUTE_STATEMENT_ERROR|Execute statement error|
-|401|SQL_PARSE_ERROR|Meet error while parsing SQL|
-|402|GENERATE_TIME_ZONE_ERROR|Meet error while generating time zone|
-|403|SET_TIME_ZONE_ERROR|Meet error while setting time zone|
-|404|NOT_STORAGE_GROUP_ERROR|Operating object is not a storage group|
-|405|QUERY_NOT_ALLOWED|Query statements are not allowed error|
-|406|AST_FORMAT_ERROR|AST format related error|
-|407|LOGICAL_OPERATOR_ERROR|Logical operator related error|
-|408|LOGICAL_OPTIMIZE_ERROR|Logical optimize related error|
-|409|UNSUPPORTED_FILL_TYPE_ERROR|Unsupported fill type related error|
-|410|PATH_ERROR|Path related error|
-|500|INTERNAL_SERVER_ERROR|Internal server error|
-|501|CLOSE_OPERATION_ERROR|Meet error in close operation|
-|502|READ_ONLY_SYSTEM_ERROR|Operating system is read only|
-|503|DISK_SPACE_INSUFFICIENT_ERROR|Disk space is insufficient|
-|504|START_UP_ERROR|Meet error while starting up|
-|600|WRONG_LOGIN_PASSWORD_ERROR|Username or password is wrong|
-|601|NOT_LOGIN_ERROR|Has not logged in|
-|602|NO_PERMISSION_ERROR|No permissions for this operation|
-|603|UNINITIALIZED_AUTH_ERROR|Uninitialized authorizer|
+|300|TIMESERIES_ALREADY_EXIST_ERROR|时间序列已经存在|
+|301|TIMESERIES_NOT_EXIST_ERROR|时间序列不存在|
+|302|UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR|不支持的获取元数据操作|
+|303|METADATA_ERROR|处理元数据错误|
+|305|OUT_OF_TTL_ERROR|插入时间少于TTL时间边界|
+|306|CONFIG_ADJUSTER|IoTDB系统负载过大|
+|307|MERGE_ERROR|合并错误|
+|308|SYSTEM_CHECK_ERROR|系统检查错误|
+|309|SYNC_DEVICE_OWNER_CONFLICT_ERROR|回传设备冲突错误|
+|310|SYNC_CONNECTION_EXCEPTION|回传连接错误|
+|311|STORAGE_GROUP_PROCESSOR_ERROR|存储组处理器相关错误|
+|312|STORAGE_GROUP_ERROR|存储组相关错误|
+|313|STORAGE_ENGINE_ERROR|存储引擎相关错误|
+|400|EXECUTE_STATEMENT_ERROR|执行语句错误|
+|401|SQL_PARSE_ERROR|SQL语句分析错误|
+|402|GENERATE_TIME_ZONE_ERROR|生成时区错误|
+|403|SET_TIME_ZONE_ERROR|设置时区错误|
+|404|NOT_STORAGE_GROUP_ERROR|操作对象不是存储组|
+|405|QUERY_NOT_ALLOWED|查询语句不允许|
+|406|AST_FORMAT_ERROR|AST格式相关错误|
+|407|LOGICAL_OPERATOR_ERROR|逻辑符相关错误|
+|408|LOGICAL_OPTIMIZE_ERROR|逻辑优化相关错误|
+|409|UNSUPPORTED_FILL_TYPE_ERROR|不支持的填充类型|
+|410|PATH_ERROR|路径相关错误|
+|405|READ_ONLY_SYSTEM_ERROR|操作系统只读|
+|500|INTERNAL_SERVER_ERROR|服务器内部错误|
+|501|CLOSE_OPERATION_ERROR|关闭操作错误|
+|502|READ_ONLY_SYSTEM_ERROR|系统只读|
+|503|DISK_SPACE_INSUFFICIENT_ERROR|磁盘空间不足|
+|504|START_UP_ERROR|启动错误|
+|600|WRONG_LOGIN_PASSWORD_ERROR|用户名或密码错误|
+|601|NOT_LOGIN_ERROR|没有登录|
+|602|NO_PERMISSION_ERROR|没有操作权限|
+|603|UNINITIALIZED_AUTH_ERROR|授权人未初始化|
 
-> All exceptions are refactored in latest version by extracting uniform message into exception classes. Different error codes are added to all exceptions. When an exception is caught and a higher-level exception is thrown, the error code will keep and pass so that users will know the detailed error reason.
-A base exception class "ProcessException" is also added to be extended by all exceptions.
+> 在最新版本中，我们重构了IoTDB的异常类。通过将错误信息统一提取到异常类中，并为所有异常添加不同的错误代码，从而当捕获到异常并引发更高级别的异常时，错误代码将保留并传递，以便用户了解详细的错误原因。
+除此之外，我们添加了一个基础异常类“ProcessException”，由所有异常扩展。

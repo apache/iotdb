@@ -42,3 +42,8 @@
 |  Tianan li     |  Tsinghua University |
 |  Yue Su        |	Tsinghua University |
 |  Hui Da        |	Lenovo              |
+|  Yuan Tian     |  Tsinghua University |
+|  Zesong Sun    |  Tsinghua University |
+|  Kaifeng Xue   |  Tsinghua University |
+|  Tianci Zhu    |                      |
+|  Jack Tsai     |                      | 

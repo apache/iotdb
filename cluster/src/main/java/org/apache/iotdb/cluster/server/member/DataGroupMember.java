@@ -39,9 +39,9 @@ import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
 import org.apache.iotdb.cluster.log.snapshot.RemoteDataSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
 import org.apache.iotdb.cluster.query.ClusterQueryParser;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
+import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -69,18 +69,19 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithValueFilter;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -610,23 +611,25 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     resultHandler.onComplete(resp);
   }
 
-  IPointReader getSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
+  IBatchReader getSeriesReaderWithoutValueFilter(Path path, TSDataType dataType, Filter timeFilter,
       QueryContext context, boolean pushdownUnseq)
       throws IOException, StorageEngineException {
     // pull the newest data
     if (syncLeader()) {
-      return new SeriesReaderWithoutValueFilter(path, timeFilter, context, pushdownUnseq);
+      return new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context, pushdownUnseq);
     } else {
       throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
     }
   }
 
-  IPointReader getSeriesReaderWithValueFilter(Path path, Filter timeFilter,
+  IBatchReader getSeriesReaderWithValueFilter(Path path, TSDataType dataType, Filter timeFilter,
       QueryContext context)
       throws IOException, StorageEngineException {
     // pull the newest data
     if (syncLeader()) {
-      return new SeriesReaderWithValueFilter(path, timeFilter, context);
+      return new SeriesReaderWithValueFilter(path,
+          dataType, timeFilter,
+          context);
     } else {
       throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
     }
@@ -652,6 +655,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
 
     Path path = new Path(request.getPath());
+    TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     Filter timeFilter = null;
     if (request.isSetFilterBytes()) {
       // TODO-Cluster: deserialize the filters
@@ -662,15 +666,15 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
     try {
-      IPointReader pointReader;
+      IBatchReader batchReader;
       if (request.isWithValueFilter()) {
-        pointReader = getSeriesReaderWithValueFilter(path, timeFilter, queryContext);
+        batchReader = getSeriesReaderWithValueFilter(path, dataType, timeFilter, queryContext);
       } else {
-        pointReader = getSeriesReaderWithoutValueFilter(path, timeFilter, queryContext,
+        batchReader = getSeriesReaderWithoutValueFilter(path, dataType, timeFilter, queryContext,
             request.isPushdownUnseq());
       }
 
-      long readerId = queryManager.registerReader(pointReader);
+      long readerId = queryManager.registerReader(batchReader);
       queryContext.registerLocalReader(readerId);
 
       logger.debug("{}: Build a reader of {} for {}, readerId: {}", name, path,
@@ -745,27 +749,23 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   @Override
-  public void fetchSingleSeries(Node header, long readerId, int fetchSize,
+  public void fetchSingleSeries(Node header, long readerId,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    IPointReader reader = queryManager.getReader(readerId);
+    IBatchReader reader = queryManager.getReader(readerId);
     if (reader == null) {
       resultHandler.onError(new ReaderNotFoundException(readerId));
       return;
     }
     try {
-      if (reader.hasNext()) {
+      if (reader.hasNextBatch()) {
         int count = 0;
-        List<TimeValuePair> timeValuePairs = new ArrayList<>(fetchSize);
-        while (reader.hasNext() && count < fetchSize) {
-          timeValuePairs.add(reader.next());
-          count++;
-        }
+        BatchData batchData = reader.nextBatch();
+
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
-        dataOutputStream.write(timeValuePairs.get(0).getValue().getDataType().ordinal());
-        SerializeUtils.serializeTVPairs(timeValuePairs, dataOutputStream);
-        logger.debug("{}: Send results of reader {}, {}", name, readerId, timeValuePairs);
+        SerializeUtils.serializeBatchData(batchData, dataOutputStream);
+        logger.debug("{}: Send results of reader {}, size:{}", name, readerId, batchData.length());
         resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
       } else {
         resultHandler.onComplete(ByteBuffer.allocate(0));

@@ -22,7 +22,7 @@
 # Chapter 3: Server
 
 ## Docker Image
-Now a Dockerfile has been written at ROOT/docker/Dockerfile on the branch enable_docker_image.
+Now a Dockerfile has been written at docker/src/main/Dockerfile.
 
 1. You can build a docker image by: 
 ```

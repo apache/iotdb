@@ -13,11 +13,13 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class SerializeUtils {
 
@@ -81,6 +83,105 @@ public class SerializeUtils {
     node.setMetaPort(buffer.getInt());
     node.setNodeIdentifier(buffer.getInt());
     node.setDataPort(buffer.getInt());
+  }
+
+  public static void serializeBatchData(BatchData batchData, DataOutputStream outputStream) {
+    try {
+      int length = batchData.length();
+      TSDataType dataType = batchData.getDataType();
+      outputStream.writeInt(length);
+      outputStream.write(dataType.ordinal());
+      switch (dataType) {
+        case BOOLEAN:
+          for (int i = 0; i < length; i++) {
+            outputStream.writeLong(batchData.getTimeByIndex(i));
+            outputStream.writeBoolean(batchData.getBooleanByIndex(i));
+          }
+          break;
+        case DOUBLE:
+          for (int i = 0; i < length; i++) {
+            outputStream.writeLong(batchData.getTimeByIndex(i));
+            outputStream.writeDouble(batchData.getDoubleByIndex(i));
+          }
+          break;
+        case FLOAT:
+          for (int i = 0; i < length; i++) {
+            outputStream.writeLong(batchData.getTimeByIndex(i));
+            outputStream.writeFloat(batchData.getFloatByIndex(i));
+          }
+          break;
+        case TEXT:
+          for (int i = 0; i < length; i++) {
+            outputStream.writeLong(batchData.getTimeByIndex(i));
+            Binary binary = batchData.getBinaryByIndex(i);
+            outputStream.writeInt(binary.getLength());
+            outputStream.write(binary.getValues());
+          }
+          break;
+        case INT64:
+          for (int i = 0; i < length; i++) {
+            outputStream.writeLong(batchData.getTimeByIndex(i));
+            outputStream.writeLong(batchData.getLongByIndex(i));
+          }
+          break;
+        case INT32:
+          for (int i = 0; i < length; i++) {
+            outputStream.writeLong(batchData.getTimeByIndex(i));
+            outputStream.writeInt(batchData.getIntByIndex(i));
+          }
+          break;
+      }
+    } catch (IOException ignored) {
+      // ignored
+    }
+  }
+
+  public static BatchData deserializeBatchData(ByteBuffer buffer) {
+    int length = buffer.getInt();
+    TSDataType dataType = TSDataType.values()[buffer.get()];
+    BatchData batchData = new BatchData(dataType);
+    switch (dataType) {
+      case INT32:
+        for (int i = 0; i < length; i++) {
+          batchData.putTime(buffer.getLong());
+          batchData.putInt(buffer.getInt());
+        }
+        break;
+      case INT64:
+        for (int i = 0; i < length; i++) {
+          batchData.putTime(buffer.getLong());
+          batchData.putLong(buffer.getLong());
+        }
+        break;
+      case TEXT:
+        for (int i = 0; i < length; i++) {
+          batchData.putTime(buffer.getLong());
+          int len = buffer.getInt();
+          byte[] bytes = new byte[len];
+          buffer.get(bytes);
+          batchData.putBinary(new Binary(bytes));
+        }
+        break;
+      case FLOAT:
+        for (int i = 0; i < length; i++) {
+          batchData.putTime(buffer.getLong());
+          batchData.putFloat(buffer.getFloat());
+        }
+        break;
+      case DOUBLE:
+        for (int i = 0; i < length; i++) {
+          batchData.putTime(buffer.getLong());
+          batchData.putDouble(buffer.getDouble());
+        }
+        break;
+      case BOOLEAN:
+        for (int i = 0; i < length; i++) {
+          batchData.putTime(buffer.getLong());
+          batchData.putBoolean(buffer.get() == 1);
+        }
+        break;
+    }
+    return batchData;
   }
 
   public static void serializeTVPairs(List<TimeValuePair> timeValuePairs,

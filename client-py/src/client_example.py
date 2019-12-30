@@ -27,7 +27,7 @@ from iotdb.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertionReq, 
     TSBatchInsertionReq, TSExecuteStatementReq, TSOpenSessionReq, TSQueryDataSet, \
     TSFetchResultsReq, TSCloseOperationReq, \
     TSCloseSessionReq
-from iotdb.rpc.ttypes import TSProtocolVersion
+from iotdb.rpc.ttypes import TSProtocolVersion, TSFetchMetadataReq
 
 TSDataType = {
     'BOOLEAN': 0,
@@ -58,6 +58,20 @@ Compressor = {
     'PAA': 5,
     'PLA': 6
 }
+
+
+class Enum:
+    def __init__(self):
+        pass
+
+
+MetaQueryTypes = Enum()
+MetaQueryTypes.CATALOG_COLUMN = "COLUMN"
+MetaQueryTypes.CATALOG_TIMESERIES = "SHOW_TIMESERIES"
+MetaQueryTypes.CATALOG_STORAGE_GROUP = "SHOW_STORAGE_GROUP"
+MetaQueryTypes.CATALOG_DEVICES = "SHOW_DEVICES"
+MetaQueryTypes.CATALOG_CHILD_PATHS = "SHOW_CHILD_PATHS"
+
 
 # used to do `and` operation with bitmap to judge whether the value is null
 flag = 0x80
@@ -277,6 +291,28 @@ if __name__ == '__main__':
     closeReq = TSCloseOperationReq(sessionId)
     closeReq.queryId = queryId
     client.closeOperation(closeReq)
+
+    # query metadata
+    metaReq = TSFetchMetadataReq(sessionId=sessionId, type=MetaQueryTypes.CATALOG_DEVICES)
+    print(client.fetchMetadata(metaReq).devices)
+
+    metaReq = TSFetchMetadataReq(sessionId=sessionId,
+                                 type=MetaQueryTypes.CATALOG_TIMESERIES,
+                                 columnPath='root')
+    print(client.fetchMetadata(metaReq).timeseriesList)
+
+    metaReq = TSFetchMetadataReq(sessionId=sessionId,
+                                 type=MetaQueryTypes.CATALOG_CHILD_PATHS,
+                                 columnPath='root')
+    print(client.fetchMetadata(metaReq).childPaths)
+
+    metaReq = TSFetchMetadataReq(sessionId=sessionId, type=MetaQueryTypes.CATALOG_STORAGE_GROUP)
+    print(client.fetchMetadata(metaReq).storageGroups)
+
+    metaReq = TSFetchMetadataReq(sessionId=sessionId,
+                                 type=MetaQueryTypes.CATALOG_COLUMN,
+                                 columnPath='root.group1.s1')
+    print(client.fetchMetadata(metaReq).dataType)
 
     # and do not forget to close the session before exiting
     client.closeSession(TSCloseSessionReq(sessionId))

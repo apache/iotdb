@@ -45,6 +45,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iotdb.cluster.ClusterFileFlushPolicy;
 import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.client.MetaClient;
@@ -60,6 +61,7 @@ import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
+import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.manage.MetaSingleSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -97,6 +99,7 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -107,13 +110,13 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -169,6 +172,33 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     clientServer = new ClientServer(this);
   }
 
+  public void closePartition(String storageGroupName, boolean isSeq) {
+    synchronized (logManager) {
+      CloseFileLog log = new CloseFileLog(storageGroupName, isSeq);
+      log.setCurrLogTerm(getTerm().get());
+      log.setPreviousLogIndex(logManager.getLastLogIndex());
+      log.setPreviousLogTerm(logManager.getLastLogTerm());
+      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+
+      logManager.appendLog(log);
+
+      logger.info("Send the close file request of {} to other nodes", log);
+      AppendLogResult result = sendLogToAllGroups(log);
+
+      switch (result) {
+        case OK:
+          logger.info("Close file request of {} is accepted", log);
+          logManager.commitLog(logManager.getLastLogIndex());
+        case TIME_OUT:
+          logger.info("Close file request of {} timed out", log);
+          logManager.removeLastLog();
+        case LEADERSHIP_STALE:
+        default:
+          logManager.removeLastLog();
+      }
+    }
+  }
+
   @Override
   void initLogManager() {
     logManager = new MetaSingleSnapshotLogManager(metaLogApplier);
@@ -182,6 +212,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
     queryProcessor = new ClusterQueryParser(this);
     QueryCoordinator.getINSTANCE().setMetaGroupMember(this);
+    StorageEngine.getInstance().setFileFlushPolicy(new ClusterFileFlushPolicy(this));
   }
 
   @Override
@@ -1032,7 +1063,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     throw new StorageEngineException(new RequestTimeOutException("Query " + path + " in " + partitionGroup));
   }
 
-  public IPointReader getSeriesReader(Path path, Filter filter,
+  public IBatchReader getSeriesReader(Path path, TSDataType dataType, Filter filter,
       QueryContext context, boolean pushDownUnseq, boolean withValueFilter)
       throws IOException, StorageEngineException {
     // make sure the partition table is new
@@ -1052,17 +1083,19 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           null, String.format("Query: %s, time filter: %s, queryId: %d", path, filter,
               context.getQueryId()));
       if (withValueFilter) {
-        return dataGroupMember.getSeriesReaderWithValueFilter(path, filter, context);
+        return dataGroupMember.getSeriesReaderWithValueFilter(path, dataType, filter, context);
       } else {
-        return dataGroupMember.getSeriesReaderWithoutValueFilter(path, filter, context, true);
+        return dataGroupMember.getSeriesReaderWithoutValueFilter(path, dataType, filter, context,
+            true);
       }
     } else {
-      return getRemoteSeriesReader(filter, path, partitionGroup, context,
+      return getRemoteSeriesReader(filter, dataType, path, partitionGroup, context,
           pushDownUnseq, withValueFilter);
     }
   }
 
-  private IPointReader getRemoteSeriesReader(Filter filter, Path path, PartitionGroup partitionGroup,
+  private IBatchReader getRemoteSeriesReader(Filter filter, TSDataType dataType, Path path,
+      PartitionGroup partitionGroup,
       QueryContext context, boolean pushDownUnseq, boolean withValueFilter)
       throws IOException, StorageEngineException {
     // query a remote node
@@ -1077,6 +1110,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     request.setRequester(thisNode);
     request.setPushdownUnseq(pushDownUnseq);
     request.setWithValueFilter(withValueFilter);
+    request.setDataTypeOrdinal(dataType.ordinal());
 
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : coordinatedNodes) {
@@ -1154,11 +1188,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     Map<Node, Boolean> nodeStatus = new HashMap<>();
     for (Node node : allNodes) {
-      if (node == thisNode) {
-        nodeStatus.put(node, true);
-      } else {
-        nodeStatus.put(node, false);
-      }
+      nodeStatus.put(node, thisNode == node);
     }
     NodeStatusHandler nodeStatusHandler = new NodeStatusHandler(nodeStatus);
     try {
@@ -1187,7 +1217,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   @Override
-  public void checkAlive(AsyncMethodCallback<Node> resultHandler) throws TException {
+  public void checkAlive(AsyncMethodCallback<Node> resultHandler) {
     resultHandler.onComplete(thisNode);
   }
 }

@@ -105,7 +105,22 @@ public class SessionExample {
     session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
   }
 
+  /**
+   * insert a batch data of one device, each batch contains multiple timestamps with values of sensors
+   *
+   * a RowBatch example:
+   *
+   *      device1
+   * time s1, s2, s3
+   * 1,   1,  1,  1
+   * 2,   2,  2,  2
+   * 3,   3,  3,  3
+   *
+   * Users need to control the count of RowBatch and write a batch when it reaches the maxBatchSize
+   *
+   */
   private static void insertRowBatch() throws IoTDBSessionException {
+    // The schema of sensors of one device
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));

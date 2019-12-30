@@ -154,9 +154,9 @@ public class IoTDBConfig {
   private int maxMemtableNumber = 20;
 
   /**
-   * The amount of data that is read every time when IoTDB merges data.
+   * The amount of data that is read every time.
    */
-  private int aggregateFetchSize = 100000;
+  private int batchSize = 100000;
 
   /**
    * How many threads can concurrently flush. When <= 0, use CPU core number.
@@ -658,12 +658,12 @@ public class IoTDBConfig {
     this.multiDirStrategyClassName = multiDirStrategyClassName;
   }
 
-  public int getAggregateFetchSize() {
-    return aggregateFetchSize;
+  public int getBatchSize() {
+    return batchSize;
   }
 
-  void setAggregateFetchSize(int aggregateFetchSize) {
-    this.aggregateFetchSize = aggregateFetchSize;
+  void setBatchSize(int batchSize) {
+    this.batchSize = batchSize;
   }
 
   public int getMaxMemtableNumber() {

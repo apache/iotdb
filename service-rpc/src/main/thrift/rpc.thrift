@@ -40,6 +40,7 @@ struct TSExecuteStatementResp {
 	5: optional bool ignoreTimeStamp
   // Data type list of columns in select statement of SQL
   6: optional list<string> dataTypeList
+  7: optional TSQueryDataSet queryDataSet
 }
 
 enum TSProtocolVersion {
@@ -89,6 +90,8 @@ struct TSExecuteStatementReq {
 
   // statementId
   3: required i64 statementId
+
+  4: optional i32 fetchSize
 }
 
 struct TSExecuteInsertRowInBatchResp{
@@ -176,16 +179,6 @@ struct TSSetTimeZoneReq {
     2: required string timeZone
 }
 
-// for prepared statement
-struct TSInsertionReq {
-    1: required i64 sessionId
-    2: optional string deviceId
-    3: optional list<string> measurements
-    4: optional list<string> values
-    5: optional i64 timestamp
-    6: optional i64 queryId
-}
-
 // for session
 struct TSInsertReq {
     1: required i64 sessionId
@@ -270,8 +263,6 @@ service TSIService {
 
 	ServerProperties getProperties();
 
-	TSExecuteStatementResp insert(1:TSInsertionReq req);
-
 	TSStatus setStorageGroup(1:i64 sessionId, 2:string storageGroup);
 
 	TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
@@ -280,9 +271,9 @@ service TSIService {
 
   TSStatus deleteStorageGroups(1:i64 sessionId, 2:list<string> storageGroup);
 
-  TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
+  TSStatus insert(1:TSInsertReq req);
 
-	TSStatus insertRow(1:TSInsertReq req);
+  TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
 
 	TSExecuteInsertRowInBatchResp insertRowInBatch(1:TSInsertInBatchReq req);
 

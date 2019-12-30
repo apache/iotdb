@@ -85,15 +85,13 @@ public class TsFileSequenceRead {
             System.out
                 .println("\t\tUncompressed page data size: " + pageHeader.getUncompressedSize());
             PageReader reader1 = new PageReader(pageData, header.getDataType(), valueDecoder,
-                defaultTimeDecoder);
-            while (reader1.hasNextBatch()) {
-              BatchData batchData = reader1.nextBatch();
-              while (batchData.hasNext()) {
-                System.out.println(
-                    "\t\t\ttime, value: " + batchData.currentTime() + ", " + batchData
-                        .currentValue());
-                batchData.next();
-              }
+                defaultTimeDecoder, null);
+            BatchData batchData = reader1.getAllSatisfiedPageData();
+            while (batchData.hasCurrent()) {
+              System.out.println(
+                  "\t\t\ttime, value: " + batchData.currentTime() + ", " + batchData
+                      .currentValue());
+              batchData.next();
             }
           }
           break;

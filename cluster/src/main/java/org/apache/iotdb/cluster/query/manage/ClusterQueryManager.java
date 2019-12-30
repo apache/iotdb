@@ -13,8 +13,8 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +24,7 @@ public class ClusterQueryManager {
 
   private AtomicLong readerIdAtom = new AtomicLong();
   private Map<Node, Map<Long, RemoteQueryContext>> queryContextMap = new ConcurrentHashMap<>();
-  private Map<Long, IPointReader> seriesReaderMap = new ConcurrentHashMap<>();
+  private Map<Long, IBatchReader> seriesReaderMap = new ConcurrentHashMap<>();
   private Map<Long, IReaderByTimestamp> seriesReaderByTimestampMap = new ConcurrentHashMap<>();
 
 
@@ -33,15 +33,16 @@ public class ClusterQueryManager {
         n -> new HashMap<>());
     RemoteQueryContext remoteQueryContext = nodeContextMap.get(queryId);
     if (remoteQueryContext == null) {
-      remoteQueryContext = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId());
+      remoteQueryContext =
+          new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
       nodeContextMap.put(queryId, remoteQueryContext);
     }
     return remoteQueryContext;
   }
 
-  public long registerReader(IPointReader pointReader) {
+  public long registerReader(IBatchReader reader) {
     long newReaderId = readerIdAtom.incrementAndGet();
-    seriesReaderMap.put(newReaderId, pointReader);
+    seriesReaderMap.put(newReaderId, reader);
     return newReaderId;
   }
 
@@ -66,12 +67,12 @@ public class ClusterQueryManager {
     // remove the readers from the cache
     Set<Long> readerIds = remoteQueryContext.getLocalReaderIds();
     for (long readerId : readerIds) {
-      IPointReader pointReader = seriesReaderMap.remove(readerId);
-      IReaderByTimestamp readerByTimestamp = seriesReaderByTimestampMap.remove(readerId);
+      seriesReaderMap.remove(readerId);
+      seriesReaderByTimestampMap.remove(readerId);
     }
   }
 
-  public IPointReader getReader(long readerId) {
+  public IBatchReader getReader(long readerId) {
     return seriesReaderMap.get(readerId);
   }
 
