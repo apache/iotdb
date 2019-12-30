@@ -73,6 +73,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
+import org.apache.iotdb.db.rescon.MemTablePool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -621,8 +622,7 @@ public class StorageGroupProcessor {
     try {
       if (!tsFileProcessorTreeMap.containsKey(timeRangeId)) {
         // we have to remove oldest processor to control the num of the memtables
-        if (tsFileProcessorTreeMap.size()
-            >= IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP / 2) {
+        if (checkNeedToRemove(sequence)) {
           Map.Entry<Long, TsFileProcessor> processorEntry = tsFileProcessorTreeMap.firstEntry();
 
           moveOneWorkProcessorToClosingList(sequence, processorEntry.getValue());
@@ -643,6 +643,17 @@ public class StorageGroupProcessor {
     }
 
     return res;
+  }
+
+  private boolean checkNeedToRemove(boolean sequence){
+    int availableCount = MemTablePool.getInstance().getAvailableMemTableCount();
+    if(sequence){
+      // 1 for flush
+      return availableCount <= 1;
+    }
+
+    // leave more space for sequence processor
+    return availableCount <= 3;
   }
 
   private long fromTimeToTimePartition(long time) {
