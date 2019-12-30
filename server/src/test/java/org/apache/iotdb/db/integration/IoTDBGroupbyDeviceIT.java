@@ -681,10 +681,10 @@ public class IoTDBGroupbyDeviceIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      // duplicated devices and nonexistent devices
+      // duplicated devices
       boolean hasResultSet = statement.execute(
-          "select s0,s0,s1,* from root.vehicle.*, root.vehicle.d0, root.vehicle.d1, "
-              + "root.nonexistent.* where time < 20 group by device");
+          "select s0,s0,s1,* from root.vehicle.*, root.vehicle.d0, root.vehicle.d1"
+              + " where time < 20 group by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
