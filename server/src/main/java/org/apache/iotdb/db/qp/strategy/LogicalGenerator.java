@@ -57,6 +57,7 @@ import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AddLabelContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AndExpressionContext;
@@ -278,7 +279,12 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterShowTimeseries(ShowTimeseriesContext ctx) {
     super.enterShowTimeseries(ctx);
-    initializedOperator = new ShowOperator(SQLConstant.TOK_TIMESERIES);
+    if(ctx.prefixPath() != null) {
+      initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES,
+          parsePrefixPath(ctx.prefixPath()));
+    } else {
+      initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES, new Path("root"));
+    }
   }
 
   @Override

@@ -60,6 +60,7 @@ import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.DeviceIterateDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -104,7 +105,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       case VERSION:
         return processShowVersion();
       case TIMESERIES:
-        return processShowTimeseries();
+        return processShowTimeseries((ShowTimeSeriesPlan) showPlan);
       case STORAGE_GROUP:
         return processShowStorageGroup();
       case DEVICES:
@@ -238,7 +239,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     return listDataSet;
   }
 
-  private QueryDataSet processShowTimeseries() throws PathException {
+  private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan timeSeriesPlan) throws PathException {
     List<Path> paths = new ArrayList<>();
     paths.add(new Path(COLUMN_TIMESERIES));
     paths.add(new Path(COLUMN_STORAGE_GROUP));
@@ -250,7 +251,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     dataTypes.add(TSDataType.TEXT);
     dataTypes.add(TSDataType.TEXT);
     ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
-    List<List<String>> timeseriesList = MManager.getInstance().getShowTimeseriesPath("root");
+    List<List<String>> timeseriesList = MManager.getInstance()
+        .getShowTimeseriesPath(timeSeriesPlan.getPath().toString());
     for(List<String> list : timeseriesList) {
       RowRecord record = new RowRecord(0);
       for(String s : list) {
