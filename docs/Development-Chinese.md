@@ -45,7 +45,7 @@ IoTDB 官网：https://iotdb.apache.org/
 
 ## 邮件讨论内容（英文）
 
-* 第一个参与邮件列表可以简单介绍一下自己。（Hi, I'm xxx ...)
+* 第一次参与邮件列表可以简单介绍一下自己。（Hi, I'm xxx ...)
 
 * 开发功能前可以发邮件声明一下自己想做的任务。（Hi，I'm working on issue IOTDB-XXX，My plan is ...）
 
