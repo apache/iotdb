@@ -18,15 +18,22 @@
  */
 package org.apache.iotdb.rocketmq;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.sql.Statement;
+import java.util.Arrays;
+import java.util.List;
+
+import org.apache.iotdb.session.IoTDBSessionException;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
 import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
 import org.apache.rocketmq.client.consumer.listener.ConsumeOrderlyStatus;
 import org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly;
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.common.consumer.ConsumeFromWhere;
+import org.apache.rocketmq.common.message.MessageExt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,38 +42,55 @@ public class RocketMQConsumer {
   private DefaultMQPushConsumer consumer;
   private String producerGroup;
   private String serverAddresses;
-  private Connection connection;
-  private Statement statement;
-  private String createStorageGroupSqlTemplate = "SET STORAGE GROUP TO %s";
+  private static Session session;
   private static final Logger logger = LoggerFactory.getLogger(RocketMQConsumer.class);
 
-  public RocketMQConsumer(String producerGroup, String serverAddresses, String connectionUrl,
-      String user, String password) throws ClassNotFoundException, SQLException {
+  public RocketMQConsumer(String producerGroup, String serverAddresses, String connectionHost,
+      int connectionPort, String user, String password) throws ClassNotFoundException, SQLException, IoTDBSessionException {
     this.producerGroup = producerGroup;
     this.serverAddresses = serverAddresses;
     this.consumer = new DefaultMQPushConsumer(producerGroup);
     this.consumer.setNamesrvAddr(serverAddresses);
-    initIoTDB(connectionUrl, user, password);
+    initIoTDB(connectionHost, connectionPort, user, password);
   }
 
-  private void initIoTDB(String connectionUrl, String user, String password)
-      throws ClassNotFoundException, SQLException {
-    Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-    user = (user == null ? "root" : user);
-    password = (password == null ? "root" : password);
-    connection = DriverManager.getConnection(connectionUrl, user, password);
-    statement = connection.createStatement();
+  private void initIoTDB(String host, int port, String user, String password)
+      throws SQLException, IoTDBSessionException {
+    if (host == null) {
+      host = Constant.IOTDB_CONNECTION_HOST;
+      port = Constant.IOTDB_CONNECTION_PORT;
+    }
+    user = (user == null ? Constant.IOTDB_CONNECTION_USER : user);
+    password = (password == null ? Constant.IOTDB_CONNECTION_PASSWORD : password);
+    session = new Session(host, port, user, password);
+    session.open();
     for (String storageGroup : Constant.STORAGE_GROUP) {
-      statement.addBatch(String.format(createStorageGroupSqlTemplate, storageGroup));
+      addStorageGroup(storageGroup);
     }
-    for (String sql : Constant.CREATE_TIMESERIES) {
-      statement.addBatch(sql);
+    for (String[] sql : Constant.CREATE_TIMESERIES) {
+      createTimeseries(sql);
     }
-    try {
-      statement.executeBatch();
-    } catch (SQLException e) {
-    }
-    statement.clearBatch();
+  }
+  
+  private void addStorageGroup(String storageGroup) throws IoTDBSessionException {
+    session.setStorageGroup(storageGroup);
+  }
+  
+  private void createTimeseries(String[] sql) throws IoTDBSessionException {
+    String timeseries = sql[0];
+    TSDataType dataType = TSDataType.valueOf(sql[1]);
+    TSEncoding encoding = TSEncoding.valueOf(sql[2]);
+    CompressionType compressionType = CompressionType.valueOf(sql[3]);
+    session.createTimeseries(timeseries, dataType, encoding, compressionType);
+  }
+  
+  private void insert(String data) throws IoTDBSessionException {
+    String[] dataArray = data.split(",");
+    String device = dataArray[0];
+    long time = Long.parseLong(dataArray[1]);
+    List<String> measurements = Arrays.asList(dataArray[2].split(":"));
+    List<String> values = Arrays.asList(dataArray[3].split(":"));
+    session.insert(device, time, measurements, values);
   }
 
   public void start() throws MQClientException {
@@ -77,7 +101,7 @@ public class RocketMQConsumer {
    * Subscribe topic and add regiser Listener
    * @throws MQClientException
    */
-  public void prepareConsume() throws MQClientException {
+  public void prepareConsume() throws MQClientException, IoTDBSessionException {
     /**
      * Subscribe one more more topics to consume.
      */
@@ -91,12 +115,14 @@ public class RocketMQConsumer {
      * Register callback to execute on arrival of messages fetched from brokers.
      */
     consumer.registerMessageListener((MessageListenerOrderly) (msgs, context) -> {
-      logger.info(String.format("%s Receive New Messages: %s %n", Thread.currentThread().getName(),
-          new String(msgs.get(0).getBody())));
-      try {
-        statement.execute(new String(msgs.get(0).getBody()));
-      } catch (SQLException e) {
-        logger.error(e.getMessage());
+      for (MessageExt msg : msgs) {
+        logger.info(String.format("%s Receive New Messages: %s %n", Thread.currentThread().getName(),
+            new String(msg.getBody())));
+        try {
+          insert(new String(msg.getBody()));
+        } catch (IoTDBSessionException e) {
+          logger.error(e.getMessage());
+        }
       }
       return ConsumeOrderlyStatus.SUCCESS;
     });
@@ -123,13 +149,18 @@ public class RocketMQConsumer {
   }
 
   public static void main(String[] args)
-      throws MQClientException, SQLException, ClassNotFoundException {
+      throws MQClientException, SQLException, ClassNotFoundException, IoTDBSessionException {
     /**
      *Instantiate with specified consumer group name and specify name server addresses.
      */
-    RocketMQConsumer consumer = new RocketMQConsumer(Constant.CONSUMER_GROUP, Constant.SERVER_ADDRESS, Constant.IOTDB_CONNECTION_URL, Constant.IOTDB_CONNECTION_USER,
+    RocketMQConsumer consumer = new RocketMQConsumer(Constant.CONSUMER_GROUP, 
+        Constant.SERVER_ADDRESS, 
+        Constant.IOTDB_CONNECTION_HOST,
+        Constant.IOTDB_CONNECTION_PORT,
+        Constant.IOTDB_CONNECTION_USER,
         Constant.IOTDB_CONNECTION_PASSWORD);
     consumer.prepareConsume();
+    consumer.addStorageGroup(Constant.ADDITIONAL_STORAGE_GROUP);
     consumer.start();
   }
 }
