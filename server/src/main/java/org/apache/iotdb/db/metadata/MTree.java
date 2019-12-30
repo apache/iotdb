@@ -797,11 +797,12 @@ public class MTree implements Serializable {
         }
       }
     } else {
+      boolean deviceAdded = false;
       for (MNode child : node.getChildren().values()) {
-        if(child.isLeaf()){
+        if(child.isLeaf() && !deviceAdded){
           res.add(parent + node.getName());
-          break;
-        } else{
+          deviceAdded = true;
+        } else if (!child.isLeaf()){
           findDevices(child, nodes, idx + 1, parent + node.getName() + ".", res);
         }
       }
