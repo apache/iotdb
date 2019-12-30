@@ -19,8 +19,10 @@
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -290,25 +292,20 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   private List<String> removeStarsInDeviceWithUnique(List<Path> paths)
           throws LogicalOptimizeException {
     List<String> retDevices;
-    Set<String> deviceSet = new HashSet<>();
+    Set<String> deviceSet = new LinkedHashSet<>();
     try {
       for (Path path : paths) {
-        List<String> all;
-        all = executor.matchPaths(path.getFullPath());
-        if (all.isEmpty()) {
-          throw new LogicalOptimizeException(
-                  "Path: \"" + path + "\" doesn't correspond to any known time series");
-        }
-        for (String subPath : all) {
-          String deviceId = new Path(subPath).getDevice();
-          if (!deviceSet.contains(deviceId)) {
-            deviceSet.add(deviceId);
+        Set<String> tempDS;
+        tempDS = MManager.getInstance().getDevices(path.getFullPath());
+
+        for (String subDevice : tempDS) {
+          if (!deviceSet.contains(subDevice)) {
+            deviceSet.add(subDevice);
           }
         }
       }
-
       retDevices = new ArrayList<>(deviceSet);
-    } catch (MetadataException e) {
+    } catch (PathException e) {
       throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
     }
     return retDevices;
