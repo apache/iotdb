@@ -87,8 +87,10 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
           // remove itself from the QueryTaskPoolManager
           reader.setManagedByQueryManager(false);
         }
-      } catch (IOException | InterruptedException e) {
-        LOGGER.error(e.getMessage());
+      } catch (InterruptedException e) {
+        LOGGER.error("Interrupted while putting into the blocking queue: ", e);
+      } catch (IOException e) {
+        LOGGER.error("Something gets wrong while reading from the series reader: ", e);
       }
     }
   }
@@ -401,7 +403,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
             try {
               fillCache(seriesIndex);
             } catch (InterruptedException e) {
-              LOGGER.error(e.getMessage());
+              LOGGER.error("Interrupted while taking from the blocking queue: ", e);
             }
           }
         }
