@@ -1088,6 +1088,7 @@ public class StorageGroupProcessor {
 
       // write deletion into modification file
       tsFileResource.getModFile().write(deletion);
+      // remember to close mod file
       tsFileResource.getModFile().close();
 
       // delete data in memory of unsealed file
