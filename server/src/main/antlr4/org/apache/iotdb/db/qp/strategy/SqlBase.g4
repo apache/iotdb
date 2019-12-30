@@ -100,7 +100,19 @@ selectElements
     ;
 
 functionCall
-    : ID LR_BRACKET suffixPath RR_BRACKET
+    : functionName LR_BRACKET suffixPath RR_BRACKET
+    ;
+
+functionName
+    : MIN_TIME
+    | MAX_TIME
+    | MIN_VALUE
+    | MAX_VALUE
+    | COUNT
+    | AVG
+    | FIRST_VALUE
+    | SUM
+    | LAST_VALUE
     ;
 
 attributeClauses
@@ -662,6 +674,38 @@ NODES
 LEVEL
     : L E V E L
     ;
+
+MIN_TIME
+    : M I N UNDERLINE T I M E
+    ;
+
+MAX_TIME
+    : M A X UNDERLINE T I M E
+    ;
+
+MIN_VALUE
+    : M I N UNDERLINE V A L U E
+    ;
+
+MAX_VALUE
+    : M A X UNDERLINE V A L U E
+    ;
+
+AVG
+    : A V G
+    ;
+
+FIRST_VALUE
+    : F I R S T UNDERLINE V A L U E
+    ;
+
+SUM
+    : S U M
+    ;
+
+LAST_VALUE
+    : L A S T UNDERLINE V A L U E
+    ;
 //============================
 // End of the keywords list
 //============================
@@ -714,6 +758,8 @@ RS_BRACKET : ']';
 L_BRACKET : '{';
 
 R_BRACKET : '}';
+
+UNDERLINE : '_';
 
 STRING_LITERAL
    : DOUBLE_QUOTE_STRING_LITERAL
