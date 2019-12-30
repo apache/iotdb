@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
  */
 public abstract class Log {
 
+  protected static final int DEFAULT_BUFFER_SIZE = 4096;
   private long currLogIndex;
   private long currLogTerm;
   private long previousLogIndex;
@@ -39,7 +40,7 @@ public abstract class Log {
 
   public enum Types {
     // TODO-Cluster#348 support more logs
-    ADD_NODE, PHYSICAL_PLAN
+    ADD_NODE, PHYSICAL_PLAN, CLOSE_FILE
   }
 
   public long getPreviousLogIndex() {

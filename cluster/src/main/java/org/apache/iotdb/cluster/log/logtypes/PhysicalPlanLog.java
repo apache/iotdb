@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 public class PhysicalPlanLog extends Log {
 
   private static final Logger logger = LoggerFactory.getLogger(PhysicalPlanLog.class);
-  private static final int DEFAULT_BUFFER_SIZE = 4096;
   private PhysicalPlan plan;
 
   @Override

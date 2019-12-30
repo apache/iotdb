@@ -1581,4 +1581,7 @@ public class StorageGroupProcessor {
     void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
   }
 
+  public String getStorageGroupName() {
+    return storageGroupName;
+  }
 }

@@ -460,4 +460,8 @@ public class StorageEngine implements IService {
     }
     return ret;
   }
+
+  public void setFileFlushPolicy(TsFileFlushPolicy fileFlushPolicy) {
+    this.fileFlushPolicy = fileFlushPolicy;
+  }
 }

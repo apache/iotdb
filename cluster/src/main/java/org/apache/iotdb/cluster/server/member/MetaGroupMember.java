@@ -45,6 +45,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iotdb.cluster.ClusterFileFlushPolicy;
 import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.client.MetaClient;
@@ -60,6 +61,7 @@ import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
+import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.manage.MetaSingleSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -97,6 +99,7 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -169,6 +172,33 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     clientServer = new ClientServer(this);
   }
 
+  public void closePartition(String storageGroupName, boolean isSeq) {
+    synchronized (logManager) {
+      CloseFileLog log = new CloseFileLog(storageGroupName, isSeq);
+      log.setCurrLogTerm(getTerm().get());
+      log.setPreviousLogIndex(logManager.getLastLogIndex());
+      log.setPreviousLogTerm(logManager.getLastLogTerm());
+      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+
+      logManager.appendLog(log);
+
+      logger.info("Send the close file request of {} to other nodes", log);
+      AppendLogResult result = sendLogToAllGroups(log);
+
+      switch (result) {
+        case OK:
+          logger.info("Close file request of {} is accepted", log);
+          logManager.commitLog(logManager.getLastLogIndex());
+        case TIME_OUT:
+          logger.info("Close file request of {} timed out", log);
+          logManager.removeLastLog();
+        case LEADERSHIP_STALE:
+        default:
+          logManager.removeLastLog();
+      }
+    }
+  }
+
   @Override
   void initLogManager() {
     logManager = new MetaSingleSnapshotLogManager(metaLogApplier);
@@ -182,6 +212,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
     queryProcessor = new ClusterQueryParser(this);
     QueryCoordinator.getINSTANCE().setMetaGroupMember(this);
+    StorageEngine.getInstance().setFileFlushPolicy(new ClusterFileFlushPolicy(this));
   }
 
   @Override
