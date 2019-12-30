@@ -23,11 +23,12 @@
 
 ## Bug Fixes
 
+- IOTDB-159 Fix NullPointerException in SeqTsFileRecoverTest and UnseqTsFileRecoverTest
 - IOTDB-317 Fix a bug that "flush + wrong aggregation query" causes the following queries to fail
 - IOTDB-324 Fix inaccurate statistics when writing in batch
 - IOTDB-327 Fix a groupBy-without-value-filter query bug caused by the wrong page skipping logic
 - IOTDB-331 Fix a groupBy query bug when axisOrigin-startTimeOfWindow is an integral multiple of interval
-- IOTDB-357 Fix NullPointerException in tsfile recover performer
+- IOTDB-357 Fix NullPointerException in ActiveTimeSeriesCounter
 - IOTDB-359 Fix a wrong-data-type bug in TsFileSketchTool
 - IOTDB-360 Fix bug of a deadlock in CompressionRatio
 - IOTDB-363 Fix link errors in Development-Contributing.md and add Development-Document.md
