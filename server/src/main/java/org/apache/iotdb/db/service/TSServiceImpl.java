@@ -49,6 +49,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.QueryProcessor;
@@ -426,10 +427,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return false;
     }
     statement = statement.toLowerCase();
+    if (statement.startsWith("flush")) {
+      try {
+        execFlush(statement);
+      } catch (StorageGroupNotSetException e) {
+        throw new StorageEngineException(e);
+      }
+      return true;
+    }
     switch (statement) {
-      case "flush":
-        StorageEngine.getInstance().syncCloseAllProcessor();
-        return true;
       case "merge":
         StorageEngine.getInstance()
             .mergeAll(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
@@ -439,6 +445,25 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return true;
       default:
         return false;
+    }
+  }
+
+  private void execFlush(String statement) throws StorageGroupNotSetException {
+    String[] args = statement.split("\\s+");
+    if (args.length == 1) {
+      StorageEngine.getInstance().syncCloseAllProcessor();
+    } else if (args.length == 2){
+      String[] storageGroups = args[1].split(",\\s*");
+      for (String storageGroup : storageGroups) {
+        StorageEngine.getInstance().asyncCloseProcessor(storageGroup, true);
+        StorageEngine.getInstance().asyncCloseProcessor(storageGroup, false);
+      }
+    } else {
+      String[] storageGroups = args[1].split(",\\s*");
+      boolean isSeq = Boolean.parseBoolean(args[2]);
+      for (String storageGroup : storageGroups) {
+        StorageEngine.getInstance().asyncCloseProcessor(storageGroup, isSeq);
+      }
     }
   }
 

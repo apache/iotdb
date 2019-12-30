@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
+import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -262,7 +263,7 @@ public class StorageGroupProcessorTest {
   class DummySGP extends StorageGroupProcessor {
 
     DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
-      super(systemInfoDir, storageGroupName);
+      super(systemInfoDir, storageGroupName, new TsFileFlushPolicy.DirectFlushPolicy());
     }
 
     @Override

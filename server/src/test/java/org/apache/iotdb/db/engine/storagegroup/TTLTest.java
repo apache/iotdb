@@ -31,6 +31,7 @@ import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -89,7 +90,7 @@ public class TTLTest {
     MManager.getInstance().setStorageGroupToMTree(sg1);
     MManager.getInstance().setStorageGroupToMTree(sg2);
     storageGroupProcessor = new StorageGroupProcessor(IoTDBDescriptor.getInstance().getConfig()
-        .getSystemDir(), sg1);
+        .getSystemDir(), sg1, new DirectFlushPolicy());
     MManager.getInstance().addPathToMTree(g1s1, TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, Collections.emptyMap());
     storageGroupProcessor.addMeasurement("s1", TSDataType.INT64, TSEncoding.PLAIN,

@@ -48,7 +48,6 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseTsFile
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -224,7 +223,7 @@ public class TsFileProcessor {
     }
   }
 
-  TsFileResource getTsFileResource() {
+  public TsFileResource getTsFileResource() {
     return tsFileResource;
   }
 
@@ -250,7 +249,7 @@ public class TsFileProcessor {
   }
 
 
-  boolean shouldClose() {
+  public boolean shouldClose() {
     long fileSize = tsFileResource.getFileSize();
     long fileSizeThreshold = IoTDBDescriptor.getInstance().getConfig()
         .getTsFileSizeThreshold();
@@ -541,7 +540,7 @@ public class TsFileProcessor {
     return flushingMemTables.size();
   }
 
-  long getWorkMemTableMemory() {
+  public long getWorkMemTableMemory() {
     return workMemTable.memSize();
   }
 

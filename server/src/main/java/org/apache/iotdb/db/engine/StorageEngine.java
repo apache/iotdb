@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.List;
@@ -41,6 +40,8 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -73,7 +74,7 @@ public class StorageEngine implements IService {
 
   private final Logger logger;
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final long TTL_CHECK_INTERVAL = 60 * 1000;
+  private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
 
   /**
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
@@ -96,6 +97,7 @@ public class StorageEngine implements IService {
   }
 
   private ScheduledExecutorService ttlCheckThread;
+  private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
 
   private StorageEngine() {
     logger = LoggerFactory.getLogger(StorageEngine.class);
@@ -118,7 +120,7 @@ public class StorageEngine implements IService {
     for (MNode storageGroup : sgNodes) {
       futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
         StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
-            storageGroup.getFullPath());
+            storageGroup.getFullPath(), fileFlushPolicy);
         processor.setDataTTL(storageGroup.getDataTTL());
         processorMap.put(storageGroup.getFullPath(), processor);
         logger.info("Storage Group Processor {} is recovered successfully",
@@ -184,7 +186,7 @@ public class StorageEngine implements IService {
           if (processor == null) {
             logger.info("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroupName, Thread.currentThread().getId());
-            processor = new StorageGroupProcessor(systemDir, storageGroupName);
+            processor = new StorageGroupProcessor(systemDir, storageGroupName, fileFlushPolicy);
             processor.setDataTTL(
                 MManager.getInstance().getNodeByPathWithCheck(storageGroupName).getDataTTL());
             processorMap.put(storageGroupName, processor);
@@ -266,6 +268,21 @@ public class StorageEngine implements IService {
     }
   }
 
+  public void asyncCloseProcessor(String storageGroupName, boolean isSeq)
+      throws StorageGroupNotSetException {
+    StorageGroupProcessor processor = processorMap.get(storageGroupName);
+    if (storageGroupName != null) {
+      processor.writeLock();
+      try {
+        processor.moveOneWorkProcessorToClosingList(isSeq);
+      } finally {
+        processor.writeUnlock();
+      }
+    } else {
+      throw new StorageGroupNotSetException(storageGroupName);
+    }
+  }
+
   /**
    * update data.
    */
@@ -307,34 +324,6 @@ public class StorageEngine implements IService {
       throws StorageEngineException {
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
     return storageGroupProcessor.calTopKMeasurement(sensorId, k);
-  }
-
-  /**
-   * Append one specified tsfile to the storage group. <b>This method is only provided for
-   * transmission module</b>
-   *
-   * @param storageGroupName the seriesPath of storage group
-   * @param appendFile the appended tsfile information
-   */
-  @SuppressWarnings("unused") // reimplement sync module
-  public boolean appendFileToStorageGroupProcessor(String storageGroupName,
-      TsFileResource appendFile,
-      String appendFilePath) throws StorageEngineException {
-    // TODO reimplement sync module
-    return true;
-  }
-
-  /**
-   * get all overlap TsFiles which are conflict with the appendFile.
-   *
-   * @param storageGroupName the seriesPath of storage group
-   * @param appendFile the appended tsfile information
-   */
-  @SuppressWarnings("unused") // reimplement sync module
-  public List<String> getOverlapFiles(String storageGroupName, TsFileResource appendFile,
-      String uuid) throws StorageEngineException {
-    // TODO reimplement sync module
-    return Collections.emptyList();
   }
 
   /**

@@ -42,6 +42,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
@@ -184,10 +185,12 @@ public class StorageGroupProcessor {
   private long dataTTL = Long.MAX_VALUE;
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private TsFileFlushPolicy fileFlushPolicy;
 
-  public StorageGroupProcessor(String systemInfoDir, String storageGroupName)
+  public StorageGroupProcessor(String systemInfoDir, String storageGroupName, TsFileFlushPolicy fileFlushPolicy)
       throws StorageGroupProcessorException {
     this.storageGroupName = storageGroupName;
+    this.fileFlushPolicy = fileFlushPolicy;
 
     // construct the file schema
     this.schema = constructSchema(storageGroupName);
@@ -437,15 +440,7 @@ public class StorageGroupProcessor {
 
     // check memtable size and may asyncTryToFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
-      logger.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
-          tsFileProcessor.getWorkMemTableMemory(),
-          tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
-
-      if (tsFileProcessor.shouldClose()) {
-        moveOneWorkProcessorToClosingList(sequence);
-      } else {
-        tsFileProcessor.asyncFlush();
-      }
+      fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
   }
 
@@ -470,15 +465,7 @@ public class StorageGroupProcessor {
 
     // check memtable size and may asyncTryToFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
-      logger.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
-          tsFileProcessor.getWorkMemTableMemory(),
-          tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
-
-      if (tsFileProcessor.shouldClose()) {
-        moveOneWorkProcessorToClosingList(sequence);
-      } else {
-        tsFileProcessor.asyncFlush();
-      }
+      fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
   }
 
@@ -540,18 +527,18 @@ public class StorageGroupProcessor {
 
 
   /**
-   * only called by insert(), thread-safety should be ensured by caller
+   * thread-safety should be ensured by caller
    */
-  private void moveOneWorkProcessorToClosingList(boolean sequence) {
+  public void moveOneWorkProcessorToClosingList(boolean sequence) {
     //for sequence tsfile, we update the endTimeMap only when the file is prepared to be closed.
     //for unsequence tsfile, we have maintained the endTimeMap when an insertion comes.
-    if (sequence) {
+    if (sequence && workSequenceTsFileProcessor != null) {
       closingSequenceTsFileProcessor.add(workSequenceTsFileProcessor);
       updateEndTimeMap(workSequenceTsFileProcessor);
       workSequenceTsFileProcessor.asyncClose();
       workSequenceTsFileProcessor = null;
       logger.info("close a sequence tsfile processor {}", storageGroupName);
-    } else {
+    } else if (workUnSequenceTsFileProcessor != null){
       closingUnSequenceTsFileProcessor.add(workUnSequenceTsFileProcessor);
       workUnSequenceTsFileProcessor.asyncClose();
       workUnSequenceTsFileProcessor = null;
@@ -765,11 +752,11 @@ public class StorageGroupProcessor {
     return sensorSet;
   }
 
-  private void writeLock() {
+  public void writeLock() {
     insertLock.writeLock().lock();
   }
 
-  private void writeUnlock() {
+  public void writeUnlock() {
     insertLock.writeLock().unlock();
   }
 
