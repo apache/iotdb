@@ -100,17 +100,6 @@ public class MemTablePool {
     }
   }
 
-  /**
-   * get num of available mem table
-   *
-   * @return num of available mem table
-   */
-  public int getAvailableMemTableCount() {
-    synchronized (availableMemTables) {
-      return CONFIG.getMaxMemtableNumber() - size + availableMemTables.size();
-    }
-  }
-
   public int getSize() {
     return size;
   }
