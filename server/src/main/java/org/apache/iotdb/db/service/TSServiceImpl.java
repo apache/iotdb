@@ -53,7 +53,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -367,24 +366,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setColumnsList(getPaths(req.getColumnPath()));
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
-        case "COUNT_TIMESERIES":
-          resp.setTimeseriesNum(getPaths(req.getColumnPath()).size());
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
-        case "COUNT_NODES":
-          resp.setNodesList(getNodesList(req.getColumnPath(), req.getNodeLevel()));
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
-        case "COUNT_NODE_TIMESERIES":
-          resp.setNodeTimeseriesNum(
-              getNodeTimeseriesNum(getNodesList(req.getColumnPath(), req.getNodeLevel())));
-          status = getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
         default:
           status = getStatus(TSStatusCode.METADATA_ERROR, req.getType());
           break;
       }
-    } catch (QueryProcessException | MetadataException | OutOfMemoryError | SQLException e) {
+    } catch (QueryProcessException | MetadataException | OutOfMemoryError e) {
       logger
           .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()), e);
       status = getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
@@ -393,19 +379,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     resp.setStatus(status);
     return resp;
-  }
-
-  private Map<String, String> getNodeTimeseriesNum(List<String> nodes)
-      throws MetadataException {
-    Map<String, String> nodeColumnsNum = new HashMap<>();
-    for (String columnPath : nodes) {
-      nodeColumnsNum.put(columnPath, Integer.toString(getPaths(columnPath).size()));
-    }
-    return nodeColumnsNum;
-  }
-
-  private List<String> getNodesList(String schemaPattern, int level) throws SQLException {
-    return MManager.getInstance().getNodesList(schemaPattern, level);
   }
 
   private String getMetadataInString() {
@@ -659,6 +632,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return StaticResps.SHOW_CHILD_PATHS;
       case DEVICES:
         return StaticResps.SHOW_DEVICES;
+      case COUNT_NODE_TIMESERIES:
+        return StaticResps.COUNT_NODE_TIMESERIES;
+      case COUNT_NODES:
+        return StaticResps.COUNT_NODES;
+      case COUNT_TIMESERIES:
+        return StaticResps.COUNT_TIMESERIES;
       default:
         logger.error("Unsupported show content type: {}", showPlan.getShowContentType());
         throw new QueryProcessException(
@@ -861,7 +840,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * create QueryDataSet and buffer it for fetchResults
    */
   private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan) throws
-      QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException {
+      QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException, MetadataException, SQLException {
 
     QueryContext context = new QueryContext(queryId);
     QueryDataSet queryDataSet = processor.getExecutor().processQuery(physicalPlan, context);

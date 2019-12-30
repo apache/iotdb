@@ -42,6 +42,7 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.db.qp.logical.sys.CountOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
@@ -64,6 +65,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -180,9 +182,18 @@ public class PhysicalGenerator {
             return new ShowPlan(ShowContentType.STORAGE_GROUP);
           case SQLConstant.TOK_DEVICES:
             return new ShowPlan(ShowContentType.DEVICES);
+          case SQLConstant.TOK_COUNT_NODE_TIMESERIES:
+            return new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES,
+                ((CountOperator) operator).getPath(), ((CountOperator) operator).getLevel());
+          case SQLConstant.TOK_COUNT_NODES:
+            return new CountPlan(ShowContentType.COUNT_NODES,
+                ((CountOperator) operator).getPath(), ((CountOperator) operator).getLevel());
+          case SQLConstant.TOK_COUNT_TIMESERIES:
+            return new CountPlan(ShowContentType.COUNT_TIMESERIES,
+                ((CountOperator) operator).getPath());
           case SQLConstant.TOK_CHILD_PATHS:
-            ShowChildPathsOperator showChildPathsOperator = (ShowChildPathsOperator) operator;
-            return new ShowChildPathsPlan(ShowContentType.CHILD_PATH,showChildPathsOperator.getPath());
+            return new ShowChildPathsPlan(ShowContentType.CHILD_PATH,
+                ((ShowChildPathsOperator) operator).getPath());
           default:
             throw new LogicalOperatorException(String
                 .format("not supported operator type %s in show operation.", operator.getType()));

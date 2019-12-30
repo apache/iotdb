@@ -15,42 +15,32 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.util.List;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-public class ShowPlan extends PhysicalPlan {
+public class CountPlan extends ShowPlan {
 
-  private ShowContentType showContentType;
+  private Path path;
+  private int level;
 
-  public ShowPlan(ShowContentType showContentType){
-    super(true);
-    this.showContentType = showContentType;
-    setOperatorType(OperatorType.SHOW);
+  public CountPlan(ShowContentType showContentType, Path path) {
+    super(showContentType);
+    this.path = path;
   }
 
-  @Override
-  public List<Path> getPaths() {
-    return null;
+  public CountPlan(ShowContentType showContentType, Path path, int level) {
+    super(showContentType);
+    this.path = path;
+    this.level = level;
   }
 
-  public ShowContentType getShowContentType() {
-    return showContentType;
+  public int getLevel() {
+    return level;
   }
 
-  @Override
-  public String toString() {
-    return String.format("%s %s", getOperatorType().toString(), showContentType);
+  public Path getPath() {
+    return path;
   }
-
-  public enum ShowContentType {
-    DYNAMIC_PARAMETER, FLUSH_TASK_INFO, TTL, VERSION, TIMESERIES, STORAGE_GROUP, CHILD_PATH, DEVICES,
-    COUNT_TIMESERIES, COUNT_NODE_TIMESERIES, COUNT_NODES
-  }
-
 }

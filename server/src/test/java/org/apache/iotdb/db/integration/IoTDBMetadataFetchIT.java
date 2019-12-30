@@ -23,7 +23,6 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
-import org.apache.iotdb.jdbc.IoTDBMetadataResultSet;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -309,7 +308,7 @@ public class IoTDBMetadataFetchIT {
       StringBuilder resultStr = new StringBuilder();
       resultStr.append(resultSetMetaData.getColumnName(3)).append(",\n");
       while (resultSet.next()) {
-        resultStr.append(resultSet.getString(IoTDBMetadataResultSet.GET_STRING_TIMESERIES_DATATYPE))
+        resultStr.append(resultSet.getString("heloo"))
             .append(",");
         resultStr.append("\n");
       }

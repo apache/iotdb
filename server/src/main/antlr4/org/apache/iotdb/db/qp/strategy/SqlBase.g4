@@ -74,6 +74,8 @@ statement
     | SHOW STORAGE GROUP #showStorageGroup
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW DEVICES #showDevices
+    | COUNT TIMESERIES prefixPath (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
+    | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION #loadConfigurationStatement
     | LOAD FILE autoCreateSchema? #loadFiles
     | REMOVE FILE #removeFile
@@ -647,6 +649,18 @@ PATHS
 
 DEVICES
     : D E V I C E S
+    ;
+
+COUNT
+    : C O U N T
+    ;
+
+NODES
+    : N O D E S
+    ;
+
+LEVEL
+    : L E V E L
     ;
 //============================
 // End of the keywords list

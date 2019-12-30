@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.service;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COLUMN;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COUNT;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
@@ -82,6 +84,18 @@ class StaticResps {
   static final TSExecuteStatementResp SHOW_CHILD_PATHS = getNoTimeExecuteResp(
       Collections.singletonList(COLUMN_CHILD_PATHS),
       Collections.singletonList(TSDataType.TEXT.toString()));
+
+  static final TSExecuteStatementResp COUNT_TIMESERIES = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_COUNT),
+      Collections.singletonList(TSDataType.INT32.toString()));
+
+  static final TSExecuteStatementResp COUNT_NODE_TIMESERIES = getNoTimeExecuteResp(
+      Arrays.asList(COLUMN_COLUMN, COLUMN_COUNT),
+      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
+
+  static final TSExecuteStatementResp COUNT_NODES = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_COUNT),
+      Collections.singletonList(TSDataType.INT32.toString()));
 
   static final TSExecuteStatementResp LIST_ROLE_RESP = getNoTimeExecuteResp(
       Collections.singletonList(COLUMN_ROLE),

@@ -41,6 +41,7 @@ import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.db.qp.logical.crud.UpdateOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
+import org.apache.iotdb.db.qp.logical.sys.CountOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
@@ -62,6 +63,8 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AndExpressionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClausesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AutoCreateSchemaContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ConstantContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountNodesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreatePropertyContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateRoleContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateTimeseriesContext;
@@ -171,6 +174,25 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
   RootOperator getLogicalPlan() {
     return initializedOperator;
+  }
+
+  @Override
+  public void enterCountTimeseries(CountTimeseriesContext ctx) {
+    super.enterCountTimeseries(ctx);
+    if(ctx.INT() != null) {
+      initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_NODE_TIMESERIES,
+          parsePrefixPath(ctx.prefixPath()), Integer.parseInt(ctx.INT().getText()));
+    } else {
+      initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES,
+          parsePrefixPath(ctx.prefixPath()));
+    }
+  }
+
+  @Override
+  public void enterCountNodes(CountNodesContext ctx) {
+    super.enterCountNodes(ctx);
+    initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_NODES,
+        parsePrefixPath(ctx.prefixPath()), Integer.parseInt(ctx.INT().getText()));
   }
 
   @Override
