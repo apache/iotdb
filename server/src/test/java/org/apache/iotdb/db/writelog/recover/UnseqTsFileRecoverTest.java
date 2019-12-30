@@ -61,7 +61,7 @@ public class UnseqTsFileRecoverTest {
   private File tsF;
   private TsFileWriter writer;
   private WriteLogNode node;
-  private String logNodePrefix = "testNode";
+  private String logNodePrefix = "testNode/0";
   private Schema schema;
   private TsFileResource resource;
   private VersionController versionController = new VersionController() {
