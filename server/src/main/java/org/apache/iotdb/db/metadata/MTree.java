@@ -762,13 +762,8 @@ public class MTree implements Serializable {
    *
    * @return a list contains all distinct devices
    */
-  Set<String> getAllDevices() {
-    HashSet<String> devices = new HashSet<>();
-    MNode node;
-    if ((node = getRoot()) != null) {
-      findDevices(node, SQLConstant.ROOT, devices);
-    }
-    return new LinkedHashSet<>(devices);
+  Set<String> getAllDevices() throws PathException {
+    return getDevices(SQLConstant.ROOT);
   }
 
   /**
@@ -777,29 +772,37 @@ public class MTree implements Serializable {
    * @return a list contains all distinct devices
    */
   Set<String> getDevices(String prefixPath) throws PathException {
-    if(prefixPath == null || prefixPath.equals(SQLConstant.ROOT))
-      return getAllDevices();
-    HashSet<String> devices = new HashSet<>();
-    MNode node;
-    if ((node = getNode(prefixPath)) != null) {
-      findDevices(node, prefixPath, devices);
+    String[] nodes = MetaUtils.getNodeNames(prefixPath, PATH_SEPARATOR);
+    if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
+      throw new MTreePathException("PrefixPath", prefixPath);
     }
+    HashSet<String> devices = new HashSet<>();
+    findDevices(getRoot(), nodes, 1, "", devices);
     return new LinkedHashSet<>(devices);
   }
 
-  private void findDevices(MNode node, String path, HashSet<String> res) {
-    if (node == null) {
-      return;
+  private void findDevices(MNode node, String[] nodes, int idx, String parent, HashSet<String> res) {
+    String nodeReg;
+    if (idx >= nodes.length) {
+      nodeReg = "*";
+    } else {
+      nodeReg = nodes[idx];
     }
-    if (node.isLeaf()) {
-      res.add(path);
-      return;
-    }
-    for (MNode child : node.getChildren().values()) {
-      if (child.isLeaf()) {
-        res.add(path);
-      } else {
-        findDevices(child, path + "." + child.toString(), res);
+    if (!("*").equals(nodeReg)) {
+      if (node.hasChild(nodeReg)) {
+        if(node.getChild(nodeReg).isLeaf()){
+          res.add(parent + node.getName());
+        } else{
+          findDevices(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + ".", res);
+        }
+      }
+    } else {
+      for (MNode child : node.getChildren().values()) {
+        if(child.isLeaf()){
+          res.add(parent + node.getName());
+        } else{
+          findDevices(child, nodes, idx + 1, parent + node.getName() + ".", res);
+        }
       }
     }
   }

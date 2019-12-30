@@ -870,7 +870,7 @@ public class MManager {
    *
    * @return A HashSet instance which stores all devices info
    */
-  public Set<String> getAllDevices() throws SQLException {
+  public Set<String> getAllDevices() throws PathException {
 
     lock.readLock().lock();
     try {

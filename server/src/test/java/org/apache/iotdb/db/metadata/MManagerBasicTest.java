@@ -406,12 +406,14 @@ public class MManagerBasicTest {
       Set<String> devices = new LinkedHashSet<>();
       devices.add("root.laptop.d1");
       devices.add("root.laptop.d2");
+      // usual condition
       assertEquals(devices, manager.getDevices("root.laptop"));
       manager.setStorageGroupToMTree("root.vehicle");
       manager.addPathToMTree("root.vehicle.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
               CompressionType.GZIP, null);
       devices.add("root.vehicle.d1");
-      assertEquals(devices, manager.getDevices("root"));
+      // prefix with *
+      assertEquals(devices, manager.getDevices("root.*"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

@@ -434,7 +434,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return MManager.getInstance().getAllStorageGroupNames();
   }
 
-  private Set<String> getAllDevices() throws SQLException {
+  private Set<String> getAllDevices() throws PathException {
     return MManager.getInstance().getAllDevices();
   }
 
