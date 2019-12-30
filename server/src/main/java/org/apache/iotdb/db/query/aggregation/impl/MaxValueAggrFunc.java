@@ -25,8 +25,8 @@ import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 public class MaxValueAggrFunc extends AggregateFunction {
@@ -46,8 +46,8 @@ public class MaxValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromChunkMetaData(ChunkMetaData chunkMetaData) {
-    Comparable<Object> maxVal = (Comparable<Object>) chunkMetaData.getStatistics().getMaxValue();
+  public void calculateValueFromStatistics(Statistics chunkStatistics) {
+    Comparable<Object> maxVal = (Comparable<Object>) chunkStatistics.getMaxValue();
     updateResult(maxVal);
   }
 

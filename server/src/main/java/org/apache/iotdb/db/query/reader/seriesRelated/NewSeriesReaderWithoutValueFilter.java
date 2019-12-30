@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import java.io.IOException;
@@ -21,6 +40,7 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -210,7 +230,7 @@ public class NewSeriesReaderWithoutValueFilter {
     return currentChunkMetaDataList;
   }
 
-  public boolean isNextChunkOverlapped() throws IOException {
+  public boolean canUseChunkStatistics() throws IOException {
     boolean isOverlapped = false;
     if (!seqChunkMetadatas.isEmpty() && cachedChunkMetaData.getEndTime() >= seqChunkMetadatas.get(0)
         .getStartTime()) {
@@ -222,7 +242,6 @@ public class NewSeriesReaderWithoutValueFilter {
       isOverlapped = true;
       overlappedChunkReader = initChunkReader(unseqChunkMetadatas.pollFirst());
     }
-
     /**
      * 初始化下一个 chunk reader
      */
@@ -231,13 +250,21 @@ public class NewSeriesReaderWithoutValueFilter {
       isCurrentChunkReaderInit = true;
     }
 
-    return isOverlapped;
+    return canUseStatistics() && !isOverlapped;
   }
 
-  public ChunkMetaData nextChunkMetadata() throws IOException {
+  private boolean canUseStatistics() {
+    if (timeFilter == null || !timeFilter.containStartEndTime(cachedChunkMetaData.getStartTime(),
+        cachedChunkMetaData.getEndTime())) {
+      return false;
+    }
+    return true;
+  }
+
+  public Statistics nextChunkStatistics() throws IOException {
     if (hasCachedNextChunk || hasNextChunk()) {
       hasCachedNextChunk = false;
-      return cachedChunkMetaData;
+      return cachedChunkMetaData.getStatistics();
     } else {
       throw new IOException("no more chunk metadata");
     }
@@ -269,7 +296,7 @@ public class NewSeriesReaderWithoutValueFilter {
     return hasCachedNextPage;
   }
 
-  public boolean isNextPageOverlapped() throws IOException {
+  public boolean canUsePageStatistics() throws IOException {
     boolean isOverlapped = false;
     PageHeader cachedPageHeader = this.cachedPageHeader;
 
@@ -282,7 +309,8 @@ public class NewSeriesReaderWithoutValueFilter {
         priorityMergeReader.addReaderWithPriority(new DiskChunkReader(currentChunkReader), 1);
       }
     }
-    return isOverlapped;
+
+    return canUseStatistics() && !isOverlapped;
   }
 
 
@@ -301,10 +329,10 @@ public class NewSeriesReaderWithoutValueFilter {
   }
 
 
-  public PageHeader nextPageHeader() throws IOException {
+  public Statistics nextPageStatistic() throws IOException {
     if (hasCachedNextPage || hasNextPage()) {
       hasCachedNextPage = false;
-      return cachedPageHeader;
+      return cachedPageHeader.getStatistics();
     } else {
       throw new IOException("no next page header");
     }

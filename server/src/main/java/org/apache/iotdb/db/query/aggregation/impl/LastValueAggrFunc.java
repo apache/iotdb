@@ -27,8 +27,8 @@ import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 public class LastValueAggrFunc extends AggregateFunction {
@@ -51,10 +51,10 @@ public class LastValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromChunkMetaData(ChunkMetaData chunkMetaData)
+  public void calculateValueFromStatistics(Statistics chunkStatistics)
       throws QueryProcessException {
-    Object lastVal = chunkMetaData.getStatistics().getLastValue();
-    updateLastResult(chunkMetaData.getEndTime(), lastVal);
+    Object lastVal = chunkStatistics.getLastValue();
+    updateLastResult(chunkStatistics.getEndTime(), lastVal);
   }
 
   @Override

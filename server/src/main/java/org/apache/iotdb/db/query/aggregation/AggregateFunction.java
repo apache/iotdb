@@ -24,8 +24,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 public abstract class AggregateFunction {
@@ -48,7 +48,7 @@ public abstract class AggregateFunction {
   public abstract AggreResultData getResult();
 
 
-  public abstract void calculateValueFromChunkMetaData(ChunkMetaData chunkMetaData)
+  public abstract void calculateValueFromStatistics(Statistics chunkStatistics)
       throws QueryProcessException;
 
   public abstract void calculateValueFromPageData(BatchData dataInThisPage) throws IOException;

@@ -43,8 +43,8 @@ import org.apache.iotdb.db.query.reader.seriesRelated.NewSeriesReaderWithoutValu
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
@@ -129,10 +129,9 @@ public class NewAggregateEngineExecutor {
     }
 
     while (newSeriesReader.hasNextChunk()) {
-      ChunkMetaData chunkMetaData = newSeriesReader.nextChunkMetadata();
-      if (!newSeriesReader.isNextChunkOverlapped() && canUseHeader(chunkMetaData.getStartTime(),
-          chunkMetaData.getEndTime(), filter)) {
-        function.calculateValueFromChunkMetaData(chunkMetaData);
+      Statistics chunkStatistics = newSeriesReader.nextChunkStatistics();
+      if (newSeriesReader.canUseChunkStatistics()) {
+        function.calculateValueFromStatistics(chunkStatistics);
         if (function.isCalculatedAggregationResult()) {
           return function.getResult();
         }
@@ -140,10 +139,9 @@ public class NewAggregateEngineExecutor {
       }
       while (newSeriesReader.hasNextPage()) {
         //cal by pageheader
-        PageHeader pageHeader = newSeriesReader.nextPageHeader();
-        if (!newSeriesReader.isNextPageOverlapped() && canUseHeader(pageHeader.getStartTime(),
-            pageHeader.getEndTime(), filter)) {
-          function.calculateValueFromPageHeader(pageHeader);
+        Statistics pageStatistic = newSeriesReader.nextPageStatistic();
+        if (newSeriesReader.canUsePageStatistics()) {
+          function.calculateValueFromStatistics(pageStatistic);
           if (function.isCalculatedAggregationResult()) {
             return function.getResult();
           }
@@ -177,10 +175,9 @@ public class NewAggregateEngineExecutor {
       NewSeriesReaderWithoutValueFilter newSeriesReader, Filter filter)
       throws IOException, QueryProcessException {
     while (newSeriesReader.hasNextChunk()) {
-      ChunkMetaData chunkMetaData = newSeriesReader.nextChunkMetadata();
-      if (!newSeriesReader.isNextChunkOverlapped() && canUseHeader(chunkMetaData.getStartTime(),
-          chunkMetaData.getEndTime(), filter)) {
-        function.calculateValueFromChunkMetaData(chunkMetaData);
+      Statistics chunkStatistics = newSeriesReader.nextChunkStatistics();
+      if (newSeriesReader.canUseChunkStatistics()) {
+        function.calculateValueFromStatistics(chunkStatistics);
         if (function.isCalculatedAggregationResult()) {
           return function.getResult();
         }
@@ -188,10 +185,9 @@ public class NewAggregateEngineExecutor {
       }
       while (newSeriesReader.hasNextPage()) {
         //cal by pageheader
-        PageHeader pageHeader = newSeriesReader.nextPageHeader();
-        if (!newSeriesReader.isNextPageOverlapped() && canUseHeader(pageHeader.getStartTime(),
-            pageHeader.getEndTime(), filter)) {
-          function.calculateValueFromPageHeader(pageHeader);
+        Statistics pageStatistic = newSeriesReader.nextPageStatistic();
+        if (newSeriesReader.canUsePageStatistics()) {
+          function.calculateValueFromStatistics(pageStatistic);
           if (function.isCalculatedAggregationResult()) {
             return function.getResult();
           }

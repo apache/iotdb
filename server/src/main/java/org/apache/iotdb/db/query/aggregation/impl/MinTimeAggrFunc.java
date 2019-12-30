@@ -25,8 +25,8 @@ import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 public class MinTimeAggrFunc extends AggregateFunction {
@@ -46,11 +46,11 @@ public class MinTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromChunkMetaData(ChunkMetaData chunkMetaData) {
+  public void calculateValueFromStatistics(Statistics chunkStatistics) {
     if (resultData.isSetValue()) {
       return;
     }
-    long time = chunkMetaData.getStartTime();
+    long time = chunkStatistics.getStartTime();
     resultData.putTimeAndValue(0, time);
   }
 
