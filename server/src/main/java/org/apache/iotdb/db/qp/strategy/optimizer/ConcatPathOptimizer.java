@@ -84,33 +84,29 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
     boolean isGroupByDevice = false;
     if (operator instanceof QueryOperator) {
-      if (((QueryOperator) operator).isGroupByDevice()) {
-        isGroupByDevice = true;
-      }
-    }
-    if (!isGroupByDevice) {
-      concatSelect(prefixPaths, select); // concat and remove star
+      if (!((QueryOperator) operator).isGroupByDevice()) {
+        concatSelect(prefixPaths, select); // concat and remove star
 
-      if (((QueryOperator) operator).hasSlimit()) {
-        int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
-        int seriesOffset = ((QueryOperator) operator).getSeriesOffset();
-        slimitTrim(select, seriesLimit, seriesOffset);
-      }
-
-    } else {
-      for (Path path : initialSuffixPaths) {
-        String device = path.getDevice();
-        if (!device.isEmpty()) {
-          throw new LogicalOptimizeException(
-              "The paths of the SELECT clause can only be single level. In other words, "
-                  + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
-                  + " For more details please refer to the SQL document.");
+        if (((QueryOperator) operator).hasSlimit()) {
+          int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
+          int seriesOffset = ((QueryOperator) operator).getSeriesOffset();
+          slimitTrim(select, seriesLimit, seriesOffset);
         }
+      } else {
+        isGroupByDevice = true;
+        for (Path path : initialSuffixPaths) {
+          String device = path.getDevice();
+          if (!device.isEmpty()) {
+            throw new LogicalOptimizeException(
+                    "The paths of the SELECT clause can only be single level. In other words, "
+                            + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
+                            + " For more details please refer to the SQL document.");
+          }
+        }
+        // GROUP_BY_DEVICE leaves the 1) concat, 2) remove star, 3) slimit tasks to the next phase,
+        // i.e., PhysicalGenerator.transformQuery
       }
-      // GROUP_BY_DEVICE leaves the 1) concat, 2) remove star, 3) slimit tasks to the next phase,
-      // i.e., PhysicalGenerator.transformQuery
     }
-
     // concat filter
     FilterOperator filter = sfwOperator.getFilterOperator();
     if (filter == null) {
