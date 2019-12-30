@@ -403,7 +403,7 @@ public class MManagerBasicTest {
               CompressionType.GZIP, null);
       manager.addPathToMTree("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.PLAIN,
               CompressionType.GZIP, null);
-      Set<String> devices = new LinkedHashSet<>();
+      List<String> devices = new ArrayList<>();
       devices.add("root.laptop.d1");
       devices.add("root.laptop.d2");
       // usual condition

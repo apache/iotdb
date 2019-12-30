@@ -295,7 +295,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     Set<String> deviceSet = new LinkedHashSet<>();
     try {
       for (Path path : paths) {
-        Set<String> tempDS;
+        List<String> tempDS;
         tempDS = MManager.getInstance().getDevices(path.getFullPath());
 
         for (String subDevice : tempDS) {

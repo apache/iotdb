@@ -760,28 +760,28 @@ public class MTree implements Serializable {
   /**
    * Get all devices in current Metadata Tree.
    *
-   * @return a list contains all distinct devices
+   * @return a list contains all distinct device names
    */
-  Set<String> getAllDevices() throws PathException {
+  List<String> getAllDevices() throws PathException {
     return getDevices(SQLConstant.ROOT);
   }
 
   /**
    * Get all devices in current Metadata Tree with prefixPath.
    *
-   * @return a list contains all distinct devices
+   * @return a list contains all distinct devices names
    */
-  Set<String> getDevices(String prefixPath) throws PathException {
+  List<String> getDevices(String prefixPath) throws PathException {
     String[] nodes = MetaUtils.getNodeNames(prefixPath, PATH_SEPARATOR);
     if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
       throw new MTreePathException("PrefixPath", prefixPath);
     }
-    HashSet<String> devices = new HashSet<>();
+    List<String> devices = new ArrayList<>();
     findDevices(getRoot(), nodes, 1, "", devices);
-    return new LinkedHashSet<>(devices);
+    return devices;
   }
 
-  private void findDevices(MNode node, String[] nodes, int idx, String parent, HashSet<String> res) {
+  private void findDevices(MNode node, String[] nodes, int idx, String parent, List<String> res) {
     String nodeReg;
     if (idx >= nodes.length) {
       nodeReg = "*";
@@ -800,6 +800,7 @@ public class MTree implements Serializable {
       for (MNode child : node.getChildren().values()) {
         if(child.isLeaf()){
           res.add(parent + node.getName());
+          break;
         } else{
           findDevices(child, nodes, idx + 1, parent + node.getName() + ".", res);
         }

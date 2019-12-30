@@ -868,9 +868,9 @@ public class MManager {
   /**
    * Get the full devices info.
    *
-   * @return A HashSet instance which stores all devices info
+   * @return A list instance which stores all device names
    */
-  public Set<String> getAllDevices() throws PathException {
+  public List<String> getAllDevices() throws PathException {
 
     lock.readLock().lock();
     try {
@@ -883,9 +883,9 @@ public class MManager {
   /**
    * Get devices info with given prefixPath.
    *
-   * @return A HashSet instance which stores devices info with given prefixPath.
+   * @return A HashSet instance which stores devices names with given prefixPath.
    */
-  public Set<String> getDevices(String prefixPath) throws PathException {
+  public List<String> getDevices(String prefixPath) throws PathException {
 
     lock.readLock().lock();
     try {

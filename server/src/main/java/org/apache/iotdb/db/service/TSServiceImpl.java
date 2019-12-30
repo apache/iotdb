@@ -371,8 +371,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "SHOW_DEVICES":
-          Set<String> devices = getAllDevices();
-          resp.setDevices(devices);
+          List<String> devices = getAllDevices();
+          resp.setDevices(new HashSet<>(devices));
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "SHOW_CHILD_PATHS":
@@ -434,7 +434,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return MManager.getInstance().getAllStorageGroupNames();
   }
 
-  private Set<String> getAllDevices() throws PathException {
+  private List<String> getAllDevices() throws PathException {
     return MManager.getInstance().getAllDevices();
   }
 
