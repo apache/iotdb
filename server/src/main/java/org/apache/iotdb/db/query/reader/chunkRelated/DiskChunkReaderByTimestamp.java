@@ -50,12 +50,12 @@ public class DiskChunkReaderByTimestamp implements IReaderByTimestamp {
       if (value != null) {
         return value;
       }
-      if (data.hasNext()) {
+      if (data.hasCurrent()) {
         return null;
       } else {
         chunkReaderByTimestamp.setCurrentTimestamp(timestamp);
-        if (chunkReaderByTimestamp.hasNextBatch()) {
-          data = chunkReaderByTimestamp.nextBatch();
+        if (chunkReaderByTimestamp.hasNextSatisfiedPage()) {
+          data = chunkReaderByTimestamp.nextPageData();
         } else {
           return null;
         }
@@ -67,11 +67,11 @@ public class DiskChunkReaderByTimestamp implements IReaderByTimestamp {
 
   @Override
   public boolean hasNext() throws IOException {
-    if (data != null && data.hasNext()) {
+    if (data != null && data.hasCurrent()) {
       return true;
     }
-    if (chunkReaderByTimestamp != null && chunkReaderByTimestamp.hasNextBatch()) {
-      data = chunkReaderByTimestamp.nextBatch();
+    if (chunkReaderByTimestamp != null && chunkReaderByTimestamp.hasNextSatisfiedPage()) {
+      data = chunkReaderByTimestamp.nextPageData();
       return true;
     }
     return false;

@@ -147,7 +147,7 @@ public class MergeOverLapTest extends MergeTest {
         null, context);
     int cnt = 0;
     try {
-      while (tsFilesReader.hasNext()) {
+      while (tsFilesReader.hasNextBatch()) {
         BatchData batchData = tsFilesReader.nextBatch();
         for (int i = 0; i < batchData.length(); i++) {
           cnt ++;

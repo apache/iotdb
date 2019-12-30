@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.query.executor;
 
-import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
@@ -35,13 +35,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Query entrance class of IoTDB query process. All query clause will be transformed to physical
@@ -52,15 +54,18 @@ public class EngineQueryRouter implements IEngineQueryRouter {
   protected DataQueryExecutorFactory executorFactory = EngineExecutor::new;
 
   @Override
-  public QueryDataSet query(QueryExpression queryExpression, QueryContext context)
+  public QueryDataSet query(QueryPlan queryPlan, QueryContext context)
       throws StorageEngineException {
+    IExpression expression = queryPlan.getExpression();
+    List<Path> deduplicatedPaths = queryPlan.getDeduplicatedPaths();
+    List<TSDataType> deduplicatedDataTypes = queryPlan.getDeduplicatedDataTypes();
 
-    if (queryExpression.hasQueryFilter()) {
+    if (expression != null) {
       try {
         IExpression optimizedExpression = ExpressionOptimizer.getInstance()
-            .optimize(queryExpression.getExpression(), queryExpression.getSelectedSeries());
-        queryExpression.setExpression(optimizedExpression);
-        DataQueryExecutor dataQueryExecutor = executorFactory.getExecutor(queryExpression);
+            .optimize(expression, deduplicatedPaths);
+        DataQueryExecutor dataQueryExecutor = executorFactory.getExecutor(deduplicatedPaths, deduplicatedDataTypes,
+            optimizedExpression);
         if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
           return dataQueryExecutor.executeWithoutValueFilter(context);
         } else {
@@ -71,7 +76,8 @@ public class EngineQueryRouter implements IEngineQueryRouter {
         throw new StorageEngineException(e.getMessage());
       }
     } else {
-      DataQueryExecutor dataQueryExecutor = executorFactory.getExecutor(queryExpression);
+      DataQueryExecutor dataQueryExecutor = executorFactory.getExecutor(deduplicatedPaths,
+          deduplicatedDataTypes, null);
       try {
         return dataQueryExecutor.executeWithoutValueFilter(context);
       } catch (IOException e) {
@@ -81,41 +87,45 @@ public class EngineQueryRouter implements IEngineQueryRouter {
   }
 
   @Override
-  public QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
-      IExpression expression, QueryContext context) throws QueryFilterOptimizationException,
-      StorageEngineException, QueryProcessException, IOException {
-    if (expression != null) {
-      IExpression optimizedExpression = ExpressionOptimizer.getInstance()
-          .optimize(expression, selectedSeries);
-      AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
-          selectedSeries, aggres, optimizedExpression);
-      if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-        return engineExecutor.executeWithoutValueFilter(context);
-      } else {
-        try {
+  public QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
+      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException, IOException {
+    IExpression expression = aggregationPlan.getExpression();
+    List<Path> selectedSeries = aggregationPlan.getDeduplicatedPaths();
+    try {
+      if (expression != null) {
+        IExpression optimizedExpression = ExpressionOptimizer.getInstance()
+            .optimize(expression, selectedSeries);
+        AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
+            aggregationPlan);
+        if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
+          return engineExecutor.executeWithoutValueFilter(context);
+        } else {
           return engineExecutor.executeWithValueFilter(context);
-        } catch (MetadataException e) {
-          throw new QueryProcessException(e);
         }
+      } else {
+        AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
+            aggregationPlan);
+        return engineExecutor.executeWithoutValueFilter(context);
       }
-    } else {
-      AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
-          selectedSeries, aggres, null);
-      return engineExecutor.executeWithoutValueFilter(context);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
     }
   }
 
 
   @Override
-  public QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
-      IExpression expression, long unit, long slidingStep, long startTime, long endTime,
-      QueryContext context)
-          throws QueryFilterOptimizationException, StorageEngineException,
-          QueryProcessException, IOException {
+  public QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
+      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException, IOException {
+    long unit = groupByPlan.getUnit();
+    long slidingStep = groupByPlan.getSlidingStep();
+    long startTime = groupByPlan.getStartTime();
+    long endTime = groupByPlan.getEndTime();
 
-    long queryId = context.getQueryId();
+    IExpression expression = groupByPlan.getExpression();
+    List<Path> selectedSeries = groupByPlan.getDeduplicatedPaths();
 
-    GlobalTimeExpression timeExpression = new GlobalTimeExpression(new GroupByFilter(unit, slidingStep, startTime, endTime));
+    GlobalTimeExpression timeExpression = new GlobalTimeExpression(
+        new GroupByFilter(unit, slidingStep, startTime, endTime));
 
     if (expression == null) {
       expression = timeExpression;
@@ -125,58 +135,30 @@ public class EngineQueryRouter implements IEngineQueryRouter {
 
     IExpression optimizedExpression = ExpressionOptimizer.getInstance()
         .optimize(expression, selectedSeries);
-    if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-      GroupByWithoutValueFilterDataSet groupByEngine = new GroupByWithoutValueFilterDataSet(
-      queryId, selectedSeries, unit, slidingStep, startTime, endTime);
-      try {
-        groupByEngine.initGroupBy(context, aggres, optimizedExpression);
-      } catch (MetadataException e) {
-        throw new QueryProcessException(e);
+    try {
+      if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
+        return new GroupByWithoutValueFilterDataSet(context,
+            groupByPlan);
+      } else {
+        return new GroupByWithValueFilterDataSet(context,
+            groupByPlan);
       }
-      return groupByEngine;
-    } else {
-      GroupByWithValueFilterDataSet groupByEngine = new GroupByWithValueFilterDataSet(
-          queryId, selectedSeries, unit, slidingStep, startTime, endTime);
-      groupByEngine.initGroupBy(context, aggres, optimizedExpression);
-      return groupByEngine;
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
     }
   }
 
   @Override
-  public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
-      QueryContext context)
+  public QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
+    List<Path> fillPaths = fillQueryPlan.getDeduplicatedPaths();
+    List<TSDataType> dataTypes = fillQueryPlan.getDeduplicatedDataTypes();
+    long queryTime = fillQueryPlan.getQueryTime();
+    Map<TSDataType, IFill> fillType = fillQueryPlan.getFillType();
 
-
-    long queryId = context.getQueryId();
-
-    FillEngineExecutor fillEngineExecutor = new FillEngineExecutor(fillPaths, queryTime,
+    FillEngineExecutor fillEngineExecutor = new FillEngineExecutor(fillPaths, dataTypes, queryTime,
         fillType);
     return fillEngineExecutor.execute(context);
   }
-
-  /**
-   * sort intervals by start time and merge overlapping intervals.
-   *
-   * @param intervals time interval
-   */
-  private List<Pair<Long, Long>> mergeInterval(List<Pair<Long, Long>> intervals) {
-    // sort by interval start time.
-    intervals.sort(((o1, o2) -> (int) (o1.left - o2.left)));
-
-    LinkedList<Pair<Long, Long>> merged = new LinkedList<>();
-    for (Pair<Long, Long> interval : intervals) {
-      // if the list of merged intervals is empty or
-      // if the current interval does not overlap with the previous, simply append it.
-      if (merged.isEmpty() || merged.getLast().right < interval.left) {
-        merged.add(interval);
-      } else {
-        // otherwise, there is overlap, so we merge the current and previous intervals.
-        merged.getLast().right = Math.max(merged.getLast().right, interval.right);
-      }
-    }
-    return merged;
-  }
-
 
 }

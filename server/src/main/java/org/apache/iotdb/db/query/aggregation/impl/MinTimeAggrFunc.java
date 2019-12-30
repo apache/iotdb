@@ -60,7 +60,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
       return;
     }
 
-    if (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
+    if (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
       if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
         resultData.setTimestamp(0);
         resultData.setLongRet(dataInThisPage.currentTime());
@@ -71,7 +71,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
       return;
     }
 
-    if (dataInThisPage.hasNext()) {
+    if (dataInThisPage.hasCurrent()) {
       resultData.setTimestamp(0);
       resultData.setLongRet(dataInThisPage.currentTime());
     }
@@ -84,7 +84,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
       return;
     }
 
-    if (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
+    if (dataInThisPage.hasCurrent() && unsequenceReader.hasNext()) {
       if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
         if (dataInThisPage.currentTime() >= bound) {
           return;
@@ -101,7 +101,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
       return;
     }
 
-    if (dataInThisPage.hasNext() && dataInThisPage.currentTime() < bound) {
+    if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
       resultData.setTimestamp(0);
       resultData.setLongRet(dataInThisPage.currentTime());
       dataInThisPage.next();

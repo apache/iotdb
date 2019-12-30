@@ -88,10 +88,14 @@
         <jline.version>2.14.5</jline.version>
         <jetty.version>9.4.24.v20191120</jetty.version>
         <metrics.version>3.2.6</metrics.version>
+        <javax.xml.bind.version>2.4.0-b180725.0427</javax.xml.bind.version>
         <!-- URL of the ASF SonarQube server -->
-        <sonar.host.url>https://builds.apache.org/analysis</sonar.host.url>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <sonar.organization>apache</sonar.organization>
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
+        <!-- By default, the argLine is empty-->
+        <argLine/>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -207,7 +211,7 @@
             <dependency>
                 <groupId>javax.xml.bind</groupId>
                 <artifactId>jaxb-api</artifactId>
-                <version>2.4.0-b180725.0427</version>
+                <version>${javax.xml.bind.version}</version>
             </dependency>
             <dependency>
                 <groupId>jline</groupId>
@@ -466,7 +470,7 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <configuration>
-                        <argLine>-Xmx1024m</argLine>
+                        <argLine>${argLine} -Xmx1024m</argLine>
                     </configuration>
                 </plugin>
                 <!--
@@ -475,7 +479,7 @@
                 <plugin>
                     <groupId>org.sonarsource.scanner.maven</groupId>
                     <artifactId>sonar-maven-plugin</artifactId>
-                    <version>3.6.0.1398</version>
+                    <version>3.6.1.1688</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.rat</groupId>
@@ -514,6 +518,11 @@
                             <exclude>LICENSE-binary</exclude>
                         </excludes>
                     </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.eluder.coveralls</groupId>
+                    <artifactId>coveralls-maven-plugin</artifactId>
+                    <version>4.3.0</version>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -576,48 +585,6 @@
                     <configLocation>checkstyle.xml</configLocation>
                 </configuration>
             </plugin>
-            <!-- use mvn license:remove to remove license header; mvn license:format -->
-            <!-- we do not recommend using the plugin because it maybe out of control
-            (adding headers in some files that you do not want) -->
-            <!--<plugin>
-                <groupId>com.mycila</groupId>
-                <artifactId>license-maven-plugin</artifactId>
-                <version>3.0</version>
-                <configuration>
-                    <header>asf.header</header>
-                    <properties>
-                        <owner>Apache IoTDB(incubating)</owner>
-                        <email>dev@iotdb.apache.org</email>
-                        <project.inceptionYear>2019</project.inceptionYear>
-                    </properties>
-                    <mapping>
-                        <g>DOUBLESLASH_STYLE</g>
-                        <thrift>SLASHSTAR_STYLE</thrift>
-                    </mapping>
-                    <excludes>
-                        <exclude>**/README.md</exclude>
-                        <exclude>**/src/test/resources/*.json</exclude>
-                        <exclude>**/src/main/resources/*.json</exclude>
-                        <exclude>jdbc/example/data/*.csv</exclude>
-                        <exclude>**/*.log</exclude>
-                        <exclude>licenses-binary/*</exclude>
-                        <exclude>.checkstyle</exclude>
-                        <exclude>NOTICE*</exclude>
-                        <exclude>LICENSE*</exclude>
-                        <exclude>License</exclude>
-                        <exclude>asf.header</exclude>
-                        <exclude>**/iotdb/data/</exclude>
-                        <exclude>local-snapshots-dir/**</exclude>
-                    </excludes>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin> -->
             <!--
               Check if all files contain Apache headers in them.
               Ignore this plugin, we use license-maven-plugin to check apache header.
@@ -631,32 +598,6 @@
                         <phase>verify</phase>
                         <goals>
                             <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <!--use `mvn cobertura:cobertura` -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>cobertura-maven-plugin</artifactId>
-                <version>2.7</version>
-                <configuration>
-                    <quiet>true</quiet>
-                    <formats>
-                        <format>xml</format>
-                    </formats>
-                    <instrumentation>
-                        <ignoreTrivial>true</ignoreTrivial>
-                    </instrumentation>
-                    <check/>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>check</id>
-                        <!-- skip when executing 'mvn clean test' -->
-                        <!-- <phase>test</phase> -->
-                        <goals>
-                            <goal>cobertura</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -700,6 +641,43 @@
                             </resourceBundles>
                             <!-- Content in this directory will be appended to generated resources -->
                             <appendedResourcesDirectory>${basedir}/src/remote-resources</appendedResourcesDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <!-- Separates the unit tests from the integration tests. -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>unit-tests</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <includes>
+                                <!-- Include unit tests within integration-test phase. -->
+                                <include>src/test/**/*Test.java</include>
+                            </includes>
+                            <excludes>
+                                <!-- Exclude integration tests within (unit) test phase. -->
+                                <exclude>src/test/**/*IT.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>integration-tests</id>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <includes>
+                                <!-- Include integration tests within integration-test phase. -->
+                                <include>src/test/**/*IT.java</include>
+                            </includes>
                         </configuration>
                     </execution>
                 </executions>
@@ -1041,6 +1019,168 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <!-- code coverage for ut and it, and then merge them together.-->
+        <profile>
+            <id>code-coverage</id>
+            <build>
+                <plugins>
+                    <!-- Jacoco is a code coverage analysis plugin when tests run.
+                    (not a static code analysis tool)-->
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <version>0.8.5</version>
+                        <configuration>
+                            <rules>
+                                <rule implementation="org.jacoco.maven.RuleConfiguration">
+                                    <element>BUNDLE</element>
+                                    <limits>　　
+                                        <!-- Cover methodes >=30%. (the plugin does not support
+                                        ignore getter and setter and toString etc..) -->
+                                        <limit implementation="org.jacoco.report.check.Limit">
+                                            <counter>METHOD</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.00</minimum>
+                                        </limit>
+                                        <!-- if-else, swtich etc.. >=70% -->
+                                        <limit implementation="org.jacoco.report.check.Limit">
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.00</minimum>
+                                        </limit>
+                                        <!-- class files >=95% -->
+                                        <limit implementation="org.jacoco.report.check.Limit">
+                                            <counter>CLASS</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.00</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                        <executions>
+                            <!-- see https://natritmeyer.com/howto/reporting-aggregated-unit-and-integration-test-coverage-with-jacoco/-->
+                            <!-- For UT-->
+                            <execution>
+                                <id>prepare-ut</id>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                                <configuration>
+                                    <destFile>${project.build.directory}/jacoco-unit-tests.exec</destFile>
+                                    <propertyName>surefire.jacoco.args</propertyName>
+                                </configuration>
+                            </execution>
+                            <!-- attached to Maven test phase -->
+                            <execution>
+                                <id>ut-report</id>
+                                <phase>test</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                    <goal>check</goal>
+                                </goals>
+                                <configuration>
+                                    <dataFile>${project.build.directory}/jacoco-unit-tests.exec</dataFile>
+                                    <outputDirectory>${project.build.directory}/jacoco-unit-reports</outputDirectory>
+                                </configuration>
+                            </execution>
+                            <!-- For IT-->
+                            <execution>
+                                <id>before-integration-test-execution</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                                <configuration>
+                                    <destFile>${project.build.directory}/jacoco-integration-tests.exec</destFile>
+                                    <propertyName>failsafe.jacoco.args</propertyName>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>after-integration-test-execution</id>
+                                <phase>integration-test</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                    <goal>check</goal>
+                                </goals>
+                                <configuration>
+                                    <dataFile>${project.build.directory}/jacoco-integration-tests.exec</dataFile>
+                                    <outputDirectory>${project.build.directory}/jacoco-integration-reports</outputDirectory>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>merge-unit-and-integration</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>merge</goal>
+                                </goals>
+                                <configuration>
+                                    <fileSets>
+                                        <fileSet>
+                                            <directory>${project.build.directory}/</directory>
+                                            <includes>
+                                                <include>*.exec</include>
+                                            </includes>
+                                        </fileSet>
+                                    </fileSets>
+                                    <destFile>${project.build.directory}/merged.exec</destFile>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>create-merged-report</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                    <goal>check</goal>
+                                </goals>
+                                <configuration>
+                                    <dataFile>${project.build.directory}/merged.exec</dataFile>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- overwrite argLine-->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <argLine>@{surefire.jacoco.args} -Xmx1024m</argLine>
+                        </configuration>
+                    </plugin>
+                    <!-- for IT-->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <argLine>@{failsafe.jacoco.args} -Xmx1024m</argLine>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- upload code coverage report to coveralls.io-->
+        <!-- to enable coveralls locally, you need to get the repoToken from https://coveralls.io/github/apache/incubator-iotdb.
+             use `mvn post-integration-test -pl hadoop  -Pcode-coverage -Pcoveralls -DrepoToken=TOKEN`-->
+        <profile>
+            <id>coveralls</id>
+            <modules>
+                <!-- make sure the modules are synced with profile code-coverage-->
+                <module>tsfile</module>
+                <module>client</module>
+                <module>session</module>
+                <module>server</module>
+                <module>jdbc</module>
+                <module>hadoop</module>
+                <module>hive-connector</module>
+            </modules>
         </profile>
     </profiles>
 </project>

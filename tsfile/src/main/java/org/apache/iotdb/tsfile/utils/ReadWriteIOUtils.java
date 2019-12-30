@@ -199,8 +199,9 @@ public class ReadWriteIOUtils {
   public static int write(int n, OutputStream outputStream) throws IOException {
     byte[] bytes = BytesUtils.intToBytes(n);
     outputStream.write(bytes);
-    return bytes.length;
+    return INT_LEN;
   }
+
 
 
   /**
@@ -253,7 +254,7 @@ public class ReadWriteIOUtils {
   public static int write(long n, OutputStream outputStream) throws IOException {
     byte[] bytes = BytesUtils.longToBytes(n);
     outputStream.write(bytes);
-    return bytes.length;
+    return LONG_LEN;
   }
 
   /**

@@ -38,23 +38,23 @@ import java.util.Set;
 
 public class SessionDataSet {
 
-  private boolean getFlag = false;
+  private boolean hasCachedRecord = false;
   private String sql;
   private long queryId;
   private long sessionId;
   private TSIService.Iface client;
-  private int batchSize = 512;
+  private int batchSize = 1024;
   private List<String> columnTypeDeduplicatedList;
 
   private int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
-  private TSQueryDataSet tsQueryDataSet = null;
+  private TSQueryDataSet tsQueryDataSet;
   private RowRecord rowRecord = null;
   private byte[] currentBitmap; // used to cache the current bitmap for every column
   private static final int flag = 0x80; // used to do `or` operation with bitmap to judge whether the value is null
 
 
   public SessionDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
-      long queryId, TSIService.Iface client, long sessionId) {
+      long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet) {
     this.sessionId = sessionId;
     this.sql = sql;
     this.queryId = queryId;
@@ -71,6 +71,8 @@ public class SessionDataSet {
         columnTypeDeduplicatedList.add(columnTypeList.get(i));
       }
     }
+
+    this.tsQueryDataSet = queryDataSet;
   }
 
   public int getBatchSize() {
@@ -82,7 +84,7 @@ public class SessionDataSet {
   }
 
   public boolean hasNext() throws SQLException, IoTDBRPCException {
-    if (getFlag)
+    if (hasCachedRecord)
       return true;
     if (tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining()) {
       TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, batchSize, queryId);
@@ -104,7 +106,7 @@ public class SessionDataSet {
     }
 
     constructOneRow();
-    getFlag = true;
+    hasCachedRecord = true;
     return true;
   }
 
@@ -174,12 +176,12 @@ public class SessionDataSet {
   }
 
   public RowRecord next() throws SQLException, IoTDBRPCException {
-    if (!getFlag) {
+    if (!hasCachedRecord) {
       if (!hasNext())
         return null;
     }
 
-    getFlag = false;
+    hasCachedRecord = false;
     return rowRecord;
   }
 

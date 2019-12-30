@@ -629,7 +629,8 @@ public class MManager {
           mNodeCache.clear();
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
           mgraph.deleteStorageGroup(delStorageGroup);
-          seriesNumberInStorageGroups.remove(delStorageGroup);
+          IoTDBConfigDynamicAdapter.getInstance()
+              .addOrDeleteTimeSeries(seriesNumberInStorageGroups.remove(delStorageGroup) * (-1));
           ActiveTimeSeriesCounter.getInstance().delete(delStorageGroup);
         } catch (MetadataException e) {
           try {

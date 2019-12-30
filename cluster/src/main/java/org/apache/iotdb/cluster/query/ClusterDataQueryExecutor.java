@@ -5,36 +5,38 @@
 package org.apache.iotdb.cluster.query;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.EngineExecutor;
-import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 public class ClusterDataQueryExecutor extends EngineExecutor {
 
-  private QueryExpression queryExpression;
   private MetaGroupMember metaGroupMember;
 
 
-  ClusterDataQueryExecutor(QueryExpression queryExpression, MetaGroupMember metaGroupMember) {
-    super(queryExpression);
+  ClusterDataQueryExecutor(List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
+      IExpression optimizedExpression, MetaGroupMember metaGroupMember) {
+    super(deduplicatedPaths, deduplicatedDataTypes, optimizedExpression);
     this.metaGroupMember = metaGroupMember;
   }
 
   @Override
-  protected IPointReader getSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
+  protected IBatchReader getSeriesReaderWithoutValueFilter(Path path,
+      TSDataType dataType, Filter timeFilter,
       QueryContext context, boolean pushdownUnseq) throws IOException, StorageEngineException {
-    return metaGroupMember.getSeriesReader(path, timeFilter, context, pushdownUnseq, false);
+    return metaGroupMember.getSeriesReader(path, dataType, timeFilter, context, pushdownUnseq,
+        false);
   }
 
   @Override

@@ -4,9 +4,13 @@
 
 package org.apache.iotdb.db.query.executor;
 
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
+import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 
 public interface DataQueryExecutorFactory {
 
-  DataQueryExecutor getExecutor(QueryExpression expression);
+  DataQueryExecutor getExecutor(List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
+      IExpression optimizedExpression);
 }

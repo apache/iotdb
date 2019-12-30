@@ -107,13 +107,13 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -1032,7 +1032,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     throw new StorageEngineException(new RequestTimeOutException("Query " + path + " in " + partitionGroup));
   }
 
-  public IPointReader getSeriesReader(Path path, Filter filter,
+  public IBatchReader getSeriesReader(Path path, TSDataType dataType, Filter filter,
       QueryContext context, boolean pushDownUnseq, boolean withValueFilter)
       throws IOException, StorageEngineException {
     // make sure the partition table is new
@@ -1052,17 +1052,19 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           null, String.format("Query: %s, time filter: %s, queryId: %d", path, filter,
               context.getQueryId()));
       if (withValueFilter) {
-        return dataGroupMember.getSeriesReaderWithValueFilter(path, filter, context);
+        return dataGroupMember.getSeriesReaderWithValueFilter(path, dataType, filter, context);
       } else {
-        return dataGroupMember.getSeriesReaderWithoutValueFilter(path, filter, context, true);
+        return dataGroupMember.getSeriesReaderWithoutValueFilter(path, dataType, filter, context,
+            true);
       }
     } else {
-      return getRemoteSeriesReader(filter, path, partitionGroup, context,
+      return getRemoteSeriesReader(filter, dataType, path, partitionGroup, context,
           pushDownUnseq, withValueFilter);
     }
   }
 
-  private IPointReader getRemoteSeriesReader(Filter filter, Path path, PartitionGroup partitionGroup,
+  private IBatchReader getRemoteSeriesReader(Filter filter, TSDataType dataType, Path path,
+      PartitionGroup partitionGroup,
       QueryContext context, boolean pushDownUnseq, boolean withValueFilter)
       throws IOException, StorageEngineException {
     // query a remote node
@@ -1077,6 +1079,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     request.setRequester(thisNode);
     request.setPushdownUnseq(pushDownUnseq);
     request.setWithValueFilter(withValueFilter);
+    request.setDataTypeOrdinal(dataType.ordinal());
 
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : coordinatedNodes) {
@@ -1154,11 +1157,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     Map<Node, Boolean> nodeStatus = new HashMap<>();
     for (Node node : allNodes) {
-      if (node == thisNode) {
-        nodeStatus.put(node, true);
-      } else {
-        nodeStatus.put(node, false);
-      }
+      nodeStatus.put(node, thisNode == node);
     }
     NodeStatusHandler nodeStatusHandler = new NodeStatusHandler(nodeStatus);
     try {
@@ -1187,7 +1186,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   @Override
-  public void checkAlive(AsyncMethodCallback<Node> resultHandler) throws TException {
+  public void checkAlive(AsyncMethodCallback<Node> resultHandler) {
     resultHandler.onComplete(thisNode);
   }
 }

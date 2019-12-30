@@ -141,6 +141,7 @@ struct SingleSeriesQueryRequest {
   5: optional bool pushdownUnseq
   6: required Node header
   7: optional bool withValueFilter
+  8: required int dataTypeOrdinal
 }
 
 // the spec and load of a node, for query coordinating
@@ -229,7 +230,7 @@ service TSDataService extends RaftService {
   * @return a ByteBuffer containing the serialized time-value pairs or an empty buffer if there
   * are not more results.
   **/
-  binary fetchSingleSeries(1:Node header, 2:long readerId, 3:int fetchSize)
+  binary fetchSingleSeries(1:Node header, 2:long readerId)
 
    /**
    * Query a time series and generate an IReaderByTimestamp.

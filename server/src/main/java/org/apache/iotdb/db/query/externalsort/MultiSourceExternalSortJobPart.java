@@ -16,45 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
- package org.apache.iotdb.db.query.externalsort;
+package org.apache.iotdb.db.query.externalsort;
 
- import java.io.IOException;
- import java.util.ArrayList;
- import java.util.List;
- import org.apache.iotdb.db.query.reader.IPointReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.db.query.reader.IPointReader;
+
+public class MultiSourceExternalSortJobPart extends ExternalSortJobPart {
+
+  private String tmpFilePath;
+  private List<ExternalSortJobPart> source;
+  private long queryId;
+
+  public MultiSourceExternalSortJobPart(long queryId, String tmpFilePath,
+      List<ExternalSortJobPart> source) {
+    super(ExternalSortJobPartType.MULTIPLE_SOURCE);
+    this.source = source;
+    this.tmpFilePath = tmpFilePath;
+    this.queryId = queryId;
+  }
 
 
- public class MultiSourceExternalSortJobPart extends ExternalSortJobPart {
-
-   private String tmpFilePath;
-   private List<ExternalSortJobPart> source;
-   private long queryId;
-
-   public MultiSourceExternalSortJobPart(long queryId, String tmpFilePath,
-       List<ExternalSortJobPart> source) {
-     super(ExternalSortJobPartType.MULTIPLE_SOURCE);
-     this.source = source;
-     this.tmpFilePath = tmpFilePath;
-     this.queryId = queryId;
-   }
-
-   public MultiSourceExternalSortJobPart(long queryId, String tmpFilePath,
-       ExternalSortJobPart... externalSortJobParts) {
-     super(ExternalSortJobPartType.MULTIPLE_SOURCE);
-     source = new ArrayList<>();
-     for (ExternalSortJobPart externalSortJobPart : externalSortJobParts) {
-       source.add(externalSortJobPart);
-     }
-     this.tmpFilePath = tmpFilePath;
-   }
-
-   @Override
-   public IPointReader executeForIPointReader() throws IOException {
-     List<IPointReader> prioritySeriesReaders = new ArrayList<>();
-     for (ExternalSortJobPart part : source) {
-       prioritySeriesReaders.add(part.executeForIPointReader());
-     }
-     LineMerger merger = new LineMerger(queryId, tmpFilePath);
-     return merger.merge(prioritySeriesReaders);
-   }
- }
+  @Override
+  public IPointReader executeForIPointReader() throws IOException {
+    List<IPointReader> prioritySeriesReaders = new ArrayList<>();
+    for (ExternalSortJobPart part : source) {
+      prioritySeriesReaders.add(part.executeForIPointReader());
+    }
+    LineMerger merger = new LineMerger(queryId, tmpFilePath);
+    return merger.merge(prioritySeriesReaders);
+  }
+}

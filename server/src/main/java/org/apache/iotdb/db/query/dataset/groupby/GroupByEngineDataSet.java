@@ -21,14 +21,13 @@ package org.apache.iotdb.db.query.dataset.groupby;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.AggreFuncFactory;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -49,14 +48,13 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   /**
    * groupBy query.
    */
-  public GroupByEngineDataSet(long queryId, List<Path> paths, long unit,
-                              long slidingStep, long startTime, long endTime) {
-    super(paths);
-    this.queryId = queryId;
-    this.unit = unit;
-    this.slidingStep = slidingStep;
-    this.intervalStartTime = startTime;
-    this.intervalEndTime = endTime;
+  public GroupByEngineDataSet(QueryContext context, GroupByPlan groupByPlan) {
+    super(groupByPlan.getDeduplicatedPaths(), groupByPlan.getDeduplicatedDataTypes());
+    this.queryId = context.getQueryId();
+    this.unit = groupByPlan.getUnit();
+    this.slidingStep = groupByPlan.getSlidingStep();
+    this.intervalStartTime = groupByPlan.getStartTime();
+    this.intervalEndTime = groupByPlan.getEndTime();
     this.functions = new ArrayList<>();
 
     // init group by time partition
@@ -65,18 +63,16 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     this.endTime = -1;
   }
 
-  protected void initAggreFuction(List<String> aggres) throws MetadataException {
-    List<TSDataType> types = new ArrayList<>();
+
+  protected void initAggreFuction(GroupByPlan groupByPlan) throws MetadataException {
     // construct AggregateFunctions
     for (int i = 0; i < paths.size(); i++) {
-      TSDataType tsDataType = MManager.getInstance()
-          .getSeriesType(paths.get(i).getFullPath());
-      AggregateFunction function = AggreFuncFactory.getAggrFuncByName(aggres.get(i), tsDataType);
+      AggregateFunction function = AggreFuncFactory
+          .getAggrFuncByName(groupByPlan.getDeduplicatedAggregations().get(i),
+              groupByPlan.getDeduplicatedDataTypes().get(i));
       function.init();
       functions.add(function);
-      types.add(function.getResultDataType());
     }
-    super.setDataTypes(types);
   }
 
   @Override
@@ -90,7 +86,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     usedIndex++;
     if (startTime <= intervalEndTime) {
       hasCachedTimeInterval = true;
-      endTime = Math.min(startTime + unit, intervalEndTime+1);
+      endTime = Math.min(startTime + unit, intervalEndTime + 1);
       return true;
     } else {
       return false;

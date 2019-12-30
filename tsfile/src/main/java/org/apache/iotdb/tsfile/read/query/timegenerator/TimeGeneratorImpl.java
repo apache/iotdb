@@ -35,8 +35,8 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.AndNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.LeafNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
+import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
 
 public class TimeGeneratorImpl implements TimeGenerator {
 
@@ -93,7 +93,7 @@ public class TimeGeneratorImpl implements TimeGenerator {
 
     if (expression.getType() == ExpressionType.SERIES) {
       SingleSeriesExpression singleSeriesExp = (SingleSeriesExpression) expression;
-      FileSeriesReader seriesReader = generateSeriesReader(singleSeriesExp);
+      AbstractFileSeriesReader seriesReader = generateSeriesReader(singleSeriesExp);
       Path path = singleSeriesExp.getSeriesPath();
 
       if (!leafCache.containsKey(path)) {
@@ -120,11 +120,11 @@ public class TimeGeneratorImpl implements TimeGenerator {
         "Unsupported ExpressionType when construct OperatorNode: " + expression.getType());
   }
 
-  private FileSeriesReader generateSeriesReader(SingleSeriesExpression singleSeriesExp)
+  private AbstractFileSeriesReader generateSeriesReader(SingleSeriesExpression singleSeriesExp)
       throws IOException {
     List<ChunkMetaData> chunkMetaDataList = metadataQuerier
         .getChunkMetaDataList(singleSeriesExp.getSeriesPath());
-    return new FileSeriesReaderWithFilter(chunkLoader, chunkMetaDataList,
+    return new FileSeriesReader(chunkLoader, chunkMetaDataList,
         singleSeriesExp.getFilter());
   }
 }

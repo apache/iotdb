@@ -142,7 +142,7 @@ The usage are as follows:
 ```
 IoTDB> delete timeseries root.ln.wf01.wt01.status
 IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
-IoTDB> delete timeseries root.ln.wf02*
+IoTDB> delete timeseries root.ln.wf02.*
 ```
 
 ### Show Devices
