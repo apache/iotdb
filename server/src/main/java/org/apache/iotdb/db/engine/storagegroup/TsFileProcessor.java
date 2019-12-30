@@ -184,7 +184,7 @@ public class TsFileProcessor {
         getLogNode().write(batchInsertPlan);
       } catch (IOException e) {
         logger.error("write WAL failed", e);
-        for (int index: indexes) {
+        for (int index : indexes) {
           results[index] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
         }
         return false;
@@ -205,7 +205,7 @@ public class TsFileProcessor {
   /**
    * Delete data which belongs to the timeseries `deviceId.measurementId` and the timestamp of which
    * <= 'timestamp' in the deletion. <br/>
-   *
+   * <p>
    * Delete data in both working MemTable and flushing MemTables.
    */
   public void deleteDataInMemory(Deletion deletion) {
@@ -240,12 +240,12 @@ public class TsFileProcessor {
    * However, considering that the number of timeseries between storage groups may vary greatly,
    * it's inappropriate to judge whether to flush the memtable according to the average memtable
    * size. We need to adjust it according to the number of timeseries in a specific storage group.
-   *
    */
   private long getMemtableSizeThresholdBasedOnSeriesNum() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     long memTableSize = (long) (config.getMemtableSizeThreshold() * config.getMaxMemtableNumber()
-        / IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP * ActiveTimeSeriesCounter.getInstance().getActiveRatio(storageGroupName));
+        / IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP * ActiveTimeSeriesCounter.getInstance()
+        .getActiveRatio(storageGroupName));
     return Math.max(memTableSize, config.getMemtableSizeThreshold());
   }
 
@@ -558,9 +558,9 @@ public class TsFileProcessor {
    * memtables and then compact them into one TimeValuePairSorter). Then get the related
    * ChunkMetadata of data on disk.
    *
-   * @param deviceId device id
+   * @param deviceId      device id
    * @param measurementId sensor id
-   * @param dataType data type
+   * @param dataType      data type
    * @return left: the chunk data in memory; right: the chunkMetadatas of data on disk
    */
   public Pair<ReadOnlyMemChunk, List<ChunkMetaData>> query(String deviceId,
@@ -587,7 +587,8 @@ public class TsFileProcessor {
       }
       // memSeriesLazyMerger has handled the props,
       // so we do not need to handle it again in the following readOnlyMemChunk
-      ReadOnlyMemChunk timeValuePairSorter = new ReadOnlyMemChunk(dataType, memSeriesLazyMerger,
+      ReadOnlyMemChunk timeValuePairSorter = new ReadOnlyMemChunk(measurementId, dataType,
+          memSeriesLazyMerger,
           Collections.emptyMap());
 
       ModificationFile modificationFile = tsFileResource.getModFile();

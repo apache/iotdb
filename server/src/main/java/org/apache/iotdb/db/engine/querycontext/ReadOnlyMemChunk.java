@@ -24,19 +24,22 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
+import org.apache.iotdb.db.query.reader.MemChunkLoader;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 
 //TODO: merge ReadOnlyMemChunk and WritableMemChunk and IWritableMemChunk
 public class ReadOnlyMemChunk implements TimeValuePairSorter {
 
   private boolean initialized;
-
+  private String measurementUid;
   private TSDataType dataType;
   private TimeValuePairSorter memSeries;
   private List<TimeValuePair> sortedTimeValuePairList;
@@ -47,7 +50,9 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
   /**
    * init by TSDataType and TimeValuePairSorter.
    */
-  public ReadOnlyMemChunk(TSDataType dataType, TimeValuePairSorter memSeries, Map<String, String> props) {
+  public ReadOnlyMemChunk(String measurementUid, TSDataType dataType, TimeValuePairSorter memSeries,
+      Map<String, String> props) {
+    this.measurementUid = measurementUid;
     this.dataType = dataType;
     this.memSeries = memSeries;
     this.initialized = false;
@@ -106,5 +111,48 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
   public boolean isEmpty() {
     checkInitialized();
     return sortedTimeValuePairList.isEmpty();
+  }
+
+  public ChunkMetaData getChunkMetaData() {
+    Statistics statsByType = Statistics.getStatsByType(dataType);
+    statsByType.setEmpty(isEmpty());
+    ChunkMetaData metaData = new ChunkMetaData(measurementUid, dataType, 0, statsByType);
+    if (!isEmpty()) {
+      List<TimeValuePair> sortedTimeValuePairList = getSortedTimeValuePairList();
+      int size = sortedTimeValuePairList.size();
+      TimeValuePair firstValue = sortedTimeValuePairList.get(0);
+      TimeValuePair lastValue = sortedTimeValuePairList.get(size - 1);
+      switch (dataType) {
+        case BOOLEAN:
+          statsByType.update(firstValue.getTimestamp(), firstValue.getValue().getBoolean());
+          statsByType.update(lastValue.getTimestamp(), lastValue.getValue().getBoolean());
+          break;
+        case TEXT:
+          statsByType.update(firstValue.getTimestamp(), firstValue.getValue().getBinary());
+          statsByType.update(lastValue.getTimestamp(), lastValue.getValue().getBinary());
+          break;
+        case FLOAT:
+          statsByType.update(firstValue.getTimestamp(), firstValue.getValue().getFloat());
+          statsByType.update(lastValue.getTimestamp(), lastValue.getValue().getFloat());
+          break;
+        case INT32:
+          statsByType.update(firstValue.getTimestamp(), firstValue.getValue().getInt());
+          statsByType.update(lastValue.getTimestamp(), lastValue.getValue().getInt());
+          break;
+        case INT64:
+          statsByType.update(firstValue.getTimestamp(), firstValue.getValue().getLong());
+          statsByType.update(lastValue.getTimestamp(), lastValue.getValue().getLong());
+          break;
+        case DOUBLE:
+          statsByType.update(firstValue.getTimestamp(), firstValue.getValue().getDouble());
+          statsByType.update(lastValue.getTimestamp(), lastValue.getValue().getDouble());
+          break;
+        default:
+          throw new RuntimeException("Unsupported data types");
+      }
+      statsByType.setCount(size);
+      metaData.setChunkLoader(new MemChunkLoader(this));
+    }
+    return metaData;
   }
 }

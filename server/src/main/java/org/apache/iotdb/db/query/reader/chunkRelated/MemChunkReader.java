@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  */
 public class MemChunkReader implements IPointReader, IAggregateReader {
 
+  private ReadOnlyMemChunk readOnlyMemChunk;
   private Iterator<TimeValuePair> timeValuePairIterator;
   private Filter filter;
   private boolean hasCachedTimeValuePair;
@@ -44,9 +45,16 @@ public class MemChunkReader implements IPointReader, IAggregateReader {
   private TSDataType dataType;
 
   public MemChunkReader(ReadOnlyMemChunk readableChunk, Filter filter) {
+    this.readOnlyMemChunk = readableChunk;
     timeValuePairIterator = readableChunk.getIterator();
     this.filter = filter;
     this.dataType = readableChunk.getDataType();
+  }
+
+  public MemChunkReader(Iterator<TimeValuePair> data, TSDataType dataType, Filter filter) {
+    timeValuePairIterator = data;
+    this.filter = filter;
+    this.dataType = dataType;
   }
 
   @Override
@@ -116,7 +124,7 @@ public class MemChunkReader implements IPointReader, IAggregateReader {
 
   @Override
   public PageHeader nextPageHeader() throws IOException {
-    return null;
+    return new PageHeader(0, 0, readOnlyMemChunk.getChunkMetaData().getStatistics());
   }
 
   @Override

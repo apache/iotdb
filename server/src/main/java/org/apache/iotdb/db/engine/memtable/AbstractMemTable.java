@@ -102,9 +102,11 @@ public abstract class AbstractMemTable implements IMemTable {
       switch (dataType) {
         case BOOLEAN:
           value = value.toLowerCase();
-          if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEN_FALSE.equals(value)) {
+          if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEN_FALSE
+              .equals(value)) {
             return false;
-          } else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEN_TRUE.equals(value)) {
+          } else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEN_TRUE
+              .equals(value)) {
             return true;
           } else {
             throw new QueryProcessException(
@@ -138,7 +140,8 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes) throws QueryProcessException {
+  public void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes)
+      throws QueryProcessException {
     try {
       write(batchInsertPlan, indexes);
       long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan);
@@ -161,7 +164,8 @@ public abstract class AbstractMemTable implements IMemTable {
     for (int i = 0; i < batchInsertPlan.getMeasurements().length; i++) {
       IWritableMemChunk memSeries = createIfNotExistAndGet(batchInsertPlan.getDeviceId(),
           batchInsertPlan.getMeasurements()[i], batchInsertPlan.getDataTypes()[i]);
-      memSeries.write(batchInsertPlan.getTimes(), batchInsertPlan.getColumns()[i], batchInsertPlan.getDataTypes()[i], indexes);
+      memSeries.write(batchInsertPlan.getTimes(), batchInsertPlan.getColumns()[i],
+          batchInsertPlan.getDataTypes()[i], indexes);
     }
   }
 
@@ -207,7 +211,7 @@ public abstract class AbstractMemTable implements IMemTable {
       chunkCopy.setTimeOffset(undeletedTime);
       sorter = chunkCopy;
     }
-    return new ReadOnlyMemChunk(dataType, sorter, props);
+    return new ReadOnlyMemChunk(measurement, dataType, sorter, props);
   }
 
 
@@ -252,8 +256,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void release() {
-    for (Entry<String, Map<String, IWritableMemChunk>> entry: memTableMap.entrySet()) {
-      for (Entry<String, IWritableMemChunk> subEntry: entry.getValue().entrySet()) {
+    for (Entry<String, Map<String, IWritableMemChunk>> entry : memTableMap.entrySet()) {
+      for (Entry<String, IWritableMemChunk> subEntry : entry.getValue().entrySet()) {
         TVListAllocator.getInstance().release(subEntry.getValue().getTVList());
       }
     }

@@ -20,11 +20,13 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
@@ -42,6 +44,31 @@ public class MinValueAggrFunc extends AggregateFunction {
   @Override
   public AggreResultData getResult() {
     return resultData;
+  }
+
+  @Override
+  public void calculateValueFromChunkMetaData(ChunkMetaData chunkMetaData)
+      throws QueryProcessException {
+    Comparable<Object> minVal = (Comparable<Object>) chunkMetaData.getStatistics().getMinValue();
+    updateResult(minVal);
+  }
+
+  @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage) throws IOException {
+    while (dataInThisPage.hasCurrent()) {
+      updateResult((Comparable<Object>) dataInThisPage.currentValue());
+      dataInThisPage.next();
+    }
+
+    Comparable<Object> minVal = null;
+    while (dataInThisPage.hasCurrent()) {
+      if (minVal == null
+          || minVal.compareTo(dataInThisPage.currentValue()) > 0) {
+        minVal = (Comparable<Object>) dataInThisPage.currentValue();
+      }
+      dataInThisPage.next();
+    }
+    updateResult(minVal);
   }
 
   @Override

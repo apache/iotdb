@@ -33,10 +33,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
-public abstract class AbstractChunkReader implements IBatchReader {
+public abstract class AbstractChunkReader implements IBatchReader, IAggregateReader {
 
   private ChunkHeader chunkHeader;
   private ByteBuffer chunkDataBuffer;
@@ -62,7 +63,7 @@ public abstract class AbstractChunkReader implements IBatchReader {
   /**
    * constructor of ChunkReader.
    *
-   * @param chunk input Chunk object
+   * @param chunk  input Chunk object
    * @param filter filter
    */
   public AbstractChunkReader(Chunk chunk, Filter filter) {

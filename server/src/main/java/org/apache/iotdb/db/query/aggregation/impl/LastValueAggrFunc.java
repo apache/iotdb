@@ -20,12 +20,14 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
@@ -46,6 +48,28 @@ public class LastValueAggrFunc extends AggregateFunction {
       resultData.setTimestamp(0);
     }
     return resultData;
+  }
+
+  @Override
+  public void calculateValueFromChunkMetaData(ChunkMetaData chunkMetaData)
+      throws QueryProcessException {
+    Object lastVal = chunkMetaData.getStatistics().getLastValue();
+    updateLastResult(chunkMetaData.getEndTime(), lastVal);
+  }
+
+  @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage) throws IOException {
+    long time = -1;
+    Object lastVal = null;
+    while (dataInThisPage.hasCurrent()) {
+      time = dataInThisPage.currentTime();
+      lastVal = dataInThisPage.currentValue();
+      dataInThisPage.next();
+    }
+
+    if (time != -1) {
+      updateLastResult(time, lastVal);
+    }
   }
 
   @Override

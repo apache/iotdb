@@ -2,26 +2,35 @@ package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.reader.MemChunkLoader;
+import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
+import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
@@ -41,7 +50,7 @@ public class NewSeriesReaderWithoutValueFilter {
   private ChunkMetaData cachedChunkMetaData;
   private boolean hasCachedNextChunk;
 
-  private AbstractChunkReader currentChunkReader;
+  private IAggregateReader currentChunkReader;
   private boolean isCurrentChunkReaderInit = false;
 
 
@@ -52,22 +61,44 @@ public class NewSeriesReaderWithoutValueFilter {
 
   private PageHeader cachedPageHeader;
   private boolean hasCachedNextPage;
+  private IAggregateReader overlappedChunkReader;
+  private long latestDirectlyOverlappedPageEndTime;
 
-  public NewSeriesReaderWithoutValueFilter(Path seriesPath, TSDataType dataType, Filter timeFilter,
-      QueryContext context) throws StorageEngineException, IOException {
-    QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-        .getQueryDataSource(seriesPath, context);
-    timeFilter = queryDataSource.setTTL(timeFilter);
+  public NewSeriesReaderWithoutValueFilter(QueryDataSource queryDataSource, TSDataType dataType,
+      Filter timeFilter, QueryContext context) throws IOException {
+    Path seriesPath = queryDataSource.getSeriesPath();
+    TreeSet<TsFileResource> unseqTsFilesSet = new TreeSet<>((o1, o2) -> {
+      String queryMeasurement = seriesPath.getMeasurement();
+      List<Long> o1StartTimeList = o1.getChunkMetaDataList().stream()
+          .filter(chunkMetaData -> chunkMetaData.getMeasurementUid().equals(queryMeasurement))
+          .map(ChunkMetaData::getStartTime).collect(Collectors.toList());
+      List<Long> o2StartTimeList = o2.getChunkMetaDataList().stream()
+          .filter(chunkMetaData -> chunkMetaData.getMeasurementUid().equals(queryMeasurement))
+          .map(ChunkMetaData::getStartTime).collect(Collectors.toList());
+      long minTimeOfO1 = Long.MAX_VALUE;
+      long minTimeOfO2 = Long.MAX_VALUE;
+      for (long startTime : o1StartTimeList) {
+        minTimeOfO1 = minTimeOfO1 > startTime ? startTime : minTimeOfO1;
+      }
+      for (long startTime : o2StartTimeList) {
+        minTimeOfO2 = minTimeOfO2 > startTime ? startTime : minTimeOfO2;
+      }
+      return Long.compare(minTimeOfO1, minTimeOfO2);
+    });
+    unseqTsFilesSet.addAll(queryDataSource.getUnseqResources());
 
     this.path = seriesPath;
     this.seqTsFiles = queryDataSource.getSeqResources();
-    this.unseqTsFiles = queryDataSource.getUnseqResources();
+    this.unseqTsFiles = unseqTsFilesSet;
     this.timeFilter = timeFilter;
     this.dataType = dataType;
     this.context = context;
 
     seqChunkMetadatas = loadChunkMetadatas(seqTsFiles.remove(0));
-    unseqChunkMetadatas = loadChunkMetadatas(unseqTsFiles.remove(0));
+    TreeSet<ChunkMetaData> unseqChunkMetadataSet = new TreeSet<>(
+        Comparator.comparingLong(ChunkMetaData::getStartTime));
+    unseqChunkMetadataSet.addAll(loadChunkMetadatas(unseqTsFiles.pollFirst()));
+    unseqChunkMetadatas = unseqChunkMetadataSet;
 
     // 把所有 未封口的 顺序文件的 chunk metadata 都加进来
 
@@ -76,10 +107,7 @@ public class NewSeriesReaderWithoutValueFilter {
       seqChunkMetadatas.addAll(loadChunkMetadatas(resource));
       unsealedResources.add(resource);
     }
-    for (TsFileResource resource: unsealedResources) {
-      seqTsFiles.remove(resource);
-    }
-
+    seqTsFiles.removeAll(unsealedResources);
     unsealedResources.clear();
 
     // 把所有 未封口的 乱序文件的 chunk metadata 都加进来
@@ -88,41 +116,39 @@ public class NewSeriesReaderWithoutValueFilter {
       unseqChunkMetadatas.addAll(loadChunkMetadatas(resource));
       unsealedResources.add(resource);
     }
-    for (TsFileResource resource: unsealedResources) {
+    for (TsFileResource resource : unsealedResources) {
       unseqTsFiles.remove(resource);
     }
 
   }
 
 
-
   /**
    * for raw data query
    */
   public boolean hasNextBatch() throws IOException {
-
-    if (hasNextChunk()) {
-      if (!isNextChunkOverlapped()) {
-        return currentChunkReader.hasNextBatch();
-      }
+    if (currentChunkReader.hasNextBatch() || priorityMergeReader.hasNext()) {
+      return true;
     }
-
     return false;
   }
 
   public BatchData nextBatch() throws IOException {
-    currentChunkReader.nextBatch();
-    return null;
+
+    if (overlappedChunkReader != null && overlappedChunkReader.hasNextBatch()) {
+      return overlappedChunkReader.nextBatch();
+    }
+    if (currentChunkReader.hasNextBatch()) {
+      return currentChunkReader.nextBatch();
+    }
+
+    return nextOverlappedPage();
   }
-
-
-
 
 
   /**
    * for aggregation and group by
    */
-
   public boolean hasNextChunk() throws IOException {
     if (hasCachedNextChunk) {
       return true;
@@ -136,7 +162,7 @@ public class NewSeriesReaderWithoutValueFilter {
     }
 
     if (unseqChunkMetadatas.isEmpty() && !unseqTsFiles.isEmpty()) {
-      unseqChunkMetadatas.addAll(loadChunkMetadatas(unseqTsFiles.remove(0)));
+      unseqChunkMetadatas.addAll(loadChunkMetadatas(unseqTsFiles.pollFirst()));
     }
 
     /**
@@ -146,14 +172,14 @@ public class NewSeriesReaderWithoutValueFilter {
       cachedChunkMetaData = seqChunkMetadatas.remove(0);
       hasCachedNextChunk = true;
     } else if (seqChunkMetadatas.isEmpty() && !unseqChunkMetadatas.isEmpty()) {
-      cachedChunkMetaData = unseqChunkMetadatas.remove(0);
+      cachedChunkMetaData = unseqChunkMetadatas.pollFirst();
       hasCachedNextChunk = true;
     } else if (!seqChunkMetadatas.isEmpty()) {
       // seq 和 unseq 的 chunk metadata 都不为空
-      if (seqChunkMetadatas.get(0).getStartTime() <= unseqChunkMetadatas.get(0).getStartTime()) {
+      if (seqChunkMetadatas.get(0).getStartTime() <= unseqChunkMetadatas.first().getStartTime()) {
         cachedChunkMetaData = seqChunkMetadatas.remove(0);
       } else {
-        cachedChunkMetaData = unseqChunkMetadatas.remove(0);
+        cachedChunkMetaData = unseqChunkMetadatas.pollFirst();
       }
       hasCachedNextChunk = true;
     } else {
@@ -176,8 +202,18 @@ public class NewSeriesReaderWithoutValueFilter {
     // get modifications and apply to metadatas
     List<Modification> pathModifications = context
         .getPathModifications(resource.getModFile(), path.getFullPath());
+    for (ChunkMetaData data : currentChunkMetaDataList) {
+      if (data.getChunkLoader() == null) {
+        data.setChunkLoader(
+            new ChunkLoaderImpl(new TsFileSequenceReader(resource.getFile().getAbsolutePath())));
+      }
+    }
     if (!pathModifications.isEmpty()) {
       QueryUtils.modifyChunkMetaData(currentChunkMetaDataList, pathModifications);
+    }
+    ReadOnlyMemChunk readOnlyMemChunk = resource.getReadOnlyMemChunk();
+    if (readOnlyMemChunk != null) {
+      currentChunkMetaDataList.add(readOnlyMemChunk.getChunkMetaData());
     }
     return currentChunkMetaDataList;
   }
@@ -187,17 +223,20 @@ public class NewSeriesReaderWithoutValueFilter {
     if (!seqChunkMetadatas.isEmpty() && cachedChunkMetaData.getEndTime() >= seqChunkMetadatas.get(0)
         .getStartTime()) {
       isOverlapped = true;
+      overlappedChunkReader = initChunkReader(seqChunkMetadatas.get(0));
     }
-    if (!unseqChunkMetadatas.isEmpty() && cachedChunkMetaData.getEndTime() >= unseqChunkMetadatas
-        .get(0).getStartTime()) {
+    if (!unseqChunkMetadatas.isEmpty() && cachedChunkMetaData.getEndTime() >=
+        unseqChunkMetadatas.first().getStartTime()) {
       isOverlapped = true;
+      overlappedChunkReader = initChunkReader(unseqChunkMetadatas.first());
     }
 
     /**
      * 初始化下一个 chunk reader
      */
     if (isOverlapped && !isCurrentChunkReaderInit) {
-      initCurrentChunkReader();
+      currentChunkReader = initChunkReader(cachedChunkMetaData);
+      isCurrentChunkReaderInit = true;
     }
 
     return isOverlapped;
@@ -212,13 +251,15 @@ public class NewSeriesReaderWithoutValueFilter {
     }
   }
 
-  private void initCurrentChunkReader() throws IOException {
-    IChunkLoader chunkLoader = cachedChunkMetaData.getChunkLoader();
-    Chunk chunk = chunkLoader.getChunk(cachedChunkMetaData);
-    currentChunkReader = new ChunkReader(chunk, timeFilter);
-    isCurrentChunkReaderInit = true;
+  private IAggregateReader initChunkReader(ChunkMetaData metaData) throws IOException {
+    IChunkLoader chunkLoader = metaData.getChunkLoader();
+    if (chunkLoader instanceof MemChunkLoader) {
+      MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
+      return new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
+    }
+    Chunk chunk = chunkLoader.getChunk(metaData);
+    return new ChunkReader(chunk, timeFilter);
   }
-
 
 
   public boolean hasNextPage() throws IOException {
@@ -226,7 +267,8 @@ public class NewSeriesReaderWithoutValueFilter {
       return true;
     }
     if (!isCurrentChunkReaderInit) {
-      initCurrentChunkReader();
+      currentChunkReader = initChunkReader(cachedChunkMetaData);
+      isCurrentChunkReaderInit = true;
     }
     if (isCurrentChunkReaderInit && currentChunkReader.hasNextBatch()) {
       cachedPageHeader = currentChunkReader.nextPageHeader();
@@ -235,31 +277,36 @@ public class NewSeriesReaderWithoutValueFilter {
     return hasCachedNextPage;
   }
 
-  public boolean isNextPageOverlapped() {
+  public boolean isNextPageOverlapped() throws IOException {
+    boolean isOverlapped = false;
+    PageHeader cachedPageHeader = this.cachedPageHeader;
 
-    PageHeader pageHeader = cachedPageHeader;
-
-
-    return false;
+    while (overlappedChunkReader != null && overlappedChunkReader.hasNextBatch()) {
+      PageHeader pageHeader = overlappedChunkReader.nextPageHeader();
+      if (cachedPageHeader.getEndTime() >= pageHeader.getStartTime()) {
+        isOverlapped = true;
+        latestDirectlyOverlappedPageEndTime = cachedPageHeader.getEndTime();
+        priorityMergeReader.addReaderWithPriority(new DiskChunkReader(overlappedChunkReader), 1);
+        priorityMergeReader.addReaderWithPriority(new DiskChunkReader(currentChunkReader), 1);
+      }
+    }
+    return isOverlapped;
   }
 
 
   public BatchData nextOverlappedPage() throws IOException {
-    BatchData batchData = new BatchData(dataType);
-    long latestDirectlyOverlappedPageEndTime = 0;
-    for (priorityMergeReader.hasNext()) {
-      TimeValuePair timeValuePair = priorityMergeReader.current();
+    BatchData batchData = new BatchData(dataType, true);
+    while (priorityMergeReader.hasNext()) {
+      TimeValuePair timeValuePair = priorityMergeReader.next();
       if (timeValuePair.getTimestamp() > latestDirectlyOverlappedPageEndTime) {
         break;
       }
       batchData.putTime(timeValuePair.getTimestamp());
       batchData.putAnObject(timeValuePair.getValue().getValue());
     }
-
     return batchData;
 
   }
-
 
 
   public PageHeader nextPageHeader() throws IOException {
