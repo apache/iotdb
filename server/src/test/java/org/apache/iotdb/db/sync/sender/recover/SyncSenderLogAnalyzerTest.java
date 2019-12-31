@@ -36,6 +36,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
 import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
@@ -77,19 +79,22 @@ public class SyncSenderLogAnalyzerTest {
   }
 
   @Test
-  public void recover() throws IOException {
+  public void recover() throws IOException, MetadataException {
     Map<String, Map<Long, Set<File>>> allFileList = new HashMap<>();
 
+    for (int i = 0; i < 3; i++) {
+      MManager.getInstance().setStorageGroupToMTree(getSgName(i));
+    }
     Random r = new Random(0);
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
-        allFileList.computeIfAbsent(String.valueOf(i), k -> new HashMap<>())
+        allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>())
             .computeIfAbsent(0L, k -> new HashSet<>());
         String rand = r.nextInt(10000) + TSFILE_SUFFIX;
         String fileName = FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
-            + File.separator + i + File.separator + "0" + File.separator + rand;
+            + File.separator + getSgName(i) + File.separator + "0" + File.separator + rand;
         File file = new File(fileName);
-        allFileList.get(String.valueOf(i)).get(0L).add(file);
+        allFileList.get(getSgName(i)).get(0L).add(file);
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
@@ -106,7 +111,7 @@ public class SyncSenderLogAnalyzerTest {
     assertTrue(SyncUtils.isEmpty(manager.getLastLocalFilesMap()));
     senderLogger.startSyncTsFiles();
     for (Map<Long, Set<File>> map : allFileList.values()) {
-      for(Set<File> newTsFiles: map.values()) {
+      for (Set<File> newTsFiles : map.values()) {
         for (File file : newTsFiles) {
           senderLogger.finishSyncTsfile(file);
         }
@@ -129,7 +134,7 @@ public class SyncSenderLogAnalyzerTest {
     assertFalse(SyncUtils.isEmpty(manager.getLastLocalFilesMap()));
     senderLogger.startSyncDeletedFilesName();
     for (Map<Long, Set<File>> map : allFileList.values()) {
-      for(Set<File> newTsFiles: map.values()) {
+      for (Set<File> newTsFiles : map.values()) {
         for (File file : newTsFiles) {
           senderLogger.finishSyncDeletedFileName(file);
         }
@@ -154,6 +159,19 @@ public class SyncSenderLogAnalyzerTest {
             curMap.get(entry.getKey()).get(innerEntry.getKey()).containsAll(innerEntry.getValue()));
       }
     }
+  }
+
+  private String getSgName(int i) {
+    return IoTDBConstant.PATH_ROOT + IoTDBConstant.PATH_SEPARATOR + i;
+  }
+
+  private boolean isEmpty(Map<String, Set<File>> sendingFileList) {
+    for (Entry<String, Set<File>> entry : sendingFileList.entrySet()) {
+      if (!entry.getValue().isEmpty()) {
+        return false;
+      }
+    }
+    return true;
   }
 
 }

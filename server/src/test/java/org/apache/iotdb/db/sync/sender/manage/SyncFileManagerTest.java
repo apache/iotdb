@@ -37,6 +37,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
 import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -70,19 +72,22 @@ public class SyncFileManagerTest {
   }
 
   @Test
-  public void testGetValidFiles() throws IOException {
+  public void testGetValidFiles() throws IOException, MetadataException {
     Map<String, Map<Long, Set<File>>> allFileList = new HashMap<>();
 
     Random r = new Random(0);
     for (int i = 0; i < 3; i++) {
+      MManager.getInstance().setStorageGroupToMTree(getSgName(i));
+    }
+    for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
-        allFileList.computeIfAbsent(String.valueOf(i), k -> new HashMap<>())
-            .putIfAbsent(0L, new HashSet<>());
+        allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>())
+            .computeIfAbsent(0L, k -> new HashSet<>());
         String rand = r.nextInt(10000) + TSFILE_SUFFIX;
         String fileName = FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
-            + File.separator + i + File.separator + "0" + File.separator + rand;
+            + File.separator + getSgName(i) + File.separator + "0" + File.separator + rand;
         File file = new File(fileName);
-        allFileList.get(String.valueOf(i)).get(0L).add(file);
+        allFileList.get(getSgName(i)).get(0L).add(file);
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
@@ -115,17 +120,17 @@ public class SyncFileManagerTest {
     r = new Random(1);
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
-        allFileList.computeIfAbsent(String.valueOf(i), k -> new HashMap<>())
-            .putIfAbsent(0L, new HashSet<>());
-        correctToBeSyncedFiles.computeIfAbsent(String.valueOf(i), k -> new HashMap<>())
-            .putIfAbsent(0L, new HashSet<>());
+        allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>())
+            .computeIfAbsent(0L, k -> new HashSet<>());
+        correctToBeSyncedFiles.computeIfAbsent(getSgName(i), k -> new HashMap<>())
+            .computeIfAbsent(0L, k -> new HashSet<>());
         String rand = r.nextInt(10000) + TSFILE_SUFFIX;
         String fileName =
             FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
-                + File.separator + i + File.separator + "0" + File.separator + rand;
+                + File.separator + getSgName(i) + File.separator + "0" + File.separator + rand;
         File file = new File(fileName);
-        allFileList.get(String.valueOf(i)).get(0L).add(file);
-        correctToBeSyncedFiles.get(String.valueOf(i)).get(0L).add(file);
+        allFileList.get(getSgName(i)).get(0L).add(file);
+        correctToBeSyncedFiles.get(getSgName(i)).get(0L).add(file);
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
@@ -155,18 +160,18 @@ public class SyncFileManagerTest {
     r = new Random(2);
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
-        allFileList.computeIfAbsent(String.valueOf(i), k -> new HashMap<>())
-            .putIfAbsent(0L, new HashSet<>());
-        correctToBeSyncedFiles.computeIfAbsent(String.valueOf(i), k -> new HashMap<>())
-            .putIfAbsent(0L, new HashSet<>());
+        allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>())
+            .computeIfAbsent(0L, k -> new HashSet<>());
+        correctToBeSyncedFiles.computeIfAbsent(getSgName(i), k -> new HashMap<>())
+            .computeIfAbsent(0L, k -> new HashSet<>());
         String rand = r.nextInt(10000) + TSFILE_SUFFIX;
         String fileName =
             FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
-                + File.separator + i + File.separator + "0" + File.separator
+                + File.separator + getSgName(i) + File.separator + "0" + File.separator
                 + File.separator + rand;
         File file = new File(fileName);
-        allFileList.get(String.valueOf(i)).get(0L).add(file);
-        correctToBeSyncedFiles.get(String.valueOf(i)).get(0L).add(file);
+        allFileList.get(getSgName(i)).get(0L).add(file);
+        correctToBeSyncedFiles.get(getSgName(i)).get(0L).add(file);
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
@@ -218,15 +223,15 @@ public class SyncFileManagerTest {
     r = new Random(3);
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
-        allFileList.computeIfAbsent(String.valueOf(i), k -> new HashMap<>())
-            .putIfAbsent(0L, new HashSet<>());
+        allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>())
+            .computeIfAbsent(0L, k -> new HashSet<>());
         String rand = String.valueOf(r.nextInt(10000));
         String fileName =
             FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
-                + File.separator + i + File.separator + "0" + File.separator + File.separator
-                + rand;
+                + File.separator + getSgName(i) + File.separator + "0" + File.separator
+                + File.separator + rand;
         File file = new File(fileName);
-        allFileList.get(String.valueOf(i)).get(0L).add(file);
+        allFileList.get(getSgName(i)).get(0L).add(file);
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
@@ -255,6 +260,10 @@ public class SyncFileManagerTest {
             curMap.get(entry.getKey()).get(innerEntry.getKey()).containsAll(innerEntry.getValue()));
       }
     }
+  }
+
+  private String getSgName(int i) {
+    return IoTDBConstant.PATH_ROOT + IoTDBConstant.PATH_SEPARATOR + i;
   }
 
   private void updateLastLocalFiles(Map<String, Map<Long, Set<File>>> lastLocalFilesMap) {

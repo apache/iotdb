@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.db.conf;
 
-import java.io.File;
-import java.time.ZoneId;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
@@ -32,6 +28,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.time.ZoneId;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class IoTDBConfig {
 
@@ -160,6 +161,11 @@ public class IoTDBConfig {
    * How many threads can concurrently flush. When <= 0, use CPU core number.
    */
   private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
+
+  /**
+   * How many threads can concurrently query. When <= 0, use CPU core number.
+   */
+  private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
 
   private ZoneId zoneID = ZoneId.systemDefault();
 
@@ -683,6 +689,14 @@ public class IoTDBConfig {
 
   void setConcurrentFlushThread(int concurrentFlushThread) {
     this.concurrentFlushThread = concurrentFlushThread;
+  }
+
+  public int getConcurrentQueryThread() {
+    return concurrentQueryThread;
+  }
+
+  void setConcurrentQueryThread(int concurrentQueryThread) {
+    this.concurrentQueryThread = concurrentQueryThread;
   }
 
   void setZoneID(ZoneId zoneID) {

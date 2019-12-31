@@ -26,6 +26,7 @@ import java.io.IOException;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
@@ -80,6 +81,7 @@ public class UnseqTsFileRecoverTest {
 
   @Before
   public void setup() throws IOException, WriteProcessException {
+    FlushSubTaskPoolManager.getInstance().start();
     tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "test.ts");
     tsF.getParentFile().mkdirs();
 
@@ -138,6 +140,7 @@ public class UnseqTsFileRecoverTest {
   public void tearDown() throws IOException {
     FileUtils.deleteDirectory(tsF.getParentFile());
     node.delete();
+    FlushSubTaskPoolManager.getInstance().stop();
   }
 
   @Test
