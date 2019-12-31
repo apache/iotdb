@@ -1028,7 +1028,7 @@ public class StorageGroupProcessor {
         }
       }
 
-      // no tsfile data, the delete operation is invalid
+      // There is no tsfile data, the delete operation is invalid
       if (lastUpdateTime == null) {
         logger.debug("No device {} in SG {}, deletion invalid", deviceId, storageGroupName);
         return;
