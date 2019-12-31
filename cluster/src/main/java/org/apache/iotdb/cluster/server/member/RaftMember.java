@@ -518,6 +518,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   /**
    * Update the followers' log by sending logs whose index >= followerLastLogIndex to the follower.
    * If some of the logs are not in memory, also send the snapshot.
+   * <br>notice that if a part of data is in the snapshot, then it is not in the logs</>
    * @param follower
    * @param followerLastLogIndex
    */
