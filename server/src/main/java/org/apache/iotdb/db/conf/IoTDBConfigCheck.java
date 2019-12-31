@@ -76,7 +76,7 @@ public class IoTDBConfigCheck {
         logger.info(" {} has been created.", file.getAbsolutePath());
         try (FileOutputStream outputStream = new FileOutputStream(file.toString())) {
           properties.setProperty("timestamp_precision", TIMESTAMP_PRECISION);
-          properties.setProperty("storage_group_time_range", TIMESTAMP_PRECISION);
+          properties.setProperty("storage_group_time_range", String.valueOf(PARTITION_INTERVAL));
           properties.store(outputStream, "System properties:");
         }
       }
