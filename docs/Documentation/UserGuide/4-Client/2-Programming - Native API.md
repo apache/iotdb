@@ -20,7 +20,7 @@
 -->
 
 # Chapter 4: Client
-# Programming - Session
+# Programming - Native API
 ## Usage
 
 ### Dependencies
@@ -28,17 +28,12 @@
 * JDK >= 1.8
 * Maven >= 3.1
 
-### How to package only client module
-
-In root directory:
-> mvn clean package -pl client -am -Dmaven.test.skip=true
-
 ### How to install in local maven repository
 
 In root directory:
-> mvn clean install -pl client -am -Dmaven.test.skip=true
+> mvn clean install -pl session -am -DskipTests
 
-### Using IoTDB Session with Maven
+### Using IoTDB Native API with Maven
 
 ```
 <dependencies>
@@ -51,11 +46,11 @@ In root directory:
 ```
 
 
-### Examples with Session interfaces
+### Examples with Native API
 
-Here we show the commonly used interfaces and their parameters in the Session:
+Here we show the commonly used interfaces and their parameters in the Native API:
 
-#### Run the Session
+#### Run the Native API
 
 * Initialize a Session
 
@@ -73,7 +68,7 @@ Here we show the commonly used interfaces and their parameters in the Session:
 
   ​	Session.close()
 
-#### Operate the Session
+#### Operations
 
 * Set storage group
 

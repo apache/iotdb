@@ -60,6 +60,20 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReade
   private BatchData batchData;
 
   /**
+   * This filed indicates whether the reader is managed by QueryTaskPoolManager
+   * If it is set to be false,
+   * maybe it's because the corresponding queue has no more space
+   * or this reader has no more data.
+   */
+  private volatile boolean managedByQueryManager;
+
+  /**
+   * whether having remaining batch data
+   * its usage is to tell the consumer thread not to submit another read task for it.
+   */
+  private volatile boolean hasRemaining;
+
+  /**
    * Constructor function.
    *
    * @param seriesPath the path of the series data
@@ -97,6 +111,21 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReade
     this.unseqResourceMergeReader = unseqResourceMergeReader;
   }
 
+  public boolean isManagedByQueryManager() {
+    return managedByQueryManager;
+  }
+
+  public void setManagedByQueryManager(boolean managedByQueryManager) {
+    this.managedByQueryManager = managedByQueryManager;
+  }
+
+  public boolean hasRemaining() {
+    return hasRemaining;
+  }
+
+  public void setHasRemaining(boolean hasRemaining) {
+    this.hasRemaining = hasRemaining;
+  }
 
   @Override
   public boolean hasNextBatch() throws IOException {
@@ -163,13 +192,18 @@ public class SeriesReaderWithoutValueFilter implements IBatchReader, IPointReade
     }
 
     // only has next in seq data
-    if (hasNextInSeq())
-      return seqBatchData;
+    if (hasNextInSeq()) {
+      BatchData res = seqBatchData;
+      seqBatchData = null;
+      return res;
+    }
 
     // only has next in unseq data
-    if (hasNextInUnSeq())
-      return unseqBatchData;
-
+    if (hasNextInUnSeq()) {
+      BatchData res = unseqBatchData;
+      unseqBatchData = null;
+      return res;
+    }
     return null;
   }
 

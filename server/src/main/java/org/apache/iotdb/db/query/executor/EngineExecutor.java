@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.db.query.executor;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
@@ -35,7 +33,10 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * IoTDB query executor.
@@ -69,12 +70,12 @@ public class EngineExecutor {
       timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
     }
 
-    List<IBatchReader> readersOfSelectedSeries = new ArrayList<>();
+    List<SeriesReaderWithoutValueFilter> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < deduplicatedPaths.size(); i++) {
       Path path = deduplicatedPaths.get(i);
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
-      IBatchReader reader = new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context,
+      SeriesReaderWithoutValueFilter reader = new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context,
           true);
       readersOfSelectedSeries.add(reader);
     }
@@ -82,7 +83,7 @@ public class EngineExecutor {
     try {
       return new NewEngineDataSetWithoutValueFilter(deduplicatedPaths, deduplicatedDataTypes,
           readersOfSelectedSeries);
-    } catch (IOException e) {
+    } catch (InterruptedException e) {
       throw new StorageEngineException(e.getMessage());
     }
   }
