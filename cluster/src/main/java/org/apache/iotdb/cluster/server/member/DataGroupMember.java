@@ -58,8 +58,6 @@ import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPullSnapshotHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartBeatThread;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -75,7 +73,6 @@ import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithValueFilte
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -297,40 +294,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   private boolean isFileAlreadyPulled(RemoteTsFileResource resource) {
-    // TODO-Cluster#352: currently some files are loaded redundantly because the same files
-    //  (containing the same date) are named differently on different node. How can we recognize
-    //  the duplicated files that have different names.
+    // TODO-Cluster#352: The problem of duplicated data in remote files is partially resolved by
+    //  tracking the merge history using the version numbers of the merged files. But a better
+    //  solution still remains to be found.
     String[] pathSegments = resource.getFile().getAbsolutePath().split(File.separator);
     int segSize = pathSegments.length;
     // {storageGroupName}/{fileName}
     String storageGroupName = pathSegments[segSize - 2];
-    // {createTime}-{version}-{mergeNum}.tsfile
-    String fileName = pathSegments[segSize - 1].replace(TsFileConstant.TSFILE_SUFFIX, "");
-    String[] fileNameSplit = fileName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
-    String fileVersion = fileNameSplit[1];
-    String mergeNum = fileNameSplit[2];
-
-    boolean isSeq = pathSegments[segSize - 3].equals("sequence");
-    List<String> dataFolders = isSeq ? DirectoryManager.getInstance()
-        .getAllSequenceFileFolders() : DirectoryManager.getInstance().getAllUnSequenceFileFolders();
-    for (String dataFolder : dataFolders) {
-      File storageGroupDir = new File(dataFolder, storageGroupName);
-      if (storageGroupDir.exists()) {
-        File[] tsFiles =
-            storageGroupDir.listFiles(f -> f.getName().endsWith(TsFileConstant.TSFILE_SUFFIX));
-        if (tsFiles == null) {
-          continue;
-        }
-        for (File tsFile : tsFiles) {
-          fileName = tsFile.getName();
-          fileNameSplit = fileName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
-          if (fileVersion.equals(fileNameSplit[1]) && mergeNum.equals(fileNameSplit[2])) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
+    return StorageEngine.getInstance().isFileAlreadyExist(resource, storageGroupName);
   }
 
 
@@ -377,6 +348,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         new File(resource.getFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
     try {
       StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource);
+      StorageEngine.getInstance().getProcessor(storageGroupName).removeFullyOverlapFiles(resource);
     } catch (TsFileProcessorException | StorageEngineException e) {
       logger.error("{}: Cannot load remote file {} into storage group", name, resource, e);
       return;
