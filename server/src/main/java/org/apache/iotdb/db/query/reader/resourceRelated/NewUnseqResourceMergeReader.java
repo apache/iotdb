@@ -159,8 +159,7 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
         }
 
         TimeValuePair timeValuePair = priorityMergeReader.next();
-        batchData.putTime(timeValuePair.getTimestamp());
-        batchData.putAnObject(timeValuePair.getValue().getValue());
+        batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
 
         // largest time of priority merge reader < next chunk start time
         // put chunk readers until merge reader has a valid point
