@@ -39,14 +39,19 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TsFileResource {
+
+  private static final Logger logger = LoggerFactory.getLogger(TsFileResource.class);
 
   // tsfile
   private File file;
 
   public static final String RESOURCE_SUFFIX = ".resource";
   static final String TEMP_SUFFIX = ".temp";
+  private static final String CLOSING_SUFFIX = ".closing";
 
   /**
    * device -> start time
@@ -327,4 +332,28 @@ public class TsFileResource {
     }
     return false;
   }
+
+  /**
+   * set a file flag indicating that the file is being closed, so during recovery we could know
+   * we should close the file.
+   */
+  public void setCloseFlag() {
+    try {
+      new File(file.getAbsoluteFile() + CLOSING_SUFFIX).createNewFile();
+    } catch (IOException e) {
+      logger.error("Cannot create close flag for {}", file, e);
+    }
+  }
+
+  /**
+   * clean the close flag when the file is successfully closed.
+   */
+  public void cleanCloseFlag() {
+    new File(file.getAbsoluteFile() + CLOSING_SUFFIX).delete();
+  }
+
+  public boolean isCloseFlagSet() {
+    return new File(file.getAbsoluteFile() + CLOSING_SUFFIX).exists();
+  }
+
 }
