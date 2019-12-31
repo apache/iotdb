@@ -107,6 +107,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         // i.e., PhysicalGenerator.transformQuery
       }
     }
+
     // concat filter
     FilterOperator filter = sfwOperator.getFilterOperator();
     if (filter == null) {
