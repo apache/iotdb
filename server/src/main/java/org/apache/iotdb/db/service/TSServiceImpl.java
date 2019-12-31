@@ -496,13 +496,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (args.length == 1) {
       StorageEngine.getInstance().syncCloseAllProcessor();
     } else if (args.length == 2){
-      String[] storageGroups = args[1].split(",\\s*");
+      String[] storageGroups = args[1].split(",");
       for (String storageGroup : storageGroups) {
         StorageEngine.getInstance().asyncCloseProcessor(storageGroup, true);
         StorageEngine.getInstance().asyncCloseProcessor(storageGroup, false);
       }
     } else {
-      String[] storageGroups = args[1].split(",\\s*");
+      String[] storageGroups = args[1].split(",");
       boolean isSeq = Boolean.parseBoolean(args[2]);
       for (String storageGroup : storageGroups) {
         StorageEngine.getInstance().asyncCloseProcessor(storageGroup, isSeq);
