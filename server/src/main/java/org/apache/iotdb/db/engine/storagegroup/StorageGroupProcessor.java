@@ -294,7 +294,7 @@ public class StorageGroupProcessor {
         res = new SimpleFileVersionController(storageGroupSysDir.getPath(), timePartitionId);
         timePartitionIdVersionControllerMap.put(timePartitionId, res);
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.error("can't build a version controller for time partition" + timePartitionId);
       }
     }
 
@@ -621,7 +621,8 @@ public class StorageGroupProcessor {
     try {
       if (!tsFileProcessorTreeMap.containsKey(timeRangeId)) {
         // we have to remove oldest processor to control the num of the memtables
-        if (tsFileProcessorTreeMap.size() >= IoTDBConstant.MEMTABLE_NUM_IN_EACH_STORAGE_GROUP / 2) {
+        // TODO: use a method to control the number of memtables
+        if (tsFileProcessorTreeMap.size() >= IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() / 2) {
           Map.Entry<Long, TsFileProcessor> processorEntry = tsFileProcessorTreeMap.firstEntry();
 
           moveOneWorkProcessorToClosingList(sequence, processorEntry.getValue());

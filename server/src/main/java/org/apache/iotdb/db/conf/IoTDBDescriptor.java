@@ -297,6 +297,10 @@ public class IoTDBDescriptor {
       conf.setPartitionInterval(
           Long.parseLong(properties.getProperty("partition_interval", String.valueOf(conf.getPartitionInterval()))));
 
+      // the num of memtables in each storage group
+      conf.setPartitionInterval(
+          Integer.parseInt(properties.getProperty("memtable_num_in_each_storage_group", String.valueOf(conf.getMemtableNumInEachStorageGroup()))));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
           .setTSFileStorageFs(properties.getProperty("tsfile_storage_fs"));
