@@ -464,4 +464,10 @@ public class StorageEngine implements IService {
   public void setFileFlushPolicy(TsFileFlushPolicy fileFlushPolicy) {
     this.fileFlushPolicy = fileFlushPolicy;
   }
+
+  public boolean isFileAlreadyExist(TsFileResource tsFileResource, String storageGroup) {
+    // TODO-Cluster#350: integrate with time partitioning
+    StorageGroupProcessor processor = processorMap.get(storageGroup);
+    return processor.isFileAlreadyExist(tsFileResource);
+  }
 }

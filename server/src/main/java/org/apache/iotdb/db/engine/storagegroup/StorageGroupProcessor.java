@@ -1270,6 +1270,46 @@ public class StorageGroupProcessor {
   }
 
   /**
+   * If the historical versions of a file is a sub-set of the given file's, remove it to reduce
+   * unnecessary merge. Only used when the file sender and the receiver share the same file
+   * close policy.
+   * @param resource
+   */
+  public void removeFullyOverlapFiles(TsFileResource resource) {
+    writeLock();
+    closeQueryLock.writeLock().lock();
+    try {
+      Iterator<TsFileResource> iterator = sequenceFileList.iterator();
+      while (iterator.hasNext()) {
+        TsFileResource seqFile = iterator.next();
+        if (resource.getHistoricalVersions().containsAll(seqFile.getHistoricalVersions())) {
+          if (seqFile.getWriteQueryLock().writeLock().tryLock()) {
+            iterator.remove();
+            seqFile.remove();
+            seqFile.getWriteQueryLock().writeLock().unlock();
+          }
+        }
+      }
+
+      iterator = unSequenceFileList.iterator();
+      while (iterator.hasNext()) {
+        TsFileResource seqFile = iterator.next();
+        if (resource.getHistoricalVersions().containsAll(seqFile.getHistoricalVersions())) {
+          if (seqFile.getWriteQueryLock().writeLock().tryLock()) {
+            iterator.remove();
+            seqFile.remove();
+            seqFile.getWriteQueryLock().writeLock().unlock();
+          }
+        }
+      }
+    } finally {
+      closeQueryLock.readLock().unlock();
+      writeUnlock();
+    }
+
+  }
+
+  /**
    * Get an appropriate filename to ensure the order between files. The tsfile is named after
    * ({systemTime}-{versionNum}-{mergeNum}.tsfile).
    *
@@ -1583,5 +1623,9 @@ public class StorageGroupProcessor {
 
   public String getStorageGroupName() {
     return storageGroupName;
+  }
+
+  public boolean isFileAlreadyExist(TsFileResource tsFileResource) {
+    return allDirectFileVersions.containsAll(tsFileResource.getHistoricalVersions());
   }
 }
