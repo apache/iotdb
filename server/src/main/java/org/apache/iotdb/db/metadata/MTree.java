@@ -781,6 +781,14 @@ public class MTree implements Serializable {
     return devices;
   }
 
+  /**
+   * Traverse the MTree to match all devices with prefix path.
+   * @param node the current traversing node
+   * @param nodes split the prefix path with '.'
+   * @param idx the current index of array nodes
+   * @param parent store the node string having traversed
+   * @param res store all matched device names
+   */
   private void findDevices(MNode node, String[] nodes, int idx, String parent, List<String> res) {
     String nodeReg;
     if (idx >= nodes.length) {

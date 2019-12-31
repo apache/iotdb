@@ -121,6 +121,6 @@ public interface IQueryProcessExecutor {
   /**
    * Get all paths of a full path
    */
-  List<String> matchPaths(String originPath) throws MetadataException;
+  List<String> getAllMatchedPaths(String originPath) throws MetadataException;
 
 }

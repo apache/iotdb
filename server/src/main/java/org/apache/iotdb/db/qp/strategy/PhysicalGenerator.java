@@ -192,6 +192,7 @@ public class PhysicalGenerator {
 
       List<String> measurements = new ArrayList<>();
       Map<String, Set<String>> measurementsGroupByDevice = new LinkedHashMap<>();
+      // to check the same measure in different devices having the same datatype
       Map<String, TSDataType> dataTypeConsistencyChecker = new HashMap<>();
       List<Path> paths = new ArrayList<>();
 
@@ -204,7 +205,7 @@ public class PhysicalGenerator {
           Path fullPath = Path.addPrefixPath(suffixPath, prefixPath);
           Set<String> tmpDeviceSet = new HashSet<>();
           try {
-            List<String> actualPaths = executor.matchPaths(fullPath.getFullPath());  // remove stars to get actual paths
+            List<String> actualPaths = executor.getAllMatchedPaths(fullPath.getFullPath());  // remove stars to get actual paths
             for (String pathStr : actualPaths) {
               Path path = new Path(pathStr);
               String device = path.getDevice();
@@ -224,7 +225,6 @@ public class PhysicalGenerator {
               String pathForDataType;
               String measurementChecked;
               // check datatype consistency
-              String originAggregation = null;
               if (originAggregations != null && !originAggregations.isEmpty()) {
                 pathForDataType = originAggregations.get(i) + "(" + path.getFullPath() + ")";
                 measurementChecked = originAggregations.get(i) + "(" + measurement + ")";

@@ -157,7 +157,7 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  public List<String> matchPaths(String fullPath) {
+  public List<String> getAllMatchedPaths(String fullPath) {
     return fakeAllPaths != null ? fakeAllPaths.get(fullPath) : new ArrayList<String>() {
       {
         add(fullPath);
