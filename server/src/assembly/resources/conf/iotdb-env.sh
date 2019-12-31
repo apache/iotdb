@@ -150,7 +150,7 @@ else
         # only add -Xlog:gc if it's not mentioned in jvm-server.options file
         mkdir -p ${IOTDB_HOME}/logs
         if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
-            IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xlog:gc=info,heap*=trace,age*=debug,safepoint=info,promotion*=trace:file=${IOTDB_HOME}/logs/gc.log:time,uptime,pid,tid,level:filecount=10,filesize=10485760"
+            IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xlog:gc=info,heap*=info,age*=info,safepoint=info,promotion*=info:file=${IOTDB_HOME}/logs/gc.log:time,uptime,pid,tid,level:filecount=10,filesize=10485760"
         fi
     fi
 fi
