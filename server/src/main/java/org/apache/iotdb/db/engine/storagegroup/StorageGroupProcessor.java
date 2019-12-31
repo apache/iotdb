@@ -526,7 +526,7 @@ public class StorageGroupProcessor {
           .put(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
     }
 
-    // check memtable size and may asyncTryToFlush the work memtable
+    // check memtable size and may async try to flush the work memtable
     if (tsFileProcessor.shouldFlush()) {
       logger.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
           tsFileProcessor.getWorkMemTableMemory(),
