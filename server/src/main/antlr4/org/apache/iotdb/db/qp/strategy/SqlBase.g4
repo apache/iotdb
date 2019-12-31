@@ -148,13 +148,13 @@ fromClause
 specialClause
     : specialLimit
     | groupByClause specialLimit?
-    | fillClause slimitClause? groupByDeviceClause?
+    | fillClause slimitClause? groupByDeviceClauseOrDisableAlign?
     ;
 
 specialLimit
-    : limitClause slimitClause? groupByDeviceClause?
-    | slimitClause limitClause? groupByDeviceClause?
-    | groupByDeviceClause
+    : limitClause slimitClause? groupByDeviceClauseOrDisableAlign?
+    | slimitClause limitClause? groupByDeviceClauseOrDisableAlign?
+    | groupByDeviceClauseOrDisableAlign
     ;
 
 limitClause
@@ -176,6 +176,15 @@ soffsetClause
 groupByDeviceClause
     :
     GROUP BY DEVICE
+    ;
+
+disableAlign
+    : DISABLE ALIGN
+    ;
+
+groupByDeviceClauseOrDisableAlign
+    : groupByDeviceClause
+    | disableAlign
     ;
 
 fillClause
@@ -705,6 +714,14 @@ SUM
 
 LAST_VALUE
     : L A S T UNDERLINE V A L U E
+    ;
+
+DISABLE
+    : D I S A B L E
+    ;
+
+ALIGN
+    : A L I G N
     ;
 //============================
 // End of the keywords list
