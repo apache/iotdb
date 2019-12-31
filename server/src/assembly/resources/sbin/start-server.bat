@@ -59,7 +59,7 @@ set IOTDB_CONF=%IOTDB_HOME%\conf
 set IOTDB_LOGS=%IOTDB_HOME%\logs
 
 IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
-    CALL "%IOTDB_CONF%\iotdb-env.bat"
+    CALL "%IOTDB_CONF%\iotdb-env.bat" %1
     ) ELSE (
     echo "can't find %IOTDB_CONF%\iotdb-env.bat"
     )

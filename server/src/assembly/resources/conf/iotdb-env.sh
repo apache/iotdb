@@ -128,12 +128,31 @@ fi
 
 version_arr=(${JVM_VERSION//./ })
 
+#GC log path has to be defined here because it needs to access CASSANDRA_HOME
 if [ "${version_arr[0]}" = "1" ] ; then
-  MAJOR_VERSION=${version_arr[1]}
-  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/gc.log -XX:+PrintGCDateStamps -XX:+PrintGCDetails"
+    # Java 8
+    MAJOR_VERSION=${version_arr[1]}
+    echo "$IOTDB_JMX_OPTS" | grep -q "^-[X]loggc"
+    if [ "$?" = "1" ] ; then # [X] to prevent ccm from replacing this line
+        # only add -Xlog:gc if it's not mentioned in jvm-server.options file
+        mkdir -p ${IOTDB_HOME}/logs
+        if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
+            IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/logs/gc.log  -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M"
+        fi
+    fi
 else
-  MAJOR_VERSION=${version_arr[0]}
-  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/gc.log"
+    #JDK 11 and others
+    MAJOR_VERSION=${version_arr[0]}
+    # See description of https://bugs.openjdk.java.net/browse/JDK-8046148 for details about the syntax
+    # The following is the equivalent to -XX:+PrintGCDetails -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M
+    echo "$IOTDB_JMX_OPTS" | grep -q "^-[X]log:gc"
+    if [ "$?" = "1" ] ; then # [X] to prevent ccm from replacing this line
+        # only add -Xlog:gc if it's not mentioned in jvm-server.options file
+        mkdir -p ${IOTDB_HOME}/logs
+        if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
+            IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xlog:gc=info,heap*=trace,age*=debug,safepoint=info,promotion*=trace:file=${IOTDB_HOME}/logs/gc.log:time,uptime,pid,tid,level:filecount=10,filesize=10485760"
+        fi
+    fi
 fi
 
 
@@ -150,10 +169,10 @@ JMX_LOCAL=no
 JMX_PORT="31999"
 
 if [ "JMX_LOCAL" = "yes" ]; then
-	IOTDB_JMX_OPTS="-Diotdb.jmx.local.port=$JMX_PORT"
+	IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Diotdb.jmx.local.port=$JMX_PORT"
 	IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
 else
-	IOTDB_JMX_OPTS="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false  -Dcom.sun.management.jmxremote.ssl=false"
+	IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false  -Dcom.sun.management.jmxremote.ssl=false"
 	IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.port=$JMX_PORT "
 fi
 
