@@ -140,7 +140,9 @@ public class StorageGroupProcessor {
    * time partition id in the storage group -> tsFileProcessor for this time partition
    */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
-  // Time range for dividing storage group, unit is second
+  /**
+   * Time range for dividing storage group, unit is second
+   */
   private final long partitionIntervalForStorageGroup = IoTDBDescriptor.getInstance().getConfig()
       .getPartitionInterval();
   /**
