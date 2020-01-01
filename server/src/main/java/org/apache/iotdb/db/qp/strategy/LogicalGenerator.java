@@ -208,7 +208,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if(ctx.prefixPath()!= null) {
       initializedOperator = new ShowChildPathsOperator(SQLConstant.TOK_CHILD_PATHS, parsePrefixPath(ctx.prefixPath()));
     } else {
-      initializedOperator = new ShowChildPathsOperator(SQLConstant.TOK_CHILD_PATHS, new Path("root"));
+      initializedOperator = new ShowChildPathsOperator(SQLConstant.TOK_CHILD_PATHS, new Path(SQLConstant.ROOT));
     }
   }
 

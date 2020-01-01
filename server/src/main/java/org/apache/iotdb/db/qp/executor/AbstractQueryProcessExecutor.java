@@ -34,7 +34,8 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -126,11 +127,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   private QueryDataSet processCountNodes(CountPlan countPlan) throws SQLException {
     List<String> nodes = getNodesList(countPlan.getPath().toString(), countPlan.getLevel());
     int num = nodes.size();
-    List<Path> paths = new ArrayList<>();
-    paths.add(new Path(COLUMN_COUNT));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.INT32);
-    SingleDataSet singleDataSet = new SingleDataSet(paths, dataTypes);
+    SingleDataSet singleDataSet = new SingleDataSet(Collections.singletonList(new Path(COLUMN_COUNT)),
+        Collections.singletonList(TSDataType.INT32));
     Field field = new Field(TSDataType.INT32);
     field.setIntV(num);
     RowRecord record = new RowRecord(0);
@@ -142,13 +140,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   private QueryDataSet processCountNodeTimeSeries(CountPlan countPlan)
       throws SQLException, MetadataException {
     List<String> nodes = getNodesList(countPlan.getPath().toString(), countPlan.getLevel());
-    List<Path> paths = new ArrayList<>();
-    paths.add(new Path(COLUMN_COLUMN));
-    paths.add(new Path(COLUMN_COUNT));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.TEXT);
-    dataTypes.add(TSDataType.TEXT);
-    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+    ListDataSet listDataSet = new ListDataSet(Arrays.asList(new Path(COLUMN_COLUMN), new Path(COLUMN_COUNT)),
+        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
     for (String columnPath : nodes) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
@@ -172,11 +165,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
 
   private QueryDataSet processCountTimeSeries(CountPlan countPlan) throws MetadataException {
     int num = getPaths(countPlan.getPath().toString()).size();
-    List<Path> paths = new ArrayList<>();
-    paths.add(new Path(COLUMN_CHILD_PATHS));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.INT32);
-    SingleDataSet singleDataSet = new SingleDataSet(paths, dataTypes);
+    SingleDataSet singleDataSet = new SingleDataSet(Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),
+        Collections.singletonList(TSDataType.INT32));
     Field field = new Field(TSDataType.INT32);
     field.setIntV(num);
     RowRecord record = new RowRecord(0);
@@ -186,11 +176,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   }
 
   private QueryDataSet processShowDevices() {
-    List<Path> paths = new ArrayList<>();
-    paths.add(new Path(COLUMN_DEVICES));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.TEXT);
-    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+    ListDataSet listDataSet = new ListDataSet(Collections.singletonList(new Path(COLUMN_DEVICES)),
+        Collections.singletonList(TSDataType.TEXT));
     Set<String> devices;
     devices = MManager.getInstance().getAllDevices();
     for(String s: devices) {
@@ -207,11 +194,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       throws PathException {
     Set<String> childPathsList = MManager.getInstance()
         .getChildNodePathInNextLevel(showChildPathsPlan.getPath().toString());
-    List<Path> paths = new ArrayList<>();
-    paths.add(new Path(COLUMN_CHILD_PATHS));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.TEXT);
-    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+    ListDataSet listDataSet = new ListDataSet(Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),
+        Collections.singletonList(TSDataType.TEXT));
     for(String s: childPathsList) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
@@ -223,11 +207,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   }
 
   private QueryDataSet processShowStorageGroup() {
-    List<Path> paths = new ArrayList<>();
-    paths.add(new Path(COLUMN_STORAGE_GROUP));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.TEXT);
-    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+    ListDataSet listDataSet = new ListDataSet(Collections.singletonList(new Path(COLUMN_STORAGE_GROUP)),
+        Collections.singletonList(TSDataType.TEXT));
     List<String> storageGroupList = MManager.getInstance().getAllStorageGroupNames();
     for(String s: storageGroupList) {
       RowRecord record = new RowRecord(0);
@@ -240,17 +221,12 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   }
 
   private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan timeSeriesPlan) throws PathException {
-    List<Path> paths = new ArrayList<>();
-    paths.add(new Path(COLUMN_TIMESERIES));
-    paths.add(new Path(COLUMN_STORAGE_GROUP));
-    paths.add(new Path(COLUMN_TIMESERIES_DataType));
-    paths.add(new Path(COLUMN_TIMESERIES_Encoding));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.TEXT);
-    dataTypes.add(TSDataType.TEXT);
-    dataTypes.add(TSDataType.TEXT);
-    dataTypes.add(TSDataType.TEXT);
-    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+    ListDataSet listDataSet = new ListDataSet(Arrays.asList(
+        new Path(COLUMN_TIMESERIES),
+        new Path(COLUMN_STORAGE_GROUP),
+        new Path(COLUMN_TIMESERIES_DataType),
+        new Path(COLUMN_TIMESERIES_Encoding)),
+        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
     List<List<String>> timeseriesList = MManager.getInstance()
         .getShowTimeseriesPath(timeSeriesPlan.getPath().toString());
     for(List<String> list : timeseriesList) {
@@ -266,13 +242,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   }
 
   private QueryDataSet processShowTTLQuery(ShowTTLPlan showTTLPlan) {
-    List<Path> paths = new ArrayList<>();
-    paths.add(new Path(COLUMN_STORAGE_GROUP));
-    paths.add(new Path(COLUMN_TTL));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.TEXT);
-    dataTypes.add(TSDataType.INT64);
-    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+    ListDataSet listDataSet = new ListDataSet(Arrays.asList(new Path(COLUMN_STORAGE_GROUP),new Path(COLUMN_TTL))
+        , Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
     List<String> selectedSgs = showTTLPlan.getStorageGroups();
 
     List<MNode> storageGroups = MManager.getInstance().getAllStorageGroups();
@@ -301,11 +272,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   }
 
   private QueryDataSet processShowVersion() {
-    List<Path> paths = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-    paths.add(new Path("root"));
-    dataTypes.add(TSDataType.TEXT);
-    SingleDataSet singleDataSet = new SingleDataSet(paths, dataTypes);
+    SingleDataSet singleDataSet = new SingleDataSet(Collections.singletonList(new Path(IoTDBConstant.COLUMN_VERSION)),
+        Collections.singletonList(TSDataType.TEXT));
     Field field = new Field(TSDataType.TEXT);
     field.setBinaryV(new Binary(IoTDBConstant.VERSION));
     RowRecord rowRecord = new RowRecord(0);
@@ -315,13 +283,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   }
 
   private QueryDataSet processShowDynamicParameterQuery() {
-    List<Path> paths = new ArrayList<>();
-    paths.add(new Path(COLUMN_PARAMETER));
-    paths.add(new Path(COLUMN_VALUE));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.TEXT);
-    dataTypes.add(TSDataType.TEXT);
-    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+    ListDataSet listDataSet = new ListDataSet(Arrays.asList(new Path(COLUMN_PARAMETER), new Path(COLUMN_VALUE)),
+        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
     int timestamp = 0;
     addRowRecordForShowQuery(listDataSet, timestamp++, "memtable size threshold",
@@ -343,13 +306,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
   }
 
   private QueryDataSet processShowFlushTaskInfo() {
-    List<Path> paths = new ArrayList<>();
-    paths.add(new Path(COLUMN_ITEM));
-    paths.add(new Path(COLUMN_VALUE));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.TEXT);
-    dataTypes.add(TSDataType.TEXT);
-    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+    ListDataSet listDataSet = new ListDataSet(Arrays.asList(new Path(COLUMN_ITEM), new Path(COLUMN_VALUE)),
+        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
     int timestamp = 0;
     addRowRecordForShowQuery(listDataSet, timestamp++, "total number of flush tasks",
