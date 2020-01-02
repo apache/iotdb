@@ -16,24 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.rocketmq;
 
-public class Utils {
+package org.apache.iotdb.db.query.reader;
 
-  private Utils() {
-    throw new IllegalStateException("Utility class");
-  }
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
-  public static int ConvertStringToInteger(String device) {
-    int sum = 0;
-    for (char c : device.toCharArray()) {
-      sum += c;
-    }
-    return sum;
-  }
+/**
+ * ManagedSeriesReader is a combination of IBatchReader and IPointReader that provides
+ * additional interfaces to make it able to be run in a thread pool concurrently within a query.
+ */
+public interface ManagedSeriesReader extends IBatchReader, IPointReader {
 
-  public static String getTimeSeries(String sql){
-    return sql.substring(0, sql.indexOf(',')).trim();
-  }
+  boolean isManagedByQueryManager();
 
+  void setManagedByQueryManager(boolean managedByQueryManager);
+
+  boolean hasRemaining();
+
+  void setHasRemaining(boolean hasRemaining);
 }

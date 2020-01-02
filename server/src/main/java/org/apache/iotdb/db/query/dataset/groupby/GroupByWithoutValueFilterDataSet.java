@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.OldUnseqResourceMergeReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.*;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
@@ -52,9 +54,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * constructor.
    */
-  public GroupByWithoutValueFilterDataSet(long queryId, List<Path> paths, long unit,
-      long slidingStep, long startTime, long endTime) {
-    super(queryId, paths, unit, slidingStep, startTime, endTime);
+  public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByPlan groupByPlan)
+      throws PathException, IOException, StorageEngineException {
+    super(context, groupByPlan);
 
     this.unSequenceReaderList = new ArrayList<>();
     this.sequenceReaderList = new ArrayList<>();
@@ -65,14 +67,16 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       hasCachedSequenceDataList.add(false);
       batchDataList.add(null);
     }
+    initGroupBy(context, groupByPlan);
   }
 
   /**
    * init reader and aggregate function.
    */
-  public void initGroupBy(QueryContext context, List<String> aggres, IExpression expression)
-      throws StorageEngineException, PathException, IOException {
-    initAggreFuction(aggres);
+  private void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
+      throws StorageEngineException, IOException, PathException {
+    IExpression expression = groupByPlan.getExpression();
+    initAggreFuction(groupByPlan);
     // init reader
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
@@ -184,8 +188,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * calculate groupBy's result in batch data.
    *
-   * @param idx series index
-   * @param function aggregate function of the series
+   * @param idx              series index
+   * @param function         aggregate function of the series
    * @param unsequenceReader unsequence reader of the series
    * @return if all sequential data been computed
    */
@@ -213,8 +217,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * skip the points with timestamp less than startTime.
    *
-   * @param idx the index of series
-   * @param sequenceReader sequence Reader
+   * @param idx              the index of series
+   * @param sequenceReader   sequence Reader
    * @param unsequenceReader unsequence Reader
    * @throws IOException exception when reading file
    */

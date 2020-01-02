@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb;
 
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.session.IoTDBSessionException;
 import org.apache.iotdb.session.Session;
@@ -33,12 +30,16 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.thrift.TException;
 
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
 public class SessionExample {
 
   private static Session session;
 
   public static void main(String[] args)
-      throws IoTDBSessionException, TException, IoTDBRPCException, SQLException {
+          throws IoTDBSessionException, TException, IoTDBRPCException, SQLException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -105,7 +106,22 @@ public class SessionExample {
     session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
   }
 
+  /**
+   * insert a batch data of one device, each batch contains multiple timestamps with values of sensors
+   *
+   * a RowBatch example:
+   *
+   *      device1
+   * time s1, s2, s3
+   * 1,   1,  1,  1
+   * 2,   2,  2,  2
+   * 3,   3,  3,  3
+   *
+   * Users need to control the count of RowBatch and write a batch when it reaches the maxBatchSize
+   *
+   */
   private static void insertRowBatch() throws IoTDBSessionException {
+    // The schema of sensors of one device
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));

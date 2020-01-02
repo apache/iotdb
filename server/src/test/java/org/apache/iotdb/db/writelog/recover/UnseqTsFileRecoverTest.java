@@ -26,6 +26,7 @@ import java.io.IOException;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
@@ -46,7 +47,6 @@ import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.IMetadataQuerier;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
-import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -81,6 +81,7 @@ public class UnseqTsFileRecoverTest {
 
   @Before
   public void setup() throws IOException, WriteProcessException {
+    FlushSubTaskPoolManager.getInstance().start();
     tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "test.ts");
     tsF.getParentFile().mkdirs();
 
@@ -139,6 +140,7 @@ public class UnseqTsFileRecoverTest {
   public void tearDown() throws IOException {
     FileUtils.deleteDirectory(tsF.getParentFile());
     node.delete();
+    FlushSubTaskPoolManager.getInstance().stop();
   }
 
   @Test
@@ -165,7 +167,7 @@ public class UnseqTsFileRecoverTest {
     int priorityValue = 1;
     for (ChunkMetaData chunkMetaData : metadataQuerier.getChunkMetaDataList(path)) {
       Chunk chunk = chunkLoader.getChunk(chunkMetaData);
-      AbstractChunkReader chunkReader = new ChunkReader(chunk, null);
+      ChunkReader chunkReader = new ChunkReader(chunk, null);
       unSeqMergeReader
           .addReaderWithPriority(new DiskChunkReader(chunkReader), priorityValue);
       priorityValue++;

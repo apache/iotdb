@@ -20,13 +20,14 @@
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import java.io.IOException;
+import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.junit.Test;
 
 public class SeriesReaderWithoutValueFilterTest {
 
-  private SeriesReaderWithoutValueFilter reader1;
-  private SeriesReaderWithoutValueFilter reader2;
+  private ManagedSeriesReader reader1;
+  private ManagedSeriesReader reader2;
 
   private void init() throws IOException {
     IBatchReader batchReader1 = new FakedIBatchPoint(100, 1000, 7, 11);

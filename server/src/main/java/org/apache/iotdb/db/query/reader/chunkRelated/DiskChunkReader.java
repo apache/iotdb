@@ -20,17 +20,15 @@ package org.apache.iotdb.db.query.reader.chunkRelated;
 
 import java.io.IOException;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.resourceRelated.NewUnseqResourceMergeReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 /**
  * To read chunk data on disk, this class implements an interface {@link IPointReader} based on the
- * data reader {@link AbstractChunkReader}.
+ * data reader {@link ChunkReader}.
  * <p>
  * Note that <code>ChunkReader</code> is an abstract class with three concrete classes, two of which
  * are used here: <code>ChunkReaderWithoutFilter</code> and <code>ChunkReaderWithFilter</code>.
@@ -38,10 +36,10 @@ import org.apache.iotdb.tsfile.read.reader.chunk.AbstractChunkReader;
  */
 public class DiskChunkReader implements IPointReader, IBatchReader {
 
-  private IAggregateReader chunkReader;
+  private ChunkReader chunkReader;
   private BatchData data;
 
-  public DiskChunkReader(IAggregateReader chunkReader) {
+  public DiskChunkReader(ChunkReader chunkReader) {
     this.chunkReader = chunkReader;
   }
 
@@ -50,8 +48,8 @@ public class DiskChunkReader implements IPointReader, IBatchReader {
     if (data != null && data.hasCurrent()) {
       return true;
     }
-    while (chunkReader.hasNextBatch()) {
-      data = chunkReader.nextBatch();
+    while (chunkReader.hasNextSatisfiedPage()) {
+      data = chunkReader.nextPageData();
       if (data.hasCurrent()) {
         return true;
       }
@@ -83,7 +81,7 @@ public class DiskChunkReader implements IPointReader, IBatchReader {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     this.chunkReader.close();
   }
 }
