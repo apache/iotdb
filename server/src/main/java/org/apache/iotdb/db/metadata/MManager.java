@@ -868,13 +868,28 @@ public class MManager {
   /**
    * Get the full devices info.
    *
-   * @return A HashSet instance which stores all devices info
+   * @return A list instance which stores all device names
    */
-  public Set<String> getAllDevices() throws SQLException {
+  public List<String> getAllDevices() throws PathException {
 
     lock.readLock().lock();
     try {
       return mgraph.getAllDevices();
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get devices info with given prefixPath.
+   *
+   * @return A HashSet instance which stores devices names with given prefixPath.
+   */
+  public List<String> getDevices(String prefixPath) throws PathException {
+
+    lock.readLock().lock();
+    try {
+      return mgraph.getDevices(prefixPath);
     } finally {
       lock.readLock().unlock();
     }
