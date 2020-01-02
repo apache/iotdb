@@ -828,6 +828,7 @@ public class StorageGroupProcessor {
       if (resource.isMerging()) {
         return;
       }
+      
       // ensure that the file is not used by any queries
       if (resource.getWriteQueryLock().writeLock().tryLock()) {
         try {
