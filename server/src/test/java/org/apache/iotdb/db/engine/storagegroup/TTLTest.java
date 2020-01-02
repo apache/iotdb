@@ -75,6 +75,7 @@ public class TTLTest {
   @Before
   public void setUp()
       throws MetadataException, IOException, StartupException, PathException, StorageGroupProcessorException {
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
     createSchemas();
   }
