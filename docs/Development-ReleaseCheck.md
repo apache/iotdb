@@ -186,7 +186,7 @@ xxx
 
 ## 小工具
 
-* 打印出包含某些字符的行
+* 打印出包含某些字符的行（只看最上边的输出就可以，下边的文件不需要看）
 
 ```
 find . -type f -exec grep -i "copyright" {} \; -print | sort -u
