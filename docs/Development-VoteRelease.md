@@ -47,8 +47,9 @@ pub   rsa4096 2019-10-15 [SC]
 pub   rsa4096/28662AC6 2019-12-23 [SC]
 ```
 
+下载公钥
+
 ```
-接收公钥
 gpg2 --receive-keys 10F3B3F8A1201B79AA43F2E00FC7F131CAA00430 (或 28662AC6)
 
 或 (指定 keyserver) 
