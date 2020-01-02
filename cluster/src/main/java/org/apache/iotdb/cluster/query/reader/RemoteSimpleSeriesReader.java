@@ -15,8 +15,10 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
+import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +26,7 @@ import org.slf4j.LoggerFactory;
 /**
  * RemoteSimpleSeriesReader is a reader without value filter that reads points from a remote side.
  */
-public class RemoteSimpleSeriesReader implements IBatchReader {
+public class RemoteSimpleSeriesReader implements ManagedSeriesReader {
 
   private static final Logger logger = LoggerFactory.getLogger(RemoteSimpleSeriesReader.class);
   private long readerId;
@@ -32,10 +34,14 @@ public class RemoteSimpleSeriesReader implements IBatchReader {
   private Node header;
   private MetaGroupMember metaGroupMember;
 
-  private BatchData cache;
+  private BatchData cachedBatch;
+  private TimeValuePair cachedPair;
 
   private AtomicReference<ByteBuffer> fetchResult = new AtomicReference<>();
   private GenericHandler<ByteBuffer> handler;
+
+  private volatile boolean managedByPool;
+  private volatile boolean hasRemaining;
 
   public RemoteSimpleSeriesReader(long readerId, Node source,
       Node header, MetaGroupMember metaGroupMember) {
@@ -48,11 +54,11 @@ public class RemoteSimpleSeriesReader implements IBatchReader {
 
   @Override
   public boolean hasNextBatch() throws IOException {
-    if (cache != null) {
+    if (cachedBatch != null) {
       return true;
     }
-    fetch();
-    return cache != null;
+    fetchBatch();
+    return cachedBatch != null;
   }
 
   @Override
@@ -60,18 +66,76 @@ public class RemoteSimpleSeriesReader implements IBatchReader {
     if (!hasNextBatch()) {
       throw new NoSuchElementException();
     }
-    BatchData ret = cache;
-    cache = null;
+    BatchData ret = cachedBatch;
+    cachedBatch = null;
     return ret;
   }
 
+
+  @Override
+  public boolean hasNext() throws IOException {
+    if (cachedPair != null) {
+      return true;
+    }
+    fetchPoint();
+    return cachedPair != null;
+  }
+
+  private void fetchPoint() throws IOException {
+    if (!(cachedBatch == null || !cachedBatch.hasCurrent()) && hasNextBatch()) {
+      cachedBatch = nextBatch();
+    }
+    if (cachedBatch != null && cachedBatch.hasCurrent()) {
+      cachedPair = new TimeValuePair(cachedBatch.currentTime(),
+          TsPrimitiveType.getByType(cachedBatch.getDataType(), cachedBatch.currentValue()));
+      cachedBatch.next();
+    }
+  }
+
+  @Override
+  public TimeValuePair next() throws IOException {
+    if (!hasNext()) {
+      throw new NoSuchElementException();
+    }
+    TimeValuePair ret = cachedPair;
+    cachedPair = null;
+    return ret;
+  }
+
+  @Override
+  public TimeValuePair current() throws IOException {
+    if (!hasNext()) {
+      throw new NoSuchElementException();
+    }
+    return cachedPair;
+  }
 
   @Override
   public void close() {
     // close by Resource manager
   }
 
-  private void fetch() throws IOException {
+  @Override
+  public boolean isManagedByQueryManager() {
+    return managedByPool;
+  }
+
+  @Override
+  public void setManagedByQueryManager(boolean managedByQueryManager) {
+    managedByPool = managedByQueryManager;
+  }
+
+  @Override
+  public boolean hasRemaining() {
+    return hasRemaining;
+  }
+
+  @Override
+  public void setHasRemaining(boolean hasRemaining) {
+    this.hasRemaining = hasRemaining;
+  }
+
+  private void fetchBatch() throws IOException {
     DataClient client = (DataClient) metaGroupMember.getDataClientPool().getClient(source);
     synchronized (fetchResult) {
       fetchResult.set(null);
@@ -82,7 +146,7 @@ public class RemoteSimpleSeriesReader implements IBatchReader {
         throw new IOException(e);
       }
     }
-    cache = SerializeUtils.deserializeBatchData(fetchResult.get());
-    logger.debug("Fetched a batch from {}, size:{}", source, cache.length());
+    cachedBatch = SerializeUtils.deserializeBatchData(fetchResult.get());
+    logger.debug("Fetched a batch from {}, size:{}", source, cachedBatch.length());
   }
 }

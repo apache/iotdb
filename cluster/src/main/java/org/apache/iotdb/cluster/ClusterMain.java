@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster;
 import java.io.IOException;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +36,7 @@ public class ClusterMain {
 
   public static MetaClusterServer metaServer;
 
-  public static void main(String[] args) throws InterruptedException {
+  public static void main(String[] args) {
     if (args.length < 1) {
       logger.error("Usage: <start mode>");
       return;

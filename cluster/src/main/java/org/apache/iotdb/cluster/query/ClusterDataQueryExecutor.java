@@ -13,6 +13,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.EngineExecutor;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -32,7 +33,7 @@ public class ClusterDataQueryExecutor extends EngineExecutor {
   }
 
   @Override
-  protected IBatchReader getSeriesReaderWithoutValueFilter(Path path,
+  protected ManagedSeriesReader getSeriesReaderWithoutValueFilter(Path path,
       TSDataType dataType, Filter timeFilter,
       QueryContext context, boolean pushdownUnseq) throws IOException, StorageEngineException {
     return metaGroupMember.getSeriesReader(path, dataType, timeFilter, context, pushdownUnseq,

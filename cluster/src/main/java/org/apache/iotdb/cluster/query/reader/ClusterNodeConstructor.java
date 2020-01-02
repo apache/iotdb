@@ -32,8 +32,7 @@ public class ClusterNodeConstructor extends EngineNodeConstructor {
   protected IPointReader getSeriesReader(Path path, TSDataType dataType, Filter filter,
       QueryContext context)
       throws IOException, StorageEngineException {
-    IBatchReader batchReader = metaGroupMember.getSeriesReader(path, dataType, filter, context, false, true);
-    return new BatchedPointReader(batchReader);
+    return metaGroupMember.getSeriesReader(path, dataType, filter, context, false, true);
   }
 
   @Override

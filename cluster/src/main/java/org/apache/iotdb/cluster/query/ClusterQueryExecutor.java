@@ -62,7 +62,7 @@ class ClusterQueryExecutor extends QueryProcessExecutor {
   }
 
   @Override
-  public List<String> getAllPaths(String originPath) throws MetadataException {
+  public List<String> getAllMatchedPaths(String originPath) throws MetadataException {
     if (!originPath.contains(PATH_WILDCARD)) {
       // path without wildcards does not need to be processed
       return Collections.singletonList(originPath);

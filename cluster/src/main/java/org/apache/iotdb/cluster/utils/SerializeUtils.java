@@ -143,41 +143,36 @@ public class SerializeUtils {
     switch (dataType) {
       case INT32:
         for (int i = 0; i < length; i++) {
-          batchData.putTime(buffer.getLong());
-          batchData.putInt(buffer.getInt());
+          batchData.putInt(buffer.getLong(), buffer.getInt());
         }
         break;
       case INT64:
         for (int i = 0; i < length; i++) {
-          batchData.putTime(buffer.getLong());
-          batchData.putLong(buffer.getLong());
+          batchData.putLong(buffer.getLong(), buffer.getLong());
         }
         break;
       case TEXT:
         for (int i = 0; i < length; i++) {
-          batchData.putTime(buffer.getLong());
+          long time = buffer.getLong();
           int len = buffer.getInt();
           byte[] bytes = new byte[len];
           buffer.get(bytes);
-          batchData.putBinary(new Binary(bytes));
+          batchData.putBinary(time, new Binary(bytes));
         }
         break;
       case FLOAT:
         for (int i = 0; i < length; i++) {
-          batchData.putTime(buffer.getLong());
-          batchData.putFloat(buffer.getFloat());
+          batchData.putFloat(buffer.getLong(), buffer.getFloat());
         }
         break;
       case DOUBLE:
         for (int i = 0; i < length; i++) {
-          batchData.putTime(buffer.getLong());
-          batchData.putDouble(buffer.getDouble());
+          batchData.putDouble(buffer.getLong(), buffer.getDouble());
         }
         break;
       case BOOLEAN:
         for (int i = 0; i < length; i++) {
-          batchData.putTime(buffer.getLong());
-          batchData.putBoolean(buffer.get() == 1);
+          batchData.putBoolean(buffer.getLong(), buffer.get() == 1);
         }
         break;
     }

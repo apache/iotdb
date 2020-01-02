@@ -68,6 +68,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithValueFilter;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
@@ -583,7 +584,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     resultHandler.onComplete(resp);
   }
 
-  IBatchReader getSeriesReaderWithoutValueFilter(Path path, TSDataType dataType, Filter timeFilter,
+  ManagedSeriesReader getSeriesReaderWithoutValueFilter(Path path, TSDataType dataType, Filter timeFilter,
       QueryContext context, boolean pushdownUnseq)
       throws IOException, StorageEngineException {
     // pull the newest data
@@ -594,7 +595,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
-  IBatchReader getSeriesReaderWithValueFilter(Path path, TSDataType dataType, Filter timeFilter,
+  ManagedSeriesReader getSeriesReaderWithValueFilter(Path path, TSDataType dataType, Filter timeFilter,
       QueryContext context)
       throws IOException, StorageEngineException {
     // pull the newest data

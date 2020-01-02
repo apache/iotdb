@@ -111,6 +111,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -1063,7 +1064,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     throw new StorageEngineException(new RequestTimeOutException("Query " + path + " in " + partitionGroup));
   }
 
-  public IBatchReader getSeriesReader(Path path, TSDataType dataType, Filter filter,
+  public ManagedSeriesReader getSeriesReader(Path path, TSDataType dataType, Filter filter,
       QueryContext context, boolean pushDownUnseq, boolean withValueFilter)
       throws IOException, StorageEngineException {
     // make sure the partition table is new
@@ -1094,7 +1095,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
   }
 
-  private IBatchReader getRemoteSeriesReader(Filter filter, TSDataType dataType, Path path,
+  private ManagedSeriesReader getRemoteSeriesReader(Filter filter, TSDataType dataType, Path path,
       PartitionGroup partitionGroup,
       QueryContext context, boolean pushDownUnseq, boolean withValueFilter)
       throws IOException, StorageEngineException {
