@@ -68,9 +68,9 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
             if (batchData.isEmpty()) {
               continue;
             }
-            logger.info("Reader-" + index + ": start putting batch data into queue");
+            System.out.println("Reader-" + index + ": start putting batch data into queue");
             blockingQueue.put(batchData);
-            logger.info("Reader-" + index + ": finish putting batch data into queue");
+            System.out.println("Reader-" + index + ": finish putting batch data into queue");
             // if the queue also has free space, just submit another itself
             if (blockingQueue.remainingCapacity() > 0) {
               pool.submit(this);
@@ -84,9 +84,9 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
           }
           // there are no batch data left in this reader
           // put the signal batch data into queue
-          logger.info("Reader-" + index + ": start putting signal batch data into queue");
+          System.out.println("Reader-" + index + ": start putting signal batch data into queue");
           blockingQueue.put(SignalBatchData.getInstance());
-          logger.info("Reader-" + index + ": finish putting signal batch data into queue");
+          System.out.println("Reader-" + index + ": finish putting signal batch data into queue");
           // set the hasRemaining field in reader to false
           // tell the Consumer not to submit another task for this reader any more
           reader.setHasRemaining(false);
