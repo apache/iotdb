@@ -94,8 +94,10 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
           reader.setManagedByQueryManager(false);
         }
       } catch (InterruptedException e) {
+        System.out.println("Interrupted while putting into the blocking queue: " + e);
         logger.error("Interrupted while putting into the blocking queue: ", e);
       } catch (IOException e) {
+        System.out.println("Something gets wrong while reading from the series reader: " + e);
         logger.error("Something gets wrong while reading from the series reader: ", e);
       }
     }
@@ -154,6 +156,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       ManagedSeriesReader reader = seriesReaderWithoutValueFilterList.get(i);
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
+      System.out.println("Has submitted Reader-" + i);
       pool.submit(new ReadTask(reader, blockingQueueArray[i], i));
     }
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
