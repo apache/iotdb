@@ -459,7 +459,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  public List<String> getAllPaths(String originPath) throws MetadataException {
+  public List<String> getAllMatchedPaths(String originPath) throws MetadataException {
     return MManager.getInstance().getPaths(originPath);
   }
 

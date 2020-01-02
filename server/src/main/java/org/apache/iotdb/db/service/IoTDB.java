@@ -122,7 +122,7 @@ public class IoTDB implements IoTDBMBean {
   private void initMManager(){
     MManager.getInstance().init();
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
-    logger.debug(
+    logger.info(
         "After initializing, max memTable num is {}, tsFile threshold is {}, memtableSize is {}",
         IoTDBDescriptor.getInstance().getConfig().getMaxMemtableNumber(),
         IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold(),

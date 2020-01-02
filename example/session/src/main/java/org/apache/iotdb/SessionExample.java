@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb;
 
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.session.IoTDBSessionException;
 import org.apache.iotdb.session.Session;
@@ -33,12 +30,16 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.thrift.TException;
 
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
 public class SessionExample {
 
   private static Session session;
 
   public static void main(String[] args)
-      throws IoTDBSessionException, TException, IoTDBRPCException, SQLException {
+          throws IoTDBSessionException, TException, IoTDBRPCException, SQLException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 

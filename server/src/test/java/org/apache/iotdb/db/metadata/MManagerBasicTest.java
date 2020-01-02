@@ -23,9 +23,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -390,5 +389,32 @@ public class MManagerBasicTest {
       assertEquals("root is not a legal path", e.getMessage());
     }
     assertTrue(caughtException);
+  }
+
+  @Test
+  public void testGetDevicesWithGivenPrefix() {
+    MManager manager = MManager.getInstance();
+
+    try {
+      manager.setStorageGroupToMTree("root.laptop");
+      manager.addPathToMTree("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+              CompressionType.GZIP, null);
+      manager.addPathToMTree("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.PLAIN,
+              CompressionType.GZIP, null);
+      List<String> devices = new ArrayList<>();
+      devices.add("root.laptop.d1");
+      devices.add("root.laptop.d2");
+      // usual condition
+      assertEquals(devices, manager.getDevices("root.laptop"));
+      manager.setStorageGroupToMTree("root.vehicle");
+      manager.addPathToMTree("root.vehicle.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+              CompressionType.GZIP, null);
+      devices.add("root.vehicle.d1");
+      // prefix with *
+      assertEquals(devices, manager.getDevices("root.*"));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }

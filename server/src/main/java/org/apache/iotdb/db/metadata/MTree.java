@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -39,9 +38,9 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -752,30 +751,59 @@ public class MTree implements Serializable {
   /**
    * Get all devices in current Metadata Tree.
    *
-   * @return a list contains all distinct devices
+   * @return a list contains all distinct device names
    */
-  Set<String> getAllDevices() {
-    HashSet<String> devices = new HashSet<>();
-    MNode node;
-    if ((node = getRoot()) != null) {
-      findDevices(node, SQLConstant.ROOT, devices);
-    }
-    return new LinkedHashSet<>(devices);
+  List<String> getAllDevices() throws MetadataException {
+    return getDevices(SQLConstant.ROOT);
   }
 
-  private void findDevices(MNode node, String path, HashSet<String> res) {
-    if (node == null) {
-      return;
+  /**
+   * Get all devices in current Metadata Tree with prefixPath.
+   *
+   * @return a list contains all distinct devices names
+   */
+  List<String> getDevices(String prefixPath) throws MetadataException {
+    String[] nodes = MetaUtils.getNodeNames(prefixPath, PATH_SEPARATOR);
+    if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
+      throw new IllegalPathException(prefixPath);
     }
-    if (node.isLeaf()) {
-      res.add(path);
-      return;
+    List<String> devices = new ArrayList<>();
+    findDevices(getRoot(), nodes, 1, "", devices);
+    return devices;
+  }
+
+  /**
+   * Traverse the MTree to match all devices with prefix path.
+   * @param node the current traversing node
+   * @param nodes split the prefix path with '.'
+   * @param idx the current index of array nodes
+   * @param parent store the node string having traversed
+   * @param res store all matched device names
+   */
+  private void findDevices(MNode node, String[] nodes, int idx, String parent, List<String> res) {
+    String nodeReg;
+    if (idx >= nodes.length) {
+      nodeReg = "*";
+    } else {
+      nodeReg = nodes[idx];
     }
-    for (MNode child : node.getChildren().values()) {
-      if (child.isLeaf()) {
-        res.add(path);
-      } else {
-        findDevices(child, path + "." + child.toString(), res);
+    if (!("*").equals(nodeReg)) {
+      if (node.hasChild(nodeReg)) {
+        if(node.getChild(nodeReg).isLeaf()){
+          res.add(parent + node.getName());
+        } else{
+          findDevices(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + ".", res);
+        }
+      }
+    } else {
+      boolean deviceAdded = false;
+      for (MNode child : node.getChildren().values()) {
+        if(child.isLeaf() && !deviceAdded){
+          res.add(parent + node.getName());
+          deviceAdded = true;
+        } else if (!child.isLeaf()){
+          findDevices(child, nodes, idx + 1, parent + node.getName() + ".", res);
+        }
       }
     }
   }

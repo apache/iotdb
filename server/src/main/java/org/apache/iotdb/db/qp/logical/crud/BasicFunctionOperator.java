@@ -174,9 +174,6 @@ public class BasicFunctionOperator extends FunctionOperator {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    if (!super.equals(o)) {
-      return false;
-    }
     BasicFunctionOperator that = (BasicFunctionOperator) o;
     return Objects.equals(path, that.path) &&
         Objects.equals(value, that.value) &&

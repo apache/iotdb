@@ -20,13 +20,14 @@
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import java.io.IOException;
+import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.junit.Test;
 
 public class SeriesReaderWithValueFilterTest {
 
-  private SeriesReaderWithoutValueFilter reader;
+  private ManagedSeriesReader reader;
 
   private void init() throws IOException {
     // (100,0),(105,1),(110,0),(115,1),(120,0),...

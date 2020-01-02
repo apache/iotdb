@@ -45,16 +45,16 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
 public class FilterOperator extends Operator implements Comparable<FilterOperator> {
 
   // it is the symbol of token. e.g. AND is & and OR is |
-  protected String tokenSymbol;
+  String tokenSymbol;
 
-  protected List<FilterOperator> childOperators;
+  private List<FilterOperator> childOperators;
   // leaf filter operator means it doesn't have left and right child filterOperator. Leaf filter
   // should set FunctionOperator.
-  protected boolean isLeaf = false;
+  protected boolean isLeaf;
   // isSingle being true means all recursive children of this filter belong to one seriesPath.
-  protected boolean isSingle = false;
+  boolean isSingle = false;
   // if isSingle = false, singlePath must be null
-  protected Path singlePath = null;
+  Path singlePath = null;
 
   public FilterOperator(int tokenType) {
     super(tokenType);
@@ -213,8 +213,10 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     if (!(fil instanceof FilterOperator)) {
       return false;
     }
+    // if child is leaf, will execute BasicFunctionOperator.equals()
     FilterOperator operator = (FilterOperator) fil;
-    return compareTo(operator) == 0;
+    return this.tokenIntType == operator.tokenIntType
+            && this.getChildren().equals(operator.getChildren());
   }
 
   @Override

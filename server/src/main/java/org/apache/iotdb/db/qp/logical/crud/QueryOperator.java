@@ -46,6 +46,7 @@ public class QueryOperator extends SFWOperator {
   private int seriesOffset = 0;
 
   private boolean isGroupByDevice = false;
+  private boolean isAlign = true;
 
   public QueryOperator(int tokenIntType) {
     super(tokenIntType);
@@ -154,5 +155,13 @@ public class QueryOperator extends SFWOperator {
 
   public void setGroupByDevice(boolean isGroupByDevice) {
     this.isGroupByDevice = isGroupByDevice;
+  }
+
+  public boolean isAlign() {
+    return isAlign;
+  }
+
+  public void setAlign(boolean align) {
+    isAlign = align;
   }
 }

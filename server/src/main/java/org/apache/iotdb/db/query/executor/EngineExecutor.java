@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.db.query.executor;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -28,6 +26,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.NewEngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
@@ -37,7 +36,10 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * IoTDB query executor.
@@ -60,7 +62,7 @@ public class EngineExecutor implements DataQueryExecutor {
     this.deduplicatedDataTypes = deduplicatedDataTypes;
   }
 
-  protected IBatchReader getSeriesReaderWithoutValueFilter(Path path,
+  protected ManagedSeriesReader getSeriesReaderWithoutValueFilter(Path path,
       TSDataType dataType, Filter timeFilter,
       QueryContext context, boolean pushdownUnseq) throws IOException, StorageEngineException {
     return new SeriesReaderWithoutValueFilter(path, dataType, timeFilter, context, true);
@@ -84,12 +86,12 @@ public class EngineExecutor implements DataQueryExecutor {
       timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
     }
 
-    List<IBatchReader> readersOfSelectedSeries = new ArrayList<>();
+    List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < deduplicatedPaths.size(); i++) {
       Path path = deduplicatedPaths.get(i);
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
-      IBatchReader reader = getSeriesReaderWithoutValueFilter(path, dataType, timeFilter, context,
+      ManagedSeriesReader reader = getSeriesReaderWithoutValueFilter(path, dataType, timeFilter, context,
           true);
       readersOfSelectedSeries.add(reader);
     }
@@ -97,7 +99,7 @@ public class EngineExecutor implements DataQueryExecutor {
     try {
       return new NewEngineDataSetWithoutValueFilter(deduplicatedPaths, deduplicatedDataTypes,
           readersOfSelectedSeries);
-    } catch (IOException e) {
+    } catch (InterruptedException e) {
       throw new StorageEngineException(e.getMessage());
     }
   }
