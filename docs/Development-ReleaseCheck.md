@@ -19,17 +19,42 @@
 
 -->
 
-# 版本发布-检查投票流程
+# How to validate a staged release (版本发布-检查投票流程)
+
+For non-Chinese users, please read https://cwiki.apache.org/confluence/display/IOTDB/Validating+a+staged+Release
 
 ## 下载投票的 版本/rc 下的所有内容
 
 https://dist.apache.org/repos/dist/dev/incubator/iotdb/
 
-## 下载公钥
+## 导入发布经理的公钥
 
 https://dist.apache.org/repos/dist/dev/incubator/iotdb/KEYS
 
-最下边有 Release Manager (RM) 的公钥，把对应的下边这段复制到一个文本文件中，起个名叫 ```key.asc```
+最下边有 Release Manager (RM) 的公钥
+
+安装 gpg2
+
+### 第一种方法
+
+```
+公钥的开头是这种
+pub   rsa4096 2019-10-15 [SC]
+      10F3B3F8A1201B79AA43F2E00FC7F131CAA00430
+      
+或这种
+
+pub   rsa4096/28662AC6 2019-12-23 [SC]
+```
+
+```
+接收公钥
+gpg2 --receive-keys 10F3B3F8A1201B79AA43F2E00FC7F131CAA00430 (或 28662AC6)
+```
+
+### 第二种方法
+
+把下边这段复制到一个文本文件中，起个名叫 ```key.asc```
 
 ```
 -----BEGIN PGP PUBLIC KEY BLOCK-----
@@ -40,10 +65,8 @@ Version: GnuPG v2
 
 导入 RM 的公钥到自己电脑
 
-安装 gpg/gpg2
-
 ```
-gpg/gpg2 --import key.asc
+gpg2 --import key.asc
 ```
 
 ## 验证源码发布版
