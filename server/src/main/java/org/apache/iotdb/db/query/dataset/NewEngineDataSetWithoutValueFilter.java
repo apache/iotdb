@@ -94,7 +94,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
           reader.setManagedByQueryManager(false);
         }
       } catch (InterruptedException e) {
-        System.out.println("Reader-" + index + ": interrupted while putting into the blocking queue: " + e);
+        System.out.println("Reader-" + index + "is interrupted while putting into the blocking queue: " + e);
         logger.error("Interrupted while putting into the blocking queue: ", e);
       } catch (IOException e) {
         System.out.println("Something gets wrong while reading from the series Reader-" + index + " " + e);
