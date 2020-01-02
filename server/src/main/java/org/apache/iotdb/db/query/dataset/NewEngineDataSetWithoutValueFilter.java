@@ -47,10 +47,12 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
     private final SeriesReaderWithoutValueFilter reader;
     private BlockingQueue<BatchData> blockingQueue;
+    private final int index;
 
-    public ReadTask(SeriesReaderWithoutValueFilter reader, BlockingQueue<BatchData> blockingQueue) {
+    public ReadTask(SeriesReaderWithoutValueFilter reader, BlockingQueue<BatchData> blockingQueue, int index) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
+      this.index = index;
     }
 
     @Override
@@ -66,7 +68,9 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
             if (batchData.isEmpty()) {
               continue;
             }
+            logger.info("Reader-" + index + ": start putting batch data into queue");
             blockingQueue.put(batchData);
+            logger.info("Reader-" + index + ": finish putting batch data into queue");
             // if the queue also has free space, just submit another itself
             if (blockingQueue.remainingCapacity() > 0) {
               pool.submit(this);
@@ -80,7 +84,9 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
           }
           // there are no batch data left in this reader
           // put the signal batch data into queue
+          logger.info("Reader-" + index + ": start putting signal batch data into queue");
           blockingQueue.put(SignalBatchData.getInstance());
+          logger.info("Reader-" + index + ": finish putting signal batch data into queue");
           // set the hasRemaining field in reader to false
           // tell the Consumer not to submit another task for this reader any more
           reader.setHasRemaining(false);
@@ -88,9 +94,9 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
           reader.setManagedByQueryManager(false);
         }
       } catch (InterruptedException e) {
-        LOGGER.error("Interrupted while putting into the blocking queue: ", e);
+        logger.error("Interrupted while putting into the blocking queue: ", e);
       } catch (IOException e) {
-        LOGGER.error("Something gets wrong while reading from the series reader: ", e);
+        logger.error("Something gets wrong while reading from the series reader: ", e);
       }
     }
   }
@@ -119,7 +125,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
   private static final QueryTaskPoolManager pool = QueryTaskPoolManager.getInstance();
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(NewEngineDataSetWithoutValueFilter.class);
+  private static final Logger logger = LoggerFactory.getLogger(NewEngineDataSetWithoutValueFilter.class);
 
 
   /**
@@ -148,7 +154,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       SeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList.get(i);
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
-      pool.submit(new ReadTask(reader, blockingQueueArray[i]));
+      pool.submit(new ReadTask(reader, blockingQueueArray[i], i));
     }
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
       fillCache(i);
@@ -347,7 +353,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
           // now we should submit it again
           if (!reader.isManagedByQueryManager() && reader.hasRemaining()) {
             reader.setManagedByQueryManager(true);
-            pool.submit(new ReadTask(reader, blockingQueueArray[seriesIndex]));
+            pool.submit(new ReadTask(reader, blockingQueueArray[seriesIndex], seriesIndex));
           }
         }
       }
@@ -403,7 +409,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
             try {
               fillCache(seriesIndex);
             } catch (InterruptedException e) {
-              LOGGER.error("Interrupted while taking from the blocking queue: ", e);
+              logger.error("Interrupted while taking from the blocking queue: ", e);
             }
           }
         }
