@@ -123,6 +123,7 @@ abstract class MergeTest {
               + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
               + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
+      tsFileResource.setHistoricalVersions(Collections.singleton((long) i));
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
     }
@@ -133,12 +134,14 @@ abstract class MergeTest {
               + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
               + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
+      tsFileResource.setHistoricalVersions(Collections.singleton((long) (i + seqFileNum)));
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
     File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(unseqFileNum + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
         + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0 + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
+    tsFileResource.setHistoricalVersions(Collections.singleton((long) (seqFileNum + unseqFileNum)));
     unseqResources.add(tsFileResource);
     prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
   }
