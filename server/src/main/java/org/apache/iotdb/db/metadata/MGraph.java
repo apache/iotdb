@@ -269,8 +269,12 @@ public class MGraph implements Serializable {
     return mtree.getAllStorageGroupList();
   }
 
-  Set<String> getAllDevices() {
+  List<String> getAllDevices() throws PathException {
     return mtree.getAllDevices();
+  }
+
+  public List<String> getDevices(String prefixPath) throws PathException {
+    return mtree.getDevices(prefixPath);
   }
 
   List<String> getNodesList(String schemaPattern, int nodeLevel) throws SQLException {

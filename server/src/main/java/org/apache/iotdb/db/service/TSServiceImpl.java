@@ -734,7 +734,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private void getGroupByDeviceQueryHeaders(QueryPlan plan, List<String> respColumns,
       List<String> columnTypes) {
     // set columns in TSExecuteStatementResp. Note this is without deduplication.
-    List<String> measurementColumns = plan.getMeasurementColumnList();
+    List<String> measurementColumns = plan.getMeasurements();
     respColumns.add(SQLConstant.GROUPBY_DEVICE_COLUMN_NAME);
     respColumns.addAll(measurementColumns);
 
@@ -759,7 +759,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     // save deduplicated measurementColumn names and types in QueryPlan for the next stage to use.
     // i.e., used by DeviceIterateDataSet constructor in `fetchResults` stage.
-    plan.setMeasurementColumnList(deduplicatedMeasurementColumns);
+    plan.setMeasurements(deduplicatedMeasurementColumns);
     plan.setDataTypes(deduplicatedColumnsType);
 
     // set these null since they are never used henceforth in GROUP_BY_DEVICE query processing.
