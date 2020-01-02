@@ -104,6 +104,7 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSStatusType;
@@ -641,9 +642,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       // create and cache dataset
       QueryDataSet newDataSet = createQueryDataSet(queryId, plan);
-      TSQueryDataSet result = fillRpcReturnData(fetchSize, newDataSet, username);
-      resp.setQueryDataSet(result);
-      resp.setQueryId(queryId);
+      if (!((QueryPlan) plan).isAlign()) {
+        TSQueryNonAlignDataSet result = fillRpcNonAlignReturnData(fetchSize, newDataSet, username);
+        resp.setNonAlignQueryDataSet(result);
+        resp.setQueryId(queryId);
+      }
+      else {
+        TSQueryDataSet result = fillRpcReturnData(fetchSize, newDataSet, username);
+        resp.setQueryDataSet(result);
+        resp.setQueryId(queryId);
+      }
       return resp;
     } catch (Exception e) {
       logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
@@ -741,7 +749,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // set dataTypeList in TSExecuteStatementResp. Note this is without deduplication.
       resp.setColumns(respColumns);
       resp.setDataTypeList(columnsTypes);
-    } else {
+    } 
+    // disable align
+    else if (!plan.isAlign()) {
+      getWideQueryHeaders(plan, respColumns, columnsTypes);
+      resp.setColumns(respColumns);
+      resp.setDataTypeList(columnsTypes);
+    }
+    else {
       getWideQueryHeaders(plan, respColumns, columnsTypes);
       resp.setColumns(respColumns);
       resp.setDataTypeList(columnsTypes);
@@ -818,6 +833,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     plan.setPaths(null);
     plan.setDataTypeConsistencyChecker(null);
   }
+  
+  // TODO: 
+  private void getDisableAlignQueryHeaders(QueryPlan plan, List<String> respColumns,
+      List<String> columnTypes) {
+    
+  }
 
 
   @Override
@@ -886,6 +907,42 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     return result;
   }
+  private TSQueryNonAlignDataSet fillRpcNonAlignReturnData(int fetchSize, QueryDataSet queryDataSet, 
+      String userName) throws TException, AuthException, IOException, InterruptedException {
+    IAuthorizer authorizer;
+    try {
+      authorizer = LocalFileAuthorizer.getInstance();
+    } catch (AuthException e) {
+      throw new TException(e);
+    }
+    TSQueryNonAlignDataSet result;
+    
+    if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(userName)) {
+      WatermarkEncoder encoder;
+      if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
+        encoder = new GroupedLSBWatermarkEncoder(config);
+      } else {
+        throw new UnSupportedDataTypeException(String.format(
+            "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
+      }
+      if (queryDataSet instanceof NewEngineDataSetWithoutValueFilter) {
+        // optimize for query without value filter
+        result = ((NewEngineDataSetWithoutValueFilter) queryDataSet).fillNonAlignBuffer(fetchSize, encoder);
+      } else {
+        result = QueryDataSetUtils.convertQueryNonAlignDataSetByFetchSize(queryDataSet, fetchSize, encoder);
+      }
+    } else {
+      if (queryDataSet instanceof NewEngineDataSetWithoutValueFilter) {
+        // optimize for query without value filter
+        result = ((NewEngineDataSetWithoutValueFilter) queryDataSet).fillNonAlignBuffer(fetchSize, null);
+      } else {
+        result = QueryDataSetUtils.convertQueryNonAlignDataSetByFetchSize(queryDataSet, fetchSize);
+      }
+    }
+    return result;
+  }
+  
+  
 
   /**
    * create QueryDataSet and buffer it for fetchResults

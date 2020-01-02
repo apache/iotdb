@@ -222,8 +222,19 @@ public class PhysicalGenerator {
     } else {
       queryPlan = new QueryPlan();
     }
+    
+    if (!queryOperator.isAlign()) {
+      // below is the implementation of DISABLE_ALIGN sql logic
+      // TODO: 
+      List<Path> paths = queryOperator.getSelectedPaths();
+      queryPlan.setPaths(paths);
+      
+      
+      
+      queryPlan.setAlign(false);
+    }
 
-    if (queryOperator.isGroupByDevice()) {
+    else if (queryOperator.isGroupByDevice()) {
       // below is the core realization of GROUP_BY_DEVICE sql logic
       List<Path> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
       List<Path> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();

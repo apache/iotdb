@@ -305,9 +305,16 @@ public class IoTDBStatement implements Statement {
       }
       if (execResp.isSetColumns()) {
         queryId = execResp.getQueryId();
-        this.resultSet = new IoTDBQueryResultSet(this,
-            execResp.getColumns(), execResp.getDataTypeList(),
-            execResp.ignoreTimeStamp, client, sql, queryId, sessionId, execResp.queryDataSet);
+        if (execResp.queryDataSet == null) {
+          this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
+              execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, sql, queryId,
+              sessionId, execResp.nonAlignQueryDataSet);
+        }
+        else {
+          this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
+              execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, sql, queryId,
+              sessionId, execResp.queryDataSet);
+        }
         return true;
       }
       return false;
@@ -405,9 +412,16 @@ public class IoTDBStatement implements Statement {
     } catch (IoTDBRPCException e) {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
-    this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
-        execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, sql, queryId,
-        sessionId, execResp.queryDataSet);
+    if (execResp.queryDataSet == null) {
+      this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
+          execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, sql, queryId,
+          sessionId, execResp.nonAlignQueryDataSet);
+    }
+    else {
+      this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
+          execResp.getDataTypeList(), execResp.ignoreTimeStamp, client, sql, queryId,
+          sessionId, execResp.queryDataSet);
+    }
     return resultSet;
   }
 

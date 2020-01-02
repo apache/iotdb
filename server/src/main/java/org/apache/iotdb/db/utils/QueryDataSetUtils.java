@@ -20,6 +20,7 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -55,6 +56,11 @@ public class QueryDataSetUtils {
   public static TSQueryDataSet convertQueryDataSetByFetchSize(QueryDataSet queryDataSet,
       int fetchSize) throws IOException {
     return convertQueryDataSetByFetchSize(queryDataSet, fetchSize, null);
+  }
+  
+  public static TSQueryNonAlignDataSet convertQueryNonAlignDataSetByFetchSize(QueryDataSet queryDataSet,
+      int fetchSize) throws IOException {
+    return convertQueryNonAlignDataSetByFetchSize(queryDataSet, fetchSize, null);
   }
 
   public static TSQueryDataSet convertQueryDataSetByFetchSize(QueryDataSet queryDataSet,
@@ -173,6 +179,126 @@ public class QueryDataSetUtils {
     tsQueryDataSet.setBitmapList(bitmapList);
     tsQueryDataSet.setValueList(valueList);
     return tsQueryDataSet;
+  }
+  
+  // TODO: Important
+  public static TSQueryNonAlignDataSet convertQueryNonAlignDataSetByFetchSize(QueryDataSet queryDataSet,
+      int fetchSize, WatermarkEncoder watermarkEncoder) throws IOException {
+    List<TSDataType> dataTypes = queryDataSet.getDataTypes();
+    int columnNum = dataTypes.size();
+    TSQueryNonAlignDataSet tsQueryNonAlignDataSet = new TSQueryNonAlignDataSet();
+    // one time column and each value column has a actual value buffer and a bitmap value to indicate whether it is a null
+    int columnNumWithTime = columnNum * 3;
+    DataOutputStream[] dataOutputStreams = new DataOutputStream[columnNumWithTime];
+    ByteArrayOutputStream[] byteArrayOutputStreams = new ByteArrayOutputStream[columnNumWithTime];
+    for (int i = 0; i < columnNumWithTime; i++) {
+      byteArrayOutputStreams[i] = new ByteArrayOutputStream();
+      dataOutputStreams[i] = new DataOutputStream(byteArrayOutputStreams[i]);
+    }
+
+    int rowCount = 0;
+    int[] valueOccupation = new int[columnNum];
+    // used to record a bitmap for every 8 row record
+    int[] bitmap = new int[columnNum];
+    for (int i = 0; i < fetchSize; i++) {
+      if (queryDataSet.hasNext()) {
+        RowRecord rowRecord = queryDataSet.next();
+        if (watermarkEncoder != null) {
+          rowRecord = watermarkEncoder.encodeRecord(rowRecord);
+        }
+        // use columnOutput to write byte array
+        List<Field> fields = rowRecord.getFields();
+        for (int k = 0; k < fields.size(); k++) {
+          dataOutputStreams[k].writeLong(rowRecord.getTimestamp());
+          Field field = fields.get(k);
+          DataOutputStream dataOutputStream = dataOutputStreams[3*k + 1]; // DO NOT FORGET +1
+          if (field.getDataType() == null) {
+            bitmap[k] =  (bitmap[k] << 1);
+          } else {
+            bitmap[k] =  (bitmap[k] << 1) | flag;
+            TSDataType type = field.getDataType();
+            switch (type) {
+              case INT32:
+                dataOutputStream.writeInt(field.getIntV());
+                valueOccupation[k] += 4;
+                break;
+              case INT64:
+                dataOutputStream.writeLong(field.getLongV());
+                valueOccupation[k] += 8;
+                break;
+              case FLOAT:
+                dataOutputStream.writeFloat(field.getFloatV());
+                valueOccupation[k] += 4;
+                break;
+              case DOUBLE:
+                dataOutputStream.writeDouble(field.getDoubleV());
+                valueOccupation[k] += 8;
+                break;
+              case BOOLEAN:
+                dataOutputStream.writeBoolean(field.getBoolV());
+                valueOccupation[k] += 1;
+                break;
+              case TEXT:
+                dataOutputStream.writeInt(field.getBinaryV().getLength());
+                dataOutputStream.write(field.getBinaryV().getValues());
+                valueOccupation[k] = valueOccupation[k] + 4 + field.getBinaryV().getLength();
+                break;
+              default:
+                throw new UnSupportedDataTypeException(
+                    String.format("Data type %s is not supported.", type));
+            }
+          }
+        }
+        rowCount++;
+        if (rowCount % 8 == 0) {
+          for (int j = 0; j < bitmap.length; j++) {
+            DataOutputStream dataBitmapOutputStream = dataOutputStreams[3*j + 2];
+            dataBitmapOutputStream.writeByte(bitmap[j]);
+            // we should clear the bitmap every 8 row record
+            bitmap[j] = 0;
+          }
+        }
+      } else {
+        break;
+      }
+    }
+
+    // feed the remaining bitmap
+    int remaining = rowCount % 8;
+    if (remaining != 0) {
+      for (int j = 0; j < bitmap.length; j++) {
+        DataOutputStream dataBitmapOutputStream = dataOutputStreams[3*j + 2];
+        dataBitmapOutputStream.writeByte(bitmap[j] << (8-remaining));
+      }
+    }
+
+    // calculate the time buffer size
+    int timeOccupation = rowCount * 8;
+
+    // calculate the bitmap buffer size
+    int bitmapOccupation = rowCount / 8 + (rowCount % 8 == 0 ? 0 : 1);
+    List<ByteBuffer> timeList = new LinkedList<>();
+    List<ByteBuffer> bitmapList = new LinkedList<>();
+    List<ByteBuffer> valueList = new LinkedList<>();
+    for (int i = 0; i < byteArrayOutputStreams.length; i += 3) {
+      ByteBuffer timeBuffer = ByteBuffer.allocate(timeOccupation);
+      timeBuffer.put(byteArrayOutputStreams[i].toByteArray());
+      timeBuffer.flip();
+      timeList.add(timeBuffer);
+      
+      ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation[i/3]);
+      valueBuffer.put(byteArrayOutputStreams[i+1].toByteArray());
+      valueBuffer.flip();
+      valueList.add(valueBuffer);
+
+      ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapOccupation);
+      bitmapBuffer.put(byteArrayOutputStreams[i+2].toByteArray());
+      bitmapBuffer.flip();
+      bitmapList.add(bitmapBuffer);
+    }
+    tsQueryNonAlignDataSet.setBitmapList(bitmapList);
+    tsQueryNonAlignDataSet.setValueList(valueList);
+    return tsQueryNonAlignDataSet;
   }
 
 
