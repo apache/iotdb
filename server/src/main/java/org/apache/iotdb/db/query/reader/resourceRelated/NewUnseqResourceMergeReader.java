@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.query.reader.resourceRelated;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -41,6 +37,11 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * To read a list of unsequence TsFiles, this class implements <code>IBatchReader</code> for the
@@ -88,8 +89,15 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
       if (tsFileResource.isClosed()) {
         // get chunk metadata list of current closed tsfile
         currentChunkMetaDataList = DeviceMetaDataCache.getInstance().get(tsFileResource, seriesPath);
+
+        // get modifications and apply to chunk metadatas
+        List<Modification> pathModifications = context
+            .getPathModifications(tsFileResource.getModFile(), seriesPath.getFullPath());
+        if (!pathModifications.isEmpty()) {
+          QueryUtils.modifyChunkMetaData(currentChunkMetaDataList, pathModifications);
+        }
       } else {
-        // metadata list of already flushed chunk groups
+        // metadata list of already flushed chunks in unsealed file, already applied modifications
         currentChunkMetaDataList = tsFileResource.getChunkMetaDataList();
       }
 
@@ -145,7 +153,7 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
       return true;
     }
 
-    batchData = new BatchData(dataType, true);
+    batchData = new BatchData(dataType);
 
     for (int rowCount = 0; rowCount < batchSize; rowCount++) {
       if (priorityMergeReader.hasNext()) {
@@ -158,8 +166,7 @@ public class NewUnseqResourceMergeReader implements IBatchReader {
         }
 
         TimeValuePair timeValuePair = priorityMergeReader.next();
-        batchData.putTime(timeValuePair.getTimestamp());
-        batchData.putAnObject(timeValuePair.getValue().getValue());
+        batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
 
         // largest time of priority merge reader < next chunk start time
         // put chunk readers until merge reader has a valid point

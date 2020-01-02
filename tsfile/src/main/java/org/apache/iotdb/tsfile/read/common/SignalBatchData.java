@@ -16,24 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.rocketmq;
+package org.apache.iotdb.tsfile.read.common;
 
-public class Utils {
+/**
+ * It is an empty signal to notify the caller that there is no more batch data after it.
+ */
+public class SignalBatchData extends BatchData {
 
-  private Utils() {
-    throw new IllegalStateException("Utility class");
+  private static final long serialVersionUID = -4175548102820374070L;
+
+  public static SignalBatchData getInstance() {
+    return InstanceHolder.instance;
   }
 
-  public static int ConvertStringToInteger(String device) {
-    int sum = 0;
-    for (char c : device.toCharArray()) {
-      sum += c;
+  private static class InstanceHolder {
+
+    private InstanceHolder() {
+      //allowed to do nothing
     }
-    return sum;
-  }
 
-  public static String getTimeSeries(String sql){
-    return sql.substring(0, sql.indexOf(',')).trim();
+    private static SignalBatchData instance = new SignalBatchData();
   }
-
 }

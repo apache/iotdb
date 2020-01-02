@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.tsfile.read.common.Path;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 public class MergeSingleFilterOptimizer implements IFilterOptimizer {
 
@@ -107,7 +108,11 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
         tempExtrNode.add(children.get(firstNonSingleIndex));
       } else if (childPath.equals(tempPath)) {
         // successive next single child with same seriesPath,merge it with previous children
-        tempExtrNode.add(children.get(firstNonSingleIndex));
+        // if not duplicate
+        FilterOperator child = children.get(firstNonSingleIndex);
+        if(!tempExtrNode.contains(child)){
+          tempExtrNode.add(child);
+        }
       } else {
         // not more same, add existing nodes in tempExtrNode into a new node
         // prevent make a node which has only one child.

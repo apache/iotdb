@@ -38,14 +38,18 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 public class FillEngineExecutor {
 
   private List<Path> selectedSeries;
+  private List<TSDataType> dataTypes;
   private long queryTime;
   private Map<TSDataType, IFill> typeIFillMap;
 
-  public FillEngineExecutor(List<Path> selectedSeries, long queryTime,
+  public FillEngineExecutor(List<Path> selectedSeries,
+      List<TSDataType> dataTypes,
+      long queryTime,
       Map<TSDataType, IFill> typeIFillMap) {
     this.selectedSeries = selectedSeries;
     this.queryTime = queryTime;
     this.typeIFillMap = typeIFillMap;
+    this.dataTypes = dataTypes;
   }
 
   /**
@@ -56,10 +60,10 @@ public class FillEngineExecutor {
   public QueryDataSet execute(QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
     List<IFill> fillList = new ArrayList<>();
-    List<TSDataType> dataTypeList = new ArrayList<>();
-    for (Path path : selectedSeries) {
-      TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
-      dataTypeList.add(dataType);
+
+    for (int i = 0; i < selectedSeries.size(); i++) {
+      Path path = selectedSeries.get(i);
+      TSDataType dataType = dataTypes.get(i);
       IFill fill;
       if (!typeIFillMap.containsKey(dataType)) {
         fill = new PreviousFill(dataType, queryTime, 0);
@@ -77,6 +81,6 @@ public class FillEngineExecutor {
       readers.add(fill.getFillResult());
     }
 
-    return new OldEngineDataSetWithoutValueFilter(selectedSeries, dataTypeList, readers);
+    return new OldEngineDataSetWithoutValueFilter(selectedSeries, dataTypes, readers);
   }
 }
