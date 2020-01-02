@@ -801,6 +801,7 @@ public class StorageGroupProcessor {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: TTL removing files before {}", storageGroupName, new Date(timeLowerBound));
     }
+    
     // copy to avoid concurrent modification of deletion
     List<TsFileResource> seqFiles = new ArrayList<>(sequenceFileList);
     List<TsFileResource> unseqFiles = new ArrayList<>(unSequenceFileList);
