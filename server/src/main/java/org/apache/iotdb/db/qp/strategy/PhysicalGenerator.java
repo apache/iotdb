@@ -138,7 +138,7 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_STORAGE_GROUP:
             return new ShowPlan(ShowContentType.STORAGE_GROUP);
           case SQLConstant.TOK_DEVICES:
-            return new ShowPlan(ShowContentType.DEVICES);
+            return new ShowDevicesPlan(ShowContentType.DEVICES, ((ShowDevicesOperator) operator).getPath());
           case SQLConstant.TOK_COUNT_NODE_TIMESERIES:
             return new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES,
                 ((CountOperator) operator).getPath(), ((CountOperator) operator).getLevel());

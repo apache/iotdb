@@ -55,6 +55,7 @@ import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
@@ -199,7 +200,11 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterShowDevices(ShowDevicesContext ctx) {
     super.enterShowDevices(ctx);
-    initializedOperator = new ShowOperator(SQLConstant.TOK_DEVICES);
+    if(ctx.prefixPath() != null) {
+      initializedOperator = new ShowDevicesOperator(SQLConstant.TOK_DEVICES, parsePrefixPath(ctx.prefixPath()));
+    } else {
+      initializedOperator = new ShowDevicesOperator(SQLConstant.TOK_DEVICES, new Path(SQLConstant.ROOT));
+    }
   }
 
   @Override

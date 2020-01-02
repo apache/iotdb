@@ -59,6 +59,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -110,7 +111,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       case STORAGE_GROUP:
         return processShowStorageGroup();
       case DEVICES:
-        return processShowDevices();
+        return processShowDevices((ShowDevicesPlan) showPlan);
       case CHILD_PATH:
         return processShowChildPaths((ShowChildPathsPlan) showPlan);
       case COUNT_TIMESERIES:
@@ -175,11 +176,11 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     return singleDataSet;
   }
 
-  private QueryDataSet processShowDevices() {
+  private QueryDataSet processShowDevices(ShowDevicesPlan showDevicesPlan) throws PathException {
     ListDataSet listDataSet = new ListDataSet(Collections.singletonList(new Path(COLUMN_DEVICES)),
         Collections.singletonList(TSDataType.TEXT));
-    Set<String> devices;
-    devices = MManager.getInstance().getAllDevices();
+    List<String> devices;
+    devices = MManager.getInstance().getDevices(showDevicesPlan.getPath().toString());
     for(String s: devices) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
