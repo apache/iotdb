@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -32,6 +33,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
@@ -191,6 +193,10 @@ public class TsFileResource {
         for (int i = 0; i < versionSize; i++) {
           historicalVersions.add(ReadWriteIOUtils.readLong(inputStream));
         }
+      } else {
+        // use the version in file name as the historical version for files of old versions
+        long version = Long.parseLong(file.getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[1]);
+        historicalVersions = Collections.singleton(version);
       }
     }
   }
