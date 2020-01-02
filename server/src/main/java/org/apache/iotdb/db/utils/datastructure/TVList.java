@@ -23,7 +23,6 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayPool.ARRAY_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.nvm.datastructure.AbstractTVList;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 

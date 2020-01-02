@@ -46,14 +46,14 @@ public class MemTablePool {
   }
 
   // TODO change the impl of getAvailableMemTable to non-blocking
-  public IMemTable getAvailableMemTable(Object applier, boolean nvm) {
+  public IMemTable getAvailableMemTable(Object applier, boolean nvm, String sgId) {
     if (nvm) {
       synchronized (availableNVMMemTables) {
         if (availableNVMMemTables.isEmpty() && nvmSize < CONFIG.getMaxMemtableNumber()) {
           nvmSize++;
           logger.info("generated a new nvm memtable for {}, system memtable size: {}, stack size: {}",
               applier, nvmSize, availableNVMMemTables.size());
-          return new NVMPrimitiveMemTable();
+          return new NVMPrimitiveMemTable(sgId);
         } else if (!availableNVMMemTables.isEmpty()) {
           logger
               .debug(
@@ -86,7 +86,7 @@ public class MemTablePool {
           size++;
           logger.info("generated a new memtable for {}, system memtable size: {}, stack size: {}",
               applier, size, availableMemTables.size());
-          return new PrimitiveMemTable();
+          return new PrimitiveMemTable(sgId);
         } else if (!availableMemTables.isEmpty()) {
           logger
               .debug(

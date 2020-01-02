@@ -33,6 +33,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -46,12 +47,15 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long memSize = 0;
 
-  public AbstractMemTable() {
-    this.memTableMap = new HashMap<>();
+  protected String storageGroupId;
+
+  public AbstractMemTable(String sgId) {
+    this(new HashMap<>(), sgId);
   }
 
-  public AbstractMemTable(Map<String, Map<String, IWritableMemChunk>> memTableMap) {
+  public AbstractMemTable(Map<String, Map<String, IWritableMemChunk>> memTableMap, String sgId) {
     this.memTableMap = memTableMap;
+    this.storageGroupId = sgId;
   }
 
   @Override
@@ -68,19 +72,19 @@ public abstract class AbstractMemTable implements IMemTable {
     return memTableMap.containsKey(deviceId) && memTableMap.get(deviceId).containsKey(measurement);
   }
 
-  private IWritableMemChunk createIfNotExistAndGet(String deviceId, String measurement,
+  protected IWritableMemChunk createIfNotExistAndGet(String deviceId, String measurement,
       TSDataType dataType) {
     if (!memTableMap.containsKey(deviceId)) {
       memTableMap.put(deviceId, new HashMap<>());
     }
     Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
     if (!memSeries.containsKey(measurement)) {
-      memSeries.put(measurement, genMemSeries(dataType));
+      memSeries.put(measurement, genMemSeries(deviceId, measurement, dataType));
     }
     return memSeries.get(measurement);
   }
 
-  protected abstract IWritableMemChunk genMemSeries(TSDataType dataType);
+  protected abstract IWritableMemChunk genMemSeries(String deviceId, String measurementId, TSDataType dataType);
 
   @Override
   public void insert(InsertPlan insertPlan) throws QueryProcessException {

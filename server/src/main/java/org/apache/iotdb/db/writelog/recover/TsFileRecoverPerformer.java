@@ -61,16 +61,18 @@ public class TsFileRecoverPerformer {
   private LogReplayer logReplayer;
   private TsFileResource tsFileResource;
   private boolean acceptUnseq;
+  private String storageGroupId;
 
   public TsFileRecoverPerformer(String logNodePrefix,
       Schema schema, VersionController versionController,
-      TsFileResource currentTsFileResource, boolean acceptUnseq) {
+      TsFileResource currentTsFileResource, boolean acceptUnseq, String sgId) {
     this.insertFilePath = currentTsFileResource.getFile().getPath();
     this.logNodePrefix = logNodePrefix;
     this.schema = schema;
     this.versionController = versionController;
     this.tsFileResource = currentTsFileResource;
     this.acceptUnseq = acceptUnseq;
+    this.storageGroupId = sgId;
   }
 
   /**
@@ -79,7 +81,7 @@ public class TsFileRecoverPerformer {
    */
   public void recover() throws StorageGroupProcessorException {
 
-    IMemTable recoverMemTable = new PrimitiveMemTable();
+    IMemTable recoverMemTable = new PrimitiveMemTable(storageGroupId);
     this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
         versionController,
         tsFileResource, schema, recoverMemTable, acceptUnseq);
@@ -197,7 +199,7 @@ public class TsFileRecoverPerformer {
 
   private void redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter)
       throws StorageGroupProcessorException {
-    IMemTable recoverMemTable = new PrimitiveMemTable();
+    IMemTable recoverMemTable = new PrimitiveMemTable(storageGroupId);
     this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
         versionController,
         tsFileResource, schema, recoverMemTable, acceptUnseq);
@@ -218,4 +220,7 @@ public class TsFileRecoverPerformer {
     }
   }
 
+  private void recoverNVMData() {
+
+  }
 }

@@ -156,9 +156,11 @@ public class FloatTVList extends TVList {
   }
 
   @Override
-  protected void expandValues() {
-    values.add((float[]) PrimitiveArrayPool
-        .getInstance().getPrimitiveDataListByType(TSDataType.FLOAT));
+  protected Object expandValues() {
+    float[] floats = (float[]) PrimitiveArrayPool
+        .getInstance().getPrimitiveDataListByType(TSDataType.FLOAT);
+    values.add(floats);
+    return floats;
   }
 
   @Override
@@ -206,5 +208,9 @@ public class FloatTVList extends TVList {
         checkExpansion();
       }
     }
+  }
+
+  void addBatchValue(float[] batch) {
+    values.add(batch);
   }
 }

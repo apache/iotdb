@@ -156,9 +156,11 @@ public class DoubleTVList extends TVList {
   }
 
   @Override
-  protected void expandValues() {
-    values.add((double[]) PrimitiveArrayPool
-        .getInstance().getPrimitiveDataListByType(TSDataType.DOUBLE));
+  protected Object expandValues() {
+    double[] doubles = (double[]) PrimitiveArrayPool
+        .getInstance().getPrimitiveDataListByType(TSDataType.DOUBLE);
+    values.add(doubles);
+    return doubles;
   }
 
   @Override
@@ -206,5 +208,9 @@ public class DoubleTVList extends TVList {
         checkExpansion();
       }
     }
+  }
+
+  void addBatchValue(double[] batch) {
+    values.add(batch);
   }
 }

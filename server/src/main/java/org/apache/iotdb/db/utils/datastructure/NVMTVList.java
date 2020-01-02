@@ -1,21 +1,28 @@
-package org.apache.iotdb.db.nvm.datastructure;
+package org.apache.iotdb.db.utils.datastructure;
 
 import static org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool.ARRAY_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool;
-import org.apache.iotdb.db.nvm.space.NVMSpaceManager.NVMSpace;
+import org.apache.iotdb.db.nvm.space.NVMDataSpace;
+import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public abstract class NVMTVList extends AbstractTVList {
 
-  protected List<NVMSpace> timestamps;
-  protected List<NVMSpace> values;
+  protected String sgId;
+  protected String deviceId;
+  protected String measurementId;
+  protected List<NVMDataSpace> timestamps;
+  protected List<NVMDataSpace> values;
   protected TSDataType dataType;
 
-  public NVMTVList() {
+  public NVMTVList(String sgId, String deviceId, String measurementId) {
+    this.sgId = sgId;
+    this.deviceId = deviceId;
+    this.measurementId = measurementId;
     timestamps = new ArrayList<>();
     values = new ArrayList<>();
     size = 0;
@@ -42,14 +49,14 @@ public abstract class NVMTVList extends AbstractTVList {
     values.get(arrayIndex).set(elementIndex, value);
   }
 
-  protected NVMSpace cloneValue(NVMSpace valueSpace) {
-    return valueSpace.clone();
+  protected Object cloneValue(NVMDataSpace valueSpace) {
+    return valueSpace.toArray();
   }
 
   @Override
   protected void clearValue() {
     if (values != null) {
-      for (NVMSpace valueSpace : values) {
+      for (NVMDataSpace valueSpace : values) {
         NVMPrimitiveArrayPool.getInstance().release(valueSpace, dataType);
       }
       values.clear();
@@ -57,9 +64,11 @@ public abstract class NVMTVList extends AbstractTVList {
   }
 
   @Override
-  protected void expandValues() {
-    values.add(NVMPrimitiveArrayPool
-        .getInstance().getPrimitiveDataListByType(dataType));
+  protected NVMDataSpace expandValues() {
+    NVMDataSpace dataSpace = NVMPrimitiveArrayPool
+        .getInstance().getPrimitiveDataListByType(dataType);
+    values.add(dataSpace);
+    return dataSpace;
   }
 
   @Override
@@ -97,9 +106,9 @@ public abstract class NVMTVList extends AbstractTVList {
 
   @Override
   protected void cloneAs(AbstractTVList abstractCloneList) {
-    NVMTVList cloneList = (NVMTVList) abstractCloneList;
-    for (NVMSpace timeSpace : timestamps) {
-      cloneList.timestamps.add((NVMSpace) cloneTime(timeSpace));
+    TVList cloneList = (TVList) abstractCloneList;
+    for (NVMDataSpace timeSpace : timestamps) {
+      cloneList.timestamps.add((long[]) cloneTime(timeSpace));
     }
     cloneList.size = size;
     cloneList.sorted = sorted;
@@ -109,7 +118,7 @@ public abstract class NVMTVList extends AbstractTVList {
   @Override
   protected void clearTime() {
     if (timestamps != null) {
-      for (NVMSpace timeSpace : timestamps) {
+      for (NVMDataSpace timeSpace : timestamps) {
         NVMPrimitiveArrayPool.getInstance().release(timeSpace, TSDataType.INT64);
       }
       timestamps.clear();
@@ -129,32 +138,34 @@ public abstract class NVMTVList extends AbstractTVList {
   @Override
   protected void checkExpansion() {
     if ((size % ARRAY_SIZE) == 0) {
-      expandValues();
-      timestamps.add(NVMPrimitiveArrayPool.getInstance().getPrimitiveDataListByType(TSDataType.INT64));
+      NVMDataSpace valueSpace = expandValues();
+      NVMDataSpace timeSpace = NVMPrimitiveArrayPool.getInstance().getPrimitiveDataListByType(TSDataType.INT64);
+      timestamps.add(timeSpace);
+      NVMSpaceManager.getInstance().addSpaceToTimeSeries(sgId, deviceId, measurementId, timestamps.get(timestamps.size() - 1).getIndex(), values.get(values.size() - 1).getIndex());
     }
   }
 
   @Override
   protected Object cloneTime(Object object) {
-    NVMSpace timeSpace = (NVMSpace) object;
-    return timeSpace.clone();
+    NVMDataSpace timeSpace = (NVMDataSpace) object;
+    return timeSpace.toArray();
   }
 
-  public static NVMTVList newList(TSDataType dataType) {
+  public static NVMTVList newList(String sgId, String deviceId, String measurementId, TSDataType dataType) {
     switch (dataType) {
       case TEXT:
         // TODO
 //        return new BinaryTVList();
       case FLOAT:
-        return new NVMFloatTVList();
+        return new NVMFloatTVList(sgId, deviceId, measurementId);
       case INT32:
-        return new NVMIntTVList();
+        return new NVMIntTVList(sgId, deviceId, measurementId);
       case INT64:
-        return new NVMLongTVList();
+        return new NVMLongTVList(sgId, deviceId, measurementId);
       case DOUBLE:
-        return new NVMDoubleTVList();
+        return new NVMDoubleTVList(sgId, deviceId, measurementId);
       case BOOLEAN:
-        return new NVMBooleanTVList();
+        return new NVMBooleanTVList(sgId, deviceId, measurementId);
     }
     return null;
   }

@@ -7,30 +7,31 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.nvm.datastructure.NVMTVList;
+import org.apache.iotdb.db.utils.datastructure.NVMTVList;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class NVMPrimitiveMemTable extends AbstractMemTable {
 
-  public NVMPrimitiveMemTable() {
+  public NVMPrimitiveMemTable(String sgId) {
+    super(sgId);
   }
 
-  public NVMPrimitiveMemTable(Map<String, Map<String, IWritableMemChunk>> memTableMap) {
-    super(memTableMap);
+  public NVMPrimitiveMemTable(Map<String, Map<String, IWritableMemChunk>> memTableMap, String sgId) {
+    super(memTableMap, sgId);
   }
 
   @Override
-  protected IWritableMemChunk genMemSeries(TSDataType dataType) {
+  protected IWritableMemChunk genMemSeries(String deviceId, String measurementId, TSDataType dataType) {
     return new NVMWritableMemChunk(dataType,
-        (NVMTVList) TVListAllocator.getInstance().allocate(dataType, true));
+        (NVMTVList) TVListAllocator.getInstance().allocate(storageGroupId, deviceId, measurementId, dataType, true));
   }
 
   @Override
   public IMemTable copy() {
     Map<String, Map<String, IWritableMemChunk>> newMap = new HashMap<>(getMemTableMap());
 
-    return new NVMPrimitiveMemTable(newMap);
+    return new NVMPrimitiveMemTable(newMap, storageGroupId);
   }
 
   @Override

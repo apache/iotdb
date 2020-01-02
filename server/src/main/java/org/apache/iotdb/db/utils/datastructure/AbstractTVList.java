@@ -1,6 +1,5 @@
-package org.apache.iotdb.db.nvm.datastructure;
+package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class AbstractTVList {
@@ -115,7 +114,7 @@ public abstract class AbstractTVList {
 
   protected abstract void reverseRange(int lo, int hi);
 
-  protected abstract void expandValues();
+  protected abstract Object expandValues();
 
   @Override
   public abstract AbstractTVList clone();

@@ -1,25 +1,25 @@
-package org.apache.iotdb.db.nvm.datastructure;
+package org.apache.iotdb.db.utils.datastructure;
 
 import static org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool.ARRAY_SIZE;
 
-import org.apache.iotdb.db.nvm.space.NVMSpaceManager.NVMSpace;
+import org.apache.iotdb.db.nvm.space.NVMDataSpace;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class NVMIntTVList extends NVMTVList {
+public class NVMLongTVList extends NVMTVList {
 
   // TODO
-  private int[][] sortedValues;
+  private long[][] sortedValues;
 
-  private int pivotValue;
+  private long pivotValue;
 
-  public NVMIntTVList() {
-    super();
-    dataType = TSDataType.INT32;
+  NVMLongTVList(String sgId, String deviceId, String measurementId) {
+    super(sgId, deviceId, measurementId);
+    dataType = TSDataType.INT64;
   }
 
   @Override
-  public void putInt(long timestamp, int value) {
+  public void putLong(long timestamp, long value) {
     checkExpansion();
     int arrayIndex = size / ARRAY_SIZE;
     int elementIndex = size % ARRAY_SIZE;
@@ -33,21 +33,21 @@ public class NVMIntTVList extends NVMTVList {
   }
 
   @Override
-  public int getInt(int index) {
+  public long getLong(int index) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
-    return (int) values.get(arrayIndex).get(elementIndex);
+    return (long) values.get(arrayIndex).get(elementIndex);
   }
 
   @Override
-  public NVMIntTVList clone() {
-    NVMIntTVList cloneList = new NVMIntTVList();
+  public LongTVList clone() {
+    LongTVList cloneList = new LongTVList();
     cloneAs(cloneList);
-    for (NVMSpace valueSpace : values) {
-      cloneList.values.add(cloneValue(valueSpace));
+    for (NVMDataSpace valueSpace : values) {
+      cloneList.addBatchValue((long[]) cloneValue(valueSpace));
     }
     return cloneList;
   }
@@ -59,8 +59,8 @@ public class NVMIntTVList extends NVMTVList {
           .getInstance().getDataListsByType(TSDataType.INT64, size);
     }
     if (sortedValues == null || sortedValues.length < size) {
-      sortedValues = (int[][]) PrimitiveArrayPool
-          .getInstance().getDataListsByType(dataType, size);
+      sortedValues = (long[][]) PrimitiveArrayPool
+          .getInstance().getDataListsByType(TSDataType.INT64, size);
     }
     sort(0, size);
     clearSortedValue();
@@ -71,7 +71,7 @@ public class NVMIntTVList extends NVMTVList {
   @Override
   protected void clearSortedValue() {
     if (sortedValues != null) {
-      for (int[] dataArray : sortedValues) {
+      for (long[] dataArray : sortedValues) {
         PrimitiveArrayPool.getInstance().release(dataArray);
       }
       sortedValues = null;
@@ -86,14 +86,14 @@ public class NVMIntTVList extends NVMTVList {
   @Override
   protected void set(int src, int dest) {
     long srcT = getTime(src);
-    int srcV = getInt(src);
+    long srcV = getLong(src);
     set(dest, srcT, srcV);
   }
 
   @Override
   protected void setToSorted(int src, int dest) {
     sortedTimestamps[dest/ARRAY_SIZE][dest% ARRAY_SIZE] = getTime(src);
-    sortedValues[dest/ARRAY_SIZE][dest%ARRAY_SIZE] = getInt(src);
+    sortedValues[dest/ARRAY_SIZE][dest%ARRAY_SIZE] = getLong(src);
   }
 
   @Override
@@ -101,9 +101,9 @@ public class NVMIntTVList extends NVMTVList {
     hi--;
     while (lo < hi) {
       long loT = getTime(lo);
-      int loV = getInt(lo);
+      long loV = getLong(lo);
       long hiT = getTime(hi);
-      int hiV = getInt(hi);
+      long hiV = getLong(hi);
       set(lo++, hiT, hiV);
       set(hi--, loT, loV);
     }
@@ -112,7 +112,7 @@ public class NVMIntTVList extends NVMTVList {
   @Override
   protected void saveAsPivot(int pos) {
     pivotTime = getTime(pos);
-    pivotValue = getInt(pos);
+    pivotValue = getLong(pos);
   }
 
   @Override
@@ -121,13 +121,13 @@ public class NVMIntTVList extends NVMTVList {
   }
 
   @Override
-  public void putInts(long[] time, int[] value) {
+  public void putLongs(long[] time, long[] value) {
     checkExpansion();
     int idx = 0;
     int length = time.length;
 
     for (int i = 0; i < length; i++) {
-      putInt(time[i], value[i]);
+      putLong(time[i], value[i]);
     }
 
 //    updateMinTimeAndSorted(time);
@@ -155,3 +155,4 @@ public class NVMIntTVList extends NVMTVList {
 //    }
   }
 }
+

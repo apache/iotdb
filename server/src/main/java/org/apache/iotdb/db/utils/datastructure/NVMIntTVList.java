@@ -1,25 +1,25 @@
-package org.apache.iotdb.db.nvm.datastructure;
+package org.apache.iotdb.db.utils.datastructure;
 
 import static org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool.ARRAY_SIZE;
 
-import org.apache.iotdb.db.nvm.space.NVMSpaceManager.NVMSpace;
+import org.apache.iotdb.db.nvm.space.NVMDataSpace;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class NVMFloatTVList extends NVMTVList {
+public class NVMIntTVList extends NVMTVList {
 
   // TODO
-  private float[][] sortedValues;
+  private int[][] sortedValues;
 
-  private float pivotValue;
+  private int pivotValue;
 
-  NVMFloatTVList() {
-    super();
-    dataType = TSDataType.FLOAT;
+  public NVMIntTVList(String sgId, String deviceId, String measurementId) {
+    super(sgId, deviceId, measurementId);
+    dataType = TSDataType.INT32;
   }
 
   @Override
-  public void putFloat(long timestamp, float value) {
+  public void putInt(long timestamp, int value) {
     checkExpansion();
     int arrayIndex = size / ARRAY_SIZE;
     int elementIndex = size % ARRAY_SIZE;
@@ -33,21 +33,21 @@ public class NVMFloatTVList extends NVMTVList {
   }
 
   @Override
-  public float getFloat(int index) {
+  public int getInt(int index) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
-    return (float) values.get(arrayIndex).get(elementIndex);
+    return (int) values.get(arrayIndex).get(elementIndex);
   }
 
   @Override
-  public NVMFloatTVList clone() {
-    NVMFloatTVList cloneList = new NVMFloatTVList();
+  public IntTVList clone() {
+    IntTVList cloneList = new IntTVList();
     cloneAs(cloneList);
-    for (NVMSpace valueSpace : values) {
-      cloneList.values.add(cloneValue(valueSpace));
+    for (NVMDataSpace valueSpace : values) {
+      cloneList.addBatchValue((int[]) cloneValue(valueSpace));
     }
     return cloneList;
   }
@@ -59,8 +59,8 @@ public class NVMFloatTVList extends NVMTVList {
           .getInstance().getDataListsByType(TSDataType.INT64, size);
     }
     if (sortedValues == null || sortedValues.length < size) {
-      sortedValues = (float[][]) PrimitiveArrayPool
-          .getInstance().getDataListsByType(TSDataType.FLOAT, size);
+      sortedValues = (int[][]) PrimitiveArrayPool
+          .getInstance().getDataListsByType(dataType, size);
     }
     sort(0, size);
     clearSortedValue();
@@ -71,7 +71,7 @@ public class NVMFloatTVList extends NVMTVList {
   @Override
   protected void clearSortedValue() {
     if (sortedValues != null) {
-      for (float[] dataArray : sortedValues) {
+      for (int[] dataArray : sortedValues) {
         PrimitiveArrayPool.getInstance().release(dataArray);
       }
       sortedValues = null;
@@ -86,14 +86,14 @@ public class NVMFloatTVList extends NVMTVList {
   @Override
   protected void set(int src, int dest) {
     long srcT = getTime(src);
-    float srcV = getFloat(src);
+    int srcV = getInt(src);
     set(dest, srcT, srcV);
   }
 
   @Override
   protected void setToSorted(int src, int dest) {
     sortedTimestamps[dest/ARRAY_SIZE][dest% ARRAY_SIZE] = getTime(src);
-    sortedValues[dest/ARRAY_SIZE][dest%ARRAY_SIZE] = getFloat(src);
+    sortedValues[dest/ARRAY_SIZE][dest%ARRAY_SIZE] = getInt(src);
   }
 
   @Override
@@ -101,9 +101,9 @@ public class NVMFloatTVList extends NVMTVList {
     hi--;
     while (lo < hi) {
       long loT = getTime(lo);
-      float loV = getFloat(lo);
+      int loV = getInt(lo);
       long hiT = getTime(hi);
-      float hiV = getFloat(hi);
+      int hiV = getInt(hi);
       set(lo++, hiT, hiV);
       set(hi--, loT, loV);
     }
@@ -112,7 +112,7 @@ public class NVMFloatTVList extends NVMTVList {
   @Override
   protected void saveAsPivot(int pos) {
     pivotTime = getTime(pos);
-    pivotValue = getFloat(pos);
+    pivotValue = getInt(pos);
   }
 
   @Override
@@ -121,13 +121,13 @@ public class NVMFloatTVList extends NVMTVList {
   }
 
   @Override
-  public void putFloats(long[] time, float[] value) {
+  public void putInts(long[] time, int[] value) {
     checkExpansion();
     int idx = 0;
     int length = time.length;
 
     for (int i = 0; i < length; i++) {
-      putFloat(time[i], value[i]);
+      putInt(time[i], value[i]);
     }
 
 //    updateMinTimeAndSorted(time);

@@ -1,31 +1,31 @@
-package org.apache.iotdb.db.nvm.datastructure;
+package org.apache.iotdb.db.utils.datastructure;
 
 import static org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool.ARRAY_SIZE;
 
-import org.apache.iotdb.db.nvm.space.NVMSpaceManager.NVMSpace;
+import org.apache.iotdb.db.nvm.space.NVMDataSpace;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class NVMDoubleTVList extends NVMTVList {
+public class NVMBooleanTVList extends NVMTVList {
 
   // TODO
-  private double[][] sortedValues;
+  private boolean[][] sortedValues;
 
-  private double pivotValue;
+  private boolean pivotValue;
 
-  NVMDoubleTVList() {
-    super();
-    dataType = TSDataType.DOUBLE;
+  NVMBooleanTVList(String sgId, String deviceId, String measurementId) {
+    super(sgId, deviceId, measurementId);
+    dataType = TSDataType.BOOLEAN;
   }
 
   @Override
-  public void putDouble(long timestamp, double value) {
+  public void putBoolean(long timestamp, boolean value) {
     checkExpansion();
     int arrayIndex = size / ARRAY_SIZE;
     int elementIndex = size % ARRAY_SIZE;
     minTime = minTime <= timestamp ? minTime : timestamp;
     timestamps.get(arrayIndex).set(elementIndex, timestamp);
-    values.get(arrayIndex).set(elementIndex, value);
+    values.get(arrayIndex).set(elementIndex, value ? (byte) 1 : (byte) 0);
     size++;
     if (sorted && size > 1 && timestamp < getTime(size - 2)) {
       sorted = false;
@@ -33,21 +33,21 @@ public class NVMDoubleTVList extends NVMTVList {
   }
 
   @Override
-  public double getDouble(int index) {
+  public boolean getBoolean(int index) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
-    return (double) values.get(arrayIndex).get(elementIndex);
+    return ((byte) values.get(arrayIndex).get(elementIndex)) == 1;
   }
 
   @Override
-  public NVMDoubleTVList clone() {
-    NVMDoubleTVList cloneList = new NVMDoubleTVList();
+  public BooleanTVList clone() {
+    BooleanTVList cloneList = new BooleanTVList();
     cloneAs(cloneList);
-    for (NVMSpace valueSpace : values) {
-      cloneList.values.add(cloneValue(valueSpace));
+    for (NVMDataSpace valueSpace : values) {
+      cloneList.addBatchValue((boolean[]) cloneValue(valueSpace));
     }
     return cloneList;
   }
@@ -59,8 +59,8 @@ public class NVMDoubleTVList extends NVMTVList {
           .getInstance().getDataListsByType(TSDataType.INT64, size);
     }
     if (sortedValues == null || sortedValues.length < size) {
-      sortedValues = (double[][]) PrimitiveArrayPool
-          .getInstance().getDataListsByType(TSDataType.DOUBLE, size);
+      sortedValues = (boolean[][]) PrimitiveArrayPool
+          .getInstance().getDataListsByType(TSDataType.BOOLEAN, size);
     }
     sort(0, size);
     clearSortedValue();
@@ -71,7 +71,7 @@ public class NVMDoubleTVList extends NVMTVList {
   @Override
   protected void clearSortedValue() {
     if (sortedValues != null) {
-      for (double[] dataArray : sortedValues) {
+      for (boolean[] dataArray : sortedValues) {
         PrimitiveArrayPool.getInstance().release(dataArray);
       }
       sortedValues = null;
@@ -86,14 +86,14 @@ public class NVMDoubleTVList extends NVMTVList {
   @Override
   protected void set(int src, int dest) {
     long srcT = getTime(src);
-    double srcV = getDouble(src);
+    boolean srcV = getBoolean(src);
     set(dest, srcT, srcV);
   }
 
   @Override
   protected void setToSorted(int src, int dest) {
     sortedTimestamps[dest/ARRAY_SIZE][dest% ARRAY_SIZE] = getTime(src);
-    sortedValues[dest/ARRAY_SIZE][dest%ARRAY_SIZE] = getDouble(src);
+    sortedValues[dest/ARRAY_SIZE][dest%ARRAY_SIZE] = getBoolean(src);
   }
 
   @Override
@@ -101,9 +101,9 @@ public class NVMDoubleTVList extends NVMTVList {
     hi--;
     while (lo < hi) {
       long loT = getTime(lo);
-      double loV = getDouble(lo);
+      boolean loV = getBoolean(lo);
       long hiT = getTime(hi);
-      double hiV = getDouble(hi);
+      boolean hiV = getBoolean(hi);
       set(lo++, hiT, hiV);
       set(hi--, loT, loV);
     }
@@ -112,7 +112,7 @@ public class NVMDoubleTVList extends NVMTVList {
   @Override
   protected void saveAsPivot(int pos) {
     pivotTime = getTime(pos);
-    pivotValue = getDouble(pos);
+    pivotValue = getBoolean(pos);
   }
 
   @Override
@@ -121,13 +121,13 @@ public class NVMDoubleTVList extends NVMTVList {
   }
 
   @Override
-  public void putDoubles(long[] time, double[] value) {
+  public void putBooleans(long[] time, boolean[] value) {
     checkExpansion();
     int idx = 0;
     int length = time.length;
 
     for (int i = 0; i < length; i++) {
-      putDouble(time[i], value[i]);
+      putBoolean(time[i], value[i]);
     }
 
 //    updateMinTimeAndSorted(time);

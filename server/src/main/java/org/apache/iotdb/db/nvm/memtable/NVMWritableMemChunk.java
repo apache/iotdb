@@ -3,7 +3,7 @@ package org.apache.iotdb.db.nvm.memtable;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
-import org.apache.iotdb.db.nvm.datastructure.NVMTVList;
+import org.apache.iotdb.db.utils.datastructure.NVMTVList;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType.TsBinary;
 import org.apache.iotdb.db.utils.TsPrimitiveType.TsBoolean;
@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 public class NVMWritableMemChunk implements IWritableMemChunk {
 
   private static final Logger logger = LoggerFactory.getLogger(NVMWritableMemChunk.class);
+
   private TSDataType dataType;
   private NVMTVList list;
   private List<TimeValuePair> sortedList;

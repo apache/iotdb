@@ -29,15 +29,16 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class PrimitiveMemTable extends AbstractMemTable {
 
-  public PrimitiveMemTable() {
+  public PrimitiveMemTable(String sgId) {
+    super(sgId);
   }
 
-  public PrimitiveMemTable(Map<String, Map<String, IWritableMemChunk>> memTableMap) {
-    super(memTableMap);
+  public PrimitiveMemTable(Map<String, Map<String, IWritableMemChunk>> memTableMap, String sgId) {
+    super(memTableMap, sgId);
   }
 
   @Override
-  protected IWritableMemChunk genMemSeries(TSDataType dataType) {
+  protected IWritableMemChunk genMemSeries(String deviceId, String measurementId, TSDataType dataType) {
     return new WritableMemChunk(dataType,
         (TVList) TVListAllocator.getInstance().allocate(dataType, false));
   }
@@ -46,7 +47,7 @@ public class PrimitiveMemTable extends AbstractMemTable {
   public IMemTable copy() {
     Map<String, Map<String, IWritableMemChunk>> newMap = new HashMap<>(getMemTableMap());
 
-    return new PrimitiveMemTable(newMap);
+    return new PrimitiveMemTable(newMap, storageGroupId);
   }
 
   @Override

@@ -156,9 +156,11 @@ public class LongTVList extends TVList {
   }
 
   @Override
-  protected void expandValues() {
-    values.add((long[]) PrimitiveArrayPool
-        .getInstance().getPrimitiveDataListByType(TSDataType.INT64));
+  protected Object expandValues() {
+    long[] longs = (long[]) PrimitiveArrayPool
+        .getInstance().getPrimitiveDataListByType(TSDataType.INT64);
+    values.add(longs);
+    return longs;
   }
 
   @Override
@@ -206,5 +208,9 @@ public class LongTVList extends TVList {
         checkExpansion();
       }
     }
+  }
+
+  void addBatchValue(long[] batch) {
+    values.add(batch);
   }
 }

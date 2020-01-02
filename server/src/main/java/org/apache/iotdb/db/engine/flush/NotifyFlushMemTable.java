@@ -29,8 +29,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
  */
 public class NotifyFlushMemTable extends AbstractMemTable {
 
+  public NotifyFlushMemTable(String sgId) {
+    super(sgId);
+  }
+
   @Override
-  protected IWritableMemChunk genMemSeries(TSDataType dataType) {
+  protected IWritableMemChunk genMemSeries(String deviceId, String measurementId, TSDataType dataType) {
     return null;
   }
 

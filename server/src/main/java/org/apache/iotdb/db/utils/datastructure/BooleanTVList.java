@@ -156,9 +156,11 @@ public class BooleanTVList extends TVList {
   }
 
   @Override
-  protected void expandValues() {
-    values.add((boolean[]) PrimitiveArrayPool
-        .getInstance().getPrimitiveDataListByType(TSDataType.BOOLEAN));
+  protected Object expandValues() {
+    boolean[] booleans = (boolean[]) PrimitiveArrayPool
+        .getInstance().getPrimitiveDataListByType(TSDataType.BOOLEAN);
+    values.add(booleans);
+    return booleans;
   }
 
   @Override
@@ -206,5 +208,9 @@ public class BooleanTVList extends TVList {
         checkExpansion();
       }
     }
+  }
+
+  void addBatchValue(boolean[] batch) {
+    values.add(batch);
   }
 }

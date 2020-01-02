@@ -25,13 +25,13 @@ import java.util.Map;
 import java.util.Queue;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.nvm.datastructure.AbstractTVList;
-import org.apache.iotdb.db.nvm.datastructure.NVMBooleanTVList;
-import org.apache.iotdb.db.nvm.datastructure.NVMDoubleTVList;
-import org.apache.iotdb.db.nvm.datastructure.NVMFloatTVList;
-import org.apache.iotdb.db.nvm.datastructure.NVMIntTVList;
-import org.apache.iotdb.db.nvm.datastructure.NVMLongTVList;
-import org.apache.iotdb.db.nvm.datastructure.NVMTVList;
+import org.apache.iotdb.db.utils.datastructure.AbstractTVList;
+import org.apache.iotdb.db.utils.datastructure.NVMBooleanTVList;
+import org.apache.iotdb.db.utils.datastructure.NVMDoubleTVList;
+import org.apache.iotdb.db.utils.datastructure.NVMFloatTVList;
+import org.apache.iotdb.db.utils.datastructure.NVMIntTVList;
+import org.apache.iotdb.db.utils.datastructure.NVMLongTVList;
+import org.apache.iotdb.db.utils.datastructure.NVMTVList;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -59,12 +59,16 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
   }
 
   public synchronized AbstractTVList allocate(TSDataType dataType, boolean nvm) {
+    return allocate(null, null, null, dataType, nvm);
+  }
+
+  public synchronized AbstractTVList allocate(String sgId, String deviceId, String measurementId, TSDataType dataType, boolean nvm) {
     AbstractTVList list = null;
     if (nvm) {
       Queue<NVMTVList> tvLists = nvmTVListCache.computeIfAbsent(dataType,
           k -> new ArrayDeque<>());
       list = tvLists.poll();
-      return list != null ? list : NVMTVList.newList(dataType);
+      return list != null ? list : NVMTVList.newList(sgId, deviceId, measurementId, dataType);
     } else {
       Queue<TVList> tvLists = tvListCache.computeIfAbsent(dataType,
           k -> new ArrayDeque<>());

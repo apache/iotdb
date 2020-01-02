@@ -144,7 +144,7 @@ public class TsFileProcessor {
   public boolean insert(InsertPlan insertPlan) throws QueryProcessException {
 
     if (workMemTable == null) {
-      workMemTable = MemTablePool.getInstance().getAvailableMemTable(this, useNVM);
+      workMemTable = MemTablePool.getInstance().getAvailableMemTable(this, useNVM, storageGroupName);
     }
 
     // insert insertPlan to the work memtable
@@ -174,7 +174,7 @@ public class TsFileProcessor {
       Integer[] results) throws QueryProcessException {
 
     if (workMemTable == null) {
-      workMemTable = MemTablePool.getInstance().getAvailableMemTable(this, useNVM);
+      workMemTable = MemTablePool.getInstance().getAvailableMemTable(this, useNVM, storageGroupName);
     }
 
     // insert insertPlan to the work memtable
@@ -297,7 +297,7 @@ public class TsFileProcessor {
       // To ensure there must be a flush thread serving this processor after the field `shouldClose`
       // is set true, we need to generate a NotifyFlushMemTable as a signal task and submit it to
       // the FlushManager.
-      IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
+      IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable(storageGroupName) : workMemTable;
       if (logger.isDebugEnabled()) {
         if (tmpMemTable.isSignalMemTable()) {
           logger.debug(
@@ -325,7 +325,7 @@ public class TsFileProcessor {
     IMemTable tmpMemTable;
     flushQueryLock.writeLock().lock();
     try {
-      tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
+      tmpMemTable = workMemTable == null ? new NotifyFlushMemTable(storageGroupName) : workMemTable;
       if (tmpMemTable.isSignalMemTable()) {
         logger.debug("add a signal memtable into flushing memtable list when sync flush");
       }

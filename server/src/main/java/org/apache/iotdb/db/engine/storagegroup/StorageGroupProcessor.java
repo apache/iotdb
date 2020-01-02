@@ -290,7 +290,7 @@ public class StorageGroupProcessor {
     for (TsFileResource tsFileResource : tsFiles) {
       sequenceFileList.add(tsFileResource);
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-"
-          , schema, versionController, tsFileResource, false);
+          , schema, versionController, tsFileResource, false, storageGroupName);
       recoverPerformer.recover();
       tsFileResource.setClosed(true);
     }
@@ -302,7 +302,7 @@ public class StorageGroupProcessor {
       unSequenceFileList.add(tsFileResource);
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-",
           schema,
-          versionController, tsFileResource, true);
+          versionController, tsFileResource, true, storageGroupName);
       recoverPerformer.recover();
       tsFileResource.setClosed(true);
     }

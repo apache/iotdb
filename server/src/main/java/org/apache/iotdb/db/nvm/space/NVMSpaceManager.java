@@ -1,13 +1,16 @@
 package org.apache.iotdb.db.nvm.space;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.nvm.metadata.DataTypeMemo;
+import org.apache.iotdb.db.nvm.metadata.FreeSpaceBitMap;
+import org.apache.iotdb.db.nvm.metadata.TSDataMap;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -18,28 +21,65 @@ public class NVMSpaceManager {
 
   private static final Logger logger = LoggerFactory.getLogger(NVMSpaceManager.class);
 
+  private static final String NVM_FILE_NAME = "nvmFile";
+  private static final int NVMSPACE_NUM_MAX = 1000000;
+
+  private static final long BITMAP_FIELD_OFFSET = 0L;
+  private static final long BITMAP_FIELD_BYTE_SIZE = Byte.BYTES * NVMSPACE_NUM_MAX;
+
+  private static final long DATATYPE_FIELD_OFFSET = BITMAP_FIELD_OFFSET + BITMAP_FIELD_BYTE_SIZE;
+  private static final long DATATYPE_FIELD_BYTE_SIZE = Short.BYTES * NVMSPACE_NUM_MAX;
+
+  private static final long TSID_FIELD_OFFSET = DATATYPE_FIELD_OFFSET + DATATYPE_FIELD_BYTE_SIZE;
+  private static final long TSID_FIELD_BYTE_SIZE = getPrimitiveTypeByteSize(TSDataType.INT64) * NVMSPACE_NUM_MAX;
+
+  private static final long TVMAP_FIELD_OFFSET = TSID_FIELD_OFFSET + TSID_FIELD_BYTE_SIZE;
+  private static final long TVMAP_FIELD_BYTE_SIZE = getPrimitiveTypeByteSize(TSDataType.INT32) * 2 * NVMSPACE_NUM_MAX;
+
+  private static final long DATA_FILED_OFFSET = TVMAP_FIELD_OFFSET + TVMAP_FIELD_BYTE_SIZE;
+
   private final static NVMSpaceManager INSTANCE = new NVMSpaceManager();
 
-  private String NVM_PATH;
+  private String nvmFilePath;
   private FileChannel nvmFileChannel;
   private final MapMode MAP_MODE = MapMode.READ_WRITE;
   private long nvmSize;
-  private long curOffset = 0L;
 
-  private NVMSpaceManager() {
-//    init();
-  }
+  /**
+   * metadata fields
+   */
+  private FreeSpaceBitMap freeSpaceBitMap;
+  private DataTypeMemo dataTypeMemo;
+  private TSDataMap tsDataMap;
+
+  /**
+   * data field
+   */
+  private AtomicInteger curDataSpaceIndex = new AtomicInteger(0);
+  private long curDataOffset = DATA_FILED_OFFSET;
+
+  private NVMSpaceManager() {}
 
   public void init() throws StartupException {
     try {
-      NVM_PATH = IoTDBDescriptor.getInstance().getConfig().getNvmDir() + "/nvmFile";
-      FSFactoryProducer.getFSFactory().getFile(IoTDBDescriptor.getInstance().getConfig().getNvmDir()).mkdirs();
-      nvmFileChannel = new RandomAccessFile(NVM_PATH, "rw").getChannel();
-      nvmSize = nvmFileChannel.size();
+      String nvmDir = IoTDBDescriptor.getInstance().getConfig().getNvmDir();
+      nvmFilePath = nvmDir + File.pathSeparatorChar + NVM_FILE_NAME;
+      File nvmDirFile = FSFactoryProducer.getFSFactory().getFile(nvmDir);
+      nvmDirFile.mkdirs();
+      nvmSize = nvmDirFile.getUsableSpace();
+      nvmFileChannel = new RandomAccessFile(nvmFilePath, "rw").getChannel();
+
+      initMetadataFields();
     } catch (IOException e) {
-      logger.error("Fail to open NVM space at {}.", NVM_PATH, e);
+      logger.error("Fail to open NVM space at {}.", nvmFilePath, e);
       throw new StartupException(e);
     }
+  }
+
+  private void initMetadataFields() throws IOException {
+    freeSpaceBitMap = new FreeSpaceBitMap(nvmFileChannel.map(MAP_MODE, BITMAP_FIELD_OFFSET, BITMAP_FIELD_BYTE_SIZE));
+    dataTypeMemo = new DataTypeMemo(nvmFileChannel.map(MAP_MODE, DATATYPE_FIELD_OFFSET, DATATYPE_FIELD_BYTE_SIZE));
+    tsDataMap = new TSDataMap(nvmFileChannel.map(MAP_MODE, TSID_FIELD_OFFSET, TSID_FIELD_BYTE_SIZE));
   }
 
   public void close() throws IOException {
@@ -50,19 +90,19 @@ public class NVMSpaceManager {
     int size = 0;
     switch (dataType) {
       case BOOLEAN:
-        size = 8;
+        size = Byte.BYTES;
         break;
       case INT32:
-        size = Integer.SIZE;
+        size = Integer.BYTES;
         break;
       case INT64:
-        size = Long.SIZE;
+        size = Long.BYTES;
         break;
       case FLOAT:
-        size = Float.SIZE;
+        size = Float.BYTES;
         break;
       case DOUBLE:
-        size = Double.SIZE;
+        size = Double.BYTES;
         break;
       case TEXT:
         // TODO
@@ -70,113 +110,43 @@ public class NVMSpaceManager {
       default:
         throw new UnSupportedDataTypeException("DataType: " + dataType);
     }
-    return size >> 3;
+    return size;
   }
 
-  public synchronized NVMSpace allocate(long size, TSDataType dataType) {
+  public synchronized NVMSpace allocateSpace(long offset, long size) throws IOException {
+    return new NVMSpace(offset, size, nvmFileChannel.map(MAP_MODE, offset, size));
+  }
+
+  public synchronized NVMDataSpace allocateDataSpace(long size, TSDataType dataType) {
     // TODO check if full
 
     try {
-//      logger.debug("Try to allocate {} nvm space at {}.", size, curOffset);
-      NVMSpace nvmSpace = new NVMSpace(curOffset, size, nvmFileChannel.map(MAP_MODE, curOffset, size), dataType);
-      curOffset += size;
+      logger.trace("Try to allocate {} nvm space at {}.", size, curDataOffset);
+      NVMDataSpace nvmSpace = new NVMDataSpace(
+          curDataOffset, size, nvmFileChannel.map(MAP_MODE, curDataOffset, size), curDataSpaceIndex
+          .getAndIncrement(), dataType);
+      curDataOffset += size;
       return nvmSpace;
     } catch (IOException e) {
       // TODO deal with error
-      logger.error("Fail to allocate {} nvm space at {}.", size, curOffset);
+      logger.error("Fail to allocate {} nvm space at {}.", size, curDataOffset);
       e.printStackTrace();
       return null;
     }
   }
 
-  public class NVMSpace {
+  public void registerNVMDataSpace(NVMDataSpace nvmDataSpace) {
+    int spaceIndex = nvmDataSpace.getIndex();
+    freeSpaceBitMap.update(spaceIndex, false);
+    dataTypeMemo.set(spaceIndex, nvmDataSpace.getDataType());
+  }
 
-    private long offset;
-    private long size;
-    private ByteBuffer byteBuffer;
-    private TSDataType dataType;
+  public void unregisterNVMDataSpace(NVMDataSpace nvmDataSpace) {
+    freeSpaceBitMap.update(nvmDataSpace.getIndex(), true);
+  }
 
-    private NVMSpace(long offset, long size, ByteBuffer byteBuffer, TSDataType dataType) {
-      this.offset = offset;
-      this.size = size;
-      this.byteBuffer = byteBuffer;
-      this.dataType = dataType;
-    }
-
-    public long getOffset() {
-      return offset;
-    }
-
-    public long getSize() {
-      return size;
-    }
-
-    public ByteBuffer getByteBuffer() {
-      return byteBuffer;
-    }
-
-    @Override
-    public NVMSpace clone() {
-      NVMSpace cloneSpace = NVMSpaceManager.getInstance().allocate(size, dataType);
-      int position = byteBuffer.position();
-      byteBuffer.rewind();
-      cloneSpace.getByteBuffer().put(byteBuffer);
-      byteBuffer.position(position);
-      cloneSpace.getByteBuffer().flip();
-      return cloneSpace;
-    }
-
-    public Object get(int index) {
-      int objectSize = NVMSpaceManager.getPrimitiveTypeByteSize(dataType);
-      index *= objectSize;
-      Object object = null;
-      switch (dataType) {
-        case BOOLEAN:
-          object = byteBuffer.get(index);
-          break;
-        case INT32:
-          object = byteBuffer.getInt(index);
-          break;
-        case INT64:
-          object = byteBuffer.getLong(index);
-          break;
-        case FLOAT:
-          object = byteBuffer.getFloat(index);
-          break;
-        case DOUBLE:
-          object = byteBuffer.getDouble(index);
-          break;
-        case TEXT:
-          // TODO
-          break;
-      }
-      return object;
-    }
-
-    public void set(int index, Object object) {
-      int objectSize = NVMSpaceManager.getPrimitiveTypeByteSize(dataType);
-      index *= objectSize;
-      switch (dataType) {
-        case BOOLEAN:
-          byteBuffer.put(index, (byte) object);
-          break;
-        case INT32:
-          byteBuffer.putInt(index, (int) object);
-          break;
-        case INT64:
-          byteBuffer.putLong(index, (long) object);
-          break;
-        case FLOAT:
-          byteBuffer.putFloat(index, (float) object);
-          break;
-        case DOUBLE:
-          byteBuffer.putDouble(index, (double) object);
-          break;
-        case TEXT:
-          // TODO
-          break;
-      }
-    }
+  public void addSpaceToTimeSeries(String sgId, String deviceId, String measurementId, int timeSpaceIndex, int valueSpaceIndex) {
+    tsDataMap.addSpaceToTimeSeries(sgId, deviceId, measurementId, timeSpaceIndex, valueSpaceIndex);
   }
 
   public static NVMSpaceManager getInstance() {

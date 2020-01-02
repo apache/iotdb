@@ -157,9 +157,11 @@ public class BinaryTVList extends TVList {
   }
 
   @Override
-  protected void expandValues() {
-    values.add((Binary[]) PrimitiveArrayPool
-        .getInstance().getPrimitiveDataListByType(TSDataType.TEXT));
+  protected Object expandValues() {
+    Binary[] binaries = (Binary[]) PrimitiveArrayPool
+        .getInstance().getPrimitiveDataListByType(TSDataType.TEXT);
+    values.add(binaries);
+    return binaries;
   }
 
   @Override
