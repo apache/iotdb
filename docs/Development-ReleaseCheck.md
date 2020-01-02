@@ -19,7 +19,7 @@
 
 -->
 
-# How to validate a staged release (版本发布-检查投票流程)
+# How to validate a staged release (如何给发布版本投票)
 
 For non-Chinese users, please read https://cwiki.apache.org/confluence/display/IOTDB/Validating+a+staged+Release
 
@@ -181,4 +181,14 @@ select * from root;
 
 Thanks,
 xxx
+```
+
+
+## 小工具
+
+* 打印出包含某些字符的行
+
+```
+find . -type f -exec grep -i "copyright" {} \; -print | sort -u
+find **/src -type f -exec grep -i "copyright" {} \; -print | sort -u
 ```
