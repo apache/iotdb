@@ -203,8 +203,6 @@ public class SQLConstant {
     tokenNames.put(TOK_LOAD_FILES, "TOK_LOAD_FILES");
     tokenNames.put(TOK_REMOVE_FILE, "TOK_REMOVE_FILE");
     tokenNames.put(TOK_MOVE_FILE, "TOK_MOVE_FILE");
-
-    tokenNames.put(TOK_COUNT_TIMESERIES, "TOK_COUNT_TIMESERIES");
   }
 
   static {
