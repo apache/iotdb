@@ -56,6 +56,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.exception.storageGroup.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.QueryProcessor;
@@ -371,8 +372,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "SHOW_DEVICES":
-          Set<String> devices = getAllDevices();
-          resp.setDevices(devices);
+          List<String> devices = getAllDevices();
+          resp.setDevices(new HashSet<>(devices));
           status = getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "SHOW_CHILD_PATHS":
@@ -434,7 +435,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return MManager.getInstance().getAllStorageGroupNames();
   }
 
-  private Set<String> getAllDevices() throws SQLException {
+  private List<String> getAllDevices() throws PathException {
     return MManager.getInstance().getAllDevices();
   }
 
@@ -469,10 +470,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return false;
     }
     statement = statement.toLowerCase();
+    if (statement.startsWith("flush")) {
+      try {
+        execFlush(statement);
+      } catch (StorageGroupNotSetException e) {
+        throw new StorageEngineException(e);
+      }
+      return true;
+    }
     switch (statement) {
-      case "flush":
-        StorageEngine.getInstance().syncCloseAllProcessor();
-        return true;
       case "merge":
         StorageEngine.getInstance()
             .mergeAll(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
@@ -482,6 +488,25 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return true;
       default:
         return false;
+    }
+  }
+
+  private void execFlush(String statement) throws StorageGroupNotSetException {
+    String[] args = statement.split("\\s+");
+    if (args.length == 1) {
+      StorageEngine.getInstance().syncCloseAllProcessor();
+    } else if (args.length == 2){
+      String[] storageGroups = args[1].split(",");
+      for (String storageGroup : storageGroups) {
+        StorageEngine.getInstance().asyncCloseProcessor(storageGroup, true);
+        StorageEngine.getInstance().asyncCloseProcessor(storageGroup, false);
+      }
+    } else {
+      String[] storageGroups = args[1].split(",");
+      boolean isSeq = Boolean.parseBoolean(args[2]);
+      for (String storageGroup : storageGroups) {
+        StorageEngine.getInstance().asyncCloseProcessor(storageGroup, isSeq);
+      }
     }
   }
 
@@ -786,7 +811,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private void getGroupByDeviceQueryHeaders(QueryPlan plan, List<String> respColumns,
       List<String> columnTypes) {
     // set columns in TSExecuteStatementResp. Note this is without deduplication.
-    List<String> measurementColumns = plan.getMeasurementColumnList();
+    List<String> measurementColumns = plan.getMeasurements();
     respColumns.add(SQLConstant.GROUPBY_DEVICE_COLUMN_NAME);
     respColumns.addAll(measurementColumns);
 
@@ -811,7 +836,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     // save deduplicated measurementColumn names and types in QueryPlan for the next stage to use.
     // i.e., used by DeviceIterateDataSet constructor in `fetchResults` stage.
-    plan.setMeasurementColumnList(deduplicatedMeasurementColumns);
+    plan.setMeasurements(deduplicatedMeasurementColumns);
     plan.setDataTypes(deduplicatedColumnsType);
 
     // set these null since they are never used henceforth in GROUP_BY_DEVICE query processing.

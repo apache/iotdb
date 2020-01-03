@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_AND;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
-
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -36,6 +31,12 @@ import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_AND;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
 
 /**
  * This class is for filter operator and implements {@link Operator} . It may consist of more than
@@ -208,8 +209,10 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     if (!(fil instanceof FilterOperator)) {
       return false;
     }
+    // if child is leaf, will execute BasicFunctionOperator.equals()
     FilterOperator operator = (FilterOperator) fil;
-    return compareTo(operator) == 0;
+    return this.tokenIntType == operator.tokenIntType
+            && this.getChildren().equals(operator.getChildren());
   }
 
   @Override

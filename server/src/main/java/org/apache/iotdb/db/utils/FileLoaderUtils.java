@@ -39,24 +39,29 @@ public class FileLoaderUtils {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(
           tsFileResource.getFile().getAbsolutePath())) {
         TsFileMetaData metaData = reader.readFileMetadata();
-        for (TsDeviceMetadataIndex index : metaData.getDeviceMap().values()) {
-          TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
-          List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata
-              .getChunkGroupMetaDataList();
-          for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
-            for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-              tsFileResource.updateStartTime(chunkGroupMetaData.getDeviceID(),
-                  chunkMetaData.getStartTime());
-              tsFileResource
-                  .updateEndTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
-            }
-          }
-        }
+        updateTsFileResource(metaData, reader, tsFileResource);
       }
       // write .resource file
       tsFileResource.serialize();
     } else {
       tsFileResource.deSerialize();
+    }
+  }
+
+  public static void updateTsFileResource(TsFileMetaData metaData, TsFileSequenceReader reader,
+      TsFileResource tsFileResource) throws IOException {
+    for (TsDeviceMetadataIndex index : metaData.getDeviceMap().values()) {
+      TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
+      List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata
+          .getChunkGroupMetaDataList();
+      for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
+        for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+          tsFileResource.updateStartTime(chunkGroupMetaData.getDeviceID(),
+              chunkMetaData.getStartTime());
+          tsFileResource
+              .updateEndTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
+        }
+      }
     }
   }
 }

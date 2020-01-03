@@ -19,16 +19,17 @@
 
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
+import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.junit.Assert;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.junit.Assert;
 
 /**
  * This is a test utility class.
@@ -93,8 +94,7 @@ public class FakedIBatchPoint implements IBatchReader {
     batchData = new BatchData(TSDataType.INT64);
     while (num > 0 && iterator.hasNext()) {
       TimeValuePair timeValuePair = iterator.next();
-      batchData.putTime(timeValuePair.getTimestamp());
-      batchData.putLong(timeValuePair.getValue().getLong());
+      batchData.putLong(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
       num--;
     }
     if (!hasEmptyBatch) {

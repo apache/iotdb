@@ -16,26 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.physical.sys;
 
-import java.util.List;
-import org.apache.iotdb.tsfile.read.common.Path;
+package org.apache.iotdb.db.query.reader;
 
-public class ShowTTLPlan extends ShowPlan {
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
-  private List<String> storageGroups;
+/**
+ * ManagedSeriesReader is a combination of IBatchReader and IPointReader that provides
+ * additional interfaces to make it able to be run in a thread pool concurrently within a query.
+ */
+public interface ManagedSeriesReader extends IBatchReader, IPointReader {
 
-  public ShowTTLPlan(List<String> storageGroups) {
-    super(ShowContentType.TTL);
-    this.storageGroups = storageGroups;
-  }
+  boolean isManagedByQueryManager();
 
-  @Override
-  public List<Path> getPaths() {
-    return null;
-  }
+  void setManagedByQueryManager(boolean managedByQueryManager);
 
-  public List<String> getStorageGroups() {
-    return storageGroups;
-  }
+  boolean hasRemaining();
+
+  void setHasRemaining(boolean hasRemaining);
 }

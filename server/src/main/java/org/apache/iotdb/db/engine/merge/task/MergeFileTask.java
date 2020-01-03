@@ -23,9 +23,11 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
@@ -150,6 +152,7 @@ class MergeFileTask {
       }
       oldFileWriter.endFile(new Schema(newFileWriter.getKnownSchema()));
 
+      updateHistoricalVersions(seqFile);
       seqFile.serialize();
       mergeLogger.logFileMergeEnd();
       logger.debug("{} moved merged chunks of {} to the old file", taskName, seqFile);
@@ -165,6 +168,20 @@ class MergeFileTask {
     } finally {
       seqFile.getWriteQueryLock().writeLock().unlock();
     }
+  }
+
+  private void updateHistoricalVersions(TsFileResource seqFile) {
+    // as the new file contains data of other files, track their versions in the new file
+    // so that we will be able to compare data across different IoTDBs that share the same file
+    // generation policy
+    // however, since the data of unseq files are mixed together, we won't be able to know
+    // which files are exactly contained in the new file, so we have to record all unseq files
+    // in the new file
+    Set<Long> newHistoricalVersions = new HashSet<>(seqFile.getHistoricalVersions());
+    for (TsFileResource unseqFiles : resource.getUnseqFiles()) {
+      newHistoricalVersions.addAll(unseqFiles.getHistoricalVersions());
+    }
+    seqFile.setHistoricalVersions(newHistoricalVersions);
   }
 
   private void writeMergedChunkGroup(ChunkGroupMetaData chunkGroupMetaData,
@@ -213,6 +230,7 @@ class MergeFileTask {
 
     fileWriter.endFile(new Schema(fileWriter.getKnownSchema()));
 
+    updateHistoricalVersions(seqFile);
     seqFile.serialize();
     mergeLogger.logFileMergeEnd();
     logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
