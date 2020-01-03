@@ -143,8 +143,7 @@ public class StorageGroupProcessor {
   /**
    * Time range for dividing storage group, unit is second
    */
-  private final long partitionIntervalForStorageGroup = IoTDBDescriptor.getInstance().getConfig()
-      .getPartitionInterval();
+  private long partitionIntervalForStorageGroup;
   /**
    * the schema of time series that belong this storage group
    */
@@ -222,6 +221,23 @@ public class StorageGroupProcessor {
     } else if (!storageGroupSysDir.exists()) {
       logger.error("create Storage Group system Directory {} failed",
           storageGroupSysDir.getPath());
+    }
+
+    // build time Interval to divide time partition
+    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        partitionIntervalForStorageGroup = IoTDBDescriptor.getInstance().
+            getConfig().getPartitionInterval() * 1000_000_000L;
+        break;
+      case "us":
+        partitionIntervalForStorageGroup = IoTDBDescriptor.getInstance().
+            getConfig().getPartitionInterval() * 1000_000L;
+        break;
+      default:
+        partitionIntervalForStorageGroup = IoTDBDescriptor.getInstance().
+            getConfig().getPartitionInterval() * 1000;
+        break;
     }
 
     recover();
@@ -649,6 +665,7 @@ public class StorageGroupProcessor {
 
 
   private long fromTimeToTimePartition(long time) {
+
     return time / partitionIntervalForStorageGroup;
   }
 
@@ -801,7 +818,7 @@ public class StorageGroupProcessor {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: TTL removing files before {}", storageGroupName, new Date(timeLowerBound));
     }
-    
+
     // copy to avoid concurrent modification of deletion
     List<TsFileResource> seqFiles = new ArrayList<>(sequenceFileList);
     List<TsFileResource> unseqFiles = new ArrayList<>(unSequenceFileList);

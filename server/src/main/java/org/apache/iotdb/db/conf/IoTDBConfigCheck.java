@@ -50,8 +50,24 @@ public class IoTDBConfigCheck {
 
   public void checkConfig() {
     TIMESTAMP_PRECISION = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+
+    // check time stamp precision
+    if (!(TIMESTAMP_PRECISION.equals("ms") || TIMESTAMP_PRECISION.equals("us")
+        || TIMESTAMP_PRECISION.equals("ns"))) {
+      logger.error("Wrong timestamp precision, please set as: ms, us or ns ! Current is: "
+          + TIMESTAMP_PRECISION);
+      System.exit(-1);
+    }
+
     PARTITION_INTERVAL = IoTDBDescriptor.getInstance().getConfig()
         .getPartitionInterval();
+
+    // check partition interval
+    if (PARTITION_INTERVAL <= 0) {
+      logger.error("Partition interval must larger than 0!");
+      System.exit(-1);
+    }
+
     createDir(SCHEMA_DIR);
     checkFile(SCHEMA_DIR);
     logger.info("System configuration is ok.");
