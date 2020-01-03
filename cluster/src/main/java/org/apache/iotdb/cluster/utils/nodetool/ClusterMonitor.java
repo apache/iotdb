@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.utils.nodetool;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.ClusterMain;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -67,7 +68,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   @Override
-  public Map<Pair<Long, Long>, PartitionGroup> getDataPartition(String path, long startTime,
+  public MultiKeyMap<Long, PartitionGroup> getDataPartition(String path, long startTime,
       long endTime) {
     PartitionTable partitionTable = getPartitionTable();
     if (partitionTable == null) {
@@ -77,7 +78,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       return PartitionUtils.partitionByPathRangeTime(path, startTime, endTime, partitionTable);
     } catch (StorageGroupNotSetException e) {
       LOGGER.error("The storage group of path {} doesn't exist.", path, e);
-      return new HashMap<>();
+      return new MultiKeyMap<>();
     }
   }
 

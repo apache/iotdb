@@ -23,6 +23,7 @@ import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
 import io.airlift.airline.Command;
 import io.airlift.airline.Option;
 import java.util.Map;
+import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -70,7 +71,7 @@ public class Partition extends NodeToolCmd {
   }
 
   private void queryDataPartition(ClusterMonitorMBean proxy) {
-    Map<Pair<Long, Long>, PartitionGroup> timeRangeMapRaftGroup = proxy
+    MultiKeyMap<Long, PartitionGroup> timeRangeMapRaftGroup = proxy
         .getDataPartition(path, startTime, endTime);
     if (timeRangeMapRaftGroup == null) {
       msgPrintln(BUILDING_CLUSTER_INFO);
@@ -79,7 +80,7 @@ public class Partition extends NodeToolCmd {
     } else {
       timeRangeMapRaftGroup.forEach(
           (timeRange, raftGroup) -> msgPrintln(String.format("DATA<%s, %d, %d>\t->\t%s", path,
-              timeRange.left, timeRange.right, partitionGroupToString(raftGroup))));
+              timeRange.getKey(0), timeRange.getKey(1), partitionGroupToString(raftGroup))));
     }
   }
 }

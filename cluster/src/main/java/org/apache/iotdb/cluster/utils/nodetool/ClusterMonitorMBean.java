@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster.utils.nodetool;
 
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -39,7 +40,7 @@ public interface ClusterMonitorMBean {
    * @param path input path
    * @return data partition information
    */
-  Map<Pair<Long, Long>, PartitionGroup> getDataPartition(String path, long startTime, long endTime);
+  MultiKeyMap<Long, PartitionGroup> getDataPartition(String path, long startTime, long endTime);
 
   /**
    * Get metadata partition information of input path
