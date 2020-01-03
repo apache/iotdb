@@ -74,8 +74,8 @@ public class ReaderTest {
     long startTime = TsFileGeneratorForTest.START_TIMESTAMP;
     BatchData data = null;
 
-    while (seriesReader.hasNextBatch()) {
-      data = seriesReader.nextBatch();
+    while (seriesReader.hasNextSatisfiedPage()) {
+      data = seriesReader.nextPageData();
       while (data.hasCurrent()) {
         Assert.assertEquals(startTime, data.currentTime());
         data.next();
@@ -89,8 +89,8 @@ public class ReaderTest {
     seriesReader = new FileSeriesReader(seriesChunkLoader, chunkMetaDataList, null);
     count = 0;
 
-    while (seriesReader.hasNextBatch()) {
-      data = seriesReader.nextBatch();
+    while (seriesReader.hasNextSatisfiedPage()) {
+      data = seriesReader.nextPageData();
       while (data.hasCurrent()) {
         data.next();
         startTime++;
@@ -117,8 +117,8 @@ public class ReaderTest {
 
     long aimedTimestamp = 1480563570030L;
 
-    while (seriesReader.hasNextBatch()) {
-      data = seriesReader.nextBatch();
+    while (seriesReader.hasNextSatisfiedPage()) {
+      data = seriesReader.nextPageData();
       while (data.hasCurrent()) {
         Assert.assertEquals(aimedTimestamp++, data.currentTime());
         data.next();

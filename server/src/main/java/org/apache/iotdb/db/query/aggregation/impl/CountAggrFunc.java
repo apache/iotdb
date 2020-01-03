@@ -69,6 +69,18 @@ public class CountAggrFunc extends AggregateFunction {
   }
 
   @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
+    while (dataInThisPage.hasCurrent()) {
+      if (dataInThisPage.currentTime() >= bound) {
+        break;
+      }
+      long preValue = resultData.getLongRet();
+      resultData.setLongRet(++preValue);
+      dataInThisPage.next();
+    }
+  }
+
+  @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) {
     if (logger.isDebugEnabled()) {
       logger.debug("PageHeader>>>>>>>>>>>>num of rows:{}, minTimeStamp:{}, maxTimeStamp{}",

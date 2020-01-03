@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.ManagedSeriesReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.NewSeriesReaderWithoutValueFilter;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -45,10 +46,10 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
   private static class ReadTask implements Runnable {
 
-    private final ManagedSeriesReader reader;
+    private final NewSeriesReaderWithoutValueFilter reader;
     private BlockingQueue<BatchData> blockingQueue;
 
-    public ReadTask(ManagedSeriesReader reader, BlockingQueue<BatchData> blockingQueue) {
+    public ReadTask(NewSeriesReaderWithoutValueFilter reader, BlockingQueue<BatchData> blockingQueue) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
     }
@@ -95,7 +96,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
     }
   }
 
-  private List<ManagedSeriesReader> seriesReaderWithoutValueFilterList;
+  private List<NewSeriesReaderWithoutValueFilter> seriesReaderWithoutValueFilterList;
 
   private TreeSet<Long> timeHeap;
 
@@ -119,18 +120,19 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
   private static final QueryTaskPoolManager pool = QueryTaskPoolManager.getInstance();
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(NewEngineDataSetWithoutValueFilter.class);
+  private static final Logger LOGGER = LoggerFactory
+      .getLogger(NewEngineDataSetWithoutValueFilter.class);
 
 
   /**
    * constructor of EngineDataSetWithoutValueFilter.
    *
-   * @param paths paths in List structure
+   * @param paths     paths in List structure
    * @param dataTypes time series data type
-   * @param readers readers in List(IPointReader) structure
+   * @param readers   readers in List(IPointReader) structure
    */
   public NewEngineDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-                                            List<ManagedSeriesReader> readers) throws InterruptedException {
+      List<NewSeriesReaderWithoutValueFilter> readers) throws InterruptedException {
     super(paths, dataTypes);
     this.seriesReaderWithoutValueFilterList = readers;
     blockingQueueArray = new BlockingQueue[readers.size()];
@@ -145,7 +147,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
   private void init() throws InterruptedException {
     timeHeap = new TreeSet<>();
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
-      ManagedSeriesReader reader = seriesReaderWithoutValueFilterList.get(i);
+      NewSeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList.get(i);
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
       pool.submit(new ReadTask(reader, blockingQueueArray[i]));
@@ -162,10 +164,11 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
 
   /**
-   * for RPC in RawData query between client and server
-   * fill time buffer, value buffers and bitmap buffers
+   * for RPC in RawData query between client and server fill time buffer, value buffers and bitmap
+   * buffers
    */
-  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder) throws IOException, InterruptedException {
+  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder)
+      throws IOException, InterruptedException {
     int seriesNum = seriesReaderWithoutValueFilterList.size();
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
 
@@ -196,8 +199,8 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
 
         if (cachedBatchDataArray[seriesIndex] == null
-                || !cachedBatchDataArray[seriesIndex].hasCurrent()
-                || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
+            || !cachedBatchDataArray[seriesIndex].hasCurrent()
+            || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
           // current batch is empty or does not have value at minTime
           if (rowOffset == 0) {
             currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1);
@@ -238,16 +241,16 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
                 break;
               case BOOLEAN:
                 ReadWriteIOUtils.write(cachedBatchDataArray[seriesIndex].getBoolean(),
-                        valueBAOSList[seriesIndex]);
+                    valueBAOSList[seriesIndex]);
                 break;
               case TEXT:
                 ReadWriteIOUtils
-                        .write(cachedBatchDataArray[seriesIndex].getBinary(),
-                                valueBAOSList[seriesIndex]);
+                    .write(cachedBatchDataArray[seriesIndex].getBinary(),
+                        valueBAOSList[seriesIndex]);
                 break;
               default:
                 throw new UnSupportedDataTypeException(
-                        String.format("Data type %s is not supported.", type));
+                    String.format("Data type %s is not supported.", type));
             }
           }
 
@@ -276,7 +279,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
         if (rowCount % 8 == 0) {
           for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
             ReadWriteIOUtils
-                    .write((byte) currentBitmapList[seriesIndex], bitmapBAOSList[seriesIndex]);
+                .write((byte) currentBitmapList[seriesIndex], bitmapBAOSList[seriesIndex]);
             // we should clear the bitmap every 8 row record
             currentBitmapList[seriesIndex] = 0;
           }
@@ -298,7 +301,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       if (remaining != 0) {
         for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
           ReadWriteIOUtils.write((byte) (currentBitmapList[seriesIndex] << (8 - remaining)),
-                  bitmapBAOSList[seriesIndex]);
+              bitmapBAOSList[seriesIndex]);
         }
       }
     }
@@ -341,7 +344,8 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
       synchronized (seriesReaderWithoutValueFilterList.get(seriesIndex)) {
         // we only need to judge whether to submit another task when the queue is not full
         if (blockingQueueArray[seriesIndex].remainingCapacity() > 0) {
-          ManagedSeriesReader reader = seriesReaderWithoutValueFilterList.get(seriesIndex);
+          NewSeriesReaderWithoutValueFilter reader = seriesReaderWithoutValueFilterList
+              .get(seriesIndex);
           // if the reader isn't being managed and still has more data,
           // that means this read task leave the pool before because the queue has no more space
           // now we should submit it again
@@ -355,7 +359,7 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
   }
 
   private void putPBOSToBuffer(PublicBAOS[] bitmapBAOSList, List<ByteBuffer> bitmapBufferList,
-                               int tsIndex) {
+      int tsIndex) {
     ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapBAOSList[tsIndex].size());
     bitmapBuffer.put(bitmapBAOSList[tsIndex].getBuf(), 0, bitmapBAOSList[tsIndex].size());
     bitmapBuffer.flip();
@@ -384,14 +388,13 @@ public class NewEngineDataSetWithoutValueFilter extends QueryDataSet {
 
     for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
       if (cachedBatchDataArray[seriesIndex] == null
-              || !cachedBatchDataArray[seriesIndex].hasCurrent()
-              || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
+          || !cachedBatchDataArray[seriesIndex].hasCurrent()
+          || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
         record.addField(new Field(null));
       } else {
 
         record.addField(
-                getField(cachedBatchDataArray[seriesIndex].currentValue(), dataTypes.get(seriesIndex)));
-
+            getField(cachedBatchDataArray[seriesIndex].currentValue(), dataTypes.get(seriesIndex)));
 
         // move next
         cachedBatchDataArray[seriesIndex].next();

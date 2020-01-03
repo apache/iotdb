@@ -62,6 +62,11 @@ public class MinValueAggrFunc extends AggregateFunction {
   }
 
   @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
+
+  }
+
+  @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) {
     Comparable<Object> minVal = (Comparable<Object>) pageHeader.getStatistics().getMinValue();
     updateResult(minVal);

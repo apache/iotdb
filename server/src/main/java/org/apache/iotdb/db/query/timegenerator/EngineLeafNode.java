@@ -21,28 +21,34 @@ package org.apache.iotdb.db.query.timegenerator;
 
 import java.io.IOException;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.NewSeriesReaderWithoutValueFilter;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.NodeType;
 
 public class EngineLeafNode implements Node {
 
-  private IPointReader reader;
+  private NewSeriesReaderWithoutValueFilter reader;
 
-  private BatchData data = null;
+  private BatchData data = new BatchData();
 
-  public EngineLeafNode(IPointReader reader) {
+  public EngineLeafNode(NewSeriesReaderWithoutValueFilter reader) {
     this.reader = reader;
   }
 
   @Override
   public boolean hasNext() throws IOException {
-    return reader.hasNext();
+    return data.hasCurrent() || reader.hasNextBatch();
   }
 
   @Override
   public long next() throws IOException {
-    return reader.next().getTimestamp();
+    if (!data.hasCurrent()) {
+      data = reader.nextBatch();
+    }
+    long currentTime = data.currentTime();
+    data.next();
+    return currentTime;
   }
 
   /**

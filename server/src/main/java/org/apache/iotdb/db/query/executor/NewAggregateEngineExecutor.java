@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.impl.LastValueAggrFunc;
@@ -65,11 +66,10 @@ public class NewAggregateEngineExecutor {
   /**
    * constructor.
    */
-  public NewAggregateEngineExecutor(List<Path> selectedSeries, List<String> aggres,
-      IExpression expression) {
-    this.selectedSeries = selectedSeries;
-    this.aggres = aggres;
-    this.expression = expression;
+  public NewAggregateEngineExecutor(AggregationPlan aggregationPlan) {
+    this.selectedSeries = aggregationPlan.getDeduplicatedPaths();
+    this.aggres = aggregationPlan.getDeduplicatedAggregations();
+    this.expression = aggregationPlan.getExpression();
     this.aggregateFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
   }
 
@@ -129,8 +129,8 @@ public class NewAggregateEngineExecutor {
     }
 
     while (newSeriesReader.hasNextChunk()) {
-      Statistics chunkStatistics = newSeriesReader.nextChunkStatistics();
       if (newSeriesReader.canUseChunkStatistics()) {
+        Statistics chunkStatistics = newSeriesReader.nextChunkStatistics();
         function.calculateValueFromStatistics(chunkStatistics);
         if (function.isCalculatedAggregationResult()) {
           return function.getResult();
@@ -139,8 +139,8 @@ public class NewAggregateEngineExecutor {
       }
       while (newSeriesReader.hasNextPage()) {
         //cal by pageheader
-        Statistics pageStatistic = newSeriesReader.nextPageStatistic();
         if (newSeriesReader.canUsePageStatistics()) {
+          Statistics pageStatistic = newSeriesReader.nextPageStatistic();
           function.calculateValueFromStatistics(pageStatistic);
           if (function.isCalculatedAggregationResult()) {
             return function.getResult();
@@ -175,8 +175,8 @@ public class NewAggregateEngineExecutor {
       NewSeriesReaderWithoutValueFilter newSeriesReader, Filter filter)
       throws IOException, QueryProcessException {
     while (newSeriesReader.hasNextChunk()) {
-      Statistics chunkStatistics = newSeriesReader.nextChunkStatistics();
       if (newSeriesReader.canUseChunkStatistics()) {
+        Statistics chunkStatistics = newSeriesReader.nextChunkStatistics();
         function.calculateValueFromStatistics(chunkStatistics);
         if (function.isCalculatedAggregationResult()) {
           return function.getResult();
@@ -185,8 +185,8 @@ public class NewAggregateEngineExecutor {
       }
       while (newSeriesReader.hasNextPage()) {
         //cal by pageheader
-        Statistics pageStatistic = newSeriesReader.nextPageStatistic();
         if (newSeriesReader.canUsePageStatistics()) {
+          Statistics pageStatistic = newSeriesReader.nextPageStatistic();
           function.calculateValueFromStatistics(pageStatistic);
           if (function.isCalculatedAggregationResult()) {
             return function.getResult();

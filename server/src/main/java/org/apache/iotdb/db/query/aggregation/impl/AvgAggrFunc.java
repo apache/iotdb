@@ -68,7 +68,15 @@ public class AvgAggrFunc extends AggregateFunction {
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage)
       throws IOException {
+    calculateValueFromPageData(dataInThisPage, Long.MAX_VALUE);
+  }
+
+  @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
     while (dataInThisPage.hasCurrent()) {
+      if (dataInThisPage.currentTime() >= bound) {
+        break;
+      }
       updateMean(seriesDataType, dataInThisPage.currentValue());
       dataInThisPage.next();
     }

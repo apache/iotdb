@@ -24,15 +24,18 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class PreviousFill extends IFill {
 
   private long beforeRange;
+  private BatchData batchData;
 
   public PreviousFill(TSDataType dataType, long queryTime, long beforeRange) {
     super(dataType, queryTime);
     this.beforeRange = beforeRange;
+    batchData = new BatchData();
   }
 
   public PreviousFill(long beforeRange) {
@@ -58,8 +61,12 @@ public class PreviousFill extends IFill {
   public IPointReader getFillResult() throws IOException {
     TimeValuePair beforePair = null;
     TimeValuePair cachedPair = null;
-    while (allDataReader.hasNext()) {
-      cachedPair = allDataReader.next();
+    while (batchData.hasCurrent() || allDataReader.hasNextBatch()) {
+      if (batchData.isEmpty()) {
+        batchData = allDataReader.nextBatch();
+      }
+      cachedPair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
+      batchData.next();
       if (cachedPair.getTimestamp() <= queryTime) {
         beforePair = cachedPair;
       } else {

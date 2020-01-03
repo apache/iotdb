@@ -53,6 +53,7 @@ public abstract class AggregateFunction {
 
   public abstract void calculateValueFromPageData(BatchData dataInThisPage) throws IOException;
 
+  public abstract void calculateValueFromPageData(BatchData dataInThisPage,long bound) throws IOException;
   /**
    * <p> Calculate the aggregation using <code>PageHeader</code>. </p>
    *

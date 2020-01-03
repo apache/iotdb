@@ -72,8 +72,8 @@ public class ReaderByTimestampTest {
     int count = 0;
     BatchData data = null;
 
-    while (seriesReader.hasNextBatch()) {
-      data = seriesReader.nextBatch();
+    while (seriesReader.hasNextSatisfiedPage()) {
+      data = seriesReader.nextPageData();
       while (data.hasCurrent()) {
         timeList.add(data.currentTime() - 1);
         valueList.add(null);

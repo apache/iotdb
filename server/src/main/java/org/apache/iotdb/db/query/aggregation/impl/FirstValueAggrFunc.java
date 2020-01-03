@@ -71,6 +71,18 @@ public class FirstValueAggrFunc extends AggregateFunction {
   }
 
   @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
+    if (resultData.isSetTime()) {
+      return;
+    }
+    if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
+      resultData.putTimeAndValue(0, dataInThisPage.currentValue());
+      dataInThisPage.next();
+      return;
+    }
+  }
+
+  @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) throws QueryProcessException {
     if (resultData.isSetTime()) {
       return;

@@ -65,6 +65,11 @@ public class MaxValueAggrFunc extends AggregateFunction {
   }
 
   @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
+
+  }
+
+  @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) {
     Comparable<Object> maxVal = (Comparable<Object>) pageHeader.getStatistics().getMaxValue();
     updateResult(maxVal);

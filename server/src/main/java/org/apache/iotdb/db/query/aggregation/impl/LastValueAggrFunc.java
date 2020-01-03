@@ -73,6 +73,11 @@ public class LastValueAggrFunc extends AggregateFunction {
   }
 
   @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
+
+  }
+
+  @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) {
     Object lastVal = pageHeader.getStatistics().getLastValue();
     updateLastResult(pageHeader.getEndTime(), lastVal);

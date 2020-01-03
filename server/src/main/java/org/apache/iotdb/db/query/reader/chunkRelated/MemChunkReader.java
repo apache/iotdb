@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
+import java.io.IOException;
+import java.util.Iterator;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -25,15 +27,12 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
-
-import java.io.IOException;
-import java.util.Iterator;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 
 /**
  * To read chunk data in memory
  */
-public class MemChunkReader implements IPointReader, IAggregateReader {
+public class MemChunkReader implements IChunkReader, IPointReader {
 
   private ReadOnlyMemChunk readOnlyMemChunk;
   private Iterator<TimeValuePair> timeValuePairIterator;
@@ -93,16 +92,17 @@ public class MemChunkReader implements IPointReader, IAggregateReader {
   }
 
   @Override
-  public boolean hasNextBatch() throws IOException {
+  public boolean hasNextSatisfiedPage() throws IOException {
     return hasNext();
   }
 
   @Override
-  public BatchData nextBatch() {
+  public BatchData nextPageData() {
     BatchData batchData = new BatchData(dataType);
     if (hasCachedTimeValuePair) {
       hasCachedTimeValuePair = false;
-      batchData.putAnObject(cachedTimeValuePair.getTimestamp(), cachedTimeValuePair.getValue().getValue());
+      batchData.putAnObject(cachedTimeValuePair.getTimestamp(),
+          cachedTimeValuePair.getValue().getValue());
     }
     while (timeValuePairIterator.hasNext()) {
       TimeValuePair timeValuePair = timeValuePairIterator.next();
@@ -120,12 +120,12 @@ public class MemChunkReader implements IPointReader, IAggregateReader {
   }
 
   @Override
-  public PageHeader nextPageHeader() throws IOException {
+  public PageHeader nextPageHeader() {
     return new PageHeader(0, 0, readOnlyMemChunk.getChunkMetaData().getStatistics());
   }
 
   @Override
-  public void skipPageData() throws IOException {
-    nextBatch();
+  public void skipPageData() {
+    nextPageData();
   }
 }

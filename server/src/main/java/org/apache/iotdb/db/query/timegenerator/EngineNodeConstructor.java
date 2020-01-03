@@ -22,11 +22,13 @@ package org.apache.iotdb.db.query.timegenerator;
 import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
 
 import java.io.IOException;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithValueFilter;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.reader.seriesRelated.NewSeriesReaderWithoutValueFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -55,8 +57,11 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
       try {
         Filter filter = ((SingleSeriesExpression) expression).getFilter();
         Path path = ((SingleSeriesExpression) expression).getSeriesPath();
+        QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+            .getQueryDataSource(path, context);
         TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
-        return new EngineLeafNode(new SeriesReaderWithValueFilter(path, dataType, filter, context));
+        return new EngineLeafNode(
+            new NewSeriesReaderWithoutValueFilter(queryDataSource, dataType, filter, context));
       } catch (IOException | PathException e) {
         throw new StorageEngineException(e.getMessage());
       }

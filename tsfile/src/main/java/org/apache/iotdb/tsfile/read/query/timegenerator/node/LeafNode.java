@@ -43,8 +43,8 @@ public class LeafNode implements Node {
     }
 
     if (data == null || !data.hasCurrent()) {
-      if (reader.hasNextBatch()) {
-        data = reader.nextBatch();
+      if (reader.hasNextSatisfiedPage()) {
+        data = reader.nextPageData();
       } else {
         return false;
       }

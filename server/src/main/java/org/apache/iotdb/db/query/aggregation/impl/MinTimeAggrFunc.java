@@ -66,6 +66,11 @@ public class MinTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
+
+  }
+
+  @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) {
     if (resultData.isSetValue()) {
       return;

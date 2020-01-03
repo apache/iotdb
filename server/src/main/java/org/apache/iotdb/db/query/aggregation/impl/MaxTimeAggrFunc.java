@@ -63,6 +63,11 @@ public class MaxTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage, long bound) throws IOException {
+
+  }
+
+  @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) {
     long maxTimestamp = pageHeader.getEndTime();
     updateMaxTimeResult(0, maxTimestamp);
