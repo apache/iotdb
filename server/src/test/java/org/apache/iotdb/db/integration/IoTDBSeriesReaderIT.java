@@ -30,8 +30,12 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
@@ -40,6 +44,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
@@ -52,8 +57,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
- * defined as integration test.
+ * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
+ * IoTDB server should be defined as integration test.
  */
 public class IoTDBSeriesReaderIT {
 
@@ -107,8 +112,7 @@ public class IoTDBSeriesReaderIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement() ) {
-
+        Statement statement = connection.createStatement()) {
 
       for (String sql : Constant.create_sql) {
         statement.execute(sql);
@@ -245,20 +249,32 @@ public class IoTDBSeriesReaderIT {
     //System.out.println("Test >>> " + selectSql);
 
     EngineQueryRouter engineExecutor = new EngineQueryRouter();
-    QueryExpression queryExpression = QueryExpression.create();
-    queryExpression.addSelectedPath(new Path(Constant.d0s0));
-    queryExpression.addSelectedPath(new Path(Constant.d0s1));
-    queryExpression.addSelectedPath(new Path(Constant.d0s2));
-    queryExpression.addSelectedPath(new Path(Constant.d0s3));
-    queryExpression.addSelectedPath(new Path(Constant.d0s4));
-    queryExpression.addSelectedPath(new Path(Constant.d0s5));
-    queryExpression.addSelectedPath(new Path(Constant.d1s0));
-    queryExpression.addSelectedPath(new Path(Constant.d1s1));
-    queryExpression.setExpression(null);
+    List<Path> pathList = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    pathList.add(new Path(Constant.d0s0));
+    dataTypes.add(TSDataType.INT32);
+    pathList.add(new Path(Constant.d0s1));
+    dataTypes.add(TSDataType.INT64);
+    pathList.add(new Path(Constant.d0s2));
+    dataTypes.add(TSDataType.FLOAT);
+    pathList.add(new Path(Constant.d0s3));
+    dataTypes.add(TSDataType.TEXT);
+    pathList.add(new Path(Constant.d0s4));
+    dataTypes.add(TSDataType.BOOLEAN);
+    pathList.add(new Path(Constant.d0s5));
+    dataTypes.add(TSDataType.DOUBLE);
+    pathList.add(new Path(Constant.d1s0));
+    dataTypes.add(TSDataType.INT32);
+    pathList.add(new Path(Constant.d1s1));
+    dataTypes.add(TSDataType.INT64);
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
-    QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
+
+    QueryPlan queryPlan = new QueryPlan();
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setDeduplicatedPaths(pathList);
+    QueryDataSet queryDataSet = engineExecutor.query(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -277,16 +293,22 @@ public class IoTDBSeriesReaderIT {
     //System.out.println("Test >>> " + selectSql);
 
     EngineQueryRouter engineExecutor = new EngineQueryRouter();
-    QueryExpression queryExpression = QueryExpression.create();
+    List<Path> pathList = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
     Path p = new Path(Constant.d0s0);
-    queryExpression.addSelectedPath(p);
+    pathList.add(p);
+    dataTypes.add(TSDataType.INT32);
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(p,
         ValueFilter.gtEq(20));
-    queryExpression.setExpression(singleSeriesExpression);
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
-    QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
+
+    QueryPlan queryPlan = new QueryPlan();
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setExpression(singleSeriesExpression);
+    QueryDataSet queryDataSet = engineExecutor.query(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -306,15 +328,18 @@ public class IoTDBSeriesReaderIT {
     //System.out.println("Test >>> " + selectSql);
 
     EngineQueryRouter engineExecutor = new EngineQueryRouter();
-    QueryExpression queryExpression = QueryExpression.create();
     Path path = new Path(Constant.d0s0);
-    queryExpression.addSelectedPath(path);
+    List<TSDataType> dataTypes = Collections.singletonList(TSDataType.INT32);
     SingleSeriesExpression expression = new SingleSeriesExpression(path, TimeFilter.gt(22987L));
-    queryExpression.setExpression(expression);
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
-    QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
+
+    QueryPlan queryPlan = new QueryPlan();
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setDeduplicatedPaths(Collections.singletonList(path));
+    queryPlan.setExpression(expression);
+    QueryDataSet queryDataSet = engineExecutor.query(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -332,18 +357,25 @@ public class IoTDBSeriesReaderIT {
   public void crossSeriesReadUpdateTest() throws IOException, StorageEngineException {
     //System.out.println("Test >>> select s1 from root.vehicle.d0 where s0 < 111");
     EngineQueryRouter engineExecutor = new EngineQueryRouter();
-    QueryExpression queryExpression = QueryExpression.create();
     Path path1 = new Path(Constant.d0s0);
     Path path2 = new Path(Constant.d0s1);
-    queryExpression.addSelectedPath(path1);
-    queryExpression.addSelectedPath(path2);
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(path1,
         ValueFilter.lt(111));
-    queryExpression.setExpression(singleSeriesExpression);
+    List<Path> pathList = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    pathList.add(path1);
+    dataTypes.add(TSDataType.INT32);
+    pathList.add(path2);
+    dataTypes.add(TSDataType.INT64);
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
-    QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
+
+    QueryPlan queryPlan = new QueryPlan();
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setExpression(singleSeriesExpression);
+    QueryDataSet queryDataSet = engineExecutor.query(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -358,9 +390,10 @@ public class IoTDBSeriesReaderIT {
   @Test
   public void queryEmptySeriesTest() throws SQLException {
     Statement statement = connection.createStatement();
-    statement.execute("CREATE TIMESERIES root.vehicle.d_empty.s1 WITH DATATYPE=INT64, ENCODING=RLE");
+    statement
+        .execute("CREATE TIMESERIES root.vehicle.d_empty.s1 WITH DATATYPE=INT64, ENCODING=RLE");
     ResultSet resultSet = statement.executeQuery("select * from root.vehicle.d_empty");
-    assertFalse (resultSet.next());
+    assertFalse(resultSet.next());
     resultSet.close();
   }
 }

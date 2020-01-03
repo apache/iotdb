@@ -18,18 +18,17 @@
  */
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
-import java.io.IOException;
-import java.util.Iterator;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.query.reader.resourceRelated.NewUnseqResourceMergeReader;
-import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileIterateReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
+
+import java.io.IOException;
+import java.util.Iterator;
 
 /**
  * To read chunk data in memory
@@ -95,15 +94,13 @@ public class MemChunkReader implements IPointReader, IAggregateReader {
     BatchData batchData = new BatchData(dataType);
     if (hasCachedTimeValuePair) {
       hasCachedTimeValuePair = false;
-      batchData.putTime(cachedTimeValuePair.getTimestamp());
-      batchData.putAnObject(cachedTimeValuePair.getValue().getValue());
+      batchData.putAnObject(cachedTimeValuePair.getTimestamp(), cachedTimeValuePair.getValue().getValue());
     }
     while (timeValuePairIterator.hasNext()) {
       TimeValuePair timeValuePair = timeValuePairIterator.next();
       if (filter == null || filter
           .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
-        batchData.putTime(timeValuePair.getTimestamp());
-        batchData.putAnObject(timeValuePair.getValue().getValue());
+        batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
       }
     }
     return batchData;
