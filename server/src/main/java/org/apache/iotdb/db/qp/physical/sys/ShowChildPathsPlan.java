@@ -15,14 +15,21 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.jdbc;
+package org.apache.iotdb.db.qp.physical.sys;
 
-public class Constant {
+import org.apache.iotdb.tsfile.read.common.Path;
 
-  private Constant(){}
+public class ShowChildPathsPlan extends ShowPlan {
+  private Path path;
 
-  public static final String GLOBAL_DB_NAME = "IoTDB";
+  public ShowChildPathsPlan(ShowContentType showContentType, Path path) {
+    super(showContentType);
+    this.path = path;
+  }
 
-  static final String METHOD_NOT_SUPPORTED = "Method not supported";
+  public Path getPath() {
+    return this.path;
+  }
 }

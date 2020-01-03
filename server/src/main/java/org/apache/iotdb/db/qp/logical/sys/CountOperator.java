@@ -16,13 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.jdbc;
+package org.apache.iotdb.db.qp.logical.sys;
 
-public class Constant {
+import org.apache.iotdb.tsfile.read.common.Path;
 
-  private Constant(){}
+/**
+ * CountOperator is used to count time-series and count nodes.
+ */
+public class CountOperator extends ShowOperator{
+  private Path path;
+  private int level;
 
-  public static final String GLOBAL_DB_NAME = "IoTDB";
+  public CountOperator(int tokenIntType, Path path){
+    super(tokenIntType);
+    this.path = path;
+  }
 
-  static final String METHOD_NOT_SUPPORTED = "Method not supported";
+  public CountOperator(int tokenIntType, Path path, int level){
+    super(tokenIntType);
+    this.path = path;
+    this.level = level;
+  }
+
+  public Path getPath() {
+    return this.path;
+  }
+
+  public int getLevel() {
+    return this.level;
+  }
 }

@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
+
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.path.PathException;
@@ -30,8 +37,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import java.io.IOException;
-import java.util.List;
 
 public interface IQueryProcessExecutor {
 
@@ -51,7 +56,7 @@ public interface IQueryProcessExecutor {
    */
   QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException,
-      QueryFilterOptimizationException, QueryProcessException;
+      QueryFilterOptimizationException, QueryProcessException, MetadataException, SQLException;
 
   /**
    * process aggregate plan of qp layer, construct queryDataSet.
