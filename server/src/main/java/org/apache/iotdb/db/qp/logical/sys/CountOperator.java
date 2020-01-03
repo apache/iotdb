@@ -20,6 +20,9 @@ package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.tsfile.read.common.Path;
 
+/**
+ * CountOperator is used to count time-series and count nodes.
+ */
 public class CountOperator extends ShowOperator{
   private Path path;
   private int level;
