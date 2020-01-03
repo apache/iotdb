@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
+import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -68,7 +69,7 @@ public class DeviceMetaDataCacheTest {
     EnvironmentUtils.envSetUp();
     MetadataManagerHelper.initMetadata();
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
-    storageGroupProcessor = new StorageGroupProcessor(systemDir, storageGroup);
+    storageGroupProcessor = new StorageGroupProcessor(systemDir, storageGroup, new DirectFlushPolicy());
     insertData();
   }
 

@@ -226,7 +226,7 @@ public class TsFileProcessor {
     }
   }
 
-  TsFileResource getTsFileResource() {
+  public TsFileResource getTsFileResource() {
     return tsFileResource;
   }
 
@@ -252,7 +252,7 @@ public class TsFileProcessor {
   }
 
 
-  boolean shouldClose() {
+  public boolean shouldClose() {
     long fileSize = tsFileResource.getFileSize();
     long fileSizeThreshold = IoTDBDescriptor.getInstance().getConfig()
         .getTsFileSizeThreshold();
@@ -543,7 +543,7 @@ public class TsFileProcessor {
     return flushingMemTables.size();
   }
 
-  long getWorkMemTableMemory() {
+  public long getWorkMemTableMemory() {
     return workMemTable.memSize();
   }
 
