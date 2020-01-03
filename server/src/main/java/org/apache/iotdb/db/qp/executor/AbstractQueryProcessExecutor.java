@@ -27,8 +27,8 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DataType;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_Encoding;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
@@ -225,8 +225,8 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     ListDataSet listDataSet = new ListDataSet(Arrays.asList(
         new Path(COLUMN_TIMESERIES),
         new Path(COLUMN_STORAGE_GROUP),
-        new Path(COLUMN_TIMESERIES_DataType),
-        new Path(COLUMN_TIMESERIES_Encoding)),
+        new Path(COLUMN_TIMESERIES_DATATYPE),
+        new Path(COLUMN_TIMESERIES_ENCODING)),
         Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
     List<List<String>> timeseriesList = MManager.getInstance()
         .getShowTimeseriesPath(timeSeriesPlan.getPath().toString());
