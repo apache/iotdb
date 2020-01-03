@@ -300,11 +300,14 @@ public abstract class AbstractClient {
       else {
         for (int i = 2; i <= colCount / 2 + 1; i++) {
           if (printTimestamp) {
-            if (res.getLong(TIMESTAMP_STR + i) < 0) {
+            // timeLabel used for indicating the time column.
+            String timeLabel = TIMESTAMP_STR + resultSetMetaData.getColumnLabel(2 * i - 2);
+            if (res.getLong(timeLabel) < 0) {
+              // blank space
               printf(formatTime, "");
             }
             else {
-              printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR + i), zoneId));
+              printf(formatTime, formatDatetime(res.getLong(timeLabel), zoneId));
             }
           }
           printColumnData(resultSetMetaData, align, res, i, zoneId);
@@ -342,6 +345,7 @@ public abstract class AbstractClient {
     // for disable align clause
     else {
       if (res.getString(i * 2 - 2) == null) {
+        //blank space
         printf(formatValue, "");
       }
       else {

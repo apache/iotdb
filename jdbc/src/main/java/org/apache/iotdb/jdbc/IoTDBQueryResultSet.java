@@ -133,7 +133,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     int index = START_INDEX;
     for (int i = 0; i < columnNameList.size(); i++) {
       String name = columnNameList.get(i);
-      columnInfoList.add(TIMESTAMP_STR + i);
+      columnInfoList.add(TIMESTAMP_STR + name);
       columnInfoList.add(name);
       if (!columnInfoMap.containsKey(name)) {
         columnInfoMap.put(name, index++);
@@ -464,7 +464,8 @@ public class IoTDBQueryResultSet implements ResultSet {
     }
     else {
       if (columnName.startsWith(TIMESTAMP_STR)) {
-        int index = Integer.parseInt(columnName.substring(TIMESTAMP_STR_LENGTH)) - START_INDEX;
+        String column = columnName.substring(TIMESTAMP_STR_LENGTH);
+        int index = columnInfoMap.get(column) - START_INDEX;
         if (times[index].length != 8) {
           return -1;
         }
@@ -1425,7 +1426,8 @@ public class IoTDBQueryResultSet implements ResultSet {
     }
     else {
       if (columnName.startsWith(TIMESTAMP_STR)) {
-        int index = Integer.parseInt(columnName.substring(TIMESTAMP_STR_LENGTH));
+        String column = columnName.substring(TIMESTAMP_STR_LENGTH);
+        int index = columnInfoMap.get(column) - START_INDEX;
         if (times[index].length == 0) {
           return null;
         }

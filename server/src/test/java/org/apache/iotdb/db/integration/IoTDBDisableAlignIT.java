@@ -142,12 +142,12 @@ public class IoTDBDisableAlignIT {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
         Assert.assertEquals(
-            "Time0,root.vehicle.d0.s0,"
-            + "Time1,root.vehicle.d0.s1,"
-            + "Time2,root.vehicle.d0.s2,"
-            + "Time3,root.vehicle.d0.s3,"
-            + "Time4,root.vehicle.d0.s4,"
-            + "Time5,root.vehicle.d1.s0,", header.toString());
+            "Timeroot.vehicle.d0.s0,root.vehicle.d0.s0,"
+            + "Timeroot.vehicle.d0.s1,root.vehicle.d0.s1,"
+            + "Timeroot.vehicle.d0.s2,root.vehicle.d0.s2,"
+            + "Timeroot.vehicle.d0.s3,root.vehicle.d0.s3,"
+            + "Timeroot.vehicle.d0.s4,root.vehicle.d0.s4,"
+            + "Timeroot.vehicle.d1.s0,root.vehicle.d1.s0,", header.toString());
         Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
         Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(2));
         Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(3));
@@ -176,20 +176,17 @@ public class IoTDBDisableAlignIT {
   @Test
   public void selectWithDuplicatedPathsTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
-        "1,101,1,101,0,1101,",
-        "2,10000,2,10000,0,40000,",
-        "50,10000,50,10000,0,50000,",
-        "100,99,100,99,0,199,",
-        "101,root.vehicle.d0,99,99,199,",
-        "102,root.vehicle.d0,80,80,180,",
-        "103,root.vehicle.d0,99,99,199,",
-        "104,root.vehicle.d0,90,90,190,",
-        "105,root.vehicle.d0,99,99,199,",
-        "106,root.vehicle.d0,99,99,null,",
-        "1000,root.vehicle.d0,22222,22222,55555,",
-        "946684800000,root.vehicle.d0,null,null,100,",
-        "1,root.vehicle.d1,999,999,null,",
-        "1000,root.vehicle.d1,888,888,null,"
+        "1,101,1,101,1,1101,",
+        "2,10000,2,10000,2,40000,",
+        "50,10000,50,10000,50,50000,",
+        "100,99,100,99,100,199,",
+        "101,99,101,99,101,199,",
+        "102,80,102,80,102,180,",
+        "103,99,103,99,103,199,",
+        "104,90,104,90,104,190,",
+        "105,99,105,99,105,199,",
+        "106,99,106,99,1000,55555,",
+        "1000,22222,1000,22222,946684800000,100,",
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -206,9 +203,9 @@ public class IoTDBDisableAlignIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("Time0,root.vehicle.d0.s0,"
-            + "Time1,root.vehicle.d0.s0,"
-            + "Time2,root.vehicle.d0.s1,", header.toString());
+        Assert.assertEquals("Timeroot.vehicle.d0.s0,root.vehicle.d0.s0,"
+            + "Timeroot.vehicle.d0.s0,root.vehicle.d0.s0,"
+            + "Timeroot.vehicle.d0.s1,root.vehicle.d0.s1,", header.toString());
         Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
         Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(2));
         Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
@@ -261,12 +258,12 @@ public class IoTDBDisableAlignIT {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
         Assert.assertEquals(
-            "Time0,root.vehicle.d0.s0,"
-            + "Time1,root.vehicle.d1.s0,"
-            + "Time2,root.vehicle.d0.s1,"
-            + "Time3,root.vehicle.d0.s2,"
-            + "Time4,root.vehicle.d0.s3,"
-            + "Time5,root.vehicle.d0.s4,", header.toString());
+            "Timeroot.vehicle.d0.s0,root.vehicle.d0.s0,"
+            + "Timeroot.vehicle.d1.s0,root.vehicle.d1.s0,"
+            + "Timeroot.vehicle.d0.s1,root.vehicle.d0.s1,"
+            + "Timeroot.vehicle.d0.s2,root.vehicle.d0.s2,"
+            + "Timeroot.vehicle.d0.s3,root.vehicle.d0.s3,"
+            + "Timeroot.vehicle.d0.s4,root.vehicle.d0.s4,", header.toString());
         Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
         Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(2));
         Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
@@ -323,8 +320,8 @@ public class IoTDBDisableAlignIT {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
         Assert.assertEquals(
-            "Time0,root.vehicle.d0.s1,"
-            + "Time1,root.vehicle.d0.s2,", header.toString());
+            "Timeroot.vehicle.d0.s1,root.vehicle.d0.s1,"
+            + "Timeroot.vehicle.d0.s2,root.vehicle.d0.s2,", header.toString());
         Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
         Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(2));
         Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(3));
