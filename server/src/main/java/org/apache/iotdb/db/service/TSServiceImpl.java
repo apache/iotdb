@@ -630,6 +630,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       } else {
         resp = getQueryColumnHeaders(plan, username);
       }
+      if (!((QueryPlan) plan).isAlign()) {
+        if (plan.getOperatorType() == OperatorType.AGGREGATION) {
+          throw new QueryProcessException("Aggregation doesn't support disable align clause.");
+        }
+        if (plan.getOperatorType() == OperatorType.FILL) {
+          throw new QueryProcessException("Fill doesn't support disable align clause.");
+        }
+        if (plan.getOperatorType() == OperatorType.GROUPBY) {
+          throw new QueryProcessException("Group by doesn't support disable align clause.");
+        }
+      }
       if (plan.getOperatorType() == OperatorType.AGGREGATION) {
         resp.setIgnoreTimeStamp(true);
       } // else default ignoreTimeStamp is false
@@ -750,12 +761,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       resp.setColumns(respColumns);
       resp.setDataTypeList(columnsTypes);
     } 
-    // disable align
-    else if (!plan.isAlign()) {
-      getWideQueryHeaders(plan, respColumns, columnsTypes);
-      resp.setColumns(respColumns);
-      resp.setDataTypeList(columnsTypes);
-    }
     else {
       getWideQueryHeaders(plan, respColumns, columnsTypes);
       resp.setColumns(respColumns);
@@ -832,12 +837,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     // set these null since they are never used henceforth in GROUP_BY_DEVICE query processing.
     plan.setPaths(null);
     plan.setDataTypeConsistencyChecker(null);
-  }
-  
-  // TODO: 
-  private void getDisableAlignQueryHeaders(QueryPlan plan, List<String> respColumns,
-      List<String> columnTypes) {
-    
   }
 
 

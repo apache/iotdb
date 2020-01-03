@@ -225,12 +225,8 @@ public class PhysicalGenerator {
     
     if (!queryOperator.isAlign()) {
       // below is the implementation of DISABLE_ALIGN sql logic
-      // TODO: 
       List<Path> paths = queryOperator.getSelectedPaths();
       queryPlan.setPaths(paths);
-      
-      
-      
       queryPlan.setAlign(false);
     }
 

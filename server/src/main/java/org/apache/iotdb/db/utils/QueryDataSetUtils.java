@@ -181,7 +181,7 @@ public class QueryDataSetUtils {
     return tsQueryDataSet;
   }
   
-  // TODO: Important
+
   public static TSQueryNonAlignDataSet convertQueryNonAlignDataSetByFetchSize(QueryDataSet queryDataSet,
       int fetchSize, WatermarkEncoder watermarkEncoder) throws IOException {
     List<TSDataType> dataTypes = queryDataSet.getDataTypes();

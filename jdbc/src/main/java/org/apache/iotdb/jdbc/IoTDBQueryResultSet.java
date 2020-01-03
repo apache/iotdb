@@ -1426,6 +1426,9 @@ public class IoTDBQueryResultSet implements ResultSet {
     else {
       if (columnName.startsWith(TIMESTAMP_STR)) {
         int index = Integer.parseInt(columnName.substring(TIMESTAMP_STR_LENGTH));
+        if (times[index].length == 0) {
+          return null;
+        }
         return String.valueOf(BytesUtils.bytesToLong(times[index]));
       }
       int index = columnInfoMap.get(columnName) - START_INDEX;
