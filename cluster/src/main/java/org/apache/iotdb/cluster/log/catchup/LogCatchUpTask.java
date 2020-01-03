@@ -35,7 +35,7 @@ public class LogCatchUpTask implements Runnable {
     this.raftMember = raftMember;
   }
 
-  void doLogCatchUp() {
+  void doLogCatchUp() throws TException, InterruptedException {
 
     AppendEntryRequest request = new AppendEntryRequest();
     AtomicBoolean appendSucceed = new AtomicBoolean(false);
@@ -65,20 +65,13 @@ public class LogCatchUpTask implements Runnable {
       logger.debug("Catching up {} with log {}", node, log);
 
       synchronized (appendSucceed) {
-        try {
-          AsyncClient client = raftMember.connectNode(node);
-          if (client == null) {
-            return;
-          }
-          client.appendEntry(request, handler);
-          raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-          appendSucceed.wait(RaftServer.CONNECTION_TIME_OUT_MS);
-        } catch (TException e) {
-          logger.error("Cannot send log {} to {}", log, node);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          logger.error("Catch up {} is interrupted:", node, e);
+        AsyncClient client = raftMember.connectNode(node);
+        if (client == null) {
+          return;
         }
+        client.appendEntry(request, handler);
+        raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
+        appendSucceed.wait(RaftServer.CONNECTION_TIME_OUT_MS);
       }
       abort = !appendSucceed.get();
     }

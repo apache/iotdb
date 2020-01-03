@@ -10,6 +10,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 
@@ -75,5 +76,26 @@ public class CloseFileLog extends Log {
         "storageGroupName='" + storageGroupName + '\'' +
         ", isSeq=" + isSeq +
         '}';
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    CloseFileLog that = (CloseFileLog) o;
+    return isSeq == that.isSeq &&
+        Objects.equals(storageGroupName, that.storageGroupName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), storageGroupName, isSeq);
   }
 }

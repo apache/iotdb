@@ -19,6 +19,7 @@
 package org.apache.iotdb.cluster.log;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /**
  * Log records operations that are made on this cluster. Each log records 4 longs: currLogIndex
@@ -73,5 +74,25 @@ public abstract class Log {
 
   public void setCurrLogTerm(long currLogTerm) {
     this.currLogTerm = currLogTerm;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Log log = (Log) o;
+    return currLogIndex == log.currLogIndex &&
+        currLogTerm == log.currLogTerm &&
+        previousLogIndex == log.previousLogIndex &&
+        previousLogTerm == log.previousLogTerm;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(currLogIndex, currLogTerm, previousLogIndex, previousLogTerm);
   }
 }

@@ -33,7 +33,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Runnable {
     this.snapshot = snapshot;
   }
 
-  private boolean doSnapshotCatchUp() {
+  private boolean doSnapshotCatchUp() throws TException, InterruptedException {
     AsyncClient client = raftMember.connectNode(node);
     if (client == null) {
       return false;
@@ -56,16 +56,9 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Runnable {
     }
 
     synchronized (succeed) {
-      try {
-        client.sendSnapshot(request, handler);
-        raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-        succeed.wait(RaftServer.CONNECTION_TIME_OUT_MS);
-      } catch (TException e) {
-        logger.error("Cannot send snapshot {} to {}", snapshot, node);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.error("Catch up {} is interrupted:", node, e);
-      }
+      client.sendSnapshot(request, handler);
+      raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
+      succeed.wait(RaftServer.CONNECTION_TIME_OUT_MS);
     }
 
     return succeed.get();

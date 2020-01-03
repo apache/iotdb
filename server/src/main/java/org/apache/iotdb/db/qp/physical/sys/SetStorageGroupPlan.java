@@ -23,11 +23,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-
+import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.jfree.chart.util.SerialUtils;
 
 public class SetStorageGroupPlan extends PhysicalPlan {
   private Path path;
@@ -77,5 +76,22 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   @Override
   public String toString() {
     return "SetStorageGroup{" + path + '}';
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    SetStorageGroupPlan that = (SetStorageGroupPlan) o;
+    return Objects.equals(path, that.path);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(path);
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.log.logtypes;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
@@ -82,5 +83,25 @@ public class AddNodeLog extends Log {
 
     newNode = new Node();
     SerializeUtils.deserialize(newNode, buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    AddNodeLog that = (AddNodeLog) o;
+    return Objects.equals(newNode, that.newNode);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), newNode);
   }
 }

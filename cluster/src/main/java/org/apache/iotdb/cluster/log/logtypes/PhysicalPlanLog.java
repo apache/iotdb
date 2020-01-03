@@ -25,6 +25,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.slf4j.Logger;
@@ -93,5 +94,25 @@ public class PhysicalPlanLog extends Log {
   public String toString() {
     return plan.toString() + ",term:" + getCurrLogTerm() + ",index:" + getCurrLogIndex() +
         ",prevTerm:" + getPreviousLogTerm() + ",prevIndex:" + getPreviousLogIndex();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    PhysicalPlanLog that = (PhysicalPlanLog) o;
+    return Objects.equals(plan, that.plan);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), plan);
   }
 }

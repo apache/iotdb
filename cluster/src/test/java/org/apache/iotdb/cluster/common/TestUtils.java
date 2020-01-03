@@ -4,7 +4,10 @@
 
 package org.apache.iotdb.cluster.common;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
 public class TestUtils {
@@ -20,4 +23,18 @@ public class TestUtils {
     node.setNodeIdentifier(nodeNum);
     return node;
   }
+
+  public static List<Log> prepareTestLogs(int logNum) {
+    List<Log> logList = new ArrayList<>();
+    for (int i = 0; i < logNum; i++) {
+      Log log = new TestLog();
+      log.setCurrLogIndex(i);
+      log.setCurrLogTerm(i);
+      log.setPreviousLogIndex(i - 1L);
+      log.setPreviousLogTerm(i - 1L);
+      logList.add(log);
+    }
+    return logList;
+  }
+
 }
